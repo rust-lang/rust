@@ -45,6 +45,8 @@ pub enum Pat {
     Sym(Symbol),
     /// Any decimal or hexadecimal digit depending on the location.
     Num,
+    /// An attribute.
+    Attr(Symbol),
 }
 
 /// Checks if the start and the end of the span's text matches the patterns. This will return false
@@ -65,12 +67,20 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().is_some_and(u8::is_ascii_digit),
+            Pat::Attr(sym) => {
+                let start_str = start_str
+                    .strip_prefix("#[")
+                    .or_else(|| start_str.strip_prefix("#!["))
+                    .unwrap_or(start_str);
+                start_str.trim_start().starts_with(sym.as_str())
+            },
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
             Pat::MultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().is_some_and(u8::is_ascii_hexdigit),
+            Pat::Attr(_) => false,
         })
     })
 }
@@ -348,20 +358,9 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
 fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
-            if let Some(ident) = attr.ident() {
+            if let Some(name) = attr.name() {
                 // NOTE: This will likely have false positives, like `allow = 1`
-                let ident_string = ident.to_string();
-                if attr.style == AttrStyle::Outer {
-                    (
-                        Pat::OwnedMultiStr(vec!["#[".to_owned() + &ident_string, ident_string]),
-                        Pat::Str(""),
-                    )
-                } else {
-                    (
-                        Pat::OwnedMultiStr(vec!["#![".to_owned() + &ident_string, ident_string]),
-                        Pat::Str(""),
-                    )
-                }
+                (Pat::Attr(name), Pat::Str(""))
             } else {
                 (Pat::Str("#"), Pat::Str("]"))
             }

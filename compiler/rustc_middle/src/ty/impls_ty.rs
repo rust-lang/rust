@@ -9,9 +9,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
     HashStable, HashingControls, StableHasher, ToStableHashKey,
 };
-use rustc_query_system::ich::StableHashingContext;
 use tracing::trace;
 
+use crate::ich::StableHashingContext;
 use crate::middle::region;
 use crate::{mir, ty};
 
@@ -20,6 +20,9 @@ where
     T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
+        // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
+        // `deeply-nested-multi` can be ~4,000x slower(!)
         thread_local! {
             static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
                 RefCell::new(Default::default());

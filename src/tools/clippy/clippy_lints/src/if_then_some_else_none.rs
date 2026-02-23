@@ -4,10 +4,12 @@ use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
-    as_some_expr, contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context,
-    is_none_expr, peel_blocks, sym,
+    as_some_expr, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context, is_none_expr,
+    peel_blocks, sym,
 };
+use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -76,8 +78,14 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && !is_else_clause(cx.tcx, expr)
             && !is_in_const_context(cx)
             && self.msrv.meets(cx, msrvs::BOOL_THEN)
-            && !contains_return(then_block.stmts)
-            && then_block.expr.is_none_or(|expr| !contains_return(expr))
+            && for_each_expr_without_closures(then_block, |e| {
+                if matches!(e.kind, ExprKind::Ret(..) | ExprKind::Yield(..)) {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+            .is_none()
         {
             let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                 sym::then_some
@@ -101,13 +109,19 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                         .maybe_paren()
                         .to_string();
                     let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
-                    let method_body = if let Some(first_stmt) = then_block.stmts.first()
-                        && let Some(first_stmt_span) = walk_span_to_context(first_stmt.span, ctxt)
+                    let method_body = if let Some(_) = then_block.stmts.first()
+                        && let Some(then_span) = walk_span_to_context(then.span, ctxt)
                     {
-                        let block_snippet =
-                            snippet_with_applicability(cx, first_stmt_span.until(then_expr.span), "..", &mut app);
+                        let block_before_snippet =
+                            snippet_with_applicability(cx, then_span.until(then_expr.span), "..", &mut app);
+                        let block_after_snippet = snippet_with_applicability(
+                            cx,
+                            then_expr.span.shrink_to_hi().until(then_span.shrink_to_hi()),
+                            "..",
+                            &mut app,
+                        );
                         let closure = if method_name == sym::then { "|| " } else { "" };
-                        format!("{closure} {{ {} {arg_snip} }}", block_snippet.trim_end())
+                        format!("{closure}{block_before_snippet}{arg_snip}{block_after_snippet}")
                     } else if method_name == sym::then {
                         (std::borrow::Cow::Borrowed("|| ") + arg_snip).into_owned()
                     } else {

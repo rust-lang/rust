@@ -1,0 +1,166 @@
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:17:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_1::foo`
+  --> $DIR/trait-to-free.rs:14:59
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone + ToString, U: Clone, const N: usize>() {}
+   |                                                           ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:25:9
+   |
+LL |         <u32 as Trait<'static, i32, i32, i32, 1>>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_1::Trait::bar`
+  --> $DIR/trait-to-free.rs:14:59
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone + ToString, U: Clone, const N: usize>() {}
+   |                                                           ^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::bar`
+...
+LL |         reuse foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                          --- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:36:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::foo`
+  --> $DIR/trait-to-free.rs:33:32
+   |
+LL |     fn foo<T: Clone, U: Clone, const N: usize>() {}
+   |                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:44:9
+   |
+LL |         <u32 as Trait<'static, i32, i32, i32, 1>>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_2::Trait::bar`
+  --> $DIR/trait-to-free.rs:33:32
+   |
+LL |     fn foo<T: Clone, U: Clone, const N: usize>() {}
+   |                                ^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::bar`
+...
+LL |         reuse foo::<i32, String, 1> as bar;
+   |                                        --- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:70:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_4::foo`
+  --> $DIR/trait-to-free.rs:67:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:78:9
+   |
+LL |         <u32 as Trait<i32, i32, i32, 1>>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_4::Trait::bar`
+  --> $DIR/trait-to-free.rs:67:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::bar`
+...
+LL |         reuse foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                          --- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:89:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_5::foo`
+  --> $DIR/trait-to-free.rs:86:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:97:9
+   |
+LL |         <u32 as Trait>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_5::Trait::bar`
+  --> $DIR/trait-to-free.rs:86:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::bar`
+...
+LL |         reuse foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                          --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait>::bar::<T, U, N>();
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:107:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_6::foo`
+  --> $DIR/trait-to-free.rs:104:32
+   |
+LL |     fn foo<T: Clone, U: Clone, const N: usize>() {}
+   |                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-free.rs:115:9
+   |
+LL |         <u32 as Trait>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_6::Trait::bar`
+  --> $DIR/trait-to-free.rs:104:32
+   |
+LL |     fn foo<T: Clone, U: Clone, const N: usize>() {}
+   |                                ^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::bar`
+...
+LL |         reuse foo::<i32, String, 1> as bar;
+   |                                        --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait>::bar::<T, U, N>();
+   |                            +++++++++++
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

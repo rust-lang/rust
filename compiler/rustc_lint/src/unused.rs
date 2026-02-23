@@ -4,7 +4,6 @@ use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{MultiSpan, pluralize};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
@@ -401,8 +400,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         fn is_def_must_use(cx: &LateContext<'_>, def_id: DefId, span: Span) -> Option<MustUsePath> {
             if let Some(reason) = find_attr!(
-                cx.tcx.get_all_attrs(def_id),
-                AttributeKind::MustUse { reason, .. } => reason
+                cx.tcx, def_id,
+                MustUse { reason, .. } => reason
             ) {
                 // check for #[must_use = "..."]
                 Some(MustUsePath::Def(span, def_id, *reason))
@@ -539,10 +538,19 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    let span = span.find_ancestor_not_from_macro().unwrap_or(*span);
+                    let ancenstor_span = span.find_ancestor_not_from_macro().unwrap_or(*span);
+                    let is_redundant_let_ignore = cx
+                        .sess()
+                        .source_map()
+                        .span_to_prev_source(ancenstor_span)
+                        .ok()
+                        .map(|prev| prev.trim_end().ends_with("let _ ="))
+                        .unwrap_or(false);
+                    let suggestion_span =
+                        if is_redundant_let_ignore { *span } else { ancenstor_span };
                     cx.emit_span_lint(
                         UNUSED_MUST_USE,
-                        span,
+                        ancenstor_span,
                         UnusedDef {
                             pre: descr_pre,
                             post: descr_post,
@@ -551,11 +559,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             note: *reason,
                             suggestion: (!is_inner).then_some(if expr_is_from_block {
                                 UnusedDefSuggestion::BlockTailExpr {
-                                    before_span: span.shrink_to_lo(),
-                                    after_span: span.shrink_to_hi(),
+                                    before_span: suggestion_span.shrink_to_lo(),
+                                    after_span: suggestion_span.shrink_to_hi(),
                                 }
                             } else {
-                                UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
+                                UnusedDefSuggestion::NormalExpr {
+                                    span: suggestion_span.shrink_to_lo(),
+                                }
                             }),
                         },
                     );
@@ -794,7 +804,10 @@ trait UnusedDelimLint {
 
                 ExprKind::Break(_label, None) => return false,
                 ExprKind::Break(_label, Some(break_expr)) => {
-                    return matches!(break_expr.kind, ExprKind::Block(..));
+                    // `if (break 'label i) { ... }` removing parens would make `i { ... }`
+                    // be parsed as a struct literal, so keep parentheses if the break value
+                    // ends with a path (which could be mistaken for a struct name).
+                    return matches!(break_expr.kind, ExprKind::Block(..) | ExprKind::Path(..));
                 }
 
                 ExprKind::Range(_lhs, Some(rhs), _limits) => {
@@ -1044,8 +1057,8 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        let expr = if let Const(box ast::ConstItem { rhs: Some(rhs), .. }) = &item.kind {
-            rhs.expr()
+        let expr = if let Const(box ast::ConstItem { rhs_kind, .. }) = &item.kind {
+            if let Some(e) = rhs_kind.expr() { e } else { return }
         } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
             expr
         } else {
@@ -1190,6 +1203,8 @@ impl UnusedParens {
                 // `&(a..=b)`, there is a recursive `check_pat` on `a` and `b`, but we will assume
                 // that if there are unnecessary parens they serve a purpose of readability.
                 PatKind::Range(..) => return,
+                // Parentheses may be necessary to disambiguate precedence in guard patterns.
+                PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
@@ -1769,7 +1784,7 @@ declare_lint! {
 declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &hir::Expr<'_>) {
         match e.kind {
             hir::ExprKind::Call(path_expr, [_])
                 if let hir::ExprKind::Path(qpath) = &path_expr.kind
@@ -1780,6 +1795,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
 
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(m)) = adj.kind {
+                if let ty::Ref(_, inner_ty, _) = adj.target.kind()
+                    && inner_ty.is_box()
+                {
+                    // If the target type is `&Box<T>` or `&mut Box<T>`, the allocation is necessary
+                    continue;
+                }
                 match m {
                     adjustment::AutoBorrowMutability::Not => {
                         cx.emit_span_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationDiag);

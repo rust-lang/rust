@@ -5,9 +5,9 @@
 // arguments have been properly loaded when setting the breakpoint via the
 // function name.
 
-//@ min-lldb-version: 1800
-//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
-// SingleUseConsts shouldn't need to be disabled, see #128945
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
+//@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 

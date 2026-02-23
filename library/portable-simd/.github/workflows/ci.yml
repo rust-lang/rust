@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, i586-pc-windows-msvc, x86_64-unknown-linux-gnu]
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-unknown-linux-gnu]
         # `default` means we use the default target config for the target,
         # `native` means we run with `-Ctarget-cpu=native`, and anything else is
         # an arg to `-Ctarget-feature`
@@ -68,18 +68,12 @@ jobs:
         exclude:
           # -Ctarget-cpu=native sounds like bad-news if target != host
           - { target: i686-pc-windows-msvc, target_feature: native }
-          - { target: i586-pc-windows-msvc, target_feature: native }
 
         include:
           # Populate the `matrix.os` field
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
           - { target: x86_64-pc-windows-msvc,   os: windows-latest }
           - { target: i686-pc-windows-msvc,     os: windows-latest }
-          - { target: i586-pc-windows-msvc,     os: windows-latest }
-
-          # These are globally available on all the other targets.
-          - { target: i586-pc-windows-msvc, target_feature: +sse, os: windows-latest }
-          - { target: i586-pc-windows-msvc, target_feature: +sse2, os: windows-latest }
 
           # Annoyingly, the x86_64-unknown-linux-gnu runner *almost* always has
           # avx512vl, but occasionally doesn't.  Maybe one day we can enable it.
@@ -129,7 +123,7 @@ jobs:
         run: cargo doc --verbose --target=${{ matrix.target }}
         env:
           RUSTDOCFLAGS: -Dwarnings
-    
+
   macos-tests:
     name: ${{ matrix.target }}
     runs-on: macos-latest
@@ -246,9 +240,18 @@ jobs:
 
   miri:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@v4
-      - name: Test (Miri)
-        run: cargo miri test
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Test (Miri) (partition ${{ matrix.shard }}/4)
+        run: |
+          cargo miri nextest run --partition count:${{ matrix.shard }}/4

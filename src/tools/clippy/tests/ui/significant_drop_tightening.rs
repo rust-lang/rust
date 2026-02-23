@@ -142,3 +142,36 @@ pub fn unnecessary_contention_with_single_owned_results() {
 pub fn do_heavy_computation_that_takes_time<T>(_: T) {}
 
 fn main() {}
+
+fn issue15574() {
+    use std::io::{BufRead, Read, stdin};
+    use std::process;
+
+    println!("Hello, what's your name?");
+    let stdin = stdin().lock();
+    //~^ significant_drop_tightening
+    let mut buffer = String::with_capacity(10);
+
+    let mut stdin = stdin.take(40);
+    //~^ significant_drop_tightening
+    if stdin.read_line(&mut buffer).is_err() {
+        eprintln!("An error has occured while reading.");
+        return;
+    }
+    println!("Our string has a capacity of {}", buffer.capacity());
+    println!("Hello {}!", buffer);
+}
+
+fn issue16343() {
+    fn get_items(x: &()) -> Vec<()> {
+        vec![*x]
+    }
+
+    let storage = Mutex::new(());
+    let lock = storage.lock().unwrap();
+    //~^ significant_drop_tightening
+    let items = get_items(&lock);
+    for item in items {
+        println!("item {:?}", item);
+    }
+}

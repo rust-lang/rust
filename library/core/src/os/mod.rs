@@ -1,6 +1,7 @@
 //! OS-specific functionality.
 
 #![unstable(feature = "darwin_objc", issue = "145496")]
+#![allow(missing_docs)]
 
 #[cfg(all(
     doc,

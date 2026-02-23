@@ -17,5 +17,5 @@ mod m {
 
 fn main() {
     use m::S; //~ ERROR `S` is ambiguous
-    let s = S {};
+    let s = S {}; //~ ERROR `S` is ambiguous
 }

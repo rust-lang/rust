@@ -1,4 +1,6 @@
 //@compile-flags: -Zmiri-permissive-provenance
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 use std::{mem, ptr};
 
 fn eq_ref<T>(x: &T, y: &T) -> bool {

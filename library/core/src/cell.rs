@@ -27,10 +27,9 @@
 //!
 //! ## `Cell<T>`
 //!
-//! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, an
-//! `&mut T` to the inner value can never be obtained, and the value itself cannot be directly
-//! obtained without replacing it with something else. Both of these rules ensure that there is
-//! never more than one reference pointing to the inner value. This type provides the following
+//! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, a
+//! `&T` to the inner value can never be obtained, and the value itself cannot be directly
+//! obtained without replacing it with something else. This type provides the following
 //! methods:
 //!
 //!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
@@ -690,6 +689,30 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>; N] {
+        self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>] {
+        &*self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> AsRef<[Cell<T>]> for Cell<[T]> {
+    #[inline]
+    fn as_ref(&self) -> &[Cell<T>] {
+        self.as_slice_of_cells()
+    }
+}
+
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
     ///
@@ -751,7 +774,6 @@ impl<T, const N: usize> Cell<[T; N]> {
 /// following is unsound:
 ///
 /// ```rust
-/// #![feature(cell_get_cloned)]
 /// # use std::cell::Cell;
 ///
 /// #[derive(Copy, Debug)]
@@ -2696,20 +2718,20 @@ fn assert_coerce_unsized(
     let _: RefCell<&dyn Send> = d;
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}

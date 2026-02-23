@@ -1,6 +1,6 @@
 //@ aux-crate:priv:priv_dep=priv_dep.rs
 //@ aux-build:pub_dep.rs
-//@ aux-crate:priv:pm=pm.rs
+//@ proc-macro:priv:pm.rs
 //@ compile-flags: -Zunstable-options
 
 // Basic behavior check of exported_private_dependencies from either a public
@@ -74,8 +74,12 @@ pub trait MyPubTrait {
     //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn required_impl_trait() -> impl OtherTrait;
+    //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
+    //~| ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn provided_impl_trait() -> impl OtherTrait { OtherType }
+    //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
+    //~| ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn required_concrete() -> OtherType;
     //~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface

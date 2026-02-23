@@ -14,7 +14,7 @@ This page gives an overview of our stability guarantees.
 ## rustc-dev-guide links
 
 * [Stabilizing library features](./stability.md)
-* [Stabilizing language features](./stabilization_guide.md)
+* [Stabilizing language features](./stabilization-guide.md)
 * [What qualifies as a bug fix?](./bug-fix-procedure.md#what-qualifies-as-a-bug-fix)
 
 ## Exemptions

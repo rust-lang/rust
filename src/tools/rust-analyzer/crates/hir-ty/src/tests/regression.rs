@@ -891,13 +891,14 @@ use core::ops::Deref;
 
 struct BufWriter {}
 
-struct Mutex<T> {}
-struct MutexGuard<'a, T> {}
+struct Mutex<T>(T);
+struct MutexGuard<'a, T>(&'a T);
 impl<T> Mutex<T> {
     fn lock(&self) -> MutexGuard<'_, T> {}
 }
 impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
     type Target = T;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 fn flush(&self) {
     let w: &Mutex<BufWriter>;
@@ -905,14 +906,18 @@ fn flush(&self) {
 }
 "#,
         expect![[r#"
-            123..127 'self': &'? Mutex<T>
-            150..152 '{}': MutexGuard<'?, T>
-            234..238 'self': &'? {unknown}
-            240..290 '{     ...()); }': ()
-            250..251 'w': &'? Mutex<BufWriter>
-            276..287 '*(w.lock())': BufWriter
-            278..279 'w': &'? Mutex<BufWriter>
-            278..286 'w.lock()': MutexGuard<'?, BufWriter>
+            129..133 'self': &'? Mutex<T>
+            156..158 '{}': MutexGuard<'?, T>
+            242..246 'self': &'? MutexGuard<'a, T>
+            265..276 '{ loop {} }': &'? T
+            267..274 'loop {}': !
+            272..274 '{}': ()
+            289..293 'self': &'? {unknown}
+            295..345 '{     ...()); }': ()
+            305..306 'w': &'? Mutex<BufWriter>
+            331..342 '*(w.lock())': BufWriter
+            333..334 'w': &'? Mutex<BufWriter>
+            333..341 'w.lock()': MutexGuard<'?, BufWriter>
         "#]],
     );
 }
@@ -2230,7 +2235,6 @@ async fn f<A, B, C>() -> Bar {}
 "#,
         expect![[r#"
             64..66 '{}': ()
-            64..66 '{}': impl Future<Output = ()>
         "#]],
     );
 }
@@ -2374,6 +2378,7 @@ fn rust_destruct_option_clone() {
     check_types(
         r#"
 //- minicore: option, drop
+#![feature(lang_items)]
 fn test(o: &Option<i32>) {
     o.my_clone();
   //^^^^^^^^^^^^ Option<i32>
@@ -2560,5 +2565,208 @@ fn main() {
      // ^ ()
 }
         "#,
+    );
+}
+
+#[test]
+fn regression_21429() {
+    check_no_mismatches(
+        r#"
+trait DatabaseLike {
+    type ForeignKey: ForeignKeyLike<DB = Self>;
+}
+
+trait ForeignKeyLike {
+    type DB: DatabaseLike;
+
+    fn host_columns(&self, database: &Self::DB);
+}
+
+trait ColumnLike {
+    type DB: DatabaseLike;
+
+    fn foo() -> &&<<Self as ColumnLike>::DB as DatabaseLike>::ForeignKey {
+        loop {}
+    }
+
+    fn foreign_keys(&self, database: &Self::DB) {
+        let fk = Self::foo();
+        fk.host_columns(database);
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn issue_21006_generic_predicates_for_param_supertrait_cycle() {
+    check_no_mismatches(
+        r#"
+trait VCipherSuite {}
+
+trait CipherSuite
+where
+    OprfHash<Self>: Hash,
+{
+}
+
+type Bar<CS: CipherSuite> = <CS::Baz as VCipherSuite>::Hash;
+
+type OprfHash<CS: CipherSuite> = <CS::Baz as VCipherSuite>::Hash;
+
+impl<CS: CipherSuite> Foo<CS> {
+    fn seal() {}
+}
+        "#,
+    );
+}
+
+#[test]
+fn issue_21006_self_assoc_trait() {
+    check_types(
+        r#"
+trait Baz {
+    fn baz(&self);
+}
+
+trait Foo {
+    type Assoc;
+}
+
+trait Bar: Foo
+where
+    Self::Assoc: Baz,
+{
+    fn bar(v: Self::Assoc) {
+        let _ = v.baz();
+        //  ^ ()
+    }
+}
+        "#,
+    );
+}
+
+#[test]
+fn issue_21560() {
+    check_no_mismatches(
+        r#"
+mod bindings {
+    use super::*;
+    pub type HRESULT = i32;
+}
+use bindings::*;
+
+
+mod error {
+    use super::*;
+    pub fn nonzero_hresult(hr: HRESULT) -> crate::HRESULT {
+        hr
+    }
+}
+pub use error::*;
+
+mod hresult {
+    use super::*;
+    pub struct HRESULT(pub i32);
+}
+pub use hresult::HRESULT;
+
+        "#,
+    );
+}
+
+#[test]
+fn regression_21577() {
+    check_no_mismatches(
+        r#"
+pub trait FilterT<F: FilterT<F, V = Self::V> = Self> {
+    type V;
+
+    fn foo() {}
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21605() {
+    check_infer(
+        r#"
+//- minicore: fn, coerce_unsized, dispatch_from_dyn, iterator, iterators
+pub struct Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    filter_fn: dyn Fn(&'a T) -> bool,
+    t: Option<T>,
+    b: &'b (),
+}
+
+impl<'a, 'b, T> Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    pub fn new(filter_fn: dyn Fn(&T) -> bool) -> Self {
+        Self {
+            filter_fn: filter_fn,
+            t: None,
+            b: &(),
+        }
+    }
+}
+
+pub trait FilterExt<T> {
+    type Output;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output;
+}
+
+impl<const N: usize, T> FilterExt<T> for [T; N]
+where
+    T: IntoIterator,
+{
+    type Output = T;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output {
+        let _ = self.into_iter().filter(filter.filter_fn);
+        loop {}
+    }
+}
+"#,
+        expect![[r#"
+            214..223 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            253..360 '{     ...     }': Filter<'a, 'b, T>
+            263..354 'Self {...     }': Filter<'a, 'b, T>
+            293..302 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            319..323 'None': Option<T>
+            340..343 '&()': &'? ()
+            341..343 '()': ()
+            421..425 'self': &'? Self
+            427..433 'filter': &'? Filter<'?, '?, T>
+            580..584 'self': &'? [T; N]
+            586..592 'filter': &'? Filter<'?, '?, T>
+            622..704 '{     ...     }': T
+            636..637 '_': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            640..644 'self': &'? [T; N]
+            640..656 'self.i...iter()': Iter<'?, T>
+            640..681 'self.i...er_fn)': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            664..670 'filter': &'? Filter<'?, '?, T>
+            664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
+            691..698 'loop {}': !
+            696..698 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn extern_fns_cannot_have_param_patterns() {
+    check_no_mismatches(
+        r#"
+pub(crate) struct Builder<'a>(&'a ());
+
+unsafe extern "C"  {
+    pub(crate) fn foo<'a>(Builder: &Builder<'a>);
+}
+    "#,
     );
 }

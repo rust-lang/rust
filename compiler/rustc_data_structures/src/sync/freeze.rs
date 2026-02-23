@@ -1,5 +1,5 @@
 use std::cell::UnsafeCell;
-use std::intrinsics::likely;
+use std::hint;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
@@ -60,10 +60,11 @@ impl<T> FreezeLock<T> {
     /// Get the inner value if frozen.
     #[inline]
     pub fn get(&self) -> Option<&T> {
-        if likely(self.frozen.load(Ordering::Acquire)) {
+        if self.frozen.load(Ordering::Acquire) {
             // SAFETY: This is frozen so the data cannot be modified.
             unsafe { Some(&*self.data.get()) }
         } else {
+            hint::cold_path();
             None
         }
     }

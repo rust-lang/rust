@@ -33,10 +33,10 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, kw};
 
 use crate::imports::{Import, ImportKind};
-use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
+use crate::{DeclKind, IdentKey, LateDecl, Resolver, module_to_string};
 
 struct UnusedImport {
     use_tree: ast::UseTree,
@@ -203,7 +203,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             if self
                 .r
                 .extern_prelude
-                .get(&Macros20NormalizedIdent::new(extern_crate.ident))
+                .get(&IdentKey::new(extern_crate.ident))
                 .is_none_or(|entry| entry.introduced_by_item())
             {
                 continue;
@@ -422,6 +422,7 @@ impl Resolver<'_, '_> {
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)
                             && !tcx.has_panic_handler(cnum)
+                            && tcx.externally_implementable_items(cnum).is_empty()
                     }) {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }
@@ -513,8 +514,8 @@ impl Resolver<'_, '_> {
         let mut check_redundant_imports = FxIndexSet::default();
         for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
-                if let Some(binding) = resolution.borrow().best_binding()
-                    && let NameBindingKind::Import { import, .. } = binding.kind
+                if let Some(decl) = resolution.borrow().best_decl()
+                    && let DeclKind::Import { import, .. } = decl.kind
                     && let ImportKind::Single { id, .. } = import.kind
                 {
                     if let Some(unused_import) = unused_imports.get(&import.root_id)
@@ -541,8 +542,8 @@ impl Resolver<'_, '_> {
         // Deleting both unused imports and unnecessary segments of an item may result
         // in the item not being found.
         for unn_qua in &self.potentially_unnecessary_qualifications {
-            if let LexicalScopeBinding::Item(name_binding) = unn_qua.binding
-                && let NameBindingKind::Import { import, .. } = name_binding.kind
+            if let LateDecl::Decl(decl) = unn_qua.decl
+                && let DeclKind::Import { import, .. } = decl.kind
                 && (is_unused_import(import, &unused_imports)
                     || is_redundant_import(import, &redundant_imports))
             {

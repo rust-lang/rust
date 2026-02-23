@@ -1,8 +1,9 @@
 use rustc_ast::{BorrowKind, UnOp};
-use rustc_hir::{Expr, ExprKind, Mutability};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref};
+use rustc_hir::{Expr, ExprKind, Mutability, find_attr};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, DerefAdjustKind, OverloadedDeref,
+};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::sym;
 
 use crate::lints::{
     ImplicitUnsafeAutorefsDiag, ImplicitUnsafeAutorefsMethodNote, ImplicitUnsafeAutorefsOrigin,
@@ -106,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
                 ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
                 _ => None,
             }
-            && method_did.map(|did| cx.tcx.has_attr(did, sym::rustc_no_implicit_autorefs)).unwrap_or(true)
+            && method_did.map(|did| find_attr!(cx.tcx, did, RustcNoImplicitAutorefs)).unwrap_or(true)
         {
             cx.emit_span_lint(
                 DANGEROUS_IMPLICIT_AUTOREFS,
@@ -165,12 +166,14 @@ fn peel_derefs_adjustments<'a>(mut adjs: &'a [Adjustment<'a>]) -> &'a [Adjustmen
 /// an implicit borrow (or has an implicit borrow via an overloaded deref).
 fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<(Mutability, bool)> {
     match kind {
-        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some((mutbl, true)),
+        &Adjust::Deref(DerefAdjustKind::Overloaded(OverloadedDeref { mutbl, .. })) => {
+            Some((mutbl, true))
+        }
         &Adjust::Borrow(AutoBorrow::Ref(mutbl)) => Some((mutbl.into(), false)),
         Adjust::NeverToAny
         | Adjust::Pointer(..)
         | Adjust::ReborrowPin(..)
-        | Adjust::Deref(None)
+        | Adjust::Deref(DerefAdjustKind::Builtin)
         | Adjust::Borrow(AutoBorrow::RawPtr(..)) => None,
     }
 }

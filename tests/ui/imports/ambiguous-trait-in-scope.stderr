@@ -1,0 +1,191 @@
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:32:9
+   |
+LL |     use m1::*;
+   |         -- `Trait` imported ambiguously here
+LL |     use m2::*;
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+   = note: `#[warn(ambiguous_glob_imported_traits)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:34:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+error[E0599]: no method named `method1` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:41:9
+   |
+LL |     0u8.method1();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method1` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m1::Trait;
+   |
+LL + use crate::m1::Trait;
+   |
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:42:9
+   |
+LL |     use m2::*;
+   |         -- `Trait` imported ambiguously here
+...
+LL |     0u8.method2();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:49:9
+   |
+LL |     use m1_reexport::*;
+   |         ----------- `Trait` imported ambiguously here
+LL |     use m2_reexport::*;
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:51:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:56:9
+   |
+LL |     use ambig_reexport::*;
+   |         -------------- `Trait` imported ambiguously here
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:58:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:64:9
+   |
+LL |     use external::m1::*;
+   |         ------------ `Trait` imported ambiguously here
+LL |     use external::m2::*;
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:66:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:72:9
+   |
+LL |     use external::m1_reexport::*;
+   |         --------------------- `Trait` imported ambiguously here
+LL |     use external::m2_reexport::*;
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:74:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:79:9
+   |
+LL |     use external::ambig_reexport::*;
+   |         ------------------------ `Trait` imported ambiguously here
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
+   = help: Import `Trait` explicitly
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:81:9
+   |
+LL |     0u8.method2();
+   |         ^^^^^^^ method not found in `u8`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
+   |
+LL + use ambiguous_trait_reexport::m2::Trait;
+   |
+LL + use crate::m2::Trait;
+   |
+
+error: aborting due to 7 previous errors; 7 warnings emitted
+
+For more information about this error, try `rustc --explain E0599`.

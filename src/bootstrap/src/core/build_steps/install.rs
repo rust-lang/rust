@@ -279,6 +279,17 @@ install!((self, builder, _config),
         });
         install_sh(builder, "rustc", self.build_compiler, Some(self.target), &tarball);
     };
+    RustcDev, alias = "rustc-dev", Self::should_build(_config), IS_HOST: true, {
+        if let Some(tarball) = builder.ensure(dist::RustcDev {
+            build_compiler: self.build_compiler, target: self.target
+        }) {
+            install_sh(builder, "rustc-dev", self.build_compiler, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install RustcDev stage{} ({})", self.build_compiler.stage + 1, self.target),
+            );
+        }
+    };
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
             compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target),

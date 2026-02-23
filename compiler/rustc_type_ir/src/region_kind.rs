@@ -5,9 +5,10 @@ use derive_where::derive_where;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
-use crate::{BoundVarIndexKind, Interner};
+use crate::{BoundRegion, BoundVarIndexKind, Interner, PlaceholderRegion};
 
 rustc_index::newtype_index! {
     /// A **region** **v**ariable **ID**.
@@ -126,6 +127,7 @@ rustc_index::newtype_index! {
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -147,7 +149,7 @@ pub enum RegionKind<I: Interner> {
     /// Bound regions inside of types **must not** be erased, as they impact trait
     /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
     /// `fn(&'static ())` are different types and have to be treated as such.
-    ReBound(BoundVarIndexKind, I::BoundRegion),
+    ReBound(BoundVarIndexKind, BoundRegion<I>),
 
     /// Late-bound function parameters are represented using a `ReBound`. When
     /// inside of a function, we convert these bound variables to placeholder
@@ -168,7 +170,7 @@ pub enum RegionKind<I: Interner> {
     /// Should not exist outside of type inference.
     ///
     /// Used when instantiating a `forall` binder via `infcx.enter_forall`.
-    RePlaceholder(I::PlaceholderRegion),
+    RePlaceholder(PlaceholderRegion<I>),
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
@@ -212,9 +214,9 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
 where
     I::EarlyParamRegion: HashStable<CTX>,
-    I::BoundRegion: HashStable<CTX>,
     I::LateParamRegion: HashStable<CTX>,
-    I::PlaceholderRegion: HashStable<CTX>,
+    I::DefId: HashStable<CTX>,
+    I::Symbol: HashStable<CTX>,
 {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {

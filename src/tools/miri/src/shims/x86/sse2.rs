@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     FloatBinOp, ShiftOp, bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int,
-    packssdw, packsswb, packuswb, psadbw, shift_simd_by_scalar,
+    packssdw, packsswb, packuswb, pmaddwd, psadbw, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -26,14 +26,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // These intrinsics operate on 128-bit (f32x4, f64x2, i8x16, i16x8, i32x4, i64x2) SIMD
         // vectors unless stated otherwise.
-        // Many intrinsic names are sufixed with "ps" (packed single), "ss" (scalar signle),
+        // Many intrinsic names are suffixed with "ps" (packed single), "ss" (scalar single),
         // "pd" (packed double) or "sd" (scalar double), where single means single precision
         // floating point (f32) and double means double precision floating point (f64). "ps"
-        // and "pd" means thet the operation is performed on each element of the vector, while
+        // and "pd" means that the operation is performed on each element of the vector, while
         // "ss" and "sd" means that the operation is performed only on the first element, copying
         // the remaining elements from the input vector (for binary operations, from the left-hand
         // side).
-        // Intrinsincs sufixed with "epiX" or "epuX" operate with X-bit signed or unsigned
+        // Intrinsics suffixed with "epiX" or "epuX" operate with X-bit signed or unsigned
         // vectors.
         match unprefixed_name {
             // Used to implement the _mm_sad_epu8 function.
@@ -277,6 +277,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for i in 1..dest_len {
                     this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
+            }
+            // Used to implement the _mm_madd_epi16 function.
+            // Multiplies packed signed 16-bit integers in `left` and `right`, producing
+            // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
+            // intermediate 32-bit integers, and pack the results in `dest`.
+            "pmadd.wd" => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                pmaddwd(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

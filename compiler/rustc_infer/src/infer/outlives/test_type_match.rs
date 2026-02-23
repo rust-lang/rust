@@ -91,7 +91,7 @@ pub(super) fn can_match_erased_ty<'tcx>(
 struct MatchAgainstHigherRankedOutlives<'tcx> {
     tcx: TyCtxt<'tcx>,
     pattern_depth: ty::DebruijnIndex,
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
+    map: FxHashMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
 }
 
 impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
@@ -115,7 +115,7 @@ impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn bind(
         &mut self,
-        br: ty::BoundRegion,
+        br: ty::BoundRegion<'tcx>,
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         match self.map.entry(br) {

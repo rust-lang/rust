@@ -87,7 +87,6 @@
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[allow(deprecated)]
 #[doc(hidden)]
 pub use self::sip::SipHasher13;
 use crate::{fmt, marker};
@@ -784,7 +783,8 @@ impl<H> Clone for BuildHasherDefault<H> {
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
-impl<H> Default for BuildHasherDefault<H> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<H> const Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         Self::new()
     }

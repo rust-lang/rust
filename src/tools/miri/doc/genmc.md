@@ -1,7 +1,6 @@
 # **(WIP)** Documentation for Miri-GenMC
 
-**NOTE: GenMC mode is not yet fully implemented, and has [several correctness issues](https://github.com/rust-lang/miri/issues/4572). Using GenMC mode currently requires manually compiling Miri, see [Usage](#usage).**
-
+**NOTE: GenMC mode is not yet fully implemented, and has [several correctness issues](https://github.com/rust-lang/miri/issues/4572) and [other limitations](#limitations). Using GenMC mode currently requires manually compiling Miri, see [Usage](#usage).**
 
 [GenMC](https://github.com/MPI-SWS/genmc) is a stateless model checker for exploring concurrent executions of a program.
 Miri-GenMC integrates that model checker into Miri.
@@ -12,10 +11,13 @@ This includes all possible thread interleavings and all allowed return values fo
 It is hence still possible to have latent bugs in a test case even if they passed GenMC.)
 
 GenMC requires the input program to be bounded, i.e., have finitely many possible executions, otherwise it will not terminate.
-Any loops that may run infinitely must be replaced or bounded (see below).
+Any loops that may run infinitely must be replaced or bounded (see [below](#eliminating-unbounded-loops)).
 
 GenMC makes use of Dynamic Partial Order Reduction (DPOR) to reduce the number of executions that must be explored, but the runtime can still be super-exponential in the size of the input program (number of threads and amount of interaction between threads).
 Large programs may not be verifiable in a reasonable amount of time.
+
+GenMC currently only supports Linux hosts.
+Both the host and the target must be 64-bit little-endian.
 
 ## Usage
 
@@ -50,16 +52,24 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
     - `debug2`:   Print the execution graph after every memory access.
     - `debug3`:   Print reads-from values considered by GenMC.
 - `-Zmiri-genmc-verbose`: Show more information, such as estimated number of executions, and time taken for verification.
-
-#### Regular Miri parameters useful for GenMC mode
-
 - `-Zmiri-disable-weak-memory-emulation`: Disable any weak memory effects (effectively upgrading all atomic orderings in the program to `SeqCst`). This option may reduce the number of explored program executions, but any bugs related to weak memory effects will be missed. This option can help determine if an error is caused by weak memory effects (i.e., if it disappears with this option enabled).
 
 <!-- FIXME(genmc): explain Miri-GenMC specific functions. -->
 
-## Tips
+## Limitations
 
-<!-- FIXME(genmc): add tips for using Miri-GenMC more efficiently. -->
+There are several limitations which can make GenMC miss bugs:
+- GenMC does not support re-using freed memory for new allocations, so any bugs related to that will be missed.
+- GenMC does not support `compare_exchange_weak`, so the consequences of spurious failures are not explored.
+  A warning will be emitted if this affects code you wrote (but not if it happens inside your dependencies).
+- GenMC does not support the separate failure ordering of `compare_exchange`. Miri will take the maximum of the success and failure ordering and use that for the access; outcomes that rely on the real ordering being weaker will not be explored.
+  A warning will be emitted if this affects code you wrote (but not if it happens inside your dependencies).
+- GenMC is incompatible with borrow tracking (Stacked/Tree Borrows). You need to set `-Zmiri-disable-stacked-borrows` to use GenMC.
+- Like all C++ memory model verification tools, GenMC has to solve the [out-of-thin-air problem](https://www.cl.cam.ac.uk/~pes20/cpp/notes42.html).
+  It takes the [usual approach](https://plv.mpi-sws.org/scfix/paper.pdf) of requiring the union of "program-order" and "reads-from" to be acyclic.
+  This means it excludes certain behaviors allowed by the C++ memory model, some of which can occur on hardware that performs load buffering.
+
+## Tips
 
 ### Eliminating unbounded loops
 
@@ -121,24 +131,11 @@ fn count_until_true_genmc(flag: &AtomicBool) -> u64 {
 <!-- FIXME: update the code above once Miri supports a loop bounding features like GenMC's `--unroll=N`. -->
 <!-- FIXME: update this section once Miri-GenMC supports automatic program transformations (like spinloop-assume replacement). -->
 
-## Limitations
-
-Some or all of these limitations might get removed in the future:
-
-- Borrow tracking is currently incompatible (stacked/tree borrows).
-- Only Linux is supported for now.
-- No support for 32-bit or big-endian targets.
-- No cross-target interpretation.
-
-<!-- FIXME(genmc): document remaining limitations -->
-
 ## Development
 
 GenMC is written in C++, which complicates development a bit.
 The prerequisites for building Miri-GenMC are:
-- A compiler with C++23 support.
-- LLVM developments headers and clang.
-  <!-- FIXME(genmc,llvm): remove once LLVM dependency is no longer required. -->
+- A compiler with sufficient C++20 support (we are testing GCC 13).
 
 The actual code for GenMC is not contained in the Miri repo itself, but in a [separate GenMC repo](https://github.com/MPI-SWS/genmc) (with its own maintainers).
 These sources need to be available to build Miri-GenMC.
@@ -149,6 +146,8 @@ The process for obtaining them is as follows:
   If you place this directory inside the Miri folder, it is recommended to call it `genmc-src` as that tells `./miri fmt` to avoid
   formatting the Rust files inside that folder.
 
+<!-- FIXME(genmc): explain how submitting code to GenMC should be handled. -->
+
 ### Formatting the C++ code
 
 For formatting the C++ code we provide a `.clang-format` file in the `genmc-sys` directory.
@@ -157,7 +156,3 @@ With `clang-format` installed, run this command to format the c++ files (replace
 find ./genmc-sys/cpp/ -name "*.cpp" -o -name "*.hpp" | xargs clang-format --style=file:"./genmc-sys/.clang-format" -i
 ```
 NOTE: this is currently not done automatically on pull requests to Miri.
-
-<!-- FIXME(genmc): explain how submitting code to GenMC should be handled. -->
-
-<!-- FIXME(genmc): explain development. -->

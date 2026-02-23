@@ -17,7 +17,6 @@ LL |     format!("{:X}", "3");
              i32
            and 9 others
    = note: required for `&str` to implement `UpperHex`
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

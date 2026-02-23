@@ -27,7 +27,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | trait CollectionFamily {
    |       ---------------- this trait is not dyn compatible...
 LL |     type Member<T>;
-   |          ^^^^^^ ...because it contains the generic associated type `Member`
+   |          ^^^^^^ ...because it contains generic associated type `Member`
    = help: consider moving `Member` to another trait
 
 error: aborting due to 2 previous errors

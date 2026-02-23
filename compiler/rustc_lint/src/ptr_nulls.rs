@@ -1,5 +1,5 @@
 use rustc_ast::LitKind;
-use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
+use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind, find_attr};
 use rustc_middle::ty::RawPtr;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
@@ -72,14 +72,14 @@ fn useless_check<'a, 'tcx: 'a>(
         e = e.peel_blocks();
         if let ExprKind::MethodCall(_, _expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
+            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPointer)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         } else if let ExprKind::Call(path, _args) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
+            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPointer)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });

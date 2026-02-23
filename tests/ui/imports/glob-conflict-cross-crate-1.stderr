@@ -1,4 +1,4 @@
-error: `f` is ambiguous
+warning: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:7:20
    |
 LL |     glob_conflict::f();
@@ -12,14 +12,16 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
 LL | pub use m2::*;
    |         ^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: `f` is ambiguous
+warning: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:9:26
    |
 LL |     glob_conflict::glob::f();
@@ -33,16 +35,18 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
 LL | pub use m2::*;
    |         ^^
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `f` is ambiguous
+warning: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:7:20
    |
 LL |     glob_conflict::f();
@@ -56,15 +60,17 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
 LL | pub use m2::*;
    |         ^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-error: `f` is ambiguous
+warning: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:9:26
    |
 LL |     glob_conflict::glob::f();
@@ -78,10 +84,12 @@ note: `f` could refer to the function defined here
    |
 LL | pub use m1::*;
    |         ^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `f` could also refer to the function defined here
   --> $DIR/auxiliary/glob-conflict.rs:13:9
    |
 LL | pub use m2::*;
    |         ^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

@@ -1,0 +1,8 @@
+error: expected type, found `]`
+  --> $DIR/array-expr-empty.rs:4:32
+   |
+LL | fn takes_empty_array<const A: []>() {}
+   |                                ^ expected type
+
+error: aborting due to 1 previous error
+

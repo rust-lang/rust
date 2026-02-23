@@ -1,0 +1,13 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/inner-attr.rs:7:5
+   |
+LL |     #![expect(unused)]
+   |     ^^^^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   | ------------ the inner attribute doesn't annotate this function
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+
+error: aborting due to 1 previous error
+

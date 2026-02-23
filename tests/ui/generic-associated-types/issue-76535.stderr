@@ -27,7 +27,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | pub trait SuperTrait {
    |           ---------- this trait is not dyn compatible...
 LL |     type SubType<'a>: SubTrait where Self: 'a;
-   |          ^^^^^^^ ...because it contains the generic associated type `SubType`
+   |          ^^^^^^^ ...because it contains generic associated type `SubType`
    = help: consider moving `SubType` to another trait
    = help: only type `SuperStruct` implements `SuperTrait` within this crate; consider using it directly instead.
    = note: `SuperTrait` may be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type

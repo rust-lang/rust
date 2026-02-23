@@ -1,6 +1,6 @@
 # Apple notification group
 
-**Github Labels:** [O-macos], [O-ios], [O-tvos], [O-watchos] and [O-visionos] <br>
+**GitHub Labels:** [O-macos], [O-ios], [O-tvos], [O-watchos] and [O-visionos] <br>
 **Ping command:** `@rustbot ping apple`
 
 This list will be used to ask for help both in diagnosing and testing

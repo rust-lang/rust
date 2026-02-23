@@ -23,12 +23,12 @@ LL | #[inline(never)]
    |   ^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-functions-inline.rs:33:19
+  --> $DIR/naked-functions-inline.rs:33:18
    |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
-LL | #[cfg_attr(all(), inline(never))]
-   |                   ^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
+LL | #[cfg_attr(true, inline(never))]
+   |                  ^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error: aborting due to 4 previous errors
 

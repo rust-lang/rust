@@ -7,18 +7,21 @@ error: abnormal termination: the program aborted execution
 LL |         crate::process::abort()
    |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside closure at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::alloc::rust_oom::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::_::__rust_alloc_error_handler` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-note: inside `main`
-  --> tests/fail/alloc/alloc_error_handler.rs:LL:CC
-   |
-LL |     handle_alloc_error(Layout::for_value(&0));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: std::alloc::rust_oom::{closure#0}
+               at RUSTLIB/std/src/alloc.rs:LL:CC
+           1: std::sys::backtrace::__rust_end_short_backtrace
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           2: std::alloc::rust_oom
+               at RUSTLIB/std/src/alloc.rs:LL:CC
+           3: std::alloc::_::__rust_alloc_error_handler
+               at RUSTLIB/std/src/alloc.rs:LL:CC
+           4: std::alloc::handle_alloc_error::rt_error
+               at RUSTLIB/alloc/src/alloc.rs:LL:CC
+           5: std::alloc::handle_alloc_error
+               at RUSTLIB/alloc/src/alloc.rs:LL:CC
+           6: main
+               at tests/fail/alloc/alloc_error_handler.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

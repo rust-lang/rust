@@ -130,11 +130,9 @@ impl UnwindContext {
             return;
         }
 
-        let unwind_info = if let Some(unwind_info) =
+        let Some(unwind_info) =
             context.compiled_code().unwrap().create_unwind_info(module.isa()).unwrap()
-        {
-            unwind_info
-        } else {
+        else {
             return;
         };
 

@@ -41,7 +41,6 @@ fn auxv_dump() {
     }
 }
 
-#[cfg(feature = "std_detect_file_io")]
 cfg_select! {
     target_arch = "arm" => {
         // The tests below can be executed under qemu, where we do not have access to the test
@@ -86,7 +85,6 @@ cfg_select! {
 }
 
 #[test]
-#[cfg(feature = "std_detect_file_io")]
 fn auxv_dump_procfs() {
     if let Ok(auxvec) = auxv_from_file("/proc/self/auxv") {
         println!("{:?}", auxvec);
@@ -103,7 +101,6 @@ fn auxv_dump_procfs() {
     target_arch = "s390x",
 ))]
 #[test]
-#[cfg(feature = "std_detect_file_io")]
 fn auxv_crate_procfs() {
     if let Ok(procfs_auxv) = auxv_from_file("/proc/self/auxv") {
         assert_eq!(auxv().unwrap(), procfs_auxv);

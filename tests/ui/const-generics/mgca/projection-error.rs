@@ -5,10 +5,8 @@
 // containing erroneous types normalizes to a const error instead of
 // a type error.
 
-
 pub trait Tr<A> {
-    #[type_const]
-    const SIZE: usize;
+    type const SIZE: usize;
 }
 
 fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}

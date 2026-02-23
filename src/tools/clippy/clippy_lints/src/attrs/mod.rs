@@ -16,7 +16,7 @@ mod utils;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
-use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
+use rustc_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -468,6 +468,10 @@ declare_clippy_lint! {
     /// #[ignore = "Some good reason"]
     /// fn test() {}
     /// ```
+    ///
+    /// ### Note
+    /// Clippy can only lint compiled code. For this lint to trigger, you must configure `cargo clippy`
+    /// to include test compilation, for instance, by using flags such as `--tests` or `--all-targets`.
     #[clippy::version = "1.88.0"]
     pub IGNORE_WITHOUT_REASON,
     pedantic,
@@ -574,16 +578,16 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if let Some(items) = &attr.meta_item_list()
-            && let Some(ident) = attr.ident()
+            && let Some(name) = attr.name()
         {
-            if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+            if matches!(name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
                 allow_attributes::check(cx, attr);
             }
-            if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                allow_attributes_without_reason::check(cx, ident.name, items, attr);
+            if matches!(name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                allow_attributes_without_reason::check(cx, name, items, attr);
             }
-            if is_lint_level(ident.name, attr.id) {
-                blanket_clippy_restriction_lints::check(cx, ident.name, items);
+            if is_lint_level(name, attr.id) {
+                blanket_clippy_restriction_lints::check(cx, name, items);
             }
             if items.is_empty() || !attr.has_name(sym::deprecated) {
                 return;
@@ -604,7 +608,9 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
 
         if attr.has_name(sym::ignore)
             && match &attr.kind {
-                AttrKind::Normal(normal_attr) => !matches!(normal_attr.item.args, AttrArgs::Eq { .. }),
+                AttrKind::Normal(normal_attr) => {
+                    !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
+                },
                 AttrKind::DocComment(..) => true,
             }
         {

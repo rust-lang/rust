@@ -19,6 +19,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
+#[cfg(feature = "master")]
+use rustc_session::config::DebugInfo;
 use rustc_span::source_map::respan;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
@@ -92,6 +94,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
+    /// Cache function instances of intrinsics
+    pub intrinsic_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
@@ -143,6 +147,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_f64_type: bool,
         supports_f128_type: bool,
     ) -> Self {
+        #[cfg(feature = "master")]
+        if tcx.sess.opts.debuginfo != DebugInfo::None {
+            context.set_filename(codegen_unit.name().as_str());
+        }
+
         let create_type = |ctype, rust_type| {
             let layout = tcx
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
@@ -192,8 +201,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
             // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).
-            let i128_type = context.new_array_type(None, i64_type, 2)/*.get_aligned(i128_align)*/;
-            let u128_type = context.new_array_type(None, u64_type, 2)/*.get_aligned(u128_align)*/;
+            let i128_type = new_array_type(context, None, i64_type, 2)/*.get_aligned(i128_align)*/;
+            let u128_type = new_array_type(context, None, u64_type, 2)/*.get_aligned(u128_align)*/;
             (i128_type, u128_type)
         };
 
@@ -280,6 +289,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             linkage: Cell::new(FunctionType::Internal),
             instances: Default::default(),
             function_instances: Default::default(),
+            intrinsic_instances: Default::default(),
             on_stack_params: Default::default(),
             on_stack_function_params: Default::default(),
             vtables: Default::default(),
@@ -391,17 +401,13 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
-        let func = get_fn(self, instance);
-        *self.current_func.borrow_mut() = Some(func);
-        func
+        get_fn(self, instance)
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
-        let func = if self.intrinsics.borrow().contains_key(func_name) {
-            self.intrinsics.borrow()[func_name]
-        } else if let Some(variable) = self.get_declared_value(func_name) {
+        let func = if let Some(variable) = self.get_declared_value(func_name) {
             return variable;
         } else {
             get_fn(self, instance)
@@ -601,4 +607,18 @@ fn to_gcc_tls_mode(tls_model: TlsModel) -> gccjit::TlsModel {
         TlsModel::LocalExec => gccjit::TlsModel::LocalExec,
         TlsModel::Emulated => gccjit::TlsModel::GlobalDynamic,
     }
+}
+
+pub fn new_array_type<'gcc>(
+    context: &'gcc Context<'gcc>,
+    location: Option<Location<'gcc>>,
+    typ: Type<'gcc>,
+    size: u64,
+) -> Type<'gcc> {
+    #[cfg(feature = "master")]
+    {
+        context.new_array_type_u64(location, typ, size)
+    }
+    #[cfg(not(feature = "master"))]
+    context.new_array_type(location, typ, size)
 }

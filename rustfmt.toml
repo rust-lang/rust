@@ -21,7 +21,7 @@ ignore = [
     "/tests/pretty/",                 # These tests are very sensitive to source code layout.
     "/tests/run-make/export",         # These tests contain syntax errors.
     "/tests/run-make/translation/test.rs", # This test contains syntax errors.
-    "/tests/rustdoc/",                # Some have syntax errors, some are whitespace-sensitive.
+    "/tests/rustdoc-html/",           # Some have syntax errors, some are whitespace-sensitive.
     "/tests/rustdoc-gui/",            # Some tests are sensitive to source code layout.
     "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.

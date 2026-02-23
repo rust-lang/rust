@@ -74,7 +74,7 @@ pub(super) fn try_expr(
                 ast::Fn(fn_) => sema.to_def(&fn_)?.ret_type(sema.db),
                 ast::Item(__) => return None,
                 ast::ClosureExpr(closure) => sema.type_of_expr(&closure.body()?)?.original,
-                ast::BlockExpr(block_expr) => if matches!(block_expr.modifier(), Some(ast::BlockModifier::Async(_) | ast::BlockModifier::Try(_)| ast::BlockModifier::Const(_))) {
+                ast::BlockExpr(block_expr) => if matches!(block_expr.modifier(), Some(ast::BlockModifier::Async(_) | ast::BlockModifier::Try { .. } | ast::BlockModifier::Const(_))) {
                     sema.type_of_expr(&block_expr.into())?.original
                 } else {
                     continue;
@@ -228,37 +228,14 @@ pub(super) fn underscore(
         return None;
     }
     let parent = token.parent()?;
-    let _it = match_ast! {
+    match_ast! {
         match parent {
-            ast::InferType(it) => it,
-            ast::UnderscoreExpr(it) => return type_info_of(sema, config, &Either::Left(ast::Expr::UnderscoreExpr(it)),edition, display_target),
-            ast::WildcardPat(it) => return type_info_of(sema, config, &Either::Right(ast::Pat::WildcardPat(it)),edition, display_target),
-            _ => return None,
+            ast::InferType(it) => type_info(sema, config, TypeInfo { original: sema.resolve_type(&ast::Type::InferType(it))?, adjusted: None}, edition, display_target),
+            ast::UnderscoreExpr(it) => type_info(sema, config, sema.type_of_expr(&ast::Expr::UnderscoreExpr(it))?, edition, display_target),
+            ast::WildcardPat(it) => type_info(sema, config, sema.type_of_pat(&ast::Pat::WildcardPat(it))?, edition, display_target),
+            _ => None,
         }
-    };
-    // let it = infer_type.syntax().parent()?;
-    // match_ast! {
-    //     match it {
-    //         ast::LetStmt(_it) => (),
-    //         ast::Param(_it) => (),
-    //         ast::RetType(_it) => (),
-    //         ast::TypeArg(_it) => (),
-
-    //         ast::CastExpr(_it) => (),
-    //         ast::ParenType(_it) => (),
-    //         ast::TupleType(_it) => (),
-    //         ast::PtrType(_it) => (),
-    //         ast::RefType(_it) => (),
-    //         ast::ArrayType(_it) => (),
-    //         ast::SliceType(_it) => (),
-    //         ast::ForType(_it) => (),
-    //         _ => return None,
-    //     }
-    // }
-
-    // FIXME: https://github.com/rust-lang/rust-analyzer/issues/11762, this currently always returns Unknown
-    // type_info(sema, config, sema.resolve_type(&ast::Type::InferType(it))?, None)
-    None
+    }
 }
 
 pub(super) fn keyword(
@@ -295,9 +272,9 @@ pub(super) fn struct_rest_pat(
     edition: Edition,
     display_target: DisplayTarget,
 ) -> HoverResult {
-    let missing_fields = sema.record_pattern_missing_fields(pattern);
+    let matched_fields = sema.record_pattern_matched_fields(pattern);
 
-    // if there are no missing fields, the end result is a hover that shows ".."
+    // if there are no matched fields, the end result is a hover that shows ".."
     // should be left in to indicate that there are no more fields in the pattern
     // example, S {a: 1, b: 2, ..} when struct S {a: u32, b: u32}
 
@@ -308,13 +285,13 @@ pub(super) fn struct_rest_pat(
             targets.push(item);
         }
     };
-    for (_, t) in &missing_fields {
+    for (_, t) in &matched_fields {
         walk_and_push_ty(sema.db, t, &mut push_new_def);
     }
 
     res.markup = {
         let mut s = String::from(".., ");
-        for (f, _) in &missing_fields {
+        for (f, _) in &matched_fields {
             s += f.display(sema.db, display_target).to_string().as_ref();
             s += ", ";
         }

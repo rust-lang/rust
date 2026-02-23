@@ -1,9 +1,6 @@
 //! Contains utilities for generating suggestions for borrowck errors related to unsatisfied
 //! outlives constraints.
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxIndexSet;

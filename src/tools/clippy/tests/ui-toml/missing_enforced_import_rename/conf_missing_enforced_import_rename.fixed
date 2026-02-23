@@ -15,6 +15,7 @@ use std::{
     sync :: Mutex as StdMutie,
     //~^ missing_enforced_import_renames
 };
+use std::io::Write as _;
 
 fn main() {
     use std::collections::BTreeMap as Map;

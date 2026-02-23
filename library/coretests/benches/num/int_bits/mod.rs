@@ -4,11 +4,12 @@ macro_rules! bench_template {
     ($op:path, $name:ident, $mask:expr) => {
         #[bench]
         fn $name(bench: &mut ::test::Bencher) {
-            use ::rand::Rng;
+            use ::rand::distr::{Distribution, Uniform};
             let mut rng = crate::bench_rng();
             let mut dst = vec![0; ITERATIONS];
-            let src1: Vec<U> = (0..ITERATIONS).map(|_| rng.random_range(0..=U::MAX)).collect();
-            let mut src2: Vec<U> = (0..ITERATIONS).map(|_| rng.random_range(0..=U::MAX)).collect();
+            let distr = &Uniform::try_from(0..=U::MAX).unwrap();
+            let src1: Vec<U> = distr.sample_iter(&mut rng).take(ITERATIONS).collect();
+            let mut src2: Vec<U> = distr.sample_iter(&mut rng).take(ITERATIONS).collect();
             // Fix the loop invariant mask
             src2[0] = U::MAX / 3;
             let dst = dst.first_chunk_mut().unwrap();
@@ -49,8 +50,8 @@ macro_rules! bench_mask_kind {
     ($mask_kind:ident, $mask:expr) => {
         mod $mask_kind {
             use super::{Data, ITERATIONS, U};
-            bench_template!(U::gather_bits, gather_bits, $mask);
-            bench_template!(U::scatter_bits, scatter_bits, $mask);
+            bench_template!(U::extract_bits, extract_bits, $mask);
+            bench_template!(U::deposit_bits, deposit_bits, $mask);
         }
     };
 }

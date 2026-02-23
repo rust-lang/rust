@@ -2,7 +2,7 @@
 
 use hir_def::{AdtId, signatures::StructFlags};
 use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
+use rustc_type_ir::inherent::{AdtDef, IntoKind};
 use stdx::never;
 
 use crate::{
@@ -32,7 +32,7 @@ fn has_destructor(interner: DbInterner<'_>, adt: AdtId) -> bool {
         },
         None => TraitImpls::for_crate(db, module.krate(db)),
     };
-    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).is_empty()
+    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).0.is_empty()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -85,7 +85,7 @@ fn has_drop_glue_impl<'db>(
                         .map(|(_, field_ty)| {
                             has_drop_glue_impl(
                                 infcx,
-                                field_ty.instantiate(infcx.interner, subst),
+                                field_ty.get().instantiate(infcx.interner, subst),
                                 env,
                                 visited,
                             )
@@ -105,7 +105,7 @@ fn has_drop_glue_impl<'db>(
                             .map(|(_, field_ty)| {
                                 has_drop_glue_impl(
                                     infcx,
-                                    field_ty.instantiate(infcx.interner, subst),
+                                    field_ty.get().instantiate(infcx.interner, subst),
                                     env,
                                     visited,
                                 )

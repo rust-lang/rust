@@ -164,6 +164,7 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
     // FIXME(Zalathar): Support all known binary formats, not just ELF?
     builder.cond("elf", current.binary_format == "elf", "when the target binary format is ELF");
     builder.cond("enzyme", config.has_enzyme, "when rustc is built with LLVM Enzyme");
+    builder.cond("offload", config.has_offload, "when rustc is built with LLVM Offload");
 
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
@@ -201,6 +202,11 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         "std-debug-assertions",
         config.with_std_debug_assertions,
         "when std is built with debug assertions",
+    );
+    builder.cond(
+        "std-remap-debuginfo",
+        config.with_std_remap_debuginfo,
+        "when std is built with remapping of debuginfo",
     );
 
     for &debugger in Debugger::STR_VARIANTS {

@@ -9,10 +9,9 @@ use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::time::Instant;
+use crate::sys::{AsInner, FromInner, IntoInner};
 pub use crate::sys::{cvt, cvt_r};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, mem};
 
 #[expect(non_camel_case_types)]
@@ -143,7 +142,7 @@ impl Socket {
             )
         })?;
         unsafe {
-            buf.advance(ret as usize);
+            buf.advance_unchecked(ret as usize);
         }
         Ok(())
     }
@@ -300,7 +299,6 @@ impl Socket {
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> RawFd {
         self.0.as_raw_fd()
     }

@@ -20,6 +20,7 @@ impl flags::Ssr {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (ref db, vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
@@ -56,6 +57,7 @@ impl flags::Search {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (ref db, _vfs, _proc_macro) = load_workspace_at(
             &std::env::current_dir()?,
@@ -68,7 +70,7 @@ impl flags::Search {
             match_finder.add_search_pattern(pattern)?;
         }
         if let Some(debug_snippet) = &self.debug {
-            for &root in ide_db::symbol_index::LocalRoots::get(db).roots(db).iter() {
+            for &root in ide_db::LocalRoots::get(db).roots(db).iter() {
                 let sr = db.source_root(root).source_root(db);
                 for file_id in sr.iter() {
                     for debug_info in match_finder.debug_where_text_equal(

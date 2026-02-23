@@ -1667,7 +1667,6 @@ impl<'a> Parser<'a> {
         Ok((fields, etc))
     }
 
-    #[deny(rustc::untranslatable_diagnostic)]
     fn report_misplaced_at_in_struct_pat(&self, prev_field: Ident) -> Diag<'a> {
         debug_assert_eq!(self.token, token::At);
         let span = prev_field.span.to(self.token.span);
@@ -1748,6 +1747,12 @@ impl<'a> Parser<'a> {
             hi = self.prev_token.span;
             let ann = BindingMode(by_ref, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
+            if matches!(
+                fieldpat.kind,
+                PatKind::Ident(BindingMode(ByRef::Yes(..), Mutability::Mut), ..)
+            ) {
+                self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
+            }
             let subpat = if is_box {
                 self.mk_pat(lo.to(hi), PatKind::Box(Box::new(fieldpat)))
             } else {

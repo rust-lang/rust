@@ -5,6 +5,9 @@ expression: test tests
 [Test] test::AssemblyLlvm
     targets: [aarch64-unknown-linux-gnu]
     - Suite(test::tests/assembly-llvm)
+[Test] test::BuildStd
+    targets: [aarch64-unknown-linux-gnu]
+    - Suite(test::tests/build-std)
 [Test] test::CodegenLlvm
     targets: [aarch64-unknown-linux-gnu]
     - Suite(test::tests/codegen-llvm)
@@ -38,12 +41,12 @@ expression: test tests
 [Test] test::RunMakeCargo
     targets: [aarch64-unknown-linux-gnu]
     - Suite(test::tests/run-make-cargo)
-[Test] test::Rustdoc
-    targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc)
 [Test] test::RustdocGUI
     targets: [x86_64-unknown-linux-gnu]
     - Suite(test::tests/rustdoc-gui)
+[Test] test::RustdocHtml
+    targets: [x86_64-unknown-linux-gnu]
+    - Suite(test::tests/rustdoc-html)
 [Test] test::RustdocJSNotStd
     targets: [x86_64-unknown-linux-gnu]
     - Suite(test::tests/rustdoc-js)

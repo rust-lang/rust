@@ -3,9 +3,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
-use rustc_errors::registry::Registry;
-use rustc_errors::translation::Translator;
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+use rustc_errors::emitter::{DynEmitter, Emitter, SilentEmitter, stderr_destination};
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
@@ -40,10 +39,10 @@ struct SilentOnIgnoredFilesEmitter {
 }
 
 impl SilentOnIgnoredFilesEmitter {
-    fn handle_non_ignoreable_error(&mut self, diag: DiagInner, registry: &Registry) {
+    fn handle_non_ignoreable_error(&mut self, diag: DiagInner) {
         self.has_non_ignorable_parser_errors = true;
         self.can_reset.store(false, Ordering::Release);
-        self.emitter.emit_diagnostic(diag, registry);
+        self.emitter.emit_diagnostic(diag);
     }
 }
 
@@ -52,31 +51,27 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry) {
+    fn emit_diagnostic(&mut self, diag: DiagInner) {
         if diag.level() == DiagnosticLevel::Fatal {
-            return self.handle_non_ignoreable_error(diag, registry);
+            return self.handle_non_ignoreable_error(diag);
         }
         if let Some(primary_span) = &diag.span.primary_span() {
             let file_name = self.source_map.span_to_filename(*primary_span);
-            if let rustc_span::FileName::Real(rustc_span::RealFileName::LocalPath(ref path)) =
-                file_name
-            {
-                if self
-                    .ignore_path_set
-                    .is_match(&FileName::Real(path.to_path_buf()))
-                {
-                    if !self.has_non_ignorable_parser_errors {
-                        self.can_reset.store(true, Ordering::Release);
+            if let rustc_span::FileName::Real(real) = file_name {
+                if let Some(path) = real.local_path() {
+                    if self
+                        .ignore_path_set
+                        .is_match(&FileName::Real(path.to_path_buf()))
+                    {
+                        if !self.has_non_ignorable_parser_errors {
+                            self.can_reset.store(true, Ordering::Release);
+                        }
+                        return;
                     }
-                    return;
                 }
-            };
+            }
         }
-        self.handle_non_ignoreable_error(diag, registry);
-    }
-
-    fn translator(&self) -> &Translator {
-        self.emitter.translator()
+        self.handle_non_ignoreable_error(diag);
     }
 }
 
@@ -104,15 +99,13 @@ fn default_dcx(
         ColorConfig::Never
     };
 
-    let translator = rustc_driver::default_translator();
-
     let emitter: Box<DynEmitter> = if show_parse_errors {
         Box::new(
-            HumanEmitter::new(stderr_destination(emit_color), translator)
+            AnnotateSnippetEmitter::new(stderr_destination(emit_color))
                 .sm(Some(source_map.clone())),
         )
     } else {
-        Box::new(SilentEmitter { translator })
+        Box::new(SilentEmitter)
     };
     DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -181,7 +174,10 @@ impl ParseSess {
         self.raw_psess
             .source_map()
             .get_source_file(&rustc_span::FileName::Real(
-                rustc_span::RealFileName::LocalPath(path.to_path_buf()),
+                self.raw_psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(self.raw_psess.source_map().working_dir(), path),
             ))
             .is_some()
     }
@@ -246,10 +242,20 @@ impl ParseSess {
         )
     }
 
-    pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Arc<String>> {
+    pub(crate) fn get_original_snippet(&self, filename: &FileName) -> Option<Arc<String>> {
+        let rustc_filename = match filename {
+            FileName::Real(path) => rustc_span::FileName::Real(
+                self.raw_psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(self.raw_psess.source_map().working_dir(), path),
+            ),
+            FileName::Stdin => rustc_span::FileName::Custom("stdin".to_owned()),
+        };
+
         self.raw_psess
             .source_map()
-            .get_source_file(&file_name.into())
+            .get_source_file(&rustc_filename)
             .and_then(|source_file| source_file.src.clone())
     }
 }
@@ -313,7 +319,7 @@ mod tests {
         use crate::config::IgnoreList;
         use crate::utils::mk_sp;
         use rustc_errors::MultiSpan;
-        use rustc_span::{FileName as SourceMapFileName, RealFileName};
+        use rustc_span::FileName as SourceMapFileName;
         use std::path::PathBuf;
         use std::sync::atomic::AtomicU32;
 
@@ -326,17 +332,12 @@ mod tests {
                 None
             }
 
-            fn emit_diagnostic(&mut self, _diag: DiagInner, _registry: &Registry) {
+            fn emit_diagnostic(&mut self, _diag: DiagInner) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
-            }
-
-            fn translator(&self) -> &Translator {
-                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> DiagInner {
-            #[allow(rustc::untranslatable_diagnostic)] // no translation needed for empty string
             let mut diag = DiagInner::new(level, "");
             diag.messages.clear();
             if let Some(span) = span {
@@ -372,6 +373,13 @@ mod tests {
                 .ignore()
         }
 
+        fn filename(sm: &SourceMap, path: &str) -> SourceMapFileName {
+            SourceMapFileName::Real(
+                sm.path_mapping()
+                    .to_real_filename(sm.working_dir(), PathBuf::from(path)),
+            )
+        }
+
         #[test]
         fn handles_fatal_parse_error_in_ignored_file() {
             let num_emitted_errors = Arc::new(AtomicU32::new(0));
@@ -380,11 +388,7 @@ mod tests {
             let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
-                source,
-            );
-            let registry = Registry::new(&[]);
+            source_map.new_source_file(filename(&source_map, "foo.rs"), source);
             let mut emitter = build_emitter(
                 Arc::clone(&num_emitted_errors),
                 Arc::clone(&can_reset_errors),
@@ -393,7 +397,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, Some(span));
-            emitter.emit_diagnostic(fatal_diagnostic, &registry);
+            emitter.emit_diagnostic(fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
@@ -406,11 +410,7 @@ mod tests {
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
             let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
-                source,
-            );
-            let registry = Registry::new(&[]);
+            source_map.new_source_file(filename(&source_map, "foo.rs"), source);
             let mut emitter = build_emitter(
                 Arc::clone(&num_emitted_errors),
                 Arc::clone(&can_reset_errors),
@@ -419,7 +419,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
-            emitter.emit_diagnostic(non_fatal_diagnostic, &registry);
+            emitter.emit_diagnostic(non_fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 0);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), true);
         }
@@ -431,11 +431,7 @@ mod tests {
             let can_reset_errors = Arc::new(AtomicBool::new(false));
             let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
-                source,
-            );
-            let registry = Registry::new(&[]);
+            source_map.new_source_file(filename(&source_map, "foo.rs"), source);
             let mut emitter = build_emitter(
                 Arc::clone(&num_emitted_errors),
                 Arc::clone(&can_reset_errors),
@@ -444,7 +440,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
-            emitter.emit_diagnostic(non_fatal_diagnostic, &registry);
+            emitter.emit_diagnostic(non_fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
@@ -460,19 +456,9 @@ mod tests {
             let foo_source = String::from(r#"pub fn foo() { 1x; }"#);
             let fatal_source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("bar.rs"))),
-                bar_source,
-            );
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
-                foo_source,
-            );
-            source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("fatal.rs"))),
-                fatal_source,
-            );
-            let registry = Registry::new(&[]);
+            source_map.new_source_file(filename(&source_map, "bar.rs"), bar_source);
+            source_map.new_source_file(filename(&source_map, "foo.rs"), foo_source);
+            source_map.new_source_file(filename(&source_map, "fatal.rs"), fatal_source);
             let mut emitter = build_emitter(
                 Arc::clone(&num_emitted_errors),
                 Arc::clone(&can_reset_errors),
@@ -484,9 +470,9 @@ mod tests {
             let bar_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(bar_span));
             let foo_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(foo_span));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, None);
-            emitter.emit_diagnostic(bar_diagnostic, &registry);
-            emitter.emit_diagnostic(foo_diagnostic, &registry);
-            emitter.emit_diagnostic(fatal_diagnostic, &registry);
+            emitter.emit_diagnostic(bar_diagnostic);
+            emitter.emit_diagnostic(foo_diagnostic);
+            emitter.emit_diagnostic(fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 2);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }

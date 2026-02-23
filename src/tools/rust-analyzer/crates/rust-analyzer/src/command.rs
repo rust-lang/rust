@@ -10,6 +10,7 @@ use std::{
     process::{ChildStderr, ChildStdout, Command, Stdio},
 };
 
+use anyhow::Context;
 use crossbeam_channel::Sender;
 use paths::Utf8PathBuf;
 use process_wrap::std::{StdChildWrapper, StdCommandWrap};
@@ -156,7 +157,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         parser: impl JsonLinesParser<T>,
         sender: Sender<T>,
         out_file: Option<Utf8PathBuf>,
-    ) -> std::io::Result<Self> {
+    ) -> anyhow::Result<Self> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
 
         let program = command.get_program().into();
@@ -168,7 +169,10 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         child.wrap(process_wrap::std::ProcessSession);
         #[cfg(windows)]
         child.wrap(process_wrap::std::JobObject);
-        let mut child = child.spawn().map(JodGroupChild)?;
+        let mut child = child
+            .spawn()
+            .map(JodGroupChild)
+            .with_context(|| "Failed to spawn command: {child:?}")?;
 
         let stdout = child.0.stdout().take().unwrap();
         let stderr = child.0.stderr().take().unwrap();

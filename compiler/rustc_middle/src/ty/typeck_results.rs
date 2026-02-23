@@ -11,7 +11,6 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
-    Pinnedness,
 };
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -21,6 +20,7 @@ use rustc_span::Span;
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
 use crate::mir::FakeReadCause;
+use crate::thir::DerefPatBorrowMode;
 use crate::traits::ObligationCause;
 use crate::ty::{
     self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
@@ -491,13 +491,18 @@ impl<'tcx> TypeckResults<'tcx> {
     /// In most cases, if the pattern recursively contains a `ref mut` binding, we find the inner
     /// pattern's scrutinee by calling `DerefMut::deref_mut`, and otherwise we call `Deref::deref`.
     /// However, for boxes we can use a built-in deref instead, which doesn't borrow the scrutinee;
-    /// in this case, we return `ByRef::No`.
-    pub fn deref_pat_borrow_mode(&self, pointer_ty: Ty<'_>, inner: &hir::Pat<'_>) -> ByRef {
+    /// in this case, we return `DerefPatBorrowMode::Box`.
+    pub fn deref_pat_borrow_mode(
+        &self,
+        pointer_ty: Ty<'_>,
+        inner: &hir::Pat<'_>,
+    ) -> DerefPatBorrowMode {
         if pointer_ty.is_box() {
-            ByRef::No
+            DerefPatBorrowMode::Box
         } else {
-            let mutable = self.pat_has_ref_mut_binding(inner);
-            ByRef::Yes(Pinnedness::Not, if mutable { Mutability::Mut } else { Mutability::Not })
+            let mutability =
+                if self.pat_has_ref_mut_binding(inner) { Mutability::Mut } else { Mutability::Not };
+            DerefPatBorrowMode::Borrow(mutability)
         }
     }
 

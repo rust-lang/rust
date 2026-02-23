@@ -9,7 +9,7 @@ use clippy_utils::{
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Node, Stmt, StmtKind, intravisit};
+use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit};
 use rustc_lint::LateContext;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
@@ -108,6 +108,7 @@ struct BlockEq {
     /// The name and id of every local which can be moved at the beginning and the end.
     moved_locals: Vec<(HirId, Symbol)>,
 }
+
 impl BlockEq {
     fn start_span(&self, b: &Block<'_>, sm: &SourceMap) -> Option<Span> {
         match &b.stmts[..self.start_end_eq] {
@@ -129,20 +130,33 @@ impl BlockEq {
 }
 
 /// If the statement is a local, checks if the bound names match the expected list of names.
-fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
-    if let StmtKind::Let(l) = s.kind {
-        let mut i = 0usize;
-        let mut res = true;
-        l.pat.each_binding_or_first(&mut |_, _, _, name| {
-            if names.get(i).is_some_and(|&(_, n)| n == name.name) {
-                i += 1;
-            } else {
-                res = false;
-            }
-        });
-        res && i == names.len()
-    } else {
-        false
+fn eq_binding_names(cx: &LateContext<'_>, s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
+    match s.kind {
+        StmtKind::Let(l) => {
+            let mut i = 0usize;
+            let mut res = true;
+            l.pat.each_binding_or_first(&mut |_, _, _, name| {
+                if names.get(i).is_some_and(|&(_, n)| n == name.name) {
+                    i += 1;
+                } else {
+                    res = false;
+                }
+            });
+            res && i == names.len()
+        },
+        StmtKind::Item(item_id)
+            if let [(_, name)] = names
+                && let item = cx.tcx.hir_item(item_id)
+                && let ItemKind::Static(_, ident, ..)
+                | ItemKind::Const(ident, ..)
+                | ItemKind::Fn { ident, .. }
+                | ItemKind::TyAlias(ident, ..)
+                | ItemKind::Use(_, UseKind::Single(ident))
+                | ItemKind::Mod(ident, _) = item.kind =>
+        {
+            *name == ident.name
+        },
+        _ => false,
     }
 }
 
@@ -164,6 +178,7 @@ fn modifies_any_local<'tcx>(cx: &LateContext<'tcx>, s: &'tcx Stmt<'_>, locals: &
 /// Checks if the given statement should be considered equal to the statement in the same
 /// position for each block.
 fn eq_stmts(
+    cx: &LateContext<'_>,
     stmt: &Stmt<'_>,
     blocks: &[&Block<'_>],
     get_stmt: impl for<'a> Fn(&'a Block<'a>) -> Option<&'a Stmt<'a>>,
@@ -178,7 +193,7 @@ fn eq_stmts(
         let new_bindings = &moved_bindings[old_count..];
         blocks
             .iter()
-            .all(|b| get_stmt(b).is_some_and(|s| eq_binding_names(s, new_bindings)))
+            .all(|b| get_stmt(b).is_some_and(|s| eq_binding_names(cx, s, new_bindings)))
     } else {
         true
     }) && blocks.iter().all(|b| get_stmt(b).is_some_and(|s| eq.eq_stmt(s, stmt)))
@@ -218,7 +233,7 @@ fn scan_block_for_eq<'tcx>(
                 return true;
             }
             modifies_any_local(cx, stmt, &cond_locals)
-                || !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals)
+                || !eq_stmts(cx, stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals)
         })
         .map_or(block.stmts.len(), |(i, stmt)| {
             adjust_by_closest_callsite(i, stmt, block.stmts[..i].iter().enumerate().rev())
@@ -279,6 +294,7 @@ fn scan_block_for_eq<'tcx>(
         }))
         .fold(end_search_start, |init, (stmt, offset)| {
             if eq_stmts(
+                cx,
                 stmt,
                 blocks,
                 |b| b.stmts.get(b.stmts.len() - offset),
@@ -290,11 +306,26 @@ fn scan_block_for_eq<'tcx>(
                 // Clear out all locals seen at the end so far. None of them can be moved.
                 let stmts = &blocks[0].stmts;
                 for stmt in &stmts[stmts.len() - init..=stmts.len() - offset] {
-                    if let StmtKind::Let(l) = stmt.kind {
-                        l.pat.each_binding_or_first(&mut |_, id, _, _| {
-                            // FIXME(rust/#120456) - is `swap_remove` correct?
-                            eq.locals.swap_remove(&id);
-                        });
+                    match stmt.kind {
+                        StmtKind::Let(l) => {
+                            l.pat.each_binding_or_first(&mut |_, id, _, _| {
+                                // FIXME(rust/#120456) - is `swap_remove` correct?
+                                eq.locals.swap_remove(&id);
+                            });
+                        },
+                        StmtKind::Item(item_id) => {
+                            let item = cx.tcx.hir_item(item_id);
+                            if let ItemKind::Static(..)
+                            | ItemKind::Const(..)
+                            | ItemKind::Fn { .. }
+                            | ItemKind::TyAlias(..)
+                            | ItemKind::Use(..)
+                            | ItemKind::Mod(..) = item.kind
+                            {
+                                eq.local_items.swap_remove(&item.owner_id.to_def_id());
+                            }
+                        },
+                        _ => {},
                     }
                 }
                 moved_locals.truncate(moved_locals_at_start);

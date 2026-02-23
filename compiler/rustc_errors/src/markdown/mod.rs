@@ -18,9 +18,14 @@ impl<'a> MdStream<'a> {
         parse::entrypoint(s)
     }
 
-    /// Write formatted output to an anstream buffer
-    pub fn write_anstream_buf(&self, buf: &mut Vec<u8>) -> io::Result<()> {
-        term::entrypoint(self, buf)
+    /// Write formatted output to a stdout buffer, optionally with
+    /// a formatter for code blocks
+    pub fn write_anstream_buf(
+        &self,
+        buf: &mut Vec<u8>,
+        formatter: Option<&(dyn Fn(&str, &mut Vec<u8>) -> io::Result<()> + 'static)>,
+    ) -> io::Result<()> {
+        term::entrypoint(self, buf, formatter)
     }
 }
 

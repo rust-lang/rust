@@ -479,7 +479,7 @@ def default_build_triple(verbose):
 @contextlib.contextmanager
 def output(filepath):
     tmp = filepath + ".tmp"
-    with open(tmp, "w") as f:
+    with open(tmp, "w", encoding="utf-8") as f:
         yield f
     try:
         if os.path.exists(filepath):
@@ -778,7 +778,7 @@ class RustBuild(object):
             # Use `/etc/os-release` instead of `/etc/NIXOS`.
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
-                with open("/etc/os-release", "r") as f:
+                with open("/etc/os-release", "r", encoding="utf-8") as f:
                     is_nixos = any(
                         ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"')
                         for ln in f
@@ -863,7 +863,8 @@ class RustBuild(object):
         if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open(
-                "{}/nix-support/dynamic-linker".format(nix_deps_dir)
+                "{}/nix-support/dynamic-linker".format(nix_deps_dir),
+                encoding="utf-8",
             ) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
@@ -888,7 +889,7 @@ class RustBuild(object):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
-        with open(stamp_path, "r") as stamp:
+        with open(stamp_path, "r", encoding="utf-8") as stamp:
             return key != stamp.read()
 
     def bin_root(self):
@@ -1113,6 +1114,19 @@ class RustBuild(object):
         else:
             env["RUSTFLAGS"] = "-Zallow-features="
 
+        if not os.path.isfile(self.cargo()):
+            raise Exception("no cargo executable found at `{}`".format(self.cargo()))
+        args = [
+            self.cargo(),
+            "build",
+            "--jobs=" + self.jobs,
+            "--manifest-path",
+            os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
+            "-Zroot-dir=" + self.rust_root,
+        ]
+        # verbose cargo output is very noisy, so only enable it with -vv
+        args.extend("--verbose" for _ in range(self.verbose - 1))
+
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -1131,27 +1145,14 @@ class RustBuild(object):
         else:
             deny_warnings = self.warnings == "deny"
         if deny_warnings:
-            env["RUSTFLAGS"] += " -Dwarnings"
+            args += ["-Zwarnings"]
+            env["CARGO_BUILD_WARNINGS"] = "deny"
 
         # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.
         # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
-        # RUSTFLAGS to be actually effective (e.g., if we have `-Dwarnings` in
-        # RUSTFLAGS, passing `-Awarnings` from RUSTFLAGS_BOOTSTRAP should override it).
+        # RUSTFLAGS, since that causes RUSTFLAGS_BOOTSTRAP to override RUSTFLAGS.
         if "RUSTFLAGS_BOOTSTRAP" in env:
             env["RUSTFLAGS"] += " " + env["RUSTFLAGS_BOOTSTRAP"]
-
-        if not os.path.isfile(self.cargo()):
-            raise Exception("no cargo executable found at `{}`".format(self.cargo()))
-        args = [
-            self.cargo(),
-            "build",
-            "--jobs=" + self.jobs,
-            "--manifest-path",
-            os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
-            "-Zroot-dir=" + self.rust_root,
-        ]
-        # verbose cargo output is very noisy, so only enable it with -vv
-        args.extend("--verbose" for _ in range(self.verbose - 1))
 
         if "BOOTSTRAP_TRACING" in env:
             args.append("--features=tracing")
@@ -1276,7 +1277,7 @@ def parse_args(args):
 
 def parse_stage0_file(path):
     result = {}
-    with open(path, "r") as file:
+    with open(path, "r", encoding="utf-8") as file:
         for line in file:
             line = line.strip()
             if line and not line.startswith("#"):
@@ -1316,7 +1317,7 @@ def bootstrap(args):
     # Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
     # but not if `bootstrap.toml` hasn't been created.
     if not using_default_path or os.path.exists(toml_path):
-        with open(toml_path) as config:
+        with open(toml_path, encoding="utf-8") as config:
             config_toml = config.read()
     else:
         config_toml = ""
@@ -1346,7 +1347,7 @@ def bootstrap(args):
 
         # HACK: This works because `self.get_toml()` returns the first match it finds for a
         # specific key, so appending our defaults at the end allows the user to override them
-        with open(include_path) as included_toml:
+        with open(include_path, encoding="utf-8") as included_toml:
             config_toml += os.linesep + included_toml.read()
 
     # Configure initial bootstrap
@@ -1384,7 +1385,9 @@ def main():
     if len(sys.argv) == 1 or sys.argv[1] in ["-h", "--help"]:
         try:
             with open(
-                os.path.join(os.path.dirname(__file__), "../etc/xhelp"), "r"
+                os.path.join(os.path.dirname(__file__), "../etc/xhelp"),
+                "r",
+                encoding="utf-8",
             ) as f:
                 # The file from bootstrap func already has newline.
                 print(f.read(), end="")

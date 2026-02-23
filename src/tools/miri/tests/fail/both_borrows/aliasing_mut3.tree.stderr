@@ -18,13 +18,11 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL | fn safe(x: &mut i32, y: &i32) {
    |                      ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
-   |
-LL |     safe_raw(xraw, xshr);
-   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: safe
+               at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

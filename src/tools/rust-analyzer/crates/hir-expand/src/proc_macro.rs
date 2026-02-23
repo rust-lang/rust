@@ -25,6 +25,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + Any {
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
+        db: &dyn ExpandDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -309,6 +310,7 @@ impl CustomProcMacroExpander {
                 let current_dir = calling_crate.data(db).proc_macro_cwd.to_string();
 
                 match proc_macro.expander.expand(
+                    db,
                     tt,
                     attr_arg,
                     env,

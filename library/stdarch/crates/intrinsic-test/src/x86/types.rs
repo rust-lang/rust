@@ -115,9 +115,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             // if "type" starts with __m<num>{h/i/<null>},
             // then use either _mm_set1_epi64,
             // _mm256_set1_epi64 or _mm512_set1_epi64
-            if type_value.contains("__m64") {
-                return String::from("*(__m64*)");
-            }
 
             let type_val_filtered = type_value
                 .chars()
@@ -175,29 +172,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     /// rust debug output format for the return type. The generated line assumes
     /// there is an int i in scope which is the current pass number.
     fn print_result_c(&self, indentation: Indentation, additional: &str) -> String {
-        let lanes = if self.num_vectors() > 1 {
-            (0..self.num_vectors())
-                .map(|vector| {
-                    format!(
-                        r#""{ty}(" << {lanes} << ")""#,
-                        ty = self.c_single_vector_type(),
-                        lanes = (0..self.num_lanes())
-                            .map(move |idx| -> std::string::String {
-                                format!(
-                                    "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
-                                    cast = self.generate_final_type_cast(),
-                                    lane_fn = self.get_lane_function(),
-                                    lane = idx,
-                                    vector = vector,
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join(r#" << ", " << "#)
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(r#" << ", " << "#)
-        } else if self.num_lanes() > 1 {
+        let lanes = if self.num_lanes() > 1 {
             (0..self.num_lanes())
                 .map(|idx| -> std::string::String {
                     let cast_type = self.c_promotion();
@@ -262,9 +237,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             (Some(16), Some(512)) => String::from("(uint16_t)_mm512_extract_intrinsic_test_epi16"),
             (Some(32), Some(512)) => String::from("(uint32_t)_mm512_extract_intrinsic_test_epi32"),
             (Some(64), Some(512)) => String::from("(uint64_t)_mm512_extract_intrinsic_test_epi64"),
-            (Some(8), Some(64)) => String::from("(uint8_t)_mm64_extract_intrinsic_test_epi8"),
-            (Some(16), Some(64)) => String::from("(uint16_t)_mm_extract_pi16"),
-            (Some(32), Some(64)) => String::from("(uint32_t)_mm64_extract_intrinsic_test_epi32"),
             _ => unreachable!(
                 "invalid length for vector argument: {:?}, {:?}",
                 self.bit_len, self.simd_len
@@ -289,12 +261,9 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 
     fn print_result_rust(&self) -> String {
         let return_value = match self.kind() {
-            TypeKind::Float if self.inner_size() == 16 => "debug_f16(__return_value)".to_string(),
-            TypeKind::Float
-                if self.inner_size() == 32
-                    && ["__m512h"].contains(&self.param.type_data.as_str()) =>
-            {
-                "debug_as::<_, f32>(__return_value)".to_string()
+            // `_mm{256}_cvtps_ph` has return type __m128i but contains f16 values
+            TypeKind::Float if self.param.type_data == "__m128i" => {
+                "format_args!(\"{:.150?}\", debug_as::<_, f16>(__return_value))".to_string()
             }
             TypeKind::Int(_)
                 if ["__m128i", "__m256i", "__m512i"].contains(&self.param.type_data.as_str()) =>
@@ -467,6 +436,17 @@ impl X86IntrinsicType {
                     } else {
                         Some(8)
                     }
+                }
+
+                // a few intrinsics have wrong `etype` field in the XML
+                // - _mm512_reduce_add_ph
+                // - _mm512_reduce_mul_ph
+                // - _mm512_reduce_min_ph
+                // - _mm512_reduce_max_ph
+                // - _mm512_conj_pch
+                if param.type_data == "__m512h" && param.etype == "FP32" {
+                    data.bit_len = Some(16);
+                    data.simd_len = Some(32);
                 }
 
                 let mut result = X86IntrinsicType {

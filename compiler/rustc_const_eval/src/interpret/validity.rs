@@ -647,13 +647,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
             } else {
                 // This is not CTFE, so it's Miri with recursive checking.
-                // FIXME: we do *not* check behind boxes, since creating a new box first creates it uninitialized
-                // and then puts the value in there, so briefly we have a box with uninit contents.
-                // FIXME: should we also skip `UnsafeCell` behind shared references? Currently that is not
-                // needed since validation reads bypass Stacked Borrows and data race checks.
-                if matches!(ptr_kind, PointerKind::Box) {
-                    return interp_ok(());
-                }
+                // FIXME: should we skip `UnsafeCell` behind shared references? Currently that is
+                // not needed since validation reads bypass Stacked Borrows and data race checks,
+                // but is that really coherent?
             }
             let path = &self.path;
             ref_tracking.track(place, || {
@@ -1315,7 +1311,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     self.visit_scalar(b, b_layout)?;
                 }
             }
-            BackendRepr::SimdVector { .. } => {
+            BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We
                 // also cannot use field projections since this might be a newtype around a vector.)

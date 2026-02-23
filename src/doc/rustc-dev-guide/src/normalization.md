@@ -30,7 +30,7 @@ fn bar<T: Iterator<Item = u32>>() {
 }
 ```
 
-When an alias can't yet be normalized but may wind up normalizable in the [current environment](./typing_parameter_envs.md), we consider it to be an "ambiguous" alias. This can occur when an alias contains inference variables which prevent being able to determine how the trait is implemented:
+When an alias can't yet be normalized but may wind up normalizable in the [current environment](./typing-parameter-envs.md), we consider it to be an "ambiguous" alias. This can occur when an alias contains inference variables which prevent being able to determine how the trait is implemented:
 ```rust
 fn foo<T: Iterator, U: Iterator>() {
     // This alias is considered to be "ambiguous"
@@ -113,7 +113,7 @@ fn bar() {
     foo::<{ FREE_CONST }>();
     // The const arg is represented with some anonymous constant:
     // ```pseudo-rust
-    // const ANON: usize = FREE_CONST; 
+    // const ANON: usize = FREE_CONST;
     // foo::<ConstKind::Unevaluated(DefId(ANON), [])>();
     // ```
 }
@@ -127,7 +127,7 @@ This is likely to change as const generics functionality is improved, for exampl
 
 There are two forms of normalization, structural (sometimes called *shallow*) and deep. Structural normalization should be thought of as only normalizing the "outermost" part of a type. On the other hand deep normalization will normalize *all* aliases in a type.
 
-In practice structural normalization can result in more than just the outer layer of the type being normalized, but this behaviour should not be relied upon. Unnormalizable non-rigid aliases making use of bound variables (`for<'a>`) cannot be normalized by either kind of normalization. 
+In practice structural normalization can result in more than just the outer layer of the type being normalized, but this behaviour should not be relied upon. Unnormalizable non-rigid aliases making use of bound variables (`for<'a>`) cannot be normalized by either kind of normalization.
 
 As an example: conceptually, structurally normalizing the type `Vec<<u8 as Identity>::Assoc>` would be a no-op, whereas deeply normalizing would give `Vec<u8>`. In practice even structural normalization would give `Vec<u8>`, though, again, this should not be relied upon.
 
@@ -137,9 +137,9 @@ Changing the alias to use bound variables will result in different behaviour; `V
 
 Structurally normalizing aliases is a little bit more nuanced than replacing the alias with whatever it is defined as being equal to in its definition; the result of normalizing an alias should either be a rigid type or an inference variable (which will later be inferred to a rigid type). To accomplish this we do two things:
 
-First, when normalizing an ambiguous alias it is normalized to an inference variable instead of leaving it as-is, this has two main effects: 
+First, when normalizing an ambiguous alias it is normalized to an inference variable instead of leaving it as-is, this has two main effects:
 - Even though an inference variable is not a rigid type, it will always wind up inferred *to* a rigid type so we ensure that the result of normalization will not need to be normalized again
-- Inference variables are used in all cases where a type is non-rigid, allowing the rest of the compiler to not have to deal with *both* ambiguous aliases *and* inference variables 
+- Inference variables are used in all cases where a type is non-rigid, allowing the rest of the compiler to not have to deal with *both* ambiguous aliases *and* inference variables
 
 Secondly, instead of having normalization directly return the type specified in the definition of the alias, we normalize the type first before returning it[^1]. We do this so that normalization is idempotent/callers do not need to run it in a loop.
 
@@ -207,7 +207,7 @@ In practice `query_normalize` is used for normalization in the borrow checker, a
 
 ##### `tcx.normalize_erasing_regions`
 
-[`normalize_erasing_regions`][norm_erasing_regions] is generally used by parts of the compiler that are not doing type system analysis. This normalization entry point does not handle inference variables, lifetimes, or any diagnostics. Lints and codegen make heavy use of this entry point as they typically are working with fully inferred aliases that can be assumed to be well formed (or at least, are not responsible for erroring on). 
+[`normalize_erasing_regions`][norm_erasing_regions] is generally used by parts of the compiler that are not doing type system analysis. This normalization entry point does not handle inference variables, lifetimes, or any diagnostics. Lints and codegen make heavy use of this entry point as they typically are working with fully inferred aliases that can be assumed to be well formed (or at least, are not responsible for erroring on).
 
 [query_norm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.query_normalize
 [norm_erasing_regions]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.normalize_erasing_regions
@@ -232,7 +232,7 @@ One of the big changes between the old and new solver is our approach to when we
 
 ### Old solver
 
-All types are expected to be normalized as soon as possible, so that all types encountered in the type system are either rigid or an inference variable (which will later be inferred to a rigid term). 
+All types are expected to be normalized as soon as possible, so that all types encountered in the type system are either rigid or an inference variable (which will later be inferred to a rigid term).
 
 As a concrete example: equality of aliases is implemented by assuming they're rigid and recursively equating the generic arguments of the alias.
 
@@ -242,7 +242,7 @@ It's expected that all types potentially contain ambiguous or unnormalized alias
 
 As a concrete example: equality of aliases is implemented by a custom goal kind ([`PredicateKind::AliasRelate`][aliasrelate]) so that it can handle normalization of the aliases itself instead of assuming all alias types being equated are rigid.
 
-Despite this approach we still deeply normalize during [writeback][writeback] for performance/simplicity, so that types in the MIR can still be assumed to have been deeply normalized. 
+Despite this approach we still deeply normalize during [writeback][writeback] for performance/simplicity, so that types in the MIR can still be assumed to have been deeply normalized.
 
 [aliasrelate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.PredicateKind.html#variant.AliasRelate
 [writeback]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/writeback/index.html
@@ -257,7 +257,7 @@ It was a frequent occurrence that normalization calls would be missing, resultin
 
 ### Normalizing parameter environments
 
-Another problem was that it was not possible to normalize `ParamEnv`s correctly in the old solver as normalization itself would expect a normalized `ParamEnv` in order to give correct results. See the chapter on `ParamEnv`s for more information: [`Typing/ParamEnv`s: Normalizing all bounds](./typing_parameter_envs.md#normalizing-all-bounds)
+Another problem was that it was not possible to normalize `ParamEnv`s correctly in the old solver as normalization itself would expect a normalized `ParamEnv` in order to give correct results. See the chapter on `ParamEnv`s for more information: [`Typing/ParamEnv`s: Normalizing all bounds](./typing-parameter-envs.md#normalizing-all-bounds)
 
 ### Unnormalizable non-rigid aliases in higher ranked types
 
@@ -269,7 +269,7 @@ Leaving the alias unnormalized would also be wrong as the old solver expects all
 
 Ultimately this means that it is not always possible to ensure all aliases inside of a value are rigid.
 
-[universe]: borrow_check/region_inference/placeholders_and_universes.md#what-is-a-universe
+[universe]: borrow-check/region-inference/placeholders-and-universes.md#what-is-a-universe
 [deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
 
 ## Handling uses of diverging aliases

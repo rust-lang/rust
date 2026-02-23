@@ -53,7 +53,7 @@ thread_local! {
     #[allow(unused_mut, reason = "test attribute handling")]
     #[cfg_attr(TRUE,
       cfg_attr(FOURTY_TWO = "42",
-      cfg_attr(all(),
+      cfg_attr(true,
       cfg_attr(any(true),
       cfg_attr(true, rustc_align_static(4096))))))]
     #[allow(unused_mut, reason = "test attribute handling")]

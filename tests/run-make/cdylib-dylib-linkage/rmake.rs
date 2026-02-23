@@ -16,24 +16,23 @@ use run_make_support::{
 fn main() {
     rustc().arg("-Cprefer-dynamic").input("bar.rs").run();
     rustc().input("foo.rs").run();
-    let sysroot = rustc().print("sysroot").run().stdout_utf8();
-    let sysroot = sysroot.trim();
-    let target_sysroot = path(sysroot).join("lib/rustlib").join(target()).join("lib");
+    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    let sysroot_libs_dir = sysroot_libs_dir.trim();
     if is_windows_msvc() {
-        let mut libs = shallow_find_files(&target_sysroot, |path| {
+        let mut libs = shallow_find_files(sysroot_libs_dir, |path| {
             has_prefix(path, "libstd-") && has_suffix(path, ".dll.lib")
         });
         libs.push(path(msvc_import_dynamic_lib_name("foo")));
         libs.push(path(msvc_import_dynamic_lib_name("bar")));
         cc().input("foo.c").args(&libs).out_exe("foo").run();
     } else {
-        let stdlibs = shallow_find_files(&target_sysroot, |path| {
+        let stdlibs = shallow_find_files(sysroot_libs_dir, |path| {
             has_extension(path, dynamic_lib_extension()) && filename_contains(path, "std")
         });
         cc().input("foo.c")
             .args(&[dynamic_lib_name("foo"), dynamic_lib_name("bar")])
             .arg(stdlibs.get(0).unwrap())
-            .library_search_path(&target_sysroot)
+            .library_search_path(sysroot_libs_dir)
             .output(bin_name("foo"))
             .run();
     }

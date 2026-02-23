@@ -1,0 +1,43 @@
+error[E0283]: type annotations needed
+  --> $DIR/impl-trait-to-trait.rs:32:28
+   |
+LL |         reuse Trait1::<T>::foo { &self.0 }
+   |                            ^^^ cannot infer type of the type parameter `U` declared on the method `foo`
+   |
+   = note: cannot satisfy `_: Trait0`
+help: the trait `Trait0` is implemented for `u16`
+  --> $DIR/impl-trait-to-trait.rs:36:5
+   |
+LL |     impl Trait0 for u16 {}
+   |     ^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait1::foo`
+  --> $DIR/impl-trait-to-trait.rs:21:16
+   |
+LL |         fn foo<U>(&self)
+   |            --- required by a bound in this associated function
+...
+LL |             U: Trait0,
+   |                ^^^^^^ required by this bound in `Trait1::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-trait.rs:104:58
+   |
+LL |         reuse Trait::<'a, 'b, 'static, A, String, bool>::foo { &self.0 }
+   |                                                          ^^^ cannot infer the value of the const parameter `XX` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/impl-trait-to-trait.rs:94:49
+   |
+LL |         fn foo<'x: 'x, 'y: 'y, 'z: 'z, A, B, C, const XX: usize>(&self) {}
+   |                                                 ^^^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0282]: type annotations needed
+  --> $DIR/impl-trait-to-trait.rs:153:41
+   |
+LL |         reuse Trait::<A, String, bool>::foo { &self.0 }
+   |                                         ^^^ cannot infer type of the type parameter `A` declared on the method `foo`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0283, E0284.
+For more information about an error, try `rustc --explain E0282`.

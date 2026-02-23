@@ -7,11 +7,6 @@ authors = [
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
 description = "`std::detect` - Rust's standard library run-time CPU feature detection."
-homepage = "https://github.com/rust-lang/stdarch"
-repository = "https://github.com/rust-lang/stdarch"
-readme = "README.md"
-keywords = ["std", "run-time", "feature", "detection"]
-categories = ["hardware-support"]
 license = "MIT OR Apache-2.0"
 edition = "2024"
 
@@ -25,10 +20,7 @@ core = { version = "1.0.0", package = 'rustc-std-workspace-core' }
 alloc = { version = "1.0.0", package = 'rustc-std-workspace-alloc' }
 
 [target.'cfg(not(windows))'.dependencies]
-libc = { version = "0.2.0", optional = true, default-features = false }
+libc = { version = "0.2.0", default-features = false }
 
 [features]
-default = []
-std_detect_file_io = [ "libc" ]
-std_detect_dlsym_getauxval = [ "libc" ]
-std_detect_env_override = [ "libc" ]
+std_detect_env_override = []

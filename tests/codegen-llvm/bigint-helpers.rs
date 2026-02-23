@@ -1,7 +1,6 @@
 //@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]
-#![feature(bigint_helper_methods)]
 
 // Note that there's also an assembly test for this, which is what checks for
 // the `ADC` (Add with Carry) instruction on x86 now that the IR we emit uses

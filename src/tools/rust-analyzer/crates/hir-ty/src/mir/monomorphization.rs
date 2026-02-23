@@ -8,7 +8,7 @@
 //! So the monomorphization should be called even if the substitution is empty.
 
 use hir_def::DefWithBodyId;
-use rustc_type_ir::inherent::{IntoKind, SliceLike};
+use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{
     FallibleTypeFolder, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeVisitableExt,
 };
@@ -16,7 +16,8 @@ use triomphe::Arc;
 
 use crate::{
     ParamEnvAndCrate,
-    next_solver::{Const, ConstKind, Region, RegionKind},
+    next_solver::{Const, ConstKind, Region, RegionKind, StoredConst, StoredGenericArgs, StoredTy},
+    traits::StoredParamEnvAndCrate,
 };
 use crate::{
     db::{HirDatabase, InternedClosureId},
@@ -37,7 +38,7 @@ struct Filler<'db> {
 }
 
 impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
-    type Error = MirLowerError<'db>;
+    type Error = MirLowerError;
 
     fn cx(&self) -> DbInterner<'db> {
         self.infcx.interner
@@ -69,7 +70,7 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
                 .get(param.index as usize)
                 .and_then(|arg| arg.ty())
                 .ok_or_else(|| {
-                    MirLowerError::GenericArgNotProvided(param.id.into(), self.subst)
+                    MirLowerError::GenericArgNotProvided(param.id.into(), self.subst.store())
                 })?),
             _ => ty.try_super_fold_with(self),
         }
@@ -79,22 +80,18 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
         let ConstKind::Param(param) = ct.kind() else {
             return ct.try_super_fold_with(self);
         };
-        self.subst
-            .as_slice()
-            .get(param.index as usize)
-            .and_then(|arg| arg.konst())
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(param.id.into(), self.subst))
+        self.subst.as_slice().get(param.index as usize).and_then(|arg| arg.konst()).ok_or_else(
+            || MirLowerError::GenericArgNotProvided(param.id.into(), self.subst.store()),
+        )
     }
 
     fn try_fold_region(&mut self, region: Region<'db>) -> Result<Region<'db>, Self::Error> {
         let RegionKind::ReEarlyParam(param) = region.kind() else {
             return Ok(region);
         };
-        self.subst
-            .as_slice()
-            .get(param.index as usize)
-            .and_then(|arg| arg.region())
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(param.id.into(), self.subst))
+        self.subst.as_slice().get(param.index as usize).and_then(|arg| arg.region()).ok_or_else(
+            || MirLowerError::GenericArgNotProvided(param.id.into(), self.subst.store()),
+        )
     }
 }
 
@@ -105,33 +102,50 @@ impl<'db> Filler<'db> {
         Self { infcx, trait_env: env, subst }
     }
 
-    fn fill<T: TypeFoldable<DbInterner<'db>> + Copy>(
-        &mut self,
-        t: &mut T,
-    ) -> Result<(), MirLowerError<'db>> {
+    fn fill_ty(&mut self, t: &mut StoredTy) -> Result<(), MirLowerError> {
         // Can't deep normalized as that'll try to normalize consts and fail.
-        *t = t.try_fold_with(self)?;
-        if references_non_lt_error(t) {
+        *t = t.as_ref().try_fold_with(self)?.store();
+        if references_non_lt_error(&t.as_ref()) {
             Err(MirLowerError::NotSupported("monomorphization resulted in errors".to_owned()))
         } else {
             Ok(())
         }
     }
 
-    fn fill_operand(&mut self, op: &mut Operand<'db>) -> Result<(), MirLowerError<'db>> {
+    fn fill_const(&mut self, t: &mut StoredConst) -> Result<(), MirLowerError> {
+        // Can't deep normalized as that'll try to normalize consts and fail.
+        *t = t.as_ref().try_fold_with(self)?.store();
+        if references_non_lt_error(&t.as_ref()) {
+            Err(MirLowerError::NotSupported("monomorphization resulted in errors".to_owned()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn fill_args(&mut self, t: &mut StoredGenericArgs) -> Result<(), MirLowerError> {
+        // Can't deep normalized as that'll try to normalize consts and fail.
+        *t = t.as_ref().try_fold_with(self)?.store();
+        if references_non_lt_error(&t.as_ref()) {
+            Err(MirLowerError::NotSupported("monomorphization resulted in errors".to_owned()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError> {
         match &mut op.kind {
             OperandKind::Constant { konst, ty } => {
-                self.fill(konst)?;
-                self.fill(ty)?;
+                self.fill_const(konst)?;
+                self.fill_ty(ty)?;
             }
             OperandKind::Copy(_) | OperandKind::Move(_) | OperandKind::Static(_) => (),
         }
         Ok(())
     }
 
-    fn fill_body(&mut self, body: &mut MirBody<'db>) -> Result<(), MirLowerError<'db>> {
+    fn fill_body(&mut self, body: &mut MirBody) -> Result<(), MirLowerError> {
         for (_, l) in body.locals.iter_mut() {
-            self.fill(&mut l.ty)?;
+            self.fill_ty(&mut l.ty)?;
         }
         for (_, bb) in body.basic_blocks.iter_mut() {
             for statement in &mut bb.statements {
@@ -144,20 +158,20 @@ impl<'db> Filler<'db> {
                             match ak {
                                 super::AggregateKind::Array(ty)
                                 | super::AggregateKind::Tuple(ty)
-                                | super::AggregateKind::Closure(ty) => self.fill(ty)?,
-                                super::AggregateKind::Adt(_, subst) => self.fill(subst)?,
+                                | super::AggregateKind::Closure(ty) => self.fill_ty(ty)?,
+                                super::AggregateKind::Adt(_, subst) => self.fill_args(subst)?,
                                 super::AggregateKind::Union(_, _) => (),
                             }
                         }
                         Rvalue::ShallowInitBox(_, ty) | Rvalue::ShallowInitBoxWithAlloc(ty) => {
-                            self.fill(ty)?;
+                            self.fill_ty(ty)?;
                         }
                         Rvalue::Use(op) => {
                             self.fill_operand(op)?;
                         }
                         Rvalue::Repeat(op, len) => {
                             self.fill_operand(op)?;
-                            self.fill(len)?;
+                            self.fill_const(len)?;
                         }
                         Rvalue::Ref(_, _)
                         | Rvalue::Len(_)
@@ -208,35 +222,36 @@ impl<'db> Filler<'db> {
     }
 }
 
-pub fn monomorphized_mir_body_query<'db>(
-    db: &'db dyn HirDatabase,
+pub fn monomorphized_mir_body_query(
+    db: &dyn HirDatabase,
     owner: DefWithBodyId,
-    subst: GenericArgs<'db>,
-    trait_env: ParamEnvAndCrate<'db>,
-) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
-    let mut filler = Filler::new(db, trait_env, subst);
+    subst: StoredGenericArgs,
+    trait_env: StoredParamEnvAndCrate,
+) -> Result<Arc<MirBody>, MirLowerError> {
+    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(Arc::new(body))
 }
 
-pub(crate) fn monomorphized_mir_body_cycle_result<'db>(
-    _db: &'db dyn HirDatabase,
+pub(crate) fn monomorphized_mir_body_cycle_result(
+    _db: &dyn HirDatabase,
+    _: salsa::Id,
     _: DefWithBodyId,
-    _: GenericArgs<'db>,
-    _: ParamEnvAndCrate<'db>,
-) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
+    _: StoredGenericArgs,
+    _: StoredParamEnvAndCrate,
+) -> Result<Arc<MirBody>, MirLowerError> {
     Err(MirLowerError::Loop)
 }
 
-pub fn monomorphized_mir_body_for_closure_query<'db>(
-    db: &'db dyn HirDatabase,
+pub fn monomorphized_mir_body_for_closure_query(
+    db: &dyn HirDatabase,
     closure: InternedClosureId,
-    subst: GenericArgs<'db>,
-    trait_env: ParamEnvAndCrate<'db>,
-) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
-    let mut filler = Filler::new(db, trait_env, subst);
+    subst: StoredGenericArgs,
+    trait_env: StoredParamEnvAndCrate,
+) -> Result<Arc<MirBody>, MirLowerError> {
+    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;

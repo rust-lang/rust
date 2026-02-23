@@ -41,13 +41,19 @@
 use run_make_support::{bare_rustc, llvm_readobj};
 
 fn main() {
-    // `main.rs` is `#![no_std]` to not pull in the currently not-compiled-with-IBT precompiled std.
+    // `lib.rs` is `#![no_std]` to not pull in the currently not-compiled-with-IBT precompiled std.
     bare_rustc()
-        .input("main.rs")
+        .input("lib.rs")
+        .crate_type("lib")
+        .emit("obj=lib.o")
         .target("x86_64-unknown-linux-gnu")
         .arg("-Zcf-protection=branch")
-        .arg("-Clink-args=-nostartfiles")
         .run();
 
-    llvm_readobj().arg("-nW").input("main").run().assert_stdout_contains(".note.gnu.property");
+    llvm_readobj()
+        .arg("-nW")
+        .input("lib.o")
+        .run()
+        .assert_stdout_contains(".note.gnu.property")
+        .assert_stdout_contains("feature: IBT");
 }

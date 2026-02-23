@@ -216,7 +216,7 @@ trait for a type would be one of these interfaces (`DW_tag_interface` type). Als
 which it is implemented would describe all the interfaces this type implements. This requires a
 DWARF extension.
 
-Issue on Github: [https://github.com/rust-lang/rust/issues/33014]
+Issue on GitHub: [https://github.com/rust-lang/rust/issues/33014]
 
 ## Typical process for a Debug Info change (LLVM)
 

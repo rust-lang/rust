@@ -1,0 +1,14 @@
+error: `#[eii]` can only be specified once
+  --> $DIR/multiple_decls.rs:5:1
+   |
+LL | #[eii(b)]
+   | ^^^^^^^^^
+   |
+note: specified again here
+  --> $DIR/multiple_decls.rs:4:1
+   |
+LL | #[eii(a)]
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

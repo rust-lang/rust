@@ -10,6 +10,8 @@ impl Foo for () {
 }
 
 fn main() {
+    // #150052 deduplicate diagnostics for const trait supertraits
+    // so we only get one error here
     (const || { (()).foo() })();
     //~^ ERROR: }: [const] Fn()` is not satisfied
 }

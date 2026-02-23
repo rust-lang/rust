@@ -36,8 +36,7 @@ Highlight of the most important aspects of the implementation:
    when enabled in `bootstrap.toml`:
 
    ```toml
-   [build]
-   sanitizers = true
+   build.sanitizers = true
    ```
 
    The runtimes are [placed into target libdir][sanitizer-copy].
@@ -84,7 +83,7 @@ Sanitizers are validated by code generation tests in
 [`tests/ui/sanitizer/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
-`sanitizer = true` in `bootstrap.toml`) and target providing support for particular a sanitizer.
+`build.sanitizer = true` in `bootstrap.toml`) and target providing support for particular a sanitizer.
 When a sanitizer is unsupported on a given target, sanitizer tests will be ignored.
 This behaviour is controlled by compiletest `needs-sanitizer-*` directives.
 

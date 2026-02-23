@@ -239,7 +239,7 @@ impl<T: PointeeSized> *const T {
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
-    ///     let val_back = &*ptr;
+    ///     let val_back = ptr.as_ref_unchecked();
     ///     assert_eq!(val_back, &10);
     /// }
     /// ```
@@ -259,6 +259,7 @@ impl<T: PointeeSized> *const T {
     ///
     /// [`is_null`]: #method.is_null
     /// [`as_uninit_ref`]: #method.as_uninit_ref
+    /// [`as_ref_unchecked`]: #method.as_ref_unchecked
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
@@ -283,15 +284,14 @@ impl<T: PointeeSized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_as_ref_unchecked)]
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
     ///     assert_eq!(ptr.as_ref_unchecked(), &10);
     /// }
     /// ```
-    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
-    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -1386,6 +1386,43 @@ impl<T> *const T {
     pub const fn cast_uninit(self) -> *const MaybeUninit<T> {
         self as _
     }
+
+    /// Forms a raw slice from a pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, but actually using the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    ///
+    /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(ptr_cast_slice)]
+    /// // create a slice pointer when starting out with a pointer to the first element
+    /// let x = [5, 6, 7];
+    /// let raw_pointer = x.as_ptr();
+    /// let slice = raw_pointer.cast_slice(3);
+    /// assert_eq!(unsafe { &*slice }[2], 7);
+    /// ```
+    ///
+    /// You must ensure that the pointer is valid and not null before dereferencing
+    /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+    ///
+    /// ```rust,should_panic
+    /// #![feature(ptr_cast_slice)]
+    /// use std::ptr;
+    /// let danger: *const [u8] = ptr::null::<u8>().cast_slice(0);
+    /// unsafe {
+    ///     danger.as_ref().expect("references must not be null");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    pub const fn cast_slice(self, len: usize) -> *const [T] {
+        slice_from_raw_parts(self, len)
+    }
 }
 impl<T> *const MaybeUninit<T> {
     /// Casts from a maybe-uninitialized type to its initialized version.
@@ -1462,8 +1499,8 @@ impl<T> *const [T] {
     /// Gets a raw pointer to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {

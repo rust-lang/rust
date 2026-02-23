@@ -1,7 +1,12 @@
 //@ignore-target: windows # no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
+
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
 use std::time::{Duration, Instant};
 use std::{env, mem, ptr};
+
+use libc_utils::errno_check;
 
 fn main() {
     test_clocks();
@@ -39,30 +44,23 @@ fn main() {
 /// Tests whether clock support exists at all
 fn test_clocks() {
     let mut tp = mem::MaybeUninit::<libc::timespec>::uninit();
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
+    errno_check(unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) });
+    errno_check(unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) });
     #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "android"))]
     {
-        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
-        let is_error =
-            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
+        errno_check(unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) });
+        errno_check(unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) });
     }
     #[cfg(target_os = "macos")]
     {
-        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
+        errno_check(unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) });
     }
 }
 
 fn test_posix_gettimeofday() {
     let mut tp = mem::MaybeUninit::<libc::timeval>::uninit();
     let tz = ptr::null_mut::<libc::timezone>();
-    let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz.cast()) };
-    assert_eq!(is_error, 0);
+    errno_check(unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz.cast()) });
     let tv = unsafe { tp.assume_init() };
     assert!(tv.tv_sec > 0);
     assert!(tv.tv_usec >= 0); // Theoretically this could be 0.
@@ -334,15 +332,13 @@ fn test_nanosleep() {
     let start_test_sleep = Instant::now();
     let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
     let remainder = ptr::null_mut::<libc::timespec>();
-    let is_error = unsafe { libc::nanosleep(&duration_zero, remainder) };
-    assert_eq!(is_error, 0);
+    errno_check(unsafe { libc::nanosleep(&duration_zero, remainder) });
     assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
     let start_test_sleep = Instant::now();
     let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
     let remainder = ptr::null_mut::<libc::timespec>();
-    let is_error = unsafe { libc::nanosleep(&duration_100_millis, remainder) };
-    assert_eq!(is_error, 0);
+    errno_check(unsafe { libc::nanosleep(&duration_100_millis, remainder) });
     assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
 }
 
@@ -371,8 +367,7 @@ mod test_clock_nanosleep {
     /// Helper function to get the current time for testing relative sleeps
     fn timespec_now(clock: libc::clockid_t) -> libc::timespec {
         let mut timespec = mem::MaybeUninit::<libc::timespec>::uninit();
-        let is_error = unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) };
-        assert_eq!(is_error, 0);
+        errno_check(unsafe { libc::clock_gettime(clock, timespec.as_mut_ptr()) });
         unsafe { timespec.assume_init() }
     }
 
@@ -380,7 +375,7 @@ mod test_clock_nanosleep {
         let start_test_sleep = Instant::now();
         let before_start = libc::timespec { tv_sec: 0, tv_nsec: 0 };
         let remainder = ptr::null_mut::<libc::timespec>();
-        let error = unsafe {
+        errno_check(unsafe {
             // this will not sleep since unix time zero is in the past
             libc::clock_nanosleep(
                 libc::CLOCK_MONOTONIC,
@@ -388,22 +383,20 @@ mod test_clock_nanosleep {
                 &before_start,
                 remainder,
             )
-        };
-        assert_eq!(error, 0);
+        });
         assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
         let start_test_sleep = Instant::now();
         let hunderd_millis_after_start = add_100_millis(timespec_now(libc::CLOCK_MONOTONIC));
         let remainder = ptr::null_mut::<libc::timespec>();
-        let error = unsafe {
+        errno_check(unsafe {
             libc::clock_nanosleep(
                 libc::CLOCK_MONOTONIC,
                 libc::TIMER_ABSTIME,
                 &hunderd_millis_after_start,
                 remainder,
             )
-        };
-        assert_eq!(error, 0);
+        });
         assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
     }
 
@@ -413,19 +406,17 @@ mod test_clock_nanosleep {
         let start_test_sleep = Instant::now();
         let duration_zero = libc::timespec { tv_sec: 0, tv_nsec: 0 };
         let remainder = ptr::null_mut::<libc::timespec>();
-        let error = unsafe {
+        errno_check(unsafe {
             libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_zero, remainder)
-        };
-        assert_eq!(error, 0);
+        });
         assert!(start_test_sleep.elapsed() < Duration::from_millis(100));
 
         let start_test_sleep = Instant::now();
         let duration_100_millis = libc::timespec { tv_sec: 0, tv_nsec: 1_000_000_000 / 10 };
         let remainder = ptr::null_mut::<libc::timespec>();
-        let error = unsafe {
+        errno_check(unsafe {
             libc::clock_nanosleep(libc::CLOCK_MONOTONIC, NO_FLAGS, &duration_100_millis, remainder)
-        };
-        assert_eq!(error, 0);
+        });
         assert!(start_test_sleep.elapsed() > Duration::from_millis(100));
     }
 }

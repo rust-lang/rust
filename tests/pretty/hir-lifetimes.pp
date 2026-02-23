@@ -5,9 +5,8 @@
 // This tests the pretty-printing of lifetimes in lots of ways.
 
 #![allow(unused)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
 
 struct Foo<'a> {

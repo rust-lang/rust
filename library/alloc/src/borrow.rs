@@ -16,19 +16,6 @@ use crate::fmt;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 
-// FIXME(inference): const bounds removed due to inference regressions found by crater;
-//   see https://github.com/rust-lang/rust/issues/147964
-// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
-// where
-//     B::Owned: [const] Borrow<B>,
-{
-    fn borrow(&self) -> &B {
-        &**self
-    }
-}
-
 /// A generalization of `Clone` to borrowed data.
 ///
 /// Some types make it possible to go from borrowed to owned, usually by
@@ -190,6 +177,19 @@ where
     /// Owned data.
     #[stable(feature = "rust1", since = "1.0.0")]
     Owned(#[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned>::Owned),
+}
+
+// FIXME(inference): const bounds removed due to inference regressions found by crater;
+//   see https://github.com/rust-lang/rust/issues/147964
+// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
+// where
+//     B::Owned: [const] Borrow<B>,
+{
+    fn borrow(&self) -> &B {
+        &**self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

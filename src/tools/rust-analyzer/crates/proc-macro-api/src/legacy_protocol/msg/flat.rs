@@ -123,7 +123,7 @@ struct IdentRepr {
 
 impl FlatTree {
     pub fn from_subtree(
-        subtree: tt::SubtreeView<'_, Span>,
+        subtree: tt::SubtreeView<'_>,
         version: u32,
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
@@ -168,7 +168,7 @@ impl FlatTree {
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
-    ) -> tt::TopSubtree<Span> {
+    ) -> tt::TopSubtree {
         Reader::<Span> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -486,16 +486,16 @@ struct Writer<'a, 'span, S: SpanTransformer, W> {
     text: Vec<String>,
 }
 
-impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
-    fn write_subtree(&mut self, root: tt::SubtreeView<'a, T::Span>) {
+impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIter<'a>> {
+    fn write_subtree(&mut self, root: tt::SubtreeView<'a>) {
         let subtree = root.top_subtree();
-        self.enqueue(subtree, root.iter());
+        self.enqueue(&subtree, root.iter());
         while let Some((idx, len, subtree)) = self.work.pop_front() {
             self.subtree(idx, len, subtree);
         }
     }
 
-    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a, T::Span>) {
+    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a>) {
         let mut first_tt = self.token_tree.len();
         self.token_tree.resize(first_tt + n_tt, !0);
 
@@ -504,7 +504,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         for child in subtree {
             let idx_tag = match child {
                 tt::iter::TtElement::Subtree(subtree, subtree_iter) => {
-                    let idx = self.enqueue(subtree, subtree_iter);
+                    let idx = self.enqueue(&subtree, subtree_iter);
                     idx << 2
                 }
                 tt::iter::TtElement::Leaf(leaf) => match leaf {
@@ -512,9 +512,14 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
                         let idx = self.literal.len() as u32;
                         let id = self.token_id_of(lit.span);
                         let (text, suffix) = if self.version >= EXTENDED_LEAF_DATA {
+                            let (text, suffix) = lit.text_and_suffix();
                             (
-                                self.intern(lit.symbol.as_str()),
-                                lit.suffix.as_ref().map(|s| self.intern(s.as_str())).unwrap_or(!0),
+                                self.intern_owned(text.to_owned()),
+                                if suffix.is_empty() {
+                                    !0
+                                } else {
+                                    self.intern_owned(suffix.to_owned())
+                                },
                             )
                         } else {
                             (self.intern_owned(format!("{lit}")), !0)
@@ -549,11 +554,11 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
                         let idx = self.ident.len() as u32;
                         let id = self.token_id_of(ident.span);
                         let text = if self.version >= EXTENDED_LEAF_DATA {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         } else if ident.is_raw.yes() {
                             self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
-                            self.intern(ident.sym.as_str())
+                            self.intern_owned(ident.sym.as_str().to_owned())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
                         (idx << 2) | 0b11
@@ -565,11 +570,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         }
     }
 
-    fn enqueue(
-        &mut self,
-        subtree: &'a tt::Subtree<T::Span>,
-        contents: tt::iter::TtIter<'a, T::Span>,
-    ) -> u32 {
+    fn enqueue(&mut self, subtree: &tt::Subtree, contents: tt::iter::TtIter<'a>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(subtree.delimiter.open);
         let close = self.token_id_of(subtree.delimiter.close);
@@ -586,6 +587,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
         T::token_id_of(self.span_data_table, span)
     }
 
+    #[cfg(feature = "sysroot-abi")]
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
         *self.string_table.entry(text.into()).or_insert_with(|| {
@@ -739,9 +741,9 @@ struct Reader<'span, S: SpanTransformer> {
     span_data_table: &'span S::Table,
 }
 
-impl<T: SpanTransformer> Reader<'_, T> {
-    pub(crate) fn read_subtree(self) -> tt::TopSubtree<T::Span> {
-        let mut res: Vec<Option<(tt::Delimiter<T::Span>, Vec<tt::TokenTree<T::Span>>)>> =
+impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
+    pub(crate) fn read_subtree(self) -> tt::TopSubtree {
+        let mut res: Vec<Option<(tt::Delimiter, Vec<tt::TokenTree>)>> =
             vec![None; self.subtree.len()];
         let read_span = |id| T::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
@@ -774,10 +776,10 @@ impl<T: SpanTransformer> Reader<'_, T> {
                         let span = read_span(repr.id);
                         s.push(
                             tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
-                                tt::Literal {
-                                    symbol: Symbol::intern(text),
+                                tt::Literal::new(
+                                    text,
                                     span,
-                                    kind: match u16::to_le_bytes(repr.kind) {
+                                    match u16::to_le_bytes(repr.kind) {
                                         [0, _] => Err(()),
                                         [1, _] => Byte,
                                         [2, _] => Char,
@@ -791,14 +793,12 @@ impl<T: SpanTransformer> Reader<'_, T> {
                                         [10, r] => CStrRaw(r),
                                         _ => unreachable!(),
                                     },
-                                    suffix: if repr.suffix != !0 {
-                                        Some(Symbol::intern(
-                                            self.text[repr.suffix as usize].as_str(),
-                                        ))
+                                    if repr.suffix != !0 {
+                                        self.text[repr.suffix as usize].as_str()
                                     } else {
-                                        None
+                                        ""
                                     },
-                                }
+                                )
                             } else {
                                 tt::token_to_literal(text, span)
                             })
@@ -844,7 +844,7 @@ impl<T: SpanTransformer> Reader<'_, T> {
 
         let (delimiter, mut res) = res[0].take().unwrap();
         res.insert(0, tt::TokenTree::Subtree(tt::Subtree { delimiter, len: res.len() as u32 }));
-        tt::TopSubtree(res.into_boxed_slice())
+        tt::TopSubtree::from_serialized(res)
     }
 }
 

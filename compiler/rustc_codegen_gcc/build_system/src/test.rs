@@ -679,10 +679,10 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
     create_dir(projects_path)?;
 
     let nb_parts = args.nb_parts.unwrap_or(0);
-    if nb_parts > 0 {
+    if let Some(count) = projects.len().checked_div(nb_parts) {
         // We increment the number of tests by one because if this is an odd number, we would skip
         // one test.
-        let count = projects.len() / nb_parts + 1;
+        let count = count + 1;
         let current_part = args.current_part.unwrap();
         let start = current_part * count;
         // We remove the projects we don't want to test.

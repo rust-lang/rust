@@ -1,4 +1,7 @@
+#![deny(invalid_doc_attributes)]
+
 #![doc(test(""))]
-//~^ ERROR `#![doc(test(...)]` does not take a literal
+//~^ ERROR
+//~| WARN
 
 fn main() {}

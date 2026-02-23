@@ -2,10 +2,8 @@
 
 use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
-use rustc_ast::attr;
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -21,10 +19,13 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
     name: Symbol,
 ) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
-        if let Some([clippy, segment2]) = attr.ident_path().as_deref()
-            && clippy.name == sym::clippy
+        if let [clippy, segment2] = &*attr.path()
+            && *clippy == sym::clippy
         {
-            let new_name = match segment2.name {
+            let path_span = attr
+                .path_span()
+                .expect("Clippy attributes are unparsed and have a span");
+            let new_name = match *segment2 {
                 sym::cyclomatic_complexity => Some("cognitive_complexity"),
                 sym::author
                 | sym::version
@@ -36,7 +37,7 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
                 | sym::has_significant_drop
                 | sym::format_args => None,
                 _ => {
-                    sess.dcx().span_err(segment2.span, "usage of unknown attribute");
+                    sess.dcx().span_err(path_span, "usage of unknown attribute");
                     return false;
                 },
             };
@@ -44,17 +45,17 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
             match new_name {
                 Some(new_name) => {
                     sess.dcx()
-                        .struct_span_err(segment2.span, "usage of deprecated attribute")
+                        .struct_span_err(path_span, "usage of deprecated attribute")
                         .with_span_suggestion(
-                            segment2.span,
+                            path_span,
                             "consider using",
-                            new_name,
+                            format!("clippy::{new_name}"),
                             Applicability::MachineApplicable,
                         )
                         .emit();
                     false
                 },
-                None => segment2.name == name,
+                None => *segment2 == name,
             }
         } else {
             false
@@ -87,24 +88,19 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
-    attrs
-        .iter()
-        .filter(|attr| attr.has_name(sym::doc))
-        .filter_map(AttributeExt::meta_item_list)
-        .any(|l| attr::list_contains_name(&l, sym::hidden))
+    attrs.iter().any(AttributeExt::is_doc_hidden)
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`
 pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
     adt.is_variant_list_non_exhaustive()
-        || find_attr!(tcx.get_all_attrs(adt.did()), AttributeKind::NonExhaustive(..))
+        || find_attr!(tcx, adt.did(), NonExhaustive(..))
         || adt.variants().iter().any(|variant_def| {
-            variant_def.is_field_list_non_exhaustive()
-                || find_attr!(tcx.get_all_attrs(variant_def.def_id), AttributeKind::NonExhaustive(..))
+            variant_def.is_field_list_non_exhaustive() || find_attr!(tcx, variant_def.def_id, NonExhaustive(..))
         })
         || adt
             .all_fields()
-            .any(|field_def| find_attr!(tcx.get_all_attrs(field_def.did), AttributeKind::NonExhaustive(..)))
+            .any(|field_def| find_attr!(tcx, field_def.did, NonExhaustive(..)))
 }
 
 /// Checks whether the given span contains a `#[cfg(..)]` attribute
@@ -161,7 +157,10 @@ impl LimitStack {
     }
     pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
         let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| debug_assert_eq!(stack.pop(), Some(val)));
+        parse_attrs(sess, attrs, name, |val| {
+            let popped = stack.pop();
+            debug_assert_eq!(popped, Some(val));
+        });
     }
 }
 

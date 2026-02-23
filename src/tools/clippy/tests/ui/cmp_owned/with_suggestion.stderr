@@ -49,5 +49,24 @@ error: this creates an owned instance just for comparison
 LL |     let _ = foo1 == foo2.to_owned();
    |                     ^^^^^^^^^^^^^^^ help: try: `foo2`
 
-error: aborting due to 8 previous errors
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:110:16
+   |
+LL |     if item == t!(frohes_neu_Jahr).to_string() {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(frohes_neu_Jahr)`
+
+error: this creates an owned instance just for comparison
+  --> tests/ui/cmp_owned/with_suggestion.rs:135:51
+   |
+LL |                       let res = <$ty>::default() == "$def".to_string();
+   |                                                     ^^^^^^^^^^^^^^^^^^ help: try: `"$def"`
+...
+LL | /     all_comes_from_macro! {
+LL | |         required_version: String, env!("HOME").to_string();
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `all_comes_from_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 

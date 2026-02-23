@@ -4,8 +4,7 @@ use std::slice;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
-    DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
-    Semantics,
+    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
     db::{ExpandDatabase, HirDatabase},
 };
 use ide_db::{
@@ -15,6 +14,7 @@ use ide_db::{
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
 };
+use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SourceFile,
@@ -27,7 +27,7 @@ use syntax::{
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::{Removable, SyntaxEditor},
+    syntax_editor::{Element, Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -84,6 +84,17 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
         }
     }
     None
+}
+
+pub(crate) fn wrap_block(expr: &ast::Expr) -> ast::BlockExpr {
+    if let ast::Expr::BlockExpr(block) = expr
+        && let Some(first) = block.syntax().first_token()
+        && first.kind() == T!['{']
+    {
+        block.reset_indent()
+    } else {
+        make::block_expr(None, Some(expr.reset_indent().indent(1.into())))
+    }
 }
 
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
@@ -382,6 +393,28 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
         },
         _ => None,
     }
+}
+
+pub(crate) fn insert_attributes(
+    before: impl Element,
+    edit: &mut SyntaxEditor,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+) {
+    let mut attrs = attrs.into_iter().peekable();
+    if attrs.peek().is_none() {
+        return;
+    }
+    let elem = before.syntax_element();
+    let indent = IndentLevel::from_element(&elem);
+    let whitespace = format!("\n{indent}");
+    edit.insert_all(
+        syntax::syntax_editor::Position::before(elem),
+        attrs
+            .flat_map(|attr| {
+                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
+            })
+            .collect(),
+    );
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
@@ -733,6 +766,11 @@ fn generate_impl_inner(
     });
     let generic_args =
         generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let adt_assoc_bounds = trait_
+        .as_ref()
+        .zip(generic_params.as_ref())
+        .and_then(|(trait_, params)| generic_param_associated_bounds(adt, trait_, params));
+
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
     let cfg_attrs =
@@ -748,13 +786,58 @@ fn generate_impl_inner(
             false,
             trait_,
             ty,
-            None,
+            adt_assoc_bounds,
             adt.where_clause(),
             body,
         ),
         None => make::impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update()
+}
+
+fn generic_param_associated_bounds(
+    adt: &ast::Adt,
+    trait_: &ast::Type,
+    generic_params: &ast::GenericParamList,
+) -> Option<ast::WhereClause> {
+    let in_type_params = |name: &ast::NameRef| {
+        generic_params
+            .generic_params()
+            .filter_map(|param| match param {
+                ast::GenericParam::TypeParam(type_param) => type_param.name(),
+                _ => None,
+            })
+            .any(|param| param.text() == name.text())
+    };
+    let adt_body = match adt {
+        ast::Adt::Enum(e) => e.variant_list().map(|it| it.syntax().clone()),
+        ast::Adt::Struct(s) => s.field_list().map(|it| it.syntax().clone()),
+        ast::Adt::Union(u) => u.record_field_list().map(|it| it.syntax().clone()),
+    };
+    let mut trait_where_clause = adt_body
+        .into_iter()
+        .flat_map(|it| it.descendants())
+        .filter_map(ast::Path::cast)
+        .filter_map(|path| {
+            let qualifier = path.qualifier()?.as_single_segment()?;
+            let qualifier = qualifier
+                .name_ref()
+                .or_else(|| match qualifier.type_anchor()?.ty()? {
+                    ast::Type::PathType(path_type) => path_type.path()?.as_single_name_ref(),
+                    _ => None,
+                })
+                .filter(in_type_params)?;
+            Some((qualifier, path.segment()?.name_ref()?))
+        })
+        .map(|(qualifier, assoc_name)| {
+            let segments = [qualifier, assoc_name].map(make::path_segment);
+            let path = make::path_from_segments(segments, false);
+            let bounds = Some(make::type_bound(trait_.clone()));
+            make::where_pred(either::Either::Right(make::ty_path(path)), bounds)
+        })
+        .unique_by(|it| it.syntax().to_string())
+        .peekable();
+    trait_where_clause.peek().is_some().then(|| make::where_clause(trait_where_clause))
 }
 
 pub(crate) fn add_method_to_adt(
@@ -803,13 +886,12 @@ enum ReferenceConversionType {
 }
 
 impl<'db> ReferenceConversion<'db> {
-    pub(crate) fn convert_type(
-        &self,
-        db: &'db dyn HirDatabase,
-        display_target: DisplayTarget,
-    ) -> ast::Type {
+    pub(crate) fn convert_type(&self, db: &'db dyn HirDatabase, module: hir::Module) -> ast::Type {
         let ty = match self.conversion {
-            ReferenceConversionType::Copy => self.ty.display(db, display_target).to_string(),
+            ReferenceConversionType::Copy => self
+                .ty
+                .display_source_code(db, module.into(), true)
+                .unwrap_or_else(|_| "_".to_owned()),
             ReferenceConversionType::AsRefStr => "&str".to_owned(),
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name = self
@@ -817,8 +899,8 @@ impl<'db> ReferenceConversion<'db> {
                     .type_arguments()
                     .next()
                     .unwrap()
-                    .display(db, display_target)
-                    .to_string();
+                    .display_source_code(db, module.into(), true)
+                    .unwrap_or_else(|_| "_".to_owned());
                 format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
@@ -827,8 +909,8 @@ impl<'db> ReferenceConversion<'db> {
                     .type_arguments()
                     .next()
                     .unwrap()
-                    .display(db, display_target)
-                    .to_string();
+                    .display_source_code(db, module.into(), true)
+                    .unwrap_or_else(|_| "_".to_owned());
                 format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
@@ -837,16 +919,22 @@ impl<'db> ReferenceConversion<'db> {
                     .type_arguments()
                     .next()
                     .unwrap()
-                    .display(db, display_target)
-                    .to_string();
+                    .display_source_code(db, module.into(), true)
+                    .unwrap_or_else(|_| "_".to_owned());
                 format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
-                let first_type_argument_name =
-                    type_arguments.next().unwrap().display(db, display_target).to_string();
-                let second_type_argument_name =
-                    type_arguments.next().unwrap().display(db, display_target).to_string();
+                let first_type_argument_name = type_arguments
+                    .next()
+                    .unwrap()
+                    .display_source_code(db, module.into(), true)
+                    .unwrap_or_else(|_| "_".to_owned());
+                let second_type_argument_name = type_arguments
+                    .next()
+                    .unwrap()
+                    .display_source_code(db, module.into(), true)
+                    .unwrap_or_else(|_| "_".to_owned());
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         };

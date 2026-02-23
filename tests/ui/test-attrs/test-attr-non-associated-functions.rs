@@ -1,4 +1,5 @@
 //@ compile-flags:--test
+//@ reference: attributes.testing.test.allowed-positions
 
 struct A {}
 

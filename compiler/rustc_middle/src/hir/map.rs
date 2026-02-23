@@ -8,7 +8,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -369,7 +368,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
-        find_attr!(self.hir_krate_attrs(), AttributeKind::RustcCoherenceIsCore(..))
+        find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore(..))
     }
 
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
@@ -737,6 +736,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(_) => node_str("const"),
             Node::Expr(_) => node_str("expr"),
             Node::ExprField(_) => node_str("expr field"),
+            Node::ConstArgExprField(_) => node_str("const arg expr field"),
             Node::Stmt(_) => node_str("stmt"),
             Node::PathSegment(_) => node_str("path segment"),
             Node::Ty(_) => node_str("type"),
@@ -1002,9 +1002,10 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.hir_body(constant.body).value.span,
-            Node::ConstArg(const_arg) => const_arg.span(),
+            Node::ConstArg(const_arg) => const_arg.span,
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
+            Node::ConstArgExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
             Node::PathSegment(seg) => {
                 let ident_span = seg.ident.span;
@@ -1224,6 +1225,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners,
         opaques,
         nested_bodies,
+        eiis,
         ..
     } = collector;
     ModuleItems {
@@ -1237,6 +1239,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         delayed_lint_items: Box::new([]),
+        eiis: eiis.into_boxed_slice(),
     }
 }
 
@@ -1259,6 +1262,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques,
         nested_bodies,
         mut delayed_lint_items,
+        eiis,
         ..
     } = collector;
 
@@ -1281,6 +1285,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
         delayed_lint_items: delayed_lint_items.into_boxed_slice(),
+        eiis: eiis.into_boxed_slice(),
     }
 }
 
@@ -1298,6 +1303,7 @@ struct ItemCollector<'tcx> {
     opaques: Vec<LocalDefId>,
     nested_bodies: Vec<LocalDefId>,
     delayed_lint_items: Vec<OwnerId>,
+    eiis: Vec<LocalDefId>,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
@@ -1314,6 +1320,7 @@ impl<'tcx> ItemCollector<'tcx> {
             opaques: Vec::default(),
             nested_bodies: Vec::default(),
             delayed_lint_items: Vec::default(),
+            eiis: Vec::default(),
         }
     }
 }
@@ -1333,6 +1340,12 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         self.items.push(item.item_id());
         if self.crate_collector && item.has_delayed_lints {
             self.delayed_lint_items.push(item.item_id().owner_id);
+        }
+
+        if let ItemKind::Static(..) | ItemKind::Fn { .. } | ItemKind::Macro(..) = &item.kind
+            && item.eii
+        {
+            self.eiis.push(item.owner_id.def_id)
         }
 
         // Items that are modules are handled here instead of in visit_mod.

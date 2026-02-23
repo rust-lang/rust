@@ -1,25 +1,41 @@
 struct Foo {
-    t: String
+    t: String,
 }
 
-fn cond() -> bool { true }
+fn cond() -> bool {
+    true
+}
 
-fn foo<F>(_: F) where F: FnOnce() {}
+fn foo<F>(_: F)
+where
+    F: FnOnce(),
+{
+}
 
 fn main() {
     let pth = break; //~ ERROR: `break` outside of a loop
-    if cond() { continue } //~ ERROR: `continue` outside of a loop
+    if cond() {
+        continue; //~ ERROR: `continue` outside of a loop
+    }
 
     while cond() {
-        if cond() { break }
-        if cond() { continue }
+        if cond() {
+            break;
+        }
+        if cond() {
+            continue;
+        }
         foo(|| {
-            if cond() { break } //~ ERROR: `break` inside of a closure
-            if cond() { continue } //~ ERROR: `continue` inside of a closure
+            if cond() {
+                break; //~ ERROR: `break` inside of a closure
+            }
+            if cond() {
+                continue; //~ ERROR: `continue` inside of a closure
+            }
         })
     }
 
-    let rs: Foo = Foo{t: pth};
+    let rs: Foo = Foo { t: pth };
 
     let unconstrained = break; //~ ERROR: `break` outside of a loop
 
@@ -32,4 +48,10 @@ fn main() {
             //~| ERROR `break` inside of a closure
         };
     }
+
+    // Make sure that a continue span actually contains the keyword. (#28105)
+    continue //~ ERROR `continue` outside of a loop
+    ;
+    break //~ ERROR `break` outside of a loop
+    ;
 }

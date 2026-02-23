@@ -1,0 +1,87 @@
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:43:8
+   |
+LL | extern "msp430-interrupt" fn msp430() {}
+   |        ^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:45:8
+   |
+LL | extern "avr-interrupt" fn avr() {}
+   |        ^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:47:8
+   |
+LL | extern "riscv-interrupt-m" fn riscv_m() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:49:8
+   |
+LL | extern "riscv-interrupt-s" fn riscv_s() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "x86-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:51:8
+   |
+LL | extern "x86-interrupt" fn x86(_x: *const u8) {}
+   |        ^^^^^^^^^^^^^^^
+
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:76:22
+   |
+LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
+   |                      ^^^^^^^^^^^^^^^
+
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:82:25
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                         ^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:88:26
+   |
+LL | fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
+   |                          ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:94:26
+   |
+LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
+   |                          ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "x86-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:100:22
+   |
+LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
+   |                      ^^^^^^^^^^^^^^^
+
+error: functions with the "gpu-kernel" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:70:5
+   |
+LL |     gpu_kernel();
+   |     ^^^^^^^^^^^^
+   |
+note: an `extern "gpu-kernel"` function must be launched on the GPU by the runtime
+  --> $DIR/cannot-be-called.rs:70:5
+   |
+LL |     gpu_kernel();
+   |     ^^^^^^^^^^^^
+
+error: functions with the "gpu-kernel" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:108:5
+   |
+LL |     f()
+   |     ^^^
+   |
+note: an `extern "gpu-kernel"` function must be launched on the GPU by the runtime
+  --> $DIR/cannot-be-called.rs:108:5
+   |
+LL |     f()
+   |     ^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

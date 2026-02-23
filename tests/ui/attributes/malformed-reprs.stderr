@@ -5,17 +5,6 @@ LL | #![repr]
    | ^^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #![repr(<integer type>)]
-   |        ++++++++++++++++
-LL | #![repr(C)]
-   |        +++
-LL | #![repr(Rust)]
-   |        ++++++
-LL | #![repr(align(...))]
-   |        ++++++++++++
-   = and 2 other candidates
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
   --> $DIR/malformed-reprs.rs:9:14

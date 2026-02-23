@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{join, par_for_each_in};
+use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
@@ -35,6 +35,7 @@ use rustc_span::{
 };
 use tracing::{debug, instrument, trace};
 
+use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
@@ -541,8 +542,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // is done.
         let required_source_files = self.required_source_files.take().unwrap();
 
-        let working_directory = &self.tcx.sess.opts.working_dir;
-
         let mut adapted = TableBuilder::default();
 
         let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
@@ -567,10 +566,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    let adapted_file_name = source_map
-                        .path_mapping()
-                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
-
+                    let mut adapted_file_name = original_file_name.clone();
+                    adapted_file_name.update_for_crate_metadata();
                     adapted_source_file.name = FileName::Real(adapted_file_name);
                 }
                 _ => {
@@ -619,6 +616,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // We have already encoded some things. Get their combined size from the current position.
         stats.push(("preamble", self.position()));
+
+        let externally_implementable_items = stat!("externally-implementable-items", || self
+            .encode_externally_implementable_items());
 
         let (crate_deps, dylib_dependency_formats) =
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
@@ -734,18 +734,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: ast::attr::contains_name(
-                    attrs,
-                    sym::default_lib_allocator,
-                ),
+                has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
+                externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: ast::attr::contains_name(attrs, sym::needs_allocator),
-                needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
-                no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
-                panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
-                profiler_runtime: ast::attr::contains_name(attrs, sym::profiler_runtime),
+                compiler_builtins: find_attr!(attrs, CompilerBuiltins),
+                needs_allocator: find_attr!(attrs, NeedsAllocator),
+                needs_panic_runtime: find_attr!(attrs, NeedsPanicRuntime),
+                no_builtins: find_attr!(attrs, NoBuiltins),
+                panic_runtime: find_attr!(attrs, PanicRuntime),
+                profiler_runtime: find_attr!(attrs, ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -870,26 +868,17 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         && !rustc_feature::encode_cross_crate(name)
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
-    } else if attr.doc_str().is_some() {
+    } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
         // their own.
         if state.is_exported {
             should_encode = true;
         }
-    } else if attr.has_name(sym::doc) {
-        // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
-        // `#[doc(inline)]`), then we can remove it. It won't be inlinable in downstream crates.
-        if let Some(item_list) = attr.meta_item_list() {
-            for item in item_list {
-                if !item.has_name(sym::inline) {
-                    should_encode = true;
-                    if item.has_name(sym::hidden) {
-                        state.is_doc_hidden = true;
-                        break;
-                    }
-                }
-            }
+    } else if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+        should_encode = true;
+        if d.hidden.is_some() {
+            state.is_doc_hidden = true;
         }
     } else if let &[sym::diagnostic, seg] = &*attr.path() {
         should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
@@ -1110,12 +1099,8 @@ fn should_encode_mir(
     def_id: LocalDefId,
 ) -> (bool, bool) {
     match tcx.def_kind(def_id) {
-        // Constructors
-        DefKind::Ctor(_, _) => {
-            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.unstable_opts.always_encode_mir;
-            (true, mir_opt_base)
-        }
+        // instance_mir uses mir_for_ctfe rather than optimized_mir for constructors
+        DefKind::Ctor(_, _) => (true, false),
         // Constants
         DefKind::AnonConst | DefKind::InlineConst | DefKind::AssocConst | DefKind::Const => {
             (true, false)
@@ -1125,11 +1110,10 @@ fn should_encode_mir(
         DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
-            let generics = tcx.generics_of(def_id);
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
-                    && (generics.requires_monomorphization(tcx)
+                    && (tcx.generics_of(def_id).requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `const trait`.
             let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
@@ -1387,9 +1371,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 }
 
 fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-        && find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
-        // AssocConst ==> assoc item has value
+    // AssocConst ==> assoc item has value
+    tcx.is_type_const(def_id)
         && (!matches!(def_kind, DefKind::AssocConst) || assoc_item_has_value(tcx, def_id))
 }
 
@@ -1448,14 +1431,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
                         // Skip encoding defs for these as they should not have had a `DefId` created
                         hir::ConstArgKind::Error(..)
+                        | hir::ConstArgKind::Struct(..)
+                        | hir::ConstArgKind::Array(..)
+                        | hir::ConstArgKind::TupleCall(..)
+                        | hir::ConstArgKind::Tup(..)
                         | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Literal { .. }
                         | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
                     _ => false,
                 }
             {
-                continue;
+                // MGCA doesn't have unnecessary DefIds
+                if !tcx.features().min_generic_const_args() {
+                    continue;
+                }
             }
 
             if def_kind == DefKind::Field
@@ -1636,6 +1627,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let table = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
                 record!(self.tables.associated_types_for_impl_traits_in_trait_or_impl[def_id] <- table);
             }
+            if let DefKind::AssocConst | DefKind::Const = def_kind {
+                record!(self.tables.is_rhs_type_const[def_id] <- self.tcx.is_rhs_type_const(def_id));
+            }
         }
 
         for (def_id, impls) in &tcx.crate_inherent_impls(()).0.inherent_impls {
@@ -1652,6 +1646,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         for (def_id, traits) in &tcx.resolutions(()).doc_link_traits_in_scope {
             record_array!(self.tables.doc_link_traits_in_scope[def_id.to_def_id()] <- traits);
         }
+    }
+
+    fn encode_externally_implementable_items(&mut self) -> LazyArray<EiiMapEncodedKeyValue> {
+        empty_proc_macro!(self);
+        let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
+
+        self.lazy_array(externally_implementable_items.iter().map(
+            |(foreign_item, (decl, impls))| {
+                (
+                    *foreign_item,
+                    (decl.clone(), impls.iter().map(|(impl_did, i)| (*impl_did, *i)).collect()),
+                )
+            },
+        ))
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -2004,11 +2012,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
+                let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
                     MacroKind::Bang
-                } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
+                } else if find_attr!(attrs, ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                } else if let Some(trait_name) =
+                    find_attr!(attrs, ProcMacroDerive { trait_name, ..} => trait_name)
                 {
                     name = *trait_name;
                     MacroKind::Derive
@@ -2064,7 +2073,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     name: self.tcx.crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
-                    kind: self.tcx.dep_kind(cnum),
+                    kind: self.tcx.crate_dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum).clone(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };
@@ -2450,7 +2459,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         // Prefetch some queries used by metadata encoding.
         // This is not necessary for correctness, but is only done for performance reasons.
         // It can be removed if it turns out to cause trouble or be detrimental to performance.
-        join(
+        par_join(
             || prefetch_mir(tcx),
             || {
                 let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);

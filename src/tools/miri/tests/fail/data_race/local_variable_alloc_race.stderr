@@ -11,6 +11,16 @@ LL |             StorageLive(val);
    |             ^^^^^^^^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/data_race/local_variable_alloc_race.rs:LL:CC
+   |
+LL | /     std::thread::spawn(|| {
+LL | |         while P.load(Relaxed).is_null() {
+LL | |             std::hint::spin_loop();
+...  |
+LL | |     })
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

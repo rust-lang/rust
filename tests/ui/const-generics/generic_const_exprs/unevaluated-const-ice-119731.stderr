@@ -2,10 +2,13 @@ error[E0432]: unresolved import `v20::v13`
   --> $DIR/unevaluated-const-ice-119731.rs:42:15
    |
 LL | pub use v20::{v13, v17};
-   |               ^^^
-   |               |
-   |               no `v13` in `v20`
-   |               help: a similar name exists in the module: `v11`
+   |               ^^^ no `v13` in `v20`
+   |
+help: a similar name exists in the module
+   |
+LL - pub use v20::{v13, v17};
+LL + pub use v20::{v11, v17};
+   |
 
 error[E0425]: cannot find value `v8` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:13:38

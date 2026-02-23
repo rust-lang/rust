@@ -1,6 +1,6 @@
 use std::ffi::{CString, OsStr};
 use std::path::{Path, PathBuf, absolute};
-use std::{env, fs, io};
+use std::{fs, io};
 
 use tempfile::TempDir;
 
@@ -138,9 +138,5 @@ impl<'a, 'b> TempDirBuilder<'a, 'b> {
             std::thread::sleep(std::time::Duration::from_millis(1 << wait));
         }
         self.builder.tempdir_in(dir)
-    }
-
-    pub fn tempdir(&self) -> io::Result<TempDir> {
-        self.tempdir_in(env::temp_dir())
     }
 }

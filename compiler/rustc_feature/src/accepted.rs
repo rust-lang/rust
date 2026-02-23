@@ -25,9 +25,6 @@ declare_features! (
     // feature-group-start: for testing purposes
     // -------------------------------------------------------------------------
 
-    /// A temporary feature gate used to enable parser extensions needed
-    /// to bootstrap fix for #5723.
-    (accepted, issue_5723_bootstrap, "1.0.0", None),
     /// These are used to test this portion of the compiler,
     /// they don't actually mean anything.
     (accepted, test_accepted_feature, "1.0.0", None),
@@ -61,7 +58,7 @@ declare_features! (
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
     /// Allows #[cfg(...)] on inline assembly templates and operands.
-    (accepted, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
+    (accepted, asm_cfg, "1.93.0", Some(140364)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `label` operands in inline assembly.
@@ -218,7 +215,7 @@ declare_features! (
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660)),
     /// Allows using `system` as a calling convention with varargs.
-    (accepted, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
+    (accepted, extern_system_varargs, "1.93.0", Some(136946)),
     /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, f16c_target_feature, "1.68.0", Some(44839)),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
@@ -235,7 +232,7 @@ declare_features! (
     (accepted, generic_param_attrs, "1.27.0", Some(48848)),
     /// Allows the `#[global_allocator]` attribute.
     (accepted, global_allocator, "1.28.0", Some(27389)),
-    // FIXME: explain `globs`.
+    /// Allows globs imports (`use module::*;`) to import all public items from a module.
     (accepted, globs, "1.0.0", None),
     /// Allows using `..=X` as a pattern.
     (accepted, half_open_range_patterns, "1.66.0", Some(67264)),
@@ -243,6 +240,8 @@ declare_features! (
     (accepted, i128_type, "1.26.0", Some(35118)),
     /// Allows the use of `if let` expressions.
     (accepted, if_let, "1.0.0", None),
+    /// Allows `if let` guard in match arms.
+    (accepted, if_let_guard, "CURRENT_RUSTC_VERSION", Some(51114)),
     /// Rescoping temporaries in `if let` to align with Rust 2024.
     (accepted, if_let_rescope, "1.84.0", Some(124085)),
     /// Allows top level or-patterns (`p | q`) in `if let` and `while let`.
@@ -392,7 +391,7 @@ declare_features! (
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
     /// Allows use of the `vector` and related s390x target features.
-    (accepted, s390x_target_feature_vector, "CURRENT_RUSTC_VERSION", Some(145649)),
+    (accepted, s390x_target_feature_vector, "1.93.0", Some(145649)),
     /// Allows `Self` in type definitions (RFC 2300).
     (accepted, self_in_typedefs, "1.32.0", Some(49303)),
     /// Allows `Self` struct constructor (RFC 2302).

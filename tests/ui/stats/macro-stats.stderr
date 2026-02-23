@@ -4,11 +4,11 @@ macro-stats Macro Name                         Uses      Lines  Avg Lines      B
 macro-stats -----------------------------------------------------------------------------------
 macro-stats #[derive(Clone)]                      8         67        8.4      1_879      234.9
 macro-stats #[derive(PartialOrd)]                 1         17       17.0        675      675.0
-macro-stats #[derive(Hash)]                       2         17        8.5        577      288.5
+macro-stats #[derive(Hash)]                       2         17        8.5        565      282.5
 macro-stats q!                                    1         26       26.0        519      519.0
 macro-stats #[derive(Ord)]                        1         15       15.0        503      503.0
 macro-stats #[derive(Default)]                    2         16        8.0        403      201.5
-macro-stats #[derive(Eq)]                         1         11       11.0        325      325.0
+macro-stats #[derive(Eq)]                         1         11       11.0        319      319.0
 macro-stats #[derive(Debug)]                      1          8        8.0        277      277.0
 macro-stats #[derive(PartialEq)]                  1          9        9.0        267      267.0
 macro-stats #[derive(Copy)]                       1          2        2.0         61       61.0

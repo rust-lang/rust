@@ -143,7 +143,7 @@ fn response_no_constraints<I: Interner>(
     Ok(response_no_constraints_raw(
         cx,
         input.canonical.max_universe,
-        input.canonical.variables,
+        input.canonical.var_kinds,
         certainty,
     ))
 }

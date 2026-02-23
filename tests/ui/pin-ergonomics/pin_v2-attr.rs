@@ -25,8 +25,8 @@ union Union {
 // disallowed
 
 enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {
-    //~^ ERROR `#[pin_v2]` attribute cannot be used on function params
-    //~| ERROR `#[pin_v2]` attribute cannot be used on function params
+    //~^ ERROR `#[pin_v2]` attribute cannot be used on type parameters
+    //~| ERROR `#[pin_v2]` attribute cannot be used on type parameters
     #[pin_v2] //~ ERROR `#[pin_v2]` attribute cannot be used on enum variants
     UnitVariant,
     TupleVariant(#[pin_v2] T), //~ ERROR `#[pin_v2]` attribute cannot be used on struct fields

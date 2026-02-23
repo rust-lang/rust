@@ -23,9 +23,7 @@ pub fn do_call() {
 
     unsafe {
         // Ensure that we `call` LLVM intrinsics instead of trying to `invoke` them
-        // CHECK: store float 4.000000e+00, ptr %{{.}}, align 4
-        // CHECK: load float, ptr %{{.}}, align 4
-        // CHECK: call float @llvm.sqrt.f32(float %{{.}}
+        // CHECK: call float @llvm.sqrt.f32(float 4.000000e+00)
         sqrt(4.0);
     }
 }

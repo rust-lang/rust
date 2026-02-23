@@ -54,7 +54,7 @@ pub fn span_with_mixed_site_ctxt(
     expn_id: MacroCallId,
     edition: Edition,
 ) -> Span {
-    span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent, edition)
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiOpaque, edition)
 }
 
 fn span_with_ctxt_from_mark(
@@ -82,7 +82,7 @@ pub(super) fn apply_mark(
     }
 
     let call_site_ctxt = db.lookup_intern_macro_call(call_id.into()).ctxt;
-    let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
+    let mut call_site_ctxt = if transparency == Transparency::SemiOpaque {
         call_site_ctxt.normalize_to_macros_2_0(db)
     } else {
         call_site_ctxt.normalize_to_macro_rules(db)
@@ -117,16 +117,16 @@ fn apply_mark_internal(
     let call_id = Some(call_id);
 
     let mut opaque = ctxt.opaque(db);
-    let mut opaque_and_semitransparent = ctxt.opaque_and_semitransparent(db);
+    let mut opaque_and_semiopaque = ctxt.opaque_and_semiopaque(db);
 
     if transparency >= Transparency::Opaque {
         let parent = opaque;
         opaque = SyntaxContext::new(db, call_id, transparency, edition, parent, identity, identity);
     }
 
-    if transparency >= Transparency::SemiTransparent {
-        let parent = opaque_and_semitransparent;
-        opaque_and_semitransparent =
+    if transparency >= Transparency::SemiOpaque {
+        let parent = opaque_and_semiopaque;
+        opaque_and_semiopaque =
             SyntaxContext::new(db, call_id, transparency, edition, parent, |_| opaque, identity);
     }
 
@@ -138,6 +138,6 @@ fn apply_mark_internal(
         edition,
         parent,
         |_| opaque,
-        |_| opaque_and_semitransparent,
+        |_| opaque_and_semiopaque,
     )
 }

@@ -124,9 +124,9 @@ mod tests {
     // this function tests one of the possible 4 instances
     // with different inputs across lanes
     #[target_feature(enable = "vpclmulqdq,avx512f")]
-    unsafe fn verify_512_helper(
-        linear: unsafe fn(__m128i, __m128i) -> __m128i,
-        vectorized: unsafe fn(__m512i, __m512i) -> __m512i,
+    fn verify_512_helper(
+        linear: fn(__m128i, __m128i) -> __m128i,
+        vectorized: fn(__m512i, __m512i) -> __m512i,
     ) {
         let a = _mm512_set_epi64(
             0xDCB4DB3657BF0B7D,
@@ -165,9 +165,9 @@ mod tests {
     // this function tests one of the possible 4 instances
     // with different inputs across lanes for the VL version
     #[target_feature(enable = "vpclmulqdq,avx512vl")]
-    unsafe fn verify_256_helper(
-        linear: unsafe fn(__m128i, __m128i) -> __m128i,
-        vectorized: unsafe fn(__m256i, __m256i) -> __m256i,
+    fn verify_256_helper(
+        linear: fn(__m128i, __m128i) -> __m128i,
+        vectorized: fn(__m256i, __m256i) -> __m256i,
     ) {
         let a = _mm512_set_epi64(
             0xDCB4DB3657BF0B7D,
@@ -207,7 +207,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vpclmulqdq,avx512f")]
-    unsafe fn test_mm512_clmulepi64_epi128() {
+    fn test_mm512_clmulepi64_epi128() {
         verify_kat_pclmul!(
             _mm512_broadcast_i32x4,
             _mm512_clmulepi64_epi128,
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[simd_test(enable = "vpclmulqdq,avx512vl")]
-    unsafe fn test_mm256_clmulepi64_epi128() {
+    fn test_mm256_clmulepi64_epi128() {
         verify_kat_pclmul!(
             _mm256_broadcastsi128_si256,
             _mm256_clmulepi64_epi128,

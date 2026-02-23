@@ -1,6 +1,12 @@
+use itertools::{Itertools, chain};
 use syntax::{
     SyntaxKind::WHITESPACE,
-    ast::{AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make},
+    TextRange,
+    ast::{
+        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make,
+        prec::ExprPrecedence, syntax_factory::SyntaxFactory,
+    },
+    syntax_editor::Element,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -39,13 +45,26 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
         cov_mark::hit!(move_guard_inapplicable_in_arm_body);
         return None;
     }
-    let space_before_guard = guard.syntax().prev_sibling_or_token();
+    let rest_arms = rest_arms(&match_arm, ctx.selection_trimmed())?;
+    let space_before_delete = chain(
+        guard.syntax().prev_sibling_or_token(),
+        rest_arms.iter().filter_map(|it| it.syntax().prev_sibling_or_token()),
+    );
     let space_after_arrow = match_arm.fat_arrow_token()?.next_sibling_or_token();
 
-    let guard_condition = guard.condition()?.reset_indent();
     let arm_expr = match_arm.expr()?;
-    let then_branch = make::block_expr(None, Some(arm_expr.reset_indent().indent(1.into())));
-    let if_expr = make::expr_if(guard_condition, then_branch, None).indent(arm_expr.indent_level());
+    let if_branch = chain([&match_arm], &rest_arms)
+        .rfold(None, |else_branch, arm| {
+            if let Some(guard) = arm.guard() {
+                let then_branch = crate::utils::wrap_block(&arm.expr()?);
+                let guard_condition = guard.condition()?.reset_indent();
+                Some(make::expr_if(guard_condition, then_branch, else_branch).into())
+            } else {
+                arm.expr().map(|it| crate::utils::wrap_block(&it).into())
+            }
+        })?
+        .indent(arm_expr.indent_level());
+    let ElseBranch::IfExpr(if_expr) = if_branch else { return None };
 
     let target = guard.syntax().text_range();
     acc.add(
@@ -54,10 +73,13 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
         target,
         |builder| {
             let mut edit = builder.make_editor(match_arm.syntax());
-            if let Some(element) = space_before_guard
-                && element.kind() == WHITESPACE
-            {
-                edit.delete(element);
+            for element in space_before_delete {
+                if element.kind() == WHITESPACE {
+                    edit.delete(element);
+                }
+            }
+            for rest_arm in &rest_arms {
+                edit.delete(rest_arm.syntax());
             }
             if let Some(element) = space_after_arrow
                 && element.kind() == WHITESPACE
@@ -104,10 +126,15 @@ pub(crate) fn move_arm_cond_to_match_guard(
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let match_pat = match_arm.pat()?;
     let arm_body = match_arm.expr()?;
+    let arm_guard = match_arm.guard().and_then(|it| it.condition());
 
     let mut replace_node = None;
     let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone()).or_else(|| {
         let block_expr = BlockExpr::cast(arm_body.syntax().clone())?;
+        if block_expr.statements().next().is_some() {
+            cov_mark::hit!(move_guard_non_naked_if);
+            return None;
+        }
         if let Expr::IfExpr(e) = block_expr.tail_expr()? {
             replace_node = Some(block_expr.syntax().clone());
             Some(e)
@@ -127,8 +154,10 @@ pub(crate) fn move_arm_cond_to_match_guard(
         AssistId::refactor_rewrite("move_arm_cond_to_match_guard"),
         "Move condition to match guard",
         replace_node.text_range(),
-        |edit| {
-            edit.delete(match_arm.syntax().text_range());
+        |builder| {
+            let make = SyntaxFactory::without_mappings();
+            let mut replace_arms = vec![];
+
             // Dedent if if_expr is in a BlockExpr
             let dedent = if needs_dedent {
                 cov_mark::hit!(move_guard_ifelse_in_block);
@@ -137,47 +166,48 @@ pub(crate) fn move_arm_cond_to_match_guard(
                 cov_mark::hit!(move_guard_ifelse_else_block);
                 0
             };
-            let then_arm_end = match_arm.syntax().text_range().end();
             let indent_level = match_arm.indent_level();
-            let spaces = indent_level;
+            let make_guard = |cond: Option<Expr>| {
+                let condition = match (arm_guard.clone(), cond) {
+                    (None, None) => return None,
+                    (None, Some(it)) | (Some(it), None) => it,
+                    (Some(lhs), Some(rhs)) => {
+                        let op_expr = |expr: Expr| {
+                            if expr.precedence().needs_parentheses_in(ExprPrecedence::LAnd) {
+                                make.expr_paren(expr).into()
+                            } else {
+                                expr
+                            }
+                        };
+                        let op = syntax::ast::BinaryOp::LogicOp(syntax::ast::LogicOp::And);
+                        let expr_bin = make.expr_bin(op_expr(lhs), op, op_expr(rhs));
+                        expr_bin.into()
+                    }
+                };
+                Some(make.match_guard(condition))
+            };
 
-            let mut first = true;
             for (cond, block) in conds_blocks {
-                if !first {
-                    edit.insert(then_arm_end, format!("\n{spaces}"));
-                } else {
-                    first = false;
-                }
-                let guard = format!("{match_pat} if {cond} => ");
-                edit.insert(then_arm_end, guard);
                 let only_expr = block.statements().next().is_none();
-                match &block.tail_expr() {
-                    Some(then_expr) if only_expr => {
-                        edit.insert(then_arm_end, then_expr.syntax().text());
-                        edit.insert(then_arm_end, ",");
-                    }
-                    _ => {
-                        let to_insert = block.dedent(dedent.into()).syntax().text();
-                        edit.insert(then_arm_end, to_insert)
-                    }
-                }
+                let expr = match block.tail_expr() {
+                    Some(then_expr) if only_expr => then_expr,
+                    _ => block.dedent(dedent.into()).into(),
+                };
+                let new_arm = make.match_arm(match_pat.clone(), make_guard(Some(cond)), expr);
+                replace_arms.push(new_arm);
             }
-            if let Some(e) = tail {
+            if let Some(block) = tail {
                 cov_mark::hit!(move_guard_ifelse_else_tail);
-                let guard = format!("\n{spaces}{match_pat} => ");
-                edit.insert(then_arm_end, guard);
-                let only_expr = e.statements().next().is_none();
-                match &e.tail_expr() {
+                let only_expr = block.statements().next().is_none();
+                let expr = match block.tail_expr() {
                     Some(expr) if only_expr => {
                         cov_mark::hit!(move_guard_ifelse_expr_only);
-                        edit.insert(then_arm_end, expr.syntax().text());
-                        edit.insert(then_arm_end, ",");
+                        expr
                     }
-                    _ => {
-                        let to_insert = e.dedent(dedent.into()).syntax().text();
-                        edit.insert(then_arm_end, to_insert)
-                    }
-                }
+                    _ => block.dedent(dedent.into()).into(),
+                };
+                let new_arm = make.match_arm(match_pat, make_guard(None), expr);
+                replace_arms.push(new_arm);
             } else {
                 // There's no else branch. Add a pattern without guard, unless the following match
                 // arm is `_ => ...`
@@ -189,11 +219,42 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     {
                         cov_mark::hit!(move_guard_ifelse_has_wildcard);
                     }
-                    _ => edit.insert(then_arm_end, format!("\n{spaces}{match_pat} => {{}}")),
+                    _ => {
+                        let block_expr = make.expr_empty_block().into();
+                        replace_arms.push(make.match_arm(match_pat, make_guard(None), block_expr));
+                    }
                 }
             }
+
+            let mut edit = builder.make_editor(match_arm.syntax());
+
+            let newline = make.whitespace(&format!("\n{indent_level}"));
+            let replace_arms = replace_arms.iter().map(|it| it.syntax().syntax_element());
+            let replace_arms = Itertools::intersperse(replace_arms, newline.syntax_element());
+            edit.replace_with_many(match_arm.syntax(), replace_arms.collect());
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
+}
+
+fn rest_arms(match_arm: &MatchArm, selection: TextRange) -> Option<Vec<MatchArm>> {
+    match_arm
+        .parent_match()
+        .match_arm_list()?
+        .arms()
+        .skip_while(|it| it != match_arm)
+        .skip(1)
+        .take_while(move |it| {
+            selection.is_empty() || crate::utils::is_selected(it, selection, false)
+        })
+        .take_while(move |it| {
+            it.pat()
+                .zip(match_arm.pat())
+                .is_some_and(|(a, b)| a.syntax().text() == b.syntax().text())
+        })
+        .collect::<Vec<_>>()
+        .into()
 }
 
 // Parses an if-else-if chain to get the conditions and the then branches until we encounter an else
@@ -238,6 +299,46 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn move_non_naked_arm_cond_to_guard() {
+        cov_mark::check!(move_guard_non_naked_if);
+        check_assist_not_applicable(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        _ => {
+            let cond = true;
+            $0if cond {
+                foo()
+            }
+        },
+        _ => true
+    }
+}
+"#,
+        );
+        check_assist_not_applicable(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        _ => {
+            let cond = true;
+            $0if cond {
+                foo()
+            } else {
+                bar()
+            }
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
     #[test]
     fn move_guard_to_arm_body_target() {
         check_assist_target(
@@ -270,6 +371,144 @@ fn main() {
 fn main() {
     match 92 {
         x => if x > 10 {
+            false
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_multiple_guard_to_arm_body_works() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 $0if x % 3 == 0 => false,
+        x @ 0..30 if x % 2 == 0 => true,
+        _ => false
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 => if x % 3 == 0 {
+            false
+        } else if x % 2 == 0 {
+            true
+        },
+        _ => false
+    }
+}
+"#,
+        );
+
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 $0if x % 3 == 0 => false,
+        x @ 0..30 if x % 2 == 0 => true,
+        x @ 0..30 => false,
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 => if x % 3 == 0 {
+            false
+        } else if x % 2 == 0 {
+            true
+        } else {
+            false
+        },
+        _ => true
+    }
+}
+"#,
+        );
+
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 if x % 3 == 0 => false,
+        x @ 0..30 $0if x % 2 == 0$0 => true,
+        x @ 0..30 => false,
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 if x % 3 == 0 => false,
+        x @ 0..30 => if x % 2 == 0 {
+            true
+        },
+        x @ 0..30 => false,
+        _ => true
+    }
+}
+"#,
+        );
+
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 $0if x % 3 == 0 => false,
+        x @ 0..30 $0if x % 2 == 0 => true,
+        x @ 0..30 => false,
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x @ 0..30 => if x % 3 == 0 {
+            false
+        } else if x % 2 == 0 {
+            true
+        },
+        x @ 0..30 => false,
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_guard_to_block_arm_body_works() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x $0if x > 10 => {
+            let _ = true;
+            false
+        },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            let _ = true;
             false
         },
         _ => true
@@ -330,9 +569,7 @@ fn main() {
             && true
             && true {
             {
-                {
-                    false
-                }
+                false
             }
         },
         _ => true
@@ -1033,6 +1270,42 @@ fn main() {
             3
         }
         x => {}
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_exist_guard() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    let cond = true;
+    match 92 {
+        3 => true,
+        x if cond => if x $0> 10 {
+            false
+        } else if x > 5 {
+            true
+        } else if x > 4 || x < -2 {
+            false
+        } else {
+            true
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    let cond = true;
+    match 92 {
+        3 => true,
+        x if cond && x > 10 => false,
+        x if cond && x > 5 => true,
+        x if cond && (x > 4 || x < -2) => false,
+        x if cond => true,
     }
 }
 "#,

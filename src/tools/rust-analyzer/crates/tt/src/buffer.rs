@@ -1,16 +1,16 @@
 //! Stateful iteration over token trees.
 //!
 //! We use this as the source of tokens for parser.
-use crate::{Leaf, Subtree, TokenTree, TokenTreesView};
+use crate::{Leaf, Subtree, TokenTree, TokenTreesView, dispatch_ref};
 
-pub struct Cursor<'a, Span> {
-    buffer: &'a [TokenTree<Span>],
+pub struct Cursor<'a> {
+    buffer: TokenTreesView<'a>,
     index: usize,
     subtrees_stack: Vec<usize>,
 }
 
-impl<'a, Span: Copy> Cursor<'a, Span> {
-    pub fn new(buffer: &'a [TokenTree<Span>]) -> Self {
+impl<'a> Cursor<'a> {
+    pub fn new(buffer: TokenTreesView<'a>) -> Self {
         Self { buffer, index: 0, subtrees_stack: Vec::new() }
     }
 
@@ -23,16 +23,22 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
         self.subtrees_stack.is_empty()
     }
 
-    fn last_subtree(&self) -> Option<(usize, &'a Subtree<Span>)> {
+    fn at(&self, idx: usize) -> Option<TokenTree> {
+        dispatch_ref! {
+            match self.buffer.repr => tt => Some(tt.get(idx)?.to_api(self.buffer.span_parts))
+        }
+    }
+
+    fn last_subtree(&self) -> Option<(usize, Subtree)> {
         self.subtrees_stack.last().map(|&subtree_idx| {
-            let TokenTree::Subtree(subtree) = &self.buffer[subtree_idx] else {
+            let Some(TokenTree::Subtree(subtree)) = self.at(subtree_idx) else {
                 panic!("subtree pointing to non-subtree");
             };
             (subtree_idx, subtree)
         })
     }
 
-    pub fn end(&mut self) -> &'a Subtree<Span> {
+    pub fn end(&mut self) -> Subtree {
         let (last_subtree_idx, last_subtree) =
             self.last_subtree().expect("called `Cursor::end()` without an open subtree");
         // +1 because `Subtree.len` excludes the subtree itself.
@@ -46,14 +52,14 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
     }
 
     /// Returns the `TokenTree` at the cursor if it is not at the end of a subtree.
-    pub fn token_tree(&self) -> Option<&'a TokenTree<Span>> {
+    pub fn token_tree(&self) -> Option<TokenTree> {
         if let Some((last_subtree_idx, last_subtree)) = self.last_subtree() {
             // +1 because `Subtree.len` excludes the subtree itself.
             if last_subtree_idx + last_subtree.usize_len() + 1 == self.index {
                 return None;
             }
         }
-        self.buffer.get(self.index)
+        self.at(self.index)
     }
 
     /// Bump the cursor, and enters a subtree if it is on one.
@@ -66,7 +72,7 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
                 "called `Cursor::bump()` when at the end of a subtree"
             );
         }
-        if let TokenTree::Subtree(_) = self.buffer[self.index] {
+        if let Some(TokenTree::Subtree(_)) = self.at(self.index) {
             self.subtrees_stack.push(self.index);
         }
         self.index += 1;
@@ -81,13 +87,13 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
             }
         }
         // +1 because `Subtree.len` excludes the subtree itself.
-        if let TokenTree::Subtree(_) = self.buffer[self.index] {
+        if let Some(TokenTree::Subtree(_)) = self.at(self.index) {
             self.subtrees_stack.push(self.index);
         }
         self.index += 1;
     }
 
-    pub fn peek_two_leaves(&self) -> Option<[&'a Leaf<Span>; 2]> {
+    pub fn peek_two_leaves(&self) -> Option<[Leaf; 2]> {
         if let Some((last_subtree_idx, last_subtree)) = self.last_subtree() {
             // +1 because `Subtree.len` excludes the subtree itself.
             let last_end = last_subtree_idx + last_subtree.usize_len() + 1;
@@ -95,14 +101,17 @@ impl<'a, Span: Copy> Cursor<'a, Span> {
                 return None;
             }
         }
-        self.buffer.get(self.index..self.index + 2).and_then(|it| match it {
-            [TokenTree::Leaf(a), TokenTree::Leaf(b)] => Some([a, b]),
+        self.at(self.index).zip(self.at(self.index + 1)).and_then(|it| match it {
+            (TokenTree::Leaf(a), TokenTree::Leaf(b)) => Some([a, b]),
             _ => None,
         })
     }
 
-    pub fn crossed(&self) -> TokenTreesView<'a, Span> {
+    pub fn crossed(&self) -> TokenTreesView<'a> {
         assert!(self.is_root());
-        TokenTreesView::new(&self.buffer[..self.index])
+        TokenTreesView {
+            repr: self.buffer.repr.get(..self.index).unwrap(),
+            span_parts: self.buffer.span_parts,
+        }
     }
 }

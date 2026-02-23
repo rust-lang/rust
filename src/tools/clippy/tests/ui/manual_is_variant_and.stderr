@@ -222,5 +222,17 @@ error: called `.map() != Ok()`
 LL |         let a1 = b.map(iad) != Ok(false);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!b.is_ok_and(|x| !iad(x))`
 
-error: aborting due to 31 previous errors
+error: manual implementation of `Option::is_none_or`
+  --> tests/ui/manual_is_variant_and.rs:242:13
+   |
+LL |     let _ = opt.is_none() || opt.is_some_and(then_fn);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.is_none_or(then_fn)`
+
+error: manual implementation of `Option::is_none_or`
+  --> tests/ui/manual_is_variant_and.rs:245:13
+   |
+LL |     let _ = opt.is_some_and(then_fn) || opt.is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `opt.is_none_or(then_fn)`
+
+error: aborting due to 33 previous errors
 

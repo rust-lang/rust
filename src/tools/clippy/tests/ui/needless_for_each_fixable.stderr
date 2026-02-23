@@ -154,5 +154,22 @@ error: needless use of `for_each`
 LL |     vec.iter().for_each(|v| println!("{v}"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.iter() { println!("{v}"); }`
 
-error: aborting due to 11 previous errors
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:155:5
+   |
+LL | /     vec.iter().for_each(|elem| {
+LL | |
+LL | |         println!("{elem}");
+LL | |     })
+   | |______^
+   |
+help: try
+   |
+LL ~     for elem in vec.iter() {
+LL +
+LL +         println!("{elem}");
+LL +     }
+   |
+
+error: aborting due to 12 previous errors
 

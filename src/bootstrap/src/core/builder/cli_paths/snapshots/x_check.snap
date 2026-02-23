@@ -28,7 +28,6 @@ expression: check
     - Set({check::compiler/rustc_errors})
     - Set({check::compiler/rustc_expand})
     - Set({check::compiler/rustc_feature})
-    - Set({check::compiler/rustc_fluent_macro})
     - Set({check::compiler/rustc_fs_util})
     - Set({check::compiler/rustc_graphviz})
     - Set({check::compiler/rustc_hashes})
@@ -64,7 +63,6 @@ expression: check
     - Set({check::compiler/rustc_public})
     - Set({check::compiler/rustc_public_bridge})
     - Set({check::compiler/rustc_query_impl})
-    - Set({check::compiler/rustc_query_system})
     - Set({check::compiler/rustc_resolve})
     - Set({check::compiler/rustc_sanitizers})
     - Set({check::compiler/rustc_serialize})
@@ -82,7 +80,8 @@ expression: check
     - Set({check::compiler/rustc_windows_rc})
 [Check] check::Rustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({check::src/librustdoc, check::src/tools/rustdoc})
+    - Set({check::src/librustdoc})
+    - Set({check::src/tools/rustdoc})
 [Check] check::CraneliftCodegenBackend
     targets: [x86_64-unknown-linux-gnu]
     - Set({check::cg_clif})

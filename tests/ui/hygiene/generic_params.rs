@@ -11,7 +11,7 @@ mod type_params {
         }
     }
 
-    #[rustc_macro_transparency = "semitransparent"]
+    #[rustc_macro_transparency = "semiopaque"]
     macro n($T:ident) {
         fn g<$T: Clone>(t1: $T, t2: T) -> (T, $T) {
             (t1.clone(), t2.clone())
@@ -43,7 +43,7 @@ mod lifetime_params {
         }
     }
 
-    #[rustc_macro_transparency = "semitransparent"]
+    #[rustc_macro_transparency = "semiopaque"]
     macro n($a:lifetime) {
         fn g<$a>(t1: &$a(), t2: &'a ()) -> (&'a (), &$a ()) {
             (t1, t2)
@@ -75,7 +75,7 @@ mod const_params {
         }
     }
 
-    #[rustc_macro_transparency = "semitransparent"]
+    #[rustc_macro_transparency = "semiopaque"]
     macro n($C:ident) {
         fn g<const $C: usize>(t1: [(); $C], t2: [(); C]) -> ([(); C], [(); $C]) {
             (t1, t2)

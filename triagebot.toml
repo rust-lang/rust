@@ -76,9 +76,9 @@ add-labels = ["beta-nominated"]
 
 [ping.windows]
 message = """\
-Hey Windows Group! This bug has been identified as a good "Windows candidate".
+Hey Windows Group! This issue has been identified as a good "Windows candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/windows.html
@@ -87,20 +87,31 @@ label = "O-windows"
 
 [ping.arm]
 message = """\
-Hey ARM Group! This bug has been identified as a good "ARM candidate".
+Hey ARM Group! This issue has been identified as a good "ARM candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/arm.html
 """
 label = "O-ARM"
 
+[ping.loongarch]
+message = """\
+Hey LoongArch Group! This issue has been identified as a good "LoongArch candidate".
+In case it's useful, here are some [instructions] for tackling these sorts of
+issues. Maybe take a look?
+Thanks! <3
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/loongarch.html
+"""
+label = "O-loongarch"
+
 [ping.risc-v]
 message = """\
-Hey RISC-V Group! This bug has been identified as a good "RISC-V candidate".
+Hey RISC-V Group! This issue has been identified as a good "RISC-V candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/risc-v.html
@@ -218,6 +229,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "F-*",
 ]
 
 [autolabel."T-rustdoc"]
@@ -228,7 +240,7 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "tests/rustdoc",
+    "tests/rustdoc-html",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
     "tests/rustdoc-js/",
@@ -303,7 +315,7 @@ trigger_labels = [
 ]
 trigger_files = [
     "src/librustdoc/html/",
-    "tests/rustdoc/",
+    "tests/rustdoc-html/",
     "tests/rustdoc-gui/",
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std/",
@@ -318,6 +330,14 @@ trigger_files = [
 ]
 trigger_labels = [
     "A-type-based-search",
+]
+
+[autolabel."A-rustdoc-js"]
+trigger_files = [
+    "src/librustdoc/html/static/js/",
+    "src/librustdoc/html/static/css/",
+    "tests/rustdoc-js/",
+    "tests/rustdoc-js-std/",
 ]
 
 [autolabel."T-compiler"]
@@ -479,6 +499,7 @@ trigger_files = [
     "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
+    "src/tools/build-manifest",
     "src/tools/rust-installer",
     "src/tools/x",
     "src/stage0",
@@ -519,7 +540,6 @@ trigger_files = [
 
 [autolabel."A-query-system"]
 trigger_files = [
-    "compiler/rustc_query_system",
     "compiler/rustc_query_impl",
     "compiler/rustc_macros/src/query.rs"
 ]
@@ -774,7 +794,8 @@ zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+PR #{number} "{title}" fixes a regression and has been nominated for backport.
+{recipients}, what do you think about it?
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -942,15 +963,15 @@ cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/ty/relate.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_infer/src/infer/relate"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
 message = "changes to `inspect_obligations.rs`"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
@@ -962,7 +983,7 @@ cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/wf.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"
@@ -985,11 +1006,18 @@ message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
-cc = ["@lcnr", "@compiler-errors"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_analysis/src/hir_ty_lowering"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
+
+[mentions."library/core/src/mem/type_info.rs"]
+message = """
+The reflection data structures are tied exactly to the implementation
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs`
+"""
+cc = ["@oli-obk"]
 
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
@@ -1046,6 +1074,14 @@ Some changes occurred to the intrinsics. Make sure the CTFE / Miri interpreter
 gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
+
+[mentions."library/core/src/num/{dec2flt,flt2dec}"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
+[mentions."library/core/src/fmt/num.rs"]
+message = "Some changes occurred in integer formatting"
+cc = ["@tgross35"]
 
 [mentions."library/portable-simd"]
 message = """
@@ -1134,7 +1170,7 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
 message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
@@ -1146,15 +1182,15 @@ cc = ["@Muscraft"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
-cc = ["@oli-obk", "@celinval", "@ouz-a"]
+cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -1338,11 +1374,11 @@ message = "The rustc-dev-guide subtree was changed. If this PR *only* touches th
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_hir/src/attrs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]
@@ -1412,29 +1448,6 @@ compiler_leads = [
     "@davidtwco",
     "@wesleywiser",
 ]
-compiler = [
-    "@BoxyUwU",
-    "@chenyukang",
-    "@compiler-errors",
-    "@davidtwco",
-    "@eholk",
-    "@fee1-dead",
-    "@fmease",
-    "@jackh726",
-    "@jieyouxu",
-    "@jdonszelmann",
-    "@JonathanBrouwer",
-    "@lcnr",
-    "@madsmtm",
-    "@mati865",
-    "@Nadrieril",
-    "@nnethercote",
-    "@oli-obk",
-    "@petrochenkov",
-    "@SparrowLii",
-    "@WaffleLapkin",
-    "@wesleywiser",
-]
 libs = [
     "@Mark-Simulacrum",
     "@workingjubilee",
@@ -1450,11 +1463,6 @@ infra-ci = [
     "@marcoieni",
     "@jdno",
     "@jieyouxu",
-]
-rustdoc = [
-    "@GuillaumeGomez",
-    "@notriddle",
-    "@fmease",
 ]
 docs = [
     "@ehuss",
@@ -1474,13 +1482,12 @@ incremental = [
     "@wesleywiser",
 ]
 diagnostics = [
-    "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
+    "@TaKO8Ki"
 ]
 parser = [
-    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -1505,47 +1512,24 @@ mir-opt = [
     "@wesleywiser",
     "@saethlin",
 ]
-types = [
-    "@compiler-errors",
-    "@jackh726",
-    "@lcnr",
-    "@oli-obk",
-    "@spastorino",
-    "@BoxyUwU",
-]
 borrowck = [
     "@davidtwco",
     "@matthewjasper"
 ]
 ast_lowering = [
-    "@compiler-errors",
     "@spastorino",
 ]
 debuginfo = [
     "@davidtwco"
 ]
 fallback = [
-    "@Mark-Simulacrum"
+    "@Mark-Simulacrum",
+    "@jieyouxu",
 ]
 style-team = [
     "@calebcartwright",
     "@joshtriplett",
     "@traviscross",
-]
-project-const-traits = [
-    "@compiler-errors",
-    "@fee1-dead",
-    "@fmease",
-    "@oli-obk",
-]
-project-stable-mir = [
-    "@celinval",
-    "@oli-obk",
-    "@scottmcm",
-]
-project-exploit-mitigations = [
-    "@cuviper",
-    "@rcvalle",
 ]
 compiletest = [
     "@jieyouxu",
@@ -1571,8 +1555,11 @@ dep-bumps = [
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
 "/compiler/rustc_codegen_ssa" =                          ["compiler", "codegen"]
+"/compiler/rustc_middle/src/dep_graph" =                 ["compiler", "incremental", "query-system"]
+"/compiler/rustc_middle/src/ich" =                       ["compiler", "incremental", "query-system"]
 "/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
+"/compiler/rustc_middle/src/query" =                     ["compiler", "query-system"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
@@ -1581,9 +1568,6 @@ dep-bumps = [
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =                           ["compiler", "query-system"]
-"/compiler/rustc_query_system" =                         ["compiler", "query-system"]
-"/compiler/rustc_query_system/src/dep_graph" =           ["compiler", "incremental", "query-system"]
-"/compiler/rustc_query_system/src/ich" =                 ["compiler", "incremental", "query-system"]
 "/compiler/rustc_trait_selection" =                      ["compiler", "types"]
 "/compiler/rustc_traits" =                               ["compiler", "types"]
 "/compiler/rustc_type_ir" =                              ["compiler", "types"]
@@ -1616,17 +1600,18 @@ dep-bumps = [
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
-"/tests/run-make" =                                      ["@jieyouxu"]
-"/tests/run-make-cargo" =                                ["@jieyouxu"]
-"/tests/rustdoc" =                                       ["rustdoc"]
+"/tests/run-make" =                                      ["compiler"]
+"/tests/run-make-cargo" =                                ["compiler"]
+"/tests/rustdoc-html" =                                  ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]
 "/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
+"/src/tools/build-manifest" =                            ["bootstrap"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]
@@ -1693,3 +1678,7 @@ labels = ["S-waiting-on-concerns"]
 # since the review
 # Documentation at: https://forge.rust-lang.org/triagebot/review-changes-since.html
 [review-changes-since]
+
+# Adds a "View all comments" link on the issue/PR body that shows all the comments of it
+# Documentation at: https://forge.rust-lang.org/triagebot/view-all-comments-link.html
+[view-all-comments-link]

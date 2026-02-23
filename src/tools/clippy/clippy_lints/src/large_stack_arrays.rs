@@ -2,7 +2,7 @@ use std::num::Saturating;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
+use clippy_utils::{is_from_proc_macro, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::snippet;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -94,6 +94,15 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
             })
             && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {
+            // libtest might generate a large array containing the test cases, and no span will be associated
+            // to it. In this case it is better not to complain.
+            //
+            // Note that this condition is not checked explicitly by a unit test. Do not remove it without
+            // ensuring that <https://github.com/rust-lang/rust-clippy/issues/13774> stays fixed.
+            if expr.span.is_dummy() {
+                return;
+            }
+
             span_lint_and_then(
                 cx,
                 LARGE_STACK_ARRAYS,
@@ -126,7 +135,7 @@ fn might_be_expanded<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
         let ExprKind::Repeat(_, len_ct) = expr.kind else {
             return false;
         };
-        !expr.span.contains(len_ct.span())
+        !expr.span.contains(len_ct.span)
     }
 
     expr.span.from_expansion() || is_from_proc_macro(cx, expr) || repeat_expr_might_be_expanded(expr)

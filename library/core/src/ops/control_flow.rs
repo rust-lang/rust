@@ -151,7 +151,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    #[rustc_const_unstable(feature = "min_const_control_flow", issue = "148738")]
+    #[rustc_const_stable(feature = "min_const_control_flow", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_break(&self) -> bool {
         matches!(*self, ControlFlow::Break(_))
     }
@@ -168,7 +168,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
-    #[rustc_const_unstable(feature = "min_const_control_flow", issue = "148738")]
+    #[rustc_const_stable(feature = "min_const_control_flow", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_continue(&self) -> bool {
         matches!(*self, ControlFlow::Continue(_))
     }
@@ -197,7 +197,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Break` and `Err` if otherwise.
     ///
     /// # Examples
@@ -264,7 +264,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[unstable(feature = "control_flow_ok", issue = "140266")]
-    #[rustc_const_unstable(feature = "min_const_control_flow", issue = "148738")]
+    #[rustc_const_unstable(feature = "control_flow_ok", issue = "140266")]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
             ControlFlow::Continue(c) => Err(c),
@@ -311,7 +311,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Continue` and `Err` if otherwise.
     ///
     /// # Examples
@@ -377,7 +377,7 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[unstable(feature = "control_flow_ok", issue = "140266")]
-    #[rustc_const_unstable(feature = "min_const_control_flow", issue = "148738")]
+    #[rustc_const_unstable(feature = "control_flow_ok", issue = "140266")]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {
             ControlFlow::Continue(c) => Ok(c),
@@ -422,9 +422,9 @@ impl<T> ControlFlow<T, T> {
     }
 }
 
-/// These are used only as part of implementing the iterator adapters.
-/// They have mediocre names and non-obvious semantics, so aren't
-/// currently on a path to potential stabilization.
+// These are used only as part of implementing the iterator adapters.
+// They have mediocre names and non-obvious semantics, so aren't
+// currently on a path to potential stabilization.
 impl<R: ops::Try> ControlFlow<R, R::Output> {
     /// Creates a `ControlFlow` from any type implementing `Try`.
     #[inline]

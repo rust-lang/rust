@@ -1,0 +1,25 @@
+error: expected identifier, found keyword `self`
+  --> $DIR/kw-in-item-pos-recovery-151238.rs:7:28
+   |
+LL |   trait MyTrait { fn bar(c self) }
+   |                            ^^^^ expected identifier, found keyword
+
+error: expected one of `:`, `@`, or `|`, found keyword `self`
+  --> $DIR/kw-in-item-pos-recovery-151238.rs:7:28
+   |
+LL |   trait MyTrait { fn bar(c self) }
+   |                          --^^^^
+   |                          | |
+   |                          | expected one of `:`, `@`, or `|`
+   |                          help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error: expected one of `->`, `;`, `where`, or `{`, found `}`
+  --> $DIR/kw-in-item-pos-recovery-151238.rs:7:34
+   |
+LL |   trait MyTrait { fn bar(c self) }
+   |                      ---         ^ expected one of `->`, `;`, `where`, or `{`
+   |                      |
+   |                      while parsing this `fn`
+
+error: aborting due to 3 previous errors
+

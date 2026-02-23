@@ -85,10 +85,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                     | Rvalue::Repeat(..)
                     | Rvalue::Aggregate(..)
                     | Rvalue::Cast(..)
-                    | Rvalue::ShallowInitBox(..)
                     | Rvalue::WrapUnsafeBinder(..) => true,
                     Rvalue::ThreadLocalRef(..)
-                    | Rvalue::NullaryOp(..)
                     | Rvalue::UnaryOp(..)
                     | Rvalue::BinaryOp(..)
                     | Rvalue::Ref(..)

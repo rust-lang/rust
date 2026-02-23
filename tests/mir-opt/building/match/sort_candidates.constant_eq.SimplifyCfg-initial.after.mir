@@ -7,11 +7,14 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     let mut _3: (&str, bool);
     let mut _4: &str;
     let mut _5: bool;
-    let mut _6: &&str;
-    let mut _7: &bool;
-    let mut _8: bool;
-    let mut _9: bool;
+    let mut _6: &str;
+    let mut _7: &&str;
+    let mut _8: &bool;
+    let mut _9: &str;
     let mut _10: bool;
+    let mut _11: &str;
+    let mut _12: bool;
+    let mut _13: bool;
 
     bb0: {
         StorageLive(_3);
@@ -23,7 +26,8 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         StorageDead(_5);
         StorageDead(_4);
         PlaceMention(_3);
-        _9 = <str as PartialEq>::eq(copy (_3.0: &str), const "a") -> [return: bb9, unwind: bb19];
+        _11 = &(*(_3.0: &str));
+        _12 = <str as PartialEq>::eq(copy _11, const "a") -> [return: bb9, unwind: bb19];
     }
 
     bb1: {
@@ -43,7 +47,8 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb5: {
-        _8 = <str as PartialEq>::eq(copy (_3.0: &str), const "b") -> [return: bb8, unwind: bb19];
+        _9 = &(*(_3.0: &str));
+        _10 = <str as PartialEq>::eq(copy _9, const "b") -> [return: bb8, unwind: bb19];
     }
 
     bb6: {
@@ -55,11 +60,11 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb8: {
-        switchInt(move _8) -> [0: bb1, otherwise: bb6];
+        switchInt(move _10) -> [0: bb1, otherwise: bb6];
     }
 
     bb9: {
-        switchInt(move _9) -> [0: bb5, otherwise: bb2];
+        switchInt(move _12) -> [0: bb5, otherwise: bb2];
     }
 
     bb10: {
@@ -87,23 +92,25 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb15: {
-        _6 = &fake shallow (_3.0: &str);
-        _7 = &fake shallow (_3.1: bool);
-        StorageLive(_10);
-        _10 = const true;
-        switchInt(move _10) -> [0: bb17, otherwise: bb16];
+        _6 = &fake shallow (*(_3.0: &str));
+        _7 = &fake shallow (_3.0: &str);
+        _8 = &fake shallow (_3.1: bool);
+        StorageLive(_13);
+        _13 = const true;
+        switchInt(move _13) -> [0: bb17, otherwise: bb16];
     }
 
     bb16: {
-        StorageDead(_10);
+        StorageDead(_13);
         FakeRead(ForMatchGuard, _6);
         FakeRead(ForMatchGuard, _7);
+        FakeRead(ForMatchGuard, _8);
         _0 = const 1_u32;
         goto -> bb18;
     }
 
     bb17: {
-        StorageDead(_10);
+        StorageDead(_13);
         falseEdge -> [real: bb3, imaginary: bb5];
     }
 

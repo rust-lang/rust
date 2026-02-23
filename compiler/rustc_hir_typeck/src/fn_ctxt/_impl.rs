@@ -14,13 +14,15 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    ExplicitLateBound, FeedConstTy, GenericArgCountMismatch, GenericArgCountResult,
-    GenericArgsLowerer, GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
+    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
+    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
     SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
@@ -43,6 +45,38 @@ use crate::method::{self, MethodCallee};
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Transform generic args for inherent associated type constants (IACs).
+    ///
+    /// IACs have a different generic parameter structure than regular associated constants:
+    /// - Regular assoc const: parent (impl) generic params + own generic params
+    /// - IAC (type_const): Self type + own generic params
+    pub(crate) fn transform_args_for_inherent_type_const(
+        &self,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> GenericArgsRef<'tcx> {
+        let tcx = self.tcx;
+        if !tcx.is_type_const(def_id) {
+            return args;
+        }
+        let Some(assoc_item) = tcx.opt_associated_item(def_id) else {
+            return args;
+        };
+        if !matches!(assoc_item.container, ty::AssocContainer::InherentImpl) {
+            return args;
+        }
+
+        let impl_def_id = assoc_item.container_id(tcx);
+        let generics = tcx.generics_of(def_id);
+        let impl_args = &args[..generics.parent_count];
+        let self_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+        // Build new args: [Self, own_args...]
+        let own_args = &args[generics.parent_count..];
+        tcx.mk_args_from_iter(
+            std::iter::once(ty::GenericArg::from(self_ty)).chain(own_args.iter().copied()),
+        )
+    }
+
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
@@ -216,7 +250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't write user type annotations for const param types, since we give them
         // identity args just so that we can trivially substitute their `EarlyBinder`.
         // We enforce that they match their type in MIR later on.
-        if matches!(self.tcx.def_kind(def_id), DefKind::ConstParam) {
+        if self.tcx.def_kind(def_id) == DefKind::ConstParam {
             return;
         }
 
@@ -266,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                     }
                 }
-                Adjust::Deref(Some(overloaded_deref)) => {
+                Adjust::Deref(DerefAdjustKind::Overloaded(overloaded_deref)) => {
                     self.enforce_context_effects(
                         None,
                         expr.span,
@@ -274,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.mk_args(&[expr_ty.into()]),
                     );
                 }
-                Adjust::Deref(None) => {
+                Adjust::Deref(DerefAdjustKind::Builtin) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
                 }
                 Adjust::Pointer(_pointer_coercion) => {
@@ -525,9 +559,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy<'_, 'tcx>,
+        ty: Ty<'tcx>,
     ) -> ty::Const<'tcx> {
-        let ct = self.lowerer().lower_const_arg(const_arg, feed);
+        let ct = self.lowerer().lower_const_arg(const_arg, ty);
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir_span(const_arg.hir_id),
@@ -547,7 +581,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        t.has_free_regions() || t.has_aliases() || t.has_infer_types()
+        // FIXME(mgca): should this also count stuff with infer consts
+        t.has_free_regions() || t.has_aliases() || t.has_infer_types() || t.has_param()
     }
 
     pub(crate) fn node_ty(&self, id: HirId) -> Ty<'tcx> {
@@ -1004,6 +1039,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_extend,
         );
 
+        if let Err(e) = self.lowerer().check_param_res_if_mcg_for_instantiate_value_path(res, span)
+        {
+            return (Ty::new_error(self.tcx, e), res);
+        }
+
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);
@@ -1078,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
             // self type has any generic types during rustc_resolve, which is what we use
             // to determine if this is a hard error or warning.
-            if std::iter::successors(Some(self.body_id.to_def_id()), |def_id| {
+            if std::iter::successors(Some(self.body_id.to_def_id()), |&def_id| {
                 self.tcx.generics_of(def_id).parent
             })
             .all(|def_id| def_id != impl_def_id)
@@ -1223,7 +1263,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::Param(param.def_id, preceding_args),
+                            self.fcx
+                                .tcx
+                                .type_of(param.def_id)
+                                .instantiate(self.fcx.tcx, preceding_args),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -1271,8 +1314,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
 
+        let args_for_user_type = if let Res::Def(DefKind::AssocConst, def_id) = res {
+            self.transform_args_for_inherent_type_const(def_id, args_raw)
+        } else {
+            args_raw
+        };
+
         // First, store the "user args" for later.
-        self.write_user_type_annotation_from_args(hir_id, def_id, args_raw, user_self_ty);
+        self.write_user_type_annotation_from_args(hir_id, def_id, args_for_user_type, user_self_ty);
 
         // Normalize only after registering type annotations.
         let args = self.normalize(span, args_raw);
@@ -1312,6 +1361,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_instantiated);
+
+        let args = if let Res::Def(DefKind::AssocConst, def_id) = res {
+            self.transform_args_for_inherent_type_const(def_id, args)
+        } else {
+            args
+        };
+
         self.write_args(hir_id, args);
 
         (ty_instantiated, res)

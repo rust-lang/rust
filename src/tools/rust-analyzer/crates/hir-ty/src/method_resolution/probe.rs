@@ -14,7 +14,7 @@ use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
-    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, SliceLike, Ty as _},
+    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -27,7 +27,7 @@ use crate::{
     lower::GenericPredicates,
     method_resolution::{
         CandidateId, CandidateSource, InherentImpls, MethodError, MethodResolutionContext,
-        incoherent_inherent_impls, simplified_type_module,
+        simplified_type_module, with_incoherent_inherent_impls,
     },
     next_solver::{
         Binder, Canonical, ClauseKind, DbInterner, FnSig, GenericArg, GenericArgs, Goal, ParamEnv,
@@ -285,11 +285,15 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                 let infcx = self.infcx;
                 let (self_ty, var_values) = infcx.instantiate_canonical(&query_input);
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
+                let prev_opaque_entries =
+                    self.infcx.inner.borrow_mut().opaque_types().num_entries();
                 MethodAutoderefStepsResult {
                     steps: smallvec![CandidateStep {
-                        self_ty: self
-                            .infcx
-                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
+                        self_ty: self.infcx.make_query_response_ignoring_pending_obligations(
+                            var_values,
+                            self_ty,
+                            prev_opaque_entries
+                        ),
                         self_ty_is_opaque: false,
                         autoderefs: 0,
                         from_unsafe_deref: false,
@@ -376,6 +380,8 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
             // infer var is not an opaque.
             let infcx = self.infcx;
             let (self_ty, inference_vars) = infcx.instantiate_canonical(self_ty);
+            let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
+
             let self_ty_is_opaque = |ty: Ty<'_>| {
                 if let TyKind::Infer(InferTy::TyVar(vid)) = ty.kind() {
                     infcx.has_opaques_with_sub_unified_hidden_type(vid)
@@ -414,6 +420,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                             self_ty: infcx.make_query_response_ignoring_pending_obligations(
                                 inference_vars,
                                 ty,
+                                prev_opaque_entries,
                             ),
                             self_ty_is_opaque: self_ty_is_opaque(ty),
                             autoderefs: d,
@@ -437,6 +444,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                             self_ty: infcx.make_query_response_ignoring_pending_obligations(
                                 inference_vars,
                                 ty,
+                                prev_opaque_entries,
                             ),
                             self_ty_is_opaque: self_ty_is_opaque(ty),
                             autoderefs: d,
@@ -461,13 +469,17 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                         ty: infcx.make_query_response_ignoring_pending_obligations(
                             inference_vars,
                             final_ty,
+                            prev_opaque_entries,
                         ),
                     })
                 }
                 TyKind::Error(_) => Some(MethodAutoderefBadTy {
                     reached_raw_pointer,
-                    ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+                    ty: infcx.make_query_response_ignoring_pending_obligations(
+                        inference_vars,
+                        final_ty,
+                        prev_opaque_entries,
+                    ),
                 }),
                 TyKind::Array(elem_ty, _) => {
                     let autoderefs = steps.iter().filter(|s| s.reachable_via_deref).count() - 1;
@@ -475,6 +487,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                         self_ty: infcx.make_query_response_ignoring_pending_obligations(
                             inference_vars,
                             Ty::new_slice(infcx.interner, elem_ty),
+                            prev_opaque_entries,
                         ),
                         self_ty_is_opaque: false,
                         autoderefs,
@@ -965,9 +978,11 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         else {
             panic!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in incoherent_inherent_impls(self.db(), simp) {
-            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
-        }
+        with_incoherent_inherent_impls(self.db(), self.ctx.resolver.krate(), &simp, |impls| {
+            for &impl_def_id in impls {
+                self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
+            }
+        });
     }
 
     fn assemble_inherent_impl_candidates_for_type(
@@ -999,7 +1014,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         self.with_impl_item(impl_def_id, |this, item| {
             if !this.has_applicable_self(item) {
                 // No receiver declared. Not a candidate.
-                this.record_static_candidate(CandidateSource::Impl(impl_def_id));
+                this.record_static_candidate(CandidateSource::Impl(impl_def_id.into()));
                 return;
             }
             this.push_candidate(
@@ -1244,9 +1259,9 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             .filter(|step| step.reachable_via_deref)
             .filter(|step| {
                 debug!("pick_all_method: step={:?}", step);
-                // skip types that are from a type error or that would require dereferencing
-                // a raw pointer
-                !step.self_ty.value.value.references_non_lt_error() && !step.from_unsafe_deref
+                // Skip types with type errors (but not const/lifetime errors, which are
+                // often spurious due to incomplete const evaluation) and raw pointer derefs.
+                !step.self_ty.value.value.references_only_ty_error() && !step.from_unsafe_deref
             })
             .try_for_each(|step| {
                 let InferOk { value: self_ty, obligations: instantiate_self_ty_obligations } = self
@@ -1488,7 +1503,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// so do not use to make a decision that may lead to a successful compilation.
     fn candidate_source(&self, candidate: &Candidate<'db>, self_ty: Ty<'db>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id),
+            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id.into()),
             ObjectCandidate(trait_ref) | WhereClauseCandidate(trait_ref) => {
                 CandidateSource::Trait(trait_ref.def_id().0)
             }
@@ -1522,7 +1537,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     fn candidate_source_from_pick(&self, pick: &Pick<'db>) -> CandidateSource {
         match pick.kind {
-            InherentImplPick(impl_) => CandidateSource::Impl(impl_),
+            InherentImplPick(impl_) => CandidateSource::Impl(impl_.into()),
             ObjectPick(trait_) | TraitPick(trait_) => CandidateSource::Trait(trait_),
             WhereClausePick(trait_ref) => CandidateSource::Trait(trait_ref.skip_binder().def_id.0),
         }
@@ -1738,7 +1753,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// We want to only accept trait methods if they were hold even if the
     /// opaque types were rigid. To handle this, we both check that for trait
     /// candidates the goal were to hold even when treating opaques as rigid,
-    /// see [OpaqueTypesJank](rustc_trait_selection::solve::OpaqueTypesJank).
+    /// see `rustc_trait_selection::solve::OpaqueTypesJank`.
     ///
     /// We also check that all opaque types encountered as self types in the
     /// autoderef chain don't get constrained when applying the candidate.
@@ -1975,7 +1990,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             && self.mode == Mode::MethodCall
         {
             let sig = self.xform_method_sig(item, args);
-            (sig.inputs().as_slice()[0], Some(sig.output()))
+            (sig.inputs()[0], Some(sig.output()))
         } else {
             (impl_ty, None)
         }

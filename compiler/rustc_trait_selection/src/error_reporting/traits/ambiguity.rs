@@ -362,7 +362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && self.tcx.trait_of_assoc(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
-                        let assoc_item = self.tcx.associated_item(item_id);
+                        let assoc_item = self.tcx.associated_item(*item_id);
                         let (verb, noun) = match assoc_item.kind {
                             ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
@@ -394,7 +394,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
-                        if let Some(impl_def_id) =
+                        if let Some(&impl_def_id) =
                             trait_impls.non_blanket_impls().values().flatten().next()
                         {
                             let non_blanket_impl_count =
@@ -418,7 +418,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .non_blanket_impls()
                                         .values()
                                         .flatten()
-                                        .map(|id| {
+                                        .map(|&id| {
                                             format!(
                                                 "{}",
                                                 self.tcx.type_of(id).instantiate_identity()
@@ -710,7 +710,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             predicate
         );
         let post = if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
-            format!(":\n{}", post.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n"),)
+            format!(":\n{}", post.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n"))
         } else if post.len() == 1 {
             format!(": `{}`", post[0])
         } else {
@@ -722,7 +722,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.note(format!("cannot satisfy `{predicate}`"));
             }
             (0, _, 1) => {
-                err.note(format!("{} in the `{}` crate{}", msg, crates[0], post,));
+                err.note(format!("{msg} in the `{}` crate{post}", crates[0]));
             }
             (0, _, _) => {
                 err.note(format!(
@@ -739,7 +739,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (_, 1, 1) => {
                 let span: MultiSpan = spans.into();
                 err.span_note(span, msg);
-                err.note(format!("and another `impl` found in the `{}` crate{}", crates[0], post,));
+                err.note(format!("and another `impl` found in the `{}` crate{post}", crates[0]));
             }
             _ => {
                 let span: MultiSpan = spans.into();

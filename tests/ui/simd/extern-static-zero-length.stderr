@@ -1,0 +1,14 @@
+error: the SIMD type `Simd<u8, 0>` has zero elements
+  --> $DIR/extern-static-zero-length.rs:7:17
+   |
+LL |     static VAR: Simd<u8, 0>;
+   |                 ^^^^^^^^^^^
+
+error: the SIMD type `Simd<u8, 1000000>` has more elements than the limit 32768
+  --> $DIR/extern-static-zero-length.rs:9:18
+   |
+LL |     static VAR2: Simd<u8, 1_000_000>;
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

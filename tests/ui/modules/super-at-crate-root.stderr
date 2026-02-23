@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: there are too many leading `super` keywords
+error[E0433]: too many leading `super` keywords
   --> $DIR/super-at-crate-root.rs:4:5
    |
 LL | use super::f;

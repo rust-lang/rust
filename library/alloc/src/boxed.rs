@@ -236,14 +236,34 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
-/// Constructs a `Box<T>` by calling the `exchange_malloc` lang item and moving the argument into
-/// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
+/// Monomorphic function for allocating an uninit `Box`.
+#[inline]
+// The is a separate function to avoid doing it in every generic version, but it
+// looks small to the mir inliner (particularly in panic=abort) so leave it to
+// the backend to decide whether pulling it in everywhere is worth doing.
+#[rustc_no_mir_inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[cfg(not(no_global_oom_handling))]
+fn box_new_uninit(layout: Layout) -> *mut u8 {
+    match Global.allocate(layout) {
+        Ok(ptr) => ptr.as_mut_ptr(),
+        Err(_) => handle_alloc_error(layout),
+    }
+}
+
+/// Helper for `vec!`.
 ///
-/// This is the surface syntax for `box <expr>` expressions.
+/// This is unsafe, but has to be marked as safe or else we couldn't use it in `vec!`.
 #[doc(hidden)]
-#[rustc_intrinsic]
 #[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(x: T) -> Box<T>;
+#[inline(always)]
+#[cfg(not(no_global_oom_handling))]
+#[rustc_diagnostic_item = "box_assume_init_into_vec_unsafe"]
+pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
+    b: Box<MaybeUninit<[T; N]>>,
+) -> crate::vec::Vec<T> {
+    unsafe { (b.assume_init() as Box<[T]>).into_vec() }
+}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -262,7 +282,13 @@ impl<T> Box<T> {
     #[rustc_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        return box_new(x);
+        // This is `Box::new_uninit` but inlined to avoid build time regressions.
+        let ptr = box_new_uninit(<T as SizedTypeProperties>::LAYOUT) as *mut T;
+        // Nothing below can panic so we do not have to worry about deallocating `ptr`.
+        // SAFETY: we just allocated the box to store `x`.
+        unsafe { core::intrinsics::write_via_move(ptr, x) };
+        // SAFETY: we just initialized `b`.
+        unsafe { mem::transmute(ptr) }
     }
 
     /// Constructs a new box with uninitialized contents.
@@ -280,9 +306,15 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        Self::new_uninit_in(Global)
+        // This is the same as `Self::new_uninit_in(Global)`, but manually inlined (just like
+        // `Box::new`).
+
+        // SAFETY:
+        // - If `allocate` succeeds, the returned pointer exactly matches what `Box` needs.
+        unsafe { mem::transmute(box_new_uninit(<T as SizedTypeProperties>::LAYOUT)) }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -834,7 +866,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
         }
         let layout = Layout::for_value::<T>(src);
         let (ptr, guard) = if layout.size() == 0 {
-            (layout.dangling(), None)
+            (layout.dangling_ptr(), None)
         } else {
             // Safety: layout is non-zero-sized
             let ptr = alloc.allocate(layout)?.cast();
@@ -1142,10 +1174,12 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[stable(feature = "new_uninit", since = "1.82.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn assume_init(self) -> Box<T, A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(self);
-        unsafe { Box::from_raw_in(raw as *mut T, alloc) }
+        // This is used in the `vec!` macro, so we optimize for minimal IR generation
+        // even in debug builds.
+        // SAFETY: `Box<T>` and `Box<MaybeUninit<T>>` have the same layout.
+        unsafe { core::intrinsics::transmute_unchecked(self) }
     }
 
     /// Writes the value and converts to `Box<T, A>`.
@@ -1313,7 +1347,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
@@ -1431,7 +1465,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
         // SAFETY: `Box` is guaranteed to be non-null.
@@ -1514,7 +1548,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Recreate a `Box` which was previously converted to a `NonNull` pointer
     /// using [`Box::into_non_null_with_allocator`]:
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
     ///
@@ -1524,7 +1558,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     /// Manually create a `Box` from scratch by using the system allocator:
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null, slice_ptr_get)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::{Allocator, Layout, System};
     ///
@@ -1540,7 +1574,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
@@ -1629,7 +1663,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Converting the `NonNull` pointer back into a `Box` with
     /// [`Box::from_non_null_in`] for automatic cleanup:
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
     ///
@@ -1640,7 +1674,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Manual cleanup by explicitly running the destructor and deallocating
     /// the memory:
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::{Allocator, Layout, System};
     ///
@@ -1655,7 +1689,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
+    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     pub fn into_non_null_with_allocator(b: Self) -> (NonNull<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
@@ -2253,7 +2287,7 @@ impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.

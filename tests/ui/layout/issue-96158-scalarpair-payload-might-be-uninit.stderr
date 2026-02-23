@@ -22,7 +22,7 @@ error: layout_of(MissingPayloadField) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -72,7 +72,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -95,7 +95,7 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -142,7 +142,7 @@ error: layout_of(CommonPayloadField) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -193,7 +193,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -231,7 +231,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -279,7 +279,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -329,7 +329,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -366,7 +366,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            offsets: [
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -414,7 +414,7 @@ error: layout_of(NicheFirst) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -470,7 +470,7 @@ error: layout_of(NicheFirst) = Layout {
                                Size(0 bytes),
                                Size(1 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                                1,
                            ],
@@ -503,7 +503,7 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -524,7 +524,7 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -570,7 +570,7 @@ error: layout_of(NicheSecond) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -626,7 +626,7 @@ error: layout_of(NicheSecond) = Layout {
                                Size(1 bytes),
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                1,
                                0,
                            ],
@@ -659,7 +659,7 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -680,7 +680,7 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,

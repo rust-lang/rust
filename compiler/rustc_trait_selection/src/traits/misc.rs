@@ -13,7 +13,7 @@ use crate::traits::{self, FulfillmentError, Obligation, ObligationCause};
 pub enum CopyImplementationError<'tcx> {
     InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdt,
-    HasDestructor,
+    HasDestructor(hir::def_id::DefId),
     HasUnsafeFields,
 }
 
@@ -76,8 +76,8 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     )
     .map_err(CopyImplementationError::InfringingFields)?;
 
-    if adt.has_dtor(tcx) {
-        return Err(CopyImplementationError::HasDestructor);
+    if let Some(did) = adt.destructor(tcx).map(|dtor| dtor.did) {
+        return Err(CopyImplementationError::HasDestructor(did));
     }
 
     if impl_safety.is_safe() && self_type.has_unsafe_fields() {

@@ -26,9 +26,7 @@ Thir {
         Expr {
             kind: Scope {
                 region_scope: Node(2),
-                lint_level: Explicit(
-                    HirId(DefId(0:3 ~ thir_flat[7b97]::main).2),
-                ),
+                hir_id: HirId(DefId(0:3 ~ thir_flat[7b97]::main).2),
                 value: e0,
             },
             ty: (),

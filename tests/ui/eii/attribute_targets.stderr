@@ -1,0 +1,110 @@
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:7:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:9:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:13:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:15:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:21:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:23:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:27:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:29:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:32:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:34:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:39:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:41:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:44:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:46:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:51:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:53:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/attribute_targets.rs:56:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/attribute_targets.rs:58:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: aborting due to 18 previous errors
+

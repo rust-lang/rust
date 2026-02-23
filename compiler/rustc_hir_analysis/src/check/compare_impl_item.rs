@@ -6,16 +6,16 @@ use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, find_attr, intravisit};
+use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -217,7 +217,7 @@ fn compare_method_predicate_entailment<'tcx>(
         trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
     );
 
-    let is_conditionally_const = tcx.is_conditionally_const(impl_def_id);
+    let is_conditionally_const = tcx.is_conditionally_const(impl_m.def_id);
     if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
         // of the impl header and the trait method.
@@ -352,6 +352,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // type would be more appropriate. In other places we have a `Vec<Span>`
     // corresponding to their `Vec<Predicate>`, but we don't have that here.
     // Fixing this would improve the output of test `issue-83765.rs`.
+    // There's the same issue in compare_eii code.
     let result = ocx.sup(&cause, param_env, trait_sig, impl_sig);
 
     if let Err(terr) = result {
@@ -590,7 +591,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 ty,
                 Ty::new_placeholder(
                     tcx,
-                    ty::Placeholder::new(
+                    ty::PlaceholderType::new(
                         universe,
                         ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     ),
@@ -1093,6 +1094,55 @@ fn check_region_bounds_on_impl_item<'tcx>(
     let trait_generics = tcx.generics_of(trait_m.def_id);
     let trait_params = trait_generics.own_counts().lifetimes;
 
+    let Err(CheckNumberOfEarlyBoundRegionsError { span, generics_span, bounds_span, where_span }) =
+        check_number_of_early_bound_regions(
+            tcx,
+            impl_m.def_id.expect_local(),
+            trait_m.def_id,
+            impl_generics,
+            impl_params,
+            trait_generics,
+            trait_params,
+        )
+    else {
+        return Ok(());
+    };
+
+    if !delay && let Some(guar) = check_region_late_boundedness(tcx, impl_m, trait_m) {
+        return Err(guar);
+    }
+
+    let reported = tcx
+        .dcx()
+        .create_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind: impl_m.descr(),
+            ident: impl_m.ident(tcx),
+            generics_span,
+            bounds_span,
+            where_span,
+        })
+        .emit_unless_delay(delay);
+
+    Err(reported)
+}
+
+pub(super) struct CheckNumberOfEarlyBoundRegionsError {
+    pub(super) span: Span,
+    pub(super) generics_span: Span,
+    pub(super) bounds_span: Vec<Span>,
+    pub(super) where_span: Option<Span>,
+}
+
+pub(super) fn check_number_of_early_bound_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: LocalDefId,
+    trait_def_id: DefId,
+    impl_generics: &Generics,
+    impl_params: usize,
+    trait_generics: &Generics,
+    trait_params: usize,
+) -> Result<(), CheckNumberOfEarlyBoundRegionsError> {
     debug!(?trait_generics, ?impl_generics);
 
     // Must have same number of early-bound lifetime parameters.
@@ -1108,20 +1158,16 @@ fn check_region_bounds_on_impl_item<'tcx>(
         return Ok(());
     }
 
-    if !delay && let Some(guar) = check_region_late_boundedness(tcx, impl_m, trait_m) {
-        return Err(guar);
-    }
-
     let span = tcx
-        .hir_get_generics(impl_m.def_id.expect_local())
+        .hir_get_generics(impl_def_id)
         .expect("expected impl item to have generics or else we can't compare them")
         .span;
 
-    let mut generics_span = tcx.def_span(trait_m.def_id);
+    let mut generics_span = tcx.def_span(trait_def_id);
     let mut bounds_span = vec![];
     let mut where_span = None;
 
-    if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
+    if let Some(trait_node) = tcx.hir_get_if_local(trait_def_id)
         && let Some(trait_generics) = trait_node.generics()
     {
         generics_span = trait_generics.span;
@@ -1146,7 +1192,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
                 _ => {}
             }
         }
-        if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
+        if let Some(impl_node) = tcx.hir_get_if_local(impl_def_id.into())
             && let Some(impl_generics) = impl_node.generics()
         {
             let mut impl_bounds = 0;
@@ -1177,19 +1223,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         }
     }
 
-    let reported = tcx
-        .dcx()
-        .create_err(LifetimesOrBoundsMismatchOnTrait {
-            span,
-            item_kind: impl_m.descr(),
-            ident: impl_m.ident(tcx),
-            generics_span,
-            bounds_span,
-            where_span,
-        })
-        .emit_unless_delay(delay);
-
-    Err(reported)
+    Err(CheckNumberOfEarlyBoundRegionsError { span, generics_span, bounds_span, where_span })
 }
 
 #[allow(unused)]
@@ -1299,7 +1333,7 @@ fn check_region_late_boundedness<'tcx>(
         .iter()
         .map(|param| {
             let (LateEarlyMismatch::EarlyInImpl(impl_param_def_id, ..)
-            | LateEarlyMismatch::LateInImpl(impl_param_def_id, ..)) = param;
+            | LateEarlyMismatch::LateInImpl(impl_param_def_id, ..)) = *param;
             tcx.def_span(impl_param_def_id)
         })
         .collect();
@@ -1810,7 +1844,7 @@ fn compare_synthetic_generics<'tcx>(
                 // The case where the impl method uses `impl Trait` but the trait method uses
                 // explicit generics
                 err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
-                let _: Option<_> = try {
+                try {
                     // try taking the name from the trait impl
                     // FIXME: this is obviously suboptimal since the name can already be used
                     // as another generic argument
@@ -1847,7 +1881,7 @@ fn compare_synthetic_generics<'tcx>(
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
                 err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
-                let _: Option<_> = try {
+                try {
                     let impl_m = impl_m.def_id.as_local()?;
                     let impl_m = tcx.hir_expect_impl_item(impl_m);
                     let (sig, _) = impl_m.expect_fn();
@@ -1925,7 +1959,7 @@ fn compare_generic_param_kinds<'tcx>(
     trait_item: ty::AssocItem,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_eq!(impl_item.as_tag(), trait_item.as_tag());
+    assert_eq!(impl_item.tag(), trait_item.tag());
 
     let ty_const_params_of = |def_id| {
         tcx.generics_of(def_id).own_params.iter().filter(|param| {
@@ -2016,12 +2050,8 @@ fn compare_type_const<'tcx>(
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const =
-        find_attr!(tcx.get_all_attrs(impl_const_item.def_id), AttributeKind::TypeConst(_));
-    let trait_type_const_span = find_attr!(
-        tcx.get_all_attrs(trait_const_item.def_id),
-        AttributeKind::TypeConst(sp) => *sp
-    );
+    let impl_is_type_const = tcx.is_type_const(impl_const_item.def_id);
+    let trait_type_const_span = tcx.type_const_span(trait_const_item.def_id);
 
     if let Some(trait_type_const_span) = trait_type_const_span
         && !impl_is_type_const
@@ -2030,14 +2060,14 @@ fn compare_type_const<'tcx>(
             .dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of `#[type_const]` const must be marked with `#[type_const]`",
+                "implementation of a `type const` must also be marked as `type const`",
             )
             .with_span_note(
                 MultiSpan::from_spans(vec![
                     tcx.def_span(trait_const_item.def_id),
                     trait_type_const_span,
                 ]),
-                "trait declaration of const is marked with `#[type_const]`",
+                "trait declaration of const is marked as `type const`",
             )
             .emit());
     }
@@ -2516,7 +2546,7 @@ fn param_env_with_gat_bounds<'tcx>(
             }
         };
 
-        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind<'tcx>; 8]> =
             smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).own_params.len());
         // Extend the impl's identity args with late-bound GAT vars
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
@@ -2552,7 +2582,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     ty::Const::new_bound(
                         tcx,
                         ty::INNERMOST,
-                        ty::BoundConst { var: ty::BoundVar::from_usize(bound_vars.len() - 1) },
+                        ty::BoundConst::new(ty::BoundVar::from_usize(bound_vars.len() - 1)),
                     )
                     .into()
                 }

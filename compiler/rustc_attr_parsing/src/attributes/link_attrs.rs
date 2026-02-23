@@ -1,3 +1,4 @@
+use rustc_errors::msg;
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
@@ -10,12 +11,11 @@ use rustc_target::spec::{Arch, BinaryFormat};
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::attributes::cfg::parse_cfg_entry;
-use crate::fluent_generated;
 use crate::session_diagnostics::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ImportNameTypeRaw, ImportNameTypeX86,
-    IncompatibleWasmLink, InvalidLinkModifier, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
+    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
+    LinkFrameworkApple, LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers,
+    NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -33,7 +33,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -62,10 +62,10 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         let items = match args {
             ArgParser::List(list) => list,
             // This is an edgecase added because making this a hard error would break too many crates
@@ -76,7 +76,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                 return None;
             }
             _ => {
-                cx.expected_list(cx.attr_span);
+                cx.expected_list(cx.attr_span, args);
                 return None;
             }
         };
@@ -141,8 +141,6 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
                 macro report_unstable_modifier($feature: ident) {
                     if !features.$feature() {
-                        // FIXME: make this translatable
-                        #[expect(rustc::untranslatable_diagnostic)]
                         feature_err(
                             sess,
                             sym::$feature,
@@ -165,6 +163,14 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                     }
                     (sym::bundle, _) => {
                         cx.emit_err(BundleNeedsStatic { span });
+                    }
+
+                    (sym::export_symbols, Some(NativeLibKind::Static { export_symbols, .. })) => {
+                        assign_modifier(export_symbols)
+                    }
+
+                    (sym::export_symbols, _) => {
+                        cx.emit_err(ExportSymbolsNeedsStatic { span });
                     }
 
                     (sym::verbatim, _) => assign_modifier(&mut verbatim),
@@ -192,6 +198,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                             span,
                             &[
                                 sym::bundle,
+                                sym::export_symbols,
                                 sym::verbatim,
                                 sym::whole_dash_archive,
                                 sym::as_dash_needed,
@@ -242,7 +249,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
 impl LinkParser {
     fn parse_link_name<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         name: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -267,7 +274,7 @@ impl LinkParser {
     }
 
     fn parse_link_kind<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         kind: &mut Option<NativeLibKind>,
         cx: &mut AcceptContext<'_, '_, S>,
         sess: &Session,
@@ -287,7 +294,9 @@ impl LinkParser {
         };
 
         let link_kind = match link_kind {
-            kw::Static => NativeLibKind::Static { bundle: None, whole_archive: None },
+            kw::Static => {
+                NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None }
+            }
             sym::dylib => NativeLibKind::Dylib { as_needed: None },
             sym::framework => {
                 if !sess.target.is_like_darwin {
@@ -307,7 +316,7 @@ impl LinkParser {
                         sess,
                         sym::raw_dylib_elf,
                         nv.value_span,
-                        fluent_generated::attr_parsing_raw_dylib_elf_unstable,
+                        msg!("link kind `raw-dylib` is unstable on ELF platforms"),
                     )
                     .emit();
                 } else {
@@ -322,7 +331,7 @@ impl LinkParser {
                         sess,
                         sym::link_arg_attribute,
                         nv.value_span,
-                        fluent_generated::attr_parsing_link_arg_unstable,
+                        msg!("link kind `link-arg` is unstable"),
                     )
                     .emit();
                 }
@@ -347,7 +356,7 @@ impl LinkParser {
     }
 
     fn parse_link_modifiers<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         modifiers: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -368,7 +377,7 @@ impl LinkParser {
     }
 
     fn parse_link_cfg<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         cfg: &mut Option<CfgEntry>,
         cx: &mut AcceptContext<'_, '_, S>,
         sess: &Session,
@@ -379,7 +388,7 @@ impl LinkParser {
             return true;
         }
         let Some(link_cfg) = item.args().list() else {
-            cx.expected_list(item.span());
+            cx.expected_list(item.span(), item.args());
             return true;
         };
         let Some(link_cfg) = link_cfg.single() else {
@@ -387,20 +396,14 @@ impl LinkParser {
             return true;
         };
         if !features.link_cfg() {
-            feature_err(
-                sess,
-                sym::link_cfg,
-                item.span(),
-                fluent_generated::attr_parsing_link_cfg_unstable,
-            )
-            .emit();
+            feature_err(sess, sym::link_cfg, item.span(), msg!("link cfg is unstable")).emit();
         }
         *cfg = parse_cfg_entry(cx, link_cfg).ok();
         true
     }
 
     fn parse_link_wasm_import_module<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         wasm_import_module: &mut Option<(Symbol, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -421,7 +424,7 @@ impl LinkParser {
     }
 
     fn parse_link_import_name_type<S: Stage>(
-        item: &MetaItemParser<'_>,
+        item: &MetaItemParser,
         import_name_type: &mut Option<(PeImportNameType, Span)>,
         cx: &mut AcceptContext<'_, '_, S>,
     ) -> bool {
@@ -469,7 +472,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
@@ -478,7 +480,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, None);
             return None;
@@ -532,7 +534,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::StdInternalSymbol;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStdInternalSymbol;
 }
 
 pub(crate) struct LinkOrdinalParser;
@@ -551,7 +553,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ordinal = parse_single_integer(cx, args)?;
 
         // According to the table at
@@ -587,12 +589,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignFn),
+        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
 
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
@@ -607,7 +609,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
         "weak_odr",
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(name_value) = args.name_value() else {
             cx.expected_name_value(cx.attr_span, Some(sym::linkage));
             return None;
@@ -658,4 +660,22 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
 
         Some(AttributeKind::Linkage(linkage, cx.attr_span))
     }
+}
+
+pub(crate) struct NeedsAllocatorParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
+    const PATH: &[Symbol] = &[sym::needs_allocator];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
+}
+
+pub(crate) struct CompilerBuiltinsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for CompilerBuiltinsParser {
+    const PATH: &[Symbol] = &[sym::compiler_builtins];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

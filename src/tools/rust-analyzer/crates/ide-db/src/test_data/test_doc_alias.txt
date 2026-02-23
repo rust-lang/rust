@@ -27,11 +27,13 @@
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 109..118,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 109..118,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -39,6 +41,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Struct",
@@ -61,11 +64,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -73,6 +78,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "mul1",
@@ -95,11 +101,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -107,6 +115,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "mul2",
@@ -129,11 +138,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -141,6 +152,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s1",
@@ -163,11 +175,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -175,6 +189,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s1",
@@ -197,11 +212,13 @@
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 109..118,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 109..118,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -209,6 +226,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "s2",
@@ -231,11 +249,13 @@
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: AstPtr(
-                        SyntaxNodePtr {
-                            kind: NAME,
-                            range: 74..80,
-                        },
+                    name_ptr: Some(
+                        AstPtr(
+                            SyntaxNodePtr {
+                                kind: NAME,
+                                range: 74..80,
+                            },
+                        ),
                     ),
                 },
                 container_name: None,
@@ -243,6 +263,7 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
+                _marker: PhantomData<&()>,
             },
         ],
     ),

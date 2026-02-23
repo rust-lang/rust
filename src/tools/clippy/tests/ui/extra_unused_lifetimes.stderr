@@ -1,5 +1,5 @@
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:19:14
+  --> tests/ui/extra_unused_lifetimes.rs:21:14
    |
 LL | fn unused_lt<'a>(x: u8) {}
    |              ^^
@@ -8,37 +8,37 @@ LL | fn unused_lt<'a>(x: u8) {}
    = help: to override `-D warnings` add `#[allow(clippy::extra_unused_lifetimes)]`
 
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:47:10
+  --> tests/ui/extra_unused_lifetimes.rs:49:10
    |
 LL |     fn x<'a>(&self) {}
    |          ^^
 
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:74:22
+  --> tests/ui/extra_unused_lifetimes.rs:76:22
    |
 LL |         fn unused_lt<'a>(x: u8) {}
    |                      ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:86:10
+  --> tests/ui/extra_unused_lifetimes.rs:88:10
    |
 LL |     impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
    |          ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:93:10
+  --> tests/ui/extra_unused_lifetimes.rs:95:10
    |
 LL |     impl<'b> Scalar {
    |          ^^
 
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:95:26
+  --> tests/ui/extra_unused_lifetimes.rs:97:26
    |
 LL |         pub fn something<'c>() -> Self {
    |                          ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:125:10
+  --> tests/ui/extra_unused_lifetimes.rs:127:10
    |
 LL |     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
    |          ^^

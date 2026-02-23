@@ -109,7 +109,7 @@ fn main() {
 
 // CHECK:        declare void @llvm.instrprof.increment(ptr, i64, i32, i32) #[[LLVM_INSTRPROF_INCREMENT_ATTR:[0-9]+]]
 
-// WIN:          define linkonce_odr hidden i32 @__llvm_profile_runtime_user() #[[LLVM_PROFILE_RUNTIME_USER_ATTR:[0-9]+]] comdat {
+// WIN:          define linkonce_odr hidden i32 @__llvm_profile_runtime_user() #[[LLVM_PROFILE_RUNTIME_USER_ATTR:[0-9]+]] comdat {{.*}}{
 // WIN-NEXT:     %1 = load i32, ptr @__llvm_profile_runtime
 // WIN-NEXT:     ret i32 %1
 // WIN-NEXT:     }

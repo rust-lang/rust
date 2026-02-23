@@ -24,7 +24,7 @@
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
-#![feature(test)]
+#![cfg_attr(test, feature(test))]
 #![feature(thread_spawn_hook)]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]

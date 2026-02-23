@@ -284,7 +284,7 @@ impl<'tcx> Generics {
         args: &'a [ty::GenericArg<'tcx>],
     ) -> &'a [ty::GenericArg<'tcx>] {
         let mut own_params = self.parent_count..self.count();
-        if self.has_self && self.parent.is_none() {
+        if self.has_own_self() {
             own_params.start = 1;
         }
 
@@ -316,7 +316,7 @@ impl<'tcx> Generics {
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
         let own = &args[self.parent_count..][..self.own_params.len()];
-        if self.has_self && self.parent.is_none() { &own[1..] } else { own }
+        if self.has_own_self() { &own[1..] } else { own }
     }
 
     /// Returns true if a concrete type is specified after a default type.
@@ -349,6 +349,10 @@ impl<'tcx> Generics {
 
     pub fn is_own_empty(&'tcx self) -> bool {
         self.own_params.is_empty()
+    }
+
+    pub fn has_own_self(&'tcx self) -> bool {
+        self.has_self && self.parent.is_none()
     }
 }
 

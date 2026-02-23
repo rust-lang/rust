@@ -35,6 +35,7 @@ define_config! {
         allow_old_toolchain: Option<bool> = "allow-old-toolchain",
         offload: Option<bool> = "offload",
         polly: Option<bool> = "polly",
+        offload_clang_dir: Option<String> = "offload-clang-dir",
         clang: Option<bool> = "clang",
         enable_warnings: Option<bool> = "enable-warnings",
         download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
@@ -112,12 +113,13 @@ pub fn check_incompatible_options_for_ci_llvm(
         use_linker,
         allow_old_toolchain,
         offload,
+        offload_clang_dir: _,
         polly,
         clang,
         enable_warnings,
         download_ci_llvm: _,
         build_config,
-        enzyme: _,
+        enzyme,
     } = ci_llvm_config;
 
     err!(current_llvm_config.optimize, optimize);
@@ -139,6 +141,7 @@ pub fn check_incompatible_options_for_ci_llvm(
     err!(current_llvm_config.clang, clang);
     err!(current_llvm_config.build_config, build_config);
     err!(current_llvm_config.plugins, plugins);
+    err!(current_llvm_config.enzyme, enzyme);
 
     warn!(current_llvm_config.enable_warnings, enable_warnings);
 

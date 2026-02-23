@@ -92,21 +92,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr, 0)?;
 
         // This has to be an actual global fn ptr, not a dlsym function.
-        let fn_instance = if let Some(GlobalAlloc::Function { instance, .. }) =
-            this.tcx.try_get_global_alloc(alloc_id)
-        {
-            instance
-        } else {
+        let Some(GlobalAlloc::Function { instance, .. }) = this.tcx.try_get_global_alloc(alloc_id)
+        else {
             throw_ub_format!("expected static function pointer, found {:?}", ptr);
         };
 
         let lo =
             this.tcx.sess.source_map().lookup_char_pos(BytePos(offset.bytes().try_into().unwrap()));
 
-        let name = fn_instance.to_string();
+        let name = instance.to_string();
         let filename = lo.file.name.prefer_remapped_unconditionally().to_string();
 
-        interp_ok((fn_instance, lo, name, filename))
+        interp_ok((instance, lo, name, filename))
     }
 
     fn handle_miri_resolve_frame(

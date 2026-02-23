@@ -3,7 +3,8 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-const C: usize = 0;
+
+type const C: usize = 0;
 pub struct A<const M: usize> {}
 impl A<C> {
     fn fun1() {}

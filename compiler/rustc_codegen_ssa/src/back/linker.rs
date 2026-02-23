@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::{env, io, iter, mem, str};
+use std::{env, iter, mem, str};
 
 use find_msvc_tools;
 use rustc_hir::attrs::WindowsSubsystemKind;
@@ -527,7 +527,8 @@ impl<'a> Linker for GccLinker<'a> {
     ) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld && self.is_gnu {
+                // noop on windows w/ gcc, warning w/ clang
+                if !self.is_ld && self.is_gnu && !self.sess.target.is_like_windows {
                     self.cc_arg("-no-pie");
                 }
             }
@@ -809,7 +810,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         if self.sess.target.is_like_darwin {
             // Write a plain, newline-separated list of symbols
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 for (sym, _) in symbols {
                     debug!("  _{sym}");
@@ -821,7 +822,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_windows {
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
 
                 // .def file similar to MSVC one but without LIBRARY section
@@ -839,8 +840,13 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
             }
             self.link_arg(path);
+        } else if self.sess.target.is_like_wasm {
+            self.link_arg("--no-export-dynamic");
+            for (sym, _) in symbols {
+                self.link_arg("--export").link_arg(sym);
+            }
         } else if crate_type == CrateType::Executable && !self.sess.target.is_like_solaris {
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 for (sym, _) in symbols {
@@ -853,14 +859,9 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
             self.link_arg("--dynamic-list").link_arg(path);
-        } else if self.sess.target.is_like_wasm {
-            self.link_arg("--no-export-dynamic");
-            for (sym, _) in symbols {
-                self.link_arg("--export").link_arg(sym);
-            }
         } else {
             // Write an LD version script
-            let res: io::Result<()> = try {
+            let res = try {
                 let mut f = File::create_buffered(&path)?;
                 writeln!(f, "{{")?;
                 if !symbols.is_empty() {
@@ -1139,7 +1140,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
 
         let path = tmpdir.join("lib.def");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
 
             // Start off with the standard module name header and then go
@@ -1208,10 +1209,23 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn set_output_kind(
         &mut self,
-        _output_kind: LinkOutputKind,
+        output_kind: LinkOutputKind,
         _crate_type: CrateType,
         _out_filename: &Path,
     ) {
+        match output_kind {
+            LinkOutputKind::DynamicNoPicExe | LinkOutputKind::DynamicPicExe => {
+                self.cmd.arg("-sMAIN_MODULE=2");
+            }
+            LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
+                self.cmd.arg("-sSIDE_MODULE=2");
+            }
+            // -fno-pie is the default on Emscripten.
+            LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {}
+            LinkOutputKind::WasiReactorExe => {
+                unreachable!();
+            }
+        }
     }
 
     fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
@@ -1722,7 +1736,7 @@ impl<'a> Linker for AixLinker<'a> {
         symbols: &[(String, SymbolExportKind)],
     ) {
         let path = tmpdir.join("list.exp");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
             // FIXME: use llvm-nm to generate export list.
             for (symbol, _) in symbols {
@@ -1827,9 +1841,9 @@ fn exported_symbols_for_non_proc_macro(
     // Mark allocator shim symbols as exported only if they were generated.
     if export_threshold == SymbolExportLevel::Rust
         && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
-        && tcx.allocator_kind(()).is_some()
+        && let Some(kind) = tcx.allocator_kind(())
     {
-        symbols.extend(allocator_shim_symbols(tcx));
+        symbols.extend(allocator_shim_symbols(tcx, kind));
     }
 
     symbols
@@ -1857,7 +1871,7 @@ pub(crate) fn linked_symbols(
         | CrateType::Cdylib
         | CrateType::Dylib
         | CrateType::Sdylib => (),
-        CrateType::Staticlib | CrateType::Rlib => {
+        CrateType::StaticLib | CrateType::Rlib => {
             // These are not linked, so no need to generate symbols.o for them.
             return Vec::new();
         }
@@ -2075,7 +2089,7 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
-        panic!("staticlibs not supported")
+        self.sess.dcx().emit_fatal(errors::BpfStaticlibNotSupported)
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, _whole_archive: bool) {
@@ -2122,7 +2136,7 @@ impl<'a> Linker for BpfLinker<'a> {
         symbols: &[(String, SymbolExportKind)],
     ) {
         let path = tmpdir.join("symbols");
-        let res: io::Result<()> = try {
+        let res = try {
             let mut f = File::create_buffered(&path)?;
             for (sym, _) in symbols {
                 writeln!(f, "{sym}")?;

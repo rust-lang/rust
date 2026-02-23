@@ -13,6 +13,7 @@ use tracing::debug;
 
 use super::*;
 use crate::errors::UnableToConstructConstantValue;
+use crate::infer::TypeFreshener;
 use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::project::ProjectAndUnifyResult;
@@ -817,6 +818,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         infcx: &InferCtxt<'tcx>,
         p: ty::Predicate<'tcx>,
     ) -> ty::Predicate<'tcx> {
-        infcx.freshen(p)
+        p.fold_with(&mut TypeFreshener::new(infcx))
     }
 }

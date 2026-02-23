@@ -1,0 +1,133 @@
+From 285d5716fcfa6d43a3516d899b73bc85da322c25 Mon Sep 17 00:00:00 2001
+From: xonx <119700621+xonx4l@users.noreply.github.com>
+Date: Sun, 15 Feb 2026 14:06:49 +0000
+Subject: [PATCH] Disable f16 math tests for cranelift
+
+---
+ coretests/tests/floats/mod.rs | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/coretests/tests/floats/mod.rs b/coretests/tests/floats/mod.rs
+index c61961f8584..d7b4fa20322 100644
+--- a/coretests/tests/floats/mod.rs
++++ b/coretests/tests/floats/mod.rs
+@@ -1534,7 +1534,7 @@ fn s_nan() -> Float {
+     name: powf,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1557,7 +1557,7 @@ fn s_nan() -> Float {
+     name: exp,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1578,7 +1578,7 @@ fn s_nan() -> Float {
+     name: exp2,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1598,7 +1598,7 @@ fn s_nan() -> Float {
+     name: ln,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1620,7 +1620,7 @@ fn s_nan() -> Float {
+     name: log,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1645,7 +1645,7 @@ fn s_nan() -> Float {
+     name: log2,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1668,7 +1668,7 @@ fn s_nan() -> Float {
+     name: log10,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1692,7 +1692,7 @@ fn s_nan() -> Float {
+     name: asinh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1725,7 +1725,7 @@ fn s_nan() -> Float {
+     name: acosh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1753,7 +1753,7 @@ fn s_nan() -> Float {
+     name: atanh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1779,7 +1779,7 @@ fn s_nan() -> Float {
+     name: gamma,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -1814,7 +1814,7 @@ fn s_nan() -> Float {
+     name: ln_gamma,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+@@ -2027,7 +2027,7 @@ fn s_nan() -> Float {
+     attrs: {
+         // FIXME(f16_f128): add math tests when available
+         const: #[cfg(false)],
+-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+     },
+     test<Float> {
+-- 
+2.50.1
+

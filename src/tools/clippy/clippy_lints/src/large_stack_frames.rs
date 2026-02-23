@@ -2,15 +2,16 @@ use std::{fmt, ops};
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::fn_has_unsatisfiable_preds;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{HasSession, SpanRangeExt};
+use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_in_test};
+use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -83,12 +84,14 @@ declare_clippy_lint! {
 
 pub struct LargeStackFrames {
     maximum_allowed_size: u64,
+    allow_large_stack_frames_in_tests: bool,
 }
 
 impl LargeStackFrames {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             maximum_allowed_size: conf.stack_size_threshold,
+            allow_large_stack_frames_in_tests: conf.allow_large_stack_frames_in_tests,
         }
     }
 }
@@ -152,23 +155,114 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         let mir = cx.tcx.optimized_mir(def_id);
         let typing_env = mir.typing_env(cx.tcx);
 
-        let sizes_of_locals = || {
-            mir.local_decls.iter().filter_map(|local| {
+        let sizes_of_locals = mir
+            .local_decls
+            .iter()
+            .filter_map(|local| {
                 let layout = cx.tcx.layout_of(typing_env.as_query_input(local.ty)).ok()?;
                 Some((local, layout.size.bytes()))
             })
-        };
+            .collect::<Vec<_>>();
 
-        let frame_size = sizes_of_locals().fold(Space::Used(0), |sum, (_, size)| sum + size);
+        let frame_size = sizes_of_locals
+            .iter()
+            .fold(Space::Used(0), |sum, (_, size)| sum + *size);
 
         let limit = self.maximum_allowed_size;
         if frame_size.exceeds_limit(limit) {
             // Point at just the function name if possible, because lints that span
             // the entire body and don't have to are less legible.
-            let fn_span = match fn_kind {
-                FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
-                FnKind::Closure => entire_fn_span,
+            let (fn_span, fn_name) = match fn_kind {
+                FnKind::ItemFn(ident, _, _) => (ident.span, format!("function `{}`", ident.name)),
+                FnKind::Method(ident, _) => (ident.span, format!("method `{}`", ident.name)),
+                FnKind::Closure => (entire_fn_span, "closure".to_string()),
             };
+
+            // Don't lint inside tests if configured to not do so.
+            if self.allow_large_stack_frames_in_tests && is_in_test(cx.tcx, cx.tcx.local_def_id_to_hir_id(local_def_id))
+            {
+                return;
+            }
+
+            let explain_lint = |diag: &mut Diag<'_, ()>, ctxt: SyntaxContext| {
+                // Point out the largest individual contribution to this size, because
+                // it is the most likely to be unintentionally large.
+                if let Some((local, size)) = sizes_of_locals.iter().max_by_key(|&(_, size)| size)
+                    && let local_span = local.source_info.span
+                    && local_span.ctxt() == ctxt
+                {
+                    let size = Space::Used(*size); // pluralizes for us
+                    let ty = local.ty;
+
+                    // TODO: Is there a cleaner, robust way to ask this question?
+                    // The obvious `LocalDecl::is_user_variable()` panics on "unwrapping cross-crate data",
+                    // and that doesn't get us the true name in scope rather than the span text either.
+                    if let Some(name) = local_span.get_source_text(cx)
+                        && is_ident(&name)
+                    {
+                        // If the local is an ordinary named variable,
+                        // print its name rather than relying solely on the span.
+                        diag.span_label(
+                            local_span,
+                            format!("`{name}` is the largest part, at {size} for type `{ty}`"),
+                        );
+                    } else {
+                        diag.span_label(
+                            local_span,
+                            format!("this is the largest part, at {size} for type `{ty}`"),
+                        );
+                    }
+                }
+
+                // Explain why we are linting this and not other functions.
+                diag.note(format!(
+                    "{frame_size} is larger than Clippy's configured `stack-size-threshold` of {limit}"
+                ));
+
+                // Explain why the user should care, briefly.
+                diag.note_once(
+                    "allocating large amounts of stack space can overflow the stack \
+                        and cause the program to abort",
+                );
+            };
+
+            if fn_span.from_expansion() {
+                // Don't lint on the main function generated by `--test` target
+                if cx.sess().is_test_crate() && is_entrypoint_fn(cx, local_def_id.to_def_id()) {
+                    return;
+                }
+
+                let is_from_external_macro = fn_span.in_external_macro(cx.sess().source_map());
+                span_lint_and_then(
+                    cx,
+                    LARGE_STACK_FRAMES,
+                    fn_span.source_callsite(),
+                    format!(
+                        "{} generated by this macro may allocate a lot of stack space",
+                        if is_from_external_macro {
+                            cx.tcx.def_descr(local_def_id.into())
+                        } else {
+                            fn_name.as_str()
+                        }
+                    ),
+                    |diag| {
+                        if is_from_external_macro {
+                            return;
+                        }
+
+                        diag.span_label(
+                            fn_span,
+                            format!(
+                                "this {} has a stack frame size of {frame_size}",
+                                cx.tcx.def_descr(local_def_id.into())
+                            ),
+                        );
+
+                        explain_lint(diag, fn_span.ctxt());
+                    },
+                );
+                return;
+            }
 
             span_lint_and_then(
                 cx,
@@ -176,43 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                 fn_span,
                 format!("this function may allocate {frame_size} on the stack"),
                 |diag| {
-                    // Point out the largest individual contribution to this size, because
-                    // it is the most likely to be unintentionally large.
-                    if let Some((local, size)) = sizes_of_locals().max_by_key(|&(_, size)| size) {
-                        let local_span: Span = local.source_info.span;
-                        let size = Space::Used(size); // pluralizes for us
-                        let ty = local.ty;
-
-                        // TODO: Is there a cleaner, robust way to ask this question?
-                        // The obvious `LocalDecl::is_user_variable()` panics on "unwrapping cross-crate data",
-                        // and that doesn't get us the true name in scope rather than the span text either.
-                        if let Some(name) = local_span.get_source_text(cx)
-                            && is_ident(&name)
-                        {
-                            // If the local is an ordinary named variable,
-                            // print its name rather than relying solely on the span.
-                            diag.span_label(
-                                local_span,
-                                format!("`{name}` is the largest part, at {size} for type `{ty}`"),
-                            );
-                        } else {
-                            diag.span_label(
-                                local_span,
-                                format!("this is the largest part, at {size} for type `{ty}`"),
-                            );
-                        }
-                    }
-
-                    // Explain why we are linting this and not other functions.
-                    diag.note(format!(
-                        "{frame_size} is larger than Clippy's configured `stack-size-threshold` of {limit}"
-                    ));
-
-                    // Explain why the user should care, briefly.
-                    diag.note_once(
-                        "allocating large amounts of stack space can overflow the stack \
-                        and cause the program to abort",
-                    );
+                    explain_lint(diag, SyntaxContext::root());
                 },
             );
         }

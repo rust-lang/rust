@@ -113,7 +113,7 @@ pub struct MiriConfig {
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
-    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    /// Whether Miri artificially introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
     /// A list of crates that are considered user-relevant.
     pub user_relevant_crates: Vec<String>,
@@ -543,9 +543,7 @@ where
 {
     // Parse argv[0]. Slashes aren't escaped. Literal double quotes are not allowed.
     let mut cmd = {
-        let arg0 = if let Some(arg0) = args.next() {
-            arg0
-        } else {
+        let Some(arg0) = args.next() else {
             return vec![0];
         };
         let arg0 = arg0.as_ref();

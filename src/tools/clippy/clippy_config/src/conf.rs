@@ -35,7 +35,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "IPv4", "IPv6",
     "InfiniBand", "RoCE",
     "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript",
-    "PowerPC", "WebAssembly",
+    "PowerPC", "PowerShell", "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
@@ -373,6 +373,9 @@ define_Conf! {
     /// Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
     #[lints(indexing_slicing)]
     allow_indexing_slicing_in_tests: bool = false,
+    /// Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
+    #[lints(large_stack_frames)]
+    allow_large_stack_frames_in_tests: bool = true,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
@@ -420,7 +423,7 @@ define_Conf! {
     #[lints(multiple_crate_versions)]
     allowed_duplicate_crates: Vec<String> = Vec::new(),
     /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
-    /// the list to indicate, that the configured values should be appended to the default
+    /// the list to indicate that the configured values should be appended to the default
     /// configuration of Clippy. By default, any configuration will replace the default value.
     #[lints(min_ident_chars)]
     allowed_idents_below_min_chars: Vec<String> =
@@ -617,7 +620,7 @@ define_Conf! {
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
     /// The list of words this lint should not consider as identifiers needing ticks. The value
-    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value. For example:
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
@@ -777,6 +780,7 @@ define_Conf! {
         manual_split_once,
         manual_str_repeat,
         manual_strip,
+        manual_take,
         manual_try_fold,
         map_clone,
         map_unwrap_or,

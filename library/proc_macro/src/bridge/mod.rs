@@ -13,111 +13,77 @@ use std::ops::{Bound, Range};
 use std::sync::Once;
 use std::{fmt, marker, mem, panic, thread};
 
-use crate::{Delimiter, Level, Spacing};
+use crate::{Delimiter, Level};
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
 ///
-/// `with_api!(MySelf, my_self, my_macro)` expands to:
+/// `with_api!(my_macro, MyTokenStream, MySpan, MySymbol)` expands to:
 /// ```rust,ignore (pseudo-code)
 /// my_macro! {
-///     // ...
-///     Literal {
-///         // ...
-///         fn character(ch: char) -> MySelf::Literal;
-///         // ...
-///         fn span(my_self: &MySelf::Literal) -> MySelf::Span;
-///         fn set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
-///     },
+///     fn ts_clone(stream: &MyTokenStream) -> MyTokenStream;
+///     fn span_debug(span: &MySpan) -> String;
 ///     // ...
 /// }
 /// ```
 ///
-/// The first two arguments serve to customize the arguments names
-/// and argument/return types, to enable several different usecases:
-///
-/// If `my_self` is just `self`, then each `fn` signature can be used
-/// as-is for a method. If it's anything else (`self_` in practice),
-/// then the signatures don't have a special `self` argument, and
-/// can, therefore, have a different one introduced.
-///
-/// If `MySelf` is just `Self`, then the types are only valid inside
-/// a trait or a trait impl, where the trait has associated types
-/// for each of the API types. If non-associated types are desired,
-/// a module name (`self` in practice) can be used instead of `Self`.
+/// The second (`TokenStream`), third (`Span`) and fourth (`Symbol`)
+/// argument serve to customize the argument/return types that need
+/// special handling, to enable several different representations of
+/// these types.
 macro_rules! with_api {
-    ($S:ident, $self:ident, $m:ident) => {
+    ($m:ident, $TokenStream: path, $Span: path, $Symbol: path) => {
         $m! {
-            FreeFunctions {
-                fn drop($self: $S::FreeFunctions);
-                fn injected_env_var(var: &str) -> Option<String>;
-                fn track_env_var(var: &str, value: Option<&str>);
-                fn track_path(path: &str);
-                fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
-                fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
-            },
-            TokenStream {
-                fn drop($self: $S::TokenStream);
-                fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn is_empty($self: &$S::TokenStream) -> bool;
-                fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-                fn from_str(src: &str) -> $S::TokenStream;
-                fn to_string($self: &$S::TokenStream) -> String;
-                fn from_token_tree(
-                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
-                ) -> $S::TokenStream;
-                fn concat_trees(
-                    base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
-                ) -> $S::TokenStream;
-                fn concat_streams(
-                    base: Option<$S::TokenStream>,
-                    streams: Vec<$S::TokenStream>,
-                ) -> $S::TokenStream;
-                fn into_trees(
-                    $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
-            },
-            Span {
-                fn debug($self: $S::Span) -> String;
-                fn parent($self: $S::Span) -> Option<$S::Span>;
-                fn source($self: $S::Span) -> $S::Span;
-                fn byte_range($self: $S::Span) -> Range<usize>;
-                fn start($self: $S::Span) -> $S::Span;
-                fn end($self: $S::Span) -> $S::Span;
-                fn line($self: $S::Span) -> usize;
-                fn column($self: $S::Span) -> usize;
-                fn file($self: $S::Span) -> String;
-                fn local_file($self: $S::Span) -> Option<String>;
-                fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
-                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
-                fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
-                fn source_text($self: $S::Span) -> Option<String>;
-                fn save_span($self: $S::Span) -> usize;
-                fn recover_proc_macro_span(id: usize) -> $S::Span;
-            },
-            Symbol {
-                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
-            },
+            fn injected_env_var(var: &str) -> Option<String>;
+            fn track_env_var(var: &str, value: Option<&str>);
+            fn track_path(path: &str);
+            fn literal_from_str(s: &str) -> Result<Literal<$Span, $Symbol>, String>;
+            fn emit_diagnostic(diagnostic: Diagnostic<$Span>);
+
+            fn ts_drop(stream: $TokenStream);
+            fn ts_clone(stream: &$TokenStream) -> $TokenStream;
+            fn ts_is_empty(stream: &$TokenStream) -> bool;
+            fn ts_expand_expr(stream: &$TokenStream) -> Result<$TokenStream, ()>;
+            fn ts_from_str(src: &str) -> Result<$TokenStream, String>;
+            fn ts_to_string(stream: &$TokenStream) -> String;
+            fn ts_from_token_tree(
+                tree: TokenTree<$TokenStream, $Span, $Symbol>,
+            ) -> $TokenStream;
+            fn ts_concat_trees(
+                base: Option<$TokenStream>,
+                trees: Vec<TokenTree<$TokenStream, $Span, $Symbol>>,
+            ) -> $TokenStream;
+            fn ts_concat_streams(
+                base: Option<$TokenStream>,
+                streams: Vec<$TokenStream>,
+            ) -> $TokenStream;
+            fn ts_into_trees(
+                stream: $TokenStream
+            ) -> Vec<TokenTree<$TokenStream, $Span, $Symbol>>;
+
+            fn span_debug(span: $Span) -> String;
+            fn span_parent(span: $Span) -> Option<$Span>;
+            fn span_source(span: $Span) -> $Span;
+            fn span_byte_range(span: $Span) -> Range<usize>;
+            fn span_start(span: $Span) -> $Span;
+            fn span_end(span: $Span) -> $Span;
+            fn span_line(span: $Span) -> usize;
+            fn span_column(span: $Span) -> usize;
+            fn span_file(span: $Span) -> String;
+            fn span_local_file(span: $Span) -> Option<String>;
+            fn span_join(span: $Span, other: $Span) -> Option<$Span>;
+            fn span_subspan(span: $Span, start: Bound<usize>, end: Bound<usize>) -> Option<$Span>;
+            fn span_resolved_at(span: $Span, at: $Span) -> $Span;
+            fn span_source_text(span: $Span) -> Option<String>;
+            fn span_save_span(span: $Span) -> usize;
+            fn span_recover_proc_macro_span(id: usize) -> $Span;
+
+            fn symbol_normalize_and_validate_ident(string: &str) -> Result<$Symbol, ()>;
         }
     };
 }
 
-// Similar to `with_api`, but only lists the types requiring handles, and they
-// are divided into the two storage categories.
-macro_rules! with_api_handle_types {
-    ($m:ident) => {
-        $m! {
-            'owned:
-            FreeFunctions,
-            TokenStream,
-
-            'interned:
-            Span,
-            // Symbol is handled manually
-        }
-    };
-}
+pub(crate) struct Methods;
 
 #[allow(unsafe_code)]
 mod arena;
@@ -143,7 +109,7 @@ mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
-use rpc::{Decode, Encode, Reader, Writer};
+use rpc::{Decode, Encode};
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
@@ -156,7 +122,7 @@ pub struct BridgeConfig<'a> {
     input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: closure::Closure<'a>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
@@ -165,30 +131,18 @@ pub struct BridgeConfig<'a> {
 impl !Send for BridgeConfig<'_> {}
 impl !Sync for BridgeConfig<'_> {}
 
-#[forbid(unsafe_code)]
-#[allow(non_camel_case_types)]
-mod api_tags {
-    use super::rpc::{Decode, Encode, Reader, Writer};
-
-    macro_rules! declare_tags {
-        ($($name:ident {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        }),* $(,)?) => {
-            $(
-                pub(super) enum $name {
-                    $($method),*
-                }
-                rpc_encode_decode!(enum $name { $($method),* });
-            )*
-
-            pub(super) enum Method {
-                $($name($name)),*
-            }
-            rpc_encode_decode!(enum Method { $($name(m)),* });
+macro_rules! declare_tags {
+    (
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    ) => {
+        #[allow(non_camel_case_types)]
+        pub(super) enum ApiTags {
+            $($method),*
         }
+        rpc_encode_decode!(enum ApiTags { $($method),* });
     }
-    with_api!(self, self, declare_tags);
 }
+with_api!(declare_tags, __, __, __);
 
 /// Helper to wrap associated types to allow trait impl dispatch.
 /// That is, normally a pair of impls for `T::Foo` and `T::Bar`
@@ -197,11 +151,6 @@ mod api_tags {
 trait Mark {
     type Unmarked;
     fn mark(unmarked: Self::Unmarked) -> Self;
-}
-
-/// Unwrap types wrapped by `Mark::mark` (see `Mark` for details).
-trait Unmark {
-    type Unmarked;
     fn unmark(self) -> Self::Unmarked;
 }
 
@@ -216,23 +165,17 @@ impl<T, M> Mark for Marked<T, M> {
     fn mark(unmarked: Self::Unmarked) -> Self {
         Marked { value: unmarked, _marker: marker::PhantomData }
     }
-}
-impl<T, M> Unmark for Marked<T, M> {
-    type Unmarked = T;
     fn unmark(self) -> Self::Unmarked {
         self.value
     }
 }
-impl<'a, T, M> Unmark for &'a Marked<T, M> {
+impl<'a, T> Mark for &'a Marked<T, client::TokenStream> {
     type Unmarked = &'a T;
+    fn mark(_: Self::Unmarked) -> Self {
+        unreachable!()
+    }
     fn unmark(self) -> Self::Unmarked {
         &self.value
-    }
-}
-impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
-    type Unmarked = &'a mut T;
-    fn unmark(self) -> Self::Unmarked {
-        &mut self.value
     }
 }
 
@@ -242,9 +185,6 @@ impl<T: Mark> Mark for Vec<T> {
         // Should be a no-op due to std's in-place collect optimizations.
         unmarked.into_iter().map(T::mark).collect()
     }
-}
-impl<T: Unmark> Unmark for Vec<T> {
-    type Unmarked = Vec<T::Unmarked>;
     fn unmark(self) -> Self::Unmarked {
         // Should be a no-op due to std's in-place collect optimizations.
         self.into_iter().map(T::unmark).collect()
@@ -259,9 +199,6 @@ macro_rules! mark_noop {
                 fn mark(unmarked: Self::Unmarked) -> Self {
                     unmarked
                 }
-            }
-            impl Unmark for $ty {
-                type Unmarked = Self;
                 fn unmark(self) -> Self::Unmarked {
                     self
                 }
@@ -272,8 +209,6 @@ macro_rules! mark_noop {
 mark_noop! {
     (),
     bool,
-    char,
-    &'_ [u8],
     &'_ str,
     String,
     u8,
@@ -281,7 +216,8 @@ mark_noop! {
     Delimiter,
     LitKind,
     Level,
-    Spacing,
+    Bound<usize>,
+    Range<usize>,
 }
 
 rpc_encode_decode!(
@@ -298,12 +234,6 @@ rpc_encode_decode!(
         Warning,
         Note,
         Help,
-    }
-);
-rpc_encode_decode!(
-    enum Spacing {
-        Alone,
-        Joint,
     }
 );
 
@@ -351,13 +281,9 @@ macro_rules! mark_compound {
                     $($field: Mark::mark(unmarked.$field)),*
                 }
             }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
             fn unmark(self) -> Self::Unmarked {
                 $name {
-                    $($field: Unmark::unmark(self.$field)),*
+                    $($field: Mark::unmark(self.$field)),*
                 }
             }
         }
@@ -372,14 +298,10 @@ macro_rules! mark_compound {
                     })*
                 }
             }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
             fn unmark(self) -> Self::Unmarked {
                 match self {
                     $($name::$variant $(($field))? => {
-                        $name::$variant $((Unmark::unmark($field)))?
+                        $name::$variant $((Mark::unmark($field)))?
                     })*
                 }
             }
@@ -394,7 +316,7 @@ macro_rules! compound_traits {
     };
 }
 
-compound_traits!(
+rpc_encode_decode!(
     enum Bound<T> {
         Included(x),
         Excluded(x),
@@ -466,7 +388,7 @@ pub struct Literal<Span, Symbol> {
     pub span: Span,
 }
 
-compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
+compound_traits!(struct Literal<Span, Symbol> { kind, symbol, suffix, span });
 
 #[derive(Clone)]
 pub enum TokenTree<TokenStream, Span, Symbol> {
@@ -510,6 +432,6 @@ compound_traits!(
     struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
 );
 
-compound_traits!(
+rpc_encode_decode!(
     struct Range<T> { start, end }
 );

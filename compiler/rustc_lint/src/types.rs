@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
-use rustc_hir::{Expr, ExprKind, HirId, LangItem};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
@@ -686,7 +686,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
 ) -> bool {
-    tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
+    find_attr!(tcx, def.did(), RustcNonnullOptimizationGuaranteed)
 }
 
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
@@ -746,24 +746,23 @@ fn pat_ty_is_known_nonnull<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     pat: ty::Pattern<'tcx>,
 ) -> bool {
-    Option::unwrap_or_default(
-        try {
-            match *pat {
-                ty::PatternKind::Range { start, end } => {
-                    let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
-                    let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+    try {
+        match *pat {
+            ty::PatternKind::Range { start, end } => {
+                let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
 
-                    // This also works for negative numbers, as we just need
-                    // to ensure we aren't wrapping over zero.
-                    start > 0 && end >= start
-                }
-                ty::PatternKind::NotNull => true,
-                ty::PatternKind::Or(patterns) => {
-                    patterns.iter().all(|pat| pat_ty_is_known_nonnull(tcx, typing_env, pat))
-                }
+                // This also works for negative numbers, as we just need
+                // to ensure we aren't wrapping over zero.
+                start > 0 && end >= start
             }
-        },
-    )
+            ty::PatternKind::NotNull => true,
+            ty::PatternKind::Or(patterns) => {
+                patterns.iter().all(|pat| pat_ty_is_known_nonnull(tcx, typing_env, pat))
+            }
+        }
+    }
+    .unwrap_or_default()
 }
 
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.

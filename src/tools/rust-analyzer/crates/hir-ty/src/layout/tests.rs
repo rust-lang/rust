@@ -98,7 +98,7 @@ fn eval_goal(
             Either::Left(it) => it.krate(&db),
             Either::Right(it) => it.krate(&db),
         };
-        db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate })
+        db.layout_of_ty(goal_ty.store(), ParamEnvAndCrate { param_env, krate }.store())
     })
 }
 
@@ -140,10 +140,10 @@ fn eval_expr(
             .unwrap()
             .0;
         let infer = InferenceResult::for_body(&db, function_id.into());
-        let goal_ty = infer.type_of_binding[b];
+        let goal_ty = infer.type_of_binding[b].clone();
         let param_env = db.trait_environment(function_id.into());
         let krate = function_id.krate(&db);
-        db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate })
+        db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate }.store())
     })
 }
 

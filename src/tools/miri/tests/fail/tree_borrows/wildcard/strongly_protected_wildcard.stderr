@@ -18,28 +18,21 @@ help: the strongly protected tag <TAG> was created here, in the initial state Re
    |
 LL | fn inner(x: &mut i32, f: fn(usize)) {
    |          ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure
-  --> tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
-   |
-LL |         drop(unsafe { Box::from_raw(raw as *mut i32) });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<{closure@tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC} as std::ops::FnOnce<(usize,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
-note: inside `inner`
-  --> tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
-   |
-LL |     f(x as *mut i32 as usize)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `main`
-  --> tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
-   |
-LL | /     inner(Box::leak(Box::new(0)), |raw| {
-LL | |         drop(unsafe { Box::from_raw(raw as *mut i32) });
-LL | |     });
-   | |______^
+   = note: stack backtrace:
+           0: <std::boxed::Box<i32> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           3: main::{closure#0}
+               at tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
+           4: <{closure@tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC} as std::ops::FnOnce<(usize,)>>::call_once - shim
+               at RUSTLIB/core/src/ops/function.rs:LL:CC
+           5: inner
+               at tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
+           6: main
+               at tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

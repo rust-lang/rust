@@ -1,5 +1,5 @@
 error[E0277]: `?` couldn't convert the error: `E: std::error::Error` is not satisfied
-  --> $DIR/bad-question-mark-on-trait-object.rs:7:13
+  --> $DIR/bad-question-mark-on-trait-object.rs:6:13
    |
 LL | fn foo() -> Result<(), Box<dyn std::error::Error>> {
    |             -------------------------------------- required `E: std::error::Error` because of this
@@ -17,7 +17,7 @@ LL | struct E;
    = note: required for `Box<dyn std::error::Error>` to implement `From<E>`
 
 error[E0277]: `?` couldn't convert the error to `X`
-  --> $DIR/bad-question-mark-on-trait-object.rs:18:13
+  --> $DIR/bad-question-mark-on-trait-object.rs:17:13
    |
 LL | fn bat() -> Result<(), X> {
    |             ------------- expected `X` because of this
@@ -27,14 +27,9 @@ LL |     Ok(bar()?)
    |        this can't be annotated with `?` because it has type `Result<_, E>`
    |
 note: `X` needs to implement `From<E>`
-  --> $DIR/bad-question-mark-on-trait-object.rs:4:1
+  --> $DIR/bad-question-mark-on-trait-object.rs:3:1
    |
 LL | struct X;
-   | ^^^^^^^^
-note: alternatively, `E` needs to implement `Into<X>`
-  --> $DIR/bad-question-mark-on-trait-object.rs:1:1
-   |
-LL | struct E;
    | ^^^^^^^^
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 

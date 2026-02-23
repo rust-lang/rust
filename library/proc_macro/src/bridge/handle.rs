@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::num::NonZero;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::fxhash::FxHashMap;
@@ -44,12 +44,6 @@ impl<T> Index<Handle> for OwnedStore<T> {
     type Output = T;
     fn index(&self, h: Handle) -> &T {
         self.data.get(&h).expect("use-after-free in `proc_macro` handle")
-    }
-}
-
-impl<T> IndexMut<Handle> for OwnedStore<T> {
-    fn index_mut(&mut self, h: Handle) -> &mut T {
-        self.data.get_mut(&h).expect("use-after-free in `proc_macro` handle")
     }
 }
 

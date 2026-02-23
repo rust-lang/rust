@@ -86,10 +86,6 @@ unsafe extern "unadjusted" {
     fn llvm_i8x16_all_true(x: simd::i8x16) -> i32;
     #[link_name = "llvm.wasm.bitmask.v16i8"]
     fn llvm_bitmask_i8x16(a: simd::i8x16) -> i32;
-    #[link_name = "llvm.wasm.narrow.signed.v16i8.v8i16"]
-    fn llvm_narrow_i8x16_s(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
-    #[link_name = "llvm.wasm.narrow.unsigned.v16i8.v8i16"]
-    fn llvm_narrow_i8x16_u(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
     #[link_name = "llvm.wasm.avgr.unsigned.v16i8"]
     fn llvm_avgr_u_i8x16(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
 
@@ -103,10 +99,6 @@ unsafe extern "unadjusted" {
     fn llvm_i16x8_all_true(x: simd::i16x8) -> i32;
     #[link_name = "llvm.wasm.bitmask.v8i16"]
     fn llvm_bitmask_i16x8(a: simd::i16x8) -> i32;
-    #[link_name = "llvm.wasm.narrow.signed.v8i16.v4i32"]
-    fn llvm_narrow_i16x8_s(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
-    #[link_name = "llvm.wasm.narrow.unsigned.v8i16.v4i32"]
-    fn llvm_narrow_i16x8_u(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
     #[link_name = "llvm.wasm.avgr.unsigned.v8i16"]
     fn llvm_avgr_u_i16x8(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
 
@@ -2281,7 +2273,23 @@ pub use i8x16_bitmask as u8x16_bitmask;
 #[doc(alias("i8x16.narrow_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_narrow_i16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_narrow_i8x16_s(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let v: simd::i16x16 = simd_shuffle!(
+            a.as_i16x8(),
+            b.as_i16x8(),
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
+
+        let max = simd_splat(i16::from(i8::MAX));
+        let min = simd_splat(i16::from(i8::MIN));
+
+        let v = simd_select(simd_gt::<_, simd::i16x16>(v, max), max, v);
+        let v = simd_select(simd_lt::<_, simd::i16x16>(v, min), min, v);
+
+        let v: simd::i8x16 = simd_cast(v);
+
+        v.v128()
+    }
 }
 
 /// Converts two input vectors into a smaller lane vector by narrowing each
@@ -2295,7 +2303,23 @@ pub fn i8x16_narrow_i16x8(a: v128, b: v128) -> v128 {
 #[doc(alias("i8x16.narrow_i16x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_narrow_i16x8(a: v128, b: v128) -> v128 {
-    unsafe { llvm_narrow_i8x16_u(a.as_i16x8(), b.as_i16x8()).v128() }
+    unsafe {
+        let v: simd::i16x16 = simd_shuffle!(
+            a.as_i16x8(),
+            b.as_i16x8(),
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
+
+        let max = simd_splat(i16::from(u8::MAX));
+        let min = simd_splat(i16::from(u8::MIN));
+
+        let v = simd_select(simd_gt::<_, simd::i16x16>(v, max), max, v);
+        let v = simd_select(simd_lt::<_, simd::i16x16>(v, min), min, v);
+
+        let v: simd::u8x16 = simd_cast(v);
+
+        v.v128()
+    }
 }
 
 /// Shifts each lane to the left by the specified number of bits.
@@ -2593,7 +2617,19 @@ pub use i16x8_bitmask as u16x8_bitmask;
 #[doc(alias("i16x8.narrow_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_narrow_i32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_narrow_i16x8_s(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let v: simd::i32x8 = simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+        let max = simd_splat(i32::from(i16::MAX));
+        let min = simd_splat(i32::from(i16::MIN));
+
+        let v = simd_select(simd_gt::<_, simd::i32x8>(v, max), max, v);
+        let v = simd_select(simd_lt::<_, simd::i32x8>(v, min), min, v);
+
+        let v: simd::i16x8 = simd_cast(v);
+
+        v.v128()
+    }
 }
 
 /// Converts two input vectors into a smaller lane vector by narrowing each
@@ -2607,7 +2643,19 @@ pub fn i16x8_narrow_i32x4(a: v128, b: v128) -> v128 {
 #[doc(alias("i16x8.narrow_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_narrow_i32x4(a: v128, b: v128) -> v128 {
-    unsafe { llvm_narrow_i16x8_u(a.as_i32x4(), b.as_i32x4()).v128() }
+    unsafe {
+        let v: simd::i32x8 = simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+        let max = simd_splat(i32::from(u16::MAX));
+        let min = simd_splat(i32::from(u16::MIN));
+
+        let v = simd_select(simd_gt::<_, simd::i32x8>(v, max), max, v);
+        let v = simd_select(simd_lt::<_, simd::i32x8>(v, min), min, v);
+
+        let v: simd::u16x8 = simd_cast(v);
+
+        v.v128()
+    }
 }
 
 /// Converts low half of the smaller lane vector to a larger lane

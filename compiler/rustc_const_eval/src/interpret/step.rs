@@ -203,11 +203,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
-            NullaryOp(null_op) => {
-                let val = self.nullary_op(null_op)?;
-                self.write_immediate(*val, &dest)?;
-            }
-
             Aggregate(box ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }
@@ -223,7 +218,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // A fresh reference was created, make sure it gets retagged.
                 let val = M::retag_ptr_value(
                     self,
-                    if borrow_kind.allows_two_phase_borrow() {
+                    if borrow_kind.is_two_phase_borrow() {
                         mir::RetagKind::TwoPhase
                     } else {
                         mir::RetagKind::Default
@@ -252,12 +247,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
-            }
-
-            ShallowInitBox(ref operand, _) => {
-                let src = self.eval_operand(operand, None)?;
-                let v = self.read_immediate(&src)?;
-                self.write_immediate(*v, &dest)?;
             }
 
             Cast(cast_kind, ref operand, cast_ty) => {
@@ -392,7 +381,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         move_definitely_disjoint: bool,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         interp_ok(match op {
-            mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
+            mir::Operand::Copy(_) | mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => {
                 // Make a regular copy.
                 let op = self.eval_operand(op, None)?;
                 FnArg::Copy(op)
@@ -561,8 +550,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
                 )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
-                // did a jump to another block.
-                if self.frame_idx() == old_stack && self.frame().loc == old_loc {
+                // did a jump to another block. We disable the sanity check for functions that
+                // can't return, since Miri sometimes does have to keep the location the same
+                // for those (which is fine since execution will continue on a different thread).
+                if target.is_some() && self.frame_idx() == old_stack && self.frame().loc == old_loc
+                {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
                 }
             }

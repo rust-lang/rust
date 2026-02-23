@@ -71,11 +71,8 @@ pub fn futex<'tcx>(
             let timeout = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {
-                let duration = match ecx.read_timespec(&timeout)? {
-                    Some(duration) => duration,
-                    None => {
-                        return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
-                    }
+                let Some(duration) = ecx.read_timespec(&timeout)? else {
+                    return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
                     ecx.check_no_isolation(

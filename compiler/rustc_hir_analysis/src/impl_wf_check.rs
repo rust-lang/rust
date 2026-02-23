@@ -8,9 +8,8 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use std::assert_matches::debug_assert_matches;
-
 use min_specialization::check_min_specialization;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_errors::codes::*;
@@ -102,7 +101,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     let lifetimes_in_associated_types: FxHashSet<_> = tcx
         .associated_item_def_ids(impl_def_id)
         .iter()
-        .flat_map(|def_id| {
+        .flat_map(|&def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {
                 ty::AssocKind::Type { .. } => {

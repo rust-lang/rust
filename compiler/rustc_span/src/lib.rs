@@ -17,11 +17,10 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(array_windows))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
-#![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -39,6 +38,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
+pub use unicode_width::UNICODE_VERSION;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -54,7 +54,6 @@ use hygiene::Transparency;
 pub use hygiene::{
     DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
 };
-use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
@@ -63,8 +62,7 @@ pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
 pub use symbol::{
-    ByteSymbol, Ident, MacroRulesNormalizedIdent, Macros20NormalizedIdent, STDLIB_STABLE_CRATES,
-    Symbol, kw, sym,
+    ByteSymbol, Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym,
 };
 
 mod analyze_source_file;
@@ -221,99 +219,271 @@ pub fn with_metavar_spans<R>(f: impl FnOnce(&MetavarSpansMap) -> R) -> R {
     with_session_globals(|session_globals| f(&session_globals.metavar_spans))
 }
 
-// FIXME: We should use this enum or something like it to get rid of the
-// use of magic `/rust/1.x/...` paths across the board.
+bitflags::bitflags! {
+    /// Scopes used to determined if it need to apply to `--remap-path-prefix`
+    #[derive(Debug, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, Hash)]
+    pub struct RemapPathScopeComponents: u8 {
+        /// Apply remappings to the expansion of `std::file!()` macro
+        const MACRO = 1 << 0;
+        /// Apply remappings to printed compiler diagnostics
+        const DIAGNOSTICS = 1 << 1;
+        /// Apply remappings to debug information
+        const DEBUGINFO = 1 << 3;
+        /// Apply remappings to coverage information
+        const COVERAGE = 1 << 4;
+        /// Apply remappings to documentation information
+        const DOCUMENTATION = 1 << 5;
+
+        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries and objects are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
+    }
+}
+
+impl<E: Encoder> Encodable<E> for RemapPathScopeComponents {
+    #[inline]
+    fn encode(&self, s: &mut E) {
+        s.emit_u8(self.bits());
+    }
+}
+
+impl<D: Decoder> Decodable<D> for RemapPathScopeComponents {
+    #[inline]
+    fn decode(s: &mut D) -> RemapPathScopeComponents {
+        RemapPathScopeComponents::from_bits(s.read_u8())
+            .expect("invalid bits for RemapPathScopeComponents")
+    }
+}
+
+/// A self-contained "real" filename.
+///
+/// It is produced by `SourceMap::to_real_filename`.
+///
+/// `RealFileName` represents a filename that may have been (partly) remapped
+/// by `--remap-path-prefix` and `-Zremap-path-scope`.
+///
+/// It also contains an embedabble component which gives a working directory
+/// and a maybe-remapped maybe-aboslote name. This is useful for debuginfo where
+/// some formats and tools highly prefer absolute paths.
+///
+/// ## Consistency across compiler sessions
+///
+/// The type-system, const-eval and other parts of the compiler rely on `FileName`
+/// and by extension `RealFileName` to be consistent across compiler sessions.
+///
+/// Otherwise unsoudness (like rust-lang/rust#148328) may occur.
+///
+/// As such this type is self-sufficient and consistent in it's output.
+///
+/// The [`RealFileName::path`] and [`RealFileName::embeddable_name`] methods
+/// are guaranteed to always return the same output across compiler sessions.
+///
+/// ## Usage
+///
+/// Creation of a [`RealFileName`] should be done using
+/// [`FilePathMapping::to_real_filename`][rustc_span::source_map::FilePathMapping::to_real_filename].
+///
+/// Retrieving a path can be done in two main ways:
+///  - by using [`RealFileName::path`] with a given scope (should be preferred)
+///  - or by using [`RealFileName::embeddable_name`] with a given scope
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable)]
-pub enum RealFileName {
-    LocalPath(PathBuf),
-    /// For remapped paths (namely paths into libstd that have been mapped
-    /// to the appropriate spot on the local host's file system, and local file
-    /// system paths that have been remapped with `FilePathMapping`),
-    Remapped {
-        /// `local_path` is the (host-dependent) local path to the file. This is
-        /// None if the file was imported from another crate
-        local_path: Option<PathBuf>,
-        /// `virtual_name` is the stable path rustc will store internally within
-        /// build artifacts.
-        virtual_name: PathBuf,
-    },
+pub struct RealFileName {
+    /// The local name (always present in the original crate)
+    local: Option<InnerRealFileName>,
+    /// The maybe remapped part. Correspond to `local` when no remapped happened.
+    maybe_remapped: InnerRealFileName,
+    /// The remapped scopes. Any active scope MUST use `maybe_virtual`
+    scopes: RemapPathScopeComponents,
+}
+
+/// The inner workings of `RealFileName`.
+///
+/// It contains the `name`, `working_directory` and `embeddable_name` components.
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable, Hash)]
+struct InnerRealFileName {
+    /// The name.
+    name: PathBuf,
+    /// The working directory associated with the embeddable name.
+    working_directory: PathBuf,
+    /// The embeddable name.
+    embeddable_name: PathBuf,
 }
 
 impl Hash for RealFileName {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // To prevent #70924 from happening again we should only hash the
-        // remapped (virtualized) path if that exists. This is because
-        // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
-        // remain stable even if the corresponding local_path changes
-        self.remapped_path_if_available().hash(state)
+        // remapped path if that exists. This is because remapped paths to
+        // sysroot crates (/rust/$hash or /rust/$version) remain stable even
+        // if the corresponding local path changes.
+        if !self.was_fully_remapped() {
+            self.local.hash(state);
+        }
+        self.maybe_remapped.hash(state);
+        self.scopes.bits().hash(state);
     }
 }
 
 impl RealFileName {
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path(&self) -> Option<&Path> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path, virtual_name: _ } => local_path.as_deref(),
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn into_local_path(self) -> Option<PathBuf> {
-        match self {
-            RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
-        }
-    }
-
-    /// Returns the path suitable for embedding into build artifacts. This would still
-    /// be a local path if it has not been remapped. A remapped path will not correspond
-    /// to a valid file system path: see `local_path_if_available()` for something that
-    /// is more likely to return paths into the local host file system.
-    pub fn remapped_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: _, virtual_name: p } => p,
-        }
-    }
-
-    /// Returns the path suitable for reading from the file system on the local host,
-    /// if this information exists. Otherwise returns the remapped name.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
-    pub fn local_path_if_available(&self) -> &Path {
-        match self {
-            RealFileName::LocalPath(path)
-            | RealFileName::Remapped { local_path: None, virtual_name: path }
-            | RealFileName::Remapped { local_path: Some(path), virtual_name: _ } => path,
-        }
-    }
-
-    /// Return the path remapped or not depending on the [`FileNameDisplayPreference`].
+    /// Returns the associated path for the given remapping scope.
     ///
-    /// For the purpose of this function, local and short preference are equal.
-    pub fn to_path(&self, display_pref: FileNameDisplayPreference) -> &Path {
-        match display_pref {
-            FileNameDisplayPreference::Local | FileNameDisplayPreference::Short => {
-                self.local_path_if_available()
-            }
-            FileNameDisplayPreference::Remapped => self.remapped_path_if_available(),
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    #[inline]
+    pub fn path(&self, scope: RemapPathScopeComponents) -> &Path {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            local_name.name.as_path()
+        } else {
+            self.maybe_remapped.name.as_path()
         }
     }
 
-    pub fn to_string_lossy(&self, display_pref: FileNameDisplayPreference) -> Cow<'_, str> {
+    /// Returns the working directory and embeddable path for the given remapping scope.
+    ///
+    /// Useful for embedding a mostly abosolute path (modulo remapping) in the compiler outputs.
+    ///
+    /// The embedabble path is not guaranteed to be an absolute path, nor is it garuenteed
+    /// that the working directory part is always a prefix of embeddable path.
+    ///
+    /// ## Panic
+    ///
+    /// Only one scope components can be given to this function.
+    #[inline]
+    pub fn embeddable_name(&self, scope: RemapPathScopeComponents) -> (&Path, &Path) {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to `RealFileName::embeddable_path`: {scope:?}"
+        );
+        if !self.scopes.contains(scope)
+            && let Some(local_name) = &self.local
+        {
+            (&local_name.working_directory, &local_name.embeddable_name)
+        } else {
+            (&self.maybe_remapped.working_directory, &self.maybe_remapped.embeddable_name)
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
+    pub fn local_path(&self) -> Option<&Path> {
+        if self.was_not_remapped() {
+            Some(&self.maybe_remapped.name)
+        } else if let Some(local) = &self.local {
+            Some(&local.name)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// May not exists if the filename was imported from another crate.
+    ///
+    /// Avoid embedding this in build artifacts; prefer `path()` or `embeddable_name()`.
+    #[inline]
+    pub fn into_local_path(self) -> Option<PathBuf> {
+        if self.was_not_remapped() {
+            Some(self.maybe_remapped.name)
+        } else if let Some(local) = self.local {
+            Some(local.name)
+        } else {
+            None
+        }
+    }
+
+    /// Returns whenever the filename was remapped.
+    #[inline]
+    pub(crate) fn was_remapped(&self) -> bool {
+        !self.scopes.is_empty()
+    }
+
+    /// Returns whenever the filename was fully remapped.
+    #[inline]
+    fn was_fully_remapped(&self) -> bool {
+        self.scopes.is_all()
+    }
+
+    /// Returns whenever the filename was not remapped.
+    #[inline]
+    fn was_not_remapped(&self) -> bool {
+        self.scopes.is_empty()
+    }
+
+    /// Returns an empty `RealFileName`
+    ///
+    /// Useful as the working directory input to `SourceMap::to_real_filename`.
+    #[inline]
+    pub fn empty() -> RealFileName {
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: PathBuf::new(),
+                working_directory: PathBuf::new(),
+                embeddable_name: PathBuf::new(),
+            },
+            scopes: RemapPathScopeComponents::empty(),
+        }
+    }
+
+    /// Returns a `RealFileName` that is completely remapped without any local components.
+    ///
+    /// Only exposed for the purpose of `-Zsimulate-remapped-rust-src-base`.
+    pub fn from_virtual_path(path: &Path) -> RealFileName {
+        let name = InnerRealFileName {
+            name: path.to_owned(),
+            embeddable_name: path.to_owned(),
+            working_directory: PathBuf::new(),
+        };
+        RealFileName { local: None, maybe_remapped: name, scopes: RemapPathScopeComponents::all() }
+    }
+
+    /// Update the filename for encoding in the crate metadata.
+    ///
+    /// Currently it's about removing the local part when the filename
+    /// is either fully remapped or not remapped at all.
+    #[inline]
+    pub fn update_for_crate_metadata(&mut self) {
+        if self.was_fully_remapped() || self.was_not_remapped() {
+            // NOTE: This works because when the filename is fully
+            // remapped, we don't care about the `local` part,
+            // and when the filename is not remapped at all,
+            // `maybe_remapped` and `local` are equal.
+            self.local = None;
+        }
+    }
+
+    /// Internal routine to display the filename.
+    ///
+    /// Users should always use the `RealFileName::path` method or `FileName` methods instead.
+    fn to_string_lossy<'a>(&'a self, display_pref: FileNameDisplayPreference) -> Cow<'a, str> {
         match display_pref {
-            FileNameDisplayPreference::Local => self.local_path_if_available().to_string_lossy(),
-            FileNameDisplayPreference::Remapped => {
-                self.remapped_path_if_available().to_string_lossy()
+            FileNameDisplayPreference::Remapped => self.maybe_remapped.name.to_string_lossy(),
+            FileNameDisplayPreference::Local => {
+                self.local.as_ref().unwrap_or(&self.maybe_remapped).name.to_string_lossy()
             }
             FileNameDisplayPreference::Short => self
-                .local_path_if_available()
+                .maybe_remapped
+                .name
                 .file_name()
                 .map_or_else(|| "".into(), |f| f.to_string_lossy()),
+            FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
         }
     }
 }
@@ -339,38 +509,18 @@ pub enum FileName {
     InlineAsm(Hash64),
 }
 
-impl From<PathBuf> for FileName {
-    fn from(p: PathBuf) -> Self {
-        FileName::Real(RealFileName::LocalPath(p))
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameEmbeddablePreference {
-    /// If a remapped path is available, only embed the `virtual_path` and omit the `local_path`.
-    ///
-    /// Otherwise embed the local-path into the `virtual_path`.
-    RemappedOnly,
-    /// Embed the original path as well as its remapped `virtual_path` component if available.
-    LocalAndRemapped,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub enum FileNameDisplayPreference {
-    /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for paths that get embedded into files produced by the compiler.
-    Remapped,
-    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Local,
-    /// Display only the filename, as a way to reduce the verbosity of the output.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
-    Short,
-}
-
 pub struct FileNameDisplay<'a> {
     inner: &'a FileName,
     display_pref: FileNameDisplayPreference,
+}
+
+// Internal enum. Should not be exposed.
+#[derive(Clone, Copy)]
+enum FileNameDisplayPreference {
+    Remapped,
+    Local,
+    Short,
+    Scope(RemapPathScopeComponents),
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
@@ -417,18 +567,34 @@ impl FileName {
         }
     }
 
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
     pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 
-    /// This may include transient local filesystem information.
-    /// Must not be embedded in build outputs.
-    pub fn prefer_local(&self) -> FileNameDisplay<'_> {
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    ///
+    /// Avoid embedding this in build artifacts. Prefer using the `display` method.
+    #[inline]
+    pub fn prefer_local_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
 
-    pub fn display(&self, display_pref: FileNameDisplayPreference) -> FileNameDisplay<'_> {
-        FileNameDisplay { inner: self, display_pref }
+    /// Returns a short (either the filename or an empty string).
+    #[inline]
+    pub fn short(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Short }
+    }
+
+    /// Returns a `Display`-able path for the given scope.
+    #[inline]
+    pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
@@ -473,7 +639,8 @@ impl FileName {
 
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    ///
+    /// Avoid embedding this in build artifacts.
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),
@@ -1138,30 +1305,6 @@ impl Span {
         let mut mark = None;
         *self = self.map_ctxt(|mut ctxt| {
             mark = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
-            ctxt
-        });
-        mark
-    }
-
-    #[inline]
-    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut mark = None;
-        *self = self.map_ctxt(|mut ctxt| {
-            mark = ctxt.glob_adjust(expn_id, glob_span);
-            ctxt
-        });
-        mark
-    }
-
-    #[inline]
-    pub fn reverse_glob_adjust(
-        &mut self,
-        expn_id: ExpnId,
-        glob_span: Span,
-    ) -> Option<Option<ExpnId>> {
-        let mut mark = None;
-        *self = self.map_ctxt(|mut ctxt| {
-            mark = ctxt.reverse_glob_adjust(expn_id, glob_span);
             ctxt
         });
         mark
@@ -2258,14 +2401,12 @@ impl SourceFile {
     /// normalized one. Hence we need to convert those offsets to the normalized
     /// form when constructing spans.
     pub fn normalized_byte_pos(&self, offset: u32) -> BytePos {
-        let diff = match self
-            .normalized_pos
-            .binary_search_by(|np| (np.pos.0 + np.diff).cmp(&(self.start_pos.0 + offset)))
-        {
-            Ok(i) => self.normalized_pos[i].diff,
-            Err(0) => 0,
-            Err(i) => self.normalized_pos[i - 1].diff,
-        };
+        let diff =
+            match self.normalized_pos.binary_search_by(|np| (np.pos.0 + np.diff).cmp(&offset)) {
+                Ok(i) => self.normalized_pos[i].diff,
+                Err(0) => 0,
+                Err(i) => self.normalized_pos[i - 1].diff,
+            };
 
         BytePos::from_u32(self.start_pos.0 + offset - diff)
     }
@@ -2654,91 +2795,24 @@ impl InnerSpan {
 /// This is a hack to allow using the [`HashStable_Generic`] derive macro
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
+    /// The main event: stable hashing of a span.
+    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
+
+    /// Compute a `DefPathHash`.
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-    fn hash_spans(&self) -> bool;
-    /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
-    /// we don't have easy access to a `Session`
-    fn unstable_opts_incremental_ignore_spans(&self) -> bool;
-    fn def_span(&self, def_id: LocalDefId) -> Span;
-    fn span_data_to_lines_and_cols(
-        &mut self,
-        span: &SpanData,
-    ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)>;
-    fn hashing_controls(&self) -> HashingControls;
+
+    /// Assert that the provided `HashStableContext` is configured with the default
+    /// `HashingControls`. We should always have bailed out before getting to here with a
+    fn assert_default_hashing_controls(&self, msg: &str);
 }
 
 impl<CTX> HashStable<CTX> for Span
 where
     CTX: HashStableContext,
 {
-    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
-    /// fields (that would be similar to hashing pointers, since those are just
-    /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
-    /// triple, which stays the same even if the containing `SourceFile` has moved
-    /// within the `SourceMap`.
-    ///
-    /// Also note that we are hashing byte offsets for the column, not unicode
-    /// codepoint offsets. For the purpose of the hash that's sufficient.
-    /// Also, hashing filenames is expensive so we avoid doing it twice when the
-    /// span starts and ends in the same file, which is almost always the case.
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        const TAG_VALID_SPAN: u8 = 0;
-        const TAG_INVALID_SPAN: u8 = 1;
-        const TAG_RELATIVE_SPAN: u8 = 2;
-
-        if !ctx.hash_spans() {
-            return;
-        }
-
-        let span = self.data_untracked();
-        span.ctxt.hash_stable(ctx, hasher);
-        span.parent.hash_stable(ctx, hasher);
-
-        if span.is_dummy() {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
-            return;
-        }
-
-        if let Some(parent) = span.parent {
-            let def_span = ctx.def_span(parent).data_untracked();
-            if def_span.contains(span) {
-                // This span is enclosed in a definition: only hash the relative position.
-                Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-                (span.lo - def_span.lo).to_u32().hash_stable(ctx, hasher);
-                (span.hi - def_span.lo).to_u32().hash_stable(ctx, hasher);
-                return;
-            }
-        }
-
-        // If this is not an empty or invalid span, we want to hash the last
-        // position that belongs to it, as opposed to hashing the first
-        // position past it.
-        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span)
-        else {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
-            return;
-        };
-
-        Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file, hasher);
-
-        // Hash both the length and the end location (line/column) of a span. If we
-        // hash only the length, for example, then two otherwise equal spans with
-        // different end locations will have the same hash. This can cause a problem
-        // during incremental compilation wherein a previous result for a query that
-        // depends on the end location of a span will be incorrectly reused when the
-        // end location of the span it depends on has changed (see issue #74890). A
-        // similar analysis applies if some query depends specifically on the length
-        // of the span, but we only hash the end location. So hash both.
-
-        let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
-        let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let col_hi_trunc = (col_hi.0 as u64) & 0xFF << 32;
-        let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
-        let col_line = col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc;
-        let len = (span.hi - span.lo).0;
-        Hash::hash(&col_line, hasher);
-        Hash::hash(&len, hasher);
+        // `span_hash_stable` does all the work.
+        ctx.span_hash_stable(*self, hasher)
     }
 }
 

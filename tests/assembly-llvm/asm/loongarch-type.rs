@@ -1,10 +1,14 @@
 //@ add-minicore
-//@ revisions: loongarch32 loongarch64
+//@ revisions: loongarch32s loongarch32r loongarch64
 
 //@ assembly-output: emit-asm
 
-//@[loongarch32] compile-flags: --target loongarch32-unknown-none
-//@[loongarch32] needs-llvm-components: loongarch
+//@[loongarch32s] compile-flags: --target loongarch32-unknown-none -Ctarget-feature=+32s
+//@[loongarch32s] needs-llvm-components: loongarch
+
+//@[loongarch32r] compile-flags: --target loongarch32-unknown-none
+//@[loongarch32r] needs-llvm-components: loongarch
+//@[loongarch32r] min-llvm-version: 22
 
 //@[loongarch64] compile-flags: --target loongarch64-unknown-none
 //@[loongarch64] needs-llvm-components: loongarch
@@ -28,8 +32,12 @@ extern "C" {
 
 // CHECK-LABEL: sym_fn:
 // CHECK: #APP
-// CHECK: pcalau12i $t0, %got_pc_hi20(extern_func)
-// CHECK: ld.{{[wd]}} $t0, $t0, %got_pc_lo12(extern_func)
+// loongarch64: pcalau12i $t0, %got_pc_hi20(extern_func)
+// loongarch64: ld.d $t0, $t0, %got_pc_lo12(extern_func)
+// loongarch32s: pcalau12i $t0, %got_pc_hi20(extern_func)
+// loongarch32s: ld.w $t0, $t0, %got_pc_lo12(extern_func)
+// loongarch32r: pcaddu12i $t0, %got_pcadd_hi20(extern_func)
+// loongarch32r: ld.w $t0, $t0, %got_pcadd_lo12(.Lpcadd_hi0)
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_fn() {
@@ -38,8 +46,13 @@ pub unsafe fn sym_fn() {
 
 // CHECK-LABEL: sym_static:
 // CHECK: #APP
-// CHECK: pcalau12i $t0, %got_pc_hi20(extern_static)
-// CHECK: ld.{{[wd]}} $t0, $t0, %got_pc_lo12(extern_static)
+// loongarch64: pcalau12i $t0, %got_pc_hi20(extern_static)
+// loongarch64: ld.d $t0, $t0, %got_pc_lo12(extern_static)
+// loongarch32s: pcalau12i $t0, %got_pc_hi20(extern_static)
+// loongarch32s: ld.w $t0, $t0, %got_pc_lo12(extern_static)
+// loongarch32r: pcaddu12i $t0, %got_pcadd_hi20(extern_static)
+// loongarch32r: ld.w $t0, $t0, %got_pcadd_lo12(.Lpcadd_hi1)
+
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_static() {

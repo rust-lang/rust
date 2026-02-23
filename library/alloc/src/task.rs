@@ -127,6 +127,44 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     }
 }
 
+/// Converts a closure into a [`Waker`].
+///
+/// The closure gets called every time the waker is woken.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(waker_fn)]
+/// use std::task::waker_fn;
+///
+/// let waker = waker_fn(|| println!("woken"));
+///
+/// waker.wake_by_ref(); // Prints "woken".
+/// waker.wake();        // Prints "woken".
+/// ```
+#[cfg(target_has_atomic = "ptr")]
+#[unstable(feature = "waker_fn", issue = "149580")]
+pub fn waker_fn<F: Fn() + Send + Sync + 'static>(f: F) -> Waker {
+    struct WakeFn<F> {
+        f: F,
+    }
+
+    impl<F> Wake for WakeFn<F>
+    where
+        F: Fn(),
+    {
+        fn wake(self: Arc<Self>) {
+            (self.f)()
+        }
+
+        fn wake_by_ref(self: &Arc<Self>) {
+            (self.f)()
+        }
+    }
+
+    Waker::from(Arc::new(WakeFn { f }))
+}
+
 // NB: This private function for constructing a RawWaker is used, rather than
 // inlining this into the `From<Arc<W>> for RawWaker` impl, to ensure that
 // the safety of `From<Arc<W>> for Waker` does not depend on the correct
@@ -304,6 +342,45 @@ impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
     fn from(waker: Rc<W>) -> RawWaker {
         local_raw_waker(waker)
     }
+}
+
+/// Converts a closure into a [`LocalWaker`].
+///
+/// The closure gets called every time the local waker is woken.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(local_waker)]
+/// #![feature(waker_fn)]
+/// use std::task::local_waker_fn;
+///
+/// let waker = local_waker_fn(|| println!("woken"));
+///
+/// waker.wake_by_ref(); // Prints "woken".
+/// waker.wake();        // Prints "woken".
+/// ```
+// #[unstable(feature = "local_waker", issue = "118959")]
+#[unstable(feature = "waker_fn", issue = "149580")]
+pub fn local_waker_fn<F: Fn() + Send + Sync + 'static>(f: F) -> LocalWaker {
+    struct LocalWakeFn<F> {
+        f: F,
+    }
+
+    impl<F> LocalWake for LocalWakeFn<F>
+    where
+        F: Fn(),
+    {
+        fn wake(self: Rc<Self>) {
+            (self.f)()
+        }
+
+        fn wake_by_ref(self: &Rc<Self>) {
+            (self.f)()
+        }
+    }
+
+    LocalWaker::from(Rc::new(LocalWakeFn { f }))
 }
 
 // NB: This private function for constructing a RawWaker is used, rather than

@@ -9,6 +9,7 @@ fn main() {
         .arg("-Zautodiff=Enable")
         .arg("-Zautodiff=NoPostopt")
         .opt_level("0")
+        .arg("-Clto=fat")
         .emit("llvm-ir")
         .run();
 

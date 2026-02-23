@@ -1,0 +1,68 @@
+error[E0277]: the trait bound `ToolA: From<&PathBuf>` is not satisfied
+  --> $DIR/explicit-reference-cast.rs:40:13
+   |
+LL |     let _ = ToolA::from(&path);
+   |             ^^^^^ unsatisfied trait bound
+   |
+   = help: consider casting the `&PathBuf` value to `&Path`
+help: the trait `From<&PathBuf>` is not implemented for `ToolA`
+  --> $DIR/explicit-reference-cast.rs:6:1
+   |
+LL | pub struct ToolA(PathBuf);
+   | ^^^^^^^^^^^^^^^^
+help: the following other types implement trait `From<T>`
+  --> $DIR/explicit-reference-cast.rs:9:1
+   |
+LL | impl From<&Path> for ToolA {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `ToolA` implements `From<&Path>`
+...
+LL | impl From<&str> for ToolA {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `ToolA` implements `From<&str>`
+
+error[E0277]: the trait bound `ToolB: TryFrom<&PathBuf>` is not satisfied
+  --> $DIR/explicit-reference-cast.rs:43:13
+   |
+LL |     let _ = ToolB::try_from(&path);
+   |             ^^^^^ unsatisfied trait bound
+   |
+   = help: consider casting the `&PathBuf` value to `&Path`
+help: the trait `From<&PathBuf>` is not implemented for `ToolB`
+  --> $DIR/explicit-reference-cast.rs:23:1
+   |
+LL | pub struct ToolB(PathBuf);
+   | ^^^^^^^^^^^^^^^^
+help: the trait `TryFrom<&PathBuf>` is not implemented for `ToolB`
+      but trait `TryFrom<&Path>` is implemented for it
+  --> $DIR/explicit-reference-cast.rs:27:1
+   |
+LL | impl TryFrom<&Path> for ToolB {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `Path`, found `PathBuf`
+   = note: required for `&PathBuf` to implement `Into<ToolB>`
+   = note: required for `ToolB` to implement `TryFrom<&PathBuf>`
+
+error[E0277]: the trait bound `ToolB: From<&PathBuf>` is not satisfied
+  --> $DIR/explicit-reference-cast.rs:43:13
+   |
+LL |     let _ = ToolB::try_from(&path);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: consider casting the `&PathBuf` value to `&Path`
+help: the trait `From<&PathBuf>` is not implemented for `ToolB`
+  --> $DIR/explicit-reference-cast.rs:23:1
+   |
+LL | pub struct ToolB(PathBuf);
+   | ^^^^^^^^^^^^^^^^
+help: the trait `TryFrom<&PathBuf>` is not implemented for `ToolB`
+      but trait `TryFrom<&Path>` is implemented for it
+  --> $DIR/explicit-reference-cast.rs:27:1
+   |
+LL | impl TryFrom<&Path> for ToolB {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `Path`, found `PathBuf`
+   = note: required for `&PathBuf` to implement `Into<ToolB>`
+   = note: required for `ToolB` to implement `TryFrom<&PathBuf>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

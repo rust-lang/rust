@@ -280,6 +280,9 @@ config_data! {
         /// Show function parameter name inlay hints at the call site.
         inlayHints_parameterHints_enable: bool = true,
 
+        /// Show parameter name inlay hints for missing arguments at the call site.
+        inlayHints_parameterHints_missingArguments_enable: bool = false,
+
         /// Show exclusive range inlay hints.
         inlayHints_rangeExclusiveHints_enable: bool = false,
 
@@ -384,6 +387,12 @@ config_data! {
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
         procMacro_enable: bool = true,
 
+        /// Number of proc-macro server processes to spawn.
+        ///
+        /// Controls how many independent `proc-macro-srv` processes rust-analyzer
+        /// runs in parallel to handle macro expansion.
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
 
@@ -475,33 +484,83 @@ config_data! {
         typing_triggerChars: Option<String> = Some("=.".to_owned()),
 
 
-        /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
+        /// Configure a command that rust-analyzer can invoke to
+        /// obtain configuration.
         ///
-        /// [`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
-        /// `progress_label` is used for the title in progress indicators, whereas `files_to_watch`
-        /// is used to determine which build system-specific files should be watched in order to
-        /// reload rust-analyzer.
+        /// This is an alternative to manually generating
+        /// `rust-project.json`: it enables rust-analyzer to generate
+        /// rust-project.json on the fly, and regenerate it when
+        /// switching or modifying projects.
         ///
-        /// Below is an example of a valid configuration:
+        /// This is an object with three fields:
+        ///
+        /// * `command`: the shell command to invoke
+        ///
+        /// * `filesToWatch`: which build system-specific files should
+        /// be watched to trigger regenerating the configuration
+        ///
+        /// * `progressLabel`: the name of the command, used in
+        /// progress indicators in the IDE
+        ///
+        /// Here's an example of a valid configuration:
+        ///
         /// ```json
         /// "rust-analyzer.workspace.discoverConfig": {
         ///     "command": [
         ///         "rust-project",
-        ///         "develop-json"
+        ///         "develop-json",
+        ///         "{arg}"
         ///     ],
-        ///     "progressLabel": "rust-analyzer",
+        ///     "progressLabel": "buck2/rust-project",
         ///     "filesToWatch": [
         ///         "BUCK"
         ///     ]
         /// }
         /// ```
         ///
-        /// ## On `DiscoverWorkspaceConfig::command`
+        /// ## Argument Substitutions
+        ///
+        /// If `command` includes the argument `{arg}`, that argument will be substituted
+        /// with the JSON-serialized form of the following enum:
+        ///
+        /// ```norun
+        /// #[derive(PartialEq, Clone, Debug, Serialize)]
+        /// #[serde(rename_all = "camelCase")]
+        /// pub enum DiscoverArgument {
+        ///    Path(AbsPathBuf),
+        ///    Buildfile(AbsPathBuf),
+        /// }
+        /// ```
+        ///
+        /// rust-analyzer will use the path invocation to find and
+        /// generate a `rust-project.json` and therefore a
+        /// workspace. Example:
+        ///
+        ///
+        /// ```norun
+        /// rust-project develop-json '{ "path": "myproject/src/main.rs" }'
+        /// ```
+        ///
+        /// rust-analyzer will use build file invocations to update an
+        /// existing workspace. Example:
+        ///
+        /// Or with a build file and the configuration above:
+        ///
+        /// ```norun
+        /// rust-project develop-json '{ "buildfile": "myproject/BUCK" }'
+        /// ```
+        ///
+        /// As a reference for implementors, buck2's `rust-project`
+        /// will likely be useful:
+        /// <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.
+        ///
+        /// ## Discover Command Output
         ///
         /// **Warning**: This format is provisional and subject to change.
         ///
-        /// [`DiscoverWorkspaceConfig::command`] *must* return a JSON object corresponding to
-        /// `DiscoverProjectData::Finished`:
+        /// The discover command should output JSON objects, one per
+        /// line (JSONL format). These objects should correspond to
+        /// this Rust data type:
         ///
         /// ```norun
         /// #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -514,7 +573,14 @@ config_data! {
         /// }
         /// ```
         ///
-        /// As JSON, `DiscoverProjectData::Finished` is:
+        /// For example, a progress event:
+        ///
+        /// ```json
+        /// {"kind":"progress","message":"generating rust-project.json"}
+        /// ```
+        ///
+        /// A finished event can look like this (expanded and
+        /// commented for readability):
         ///
         /// ```json
         /// {
@@ -522,7 +588,7 @@ config_data! {
         ///     "kind": "finished",
         ///     // the file used by a non-Cargo build system to define
         ///     // a package or target.
-        ///     "buildfile": "rust-analyzer/BUILD",
+        ///     "buildfile": "rust-analyzer/BUCK",
         ///     // the contents of a rust-project.json, elided for brevity
         ///     "project": {
         ///         "sysroot": "foo",
@@ -531,41 +597,9 @@ config_data! {
         /// }
         /// ```
         ///
-        /// It is encouraged, but not required, to use the other variants on `DiscoverProjectData`
-        /// to provide a more polished end-user experience.
-        ///
-        /// `DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`, which will be
-        /// substituted with the JSON-serialized form of the following enum:
-        ///
-        /// ```norun
-        /// #[derive(PartialEq, Clone, Debug, Serialize)]
-        /// #[serde(rename_all = "camelCase")]
-        /// pub enum DiscoverArgument {
-        ///    Path(AbsPathBuf),
-        ///    Buildfile(AbsPathBuf),
-        /// }
-        /// ```
-        ///
-        /// The JSON representation of `DiscoverArgument::Path` is:
-        ///
-        /// ```json
-        /// {
-        ///     "path": "src/main.rs"
-        /// }
-        /// ```
-        ///
-        /// Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
-        ///
-        /// ```json
-        /// {
-        ///     "buildfile": "BUILD"
-        /// }
-        /// ```
-        ///
-        /// `DiscoverArgument::Path` is used to find and generate a `rust-project.json`, and
-        /// therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to to update an
-        /// existing workspace. As a reference for implementors, buck2's `rust-project` will likely
-        /// be useful: <https://github.com/facebook/buck2/tree/main/integrations/rust-project>.
+        /// Only the finished event is required, but the other
+        /// variants are encouraged to give users more feedback about
+        /// progress or errors.
         workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
     }
 }
@@ -722,6 +756,9 @@ config_data! {
         ///
         /// E.g. `use ::std::io::Read;`.
         imports_prefixExternPrelude: bool = false,
+
+        /// Whether to warn when a rename will cause conflicts (change the meaning of the code).
+        rename_showConflicts: bool = true,
     }
 }
 
@@ -864,10 +901,18 @@ config_data! {
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
         /// by changing `#rust-analyzer.check.invocationStrategy#`.
         ///
-        /// If `$saved_file` is part of the command, rust-analyzer will pass
-        /// the absolute path of the saved file to the provided command. This is
-        /// intended to be used with non-Cargo build systems.
-        /// Note that `$saved_file` is experimental and may be removed in the future.
+        /// It supports two interpolation syntaxes, both mainly intended to be used with
+        /// [non-Cargo build systems](./non_cargo_based_projects.md):
+        ///
+        /// - If `{saved_file}` is part of the command, rust-analyzer will pass
+        ///   the absolute path of the saved file to the provided command.
+        ///   (A previous version, `$saved_file`, also works.)
+        /// - If `{label}` is part of the command, rust-analyzer will pass the
+        ///   Cargo package ID, which can be used with `cargo check -p`, or a build label from
+        ///   `rust-project.json`. If `{label}` is included, rust-analyzer behaves much like
+        ///   [`"rust-analyzer.check.workspace": false`](#check.workspace).
+        ///
+        ///
         ///
         /// An example command would be:
         ///
@@ -898,8 +943,24 @@ config_data! {
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
+        /// Subcommand used for bench runnables instead of `bench`.
+        runnables_bench_command: String = "bench".to_owned(),
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
+        /// Override the command used for bench runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = vec![],
@@ -911,6 +972,15 @@ config_data! {
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
         runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
+        /// Subcommand used for test runnables instead of `test`.
+        runnables_test_command: String = "test".to_owned(),
+        /// Override the command used for test runnables.
+        /// The first element of the array should be the program to execute (for example, `cargo`).
+        ///
+        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
+        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
+        /// the test name (name of test function or test mod path).
+        runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -1003,6 +1073,7 @@ pub struct Config {
     /// The workspace roots as registered by the LSP client
     workspace_roots: Vec<AbsPathBuf>,
     caps: ClientCapabilities,
+    /// The LSP root path, deprecated in favor of `workspace_roots`
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
     client_info: Option<ClientInfo>,
@@ -1326,6 +1397,10 @@ impl Config {
 
         self.discovered_projects_from_command.push(ProjectJsonFromCommand { data, buildfile });
     }
+
+    pub fn workspace_roots(&self) -> &[AbsPathBuf] {
+        &self.workspace_roots
+    }
 }
 
 #[derive(Default, Debug)]
@@ -1562,6 +1637,16 @@ pub struct RunnablesConfig {
     pub cargo_extra_args: Vec<String>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
+    /// Subcommand used for doctest runnables instead of `test`.
+    pub test_command: String,
+    /// Override the command used for test runnables.
+    pub test_override_command: Option<Vec<String>>,
+    /// Subcommand used for doctest runnables instead of `bench`.
+    pub bench_command: String,
+    /// Override the command used for bench runnables.
+    pub bench_override_command: Option<Vec<String>>,
+    /// Override the command used for doctest runnables.
+    pub doc_test_override_command: Option<Vec<String>>,
 }
 
 /// Configuration for workspace symbol search requests.
@@ -1692,15 +1777,14 @@ impl Config {
     }
 
     pub fn root_path(&self) -> &AbsPathBuf {
+        // We should probably use `workspace_roots` here if set
         &self.root_path
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
         &self.caps
     }
-}
 
-impl Config {
     pub fn assist(&self, source_root: Option<SourceRootId>) -> AssistConfig {
         AssistConfig {
             snippet_cap: self.snippet_cap(),
@@ -1719,6 +1803,7 @@ impl Config {
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
             prefer_self_ty: *self.assist_preferSelf(source_root),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1727,6 +1812,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
+            show_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1826,6 +1912,7 @@ impl Config {
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
+            show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
 
@@ -1916,6 +2003,9 @@ impl Config {
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
+            parameter_hints_for_missing_arguments: self
+                .inlayHints_parameterHints_missingArguments_enable()
+                .to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
                 lifetime_hints: self.inlayHints_genericParameterHints_lifetime_enable().to_owned(),
@@ -2386,6 +2476,8 @@ impl Config {
 
     pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
         CargoOptions {
+            // Might be nice to allow users to specify test_command = "nextest"
+            subcommand: "test".into(),
             target_tuples: self.cargo_target(source_root).clone().into_iter().collect(),
             all_targets: false,
             no_default_features: *self.cargo_noDefaultFeatures(source_root),
@@ -2419,9 +2511,9 @@ impl Config {
                     },
                 }
             }
-            Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.check_command(source_root).clone(),
-                options: CargoOptions {
+            Some(_) | None => FlycheckConfig::Automatic {
+                cargo_options: CargoOptions {
+                    subcommand: self.check_command(source_root).clone(),
                     target_tuples: self
                         .check_targets(source_root)
                         .clone()
@@ -2484,6 +2576,11 @@ impl Config {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
+            test_command: self.runnables_test_command(source_root).clone(),
+            test_override_command: self.runnables_test_overrideCommand(source_root).clone(),
+            bench_command: self.runnables_bench_command(source_root).clone(),
+            bench_override_command: self.runnables_bench_overrideCommand(source_root).clone(),
+            doc_test_override_command: self.runnables_doctest_overrideCommand(source_root).clone(),
         }
     }
 
@@ -2577,6 +2674,13 @@ impl Config {
             NumThreads::Concrete(0) | NumThreads::Physical => num_cpus::get_physical(),
             &NumThreads::Concrete(n) => n,
             NumThreads::Logical => num_cpus::get(),
+        }
+    }
+
+    pub fn proc_macro_num_processes(&self) -> usize {
+        match self.procMacro_processes() {
+            NumProcesses::Concrete(0) | NumProcesses::Physical => num_cpus::get_physical(),
+            &NumProcesses::Concrete(n) => n,
         }
     }
 
@@ -3012,6 +3116,14 @@ pub enum TargetDirectory {
 pub enum NumThreads {
     Physical,
     Logical,
+    #[serde(untagged)]
+    Concrete(usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NumProcesses {
+    Physical,
     #[serde(untagged)]
     Concrete(usize),
 }
@@ -3842,6 +3954,22 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
+        "NumProcesses" => set! {
+            "anyOf": [
+                {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                {
+                    "type": "string",
+                    "enum": ["physical"],
+                    "enumDescriptions": [
+                        "Use the number of physical cores",
+                    ],
+                },
+            ],
+        },
         "Option<NumThreads>" => set! {
             "anyOf": [
                 {
@@ -4121,8 +4249,8 @@ mod tests {
         assert_eq!(config.cargo_targetDir(None), &None);
         assert!(matches!(
             config.flycheck(None),
-            FlycheckConfig::CargoCommand {
-                options: CargoOptions { target_dir_config: TargetDirectoryConfig::None, .. },
+            FlycheckConfig::Automatic {
+                cargo_options: CargoOptions { target_dir_config: TargetDirectoryConfig::None, .. },
                 ..
             }
         ));
@@ -4145,8 +4273,8 @@ mod tests {
             Utf8PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned()));
         assert!(matches!(
             config.flycheck(None),
-            FlycheckConfig::CargoCommand {
-                options: CargoOptions { target_dir_config, .. },
+            FlycheckConfig::Automatic {
+                cargo_options: CargoOptions { target_dir_config, .. },
                 ..
             } if target_dir_config.target_dir(Some(&ws_target_dir)).map(Cow::into_owned)
                 == Some(ws_target_dir.join("rust-analyzer"))
@@ -4171,8 +4299,8 @@ mod tests {
         );
         assert!(matches!(
             config.flycheck(None),
-            FlycheckConfig::CargoCommand {
-                options: CargoOptions { target_dir_config, .. },
+            FlycheckConfig::Automatic {
+                cargo_options: CargoOptions { target_dir_config, .. },
                 ..
             } if target_dir_config.target_dir(None).map(Cow::into_owned)
                 == Some(Utf8PathBuf::from("other_folder"))

@@ -24,7 +24,7 @@ mod uefi_env {
     use crate::io;
     use crate::os::uefi::ffi::OsStringExt;
     use crate::ptr::NonNull;
-    use crate::sys::{helpers, unsupported_err};
+    use crate::sys::pal::{helpers, unsupported_err};
 
     pub(crate) fn get(key: &OsStr) -> Option<OsString> {
         let shell = helpers::open_shell()?;
@@ -43,7 +43,20 @@ mod uefi_env {
     pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
             .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "invalid key"))?;
-        unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) }
+        let r = unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) };
+
+        // The UEFI Shell spec only lists `EFI_SUCCESS` as a possible return value for
+        // `SetEnv`, but the edk2 implementation can return errors. Allow most of these
+        // errors to bubble up to the caller, but ignore `NotFound` errors; deleting a
+        // nonexistent variable is not listed as an error condition of
+        // `std::env::remove_var`.
+        if let Err(err) = &r
+            && err.kind() == io::ErrorKind::NotFound
+        {
+            Ok(())
+        } else {
+            r
+        }
     }
 
     pub(crate) fn get_all() -> io::Result<Vec<(OsString, OsString)>> {
@@ -95,8 +108,8 @@ mod uefi_env {
         val_ptr: *mut r_efi::efi::Char16,
     ) -> io::Result<()> {
         let shell = helpers::open_shell().ok_or(unsupported_err())?;
-        let r =
-            unsafe { ((*shell.as_ptr()).set_env)(key_ptr, val_ptr, r_efi::efi::Boolean::FALSE) };
+        let volatile = r_efi::efi::Boolean::TRUE;
+        let r = unsafe { ((*shell.as_ptr()).set_env)(key_ptr, val_ptr, volatile) };
         if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 }

@@ -7,7 +7,6 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -22,7 +21,7 @@ use rustc_public::ItemKind;
 use rustc_public::crate_def::CrateDef;
 use rustc_public::mir::mono::Instance;
 use rustc_public::ty::{RigidTy, TyKind};
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 

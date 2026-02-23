@@ -21,6 +21,9 @@ pub(crate) fn handle_failed_output(
     eprintln!("output status: `{}`", output.status());
     eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
     eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
+    if !cmd.get_context().is_empty() {
+        eprintln!("Context:\n{}", cmd.get_context());
+    }
     std::process::exit(1)
 }
 

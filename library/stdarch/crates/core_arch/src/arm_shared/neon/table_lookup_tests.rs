@@ -21,19 +21,19 @@ macro_rules! test_vtbl {
     ) => {
         #[cfg(target_endian = "little")]
         #[simd_test(enable = "neon")]
-        unsafe fn $test_name() {
+        fn $test_name() {
             // create table as array, and transmute it to
             // arm's table type
-            let table: $table_t = mem::transmute([$($table_v),*]);
+            let table: $table_t = unsafe { mem::transmute([$($table_v),*]) };
 
             // For each control vector, perform a table lookup and
             // verify the result:
             $(
                 {
-                    let ctrl: $ctrl_t = mem::transmute([$($ctrl_v),*]);
-                    let result = $fn_id(table, mem::transmute(ctrl));
-                    let result: $ctrl_t = mem::transmute(result);
-                    let expected: $ctrl_t = mem::transmute([$($exp_v),*]);
+                    let ctrl: $ctrl_t = unsafe { mem::transmute([$($ctrl_v),*]) };
+                    let result = $fn_id(table, unsafe { mem::transmute(ctrl) });
+                    let result: $ctrl_t = unsafe { mem::transmute(result) };
+                    let expected: $ctrl_t = unsafe { mem::transmute([$($exp_v),*]) };
                     assert_eq!(result, expected);
                 }
             )*
@@ -171,20 +171,19 @@ macro_rules! test_vtbx {
     ) => {
         #[cfg(target_endian = "little")]
         #[simd_test(enable = "neon")]
-        unsafe fn $test_name() {
+        fn $test_name() {
             // create table as array, and transmute it to
             // arm's table type
-            let table: $table_t = mem::transmute([$($table_v),*]);
-            let ext: $ext_t = mem::transmute([$($ext_v),*]);
-
+            let table: $table_t = unsafe { mem::transmute([$($table_v),*]) };
+            let ext: $ext_t = unsafe { mem::transmute([$($ext_v),*]) };
             // For each control vector, perform a table lookup and
             // verify the result:
             $(
                 {
-                    let ctrl: $ctrl_t = mem::transmute([$($ctrl_v),*]);
-                    let result = $fn_id(ext, table, mem::transmute(ctrl));
-                    let result: $ctrl_t = mem::transmute(result);
-                    let expected: $ctrl_t = mem::transmute([$($exp_v),*]);
+                    let ctrl: $ctrl_t = unsafe { mem::transmute([$($ctrl_v),*]) };
+                    let result = $fn_id(ext, table, unsafe { mem::transmute(ctrl) });
+                    let result: $ctrl_t = unsafe { mem::transmute(result) };
+                    let expected: $ctrl_t = unsafe { mem::transmute([$($exp_v),*]) };
                     assert_eq!(result, expected);
                 }
             )*

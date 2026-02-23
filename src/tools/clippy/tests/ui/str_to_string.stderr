@@ -13,5 +13,41 @@ error: `to_string()` called on a `&str`
 LL |     msg.to_string();
    |     ^^^^^^^^^^^^^^^ help: try: `msg.to_owned()`
 
-error: aborting due to 2 previous errors
+error: `to_string()` called on a `&str`
+  --> tests/ui/str_to_string.rs:22:18
+   |
+LL |     let _value = t!(str::from_utf8(key)).to_string();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(str::from_utf8(key)).to_owned()`
+
+error: `ToString::to_string` used as `&str` to `String` converter
+  --> tests/ui/str_to_string.rs:35:19
+   |
+LL |     let _ = x.map(ToString::to_string);
+   |                   ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+
+error: `ToString::to_string` used as `&str` to `String` converter
+  --> tests/ui/str_to_string.rs:38:19
+   |
+LL |     let _ = x.map(str::to_string);
+   |                   ^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+
+error: `ToString::to_string` used as `&str` to `String` converter
+  --> tests/ui/str_to_string.rs:41:35
+   |
+LL |     let _ = ["a", "b"].iter().map(ToString::to_string);
+   |                                   ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+
+error: `ToString::to_string` used as `&str` to `String` converter
+  --> tests/ui/str_to_string.rs:47:20
+   |
+LL |     let _ = mapper(ToString::to_string);
+   |                    ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+
+error: `ToString::to_string` used as `&str` to `String` converter
+  --> tests/ui/str_to_string.rs:51:22
+   |
+LL |     let _ = w.mapper(ToString::to_string);
+   |                      ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+
+error: aborting due to 8 previous errors
 

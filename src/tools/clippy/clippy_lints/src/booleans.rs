@@ -15,6 +15,7 @@ use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, SyntaxContext};
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -356,7 +357,7 @@ impl SuggestContext<'_, '_, '_> {
                         if app != Applicability::MachineApplicable {
                             return None;
                         }
-                        self.output.push_str(&(!snip).to_string());
+                        let _cannot_fail = write!(&mut self.output, "{}", &(!snip));
                     }
                 },
                 True | False | Not(_) => {
@@ -433,7 +434,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
         },
         ExprKind::MethodCall(path, receiver, args, _) => {
             let type_of_receiver = cx.typeck_results().expr_ty(receiver);
-            if !type_of_receiver.is_diag_item(cx, sym::Option) && !type_of_receiver.is_diag_item(cx, sym::Result) {
+            if !matches!(type_of_receiver.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
                 return None;
             }
             METHODS_WITH_NEGATION

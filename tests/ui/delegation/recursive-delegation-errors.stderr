@@ -1,0 +1,98 @@
+error: failed to resolve delegation callee
+  --> $DIR/recursive-delegation-errors.rs:6:11
+   |
+LL |     reuse foo;
+   |           ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:11:11
+   |
+LL |     reuse foo as bar;
+   |           ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:13:11
+   |
+LL |     reuse bar as foo;
+   |           ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:18:11
+   |
+LL |     reuse foo as foo1;
+   |           ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:20:11
+   |
+LL |     reuse foo1 as foo2;
+   |           ^^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:22:11
+   |
+LL |     reuse foo2 as foo3;
+   |           ^^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:24:11
+   |
+LL |     reuse foo3 as foo4;
+   |           ^^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:26:11
+   |
+LL |     reuse foo4 as foo5;
+   |           ^^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:28:11
+   |
+LL |     reuse foo5 as foo;
+   |           ^^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:34:22
+   |
+LL |         reuse Trait::foo as bar;
+   |                      ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:36:22
+   |
+LL |         reuse Trait::bar as foo;
+   |                      ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:42:30
+   |
+LL |     reuse super::fifth_mod::{bar as foo, foo as bar};
+   |                              ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:42:42
+   |
+LL |     reuse super::fifth_mod::{bar as foo, foo as bar};
+   |                                          ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:47:27
+   |
+LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
+   |                           ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:47:39
+   |
+LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
+   |                                       ^^^
+
+error: encountered a cycle during delegation signature resolution
+  --> $DIR/recursive-delegation-errors.rs:47:51
+   |
+LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
+   |                                                   ^^^
+
+error: aborting due to 16 previous errors
+

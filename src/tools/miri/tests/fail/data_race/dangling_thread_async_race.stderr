@@ -11,6 +11,15 @@ LL |             *c.0 = 32;
    |             ^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/data_race/dangling_thread_async_race.rs:LL:CC
+   |
+LL | / ...   spawn(move || {
+LL | | ...       let c = c; // capture `c`, not just its field.
+LL | | ...       *c.0 = 64;
+LL | | ...   })
+   | |________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

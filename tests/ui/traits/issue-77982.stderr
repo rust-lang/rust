@@ -10,7 +10,7 @@ LL |     opts.get(opt.as_ref());
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
              where T: ?Sized;
-note: required by a bound in `HashMap::<K, V, S>::get`
+note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 help: consider specifying the generic argument
    |
@@ -44,10 +44,10 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
    |                                            type must be known at this point
    |
    = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
-           - impl From<Char> for u32;
            - impl From<Ipv4Addr> for u32;
            - impl From<bool> for u32;
            - impl From<char> for u32;
+           - impl From<std::ascii::Char> for u32;
            - impl From<u16> for u32;
            - impl From<u8> for u32;
 help: try using a fully qualified path to specify the expected types

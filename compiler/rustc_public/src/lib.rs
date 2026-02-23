@@ -155,7 +155,7 @@ impl CrateItem {
     }
 
     pub fn span(&self) -> Span {
-        with(|cx| cx.span_of_an_item(self.0))
+        self.0.span()
     }
 
     pub fn kind(&self) -> ItemKind {

@@ -275,7 +275,10 @@ impl Sysroot {
             }
             tracing::debug!("Stitching sysroot library: {src_root}");
 
-            let mut stitched = stitched::Stitched { crates: Default::default() };
+            let mut stitched = stitched::Stitched {
+                crates: Default::default(),
+                edition: span::Edition::Edition2024,
+            };
 
             for path in stitched::SYSROOT_CRATES.trim().lines() {
                 let name = path.split('/').next_back().unwrap();
@@ -511,6 +514,7 @@ pub(crate) mod stitched {
     #[derive(Debug, Clone, Eq, PartialEq)]
     pub struct Stitched {
         pub(super) crates: Arena<RustLibSrcCrateData>,
+        pub(crate) edition: span::Edition,
     }
 
     impl ops::Index<RustLibSrcCrate> for Stitched {

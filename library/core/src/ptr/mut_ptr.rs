@@ -230,7 +230,7 @@ impl<T: PointeeSized> *mut T {
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
     /// unsafe {
-    ///     let val_back = &*ptr;
+    ///     let val_back = ptr.as_ref_unchecked();
     ///     println!("We got back the value: {val_back}!");
     /// }
     /// ```
@@ -252,7 +252,8 @@ impl<T: PointeeSized> *mut T {
     /// For the mutable counterpart see [`as_mut`].
     ///
     /// [`is_null`]: #method.is_null-1
-    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
+    /// [`as_uninit_ref`]: #method.as_uninit_ref-1
+    /// [`as_ref_unchecked`]: #method.as_ref_unchecked-1
     /// [`as_mut`]: #method.as_mut
 
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
@@ -281,15 +282,14 @@ impl<T: PointeeSized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_as_ref_unchecked)]
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
     /// unsafe {
     ///     println!("We got back the value: {}!", ptr.as_ref_unchecked());
     /// }
     /// ```
-    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
-    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {
@@ -531,11 +531,13 @@ impl<T: PointeeSized> *mut T {
 
     /// Returns `None` if the pointer is null, or else returns a unique reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_mut`]
-    /// must be used instead.
+    /// must be used instead. If the value is known to be non-null, [`as_mut_unchecked`]
+    /// can be used instead.
     ///
     /// For the shared counterpart see [`as_ref`].
     ///
     /// [`as_uninit_mut`]: #method.as_uninit_mut
+    /// [`as_mut_unchecked`]: #method.as_mut_unchecked
     /// [`as_ref`]: pointer#method.as_ref-1
     ///
     /// # Safety
@@ -564,14 +566,13 @@ impl<T: PointeeSized> *mut T {
     ///
     /// # Null-unchecked version
     ///
-    /// If you are sure the pointer can never be null and are looking for some kind of
-    /// `as_mut_unchecked` that returns the `&mut T` instead of `Option<&mut T>`, know that
-    /// you can dereference the pointer directly.
+    /// If you are sure the pointer can never be null, you can use `as_mut_unchecked` which returns
+    /// `&mut T` instead of `Option<&mut T>`.
     ///
     /// ```
     /// let mut s = [1, 2, 3];
     /// let ptr: *mut u32 = s.as_mut_ptr();
-    /// let first_value = unsafe { &mut *ptr };
+    /// let first_value = unsafe { ptr.as_mut_unchecked() };
     /// *first_value = 4;
     /// # assert_eq!(s, [4, 2, 3]);
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
@@ -603,7 +604,6 @@ impl<T: PointeeSized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_as_ref_unchecked)]
     /// let mut s = [1, 2, 3];
     /// let ptr: *mut u32 = s.as_mut_ptr();
     /// let first_value = unsafe { ptr.as_mut_unchecked() };
@@ -611,8 +611,8 @@ impl<T: PointeeSized> *mut T {
     /// # assert_eq!(s, [4, 2, 3]);
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
-    // FIXME: mention it in the docs for `as_mut` and `as_uninit_mut` once stabilized.
-    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_mut_unchecked<'a>(self) -> &'a mut T {
@@ -1655,6 +1655,51 @@ impl<T> *mut T {
     pub const fn cast_uninit(self) -> *mut MaybeUninit<T> {
         self as _
     }
+
+    /// Forms a raw mutable slice from a pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// Performs the same functionality as [`cast_slice`] on a `*const T`, except that a
+    /// raw mutable slice is returned, as opposed to a raw immutable slice.
+    ///
+    /// This function is safe, but actually using the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
+    ///
+    /// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+    /// [`cast_slice`]: pointer::cast_slice
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(ptr_cast_slice)]
+    ///
+    /// let x = &mut [5, 6, 7];
+    /// let slice = x.as_mut_ptr().cast_slice(3);
+    ///
+    /// unsafe {
+    ///     (*slice)[2] = 99; // assign a value at an index in the slice
+    /// };
+    ///
+    /// assert_eq!(unsafe { &*slice }[2], 99);
+    /// ```
+    ///
+    /// You must ensure that the pointer is valid and not null before dereferencing
+    /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+    ///
+    /// ```rust,should_panic
+    /// #![feature(ptr_cast_slice)]
+    /// use std::ptr;
+    /// let danger: *mut [u8] = ptr::null_mut::<u8>().cast_slice(0);
+    /// unsafe {
+    ///     danger.as_mut().expect("references must not be null");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    pub const fn cast_slice(self, len: usize) -> *mut [T] {
+        slice_from_raw_parts_mut(self, len)
+    }
 }
 impl<T> *mut MaybeUninit<T> {
     /// Casts from a maybe-uninitialized type to its initialized version.
@@ -1712,8 +1757,8 @@ impl<T> *mut [T] {
     /// Gets a raw, mutable pointer to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(self) -> Option<*mut [T; N]> {
@@ -1742,7 +1787,7 @@ impl<T> *mut [T] {
     /// that is at least `mid * size_of::<T>()` bytes long. Not upholding these
     /// requirements is *[undefined behavior]* even if the resulting pointers are not used.
     ///
-    /// Since `len` being in-bounds it is not a safety invariant of `*mut [T]` the
+    /// Since `len` being in-bounds is not a safety invariant of `*mut [T]` the
     /// safety requirements of this method are the same as for [`split_at_mut_unchecked`].
     /// The explicit bounds check is only as useful as `len` is correct.
     ///
@@ -1755,7 +1800,6 @@ impl<T> *mut [T] {
     ///
     /// ```
     /// #![feature(raw_slice_split)]
-    /// #![feature(slice_ptr_get)]
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// let ptr = &mut v as *mut [_];

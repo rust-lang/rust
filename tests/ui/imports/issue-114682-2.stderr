@@ -1,4 +1,4 @@
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
@@ -12,14 +12,16 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
@@ -33,16 +35,18 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
@@ -56,15 +60,17 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-error: `max` is ambiguous
+warning: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
@@ -78,10 +84,12 @@ note: `max` could refer to the type alias defined here
    |
 LL | pub use self::e::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `max` could also refer to the module defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:16:9
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

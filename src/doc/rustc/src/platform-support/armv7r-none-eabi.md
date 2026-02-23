@@ -1,10 +1,14 @@
-# `armv7r-none-eabi` and `armv7r-none-eabihf`
+# `armv7r-none-eabi*` and `thumbv7r-none-eabi*`
 
-* **Tier: 2**
+* **Tier: 2** (`armv7r-none-eabi` and `armv7r-none-eabihf`)
+* **Tier: 3** (`thumbv7r-none-eabi` and `thumbv7r-none-eabihf`)
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
-Bare-metal target for CPUs in the Armv7-R architecture family, supporting
-dual ARM/Thumb mode, with ARM mode as the default.
+Bare-metal target for CPUs in the Armv7-R architecture family, supporting dual
+ARM/Thumb mode. The `armv7r-none-eabi*` targets use Arm mode by default and the
+`thumbv7r-none-eabi*` targets use Thumb mode by default. The `-eabi` targets use
+a soft-float ABI and do not require an FPU, while the `-eabihf` targets use a
+hard-float ABI and do require an FPU.
 
 Processors in this family include the [Arm Cortex-R4, 5, 7, and 8][cortex-r].
 
@@ -25,11 +29,11 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Requirements
 
-When using the hardfloat targets, the minimum floating-point features assumed
-are those of the `vfpv3-d16`, which includes single- and double-precision, with
-16 double-precision registers. This floating-point unit appears in Cortex-R4F
-and Cortex-R5F processors. See [VFP in the Cortex-R processors][vfp]
-for more details on the possible FPU variants.
+When using the hardfloat (`-eabibf`) targets, the minimum floating-point
+features assumed are those of the `vfpv3-d16`, which includes single- and
+double-precision, with 16 double-precision registers. This floating-point unit
+appears in Cortex-R4F and Cortex-R5F processors. See [VFP in the Cortex-R
+processors][vfp] for more details on the possible FPU variants.
 
 If your processor supports a different set of floating-point features than the
 default expectations of `vfpv3-d16`, then these should also be enabled or

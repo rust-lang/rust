@@ -1,4 +1,4 @@
-error: `log` is ambiguous
+warning: `log` is ambiguous
   --> $DIR/issue-114682-6.rs:9:9
    |
 LL |     let log = 2;
@@ -12,17 +12,19 @@ note: `log` could refer to the function defined here
    |
 LL | pub use self::a::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `log` could also refer to the function defined here
   --> $DIR/auxiliary/issue-114682-6-extern.rs:9:9
    |
 LL | pub use self::b::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
-error: `log` is ambiguous
+warning: `log` is ambiguous
   --> $DIR/issue-114682-6.rs:9:9
    |
 LL |     let log = 2;
@@ -36,10 +38,12 @@ note: `log` could refer to the function defined here
    |
 LL | pub use self::a::*;
    |         ^^^^^^^
+   = help: consider updating this dependency to resolve this error
+   = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `log` could also refer to the function defined here
   --> $DIR/auxiliary/issue-114682-6-extern.rs:9:9
    |
 LL | pub use self::b::*;
    |         ^^^^^^^
-   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

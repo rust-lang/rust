@@ -2,8 +2,7 @@ use rustc_macros::HashStable;
 use smallvec::SmallVec;
 use tracing::instrument;
 
-use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TypingEnv};
+use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
@@ -160,7 +159,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     pub fn all(tcx: TyCtxt<'tcx>, iter: impl IntoIterator<Item = Self>) -> Self {
         let mut result = Self::True;
         for pred in iter {
-            if matches!(pred, Self::False) {
+            if pred == Self::False {
                 return Self::False;
             }
             result = result.and(tcx, pred);
@@ -171,7 +170,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     pub fn any(tcx: TyCtxt<'tcx>, iter: impl IntoIterator<Item = Self>) -> Self {
         let mut result = Self::False;
         for pred in iter {
-            if matches!(pred, Self::True) {
+            if pred == Self::True {
                 return Self::True;
             }
             result = result.or(tcx, pred);

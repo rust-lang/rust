@@ -4,19 +4,24 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::env;
-use std::path::PathBuf;
-use std::process::{self, Command};
+extern crate rustc_driver;
 
-use anstream::println;
+use std::env;
+use std::io::Write as _;
+use std::path::PathBuf;
+use std::process::{self, Command, exit};
 
 fn show_help() {
-    println!("{}", help_message());
+    if writeln!(&mut anstream::stdout().lock(), "{}", help_message()).is_err() {
+        exit(rustc_driver::EXIT_FAILURE);
+    }
 }
 
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
-    println!("{version_info}");
+    if writeln!(&mut anstream::stdout().lock(), "{version_info}").is_err() {
+        exit(rustc_driver::EXIT_FAILURE);
+    }
 }
 
 pub fn main() {

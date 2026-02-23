@@ -1,4 +1,3 @@
-#![feature(if_let_guard)]
 #![allow(unused_mut)]
 
 // Here is arielb1's basic example from rust-lang/rust#27282

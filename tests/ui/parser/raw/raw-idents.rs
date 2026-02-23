@@ -62,7 +62,7 @@ macro_rules! tests {
                 impl<$kw> B<$kw> {}
             }
             mod extern_crate {
-                #[cfg(any())]
+                #[cfg(false)]
                 extern crate $kw;
             }
             mod body {

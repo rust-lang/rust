@@ -188,29 +188,26 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
         let existing = match var.kind() {
             ty::GenericArgKind::Lifetime(re) => {
-                if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
                     re.kind()
-                {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Type(ty) => {
-                if let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
                     ct.kind()
-                {
-                    mapping.insert(bv.var, tcx.mk_param_from_def(param))
-                } else {
+                else {
                     return None;
-                }
+                };
+                mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
         };
 
@@ -244,7 +241,7 @@ struct MapAndCompressBoundVars<'tcx> {
     binder: ty::DebruijnIndex,
     /// List of bound vars that remain unsubstituted because they were not
     /// mentioned in the GAT's args.
-    still_bound_vars: Vec<ty::BoundVariableKind>,
+    still_bound_vars: Vec<ty::BoundVariableKind<'tcx>>,
     /// Subtle invariant: If the `GenericArg` is bound, then it should be
     /// stored with the debruijn index of `INNERMOST` so it can be shifted
     /// correctly during substitution.
@@ -333,7 +330,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Const);
-                let mapped = ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst { var });
+                let mapped =
+                    ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst::new(var));
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };

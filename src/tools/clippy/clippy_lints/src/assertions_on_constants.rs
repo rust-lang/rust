@@ -3,6 +3,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node};
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{is_inside_always_const_context, msrvs};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -50,6 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 _ => return,
             }
             && let Some((condition, _)) = find_assert_args(cx, e, macro_call.expn)
+            && is_const_evaluatable(cx, condition)
             && let Some((Constant::Bool(assert_val), const_src)) =
                 ConstEvalCtxt::new(cx).eval_with_source(condition, macro_call.span.ctxt())
             && let in_const_context = is_inside_always_const_context(cx.tcx, e.hir_id)

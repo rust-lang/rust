@@ -28,7 +28,6 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_attr};
@@ -38,14 +37,14 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
+use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::expr::as_place::PlaceBuilder;
-use crate::builder::scope::DropKind;
+use crate::builder::scope::{DropKind, LintLevel};
 use crate::errors;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
@@ -64,9 +63,11 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
         .collect()
 }
 
-/// Create the MIR for a given `DefId`, including unreachable code. Do not call
-/// this directly; instead use the cached version via `mir_built`.
-pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+/// Create the MIR for a given `DefId`, including unreachable code.
+///
+/// This is the implementation of hook `build_mir_inner_impl`, which should only
+/// be called by the query `mir_built`.
+pub(crate) fn build_mir_inner_impl<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_done().thir_abstract_const(def);
     if let Err(e) = tcx.ensure_ok().check_match(def) {
         return construct_error(tcx, def, e);
@@ -490,7 +491,8 @@ fn construct_fn<'tcx>(
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
-    if let Some((dialect, phase)) = find_attr!(tcx.hir_attrs(fn_id), AttributeKind::CustomMir(dialect, phase, _) => (dialect, phase))
+    if let Some((dialect, phase)) =
+        find_attr!(tcx.hir_attrs(fn_id), CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,
@@ -576,7 +578,7 @@ fn construct_const<'a, 'tcx>(
         })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), span, .. })
         | Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(ty, Some(_)),
+            kind: hir::TraitItemKind::Const(ty, Some(_), _),
             span,
             ..
         }) => (*span, ty.span),
@@ -838,26 +840,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.parent_module,
                 self.infcx.typing_env(self.param_env),
             );
-
-            // check if the function's return type is inhabited
-            // this was added here because of this regression
-            // https://github.com/rust-lang/rust/issues/149571
-            let output_is_inhabited =
-                if matches!(self.tcx.def_kind(self.def_id), DefKind::Fn | DefKind::AssocFn) {
-                    self.tcx
-                        .fn_sig(self.def_id)
-                        .instantiate_identity()
-                        .skip_binder()
-                        .output()
-                        .is_inhabited_from(
-                            self.tcx,
-                            self.parent_module,
-                            self.infcx.typing_env(self.param_env),
-                        )
-                } else {
-                    true
-                };
-
             if !ty_is_inhabited {
                 // Unreachable code warnings are already emitted during type checking.
                 // However, during type checking, full type information is being
@@ -868,7 +850,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // uninhabited types (e.g. empty enums). The check above is used so
                 // that we do not emit the same warning twice if the uninhabited type
                 // is indeed `!`.
-                if !ty.is_never() && output_is_inhabited {
+                if !ty.is_never()
+                    && matches!(self.tcx.def_kind(self.def_id), DefKind::Fn | DefKind::AssocFn)
+                // check if the function's return type is inhabited
+                // this was added here because of this regression
+                // https://github.com/rust-lang/rust/issues/149571
+                    && self
+                        .tcx
+                        .fn_sig(self.def_id)
+                        .instantiate_identity()
+                        .skip_binder()
+                        .output()
+                        .is_inhabited_from(
+                            self.tcx,
+                            self.parent_module,
+                            self.infcx.typing_env(self.param_env),
+                        )
+                {
                     lints.push((target_bb, ty, term.source_info.span));
                 }
 

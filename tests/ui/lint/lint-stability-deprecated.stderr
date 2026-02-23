@@ -1,19 +1,13 @@
-warning: use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
-  --> $DIR/lint-stability-deprecated.rs:97:48
+warning: use of deprecated function `lint_stability::deprecated`: text
+  --> $DIR/lint-stability-deprecated.rs:24:9
    |
-LL |         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
-   |                                                ^^^^^^^^^^^^^^^^^
+LL |         deprecated();
+   |         ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-stability-deprecated.rs:6:9
    |
 LL | #![warn(deprecated)]
-   |         ^^^^^^^^^^
-
-warning: use of deprecated function `lint_stability::deprecated`: text
-  --> $DIR/lint-stability-deprecated.rs:24:9
-   |
-LL |         deprecated();
    |         ^^^^^^^^^^
 
 warning: use of deprecated method `lint_stability::Trait::trait_deprecated`: text
@@ -321,6 +315,12 @@ warning: use of deprecated function `this_crate::MethodTester::test_method_body:
    |
 LL |             fn_in_body();
    |             ^^^^^^^^^^
+
+warning: use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
+  --> $DIR/lint-stability-deprecated.rs:97:48
+   |
+LL |         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
+   |                                                ^^^^^^^^^^^^^^^^^
 
 warning: use of deprecated associated type `lint_stability::TraitWithAssociatedTypes::TypeDeprecated`: text
   --> $DIR/lint-stability-deprecated.rs:101:13

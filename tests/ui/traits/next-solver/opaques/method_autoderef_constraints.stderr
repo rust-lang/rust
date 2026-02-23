@@ -1,0 +1,43 @@
+error[E0277]: the trait bound `u32: Trait` is not satisfied
+  --> $DIR/method_autoderef_constraints.rs:29:16
+   |
+LL |         return x;
+   |                ^ the trait `Trait` is not implemented for `u32`
+   |
+help: the trait `Trait` is implemented for `i32`
+  --> $DIR/method_autoderef_constraints.rs:16:1
+   |
+LL | impl Trait for i32 {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/method_autoderef_constraints.rs:34:5
+   |
+LL | fn foo() -> Inv<impl Trait> {
+   |             ---------------
+   |             |   |
+   |             |   the expected opaque type
+   |             expected `Inv<impl Trait>` because of return type
+...
+LL |     x
+   |     ^ types differ
+   |
+   = note: expected struct `Inv<impl Trait>`
+              found struct `Inv<u32>`
+
+error[E0277]: the trait bound `u32: Trait` is not satisfied
+  --> $DIR/method_autoderef_constraints.rs:25:1
+   |
+LL | fn foo() -> Inv<impl Trait> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u32`
+   |
+help: the trait `Trait` is implemented for `i32`
+  --> $DIR/method_autoderef_constraints.rs:16:1
+   |
+LL | impl Trait for i32 {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

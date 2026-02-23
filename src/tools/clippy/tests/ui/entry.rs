@@ -254,4 +254,38 @@ mod issue14449 {
     }
 }
 
+// Don't suggest when it would cause `MutexGuard` to be held across an await point.
+mod issue_16173 {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    async fn f() {}
+
+    async fn foo() {
+        let mu_map = Mutex::new(HashMap::new());
+        if !mu_map.lock().unwrap().contains_key(&0) {
+            f().await;
+            mu_map.lock().unwrap().insert(0, 0);
+        }
+
+        if mu_map.lock().unwrap().contains_key(&1) {
+            todo!();
+        } else {
+            mu_map.lock().unwrap().insert(1, 42);
+            todo!();
+            f().await;
+        }
+    }
+}
+
 fn main() {}
+
+fn issue15781(m: &mut std::collections::HashMap<i32, i32>, k: i32, v: i32) {
+    fn very_important_fn() {}
+    if !m.contains_key(&k) {
+        //~^ map_entry
+        #[cfg(test)]
+        very_important_fn();
+        m.insert(k, v);
+    }
+}

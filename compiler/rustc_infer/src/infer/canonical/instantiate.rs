@@ -43,7 +43,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        assert_eq!(self.variables.len(), var_values.len());
+        assert_eq!(self.var_kinds.len(), var_values.len());
         let value = projection_fn(&self.value);
         instantiate_value(tcx, var_values, value)
     }

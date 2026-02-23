@@ -1,5 +1,3 @@
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -32,10 +30,9 @@ use rustc_span::symbol::Symbol;
 
 use std::env;
 use std::fs::read_to_string;
+use std::io::Write as _;
 use std::path::Path;
-use std::process::exit;
-
-use anstream::println;
+use std::process::ExitCode;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -185,13 +182,17 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     }
 }
 
-fn display_help() {
-    println!("{}", help_message());
+fn display_help() -> ExitCode {
+    if writeln!(&mut anstream::stdout().lock(), "{}", help_message()).is_err() {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
 
-pub fn main() {
+fn main() -> ExitCode {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     rustc_driver::init_rustc_env_logger(&early_dcx);
@@ -204,7 +205,7 @@ pub fn main() {
         dcx.handle().note(format!("Clippy version: {version_info}"));
     });
 
-    exit(rustc_driver::catch_with_exit_code(move || {
+    rustc_driver::catch_with_exit_code(move || {
         let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
 
         let has_sysroot_arg = |args: &mut [String]| -> bool {
@@ -247,14 +248,16 @@ pub fn main() {
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
             rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
-            return;
+            return ExitCode::SUCCESS;
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
             let version_info = rustc_tools_util::get_version_info!();
 
-            println!("{version_info}");
-            exit(0);
+            return match writeln!(&mut anstream::stdout().lock(), "{version_info}") {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(_) => ExitCode::FAILURE,
+            };
         }
 
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
@@ -267,8 +270,7 @@ pub fn main() {
         }
 
         if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {
-            display_help();
-            exit(0);
+            return display_help();
         }
 
         let mut args: Vec<String> = orig_args.clone();
@@ -310,7 +312,8 @@ pub fn main() {
         } else {
             rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
         }
-    }))
+        ExitCode::SUCCESS
+    })
 }
 
 #[must_use]

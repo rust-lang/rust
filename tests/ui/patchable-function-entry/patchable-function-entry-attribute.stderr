@@ -1,32 +1,58 @@
-error: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:10:1
-   |
-LL | #[patchable_function_entry]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
-
-error: integer value out of range
-  --> $DIR/patchable-function-entry-attribute.rs:4:42
+error[E0539]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:4:1
    |
 LL | #[patchable_function_entry(prefix_nops = 256, entry_nops = 0)]
-   |                                          ^^^ value must be between `0` and `255`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^^^^^^^
+   | |                                        |
+   | |                                        expected an integer literal in the range of 0..=255
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: invalid literal value
-  --> $DIR/patchable-function-entry-attribute.rs:7:42
+error[E0539]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:8:1
    |
 LL | #[patchable_function_entry(prefix_nops = "stringvalue", entry_nops = 0)]
-   |                                          ^^^^^^^^^^^^^ value must be an integer between `0` and `255`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^
+   | |                                        |
+   | |                                        expected an integer literal here
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: unexpected parameter name
-  --> $DIR/patchable-function-entry-attribute.rs:13:46
+error[E0539]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:12:1
    |
-LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
-   |                                              ^^^^^^^^^^^^^ expected `prefix_nops` or `entry_nops`
+LL | #[patchable_function_entry]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: must specify at least one parameter
+error[E0539]: malformed `patchable_function_entry` attribute input
   --> $DIR/patchable-function-entry-attribute.rs:16:1
    |
+LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^^^^
+   | |                                            |
+   | |                                            valid arguments are `prefix_nops` or `entry_nops`
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
+
+error[E0539]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:20:1
+   |
 LL | #[patchable_function_entry()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   | |                         |
+   | |                         expected this to be a list
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
-error: aborting due to 5 previous errors
+error[E0538]: malformed `patchable_function_entry` attribute input
+  --> $DIR/patchable-function-entry-attribute.rs:24:1
+   |
+LL | #[patchable_function_entry(prefix_nops = 255, prefix_nops = 255)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^
+   | |                                             |
+   | |                                             found `prefix_nops` used as a key more than once
+   | help: must be of the form: `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
 
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0538, E0539.
+For more information about an error, try `rustc --explain E0538`.

@@ -36,23 +36,25 @@ use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
     MacroExpectedFound, RemoveSurroundingDerive,
 };
+use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
-    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
-    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
-    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
 
-/// Binding produced by a `macro_rules` item.
-/// Not modularized, can shadow previous `macro_rules` bindings, etc.
+/// Name declaration produced by a `macro_rules` item definition.
+/// Not modularized, can shadow previous `macro_rules` definitions, etc.
 #[derive(Debug)]
-pub(crate) struct MacroRulesBinding<'ra> {
-    pub(crate) binding: NameBinding<'ra>,
+pub(crate) struct MacroRulesDecl<'ra> {
+    pub(crate) decl: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
-    pub(crate) ident: Ident,
+    pub(crate) ident: IdentKey,
+    pub(crate) orig_ident_span: Span,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -65,7 +67,7 @@ pub(crate) enum MacroRulesScope<'ra> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
-    Binding(&'ra MacroRulesBinding<'ra>),
+    Def(&'ra MacroRulesDecl<'ra>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(LocalExpnId),
@@ -166,6 +168,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.invocation_parents[&id].parent_def
     }
 
+    fn mark_scope_with_compile_error(&mut self, id: NodeId) {
+        if let Some(id) = self.opt_local_def_id(id)
+            && self.tcx.def_kind(id).is_module_like()
+        {
+            self.mods_with_parse_errors.insert(id.to_def_id());
+        }
+    }
+
     fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
@@ -212,17 +222,19 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     ) -> LocalExpnId {
         let parent_module =
             parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
-        let expn_id = LocalExpnId::fresh(
-            ExpnData::allow_unstable(
-                ExpnKind::AstPass(pass),
-                call_site,
-                self.tcx.sess.edition(),
-                features.into(),
-                None,
-                parent_module,
-            ),
-            self.create_stable_hashing_context(),
-        );
+        let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
+            LocalExpnId::fresh(
+                ExpnData::allow_unstable(
+                    ExpnKind::AstPass(pass),
+                    call_site,
+                    self.tcx.sess.edition(),
+                    features.into(),
+                    None,
+                    parent_module,
+                ),
+                hcx,
+            )
+        });
 
         let parent_scope =
             parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
@@ -312,17 +324,19 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
         let span = invoc.span();
         let def_id = if deleg_impl.is_some() { None } else { res.opt_def_id() };
-        invoc_id.set_expn_data(
-            ext.expn_data(
-                parent_scope.expansion,
-                span,
-                fast_print_path(path),
-                kind,
-                def_id,
-                def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
-            ),
-            self.create_stable_hashing_context(),
-        );
+        self.tcx.with_stable_hashing_context(|hcx| {
+            invoc_id.set_expn_data(
+                ext.expn_data(
+                    parent_scope.expansion,
+                    span,
+                    fast_print_path(path),
+                    kind,
+                    def_id,
+                    def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
+                ),
+                hcx,
+            )
+        });
 
         Ok(ext)
     }
@@ -403,12 +417,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
-                                let last_seg = resolution.path.segments.last().unwrap();
-                                let span = last_seg.ident.span.normalize_to_macros_2_0();
+                                let span = resolution.path.segments.last().unwrap().ident.span;
+                                let ctxt = Macros20NormalizedSyntaxContext::new(span.ctxt());
                                 entry.helper_attrs.extend(
                                     ext.helper_attrs
                                         .iter()
-                                        .map(|name| (i, Ident::new(*name, span))),
+                                        .map(|&name| (i, IdentKey { name, ctxt }, span)),
                                 );
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
@@ -425,14 +439,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
         }
         // Sort helpers in a stable way independent from the derive resolution order.
-        entry.helper_attrs.sort_by_key(|(i, _)| *i);
+        entry.helper_attrs.sort_by_key(|(i, ..)| *i);
         let helper_attrs = entry
             .helper_attrs
             .iter()
-            .map(|(_, ident)| {
+            .map(|&(_, ident, orig_ident_span)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
-                (*ident, binding)
+                let decl = self.arenas.new_pub_def_decl(res, orig_ident_span, expn_id);
+                (ident, orig_ident_span, decl)
             })
             .collect();
         self.helper_attrs.insert(expn_id, helper_attrs);
@@ -528,14 +542,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
 
         let mut idents = Vec::new();
-        target_trait.for_each_child(self, |this, ident, ns, _binding| {
+        target_trait.for_each_child(self, |this, ident, orig_ident_span, ns, _binding| {
             // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
-                && overriding_keys.contains(&BindingKey::new(ident.0, ns))
+                && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
-                idents.push((ident.0, None));
+                idents.push((ident.orig(orig_ident_span), None));
             }
         });
         Ok(idents)
@@ -789,10 +803,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(kind),
                 parent_scope,
                 None,
-                force,
                 None,
                 None,
             );
+            let binding = binding.map_err(|determinacy| {
+                Determinacy::determined(determinacy == Determinacy::Determined || force)
+            });
             if let Err(Determinacy::Undetermined) = binding {
                 return Err(Determinacy::Undetermined);
             }
@@ -839,10 +855,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                  res: Res| {
             if let Some(initial_res) = initial_res {
                 if res != initial_res {
-                    // Make sure compilation does not succeed if preferred macro resolution
-                    // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as errors, so this is a bug.
-                    this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    if this.ambiguity_errors.is_empty() {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as errors, so this is a bug.
+                        this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    }
                 }
             } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently
@@ -890,10 +908,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module, segment) =
-                        if let PathResult::Failed { span, label, module, segment_name, .. } =
-                            path_res
-                        {
+                    let (span, message, label, module, segment) = match path_res {
+                        PathResult::Failed {
+                            span, label, module, segment_name, message, ..
+                        } => {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) = self
                                 .cm()
@@ -912,26 +930,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, label, module, segment_name)
-                        } else {
+                            (span, message, label, module, segment_name)
+                        }
+                        PathResult::NonModule(partial_res) => {
+                            let found_an = partial_res.base_res().article();
+                            let found_descr = partial_res.base_res().descr();
+                            let scope = match &path[..partial_res.unresolved_segments()] {
+                                [.., prev] => {
+                                    format!("{found_descr} `{}`", prev.ident)
+                                }
+                                _ => found_descr.to_string(),
+                            };
+                            let expected_an = kind.article();
+                            let expected_descr = kind.descr();
+                            let expected_name = path[partial_res.unresolved_segments()].ident;
+
                             (
                                 path_span,
                                 format!(
-                                    "partially resolved path in {} {}",
-                                    kind.article(),
-                                    kind.descr()
+                                    "cannot find {expected_descr} `{expected_name}` in {scope}"
                                 ),
+                                match partial_res.base_res() {
+                                    Res::Def(
+                                        DefKind::Mod | DefKind::Macro(..) | DefKind::ExternCrate,
+                                        _,
+                                    ) => format!(
+                                        "partially resolved path in {expected_an} {expected_descr}",
+                                    ),
+                                    _ => format!(
+                                        "{expected_an} {expected_descr} can't exist within \
+                                         {found_an} {found_descr}"
+                                    ),
+                                },
                                 None,
                                 path.last().map(|segment| segment.ident.name).unwrap(),
                             )
-                        };
+                        }
+                        _ => unreachable!(),
+                    };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            message,
                         },
                     );
                 }
@@ -946,7 +990,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(kind),
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
-                true,
                 None,
                 None,
             ) {
@@ -1001,7 +1044,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
-                true,
                 None,
                 None,
             );
@@ -1062,18 +1104,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<NameBinding<'ra>>,
+        decl: Option<Decl<'ra>>,
         res: Option<Res>,
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
-                let binding_span = binding.map(|binding| binding.span);
+            if kind != NonMacroAttrKind::Tool && decl.is_none_or(|b| b.is_import()) {
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,
                     article: kind.article(),
                     descr: kind.descr(),
-                    binding_span,
+                    binding_span: decl.map(|d| d.span),
                 });
             }
         }
@@ -1084,12 +1125,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        binding: Option<NameBinding<'ra>>,
+        decl: Option<Decl<'ra>>,
     ) {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
-            && let Some(binding) = binding
+            && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let NameBindingKind::Res(res) = binding.kind
+            && let DeclKind::Def(res) = decl.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
@@ -1106,7 +1147,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
                 None,
-                false,
                 None,
                 None,
             );
@@ -1133,7 +1173,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     errors::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
-                        // FIXME: Make this translatable.
                         location,
                     },
                 );
@@ -1141,14 +1180,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn check_reserved_macro_name(&self, ident: Ident, res: Res) {
+    pub(crate) fn check_reserved_macro_name(&self, name: Symbol, span: Span, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
-        if ident.name == sym::cfg || ident.name == sym::cfg_attr {
+        if name == sym::cfg || name == sym::cfg_attr {
             let macro_kinds = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kinds());
             if macro_kinds.is_some() && sub_namespace_match(macro_kinds, Some(MacroKind::Attr)) {
-                self.dcx()
-                    .emit_err(errors::NameReservedInAttributeNamespace { span: ident.span, ident });
+                self.dcx().emit_err(errors::NameReservedInAttributeNamespace { span, ident: name });
             }
         }
     }

@@ -293,6 +293,14 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
+        BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
+            Some(wildcard_span) => {
+                lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                    .decorate_lint(diag)
+            }
+            None => lints::UnreachableCfgSelectPredicate { span }.decorate_lint(diag),
+        },
+
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
@@ -367,5 +375,76 @@ pub fn decorate_attribute_lint(
         &AttributeLintKind::UnexpectedCfgValue(name, value) => {
             check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag)
         }
+        &AttributeLintKind::DuplicateDocAlias { first_definition } => {
+            lints::DocAliasDuplicated { first_defn: first_definition }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
+            lints::DocAutoCfgExpectsHideOrShow.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::AmbiguousDeriveHelpers => {
+            lints::AmbiguousDeriveHelpers.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
+            lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
+            lints::DocAutoCfgHideShowExpectsList { attr_name }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocInvalid => { lints::DocInvalid }.decorate_lint(diag),
+
+        &AttributeLintKind::DocUnknownInclude { span, inner, value } => {
+            lints::DocUnknownInclude { inner, value, sugg: (span, Applicability::MaybeIncorrect) }
+        }
+        .decorate_lint(diag),
+
+        &AttributeLintKind::DocUnknownSpotlight { span } => {
+            lints::DocUnknownSpotlight { sugg_span: span }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocUnknownPasses { name, span } => {
+            lints::DocUnknownPasses { name, note_span: span }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocUnknownPlugins { span } => {
+            lints::DocUnknownPlugins { label_span: span }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocUnknownAny { name } => {
+            lints::DocUnknownAny { name }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocAutoCfgWrongLiteral => {
+            lints::DocAutoCfgWrongLiteral.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.decorate_lint(diag),
+
+        &AttributeLintKind::DocTestUnknown { name } => {
+            lints::DocTestUnknown { name }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.decorate_lint(diag),
+
+        &AttributeLintKind::AttrCrateLevelOnly => lints::AttrCrateLevelOnly.decorate_lint(diag),
+
+        &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
+            lints::DoNotRecommendDoesNotExpectArgs.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
+            sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
+        }
+        .decorate_lint(diag),
+
+        &AttributeLintKind::MalformedDoc => lints::MalformedDoc.decorate_lint(diag),
+
+        &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.decorate_lint(diag),
+
+        &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.decorate_lint(diag),
     }
 }

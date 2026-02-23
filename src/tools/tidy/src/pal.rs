@@ -24,7 +24,6 @@
 //!   - `sys/`
 //!   - `os/`
 //!
-//! `std/sys_common` should _not_ contain platform-specific code.
 //! Finally, because std contains tests with platform-specific
 //! `ignore` attributes, once the parser encounters `mod tests`,
 //! platform-specific cfgs are allowed. Not sure yet how to deal with
@@ -39,7 +38,7 @@ use crate::walk::{filter_dirs, walk};
 const EXCEPTION_PATHS: &[&str] = &[
     "library/compiler-builtins",
     "library/std_detect",
-    "library/windows_targets",
+    "library/windows_link",
     "library/panic_abort",
     "library/panic_unwind",
     "library/unwind",

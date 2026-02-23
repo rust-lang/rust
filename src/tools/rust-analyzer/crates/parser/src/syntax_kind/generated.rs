@@ -114,6 +114,7 @@ pub enum SyntaxKind {
     ATT_SYNTAX_KW,
     AUTO_KW,
     AWAIT_KW,
+    BIKESHED_KW,
     BUILTIN_KW,
     CLOBBER_ABI_KW,
     DEFAULT_KW,
@@ -201,6 +202,7 @@ pub enum SyntaxKind {
     FN,
     FN_PTR_TYPE,
     FORMAT_ARGS_ARG,
+    FORMAT_ARGS_ARG_NAME,
     FORMAT_ARGS_EXPR,
     FOR_BINDER,
     FOR_EXPR,
@@ -284,6 +286,7 @@ pub enum SyntaxKind {
     STRUCT,
     TOKEN_TREE,
     TRAIT,
+    TRY_BLOCK_MODIFIER,
     TRY_EXPR,
     TUPLE_EXPR,
     TUPLE_FIELD,
@@ -373,6 +376,7 @@ impl SyntaxKind {
             | FN
             | FN_PTR_TYPE
             | FORMAT_ARGS_ARG
+            | FORMAT_ARGS_ARG_NAME
             | FORMAT_ARGS_EXPR
             | FOR_BINDER
             | FOR_EXPR
@@ -456,6 +460,7 @@ impl SyntaxKind {
             | STRUCT
             | TOKEN_TREE
             | TRAIT
+            | TRY_BLOCK_MODIFIER
             | TRY_EXPR
             | TUPLE_EXPR
             | TUPLE_FIELD
@@ -594,6 +599,7 @@ impl SyntaxKind {
             ASM_KW => "asm",
             ATT_SYNTAX_KW => "att_syntax",
             AUTO_KW => "auto",
+            BIKESHED_KW => "bikeshed",
             BUILTIN_KW => "builtin",
             CLOBBER_ABI_KW => "clobber_abi",
             DEFAULT_KW => "default",
@@ -696,6 +702,7 @@ impl SyntaxKind {
             ASM_KW => true,
             ATT_SYNTAX_KW => true,
             AUTO_KW => true,
+            BIKESHED_KW => true,
             BUILTIN_KW => true,
             CLOBBER_ABI_KW => true,
             DEFAULT_KW => true,
@@ -786,6 +793,7 @@ impl SyntaxKind {
             ASM_KW => true,
             ATT_SYNTAX_KW => true,
             AUTO_KW => true,
+            BIKESHED_KW => true,
             BUILTIN_KW => true,
             CLOBBER_ABI_KW => true,
             DEFAULT_KW => true,
@@ -939,6 +947,7 @@ impl SyntaxKind {
             "asm" => ASM_KW,
             "att_syntax" => ATT_SYNTAX_KW,
             "auto" => AUTO_KW,
+            "bikeshed" => BIKESHED_KW,
             "builtin" => BUILTIN_KW,
             "clobber_abi" => CLOBBER_ABI_KW,
             "default" => DEFAULT_KW,
@@ -1005,6 +1014,7 @@ impl SyntaxKind {
         Some(tok)
     }
 }
+#[doc = r" `T![]`"]
 #[macro_export]
 macro_rules ! T_ {
     [$] => { $ crate :: SyntaxKind :: DOLLAR };
@@ -1109,6 +1119,7 @@ macro_rules ! T_ {
     [asm] => { $ crate :: SyntaxKind :: ASM_KW };
     [att_syntax] => { $ crate :: SyntaxKind :: ATT_SYNTAX_KW };
     [auto] => { $ crate :: SyntaxKind :: AUTO_KW };
+    [bikeshed] => { $ crate :: SyntaxKind :: BIKESHED_KW };
     [builtin] => { $ crate :: SyntaxKind :: BUILTIN_KW };
     [clobber_abi] => { $ crate :: SyntaxKind :: CLOBBER_ABI_KW };
     [default] => { $ crate :: SyntaxKind :: DEFAULT_KW };

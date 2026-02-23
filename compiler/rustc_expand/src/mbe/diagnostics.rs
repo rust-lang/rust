@@ -302,12 +302,16 @@ pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, 
 
 #[derive(Subdiagnostic)]
 enum ExplainDocComment {
-    #[label(expand_explain_doc_comment_inner)]
+    #[label(
+        "inner doc comments expand to `#![doc = \"...\"]`, which is what this macro attempted to match"
+    )]
     Inner {
         #[primary_span]
         span: Span,
     },
-    #[label(expand_explain_doc_comment_outer)]
+    #[label(
+        "outer doc comments expand to `#[doc = \"...\"]`, which is what this macro attempted to match"
+    )]
     Outer {
         #[primary_span]
         span: Span,

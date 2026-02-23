@@ -177,3 +177,17 @@ mod issue15051 {
         }
     }
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            Ok::<i32, ()>($val)
+        };
+    }
+
+    let _ = match test_expr!(42) {
+        //~^ manual_ok_err
+        Ok(v) => Some(v),
+        Err(_) => None,
+    };
+}

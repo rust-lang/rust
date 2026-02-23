@@ -1,4 +1,5 @@
-#![crate_type = foo!()] //~ ERROR malformed `crate_type` attribute
+#![crate_type = foo!()]
+//~^ ERROR attribute value must be a literal
 
 macro_rules! foo {
     () => {"rlib"};

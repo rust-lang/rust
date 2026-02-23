@@ -1,4 +1,6 @@
-use crate::spec::{Arch, PanicStrategy, Target, TargetMetadata, TargetOptions};
+use crate::spec::{
+    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -28,6 +30,7 @@ pub(crate) fn target() -> Target {
             emit_debug_gdb_scripts: false,
             c_enum_min_bits: Some(8),
             linker: Some("rust-lld".into()),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             ..Default::default()
         },
     }

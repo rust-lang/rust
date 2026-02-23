@@ -58,7 +58,7 @@ fn patterns<'a>(
     ref pin const w: i32, //~ ERROR pinned reference syntax is experimental
 ) {}
 
-#[cfg(any())]
+#[cfg(false)]
 mod not_compiled {
     use std::pin::Pin;
 

@@ -231,7 +231,6 @@ function preLoadCss(cssUrl) {
             // When loading settings.html as a standalone page, the equivalent HTML is
             // generated in context.rs.
             setTimeout(() => {
-                // @ts-expect-error
                 const themes = getVar("themes").split(",");
                 for (const theme of themes) {
                     // if there are no themes, do nothing
@@ -415,12 +414,10 @@ function preLoadCss(cssUrl) {
                     }
                     window.StringdexOnload.push(() => {
                         loadScript(
-                            // @ts-expect-error
                             getVar("static-root-path") + getVar("search-js"),
                             sendSearchForm,
                         );
                     });
-                    // @ts-expect-error
                     loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
                     loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
                 }
@@ -622,8 +619,7 @@ function preLoadCss(cssUrl) {
      */
     function openParentDetails(elem) {
         while (elem) {
-            if (elem.tagName === "DETAILS") {
-                // @ts-expect-error
+            if (elem instanceof HTMLDetailsElement) {
                 elem.open = true;
             }
             elem = elem.parentElement;
@@ -659,10 +655,8 @@ function preLoadCss(cssUrl) {
         }
 
         if (document.activeElement &&
-            document.activeElement.tagName === "INPUT" &&
-            // @ts-expect-error
+            document.activeElement instanceof HTMLInputElement &&
             document.activeElement.type !== "checkbox" &&
-            // @ts-expect-error
             document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
@@ -800,21 +794,34 @@ function preLoadCss(cssUrl) {
 
     // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
     window.register_implementors = imp => {
-        const implementors = document.getElementById("implementors-list");
-        const synthetic_implementors = document.getElementById("synthetic-implementors-list");
+        /** Takes an ID as input and returns a list of two elements. The first element is the DOM
+         * element with the given ID and the second is the "negative marker", meaning the location
+         * between the negative and non-negative impls.
+         *
+         * @param {string} id: ID of the DOM element.
+         *
+         * @return {[HTMLElement|null, HTMLElement|null]}
+         */
+        function implementorsElems(id) {
+            const elem = document.getElementById(id);
+            return [elem, elem ? elem.querySelector(".negative-marker") : null];
+        }
+        const implementors = implementorsElems("implementors-list");
+        const syntheticImplementors = implementorsElems("synthetic-implementors-list");
         const inlined_types = new Set();
 
         const TEXT_IDX = 0;
-        const SYNTHETIC_IDX = 1;
-        const TYPES_IDX = 2;
+        const IS_NEG_IDX = 1;
+        const SYNTHETIC_IDX = 2;
+        const TYPES_IDX = 3;
 
-        if (synthetic_implementors) {
+        if (syntheticImplementors[0]) {
             // This `inlined_types` variable is used to avoid having the same implementation
             // showing up twice. For example "String" in the "Sync" doc page.
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
+            onEachLazy(syntheticImplementors[0].getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
@@ -827,7 +834,7 @@ function preLoadCss(cssUrl) {
         }
 
         // @ts-expect-error
-        let currentNbImpls = implementors.getElementsByClassName("impl").length;
+        let currentNbImpls = implementors[0].getElementsByClassName("impl").length;
         // @ts-expect-error
         const traitName = document.querySelector(".main-heading h1 > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
@@ -849,7 +856,7 @@ function preLoadCss(cssUrl) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct[SYNTHETIC_IDX] ? synthetic_implementors : implementors;
+                const list = struct[SYNTHETIC_IDX] ? syntheticImplementors : implementors;
 
                 // The types list is only used for synthetic impls.
                 // If this changes, `main.js` and `write_shared.rs` both need changed.
@@ -884,10 +891,24 @@ function preLoadCss(cssUrl) {
                 addClass(display, "impl");
                 display.appendChild(anchor);
                 display.appendChild(code);
-                // @ts-expect-error
-                list.appendChild(display);
+
+                // If this is a negative implementor, we put it into the right location (just
+                // before the negative impl marker).
+                if (struct[IS_NEG_IDX]) {
+                    // @ts-expect-error
+                    list[1].before(display);
+                } else {
+                    // @ts-expect-error
+                    list[0].appendChild(display);
+                }
                 currentNbImpls += 1;
             }
+        }
+        if (implementors[0]) {
+            implementors[0].classList.add("loaded");
+        }
+        if (syntheticImplementors[0]) {
+            syntheticImplementors[0].classList.add("loaded");
         }
     };
     if (window.pending_implementors) {
@@ -942,19 +963,19 @@ function preLoadCss(cssUrl) {
         const selfPath = script ? script.getAttribute("data-self-path") : null;
 
         // These sidebar blocks need filled in, too.
-        const mainContent = document.querySelector("#main-content");
-        const sidebarSection = document.querySelector(".sidebar section");
+        const mainContent = nonnull(document.querySelector("#main-content"));
+        const sidebarSection = nonnull(document.querySelector(".sidebar section"));
         let methods = document.querySelector(".sidebar .block.method");
         let associatedTypes = document.querySelector(".sidebar .block.associatedtype");
         let associatedConstants = document.querySelector(".sidebar .block.associatedconstant");
         let sidebarTraitList = document.querySelector(".sidebar .block.trait-implementation");
 
-        // @ts-expect-error
-        for (const impList of imp[window.currentCrate]) {
+        for (const impList of imp[nonnull(window.currentCrate)]) {
             const types = impList.slice(2);
             const text = impList[0];
-            const isTrait = impList[1] !== 0;
             const traitName = impList[1];
+            const isTrait = typeof traitName === "string";
+            // @ts-expect-error
             if (types.indexOf(selfPath) === -1) {
                 continue;
             }
@@ -978,28 +999,19 @@ function preLoadCss(cssUrl) {
                     h.appendChild(link);
                     trait_implementations = outputList;
                     trait_implementations_header = outputListHeader;
-                    // @ts-expect-error
                     sidebarSection.appendChild(h);
                     sidebarTraitList = document.createElement("ul");
                     sidebarTraitList.className = "block trait-implementation";
-                    // @ts-expect-error
                     sidebarSection.appendChild(sidebarTraitList);
-                    // @ts-expect-error
                     mainContent.appendChild(outputListHeader);
-                    // @ts-expect-error
                     mainContent.appendChild(outputList);
                 } else {
                     implementations = outputList;
                     if (trait_implementations) {
-                        // @ts-expect-error
                         mainContent.insertBefore(outputListHeader, trait_implementations_header);
-                        // @ts-expect-error
                         mainContent.insertBefore(outputList, trait_implementations_header);
                     } else {
-                        const mainContent = document.querySelector("#main-content");
-                        // @ts-expect-error
                         mainContent.appendChild(outputListHeader);
-                        // @ts-expect-error
                         mainContent.appendChild(outputList);
                     }
                 }
@@ -1044,8 +1056,7 @@ function preLoadCss(cssUrl) {
             if (isTrait) {
                 const li = document.createElement("li");
                 const a = document.createElement("a");
-                // @ts-expect-error
-                a.href = `#${template.content.querySelector(".impl").id}`;
+                a.href = `#${nonnull(template.content.querySelector(".impl")).id}`;
                 a.textContent = traitName;
                 li.appendChild(a);
                 // @ts-expect-error
@@ -1072,14 +1083,10 @@ function preLoadCss(cssUrl) {
                         const insertionReference = methods || sidebarTraitList;
                         if (insertionReference) {
                             const insertionReferenceH = insertionReference.previousElementSibling;
-                            // @ts-expect-error
                             sidebarSection.insertBefore(blockHeader, insertionReferenceH);
-                            // @ts-expect-error
                             sidebarSection.insertBefore(block, insertionReferenceH);
                         } else {
-                            // @ts-expect-error
                             sidebarSection.appendChild(blockHeader);
-                            // @ts-expect-error
                             sidebarSection.appendChild(block);
                         }
                         if (hasClass(item, "associatedtype")) {
@@ -1642,7 +1649,7 @@ function preLoadCss(cssUrl) {
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
-             and <code>const</code>.",
+             and <code>constant</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
              <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
             "You can look for items with an exact name by putting double quotes around \
@@ -1665,7 +1672,7 @@ function preLoadCss(cssUrl) {
 
         const container = document.createElement("div");
         if (!isHelpPage) {
-            container.className = "popover content";
+            container.className = "popover";
         }
         container.id = "help";
 
@@ -1674,9 +1681,14 @@ function preLoadCss(cssUrl) {
         side_by_side.appendChild(div_shortcuts);
         side_by_side.appendChild(div_infos);
 
-        container.appendChild(book_info);
-        container.appendChild(side_by_side);
-        container.appendChild(rustdoc_version);
+        const content = document.createElement("div");
+        content.className = "content";
+
+        content.appendChild(book_info);
+        content.appendChild(side_by_side);
+        content.appendChild(rustdoc_version);
+
+        container.appendChild(content);
 
         if (isHelpPage) {
             const help_section = document.createElement("section");
@@ -2136,7 +2148,15 @@ function preLoadCss(cssUrl) {
             // Should never happen, but the world is a dark and dangerous place.
             return;
         }
-        copyContentToClipboard(codeElem.textContent);
+        let content = "";
+        for (const node of codeElem.childNodes) {
+            // We exclude line numbers.
+            if (node instanceof HTMLElement && node.hasAttribute("data-nosnippet")) {
+                continue;
+            }
+            content += node.textContent;
+        }
+        copyContentToClipboard(content);
     }
 
     /**

@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -24,7 +25,6 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
@@ -611,7 +611,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_ty(*hir_id, ty);
                 ty
             }
-            PatKind::Expr(lt) => self.check_pat_lit(pat.span, lt, expected, &pat_info.top_info),
+            PatKind::Expr(expr @ PatExpr { kind: PatExprKind::Lit { lit, .. }, .. }) => {
+                self.check_pat_lit(pat.span, expr, &lit.node, expected, &pat_info.top_info)
+            }
             PatKind::Range(lhs, rhs, _) => {
                 self.check_pat_range(pat.span, lhs, rhs, expected, &pat_info.top_info)
             }
@@ -925,9 +927,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty
             }
-            rustc_hir::PatExprKind::ConstBlock(c) => {
-                self.check_expr_const_block(c, Expectation::NoExpectation)
-            }
             rustc_hir::PatExprKind::Path(qpath) => {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
@@ -941,23 +940,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_lit(
         &self,
         span: Span,
-        lt: &hir::PatExpr<'tcx>,
+        expr: &hir::PatExpr<'tcx>,
+        lit_kind: &ast::LitKind,
         expected: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
+        assert_matches!(expr.kind, hir::PatExprKind::Lit { .. });
+
         // We've already computed the type above (when checking for a non-ref pat),
         // so avoid computing it again.
-        let ty = self.node_ty(lt.hir_id);
+        let ty = self.node_ty(expr.hir_id);
 
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         // Additionally, when `deref_patterns` is enabled, byte string literal patterns may have
         // types `[u8]` or `[u8; N]`, in order to type, e.g., `deref!(b"..."): Vec<u8>`.
         let mut pat_ty = ty;
-        if let hir::PatExprKind::Lit {
-            lit: Spanned { node: ast::LitKind::ByteStr(..), .. }, ..
-        } = lt.kind
-        {
+        if matches!(lit_kind, ast::LitKind::ByteStr(..)) {
             let tcx = self.tcx;
             let expected = self.structurally_resolve_type(span, expected);
             match *expected.kind() {
@@ -965,7 +964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Ref(_, inner_ty, _)
                     if self.try_structurally_resolve_type(span, inner_ty).is_slice() =>
                 {
-                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    trace!(?expr.hir_id.local_id, "polymorphic byte string lit");
                     pat_ty = Ty::new_imm_ref(
                         tcx,
                         tcx.lifetimes.re_static,
@@ -991,26 +990,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // When `deref_patterns` is enabled, in order to allow `deref!("..."): String`, we allow
         // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
         if self.tcx.features().deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
+            && matches!(lit_kind, ast::LitKind::Str(..))
             && self.try_structurally_resolve_type(span, expected).is_str()
         {
             pat_ty = self.tcx.types.str_;
-        }
-
-        if self.tcx.features().string_deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
-        {
-            let tcx = self.tcx;
-            let expected = self.resolve_vars_if_possible(expected);
-            pat_ty = match expected.kind() {
-                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => expected,
-                ty::Str => Ty::new_static_str(tcx),
-                _ => pat_ty,
-            };
         }
 
         // Somewhat surprising: in this case, the subtyping relation goes the
@@ -1427,7 +1410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("to take parameter `{binding}` by reference, move `&{pin_and_mut}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
@@ -1529,11 +1512,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         // Type-check the path.
-        let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
+        let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
         // Type-check subpatterns.
         match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
-            Ok(()) => pat_ty,
+            Ok(()) => match had_err {
+                Ok(()) => pat_ty,
+                Err(guar) => Ty::new_error(self.tcx, guar),
+            },
             Err(guar) => Ty::new_error(self.tcx, guar),
         }
     }
@@ -1781,8 +1767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
-        let had_err = diag.map_err(|diag| diag.emit());
+        let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -2006,11 +1991,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(reported) = self.demand_eqtype_pat(span, expected, pat_ty, &pat_info.top_info) {
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| Ty::new_error(tcx, reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, Ty::new_error(tcx, reported), pat_info);
             }
-            Ty::new_tup_from_iter(tcx, element_tys_iter)
+            Ty::new_error(tcx, reported)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, element_tys[i], pat_info);
@@ -2857,7 +2841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
                 match expected.maybe_pinned_ref() {
-                    Some((r_ty, r_pinned, r_mutbl))
+                    Some((r_ty, r_pinned, r_mutbl, _))
                         if ((ref_pat_matches_mut_ref && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl)
                             && pat_pinned == r_pinned =>

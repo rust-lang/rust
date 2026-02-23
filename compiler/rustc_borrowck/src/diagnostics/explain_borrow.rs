@@ -1,10 +1,6 @@
 //! Print diagnostics to explain why values are borrowed.
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
-use std::assert_matches::assert_matches;
-
+use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -653,8 +649,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // We want to focus on relevant live locals in diagnostics, so when polonius is enabled, we
         // ensure that we don't emit live boring locals as explanations.
         let is_local_boring = |local| {
-            if let Some(polonius_diagnostics) = self.polonius_diagnostics {
-                polonius_diagnostics.boring_nll_locals.contains(&local)
+            if let Some(polonius_context) = self.polonius_context {
+                polonius_context.boring_nll_locals.contains(&local)
             } else {
                 assert!(!tcx.sess.opts.unstable_opts.polonius.is_next_enabled());
 
@@ -764,6 +760,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 {
                     // Just point to the function, to reduce the chance of overlapping spans.
                     let function_span = match func {
+                        Operand::RuntimeChecks(_) => span,
                         Operand::Constant(c) => c.span,
                         Operand::Copy(place) | Operand::Move(place) => {
                             if let Some(l) = place.as_local() {
@@ -809,6 +806,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
+                            Operand::RuntimeChecks(_) => span,
                             Operand::Constant(c) => c.span,
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
@@ -850,16 +848,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // will only ever have one item at any given time, but by using a vector, we can pop from
         // it which simplifies the termination logic.
         let mut queue = vec![location];
-        let mut target =
-            if let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) = stmt {
-                if let Some(local) = place.as_local() {
-                    local
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            };
+        let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) = stmt else {
+            return false;
+        };
+        let Some(mut target) = place.as_local() else { return false };
 
         debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
         while let Some(current_location) = queue.pop() {

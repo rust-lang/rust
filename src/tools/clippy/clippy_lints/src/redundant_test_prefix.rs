@@ -47,6 +47,10 @@ declare_clippy_lint! {
     ///   }
     /// }
     /// ```
+    ///
+    /// ### Note
+    /// Clippy can only lint compiled code. For this lint to trigger, you must configure `cargo clippy`
+    /// to include test compilation, for instance, by using flags such as `--tests` or `--all-targets`.
     #[clippy::version = "1.88.0"]
     pub REDUNDANT_TEST_PREFIX,
     restriction,

@@ -42,6 +42,10 @@ mod foo {
 #[allow(deprecated)]
 pub use foo::Bar;
 
+// don't lint on exported_private_dependencies for `use` items
+#[allow(exported_private_dependencies)]
+use {};
+
 // This should not trigger the lint. There's lint level definitions inside the external derive
 // that would trigger the useless_attribute lint.
 #[derive(DeriveSomething)]

@@ -53,20 +53,25 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
     let mut no_report_depth = 0;
     let mut missing_punctuation = Vec::new();
     let mut current_paragraph = None;
+    let mut current_event_is_missing_punctuation = false;
 
     for (event, offset) in
         Parser::new_ext(doc_string, main_body_opts() - Options::ENABLE_SMART_PUNCTUATION).into_offset_iter()
     {
+        let last_event_was_missing_punctuation = current_event_is_missing_punctuation;
+        current_event_is_missing_punctuation = false;
+
         match event {
-            Event::Start(
-                Tag::CodeBlock(..)
-                | Tag::FootnoteDefinition(_)
-                | Tag::Heading { .. }
-                | Tag::HtmlBlock
-                | Tag::List(..)
-                | Tag::Table(_),
-            ) => {
+            Event::Start(Tag::FootnoteDefinition(_) | Tag::Heading { .. } | Tag::HtmlBlock | Tag::Table(_)) => {
                 no_report_depth += 1;
+            },
+            Event::Start(Tag::CodeBlock(..) | Tag::List(..)) => {
+                no_report_depth += 1;
+                if last_event_was_missing_punctuation {
+                    // Remove the error from the previous paragraph as it is followed by a code
+                    // block or a list.
+                    missing_punctuation.pop();
+                }
             },
             Event::End(TagEnd::FootnoteDefinition) => {
                 no_report_depth -= 1;
@@ -83,6 +88,7 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
             Event::End(TagEnd::Paragraph) => {
                 if let Some(mp) = current_paragraph {
                     missing_punctuation.push(mp);
+                    current_event_is_missing_punctuation = true;
                 }
             },
             Event::Code(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)

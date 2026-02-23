@@ -222,8 +222,6 @@ fn resolve_associated_item<'tcx>(
                 return Err(guar);
             }
 
-            let args = tcx.erase_and_anonymize_regions(args);
-
             // We check that the impl item is compatible with the trait item
             // because otherwise we may ICE in const eval due to type mismatches,
             // signature incompatibilities, etc.
@@ -239,6 +237,12 @@ fn resolve_associated_item<'tcx>(
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
             let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
+
+            // `final` methods should be called directly.
+            if tcx.defaultness(trait_item_id).is_final() {
+                return Ok(Some(ty::Instance::new_raw(trait_item_id, rcvr_args)));
+            }
+
             if trait_ref.has_non_region_infer() || trait_ref.has_non_region_param() {
                 // We only resolve totally substituted vtable entries.
                 None

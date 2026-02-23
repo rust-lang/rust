@@ -1,6 +1,6 @@
 use crate::cell::UnsafeCell;
+use crate::sys::c;
 use crate::sys::sync::{Mutex, mutex};
-use crate::sys::{c, os};
 use crate::time::Duration;
 
 pub struct Condvar {
@@ -30,7 +30,7 @@ impl Condvar {
             0,
         );
         if r == 0 {
-            debug_assert_eq!(os::errno() as usize, c::ERROR_TIMEOUT as usize);
+            debug_assert_eq!(crate::sys::io::errno() as usize, c::ERROR_TIMEOUT as usize);
             false
         } else {
             true

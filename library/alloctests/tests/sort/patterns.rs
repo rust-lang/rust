@@ -27,21 +27,20 @@ where
 {
     // :.:.:.::
 
-    let mut rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
+    let rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
 
     // Abstracting over ranges in Rust :(
     let dist = Uniform::try_from(range).unwrap();
-    (0..len).map(|_| dist.sample(&mut rng)).collect()
+    rng.sample_iter(dist).take(len).collect()
 }
 
 pub fn random_zipf(len: usize, exponent: f64) -> Vec<i32> {
     // https://en.wikipedia.org/wiki/Zipf's_law
 
-    let mut rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
+    let rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
 
-    // Abstracting over ranges in Rust :(
     let dist = ZipfDistribution::new(len, exponent).unwrap();
-    (0..len).map(|_| dist.sample(&mut rng) as i32).collect()
+    rng.sample_iter(dist).map(|val| val as i32).take(len).collect()
 }
 
 pub fn random_sorted(len: usize, sorted_percent: f64) -> Vec<i32> {
@@ -68,7 +67,7 @@ pub fn all_equal(len: usize) -> Vec<i32> {
     // ......
     // ::::::
 
-    (0..len).map(|_| 66).collect::<Vec<_>>()
+    vec![66; len]
 }
 
 pub fn ascending(len: usize) -> Vec<i32> {
@@ -206,6 +205,6 @@ fn rand_root_seed() -> u64 {
 }
 
 fn random_vec(len: usize) -> Vec<i32> {
-    let mut rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
-    (0..len).map(|_| rng.random::<i32>()).collect()
+    let rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
+    rng.random_iter().take(len).collect()
 }

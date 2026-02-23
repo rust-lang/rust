@@ -249,6 +249,15 @@ impl FileDescription for io::Stdin {
         finish.call(ecx, result)
     }
 
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
+    }
+
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
@@ -279,6 +288,15 @@ impl FileDescription for io::Stdout {
         finish.call(ecx, result)
     }
 
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
+    }
+
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
@@ -287,6 +305,15 @@ impl FileDescription for io::Stdout {
 impl FileDescription for io::Stderr {
     fn name(&self) -> &'static str {
         "stderr"
+    }
+
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
     }
 
     fn write<'tcx>(
@@ -435,6 +462,15 @@ impl FileDescription for NullOutput {
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
         finish.call(ecx, Ok(len))
+    }
+
+    fn destroy<'tcx>(
+        self,
+        _self_id: FdId,
+        _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        interp_ok(Ok(()))
     }
 }
 

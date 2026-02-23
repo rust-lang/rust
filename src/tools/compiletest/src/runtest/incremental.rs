@@ -21,7 +21,7 @@ impl TestCx<'_> {
         // - execute build/foo/bar.exe and save output
         //
         // FIXME -- use non-incremental mode as an oracle? That doesn't apply
-        // to #[rustc_dirty] and clean tests I guess
+        // to #[rustc_clean] tests I guess
 
         let revision = self.revision.expect("incremental tests require a list of revisions");
 

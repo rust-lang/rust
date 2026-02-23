@@ -440,7 +440,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                 }
 
-                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                if let ty::FnDef(did, ..) = *func.ty(&self.body.local_decls, self.tcx).kind()
                     && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                     && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
                 {
@@ -1259,14 +1259,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::ShallowInitBox(operand, _) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
-                }
-
-                let a = operand.ty(&self.body.local_decls, self.tcx);
-                check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
-            }
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
@@ -1439,7 +1431,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::NullaryOp(NullOp::RuntimeChecks(_))
             | Rvalue::Discriminant(_) => {}
 
             Rvalue::WrapUnsafeBinder(op, ty) => {

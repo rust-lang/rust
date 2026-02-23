@@ -80,6 +80,9 @@ impl ScopeData {
 ///
 /// All threads spawned within the scope that haven't been manually joined
 /// will be automatically joined before this function returns.
+/// However, note that joining will only wait for the main function of these threads to finish; even
+/// when this function returns, destructors of thread-local variables in these threads might still
+/// be running.
 ///
 /// # Panics
 ///
@@ -210,8 +213,6 @@ impl Builder {
     /// Unlike [`Scope::spawn`], this method yields an [`io::Result`] to
     /// capture any failure to create the thread at the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
-    ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
@@ -292,6 +293,8 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// Waits for the associated thread to finish.
     ///
     /// This function will return immediately if the associated thread has already finished.
+    /// Otherwise, it fully waits for the thread to finish, including all destructors
+    /// for thread-local variables that might be running after the main function of the thread.
     ///
     /// In terms of [atomic memory orderings], the completion of the associated
     /// thread synchronizes with this function returning.

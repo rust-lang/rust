@@ -1,0 +1,21 @@
+warning: irrefutable `if let` pattern
+  --> $DIR/let-offset-of.rs:14:8
+   |
+LL |     if let x = offset_of!(Foo, field) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: irrefutable `let...else` pattern
+  --> $DIR/let-offset-of.rs:17:5
+   |
+LL |     let x = offset_of!(Foo, field) else { return; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `else` clause is useless
+   = help: consider removing the `else` clause
+
+warning: 2 warnings emitted
+

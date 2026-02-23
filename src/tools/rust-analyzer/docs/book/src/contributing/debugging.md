@@ -68,7 +68,7 @@ while d == 4 { // set a breakpoint here and change the value
 
 However for this to work, you will need to enable debug_assertions in your build
 
-```rust
+```bash
 RUSTFLAGS='--cfg debug_assertions' cargo build --release
 ```
 

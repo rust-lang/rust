@@ -253,19 +253,52 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             }
 
             let region = region.as_var();
-
-            let borrow = BorrowData {
+            let borrow = |activation_location| BorrowData {
                 kind,
                 region,
                 reserve_location: location,
-                activation_location: TwoPhaseActivation::NotTwoPhase,
+                activation_location,
                 borrowed_place,
                 assigned_place: *assigned_place,
             };
-            let (idx, _) = self.location_map.insert_full(location, borrow);
-            let idx = BorrowIndex::from(idx);
 
-            self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
+            let idx = if !kind.is_two_phase_borrow() {
+                debug!("  -> {:?}", location);
+                let (idx, _) = self
+                    .location_map
+                    .insert_full(location, borrow(TwoPhaseActivation::NotTwoPhase));
+                BorrowIndex::from(idx)
+            } else {
+                // When we encounter a 2-phase borrow statement, it will always
+                // be assigning into a temporary TEMP:
+                //
+                //    TEMP = &foo
+                //
+                // so extract `temp`.
+                let Some(temp) = assigned_place.as_local() else {
+                    span_bug!(
+                        self.body.source_info(location).span,
+                        "expected 2-phase borrow to assign to a local, not `{:?}`",
+                        assigned_place,
+                    );
+                };
+
+                // Consider the borrow not activated to start. When we find an activation, we'll update
+                // this field.
+                let (idx, _) = self
+                    .location_map
+                    .insert_full(location, borrow(TwoPhaseActivation::NotActivated));
+                let idx = BorrowIndex::from(idx);
+
+                // Insert `temp` into the list of pending activations. From
+                // now on, we'll be on the lookout for a use of it. Note that
+                // we are guaranteed that this use will come after the
+                // assignment.
+                let prev = self.pending_activations.insert(temp, idx);
+                assert_eq!(prev, None, "temporary associated with multiple two phase borrows");
+
+                idx
+            };
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }
@@ -332,64 +365,5 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         }
 
         self.super_rvalue(rvalue, location)
-    }
-}
-
-impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
-    /// If this is a two-phase borrow, then we will record it
-    /// as "pending" until we find the activating use.
-    fn insert_as_pending_if_two_phase(
-        &mut self,
-        start_location: Location,
-        assigned_place: &mir::Place<'tcx>,
-        kind: mir::BorrowKind,
-        borrow_index: BorrowIndex,
-    ) {
-        debug!(
-            "Borrows::insert_as_pending_if_two_phase({:?}, {:?}, {:?})",
-            start_location, assigned_place, borrow_index,
-        );
-
-        if !kind.allows_two_phase_borrow() {
-            debug!("  -> {:?}", start_location);
-            return;
-        }
-
-        // When we encounter a 2-phase borrow statement, it will always
-        // be assigning into a temporary TEMP:
-        //
-        //    TEMP = &foo
-        //
-        // so extract `temp`.
-        let Some(temp) = assigned_place.as_local() else {
-            span_bug!(
-                self.body.source_info(start_location).span,
-                "expected 2-phase borrow to assign to a local, not `{:?}`",
-                assigned_place,
-            );
-        };
-
-        // Consider the borrow not activated to start. When we find an activation, we'll update
-        // this field.
-        {
-            let borrow_data = &mut self.location_map[borrow_index.as_usize()];
-            borrow_data.activation_location = TwoPhaseActivation::NotActivated;
-        }
-
-        // Insert `temp` into the list of pending activations. From
-        // now on, we'll be on the lookout for a use of it. Note that
-        // we are guaranteed that this use will come after the
-        // assignment.
-        let old_value = self.pending_activations.insert(temp, borrow_index);
-        if let Some(old_index) = old_value {
-            span_bug!(
-                self.body.source_info(start_location).span,
-                "found already pending activation for temp: {:?} \
-                       at borrow_index: {:?} with associated data {:?}",
-                temp,
-                old_index,
-                self.location_map[old_index.as_usize()]
-            );
-        }
     }
 }

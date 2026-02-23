@@ -2,7 +2,7 @@ use crate::assist_context::{AssistContext, Assists};
 use ide_db::{LineIndexDatabase, assists::AssistId, defs::Definition};
 use syntax::{
     AstNode,
-    ast::{self, HasName, edit_in_place::Indent},
+    ast::{self, HasName, edit::AstNodeEdit},
 };
 
 // Assist: bind_unused_param
@@ -33,7 +33,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         return None;
     }
 
-    let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
+    let func = param.syntax().ancestors().nth(2).and_then(ast::Fn::cast)?;
     let stmt_list = func.body()?.stmt_list()?;
     let l_curly_range = stmt_list.l_curly_token()?.text_range();
     let r_curly_range = stmt_list.r_curly_token()?.text_range();
@@ -176,6 +176,18 @@ fn foo(x: i32, $0y: i32) { y; }
             bind_unused_param,
             r#"
 fn foo($0_x: i32, y: i32) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_closure() {
+        check_assist_not_applicable(
+            bind_unused_param,
+            r#"
+fn foo() {
+    let _ = |$0x| 2;
+}
 "#,
         );
     }

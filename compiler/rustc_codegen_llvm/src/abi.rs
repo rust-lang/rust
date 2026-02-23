@@ -694,6 +694,10 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
     match abi {
         CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
         CanonAbi::RustCold => llvm::PreserveMost,
+        CanonAbi::RustPreserveNone => match &sess.target.arch {
+            Arch::X86_64 | Arch::AArch64 => llvm::PreserveNone,
+            _ => llvm::CCallConv,
+        },
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.

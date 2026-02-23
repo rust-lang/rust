@@ -1,11 +1,12 @@
-#![cfg_attr(bootstrap, feature(array_windows))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
-#![feature(macro_metavar_expr_concat)]
+#![feature(control_flow_into_value)]
+#![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
@@ -14,8 +15,6 @@
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
-    rustc::diagnostic_outside_of_impl,
-    rustc::untranslatable_diagnostic,
     clippy::literal_string_with_formatting_args
 )]
 #![warn(
@@ -113,6 +112,7 @@ mod doc;
 mod double_parens;
 mod drop_forget_ref;
 mod duplicate_mod;
+mod duration_suboptimal_units;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enums;
@@ -182,6 +182,7 @@ mod large_include_file;
 mod large_stack_arrays;
 mod large_stack_frames;
 mod legacy_numeric_constants;
+mod len_without_is_empty;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -197,10 +198,12 @@ mod manual_abs_diff;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
+mod manual_checked_ops;
 mod manual_clamp;
 mod manual_float_methods;
 mod manual_hash_one;
 mod manual_ignore_case_cmp;
+mod manual_ilog2;
 mod manual_is_ascii_check;
 mod manual_is_power_of_two;
 mod manual_let_else;
@@ -214,6 +217,7 @@ mod manual_rotate;
 mod manual_slice_size_calculation;
 mod manual_string_new;
 mod manual_strip;
+mod manual_take;
 mod map_unit_fn;
 mod match_result_ok;
 mod matches;
@@ -316,6 +320,7 @@ mod replace_box;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
+mod same_length_and_capacity;
 mod same_name_method;
 mod self_named_constructors;
 mod semicolon_block;
@@ -538,6 +543,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(unnecessary_mut_passed::UnnecessaryMutPassed)),
         Box::new(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default()),
         Box::new(move |_| Box::new(len_zero::LenZero::new(conf))),
+        Box::new(|_| Box::new(len_without_is_empty::LenWithoutIsEmpty)),
         Box::new(move |_| Box::new(attrs::Attributes::new(conf))),
         Box::new(|_| Box::new(blocks_in_conditions::BlocksInConditions)),
         Box::new(|_| Box::new(unicode::Unicode)),
@@ -711,7 +717,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::<unused_async::UnusedAsync>::default()),
         Box::new(move |tcx| Box::new(disallowed_types::DisallowedTypes::new(tcx, conf))),
         Box::new(move |tcx| Box::new(missing_enforced_import_rename::ImportRename::new(tcx, conf))),
-        Box::new(|_| Box::new(strlen_on_c_strings::StrlenOnCStrings)),
+        Box::new(move |_| Box::new(strlen_on_c_strings::StrlenOnCStrings::new(conf))),
         Box::new(move |_| Box::new(self_named_constructors::SelfNamedConstructors)),
         Box::new(move |_| Box::new(iter_not_returning_iterator::IterNotReturningIterator)),
         Box::new(move |_| Box::new(manual_assert::ManualAssert)),
@@ -736,7 +742,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(cargo::Cargo::new(conf))),
         Box::new(|_| Box::new(empty_with_brackets::EmptyWithBrackets::default())),
         Box::new(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings)),
-        Box::new(|_| Box::new(format_push_string::FormatPushString)),
+        {
+            let format_args = format_args_storage.clone();
+            Box::new(move |_| Box::new(format_push_string::FormatPushString::new(format_args.clone())))
+        },
         Box::new(move |_| Box::new(large_include_file::LargeIncludeFile::new(conf))),
         Box::new(|_| Box::new(strings::TrimSplitWhitespace)),
         Box::new(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit)),
@@ -848,6 +857,11 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(toplevel_ref_arg::ToplevelRefArg)),
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
+        Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
+        Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
+        Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),
+        Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
+        Box::new(|_| Box::new(manual_checked_ops::ManualCheckedOps)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

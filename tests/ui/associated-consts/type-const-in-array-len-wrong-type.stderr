@@ -1,0 +1,35 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/type-const-in-array-len-wrong-type.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/type-const-in-array-len-wrong-type.rs:3:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+warning: the feature `inherent_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/type-const-in-array-len-wrong-type.rs:5:12
+   |
+LL | #![feature(inherent_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+
+error: the constant `2` is not of type `usize`
+  --> $DIR/type-const-in-array-len-wrong-type.rs:13:26
+   |
+LL |     fn lfn_contents() -> [char; Self::LFN_FRAGMENT_LEN] {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i64`
+   |
+   = note: the length of array `[char; 2]` must be type `usize`
+
+error: aborting due to 1 previous error; 3 warnings emitted
+

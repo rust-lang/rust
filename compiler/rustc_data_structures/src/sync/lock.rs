@@ -1,7 +1,7 @@
 //! This module implements a lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
 //! It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync` traits.
 
-use std::fmt;
+use std::{fmt, hint};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
@@ -10,7 +10,6 @@ pub enum Mode {
 }
 
 use std::cell::{Cell, UnsafeCell};
-use std::intrinsics::unlikely;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
@@ -92,7 +91,8 @@ pub struct Lock<T> {
 impl<T> Lock<T> {
     #[inline(always)]
     pub fn new(inner: T) -> Self {
-        let (mode, mode_union) = if unlikely(mode::might_be_dyn_thread_safe()) {
+        let (mode, mode_union) = if mode::might_be_dyn_thread_safe() {
+            hint::cold_path();
             // Create the lock with synchronization enabled using the `RawMutex` type.
             (Mode::Sync, ModeUnion { sync: ManuallyDrop::new(RawMutex::INIT) })
         } else {
@@ -150,7 +150,8 @@ impl<T> Lock<T> {
         unsafe {
             match mode {
                 Mode::NoSync => {
-                    if unlikely(self.mode_union.no_sync.replace(LOCKED) == LOCKED) {
+                    if self.mode_union.no_sync.replace(LOCKED) == LOCKED {
+                        hint::cold_path();
                         lock_held()
                     }
                 }

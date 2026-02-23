@@ -7,11 +7,11 @@ LL | trait A<C = <Self as D>::E> {}
 LL |     let B: &dyn A = &();
    |                 ^
    |
-   = note: because the parameter default references `Self`, the parameter must be specified on the object type
-help: set the type parameter to the desired type
+   = note: because the parameter default references `Self`, the parameter must be specified on the trait object type
+help: explicitly specify the type parameter
    |
-LL |     let B: &dyn A<C> = &();
-   |                  +++
+LL |     let B: &dyn A</* C */> = &();
+   |                  +++++++++
 
 error: aborting due to 1 previous error
 

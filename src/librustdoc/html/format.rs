@@ -22,8 +22,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_span::Symbol;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -627,8 +627,8 @@ pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) ->
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..];
-            return iter::repeat_n(sym::dotdot, dissimilar_part_count)
-                .chain(fqp_module.iter().copied())
+            return iter::repeat_n("..", dissimilar_part_count)
+                .chain(fqp_module.iter().map(|s| s.as_str()))
                 .collect();
         }
     }
@@ -640,7 +640,7 @@ pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) ->
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            iter::repeat_n(sym::dotdot, dissimilar_part_count).collect()
+            iter::repeat_n("..", dissimilar_part_count).collect()
         }
         Ordering::Equal => {
             // linking to the same module
@@ -773,10 +773,10 @@ fn primitive_link_fragment(
                     ExternalLocation::Local => {
                         let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
                         Some(if cx.current.first() == Some(&cname_sym) {
-                            iter::repeat_n(sym::dotdot, cx.current.len() - 1).collect()
+                            iter::repeat_n("..", cx.current.len() - 1).collect()
                         } else {
-                            iter::repeat_n(sym::dotdot, cx.current.len())
-                                .chain(iter::once(cname_sym))
+                            iter::repeat_n("..", cx.current.len())
+                                .chain(iter::once(cname_sym.as_str()))
                                 .collect()
                         })
                     }
@@ -1390,10 +1390,6 @@ impl clean::FnDecl {
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
-        if item.is_doc_hidden() {
-            f.write_str("#[doc(hidden)] ")?;
-        }
-
         let Some(vis) = item.visibility(cx.tcx()) else {
             return Ok(());
         };
@@ -1568,10 +1564,6 @@ pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     })
-}
-
-pub(crate) fn print_default_space(v: bool) -> &'static str {
-    if v { "default " } else { "" }
 }
 
 fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl Display {

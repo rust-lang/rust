@@ -2,7 +2,7 @@
 #![feature(must_not_suspend)]
 #![deny(must_not_suspend)]
 
-#[must_not_suspend] //~ ERROR attribute should be
+#[must_not_suspend] //~ ERROR attribute cannot be used on functions
 fn foo() -> i32 {
     0
 }

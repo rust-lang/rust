@@ -484,7 +484,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_permutex2var_epi8() {
+    fn test_mm512_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -508,7 +508,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_mask_permutex2var_epi8() {
+    fn test_mm512_mask_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -539,7 +539,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_maskz_permutex2var_epi8() {
+    fn test_mm512_maskz_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -570,7 +570,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_mask2_permutex2var_epi8() {
+    fn test_mm512_mask2_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -601,7 +601,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_permutex2var_epi8() {
+    fn test_mm256_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
@@ -619,7 +619,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_mask_permutex2var_epi8() {
+    fn test_mm256_mask_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
@@ -639,7 +639,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_maskz_permutex2var_epi8() {
+    fn test_mm256_maskz_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
@@ -659,7 +659,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_mask2_permutex2var_epi8() {
+    fn test_mm256_mask2_permutex2var_epi8() {
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
@@ -679,7 +679,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_permutex2var_epi8() {
+    fn test_mm_permutex2var_epi8() {
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         #[rustfmt::skip]
         let idx = _mm_set_epi8(1, 1 << 4, 2, 1 << 4, 3, 1 << 4, 4, 1 << 4, 5, 1 << 4, 6, 1 << 4, 7, 1 << 4, 8, 1 << 4);
@@ -692,7 +692,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_mask_permutex2var_epi8() {
+    fn test_mm_mask_permutex2var_epi8() {
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         #[rustfmt::skip]
         let idx = _mm_set_epi8(1, 1 << 4, 2, 1 << 4, 3, 1 << 4, 4, 1 << 4, 5, 1 << 4, 6, 1 << 4, 7, 1 << 4, 8, 1 << 4);
@@ -707,7 +707,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_maskz_permutex2var_epi8() {
+    fn test_mm_maskz_permutex2var_epi8() {
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         #[rustfmt::skip]
         let idx = _mm_set_epi8(1, 1 << 4, 2, 1 << 4, 3, 1 << 4, 4, 1 << 4, 5, 1 << 4, 6, 1 << 4, 7, 1 << 4, 8, 1 << 4);
@@ -722,7 +722,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_mask2_permutex2var_epi8() {
+    fn test_mm_mask2_permutex2var_epi8() {
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         #[rustfmt::skip]
         let idx = _mm_set_epi8(1, 1 << 4, 2, 1 << 4, 3, 1 << 4, 4, 1 << 4, 5, 1 << 4, 6, 1 << 4, 7, 1 << 4, 8, 1 << 4);
@@ -737,7 +737,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_permutexvar_epi8() {
+    fn test_mm512_permutexvar_epi8() {
         let idx = _mm512_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -750,7 +750,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_mask_permutexvar_epi8() {
+    fn test_mm512_mask_permutexvar_epi8() {
         let idx = _mm512_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -770,7 +770,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_maskz_permutexvar_epi8() {
+    fn test_mm512_maskz_permutexvar_epi8() {
         let idx = _mm512_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm512_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -789,7 +789,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_permutexvar_epi8() {
+    fn test_mm256_permutexvar_epi8() {
         let idx = _mm256_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -800,7 +800,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_mask_permutexvar_epi8() {
+    fn test_mm256_mask_permutexvar_epi8() {
         let idx = _mm256_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -813,7 +813,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_maskz_permutexvar_epi8() {
+    fn test_mm256_maskz_permutexvar_epi8() {
         let idx = _mm256_set1_epi8(1);
         #[rustfmt::skip]
         let a = _mm256_set_epi8(0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
@@ -826,7 +826,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_permutexvar_epi8() {
+    fn test_mm_permutexvar_epi8() {
         let idx = _mm_set1_epi8(1);
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let r = _mm_permutexvar_epi8(idx, a);
@@ -835,7 +835,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_mask_permutexvar_epi8() {
+    fn test_mm_mask_permutexvar_epi8() {
         let idx = _mm_set1_epi8(1);
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let r = _mm_mask_permutexvar_epi8(a, 0, idx, a);
@@ -846,7 +846,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_maskz_permutexvar_epi8() {
+    fn test_mm_maskz_permutexvar_epi8() {
         let idx = _mm_set1_epi8(1);
         let a = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let r = _mm_maskz_permutexvar_epi8(0, idx, a);
@@ -857,7 +857,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_multishift_epi64_epi8() {
+    fn test_mm512_multishift_epi64_epi8() {
         let a = _mm512_set1_epi8(1);
         let b = _mm512_set1_epi8(1);
         let r = _mm512_multishift_epi64_epi8(a, b);
@@ -866,7 +866,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_mask_multishift_epi64_epi8() {
+    fn test_mm512_mask_multishift_epi64_epi8() {
         let a = _mm512_set1_epi8(1);
         let b = _mm512_set1_epi8(1);
         let r = _mm512_mask_multishift_epi64_epi8(a, 0, a, b);
@@ -882,7 +882,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi")]
-    unsafe fn test_mm512_maskz_multishift_epi64_epi8() {
+    fn test_mm512_maskz_multishift_epi64_epi8() {
         let a = _mm512_set1_epi8(1);
         let b = _mm512_set1_epi8(1);
         let r = _mm512_maskz_multishift_epi64_epi8(0, a, b);
@@ -897,7 +897,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_multishift_epi64_epi8() {
+    fn test_mm256_multishift_epi64_epi8() {
         let a = _mm256_set1_epi8(1);
         let b = _mm256_set1_epi8(1);
         let r = _mm256_multishift_epi64_epi8(a, b);
@@ -906,7 +906,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_mask_multishift_epi64_epi8() {
+    fn test_mm256_mask_multishift_epi64_epi8() {
         let a = _mm256_set1_epi8(1);
         let b = _mm256_set1_epi8(1);
         let r = _mm256_mask_multishift_epi64_epi8(a, 0, a, b);
@@ -917,7 +917,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm256_maskz_multishift_epi64_epi8() {
+    fn test_mm256_maskz_multishift_epi64_epi8() {
         let a = _mm256_set1_epi8(1);
         let b = _mm256_set1_epi8(1);
         let r = _mm256_maskz_multishift_epi64_epi8(0, a, b);
@@ -928,7 +928,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_multishift_epi64_epi8() {
+    fn test_mm_multishift_epi64_epi8() {
         let a = _mm_set1_epi8(1);
         let b = _mm_set1_epi8(1);
         let r = _mm_multishift_epi64_epi8(a, b);
@@ -937,7 +937,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_mask_multishift_epi64_epi8() {
+    fn test_mm_mask_multishift_epi64_epi8() {
         let a = _mm_set1_epi8(1);
         let b = _mm_set1_epi8(1);
         let r = _mm_mask_multishift_epi64_epi8(a, 0, a, b);
@@ -948,7 +948,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512vbmi,avx512vl")]
-    unsafe fn test_mm_maskz_multishift_epi64_epi8() {
+    fn test_mm_maskz_multishift_epi64_epi8() {
         let a = _mm_set1_epi8(1);
         let b = _mm_set1_epi8(1);
         let r = _mm_maskz_multishift_epi64_epi8(0, a, b);

@@ -8,13 +8,19 @@ LL |     2_usize + (loop {});
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&usize` implements `Add<usize>`
+   = note: `usize` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&usize` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&usize` implements `Add<usize>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `usize` implements `Add<&usize>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `usize` implements `Add`
+   = note: `&usize` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

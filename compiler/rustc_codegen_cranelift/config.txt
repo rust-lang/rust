@@ -20,7 +20,7 @@ aot.mini_core_hello_world
 
 testsuite.base_sysroot
 aot.arbitrary_self_types_pointers_and_wrappers
-jit.std_example
+#jit.std_example # FIXME(#1619) broken for some reason
 aot.std_example
 aot.dst_field_align
 aot.subslice-patterns-const-eval

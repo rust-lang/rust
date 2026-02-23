@@ -17,6 +17,7 @@ pub static TY_CTXT: PathLookup = type_path!(rustc_middle::ty::TyCtxt);
 
 // Paths in clippy itself
 pub static CLIPPY_SYM_MODULE: PathLookup = type_path!(clippy_utils::sym);
+pub static MAYBE_DEF: PathLookup = type_path!(clippy_utils::res::MaybeDef);
 pub static MSRV_STACK: PathLookup = type_path!(clippy_utils::msrvs::MsrvStack);
 pub static PATH_LOOKUP_NEW: PathLookup = value_path!(clippy_utils::paths::PathLookup::new);
 pub static SPAN_LINT_AND_THEN: PathLookup = value_path!(clippy_utils::diagnostics::span_lint_and_then);

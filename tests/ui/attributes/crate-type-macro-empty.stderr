@@ -16,17 +16,11 @@ note: a macro with the same name exists, but it appears later
 LL | macro_rules! foo {}
    |              ^^^
 
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/crate-type-macro-empty.rs:2:1
+error: attribute value must be a literal
+  --> $DIR/crate-type-macro-empty.rs:2:16
    |
 LL | #[crate_type = foo!()]
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: requested on the command line with `-W unused-attributes`
-help: add a `!`
-   |
-LL | #![crate_type = foo!()]
-   |  +
+   |                ^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 

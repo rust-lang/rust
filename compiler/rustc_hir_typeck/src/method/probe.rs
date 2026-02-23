@@ -1,14 +1,13 @@
-use std::assert_matches::debug_assert_matches;
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
 use std::ops::Deref;
 
-use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, ExprKind, HirId, Node};
+use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
@@ -106,7 +105,7 @@ pub(crate) struct Candidate<'tcx> {
 pub(crate) enum CandidateKind<'tcx> {
     InherentImplCandidate { impl_def_id: DefId, receiver_steps: usize },
     ObjectCandidate(ty::PolyTraitRef<'tcx>),
-    TraitCandidate(ty::PolyTraitRef<'tcx>),
+    TraitCandidate(ty::PolyTraitRef<'tcx>, bool /* lint_ambiguous */),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>),
 }
 
@@ -190,8 +189,8 @@ impl PickConstraintsForShadowed {
         // An item never shadows itself
         candidate.item.def_id != self.def_id
             // and we're only concerned about inherent impls doing the shadowing.
-            // Shadowing can only occur if the shadowed is further along
-            // the Receiver dereferencing chain than the shadowed.
+            // Shadowing can only occur if the impl being shadowed is further along
+            // the Receiver dereferencing chain than the impl doing the shadowing.
             && match candidate.kind {
                 CandidateKind::InherentImplCandidate { receiver_steps, .. } => match self.receiver_steps {
                     Some(shadowed_receiver_steps) => receiver_steps > shadowed_receiver_steps,
@@ -235,7 +234,10 @@ pub(crate) struct Pick<'tcx> {
 pub(crate) enum PickKind<'tcx> {
     InherentImplPick,
     ObjectPick,
-    TraitPick,
+    TraitPick(
+        // Is Ambiguously Imported
+        bool,
+    ),
     WhereClausePick(
         // Trait
         ty::PolyTraitRef<'tcx>,
@@ -412,10 +414,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 let query::MethodAutoderefSteps { predefined_opaques_in_body: _, self_ty } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
+                let prev_opaque_entries = self.inner.borrow_mut().opaque_types().num_entries();
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self
-                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
+                        self_ty: self.make_query_response_ignoring_pending_obligations(
+                            var_values,
+                            self_ty,
+                            prev_opaque_entries,
+                        ),
                         self_ty_is_opaque: false,
                         autoderefs: 0,
                         from_unsafe_deref: false,
@@ -483,6 +489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
+                    _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
                         // We want to get the variable name that the method
                         // is being called on. If it is a method call.
@@ -560,7 +567,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.push_candidate(
                         Candidate {
                             item,
-                            kind: CandidateKind::TraitCandidate(ty::Binder::dummy(trait_ref)),
+                            kind: CandidateKind::TraitCandidate(
+                                ty::Binder::dummy(trait_ref),
+                                false,
+                            ),
                             import_ids: smallvec![],
                         },
                         false,
@@ -601,6 +611,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
         }
     }
+    let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
     // We accept not-yet-defined opaque types in the autoderef
     // chain to support recursive calls. We do error if the final
@@ -644,8 +655,11 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .zip(reachable_via_deref)
             .map(|((ty, d), reachable_via_deref)| {
                 let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                        inference_vars,
+                        ty,
+                        prev_opaque_entries,
+                    ),
                     self_ty_is_opaque: self_ty_is_opaque(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
@@ -665,8 +679,11 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .by_ref()
             .map(|(ty, d)| {
                 let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                        inference_vars,
+                        ty,
+                        prev_opaque_entries,
+                    ),
                     self_ty_is_opaque: self_ty_is_opaque(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
@@ -686,11 +703,19 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) if !self_ty_is_opaque(final_ty) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
-            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(
+                inference_vars,
+                final_ty,
+                prev_opaque_entries,
+            ),
         }),
         ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
-            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(
+                inference_vars,
+                final_ty,
+                prev_opaque_entries,
+            ),
         }),
         ty::Array(elem_ty, _) => {
             let autoderefs = steps.iter().filter(|s| s.reachable_via_deref).count() - 1;
@@ -698,6 +723,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
                     Ty::new_slice(infcx.tcx, *elem_ty),
+                    prev_opaque_entries,
                 ),
                 self_ty_is_opaque: false,
                 autoderefs,
@@ -864,7 +890,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Tuple(..) => {
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps)
             }
-            _ => {}
+            ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Infer(..)
+            | ty::Pat(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => {}
         }
     }
 
@@ -1018,6 +1057,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.assemble_extension_candidates_for_trait(
                         &trait_candidate.import_ids,
                         trait_did,
+                        trait_candidate.lint_ambiguous,
                     );
                 }
             }
@@ -1029,7 +1069,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id);
+                self.assemble_extension_candidates_for_trait(
+                    &smallvec![],
+                    trait_info.def_id,
+                    false,
+                );
             }
         }
     }
@@ -1055,6 +1099,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         import_ids: &SmallVec<[LocalDefId; 1]>,
         trait_def_id: DefId,
+        lint_ambiguous: bool,
     ) {
         let trait_args = self.fresh_args_for_item(self.span, trait_def_id);
         let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, trait_args);
@@ -1076,7 +1121,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             Candidate {
                                 item,
                                 import_ids: import_ids.clone(),
-                                kind: TraitCandidate(bound_trait_ref),
+                                kind: TraitCandidate(bound_trait_ref, lint_ambiguous),
                             },
                             false,
                         );
@@ -1099,7 +1144,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     Candidate {
                         item,
                         import_ids: import_ids.clone(),
-                        kind: TraitCandidate(ty::Binder::dummy(trait_ref)),
+                        kind: TraitCandidate(ty::Binder::dummy(trait_ref), lint_ambiguous),
                     },
                     false,
                 );
@@ -1842,7 +1887,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ObjectCandidate(_) | WhereClauseCandidate(_) => {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
-            TraitCandidate(trait_ref) => self.probe(|_| {
+            TraitCandidate(trait_ref, _) => self.probe(|_| {
                 let trait_ref = self.instantiate_binder_with_fresh_vars(
                     self.span,
                     BoundRegionConversionTime::FnCall,
@@ -1872,7 +1917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn candidate_source_from_pick(&self, pick: &Pick<'tcx>) -> CandidateSource {
         match pick.kind {
             InherentImplPick => CandidateSource::Impl(pick.item.container_id(self.tcx)),
-            ObjectPick | WhereClausePick(_) | TraitPick => {
+            ObjectPick | WhereClausePick(_) | TraitPick(_) => {
                 CandidateSource::Trait(pick.item.container_id(self.tcx))
             }
         }
@@ -1948,7 +1993,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         impl_bounds,
                     ));
                 }
-                TraitCandidate(poly_trait_ref) => {
+                TraitCandidate(poly_trait_ref, _) => {
                     // Some trait methods are excluded for arrays before 2021.
                     // (`array.into_iter()` wants a slice iterator for compatibility.)
                     if let Some(method_name) = self.method_name {
@@ -2274,11 +2319,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
+        let lint_ambiguous = match probes[0].0.kind {
+            TraitCandidate(_, lint) => lint,
+            _ => false,
+        };
+
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
         Some(Pick {
             item: probes[0].0.item,
-            kind: TraitPick,
+            kind: TraitPick(lint_ambiguous),
             import_ids: probes[0].0.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
@@ -2348,9 +2398,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
+        let lint_ambiguous = match probes[0].0.kind {
+            TraitCandidate(_, lint) => lint,
+            _ => false,
+        };
+
         Some(Pick {
             item: child_candidate.item,
-            kind: TraitPick,
+            kind: TraitPick(lint_ambiguous),
             import_ids: child_candidate.import_ids.clone(),
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
@@ -2535,7 +2590,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
 
-        if is_doc_alias_attrs_contain_symbol(attrs.into_iter(), method.name) {
+        if let Some(d) = find_attr!(attrs, Doc(d) => d)
+            && d.aliases.contains_key(&method.name)
+        {
             return true;
         }
 
@@ -2611,7 +2668,7 @@ impl<'tcx> Candidate<'tcx> {
             kind: match self.kind {
                 InherentImplCandidate { .. } => InherentImplPick,
                 ObjectCandidate(_) => ObjectPick,
-                TraitCandidate(_) => TraitPick,
+                TraitCandidate(_, lint_ambiguous) => TraitPick(lint_ambiguous),
                 WhereClauseCandidate(trait_ref) => {
                     // Only trait derived from where-clauses should
                     // appear here, so they should not contain any

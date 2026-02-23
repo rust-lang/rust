@@ -5,7 +5,7 @@ This kind of type inference is particularly complex because,
 unlike other kinds of type inference,
 it can work across functions and function bodies.
 
-[hidden type]: ./borrow_check/region_inference/member_constraints.html?highlight=%22hidden%20type%22#member-constraints
+[hidden type]: ./borrow-check/region-inference/member-constraints.html?highlight=%22hidden%20type%22#member-constraints
 [opaque type]: ./opaque-types-type-alias-impl-trait.md
 
 ## Running example

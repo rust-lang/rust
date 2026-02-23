@@ -126,6 +126,7 @@ fn synthesize_auto_trait_impl<'tcx>(
                 items: Vec::new(),
                 polarity,
                 kind: clean::ImplKind::Auto,
+                is_deprecated: false,
             })),
             item_id: clean::ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
             cfg: None,

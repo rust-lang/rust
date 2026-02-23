@@ -1,10 +1,10 @@
 use rustc_ast::Safety;
 use rustc_feature::{AttributeSafety, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
-use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use crate::context::Stage;
 use crate::{AttributeParser, ShouldEmit};
@@ -15,19 +15,13 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attr_path: &AttrPath,
         attr_span: Span,
         attr_safety: Safety,
-        emit_lint: &mut impl FnMut(AttributeLint<S::Id>),
-        target_id: S::Id,
+        emit_lint: &mut impl FnMut(LintId, Span, AttributeLintKind),
     ) {
         if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
             return;
         }
 
-        let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0].name);
-        if let Some(name) = name
-            && [sym::cfg_trace, sym::cfg_attr_trace].contains(&name)
-        {
-            return;
-        }
+        let name = (attr_path.segments.len() == 1).then_some(attr_path.segments[0]);
 
         // FIXME: We should retrieve this information from the attribute parsers instead of from `BUILTIN_ATTRIBUTE_MAP`
         let builtin_attr_info = name.and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
@@ -87,16 +81,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         },
                     );
                 } else {
-                    emit_lint(AttributeLint {
-                        lint_id: LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
-                        id: target_id,
-                        span: path_span,
-                        kind: AttributeLintKind::UnsafeAttrOutsideUnsafe {
+                    emit_lint(
+                        LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
+                        path_span,
+                        AttributeLintKind::UnsafeAttrOutsideUnsafe {
                             attribute_name_span: path_span,
                             sugg_spans: not_from_proc_macro
                                 .then(|| (diag_span.shrink_to_lo(), diag_span.shrink_to_hi())),
                         },
-                    })
+                    )
                 }
             }
 

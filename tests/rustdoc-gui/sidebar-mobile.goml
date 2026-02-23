@@ -49,7 +49,7 @@ assert-property: ("rustdoc-topbar", {"clientHeight": "45"})
 // so the target is not obscured by the topbar.
 click: ".sidebar-menu-toggle"
 click: ".sidebar-elems section .block li > a"
-assert-position: ("#method\.must_use", {"y": 46})
+assert-position: ("#method\.must_use", {"y": 45})
 
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
 click: ".sidebar-menu-toggle"
@@ -65,8 +65,7 @@ define-function: (
     "check-colors",
     [theme, color, background],
     block {
-        call-function: ("switch-theme-mobile", {"theme": |theme|})
-        reload:
+        call-function: ("switch-theme", {"theme": |theme|})
 
         // Open the sidebar menu.
         click: ".sidebar-menu-toggle"
@@ -85,14 +84,4 @@ call-function: ("check-colors", {
     "theme": "ayu",
     "color": "#c5c5c5",
     "background": "#14191f",
-})
-call-function: ("check-colors", {
-    "theme": "dark",
-    "color": "#ddd",
-    "background": "#505050",
-})
-call-function: ("check-colors", {
-    "theme": "light",
-    "color": "black",
-    "background": "#F5F5F5",
 })

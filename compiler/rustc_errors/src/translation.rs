@@ -1,14 +1,13 @@
 use std::borrow::Cow;
-use std::env;
 use std::error::Report;
-use std::sync::Arc;
 
-pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
+pub use rustc_error_messages::FluentArgs;
+use rustc_error_messages::{langid, register_functions};
 use tracing::{debug, trace};
 
-use crate::error::{TranslateError, TranslateErrorKind};
-use crate::snippet::Style;
-use crate::{DiagArg, DiagMessage, FluentBundle};
+use crate::error::TranslateError;
+use crate::fluent_bundle::FluentResource;
+use crate::{DiagArg, DiagMessage, Style, fluent_bundle};
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -29,116 +28,48 @@ pub fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> Flue
     args
 }
 
-#[derive(Clone)]
-pub struct Translator {
-    /// Localized diagnostics for the locale requested by the user. If no language was requested by
-    /// the user then this will be `None` and `fallback_fluent_bundle` should be used.
-    pub fluent_bundle: Option<Arc<FluentBundle>>,
-    /// Return `FluentBundle` with localized diagnostics for the default locale of the compiler.
-    /// Used when the user has not requested a specific language or when a localized diagnostic is
-    /// unavailable for the requested locale.
-    pub fallback_fluent_bundle: LazyFallbackBundle,
+/// Convert `DiagMessage`s to a string
+pub fn format_diag_messages(
+    messages: &[(DiagMessage, Style)],
+    args: &FluentArgs<'_>,
+) -> Cow<'static, str> {
+    Cow::Owned(
+        messages
+            .iter()
+            .map(|(m, _)| format_diag_message(m, args).map_err(Report::new).unwrap())
+            .collect::<String>(),
+    )
 }
 
-impl Translator {
-    pub fn with_fallback_bundle(
-        resources: Vec<&'static str>,
-        with_directionality_markers: bool,
-    ) -> Translator {
-        Translator {
-            fluent_bundle: None,
-            fallback_fluent_bundle: crate::fallback_fluent_bundle(
-                resources,
-                with_directionality_markers,
-            ),
-        }
-    }
+/// Convert a `DiagMessage` to a string
+pub fn format_diag_message<'a>(
+    message: &'a DiagMessage,
+    args: &'a FluentArgs<'_>,
+) -> Result<Cow<'a, str>, TranslateError<'a>> {
+    trace!(?message, ?args);
+    match message {
+        DiagMessage::Str(msg) => Ok(Cow::Borrowed(msg)),
+        // This translates an inline fluent diagnostic message
+        // It does this by creating a new `FluentBundle` with only one message,
+        // and then translating using this bundle.
+        DiagMessage::Inline(msg) => {
+            const GENERATED_MSG_ID: &str = "generated_msg";
+            let resource =
+                FluentResource::try_new(format!("{GENERATED_MSG_ID} = {msg}\n")).unwrap();
+            let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
+            bundle.set_use_isolating(false);
+            bundle.add_resource(resource).unwrap();
+            register_functions(&mut bundle);
+            let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
+            let value = message.value().unwrap();
 
-    /// Convert `DiagMessage`s to a string, performing translation if necessary.
-    pub fn translate_messages(
-        &self,
-        messages: &[(DiagMessage, Style)],
-        args: &FluentArgs<'_>,
-    ) -> Cow<'_, str> {
-        Cow::Owned(
-            messages
-                .iter()
-                .map(|(m, _)| self.translate_message(m, args).map_err(Report::new).unwrap())
-                .collect::<String>(),
-        )
-    }
-
-    /// Convert a `DiagMessage` to a string, performing translation if necessary.
-    pub fn translate_message<'a>(
-        &'a self,
-        message: &'a DiagMessage,
-        args: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'a, str>, TranslateError<'a>> {
-        trace!(?message, ?args);
-        let (identifier, attr) = match message {
-            DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {
-                return Ok(Cow::Borrowed(msg));
-            }
-            DiagMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
-        };
-        let translate_with_bundle =
-            |bundle: &'a FluentBundle| -> Result<Cow<'_, str>, TranslateError<'_>> {
-                let message = bundle
-                    .get_message(identifier)
-                    .ok_or(TranslateError::message(identifier, args))?;
-                let value = match attr {
-                    Some(attr) => message
-                        .get_attribute(attr)
-                        .ok_or(TranslateError::attribute(identifier, args, attr))?
-                        .value(),
-                    None => message.value().ok_or(TranslateError::value(identifier, args))?,
-                };
-                debug!(?message, ?value);
-
-                let mut errs = vec![];
-                let translated = bundle.format_pattern(value, Some(args), &mut errs);
-                debug!(?translated, ?errs);
-                if errs.is_empty() {
-                    Ok(translated)
-                } else {
-                    Err(TranslateError::fluent(identifier, args, errs))
-                }
-            };
-
-        try {
-            match self.fluent_bundle.as_ref().map(|b| translate_with_bundle(b)) {
-                // The primary bundle was present and translation succeeded
-                Some(Ok(t)) => t,
-
-                // If `translate_with_bundle` returns `Err` with the primary bundle, this is likely
-                // just that the primary bundle doesn't contain the message being translated, so
-                // proceed to the fallback bundle.
-                Some(Err(
-                    primary @ TranslateError::One {
-                        kind: TranslateErrorKind::MessageMissing, ..
-                    },
-                )) => translate_with_bundle(&self.fallback_fluent_bundle)
-                    .map_err(|fallback| primary.and(fallback))?,
-
-                // Always yeet out for errors on debug (unless
-                // `RUSTC_TRANSLATION_NO_DEBUG_ASSERT` is set in the environment - this allows
-                // local runs of the test suites, of builds with debug assertions, to test the
-                // behaviour in a normal build).
-                Some(Err(primary))
-                    if cfg!(debug_assertions)
-                        && env::var("RUSTC_TRANSLATION_NO_DEBUG_ASSERT").is_err() =>
-                {
-                    do yeet primary
-                }
-
-                // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
-                // just hide it and try with the fallback bundle.
-                Some(Err(primary)) => translate_with_bundle(&self.fallback_fluent_bundle)
-                    .map_err(|fallback| primary.and(fallback))?,
-
-                // The primary bundle is missing, proceed to the fallback bundle
-                None => translate_with_bundle(&self.fallback_fluent_bundle)
-                    .map_err(|fallback| TranslateError::primary(identifier, args).and(fallback))?,
+            let mut errs = vec![];
+            let translated = bundle.format_pattern(value, Some(args), &mut errs).to_string();
+            debug!(?translated, ?errs);
+            if errs.is_empty() {
+                Ok(Cow::Owned(translated))
+            } else {
+                Err(TranslateError::fluent(&Cow::Borrowed(GENERATED_MSG_ID), args, errs))
             }
         }
     }

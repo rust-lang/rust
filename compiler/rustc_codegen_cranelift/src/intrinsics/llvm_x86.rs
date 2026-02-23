@@ -1313,6 +1313,35 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue_transmute(fx, res);
         }
 
+        "llvm.x86.vcvtps2ph.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtps_ph
+            intrinsic_args!(fx, args => (a, _imm8); intrinsic);
+            let a = a.load_scalar(fx);
+
+            let imm8 =
+                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[1].node) {
+                    imm8
+                } else {
+                    fx.tcx
+                        .dcx()
+                        .span_fatal(span, "Index argument for `_mm_cvtps_ph` is not a constant");
+                };
+
+            let imm8 = imm8.to_u32();
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("vcvtps2ph xmm0, xmm0, {imm8}").into())],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         _ => {
             fx.tcx
                 .dcx()

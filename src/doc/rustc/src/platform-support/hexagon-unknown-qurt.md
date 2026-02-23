@@ -33,10 +33,15 @@ required for building programs for this target.
 
 ## Linking
 
-This target selects `rust-lld` by default.  Another option to use is
-[eld](https://github.com/qualcomm/eld), which is also provided with
-[the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon)
-and the Hexagon SDK.
+This target uses `hexagon-clang` from the Hexagon SDK as the default linker.
+The linker is available at paths like
+`/opt/Hexagon_SDK/6.4.0.2/tools/HEXAGON_Tools/19.0.04/Tools/bin/hexagon-clang`.
+
+Alternative linkers include:
+- [eld](https://github.com/qualcomm/eld), which is provided with both
+  [the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon)
+  and the Hexagon SDK
+- `rust-lld` can be used by specifying `-C linker=rust-lld`
 
 ## Building the target
 

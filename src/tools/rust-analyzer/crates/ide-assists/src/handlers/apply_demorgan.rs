@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use ide_db::{
     assists::GroupLabel,
     famous_defs::FamousDefs,
-    syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
+    syntax_helpers::node_ext::{for_each_tail_expr, is_pattern_cond, walk_expr},
 };
 use syntax::{
     NodeOrToken, SyntaxKind, T,
@@ -67,6 +67,10 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             }
             _ => break,
         }
+    }
+
+    if is_pattern_cond(bin_expr.clone().into()) {
+        return None;
     }
 
     let op = bin_expr.op_kind()?;
@@ -373,6 +377,16 @@ fn f() { !(S <= S || S < S) }
             "fn f() { 1 || 3 &&$0 4 || 5 }",
             "fn f() { 1 || !(!3 || !4) || 5 }",
         )
+    }
+
+    #[test]
+    fn demorgan_doesnt_handles_pattern() {
+        check_assist_not_applicable(
+            apply_demorgan,
+            r#"
+fn f() { if let 1 = 1 &&$0 true { } }
+"#,
+        );
     }
 
     #[test]

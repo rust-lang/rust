@@ -3,7 +3,7 @@ use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet_opt};
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
-use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, sym};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -11,7 +11,7 @@ use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use std::ops::ControlFlow;
 
 use super::UNNECESSARY_CAST;

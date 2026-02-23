@@ -7,7 +7,7 @@ use crate::{fmt, ptr};
 /// This `struct` is created by the [`Iterator::map_windows`]. See its
 /// documentation for more information.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 pub struct MapWindows<I: Iterator, F, const N: usize> {
     f: F,
     inner: MapWindowsInner<I, N>,
@@ -234,7 +234,7 @@ impl<T, const N: usize> Drop for Buffer<T, N> {
     }
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I, F, R, const N: usize> Iterator for MapWindows<I, F, N>
 where
     I: Iterator,
@@ -255,7 +255,7 @@ where
 
 // Note that even if the inner iterator not fused, the `MapWindows` is still fused,
 // because we don't allow "holes" in the mapping window.
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I, F, R, const N: usize> FusedIterator for MapWindows<I, F, N>
 where
     I: Iterator,
@@ -263,7 +263,7 @@ where
 {
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I, F, R, const N: usize> ExactSizeIterator for MapWindows<I, F, N>
 where
     I: ExactSizeIterator,
@@ -271,14 +271,14 @@ where
 {
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I: Iterator + fmt::Debug, F, const N: usize> fmt::Debug for MapWindows<I, F, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MapWindows").field("iter", &self.inner.iter).finish()
     }
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+#[unstable(feature = "iter_map_windows", issue = "87155")]
 impl<I, F, const N: usize> Clone for MapWindows<I, F, N>
 where
     I: Iterator + Clone,

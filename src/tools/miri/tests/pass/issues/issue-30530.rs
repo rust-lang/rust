@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-// SPDX-FileCopyrightText: The Rust Project Developers (see https://thanks.rust-lang.org)
-
 // Regression test for Issue #30530: alloca's created for storing
 // intermediate scratch values during brace-less match arms need to be
 // initialized with their drop-flag set to "dropped" (or else we end

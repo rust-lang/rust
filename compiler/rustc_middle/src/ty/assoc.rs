@@ -126,30 +126,19 @@ impl AssocItem {
     }
 
     pub fn descr(&self) -> &'static str {
-        match self.kind {
-            ty::AssocKind::Const { .. } => "associated const",
-            ty::AssocKind::Fn { has_self: true, .. } => "method",
-            ty::AssocKind::Fn { has_self: false, .. } => "associated function",
-            ty::AssocKind::Type { .. } => "associated type",
-        }
+        self.kind.descr()
     }
 
     pub fn namespace(&self) -> Namespace {
-        match self.kind {
-            ty::AssocKind::Type { .. } => Namespace::TypeNS,
-            ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
-        }
+        self.kind.namespace()
     }
 
     pub fn as_def_kind(&self) -> DefKind {
-        match self.kind {
-            AssocKind::Const { .. } => DefKind::AssocConst,
-            AssocKind::Fn { .. } => DefKind::AssocFn,
-            AssocKind::Type { .. } => DefKind::AssocTy,
-        }
+        self.kind.as_def_kind()
     }
-    pub fn is_type(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Type { .. })
+
+    pub fn is_const(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Const { .. })
     }
 
     pub fn is_fn(&self) -> bool {
@@ -160,12 +149,12 @@ impl AssocItem {
         matches!(self.kind, ty::AssocKind::Fn { has_self: true, .. })
     }
 
-    pub fn as_tag(&self) -> AssocTag {
-        match self.kind {
-            AssocKind::Const { .. } => AssocTag::Const,
-            AssocKind::Fn { .. } => AssocTag::Fn,
-            AssocKind::Type { .. } => AssocTag::Type,
-        }
+    pub fn is_type(&self) -> bool {
+        matches!(self.kind, ty::AssocKind::Type { .. })
+    }
+
+    pub fn tag(&self) -> AssocTag {
+        self.kind.tag()
     }
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
@@ -191,38 +180,59 @@ pub enum AssocKind {
 
 impl AssocKind {
     pub fn namespace(&self) -> Namespace {
-        match *self {
-            ty::AssocKind::Type { .. } => Namespace::TypeNS,
-            ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
+        match self {
+            Self::Type { .. } => Namespace::TypeNS,
+            Self::Const { .. } | Self::Fn { .. } => Namespace::ValueNS,
+        }
+    }
+
+    pub fn tag(&self) -> AssocTag {
+        match self {
+            Self::Const { .. } => AssocTag::Const,
+            Self::Fn { .. } => AssocTag::Fn,
+            Self::Type { .. } => AssocTag::Type,
         }
     }
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
-            AssocKind::Const { .. } => DefKind::AssocConst,
-            AssocKind::Fn { .. } => DefKind::AssocFn,
-            AssocKind::Type { .. } => DefKind::AssocTy,
+            Self::Const { .. } => DefKind::AssocConst,
+            Self::Fn { .. } => DefKind::AssocFn,
+            Self::Type { .. } => DefKind::AssocTy,
+        }
+    }
+
+    pub fn descr(&self) -> &'static str {
+        match self {
+            Self::Fn { has_self: true, .. } => "method",
+            _ => self.tag().descr(),
         }
     }
 }
 
 impl std::fmt::Display for AssocKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AssocKind::Fn { has_self: true, .. } => write!(f, "method"),
-            AssocKind::Fn { has_self: false, .. } => write!(f, "associated function"),
-            AssocKind::Const { .. } => write!(f, "associated const"),
-            AssocKind::Type { .. } => write!(f, "associated type"),
-        }
+        f.write_str(self.descr())
     }
 }
 
-// Like `AssocKind`, but just the tag, no fields. Used in various kinds of matching.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Like [`AssocKind`], but just the tag, no fields. Used in various kinds of matching.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AssocTag {
     Const,
     Fn,
     Type,
+}
+
+impl AssocTag {
+    pub fn descr(self) -> &'static str {
+        // This should match `DefKind::descr`.
+        match self {
+            Self::Const => "associated constant",
+            Self::Fn => "associated function",
+            Self::Type => "associated type",
+        }
+    }
 }
 
 /// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.
@@ -272,7 +282,7 @@ impl AssocItems {
         name: Symbol,
         assoc_tag: AssocTag,
     ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.filter_by_name_unhygienic(name).filter(move |item| item.as_tag() == assoc_tag)
+        self.filter_by_name_unhygienic(name).filter(move |item| item.tag() == assoc_tag)
     }
 
     /// Returns the associated item with the given identifier and `AssocKind`, if one exists.
@@ -285,7 +295,7 @@ impl AssocItems {
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
-            .filter(|item| item.as_tag() == assoc_tag)
+            .filter(|item| item.tag() == assoc_tag)
             .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 

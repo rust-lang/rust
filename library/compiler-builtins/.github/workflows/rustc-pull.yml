@@ -7,6 +7,9 @@ on:
     # Run at 04:00 UTC every Monday and Thursday
     - cron: '0 4 * * 1,4'
 
+env:
+  JOSH_SYNC_VERBOSE: true
+
 jobs:
   pull:
     if: github.repository == 'rust-lang/compiler-builtins'
@@ -17,7 +20,7 @@ jobs:
       zulip-stream-id: 219381
       zulip-topic: 'compiler-builtins subtree sync automation'
       zulip-bot-email: "compiler-builtins-ci-bot@rust-lang.zulipchat.com"
-      pr-base-branch: master
+      pr-base-branch: main
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}

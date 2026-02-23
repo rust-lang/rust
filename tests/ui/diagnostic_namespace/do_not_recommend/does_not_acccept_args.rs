@@ -7,8 +7,9 @@
 trait Foo {}
 trait Bar {}
 trait Baz {}
+trait Boo {}
 
-#[diagnostic::do_not_recommend(not_accepted)]
+#[diagnostic::do_not_recommend(if, crate, do yeet, false, dyn, abstract, gen, not_accepted)]
 //~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
 impl<T> Foo for T where T: Send {}
 
@@ -19,5 +20,9 @@ impl<T> Bar for T where T: Send {}
 #[diagnostic::do_not_recommend(not_accepted(42))]
 //~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
 impl<T> Baz for T where T: Send {}
+
+#[diagnostic::do_not_recommend(x = y + z)]
+//~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
+impl<T> Boo for T where T: Send {}
 
 fn main() {}

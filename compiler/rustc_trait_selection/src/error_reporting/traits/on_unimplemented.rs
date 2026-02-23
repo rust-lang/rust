@@ -71,6 +71,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 return None;
             };
 
+            #[allow(deprecated)]
             tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
                 .then_some(impl_def_id_and_args)
         })
@@ -206,7 +207,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if self_ty.is_fn() {
                 let fn_sig = self_ty.fn_sig(self.tcx);
-                let shortname = if let ty::FnDef(def_id, _) = self_ty.kind()
+                let shortname = if let ty::FnDef(def_id, _) = *self_ty.kind()
                     && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                 {
                     "#[target_feature] fn"
@@ -360,10 +361,10 @@ pub enum AppendConstMessage {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_malformed_on_unimplemented_attr)]
-#[help]
+#[diag("malformed `on_unimplemented` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
 pub struct MalformedOnUnimplementedAttrLint {
-    #[label]
+    #[label("invalid option found here")]
     pub span: Span,
 }
 
@@ -374,17 +375,17 @@ impl MalformedOnUnimplementedAttrLint {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
-#[help]
+#[diag("missing options for `on_unimplemented` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
 pub struct MissingOptionsForOnUnimplementedAttr;
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_ignored_diagnostic_option)]
+#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
 pub struct IgnoredDiagnosticOption {
     pub option_name: &'static str,
-    #[label]
+    #[label("`{$option_name}` is already declared here")]
     pub span: Span,
-    #[label(trait_selection_other_label)]
+    #[label("`{$option_name}` is first declared here")]
     pub prev_span: Span,
 }
 
@@ -410,7 +411,7 @@ impl IgnoredDiagnosticOption {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_wrapped_parser_error)]
+#[diag("{$description}")]
 pub struct WrappedParserError {
     pub description: String,
     pub label: String,
@@ -589,7 +590,10 @@ impl<'tcx> OnUnimplementedDirective {
             // We don't support those.
             return Ok(None);
         };
-        if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
+        if let Some(attr) = {
+            #[allow(deprecated)]
+            tcx.get_attr(item_def_id, sym::rustc_on_unimplemented)
+        } {
             return Self::parse_attribute(attr, false, tcx, item_def_id);
         } else {
             tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
@@ -888,7 +892,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                 } else {
                     let reported =
-                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description,)
+                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description)
                             .emit();
                     result = Err(reported);
                 }

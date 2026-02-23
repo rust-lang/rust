@@ -1,11 +1,9 @@
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
 // Only used to define intrinsics in `compiler_builtins.rs`.
-#![feature(f16)]
-#![feature(f128)]
+#![cfg_attr(feature = "jit", feature(f16))]
+#![cfg_attr(feature = "jit", feature(f128))]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]
@@ -25,7 +23,6 @@ extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_log;
-extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
@@ -127,11 +124,6 @@ pub struct CraneliftCodegenBackend {
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
-    fn locale_resource(&self) -> &'static str {
-        // FIXME(rust-lang/rust#100717) - cranelift codegen backend is not yet translated
-        ""
-    }
-
     fn name(&self) -> &'static str {
         "cranelift"
     }
@@ -188,6 +180,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
             && sess.target.env == Env::Gnu
             && sess.target.abi != Abi::Llvm);
 
+        // FIXME(f128): f128 math operations need f128 math symbols, which currently aren't always
+        // filled in by compiler-builtins. The only libc that provides these currently is glibc.
+        let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
+
         TargetConfig {
             target_features,
             unstable_target_features,
@@ -196,7 +192,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             has_reliable_f16: has_reliable_f16_f128,
             has_reliable_f16_math: has_reliable_f16_f128,
             has_reliable_f128: has_reliable_f16_f128,
-            has_reliable_f128_math: has_reliable_f16_f128,
+            has_reliable_f128_math,
         }
     }
 

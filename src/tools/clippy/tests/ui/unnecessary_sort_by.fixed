@@ -111,3 +111,65 @@ fn main() {
     issue_5754::test();
     issue_6001::test();
 }
+
+fn issue16405() {
+    let mut v: Vec<(i32, &str)> = vec![(1, "foo"), (2, "bar")];
+
+    v.sort_by_key(|a| a.0);
+    //~^ unnecessary_sort_by
+
+    struct Item {
+        key: i32,
+        value: String,
+    }
+
+    let mut items = vec![
+        Item {
+            key: 2,
+            value: "b".to_string(),
+        },
+        Item {
+            key: 1,
+            value: "a".to_string(),
+        },
+    ];
+    items.sort_by_key(|item1| item1.key);
+    //~^ unnecessary_sort_by
+
+    items.sort_by(|item1, item2| item1.value.cmp(&item2.value));
+
+    items.sort_by_key(|item1| item1.value.clone());
+    //~^ unnecessary_sort_by
+}
+
+fn issue16348() {
+    let mut v: Vec<(i32, &str)> = vec![(1, "foo"), (2, "bar")];
+    v.sort_by_key(|(_, s1)| *s1);
+    //~^ unnecessary_sort_by
+
+    struct Foo {
+        bar: i32,
+    }
+    let mut v: Vec<Foo> = vec![Foo { bar: 1 }, Foo { bar: 2 }];
+    v.sort_by_key(|Foo { bar: b1 }| *b1);
+    //~^ unnecessary_sort_by
+
+    struct Baz(i32);
+    let mut v: Vec<Baz> = vec![Baz(1), Baz(2)];
+    v.sort_by_key(|Baz(b1)| *b1);
+    //~^ unnecessary_sort_by
+
+    v.sort_by_key(|&Baz(b1)| b1);
+    //~^ unnecessary_sort_by
+
+    let mut v: Vec<&i32> = vec![&1, &2];
+    v.sort_by_key(|&&b1| b1);
+    //~^ unnecessary_sort_by
+
+    let mut v: Vec<[i32; 2]> = vec![[1, 2], [3, 4]];
+    v.sort_by_key(|[a1, b1]| *a1);
+    //~^ unnecessary_sort_by
+
+    v.sort_by_key(|[a1, b1]| a1 - b1);
+    //~^ unnecessary_sort_by
+}

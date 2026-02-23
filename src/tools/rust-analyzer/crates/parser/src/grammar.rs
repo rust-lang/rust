@@ -6,7 +6,7 @@
 //! each submodule starts with `use super::*` import and exports
 //! "public" productions via `pub(super)`.
 //!
-//! See docs for [`Parser`](super::parser::Parser) to learn about API,
+//! See docs for [`Parser`] to learn about API,
 //! available to the grammar, and see docs for [`Event`](super::event::Event)
 //! to learn how this actually manages to produce parse trees.
 //!

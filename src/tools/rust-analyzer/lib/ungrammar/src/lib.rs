@@ -19,12 +19,6 @@ use std::{ops, str::FromStr};
 
 pub use error::{Error, Result};
 
-/// Returns a Rust grammar.
-pub fn rust_grammar() -> Grammar {
-    let src = include_str!("../rust.ungram");
-    src.parse().unwrap()
-}
-
 /// A node, like `A = 'b' | 'c'`.
 ///
 /// Indexing into a [`Grammar`] with a [`Node`] returns a reference to a
@@ -129,9 +123,4 @@ fn smoke() {
     let grammar = include_str!("../ungrammar.ungram");
     let grammar = grammar.parse::<Grammar>().unwrap();
     drop(grammar)
-}
-
-#[test]
-fn test_rust_grammar() {
-    let _ = rust_grammar();
 }

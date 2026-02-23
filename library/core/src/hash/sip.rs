@@ -10,9 +10,12 @@ use crate::{cmp, ptr};
 /// This is currently the default hashing function used by standard library
 /// (e.g., `collections::HashMap` uses it by default).
 ///
-/// See: <https://131002.net/siphash>
-#[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
+/// See: <https://github.com/veorq/SipHash>
+#[unstable(
+    feature = "hashmap_internals",
+    issue = "none",
+    reason = "use `std::hash::DefaultHasher` instead"
+)]
 #[derive(Debug, Clone, Default)]
 #[doc(hidden)]
 pub struct SipHasher13 {
@@ -21,9 +24,8 @@ pub struct SipHasher13 {
 
 /// An implementation of SipHash 2-4.
 ///
-/// See: <https://131002.net/siphash/>
+/// See: <https://github.com/veorq/SipHash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -31,7 +33,7 @@ struct SipHasher24 {
 
 /// An implementation of SipHash 2-4.
 ///
-/// See: <https://131002.net/siphash/>
+/// See: <https://github.com/veorq/SipHash>
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
@@ -137,8 +139,7 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
-    //FIXME(fee1-dead): use debug_assert_eq
-    debug_assert!(i == len);
+    debug_assert_eq!(i, len);
     out
 }
 
@@ -166,16 +167,16 @@ impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    pub fn new() -> SipHasher13 {
+    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+    pub const fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
+    #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }
 }
@@ -338,7 +339,8 @@ impl<S: Sip> Clone for Hasher<S> {
     }
 }
 
-impl<S: Sip> Default for Hasher<S> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<S: Sip> const Default for Hasher<S> {
     /// Creates a `Hasher<S>` with the two initial keys set to 0.
     #[inline]
     fn default() -> Hasher<S> {

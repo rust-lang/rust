@@ -2,6 +2,11 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 extern crate self as ide_db;
 
 mod apply_change;
@@ -60,7 +65,7 @@ use base_db::{
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
-    db::{DefDatabase, ExpandDatabase},
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
 };
 use triomphe::Arc;
 
@@ -70,7 +75,7 @@ pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
-pub use base_db::{self, FxIndexMap, FxIndexSet};
+pub use base_db::{self, FxIndexMap, FxIndexSet, LibraryRoots, LocalRoots};
 pub use span::{self, FileId};
 
 pub type FilePosition = FilePositionWrapper<FileId>;
@@ -195,10 +200,10 @@ impl RootDatabase {
         db.set_all_crates(Arc::new(Box::new([])));
         CrateGraphBuilder::default().set_in_db(&mut db);
         db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
-        _ = crate::symbol_index::LibraryRoots::builder(Default::default())
+        _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
-        _ = crate::symbol_index::LocalRoots::builder(Default::default())
+        _ = base_db::LocalRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
@@ -264,6 +269,7 @@ pub enum SymbolKind {
     BuiltinAttr,
     Const,
     ConstParam,
+    CrateRoot,
     Derive,
     DeriveHelper,
     Enum,
@@ -302,14 +308,15 @@ impl From<hir::MacroKind> for SymbolKind {
     }
 }
 
-impl From<hir::ModuleDef> for SymbolKind {
-    fn from(it: hir::ModuleDef) -> Self {
+impl SymbolKind {
+    pub fn from_module_def(db: &dyn HirDatabase, it: hir::ModuleDef) -> Self {
         match it {
             hir::ModuleDef::Const(..) => SymbolKind::Const,
             hir::ModuleDef::Variant(..) => SymbolKind::Variant,
             hir::ModuleDef::Function(..) => SymbolKind::Function,
             hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
             hir::ModuleDef::Macro(..) => SymbolKind::Macro,
+            hir::ModuleDef::Module(m) if m.is_crate_root(db) => SymbolKind::CrateRoot,
             hir::ModuleDef::Module(..) => SymbolKind::Module,
             hir::ModuleDef::Static(..) => SymbolKind::Static,
             hir::ModuleDef::Adt(hir::Adt::Struct(..)) => SymbolKind::Struct,

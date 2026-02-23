@@ -473,4 +473,16 @@ impl Alias2 {
     }
 }
 
+// Issue #16190
+pub struct RefMutLenButRefIsEmpty;
+impl RefMutLenButRefIsEmpty {
+    pub fn len(&mut self) -> usize {
+        todo!()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        todo!()
+    }
+}
+
 fn main() {}

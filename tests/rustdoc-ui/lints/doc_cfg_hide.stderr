@@ -1,19 +1,23 @@
 error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
-  --> $DIR/doc_cfg_hide.rs:2:8
+  --> $DIR/doc_cfg_hide.rs:3:17
    |
 LL | #![doc(auto_cfg(hide = "test"))]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
-   = note: `#[deny(invalid_doc_attributes)]` on by default
+note: the lint level is defined here
+  --> $DIR/doc_cfg_hide.rs:1:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
-  --> $DIR/doc_cfg_hide.rs:3:8
+  --> $DIR/doc_cfg_hide.rs:4:17
    |
 LL | #![doc(auto_cfg(hide))]
-   |        ^^^^^^^^^^^^^^
+   |                 ^^^^
 
 error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
-  --> $DIR/doc_cfg_hide.rs:4:22
+  --> $DIR/doc_cfg_hide.rs:5:22
    |
 LL | #![doc(auto_cfg(hide(not(windows))))]
    |                      ^^^^^^^^^^^^

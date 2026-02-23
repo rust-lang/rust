@@ -466,7 +466,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for BinaryHeap<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Default for BinaryHeap<T> {
+impl<T> Default for BinaryHeap<T> {
     /// Creates an empty `BinaryHeap<T>`.
     #[inline]
     fn default() -> BinaryHeap<T> {
@@ -496,7 +496,7 @@ impl<T: Ord, A: Allocator> Drop for RebuildOnDrop<'_, T, A> {
     }
 }
 
-impl<T: Ord> BinaryHeap<T> {
+impl<T> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
     /// # Examples
@@ -537,7 +537,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 }
 
-impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
+impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Creates an empty `BinaryHeap` as a max-heap, using `A` as allocator.
     ///
     /// # Examples
@@ -582,6 +582,42 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
 
+    /// Creates a `BinaryHeap` using the supplied `vec`. This does not rebuild the heap,
+    /// so `vec` must already be a max-heap.
+    ///
+    /// # Safety
+    ///
+    /// The supplied `vec` must be a max-heap, i.e. for all indices `0 < i < vec.len()`,
+    /// `vec[(i - 1) / 2] >= vec[i]`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_from_raw_vec)]
+    ///
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from([1, 2, 3]);
+    /// let vec = heap.into_vec();
+    ///
+    /// // Safety: vec is the output of heap.from_vec(), so is a max-heap.
+    /// let mut new_heap = unsafe {
+    ///     BinaryHeap::from_raw_vec(vec)
+    /// };
+    /// assert_eq!(new_heap.pop(), Some(3));
+    /// assert_eq!(new_heap.pop(), Some(2));
+    /// assert_eq!(new_heap.pop(), Some(1));
+    /// assert_eq!(new_heap.pop(), None);
+    /// ```
+    #[unstable(feature = "binary_heap_from_raw_vec", issue = "152500")]
+    #[must_use]
+    pub unsafe fn from_raw_vec(vec: Vec<T, A>) -> BinaryHeap<T, A> {
+        BinaryHeap { data: vec }
+    }
+}
+
+impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
     ///
@@ -645,6 +681,33 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             }
             item
         })
+    }
+
+    /// Removes and returns the greatest item from the binary heap if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the heap
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(binary_heap_pop_if)]
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from([1, 2]);
+    /// let pred = |x: &i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(heap.pop_if(pred), Some(2));
+    /// assert_eq!(heap.as_slice(), [1]);
+    /// assert_eq!(heap.pop_if(pred), None);
+    /// assert_eq!(heap.as_slice(), [1]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The worst case cost of `pop_if` on a heap containing *n* elements is *O*(log(*n*)).
+    #[unstable(feature = "binary_heap_pop_if", issue = "151828")]
+    pub fn pop_if(&mut self, predicate: impl FnOnce(&T) -> bool) -> Option<T> {
+        let first = self.peek()?;
+        if predicate(first) { self.pop() } else { None }
     }
 
     /// Pushes an item onto the binary heap.

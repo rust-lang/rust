@@ -60,6 +60,9 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None),
     /// Allows a test to fail without failing the whole suite.
     (removed, allow_fail, "1.60.0", Some(46488), Some("removed due to no clear use cases"), 93416),
+    /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
+    (removed, associated_const_equality, "1.94.0", Some(92827),
+     Some("merged into `min_generic_const_args`")),
     (removed, await_macro, "1.38.0", Some(50547),
      Some("subsumed by `.await` syntax"), 62293),
     /// Allows using the `box $expr` syntax.
@@ -99,6 +102,8 @@ declare_features! (
     /// Allows default type parameters to influence type inference.
     (removed, default_type_parameter_fallback, "1.82.0", Some(27336),
      Some("never properly implemented; requires significant design work"), 127655),
+    /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
+    (removed, deprecated_safe, "CURRENT_RUSTC_VERSION", Some(94978), Some("never properly implemented, in the way of attribute refactor"), 152554),
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -167,6 +172,9 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block in pattern position
     (removed, inline_const_pat, "1.88.0", Some(76001),
      Some("removed due to implementation concerns as it requires significant refactorings"), 138492),
+    /// A temporary feature gate used to enable parser extensions needed
+    /// to bootstrap fix for #5723.
+    (removed, issue_5723_bootstrap, "CURRENT_RUSTC_VERSION", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
     /// Changes `impl Trait` to capture all lifetimes in scope.
@@ -190,7 +198,7 @@ declare_features! (
     /// Allows use of unary negate on unsigned integers, e.g., -e for e: u8
     (removed, negate_unsigned, "1.0.0", Some(29645), None),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
-    (removed, never_type_fallback, "CURRENT_RUSTC_VERSION", Some(65992), Some("removed in favor of unconditional fallback"), 148871),
+    (removed, never_type_fallback, "1.93.0", Some(65992), Some("removed in favor of unconditional fallback"), 148871),
     /// Allows `#[no_coverage]` on functions.
     /// The feature was renamed to `coverage_attribute` and the attribute to `#[coverage(on|off)]`
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
@@ -271,6 +279,8 @@ declare_features! (
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.63.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#), 95818),
+    /// Allows string patterns to dereference values to match them.
+    (removed, string_deref_patterns, "1.94.0", Some(87121), Some("superseded by `deref_patterns`"), 150530),
     (removed, struct_inherit, "1.0.0", None, None),
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes

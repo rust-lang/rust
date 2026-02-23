@@ -3,16 +3,20 @@
 This chapter is intended to provide basic help for adding, removing, and
 modifying feature gates.
 
+For how rustc enforces and checks feature gates in the compiler pipeline,
+see [Feature Gate Checking][feature-gate-check].
+
 Note that this is specific to *language* feature gates; *library* feature gates use [a different
 mechanism][libs-gate].
 
+[feature-gate-check]: ./feature-gate-check.md
 [libs-gate]: ./stability.md
 
 ## Adding a feature gate
 
 See ["Stability in code"][adding] in the "Implementing new features" section for instructions.
 
-[adding]: ./implementing_new_features.md#stability-in-code
+[adding]: ./implementing-new-features.md#stability-in-code
 
 ## Removing a feature gate
 
@@ -80,5 +84,5 @@ for instructions. There are additional steps you will need to take beyond just
 updating the declaration!
 
 
-["Stability in code"]: ./implementing_new_features.md#stability-in-code
-["Updating the feature-gate listing"]: ./stabilization_guide.md#updating-the-feature-gate-listing
+["Stability in code"]: ./implementing-new-features.md#stability-in-code
+["Updating the feature-gate listing"]: ./stabilization-guide.md#updating-the-feature-gate-listing

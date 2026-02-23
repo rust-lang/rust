@@ -1,0 +1,36 @@
+error[E0072]: recursive type `A` has infinite size
+  --> $DIR/query-cycle-printing-issue-151226.rs:1:1
+   |
+LL | struct A<T>(std::sync::OnceLock<Self>);
+   | ^^^^^^^^^^^ ------------------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct A<T>(Box<std::sync::OnceLock<Self>>);
+   |             ++++                         +
+
+error[E0391]: cycle detected when computing layout of `A<()>`
+   |
+   = note: ...which requires computing layout of `std::sync::once_lock::OnceLock<A<()>>`...
+   = note: ...which requires computing layout of `core::cell::UnsafeCell<core::mem::maybe_uninit::MaybeUninit<A<()>>>`...
+   = note: ...which requires computing layout of `core::mem::maybe_uninit::MaybeUninit<A<()>>`...
+   = note: ...which requires computing layout of `core::mem::manually_drop::ManuallyDrop<A<()>>`...
+   = note: ...which requires computing layout of `core::mem::maybe_dangling::MaybeDangling<A<()>>`...
+   = note: ...which again requires computing layout of `A<()>`, completing the cycle
+note: cycle used when checking that `B` is well-formed
+  --> $DIR/query-cycle-printing-issue-151226.rs:5:1
+   |
+LL | static B: A<()> = todo!();
+   | ^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0080]: a cycle occurred during layout computation
+  --> $DIR/query-cycle-printing-issue-151226.rs:5:1
+   |
+LL | static B: A<()> = todo!();
+   | ^^^^^^^^^^^^^^^ evaluation of `B` failed here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0072, E0080, E0391.
+For more information about an error, try `rustc --explain E0072`.

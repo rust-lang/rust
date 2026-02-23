@@ -174,7 +174,6 @@ pub fn hard_coded_allowed() {
     let _ = Saturating(0u32) + Saturating(0u32);
     let _ = String::new() + "";
     let _ = String::new() + &String::new();
-    //~^ arithmetic_side_effects
     let _ = Wrapping(0u32) + Wrapping(0u32);
 
     let saturating: Saturating<u32> = Saturating(0u32);

@@ -201,6 +201,66 @@ fn comment_macro_def() {
     t!();
 }
 
+fn comment_macro_def_with_let() {
+    macro_rules! t {
+        () => {
+            let _x =
+                // SAFETY: here be exactly one dragon
+                unsafe { 1 };
+        };
+    }
+
+    t!();
+}
+
+#[rustfmt::skip]
+fn comment_macro_def_with_let_same_line() {
+    macro_rules! t {
+        () => {
+            let _x =// SAFETY: same line comment
+            unsafe { 1 };
+        };
+    }
+
+    t!();
+}
+
+fn inner_comment_macro_def_with_let() {
+    macro_rules! t {
+        () => {
+            let _x = unsafe {
+                // SAFETY: inside the block
+                1
+            };
+        };
+    }
+
+    t!();
+}
+
+fn no_comment_macro_def_with_let() {
+    macro_rules! t {
+        () => {
+            let _x = unsafe { 1 };
+            //~^ undocumented_unsafe_blocks
+        };
+    }
+
+    t!();
+}
+
+fn prefixed_safety_comment_macro_def_with_let() {
+    macro_rules! t {
+        () => {
+            let _x =// not a SAFETY: comment, should lint
+            unsafe { 1 };
+            //~^ undocumented_unsafe_blocks
+        };
+    }
+
+    t!();
+}
+
 fn non_ascii_comment() {
     // ॐ᧻໒ SaFeTy: ௵∰
     unsafe {};
@@ -261,6 +321,13 @@ fn from_proc_macro() {
 fn in_closure(x: *const u32) {
     // Safety: reason
     let _ = || unsafe { *x };
+}
+
+fn inner_block_comment_block_style(x: *const u32) {
+    let _ = unsafe {
+        /* SAFETY: block comment inside */
+        *x
+    };
 }
 
 // Invalid comments

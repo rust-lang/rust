@@ -1,4 +1,4 @@
-//@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]
@@ -48,6 +48,8 @@ fn main() {
     test_nofollow_not_symlink();
     #[cfg(target_os = "macos")]
     test_ioctl();
+    test_opendir_closedir();
+    test_readdir();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -578,4 +580,84 @@ fn test_ioctl() {
         let fd = libc::open(name_ptr, libc::O_RDONLY);
         assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
     }
+}
+
+fn test_opendir_closedir() {
+    // dir should exist
+    use std::fs::{create_dir, remove_dir};
+    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    create_dir(&path).expect("create_dir failed");
+    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(!dir.is_null());
+    assert_eq!(unsafe { libc::closedir(dir) }, 0);
+
+    // dir should not exist
+    remove_dir(&path).unwrap();
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(dir.is_null());
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
+    assert_eq!(e.kind(), ErrorKind::NotFound);
+
+    // open normal file as dir should fail
+    let file_path = utils::prepare_with_content("test_not_a_dir.txt", b"hello");
+    let cfile = CString::new(file_path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cfile.as_ptr()) };
+    assert!(dir.is_null());
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::ENOTDIR));
+    assert_eq!(e.kind(), ErrorKind::NotADirectory);
+    remove_file(&file_path).unwrap();
+}
+
+fn test_readdir() {
+    use std::fs::{create_dir, remove_dir, write};
+
+    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    create_dir(&dir_path).ok();
+
+    // Create test files
+    let file1 = dir_path.join("file1.txt");
+    let file2 = dir_path.join("file2.txt");
+    write(&file1, b"content1").unwrap();
+    write(&file2, b"content2").unwrap();
+
+    let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
+
+    unsafe {
+        let dirp = libc::opendir(c_path.as_ptr());
+        assert!(!dirp.is_null());
+        let mut entries = Vec::new();
+        loop {
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "macos")] {
+                    // On macos we only support readdir_r as that's what std uses there.
+                    use std::mem::MaybeUninit;
+                    use libc::dirent;
+                    let mut entry: MaybeUninit<dirent> = MaybeUninit::uninit();
+                    let mut result: *mut dirent = std::ptr::null_mut();
+                    let ret = libc::readdir_r(dirp, entry.as_mut_ptr(), &mut result);
+                    assert_eq!(ret, 0);
+                    let entry_ptr = result;
+                } else {
+                    let entry_ptr = libc::readdir(dirp);
+                }
+            }
+            if entry_ptr.is_null() {
+                break;
+            }
+            let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
+            let name = CStr::from_ptr(name_ptr);
+            let name_str = name.to_string_lossy();
+            entries.push(name_str.into_owned());
+        }
+        assert_eq!(libc::closedir(dirp), 0);
+        entries.sort();
+        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
+    }
+
+    remove_file(&file1).unwrap();
+    remove_file(&file2).unwrap();
+    remove_dir(&dir_path).unwrap();
 }

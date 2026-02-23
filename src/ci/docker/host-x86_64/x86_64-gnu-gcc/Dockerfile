@@ -45,7 +45,7 @@ ENV SCRIPT python3 ../x.py \
   --test-codegen-backend gcc \
   --skip tests/coverage \
   --skip tests/coverage-run-rustdoc \
-  --skip tests/rustdoc \
+  --skip tests/rustdoc-html \
   --skip tests/rustdoc-gui \
   --skip tests/rustdoc-js \
   --skip tests/rustdoc-js-std \

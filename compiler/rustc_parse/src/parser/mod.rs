@@ -16,12 +16,10 @@ mod ty;
 pub mod asm;
 pub mod cfg_select;
 
-use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
-pub(crate) use expr::ForbiddenLetReason;
 // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
 pub use expr::LetChainsPolicy;
 pub(crate) use item::{FnContext, FnParseMode};
@@ -36,10 +34,11 @@ use rustc_ast::tokenstream::{
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation, Mutability,
+    Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
@@ -50,7 +49,7 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral};
+use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral, TokenDescription};
 use crate::exp;
 
 #[cfg(test)]
@@ -145,6 +144,14 @@ pub enum ForceCollect {
     No,
 }
 
+/// Whether to accept `const { ... }` as a shorthand for `const _: () = const { ... }`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AllowConstBlockItems {
+    Yes,
+    No,
+    DoesNotMatter,
+}
+
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
 #[macro_export]
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
@@ -175,17 +182,17 @@ pub enum Recovery {
 pub struct Parser<'a> {
     pub psess: &'a ParseSess,
     /// The current token.
-    pub token: Token,
+    pub token: Token = Token::dummy(),
     /// The spacing for the current token.
-    token_spacing: Spacing,
+    token_spacing: Spacing = Spacing::Alone,
     /// The previous token.
-    pub prev_token: Token,
-    pub capture_cfg: bool,
-    restrictions: Restrictions,
-    expected_token_types: TokenTypeSet,
+    pub prev_token: Token = Token::dummy(),
+    pub capture_cfg: bool = false,
+    restrictions: Restrictions = Restrictions::empty(),
+    expected_token_types: TokenTypeSet = TokenTypeSet::new(),
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
-    num_bump_calls: u32,
+    num_bump_calls: u32 = 0,
     // During parsing we may sometimes need to "unglue" a glued token into two
     // or three component tokens (e.g. `>>` into `>` and `>`, or `>>=` into `>`
     // and `>` and `=`), so the parser can consume them one at a time. This
@@ -204,25 +211,27 @@ pub struct Parser<'a> {
     //
     // This value is always 0, 1, or 2. It can only reach 2 when splitting
     // `>>=` or `<<=`.
-    break_last_token: u32,
+    break_last_token: u32 = 0,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
     ///
     /// See the comments in the `parse_path_segment` function for more details.
-    unmatched_angle_bracket_count: u16,
-    angle_bracket_nesting: u16,
+    unmatched_angle_bracket_count: u16 = 0,
+    angle_bracket_nesting: u16 = 0,
+    /// Keep track of when we're within `<...>` for proper error recovery.
+    parsing_generics: bool = false,
 
-    last_unexpected_token_span: Option<Span>,
+    last_unexpected_token_span: Option<Span> = None,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
-    current_closure: Option<ClosureSpans>,
+    current_closure: Option<ClosureSpans> = None,
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
-    recovery: Recovery,
+    recovery: Recovery = Recovery::Allowed,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
@@ -298,35 +307,6 @@ impl From<bool> for Trailing {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum TokenDescription {
-    ReservedIdentifier,
-    Keyword,
-    ReservedKeyword,
-    DocComment,
-
-    // Expanded metavariables are wrapped in invisible delimiters which aren't
-    // pretty-printed. In error messages we must handle these specially
-    // otherwise we get confusing things in messages like "expected `(`, found
-    // ``". It's better to say e.g. "expected `(`, found type metavariable".
-    MetaVar(MetaVarKind),
-}
-
-impl TokenDescription {
-    pub(super) fn from_token(token: &Token) -> Option<Self> {
-        match token.kind {
-            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
-            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
-            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
-            token::DocComment(..) => Some(TokenDescription::DocComment),
-            token::OpenInvisible(InvisibleOrigin::MetaVar(kind)) => {
-                Some(TokenDescription::MetaVar(kind))
-            }
-            _ => None,
-        }
-    }
-}
-
 pub fn token_descr(token: &Token) -> String {
     let s = pprust::token_to_string(token).to_string();
 
@@ -351,18 +331,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         let mut parser = Parser {
             psess,
-            token: Token::dummy(),
-            token_spacing: Spacing::Alone,
-            prev_token: Token::dummy(),
-            capture_cfg: false,
-            restrictions: Restrictions::empty(),
-            expected_token_types: TokenTypeSet::new(),
             token_cursor: TokenCursor { curr: TokenTreeCursor::new(stream), stack: Vec::new() },
-            num_bump_calls: 0,
-            break_last_token: 0,
-            unmatched_angle_bracket_count: 0,
-            angle_bracket_nesting: 0,
-            last_unexpected_token_span: None,
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
@@ -370,8 +339,7 @@ impl<'a> Parser<'a> {
                 inner_attr_parser_ranges: Default::default(),
                 seen_attrs: IntervalSet::new(u32::MAX as usize),
             },
-            current_closure: None,
-            recovery: Recovery::Allowed,
+            ..
         };
 
         // Make parser point to the first token.
@@ -469,10 +437,10 @@ impl<'a> Parser<'a> {
         self.parse_ident_common(self.may_recover())
     }
 
-    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
+    pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -727,7 +695,10 @@ impl<'a> Parser<'a> {
     }
 
     fn check_const_arg(&mut self) -> bool {
-        self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
+        let is_mcg_arg = self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const);
+        let is_mgca_arg = self.is_keyword_ahead(0, &[kw::Const])
+            && self.look_ahead(1, |t| *t == token::OpenBrace);
+        is_mcg_arg || is_mgca_arg
     }
 
     fn check_const_closure(&self) -> bool {
@@ -1200,10 +1171,9 @@ impl<'a> Parser<'a> {
         let mut token = Token::dummy();
         while i < dist {
             token = cursor.next().0;
-            if matches!(
-                token.kind,
-                token::OpenInvisible(origin) | token::CloseInvisible(origin) if origin.skip()
-            ) {
+            if let token::OpenInvisible(origin) | token::CloseInvisible(origin) = token.kind
+                && origin.skip()
+            {
                 continue;
             }
             i += 1;
@@ -1306,6 +1276,7 @@ impl<'a> Parser<'a> {
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
+            mgca_disambiguation: MgcaDisambiguation::AnonConst,
         };
         let blk_span = anon_const.value.span;
         let kind = if pat {

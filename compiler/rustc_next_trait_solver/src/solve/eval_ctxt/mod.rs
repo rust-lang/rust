@@ -97,7 +97,7 @@ where
 
     /// The variable info for the `var_values`, only used to make an ambiguous response
     /// with no constraints.
-    variables: I::CanonicalVarKinds,
+    var_kinds: I::CanonicalVarKinds,
 
     /// What kind of goal we're currently computing, see the enum definition
     /// for more info.
@@ -325,7 +325,7 @@ where
             // which we don't do within this evaluation context.
             max_input_universe: ty::UniverseIndex::ROOT,
             initial_opaque_types_storage_num_entries: Default::default(),
-            variables: Default::default(),
+            var_kinds: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
@@ -376,7 +376,7 @@ where
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
         let mut ecx = EvalCtxt {
             delegate,
-            variables: canonical_input.canonical.variables,
+            var_kinds: canonical_input.canonical.var_kinds,
             var_values,
             current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
             max_input_universe: canonical_input.canonical.max_universe,
@@ -1170,8 +1170,8 @@ where
 
     pub(super) fn is_transmutable(
         &mut self,
-        dst: I::Ty,
         src: I::Ty,
+        dst: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
@@ -1323,7 +1323,7 @@ where
         response_no_constraints_raw(
             self.cx(),
             self.max_input_universe,
-            self.variables,
+            self.var_kinds,
             Certainty::Maybe { cause, opaque_types_jank },
         )
     }

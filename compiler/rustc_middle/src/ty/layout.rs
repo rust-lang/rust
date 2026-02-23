@@ -8,7 +8,7 @@ use rustc_abi::{
 };
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
 };
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
@@ -268,18 +268,23 @@ impl<'tcx> LayoutError<'tcx> {
     pub fn diagnostic_message(&self) -> DiagMessage {
         use LayoutError::*;
 
-        use crate::fluent_generated::*;
         match self {
-            Unknown(_) => middle_layout_unknown,
-            SizeOverflow(_) => middle_layout_size_overflow,
-            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
-                middle_layout_simd_too_many
+            Unknown(_) => msg!("the type `{$ty}` has an unknown layout"),
+            SizeOverflow(_) => {
+                msg!("values of the type `{$ty}` are too big for the target architecture")
             }
-            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => middle_layout_simd_zero_length,
-            TooGeneric(_) => middle_layout_too_generic,
-            NormalizationFailure(_, _) => middle_layout_normalization_failure,
-            Cycle(_) => middle_layout_cycle,
-            ReferencesError(_) => middle_layout_references_error,
+            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
+                msg!("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")
+            }
+            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => {
+                msg!("the SIMD type `{$ty}` has zero elements")
+            }
+            TooGeneric(_) => msg!("the type `{$ty}` does not have a fixed layout"),
+            NormalizationFailure(_, _) => msg!(
+                "unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized"
+            ),
+            Cycle(_) => msg!("a cycle occurred during layout computation"),
+            ReferencesError(_) => msg!("the type has an unknown layout"),
         }
     }
 
@@ -1041,9 +1046,11 @@ where
                     hir::Mutability::Not => {
                         PointerKind::SharedRef { frozen: optimize && ty.is_freeze(tcx, typing_env) }
                     }
-                    hir::Mutability::Mut => {
-                        PointerKind::MutableRef { unpin: optimize && ty.is_unpin(tcx, typing_env) }
-                    }
+                    hir::Mutability::Mut => PointerKind::MutableRef {
+                        unpin: optimize
+                            && ty.is_unpin(tcx, typing_env)
+                            && ty.is_unsafe_unpin(tcx, typing_env),
+                    },
                 };
 
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| PointeeInfo {
@@ -1138,7 +1145,9 @@ where
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
-                            unpin: optimize && boxed_ty.is_unpin(tcx, typing_env),
+                            unpin: optimize
+                                && boxed_ty.is_unpin(tcx, typing_env)
+                                && boxed_ty.is_unsafe_unpin(tcx, typing_env),
                             global: this.ty.is_box_global(tcx),
                         });
                     }
@@ -1176,6 +1185,10 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
+        this.ty.is_scalable_vector()
     }
 
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
@@ -1284,7 +1297,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | RustInvalid
         | Unadjusted => false,
-        Rust | RustCall | RustCold => tcx.sess.panic_strategy().unwinds(),
+        Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
     }
 }
 

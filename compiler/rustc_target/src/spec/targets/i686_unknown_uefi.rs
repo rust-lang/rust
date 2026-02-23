@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
     // If you initialize FP units yourself, you can override these flags with custom linker
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".into();
-    base.rustc_abi = Some(RustcAbi::X86Softfloat);
+    base.rustc_abi = Some(RustcAbi::Softfloat);
 
     // Turn off DWARF. This fixes an lld warning, "section name .debug_frame is longer than 8
     // characters and will use a non-standard string table". That section will not be created if

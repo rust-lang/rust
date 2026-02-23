@@ -1,7 +1,10 @@
 use rand::RngCore;
 
-use crate::assert_matches::assert_matches;
+#[cfg(not(miri))]
+use super::Dir;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
+#[cfg(not(miri))]
+use crate::io;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -17,7 +20,7 @@ use crate::path::Path;
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
-use crate::{env, str, thread};
+use crate::{assert_matches, env, str, thread};
 
 macro_rules! check {
     ($e:expr) => {
@@ -212,6 +215,7 @@ fn file_test_io_seek_and_write() {
         target_os = "cygwin",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -244,6 +248,7 @@ fn file_lock_multiple_shared() {
         target_os = "cygwin",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -277,6 +282,7 @@ fn file_lock_blocking() {
         target_os = "cygwin",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -307,6 +313,7 @@ fn file_lock_drop() {
         target_os = "cygwin",
         target_os = "freebsd",
         target_os = "fuchsia",
+        target_os = "hurd",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -709,6 +716,8 @@ fn file_test_read_buf() {
     let mut file = check!(File::open(filename));
     check!(file.read_buf(buf.unfilled()));
     assert_eq!(buf.filled(), &[1, 2, 3, 4]);
+    // File::read_buf should omit buffer initialization.
+    assert_eq!(buf.init_len(), 4);
 
     check!(fs::remove_file(filename));
 }
@@ -2293,6 +2302,57 @@ fn test_fs_set_times() {
 }
 
 #[test]
+fn test_fs_set_times_on_dir() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let dir_path = tmp.join("testdir");
+    fs::create_dir(&dir_path).unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    match fs::set_times(&dir_path, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting directory times: {e:?}"),
+        Ok(_) => {}
+    }
+
+    let metadata = fs::metadata(&dir_path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+}
+
+#[test]
 fn test_fs_set_times_follows_symlink() {
     #[cfg(target_vendor = "apple")]
     use crate::os::darwin::fs::FileTimesExt;
@@ -2458,4 +2518,31 @@ fn test_fs_set_times_nofollow() {
     let target_metadata = fs::metadata(&target).unwrap();
     assert_ne!(target_metadata.accessed().unwrap(), accessed);
     assert_ne!(target_metadata.modified().unwrap(), modified);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_smoke_test() {
+    let tmpdir = tmpdir();
+    let dir = Dir::open(tmpdir.path());
+    check!(dir);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_read_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    let f = check!(dir.open_file("foo.txt"));
+    let buf = check!(io::read_to_string(f));
+    assert_eq!("bar", &buf);
+    let f = check!(dir.open_file(tmpdir.join("foo.txt")));
+    let buf = check!(io::read_to_string(f));
+    assert_eq!("bar", &buf);
 }

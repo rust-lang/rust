@@ -31,7 +31,6 @@
 #![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
-#[macro_use]
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;

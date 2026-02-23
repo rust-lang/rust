@@ -5,7 +5,7 @@ use crate::iter::{Fuse, FusedIterator};
 ///
 /// This `struct` is created by [`Iterator::intersperse`]. See its documentation
 /// for more information.
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 #[derive(Debug, Clone)]
 pub struct Intersperse<I: Iterator>
 where
@@ -17,7 +17,7 @@ where
     iter: Fuse<I>,
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I> FusedIterator for Intersperse<I>
 where
     I: FusedIterator,
@@ -34,7 +34,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I> Iterator for Intersperse<I>
 where
     I: Iterator,
@@ -87,7 +87,7 @@ where
 ///
 /// This `struct` is created by [`Iterator::intersperse_with`]. See its
 /// documentation for more information.
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 pub struct IntersperseWith<I, G>
 where
     I: Iterator,
@@ -98,7 +98,7 @@ where
     iter: Fuse<I>,
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I, G> FusedIterator for IntersperseWith<I, G>
 where
     I: FusedIterator,
@@ -106,7 +106,7 @@ where
 {
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I, G> fmt::Debug for IntersperseWith<I, G>
 where
     I: Iterator + fmt::Debug,
@@ -123,7 +123,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I, G> Clone for IntersperseWith<I, G>
 where
     I: Iterator + Clone,
@@ -150,7 +150,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+#[unstable(feature = "iter_intersperse", issue = "79524")]
 impl<I, G> Iterator for IntersperseWith<I, G>
 where
     I: Iterator,

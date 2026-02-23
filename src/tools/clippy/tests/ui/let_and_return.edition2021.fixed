@@ -271,4 +271,12 @@ fn issue15987() -> i32 {
     r
 }
 
+fn has_comment() -> Vec<usize> {
+    let v = Vec::new();
+
+    // TODO: stuff
+
+    v
+}
+
 fn main() {}

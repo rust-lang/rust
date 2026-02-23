@@ -130,9 +130,9 @@ Once this first pass is done, we can examine the set of candidates. If
 it is a singleton set, then we are done: this is the only impl in
 scope that could possibly apply. Otherwise, we can **winnow** down the set
 of candidates by using where clauses and other conditions. Winnowing uses
-`evaluate_candidate` to check whether the nested obligations may apply. 
-If this still leaves more than 1 candidate, we use ` fn candidate_should_be_dropped_in_favor_of` 
-to prefer some candidates over others. 
+`evaluate_candidate` to check whether the nested obligations may apply.
+If this still leaves more than 1 candidate, we use ` fn candidate_should_be_dropped_in_favor_of`
+to prefer some candidates over others.
 
 
 If this reduced set yields a single, unambiguous entry, we're good to go,
@@ -181,7 +181,7 @@ in that list. If so, it is considered satisfied. More precisely, we
 want to check whether there is a where-clause obligation that is for
 the same trait (or some subtrait) and which can match against the obligation.
 
-[parameter environment]: ../typing_parameter_envs.html
+[parameter environment]: ../typing-parameter-envs.html
 
 Consider this simple example:
 
@@ -240,8 +240,8 @@ confirmation is done based on (in this case) the `Target` type parameter.
 
 As mentioned above, during type checking, we do not store the results of trait
 selection. At codegen time, we repeat the trait selection to choose a particular
-impl for each method call. This is done using `fn codegen_select_candidate`. 
-In this second selection, we do not consider any where-clauses to be in scope 
+impl for each method call. This is done using `fn codegen_select_candidate`.
+In this second selection, we do not consider any where-clauses to be in scope
 because we know that each resolution will resolve to a particular impl.
 
 One interesting twist has to do with nested obligations. In general, in codegen,

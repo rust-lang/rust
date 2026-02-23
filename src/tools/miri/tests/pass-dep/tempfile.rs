@@ -7,15 +7,8 @@ mod utils;
 
 /// Test that the [`tempfile`] crate is compatible with miri for UNIX hosts and targets
 fn main() {
-    test_tempfile();
-    test_tempfile_in();
-}
-
-fn test_tempfile() {
-    tempfile::tempfile().unwrap();
-}
-
-fn test_tempfile_in() {
+    // Only create a file in our own tmp folder; the "host" temp folder
+    // can be nonsensical for cross-tests.
     let dir_path = utils::tmp();
     tempfile::tempfile_in(dir_path).unwrap();
 }

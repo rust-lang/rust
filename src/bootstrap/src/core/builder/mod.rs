@@ -558,38 +558,19 @@ impl<'a> ShouldRun<'a> {
     /// single, non-aliased path
     ///
     /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
-    pub fn path(self, path: &str) -> Self {
-        self.paths(&[path])
-    }
-
-    /// Multiple aliases for the same job.
-    ///
-    /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
-    /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `make_run`.
-    ///
-    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
-    ///
-    /// [`path`]: ShouldRun::path
-    pub fn paths(mut self, paths: &[&str]) -> Self {
+    pub fn path(mut self, path: &str) -> Self {
         let submodules_paths = self.builder.submodule_paths();
 
-        self.paths.insert(PathSet::Set(
-            paths
-                .iter()
-                .map(|p| {
-                    // assert only if `p` isn't submodule
-                    if !submodules_paths.iter().any(|sm_p| p.contains(sm_p)) {
-                        assert!(
-                            self.builder.src.join(p).exists(),
-                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {p}"
-                        );
-                    }
+        // assert only if `p` isn't submodule
+        if !submodules_paths.iter().any(|sm_p| path.contains(sm_p)) {
+            assert!(
+                self.builder.src.join(path).exists(),
+                "`should_run.path` should correspond to a real on-disk path - use `alias` if there is no relevant path: {path}"
+            );
+        }
 
-                    TaskPath { path: p.into(), kind: Some(self.kind) }
-                })
-                .collect(),
-        ));
+        let task = TaskPath { path: path.into(), kind: Some(self.kind) };
+        self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
         self
     }
 
@@ -881,7 +862,7 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::Rustdoc,
+                test::RustdocHtml,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::CodegenCranelift,
@@ -928,6 +909,7 @@ impl<'a> Builder<'a> {
                 test::CollectLicenseMetadata,
                 test::RunMake,
                 test::RunMakeCargo,
+                test::BuildStd,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
@@ -968,6 +950,7 @@ impl<'a> Builder<'a> {
                 dist::Mingw,
                 dist::Rustc,
                 dist::CraneliftCodegenBackend,
+                dist::GccCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -980,6 +963,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::LlvmBitcodeLinker,
                 dist::RustDev,
+                dist::Enzyme,
                 dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
@@ -987,8 +971,10 @@ impl<'a> Builder<'a> {
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
+                dist::PlainSourceTarballGpl,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
+                dist::GccDev,
                 dist::Gcc
             ),
             Kind::Install => describe!(
@@ -999,6 +985,7 @@ impl<'a> Builder<'a> {
                 // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
                 // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
                 install::Rustc,
+                install::RustcDev,
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,

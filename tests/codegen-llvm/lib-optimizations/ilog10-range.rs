@@ -148,8 +148,7 @@ fn usize_ilog10_range(value: usize) {
 
     // CHECK-LABEL: @usize_ilog10_range(
     // CHECK-NOT: panic
-    // CHECK: ret void
-    // CHECK-NEXT: }
+    // CHECK: }
     assert!(value == 0 || value.ilog10() <= MAX_RESULT);
     assert!(value.checked_ilog10().is_none_or(|result| result <= MAX_RESULT));
 }

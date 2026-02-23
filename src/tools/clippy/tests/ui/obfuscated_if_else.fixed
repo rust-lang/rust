@@ -87,3 +87,9 @@ fn issue11141() {
     let _ = *if true { &42 } else { &17 } as u8;
     //~^ obfuscated_if_else
 }
+
+#[allow(clippy::useless_format)]
+fn issue16288() {
+    if true { format!("this is a test") } else { Default::default() };
+    //~^ obfuscated_if_else
+}

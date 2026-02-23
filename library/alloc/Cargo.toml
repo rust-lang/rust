@@ -21,7 +21,6 @@ compiler_builtins = { path = "../compiler-builtins/compiler-builtins", features 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
 compiler-builtins-c = ["compiler_builtins/c"]
-compiler-builtins-no-f16-f128 = ["compiler_builtins/no-f16-f128"]
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size"]
 

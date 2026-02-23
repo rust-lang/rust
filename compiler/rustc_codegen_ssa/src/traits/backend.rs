@@ -37,10 +37,6 @@ pub trait BackendTypes {
 }
 
 pub trait CodegenBackend {
-    /// Locale resources for diagnostic messages - a string the content of the Fluent resource.
-    /// Called before `init` so that all other functions are able to emit translatable diagnostics.
-    fn locale_resource(&self) -> &'static str;
-
     fn name(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
@@ -67,7 +63,7 @@ pub trait CodegenBackend {
             CrateType::Executable,
             CrateType::Dylib,
             CrateType::Rlib,
-            CrateType::Staticlib,
+            CrateType::StaticLib,
             CrateType::Cdylib,
             CrateType::ProcMacro,
             CrateType::Sdylib,
@@ -77,6 +73,17 @@ pub trait CodegenBackend {
     fn print_passes(&self) {}
 
     fn print_version(&self) {}
+
+    /// Returns a list of all intrinsics that this backend definitely
+    /// replaces, which means their fallback bodies do not need to be monomorphized.
+    fn replaced_intrinsics(&self) -> Vec<Symbol> {
+        vec![]
+    }
+
+    /// Is ThinLTO supported by this backend?
+    fn thin_lto_supported(&self) -> bool {
+        true
+    }
 
     /// Value printed by `--print=backend-has-zstd`.
     ///

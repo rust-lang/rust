@@ -32,7 +32,7 @@ use crate::{
     expr_store::path::Path,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, Statement,
+        PatId, RecordFieldPat, RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
@@ -57,8 +57,7 @@ impl HygieneId {
         Self(ctx)
     }
 
-    // FIXME: Inline this
-    pub(crate) fn lookup(self) -> SyntaxContext {
+    pub(crate) fn syntax_context(self) -> SyntaxContext {
         self.0
     }
 
@@ -73,7 +72,8 @@ pub type ExprSource = InFile<ExprPtr>;
 pub type PatPtr = AstPtr<ast::Pat>;
 pub type PatSource = InFile<PatPtr>;
 
-pub type LabelPtr = AstPtr<ast::Label>;
+/// BlockExpr -> Desugared label from try block
+pub type LabelPtr = AstPtr<Either<ast::Label, ast::BlockExpr>>;
 pub type LabelSource = InFile<LabelPtr>;
 
 pub type FieldPtr = AstPtr<ast::RecordExprField>;
@@ -474,8 +474,8 @@ impl ExpressionStore {
         match expr_only.binding_owners.get(&binding) {
             Some(it) => {
                 // We assign expression ids in a way that outer closures will receive
-                // a lower id
-                it.into_raw() < relative_to.into_raw()
+                // a higher id (allocated after their body is collected)
+                it.into_raw() > relative_to.into_raw()
             }
             None => true,
         }
@@ -575,8 +575,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {
@@ -706,8 +706,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {
@@ -942,7 +942,7 @@ impl ExpressionStoreSourceMap {
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
-        let src = node.map(AstPtr::new);
+        let src = node.map(AstPtr::new).map(AstPtr::wrap_left);
         self.expr_only()?.label_map.get(&src).cloned()
     }
 

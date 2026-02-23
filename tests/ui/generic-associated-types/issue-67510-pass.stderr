@@ -11,7 +11,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | trait X {
    |       - this trait is not dyn compatible...
 LL |     type Y<'a>;
-   |          ^ ...because it contains the generic associated type `Y`
+   |          ^ ...because it contains generic associated type `Y`
    = help: consider moving `Y` to another trait
 
 error: aborting due to 1 previous error

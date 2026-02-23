@@ -1139,6 +1139,7 @@ pub enum Abi {
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
+    RustPreserveNone,
     RustInvalid,
     Custom,
 }
@@ -1395,7 +1396,7 @@ pub struct TraitDecl {
     pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
-    pub implement_via_object: bool,
+    pub force_dyn_incompatible: Option<Span>,
     pub deny_explicit_impl: bool,
 }
 

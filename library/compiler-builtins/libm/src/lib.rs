@@ -8,6 +8,7 @@
 )]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
+#![allow(unstable_name_collisions)] // FIXME(float_bits_const): remove when stable
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::deprecated_cfg_attr)]
 #![allow(clippy::eq_op)]

@@ -4,7 +4,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-struct T; //~ HELP the trait `Try` is not implemented for `T`
+struct T; //~ HELP the nightly-only, unstable trait `Try` is not implemented for `T`
 
 struct Tuple(i32);
 
@@ -41,7 +41,7 @@ async fn foo() -> Result<(), ()> {
 async fn bar() -> Result<(), ()> {
     foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     //~^ NOTE the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
-    //~| HELP the trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
+    //~| HELP the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
     //~| HELP consider `await`ing on the `Future`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`

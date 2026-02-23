@@ -2,24 +2,24 @@ use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_unwinding_inline_asm)]
+#[diag("GCC backend does not support unwinding from inline asm")]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_copy_bitcode)]
+#[diag("failed to copy bitcode to object file: {$err}")]
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_lto_bitcode_from_rlib)]
+#[diag("failed to get bitcode from object file for LTO ({$gcc_err})")]
 pub(crate) struct LtoBitcodeFromRlib {
     pub gcc_err: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_explicit_tail_calls_unsupported)]
+#[diag("explicit tail calls with the 'become' keyword are not implemented in the GCC backend")]
 pub(crate) struct ExplicitTailCallsUnsupported;

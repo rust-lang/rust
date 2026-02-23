@@ -8,7 +8,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use self::TyKind::*;
 pub use self::closure::*;
@@ -20,20 +22,24 @@ use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 mod closure;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
 pub enum AliasTyKind {
     /// A projection `<Type as Trait>::AssocType`.
+    ///
     /// Can get normalized away if monomorphic enough.
     Projection,
     /// An associated type in an inherent `impl`
     Inherent,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
+    ///
     /// Can only be normalized away in PostAnalysis mode or its defining scope.
     Opaque,
     /// A type alias that actually checks its trait bounds.
+    ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
     Free,
@@ -56,6 +62,7 @@ impl AliasTyKind {
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -95,7 +102,9 @@ pub enum TyKind<I: Interner> {
     /// An array with the given length. Written as `[T; N]`.
     Array(I::Ty, I::Const),
 
-    /// A pattern newtype. Takes any type and restricts its valid values to its pattern.
+    /// A pattern newtype.
+    ///
+    /// Takes any type and restricts its valid values to its pattern.
     /// This will also change the layout to take advantage of this restriction.
     /// Only `Copy` and `Clone` will automatically get implemented for pattern types.
     /// Auto-traits treat this as if it were an aggregate with a single nested type.
@@ -112,8 +121,9 @@ pub enum TyKind<I: Interner> {
     /// `&'a mut T` or `&'a T`.
     Ref(I::Region, I::Ty, Mutability),
 
-    /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type.
+    /// The anonymous type of a function declaration/definition.
+    ///
+    /// Each function has a unique type.
     ///
     /// For the function `fn foo() -> i32 { 3 }` this type would be
     /// shown to the user as `fn() -> i32 {foo}`.
@@ -125,7 +135,9 @@ pub enum TyKind<I: Interner> {
     /// ```
     FnDef(I::FunctionId, I::GenericArgs),
 
-    /// A pointer to a function. Written as `fn() -> i32`.
+    /// A pointer to a function.
+    ///
+    /// Written as `fn() -> i32`.
     ///
     /// Note that both functions and closures start out as either
     /// [FnDef] or [Closure] which can be then be coerced to this variant.
@@ -175,6 +187,7 @@ pub enum TyKind<I: Interner> {
     Coroutine(I::CoroutineId, I::GenericArgs),
 
     /// A type representing the types stored inside a coroutine.
+    ///
     /// This should only appear as part of the `CoroutineArgs`.
     ///
     /// Unlike upvars, the witness can reference lifetimes from
@@ -206,6 +219,7 @@ pub enum TyKind<I: Interner> {
     Tuple(I::Tys),
 
     /// A projection, opaque type, free type alias, or inherent associated type.
+    ///
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
     Alias(AliasTyKind, AliasTy<I>),
@@ -229,7 +243,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
-    Bound(BoundVarIndexKind, I::BoundTy),
+    Bound(BoundVarIndexKind, ty::BoundTy<I>),
 
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
@@ -239,7 +253,7 @@ pub enum TyKind<I: Interner> {
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted
     /// if the universe index is zero.
-    Placeholder(I::PlaceholderTy),
+    Placeholder(ty::PlaceholderType<I>),
 
     /// A type variable used during type checking.
     ///
@@ -249,8 +263,9 @@ pub enum TyKind<I: Interner> {
     /// inside of the type.
     Infer(InferTy),
 
-    /// A placeholder for a type which could not be computed; this is
-    /// propagated to avoid useless error messages.
+    /// A placeholder for a type which could not be computed.
+    ///
+    /// This is propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
 }
 
@@ -278,7 +293,9 @@ impl<I: Interner> TyKind<I> {
     }
 
     /// Returns `true` when the outermost type cannot be further normalized,
-    /// resolved, or instantiated. This includes all primitive types, but also
+    /// resolved, or instantiated.
+    ///
+    /// This includes all primitive types, but also
     /// things like ADTs and trait objects, since even if their arguments or
     /// nested types may be further simplified, the outermost [`ty::TyKind`] or
     /// type constructor remains the same.
@@ -391,7 +408,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -477,6 +494,7 @@ impl<I: Interner> AliasTy<I> {
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
+    ///
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
@@ -486,6 +504,7 @@ impl<I: Interner> AliasTy<I> {
     }
 
     /// Extracts the underlying trait reference from this projection.
+    ///
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
     ///
@@ -589,8 +608,9 @@ pub enum InferTy {
     FloatVar(FloatVid),
 
     /// A [`FreshTy`][Self::FreshTy] is one that is generated as a replacement
-    /// for an unbound type variable. This is convenient for caching etc. See
-    /// `rustc_infer::infer::freshen` for more details.
+    /// for an unbound type variable.
+    ///
+    /// This is convenient for caching etc. See `TypeFreshener` for more details.
     ///
     /// Compare with [`TyVar`][Self::TyVar].
     FreshTy(u32),
@@ -713,7 +733,7 @@ impl fmt::Debug for InferTy {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct TypeAndMut<I: Interner> {
     pub ty: I::Ty,
     pub mutbl: Mutability,
@@ -726,7 +746,7 @@ impl<I: Interner> Eq for TypeAndMut<I> {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
@@ -839,7 +859,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 // impls in this crate for `Binder<I, I::Ty>`.
 #[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
 
 impl<I: Interner> Eq for UnsafeBinderInner<I> {}
@@ -905,7 +925,7 @@ where
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnSigTys<I: Interner> {
     pub inputs_and_output: I::Tys,
 }
@@ -959,7 +979,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct FnHeader<I: Interner> {
     pub c_variadic: bool,
     pub safety: I::Safety,
@@ -973,7 +993,7 @@ impl<I: Interner> Eq for FnHeader<I> {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CoroutineWitnessTypes<I: Interner> {
     pub types: I::Tys,
     pub assumptions: I::RegionAssumptions,

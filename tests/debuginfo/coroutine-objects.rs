@@ -1,4 +1,5 @@
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 
 // LLDB (18.1+) now supports DW_TAG_variant_part, but there is some bug in either compiler or LLDB
 // with memory layout of discriminant for this particular enum

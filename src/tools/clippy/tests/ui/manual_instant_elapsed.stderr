@@ -13,5 +13,17 @@ error: manual implementation of `Instant::elapsed`
 LL |     Instant::now() - *ref_to_instant; // to ensure parens are added correctly
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*ref_to_instant).elapsed()`
 
-error: aborting due to 2 previous errors
+error: manual implementation of `Instant::elapsed`
+  --> tests/ui/manual_instant_elapsed.rs:41:13
+   |
+LL |     let _ = Instant::now().sub(deref!(start));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `deref!(start).elapsed()`
+
+error: manual implementation of `Instant::elapsed`
+  --> tests/ui/manual_instant_elapsed.rs:44:5
+   |
+LL |     Instant::now() - deref!(start);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `deref!(start).elapsed()`
+
+error: aborting due to 4 previous errors
 

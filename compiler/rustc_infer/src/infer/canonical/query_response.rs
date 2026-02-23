@@ -24,7 +24,8 @@ use crate::infer::canonical::{
 };
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, SubregionOrigin, TypeOutlivesConstraint,
+    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
+    TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
@@ -81,6 +82,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
+        prev_entries: OpaqueTypeStorageEntries,
     ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -96,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
             self.inner
                 .borrow_mut()
                 .opaque_type_storage
-                .iter_opaque_types()
+                .opaque_types_added_since(prev_entries)
                 .map(|(k, v)| (k, v.ty))
                 .collect()
         } else {
@@ -430,7 +432,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // result, then we can type the corresponding value from the
         // input. See the example above.
         let mut opt_values: IndexVec<BoundVar, Option<GenericArg<'tcx>>> =
-            IndexVec::from_elem_n(None, query_response.variables.len());
+            IndexVec::from_elem_n(None, query_response.var_kinds.len());
 
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
@@ -442,7 +444,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // more involved. They are also a lot rarer than region variables.
                     if let ty::Bound(index_kind, b) = *result_value.kind()
                         && !matches!(
-                            query_response.variables[b.var.as_usize()],
+                            query_response.var_kinds[b.var.as_usize()],
                             CanonicalVarKind::Ty { .. }
                         )
                     {
@@ -472,8 +474,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let tcx = self.tcx;
-        let variables = query_response.variables;
-        let var_values = CanonicalVarValues::instantiate(tcx, variables, |var_values, kind| {
+        let var_kinds = query_response.var_kinds;
+        let var_values = CanonicalVarValues::instantiate(tcx, var_kinds, |var_values, kind| {
             if kind.universe() != ty::UniverseIndex::ROOT {
                 // A variable from inside a binder of the query. While ideally these shouldn't
                 // exist at all, we have to deal with them for now.

@@ -10,6 +10,9 @@ LL |     i
    = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)`
@@ -24,6 +27,9 @@ LL |     (42, i)
    = help: the trait `PartialEq<(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)`
@@ -38,6 +44,9 @@ LL |     (42, i)
    = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)>` is not implemented for `&i32`
 help: the trait `PartialEq` is implemented for `i32`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

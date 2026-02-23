@@ -156,4 +156,22 @@ impl Trait for dyn OtherTrait {}
  "#,
         )
     }
+
+    #[test]
+    fn no_false_positive_on_specialization() {
+        check_diagnostics(
+            r#"
+#![feature(specialization)]
+
+pub trait Foo {
+    fn foo();
+}
+
+impl<T> Foo for T {
+    default fn foo() {}
+}
+impl Foo for bool {}
+"#,
+        );
+    }
 }

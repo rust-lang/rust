@@ -13,10 +13,7 @@ active redesign proposals (as of
 Please see the tracking issue <https://github.com/rust-lang/rust/issues/132181>
 for status updates.
 
-We have downgraded the internal lints `untranslatable_diagnostic` and
-`diagnostic_outside_of_impl`. Those internal lints previously required new code
-to use the current translation infrastructure. However, because the translation
-infra is waiting for a yet-to-be-proposed redesign and thus rework, we are not
+The translation infra is waiting for a yet-to-be-proposed redesign and thus rework, we are not
 mandating usage of current translation infra. Use the infra if you *want to* or
 otherwise makes the code cleaner, but otherwise sidestep the translation infra
 if you need more flexibility.
@@ -40,11 +37,6 @@ There are two ways of writing translatable diagnostics:
 When adding or changing a translatable diagnostic,
 you don't need to worry about the translations.
 Only updating the original English message is required.
-Currently,
-each crate which defines translatable diagnostics has its own Fluent resource,
-which is a file named `messages.ftl`,
-located in the root of the crate
-(such as`compiler/rustc_expand/messages.ftl`).
 
 ## Fluent
 
@@ -118,11 +110,8 @@ information that needs to be provided by the code to do so.
 
 ### Compile-time validation and typed identifiers
 
-rustc's `fluent_messages` macro performs compile-time validation of Fluent
-resources and generates code to make it easier to refer to Fluent messages in
-diagnostics.
-
-Compile-time validation of Fluent resources will emit any parsing errors
+rustc's `#[derive(Diagnostic)]` macro performs compile-time validation of Fluent
+messages. Compile-time validation of Fluent resources will emit any parsing errors
 from Fluent resources while building the compiler, preventing invalid Fluent
 resources from causing panics in the compiler. Compile-time validation also
 emits an error if multiple Fluent messages have the same identifier.
@@ -135,8 +124,7 @@ translation.
 ### Messages
 
 All of rustc's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
-take any message that can be converted into a `DiagMessage` (or
-`SubdiagMessage`).
+take any message that can be converted into a `DiagMessage`.
 
 [`rustc_error_messages::DiagMessage`] can represent legacy non-translatable
 diagnostic messages and translatable messages. Non-translatable messages are
@@ -149,14 +137,7 @@ with an attribute).
 Fluent resource (described in more detail below), or `DiagMessage`s will
 either be created in the macro-generated code of a diagnostic derive.
 
-`rustc_error_messages::SubdiagMessage` is similar, it can correspond to a
-legacy non-translatable diagnostic message or the name of an attribute to a
-Fluent message. Translatable `SubdiagMessage`s must be combined with a
-`DiagMessage` (using `DiagMessage::with_subdiagnostic_message`) to
-be emitted (an attribute name on its own is meaningless without a corresponding
-message identifier, which is what `DiagMessage` provides).
-
-Both `DiagMessage` and `SubdiagMessage` implement `Into` for any
+`DiagMessage`  implements `Into` for any
 type that can be converted into a string, and converts these into
 non-translatable diagnostics - this keeps all existing diagnostic calls
 working.
@@ -177,48 +158,6 @@ have such implementations.
 
 `set_arg` calls are handled transparently by diagnostic derives but need to be
 added manually when using diagnostic builder APIs.
-
-### Loading
-
-rustc makes a distinction between the "fallback bundle" for `en-US` that is used
-by default and when another locale is missing a message; and the primary fluent
-bundle which is requested by the user.
-
-Diagnostic emitters implement the `Emitter` trait which has two functions for
-accessing the fallback and primary fluent bundles (`fallback_fluent_bundle` and
-`fluent_bundle` respectively).
-
-`Emitter` also has member functions with default implementations for performing
-translation of a `DiagMessage` using the results of
-`fallback_fluent_bundle` and `fluent_bundle`.
-
-All of the emitters in rustc load the fallback Fluent bundle lazily, only
-reading Fluent resources and parsing them when an error message is first being
-translated (for performance reasons - it doesn't make sense to do this if no
-error is being emitted). `rustc_error_messages::fallback_fluent_bundle` returns
-a `std::lazy::Lazy<FluentBundle>` which is provided to emitters and evaluated
-in the first call to `Emitter::fallback_fluent_bundle`.
-
-The primary Fluent bundle (for the user's desired locale) is expected to be
-returned by `Emitter::fluent_bundle`. This bundle is used preferentially when
-translating messages, the fallback bundle is only used if the primary bundle is
-missing a message or not provided.
-
-There are no locale bundles distributed with the compiler,
-but mechanisms are implemented for loading them.
-
-- `-Ztranslate-additional-ftl` can be used to load a specific resource as the
-  primary bundle for testing purposes.
-- `-Ztranslate-lang` can be provided a language identifier (something like
-  `en-US`) and will load any Fluent resources found in
-  `$sysroot/share/locale/$locale/` directory (both the user provided
-  sysroot and any sysroot candidates).
-
-Primary bundles are not currently loaded lazily and if requested will be loaded
-at the start of compilation regardless of whether an error occurs. Lazily
-loading primary bundles is possible if it can be assumed that loading a bundle
-won't fail. Bundle loading can fail if a requested locale is missing, Fluent
-files are malformed, or a message is duplicated in multiple resources.
 
 [Fluent]: https://projectfluent.org
 [`compiler/rustc_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_borrowck/messages.ftl

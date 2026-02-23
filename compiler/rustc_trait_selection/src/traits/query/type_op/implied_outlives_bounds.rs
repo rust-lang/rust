@@ -61,15 +61,20 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         "compute_implied_outlives_bounds assumes region obligations are empty before starting"
     );
 
-    let normalize_ty = |ty| -> Result<_, NoSolution> {
-        // We must normalize the type so we can compute the right outlives components.
-        // for example, if we have some constrained param type like `T: Trait<Out = U>`,
-        // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
-        let ty = ocx
-            .deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
-            .map_err(|_| NoSolution)?;
-        Ok(ty)
-    };
+    // FIXME: This doesn't seem right. All call sites already normalize `ty`:
+    // - `Ty`s from the `DefiningTy` in Borrowck: we have to normalize in the caller
+    //      in order to get implied bounds involving any unconstrained region vars
+    //      created as part of normalizing the sig. See #136547
+    // - `Ty`s from impl headers in Borrowck and in Non-Borrowck contexts: we have
+    //      to normalize in the caller as computing implied bounds from unnormalized
+    //      types would be unsound. See #100989
+    //
+    // We must normalize the type so we can compute the right outlives components.
+    // for example, if we have some constrained param type like `T: Trait<Out = U>`,
+    // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
+    let normalized_ty = ocx
+        .deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
+        .map_err(|_| NoSolution)?;
 
     // Sometimes when we ask what it takes for T: WF, we get back that
     // U: WF is required; in that case, we push U onto this stack and
@@ -77,7 +82,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     // guaranteed to be a subset of the original type, so we need to store the
     // WF args we've computed in a set.
     let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
-    let mut wf_args = vec![ty.into(), normalize_ty(ty)?.into()];
+    let mut wf_args = vec![ty.into(), normalized_ty.into()];
 
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
 
@@ -103,8 +108,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 continue;
             };
             match pred {
-                // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
-                // if we ever support that
+                // FIXME(generic_const_parameter_types): Make sure that `<'a, 'b, const N: &'a &'b u32>`
+                // is sound if we ever support that
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))

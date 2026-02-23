@@ -1,9 +1,9 @@
-use std::assert_matches::debug_assert_matches;
 use std::cell::LazyCell;
 
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{LintDiagnostic, Subdiagnostic};
+use rustc_errors::{LintDiagnostic, Subdiagnostic, msg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -28,7 +28,7 @@ use rustc_trait_selection::errors::{
 use rustc_trait_selection::regions::OutlivesEnvironmentBuildExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::{LateContext, LateLintPass, fluent_generated as fluent};
+use crate::{LateContext, LateLintPass};
 
 declare_lint! {
     /// The `impl_trait_overcaptures` lint warns against cases where lifetime
@@ -211,7 +211,7 @@ where
         // When we get into a binder, we need to add its own bound vars to the scope.
         let mut added = vec![];
         for arg in t.bound_vars() {
-            let arg: ty::BoundVariableKind = arg;
+            let arg: ty::BoundVariableKind<'tcx> = arg;
             match arg {
                 ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
                 | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
@@ -308,7 +308,7 @@ where
                         return true;
                     };
                     // We only computed variance of lifetimes...
-                    debug_assert_matches!(self.tcx.def_kind(def_id), DefKind::LifetimeParam);
+                    debug_assert_matches!(self.tcx.def_kind(*def_id), DefKind::LifetimeParam);
                     let uncaptured = match *kind {
                         ParamKind::Early(name, index) => ty::Region::new_early_param(
                             self.tcx,
@@ -342,7 +342,7 @@ where
 
                     let uncaptured_spans: Vec<_> = uncaptured_args
                         .into_iter()
-                        .map(|(def_id, _)| self.tcx.def_span(def_id))
+                        .map(|(&def_id, _)| self.tcx.def_span(def_id))
                         .collect();
 
                     self.tcx.emit_node_span_lint(
@@ -435,11 +435,21 @@ struct ImplTraitOvercapturesLint<'tcx> {
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(fluent::lint_impl_trait_overcaptures);
+        diag.primary_message(msg!(
+            "`{$self_ty}` will capture more lifetimes than possibly intended in edition 2024"
+        ));
         diag.arg("self_ty", self.self_ty.to_string())
             .arg("num_captured", self.num_captured)
-            .span_note(self.uncaptured_spans, fluent::lint_note)
-            .note(fluent::lint_note2);
+            .span_note(
+                self.uncaptured_spans,
+                msg!(
+                    "specifically, {$num_captured ->
+                        [one] this lifetime is
+                        *[other] these lifetimes are
+                    } in scope but not mentioned in the type's bounds"
+                ),
+            )
+            .note(msg!("all lifetimes in scope will be captured by `impl Trait`s in edition 2024"));
         if let Some(suggestion) = self.suggestion {
             suggestion.add_to_diag(diag);
         }
@@ -447,9 +457,9 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_impl_trait_redundant_captures)]
+#[diag("all possible in-scope parameters are already captured, so `use<...>` syntax is redundant")]
 struct ImplTraitRedundantCapturesLint {
-    #[suggestion(lint_suggestion, code = "", applicability = "machine-applicable")]
+    #[suggestion("remove the `use<...>` syntax", code = "", applicability = "machine-applicable")]
     capturing_span: Span,
 }
 

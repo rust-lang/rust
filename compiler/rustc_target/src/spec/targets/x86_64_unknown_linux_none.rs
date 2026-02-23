@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "x86_64-unknown-linux-none".into(),
         metadata: TargetMetadata {
             description: None,
-            tier: None,
+            tier: Some(3),
             host_tools: None,
             std: Some(false),
         },

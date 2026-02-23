@@ -16,3 +16,26 @@ fn main() {
     Shape::Circl; //~ ERROR no variant
     Shape::Rombus; //~ ERROR no variant
 }
+
+enum Color {
+  Red,
+  Green(()),
+  Blue,
+  Alpha{ a: u8 },
+}
+
+fn red() -> Result<Color, ()> {
+  Ok(Color::Redd) //~ ERROR no variant
+}
+
+fn green() -> Result<Color, ()> {
+  Ok(Color::Greenn(())) //~ ERROR no variant
+}
+
+fn blue() -> Result<Color, ()> {
+  Ok(Color::Blu) //~ ERROR no variant
+}
+
+fn alpha() -> Result<Color, ()> {
+  Ok(Color::Alph{ a: 255 }) //~ ERROR no variant
+}

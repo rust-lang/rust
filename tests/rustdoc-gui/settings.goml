@@ -1,20 +1,18 @@
 // This test ensures that the settings menu display is working as expected and that
 // the settings page is also rendered as expected.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
-// We now click on the settings button.
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
+call-function: ("open-settings-menu", {})
 assert-css: ("#settings", {"display": "block"})
 
 // Store the line margin to compare with the settings.html later.
 store-css: (".setting-line", {"margin": setting_line_margin})
 
 // Let's close it by clicking on the same button.
-click: "rustdoc-toolbar .settings-menu"
-wait-for-css: ("#settings", {"display": "none"})
+call-function: ("close-settings-menu", {})
 
 // Let's check that pressing "ESCAPE" is closing it.
 click: "rustdoc-toolbar .settings-menu"
@@ -28,8 +26,7 @@ write: "test"
 // To be SURE that the search will be run.
 press-key: 'Enter'
 wait-for: "#alternative-display #search"
-click: "rustdoc-toolbar .settings-menu"
-wait-for-css: ("#settings", {"display": "block"})
+call-function: ("open-settings-menu", {})
 // Ensure that the search is still displayed.
 wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
@@ -41,8 +38,7 @@ set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"
 // We reload the page so the local storage settings are being used.
 reload:
 
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#settings"
+call-function: ("open-settings-menu", {})
 
 // We check that the "Use system theme" is disabled.
 assert-property: ("#theme-system-preference", {"checked": "false"})

@@ -33,5 +33,42 @@ LL |         _ => eprintln!(""),
    |                        |
    |                        help: remove the empty string
 
-error: aborting due to 4 previous errors
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:26:5
+   |
+LL | /      println!(
+LL | |/         "\
+LL | ||             \
+LL | ||             "
+LL | ||             ,
+LL | ||     );
+   | ||____-^
+   |  |____|
+   |       help: remove the empty string
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:34:14
+   |
+LL |         _ => println!("" ,), // there is a space between "" and comma
+   |              ^^^^^^^^^----^
+   |                       |
+   |                       help: remove the empty string
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string.rs:38:5
+   |
+LL |     eprintln!(""    ,); // there is a tab between "" and comma
+   |     ^^^^^^^^^^-------^
+   |               |
+   |               help: remove the empty string
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string.rs:42:14
+   |
+LL |         _ => eprintln!(""     ,), // tab and space between "" and comma
+   |              ^^^^^^^^^^--------^
+   |                        |
+   |                        help: remove the empty string
+
+error: aborting due to 8 previous errors
 

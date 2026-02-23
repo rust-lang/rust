@@ -1,6 +1,6 @@
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [main] }
   pull_request:
 
 concurrency:
@@ -70,12 +70,14 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04
-        - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-24.04-ppc64le
+        # - target: powerpc64le-unknown-linux-gnu
+        #   os: ubuntu-24.04-ppc64le
+        #   # FIXME(rust#151807): remove once PPC builds work again.
+        #   channel: nightly-2026-01-23
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
-        - target: s390x-unknown-linux-gnu
-          os: ubuntu-24.04-s390x
+        # - target: s390x-unknown-linux-gnu
+        #   os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
           os: ubuntu-24.04
         - target: thumbv7em-none-eabi
@@ -89,7 +91,7 @@ jobs:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
         - target: x86_64-apple-darwin
-          os: macos-13
+          os: macos-15-intel
         - target: i686-pc-windows-msvc
           os: windows-2025
         - target: x86_64-pc-windows-msvc
@@ -203,7 +205,7 @@ jobs:
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
-        rustup set profile minimal
+        rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
@@ -228,7 +230,27 @@ jobs:
         # poorly with build scripts)
         cargo build -p compiler_builtins -p libm \
           --target etc/thumbv7em-none-eabi-renamed.json \
-          -Zbuild-std=core
+          -Zbuild-std=core \
+          -Zjson-target-spec
+
+  # FIXME: move this target to test job once https://github.com/rust-lang/rust/pull/150138 merged.
+  build-thumbv6k:
+    name: Build thumbv6k
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
+        rustup component add rust-src
+    - uses: Swatinem/rust-cache@v2
+    - run: |
+        cargo build -p compiler_builtins -p libm \
+          --target etc/thumbv6-none-eabi.json \
+          -Zbuild-std=core \
+          -Zjson-target-spec
 
   benchmarks:
     name: Benchmarks
@@ -239,22 +261,15 @@ jobs:
         include:
         - target: x86_64-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
     - uses: taiki-e/install-action@cargo-binstall
 
     - name: Set up dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
-        rustup update "$BENCHMARK_RUSTC" --no-self-update
-        rustup default "$BENCHMARK_RUSTC"
-        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
-        iai_version="$(cargo metadata --format-version=1 --features icount |
-           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
-        cargo binstall -y iai-callgrind-runner --version "$iai_version"
-        sudo apt-get install valgrind
+      run: ./ci/install-bench-deps.sh
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -274,13 +289,7 @@ jobs:
         path: ${{ env.BASELINE_NAME }}.tar.xz
 
     - name: Run wall time benchmarks
-      run: |
-        # Always use the same seed for benchmarks. Ideally we should switch to a
-        # non-random generator.
-        export LIBM_SEED=benchesbenchesbenchesbencheswoo!
-        cargo bench --package libm-test \
-          --no-default-features \
-          --features short-benchmarks,build-musl,libm/force-soft-floats
+      run: ./ci/bench-runtime.sh
 
     - name: Print test logs if available
       if: always()
@@ -367,6 +376,7 @@ jobs:
     needs:
       - benchmarks
       - build-custom
+      - build-thumbv6k
       - clippy
       - extensive
       - miri

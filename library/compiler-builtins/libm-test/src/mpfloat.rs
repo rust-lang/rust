@@ -170,7 +170,9 @@ libm_macros::for_each_function! {
         ldexpf,
         ldexpf128,
         ldexpf16,
+        lgamma,
         lgamma_r,
+        lgammaf,
         lgammaf_r,
         modf,
         modff,
@@ -213,7 +215,6 @@ libm_macros::for_each_function! {
         fmaximum_num | fmaximum_numf | fmaximum_numf16 | fmaximum_numf128 => max,
         fmin | fminf | fminf16 | fminf128 |
         fminimum_num | fminimum_numf | fminimum_numf16 | fminimum_numf128 => min,
-        lgamma | lgammaf => ln_gamma,
         log | logf => ln,
         log1p | log1pf => ln_1p,
         tgamma | tgammaf => gamma,
@@ -573,6 +574,30 @@ impl MpOp for crate::op::lgammaf_r::Routine {
         let (sign, ord) = this.ln_abs_gamma_round(Nearest);
         let ret = prep_retval::<Self::FTy>(this, ord);
         (ret, sign as i32)
+    }
+}
+
+impl MpOp for crate::op::lgamma::Routine {
+    type MpTy = MpFloat;
+
+    fn new_mp() -> Self::MpTy {
+        new_mpfloat::<Self::FTy>()
+    }
+
+    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+        <crate::op::lgamma_r::Routine as MpOp>::run(this, input).0
+    }
+}
+
+impl MpOp for crate::op::lgammaf::Routine {
+    type MpTy = MpFloat;
+
+    fn new_mp() -> Self::MpTy {
+        new_mpfloat::<Self::FTy>()
+    }
+
+    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+        <crate::op::lgammaf_r::Routine as MpOp>::run(this, input).0
     }
 }
 

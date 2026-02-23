@@ -49,7 +49,6 @@ pub(crate) fn split_extern_opt<'a>(
         ));
         let adjusted_name = crate_name.replace('-', "_");
         if is_ascii_ident(&adjusted_name) {
-            #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
             error
                 .help(format!("consider replacing the dashes with underscores: `{adjusted_name}`"));
         }

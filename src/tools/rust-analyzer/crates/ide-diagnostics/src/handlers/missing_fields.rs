@@ -857,4 +857,81 @@ pub struct Claims {
         "#,
         );
     }
+
+    #[test]
+    fn test_default_field_values_basic() {
+        // This should work without errors - only field 'b' is required
+        check_diagnostics(
+            r#"
+#![feature(default_field_values)]
+struct Struct {
+    a: usize = 0,
+    b: usize,
+}
+
+fn main() {
+    Struct { b: 1, .. };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_default_field_values_missing_field_error() {
+        // This should report a missing field error because email is required
+        check_diagnostics(
+            r#"
+#![feature(default_field_values)]
+struct UserInfo {
+    id: i32,
+    age: f32 = 1.0,
+    email: String,
+}
+
+fn main() {
+    UserInfo { id: 20, .. };
+//  ^^^^^^^^💡 error: missing structure fields:
+//         |- email
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_default_field_values_requires_spread_syntax() {
+        // without `..` should report missing fields
+        check_diagnostics(
+            r#"
+#![feature(default_field_values)]
+struct Point {
+    x: i32 = 0,
+    y: i32 = 0,
+}
+
+fn main() {
+    Point { x: 0 };
+//  ^^^^^💡 error: missing structure fields:
+//      |- y
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_default_field_values_pattern_matching() {
+        check_diagnostics(
+            r#"
+#![feature(default_field_values)]
+struct Point {
+    x: i32 = 0,
+    y: i32 = 0,
+    z: i32,
+}
+
+fn main() {
+    let Point { x, .. } = Point { z: 5, .. };
+}
+"#,
+        );
+    }
 }

@@ -8,7 +8,7 @@
 use rustc_hash::FxHashMap;
 use rustc_index::Idx;
 use rustc_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
-use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, Ty as _};
 use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, InferConst, RegionKind, TyVid, TypeFlags,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
@@ -498,7 +498,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
     {
         let base = Canonical {
             max_universe: UniverseIndex::ROOT,
-            variables: CanonicalVars::new_from_iter(tcx, []),
+            variables: CanonicalVars::empty(tcx),
             value: (),
         };
         Canonicalizer::canonicalize_with_base(
@@ -562,7 +562,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
         debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
-            CanonicalVars::new_from_iter(tcx, canonicalizer.universe_canonicalized_variables());
+            CanonicalVars::new_from_slice(&canonicalizer.universe_canonicalized_variables());
 
         let max_universe = canonical_variables
             .iter()

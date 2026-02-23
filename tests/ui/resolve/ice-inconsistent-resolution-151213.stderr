@@ -1,0 +1,14 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/ice-inconsistent-resolution-151213.rs:5:1
+   |
+LL | extern crate core as std;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `attr` in this scope
+  --> $DIR/ice-inconsistent-resolution-151213.rs:3:3
+   |
+LL | #[attr]
+   |   ^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,4 +1,4 @@
-//@ should-fail
+//@ known-bug: unknown
 //@ compile-flags: -Wrust-2021-incompatible-closure-captures
 // Inference, canonicalization, and significant drops should work nicely together.
 // Related issue: #86868

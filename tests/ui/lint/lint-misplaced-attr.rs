@@ -4,7 +4,7 @@
 #![deny(unused_attributes)]
 
 mod a {
-    #![crate_type = "bin"] //~ ERROR should be in the root module
+    #![crate_type = "bin"] //~ ERROR the `#![crate_type]` attribute can only be used at the crate root
 }
 
 #[crate_type = "bin"] fn main() {} //~ ERROR should be an inner

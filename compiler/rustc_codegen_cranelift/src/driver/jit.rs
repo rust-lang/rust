@@ -190,7 +190,7 @@ fn dep_symbol_lookup_fn(
                 diag.emit();
             }
             Linkage::Dynamic => {
-                dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
+                dylib_paths.push(src.dylib.as_ref().unwrap().clone());
             }
         }
     }

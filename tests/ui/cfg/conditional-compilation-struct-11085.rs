@@ -11,7 +11,7 @@ struct Foo {
 }
 
 struct Foo2 {
-    #[cfg(all())]
+    #[cfg(true)]
     foo: isize,
 }
 

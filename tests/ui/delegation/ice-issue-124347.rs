@@ -1,12 +1,12 @@
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 
-// FIXME(fn_delegation): `recursive delegation` error should be emitted here
 trait Trait {
     reuse Trait::foo { &self.0 }
+    //~^ ERROR failed to resolve delegation callee
 }
 
 reuse foo;
-//~^ ERROR cycle detected when computing generics of `foo`
+//~^ ERROR failed to resolve delegation callee
 
 fn main() {}

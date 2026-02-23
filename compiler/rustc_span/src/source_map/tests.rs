@@ -1,10 +1,14 @@
 use super::*;
 
+fn filename(sm: &SourceMap, path: &str) -> FileName {
+    FileName::Real(sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path)))
+}
+
 fn init_source_map() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(PathBuf::from("blork.rs").into(), "first line.\nsecond line".to_string());
-    sm.new_source_file(PathBuf::from("empty.rs").into(), String::new());
-    sm.new_source_file(PathBuf::from("blork2.rs").into(), "first line.\nsecond line".to_string());
+    sm.new_source_file(filename(&sm, "blork.rs"), "first line.\nsecond line".to_string());
+    sm.new_source_file(filename(&sm, "empty.rs"), String::new());
+    sm.new_source_file(filename(&sm, "blork2.rs"), "first line.\nsecond line".to_string());
     sm
 }
 
@@ -59,15 +63,15 @@ fn t3() {
     let sm = init_source_map();
 
     let srcfbp1 = sm.lookup_byte_offset(BytePos(23));
-    assert_eq!(srcfbp1.sf.name, PathBuf::from("blork.rs").into());
+    assert_eq!(srcfbp1.sf.name, filename(&sm, "blork.rs"));
     assert_eq!(srcfbp1.pos, BytePos(23));
 
     let srcfbp1 = sm.lookup_byte_offset(BytePos(24));
-    assert_eq!(srcfbp1.sf.name, PathBuf::from("empty.rs").into());
+    assert_eq!(srcfbp1.sf.name, filename(&sm, "empty.rs"));
     assert_eq!(srcfbp1.pos, BytePos(0));
 
     let srcfbp2 = sm.lookup_byte_offset(BytePos(25));
-    assert_eq!(srcfbp2.sf.name, PathBuf::from("blork2.rs").into());
+    assert_eq!(srcfbp2.sf.name, filename(&sm, "blork2.rs"));
     assert_eq!(srcfbp2.pos, BytePos(0));
 }
 
@@ -89,12 +93,12 @@ fn t5() {
     let sm = init_source_map();
 
     let loc1 = sm.lookup_char_pos(BytePos(22));
-    assert_eq!(loc1.file.name, PathBuf::from("blork.rs").into());
+    assert_eq!(loc1.file.name, filename(&sm, "blork.rs"));
     assert_eq!(loc1.line, 2);
     assert_eq!(loc1.col, CharPos(10));
 
     let loc2 = sm.lookup_char_pos(BytePos(25));
-    assert_eq!(loc2.file.name, PathBuf::from("blork2.rs").into());
+    assert_eq!(loc2.file.name, filename(&sm, "blork2.rs"));
     assert_eq!(loc2.line, 1);
     assert_eq!(loc2.col, CharPos(0));
 }
@@ -102,14 +106,8 @@ fn t5() {
 fn init_source_map_mbc() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
     // "€" is a three-byte UTF8 char.
-    sm.new_source_file(
-        PathBuf::from("blork.rs").into(),
-        "fir€st €€€€ line.\nsecond line".to_string(),
-    );
-    sm.new_source_file(
-        PathBuf::from("blork2.rs").into(),
-        "first line€€.\n€ second line".to_string(),
-    );
+    sm.new_source_file(filename(&sm, "blork.rs"), "fir€st €€€€ line.\nsecond line".to_string());
+    sm.new_source_file(filename(&sm, "blork2.rs"), "first line€€.\n€ second line".to_string());
     sm
 }
 
@@ -138,7 +136,7 @@ fn t7() {
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let file_lines = sm.span_to_lines(span).unwrap();
 
-    assert_eq!(file_lines.file.name, PathBuf::from("blork.rs").into());
+    assert_eq!(file_lines.file.name, filename(&sm, "blork.rs"));
     assert_eq!(file_lines.lines.len(), 1);
     assert_eq!(file_lines.lines[0].line_index, 1);
 }
@@ -161,7 +159,7 @@ fn span_to_snippet_and_lines_spanning_multiple_lines() {
     let sm = SourceMap::new(FilePathMapping::empty());
     let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
     let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-    sm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
+    sm.new_source_file(filename(&sm, "blork.rs"), inputtext.to_string());
     let span = span_from_selection(inputtext, selection);
 
     // Check that we are extracting the text we thought we were extracting.
@@ -204,7 +202,7 @@ fn span_merging_fail() {
     let inputtext = "bbbb BB\ncc CCC\n";
     let selection1 = "     ~~\n      \n";
     let selection2 = "       \n   ~~~\n";
-    sm.new_source_file(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
+    sm.new_source_file(filename(&sm, "blork.rs"), inputtext.to_owned());
     let span1 = span_from_selection(inputtext, selection1);
     let span2 = span_from_selection(inputtext, selection2);
 
@@ -218,7 +216,7 @@ fn t10() {
     let unnormalized = "first line.\r\nsecond line";
     let normalized = "first line.\nsecond line";
 
-    let src_file = sm.new_source_file(PathBuf::from("blork.rs").into(), unnormalized.to_string());
+    let src_file = sm.new_source_file(filename(&sm, "blork.rs"), unnormalized.to_string());
 
     assert_eq!(src_file.src.as_ref().unwrap().as_ref(), normalized);
     assert!(
@@ -306,8 +304,7 @@ fn path_prefix_remapping() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("abc/def"), path("foo"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("foo/src/main.rs"));
@@ -318,8 +315,7 @@ fn path_prefix_remapping() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("abc/def"), path("/foo"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
@@ -330,8 +326,7 @@ fn path_prefix_remapping() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("/abc/def"), path("foo"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("foo/src/main.rs"));
@@ -342,8 +337,7 @@ fn path_prefix_remapping() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("/abc/def"), path("/foo"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
@@ -352,171 +346,322 @@ fn path_prefix_remapping() {
 }
 
 #[test]
-fn path_prefix_remapping_expand_to_absolute() {
+fn to_real_filename_with_full_scopes() {
     // "virtual" working directory is relative path
     let mapping = &FilePathMapping::new(
         vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))],
-        FileNameDisplayPreference::Remapped,
-        FileNameEmbeddablePreference::RemappedOnly,
+        RemapPathScopeComponents::all(),
     );
     let working_directory = path("/foo");
-    let working_directory = RealFileName::Remapped {
-        local_path: Some(working_directory.clone()),
-        virtual_name: mapping.map_prefix(working_directory).0.into_owned(),
-    };
+    let working_directory = mapping.to_real_filename(&RealFileName::empty(), working_directory);
 
-    assert_eq!(working_directory.remapped_path_if_available(), path("FOO"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DIAGNOSTICS), path("FOO"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::MACRO), path("FOO"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DEBUGINFO), path("FOO"));
 
-    // Unmapped absolute path
+    // Absolute path
     assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("/foo/src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
-    );
-
-    // Unmapped absolute path with unrelated working directory
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("/bar/src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
-    );
-
-    // Unmapped absolute path that does not match any prefix
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("/quux/src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::LocalPath(path("/quux/src/main.rs")),
-    );
-
-    // Unmapped relative path
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
-    );
-
-    // Unmapped relative path with `./`
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("./src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
-    );
-
-    // Unmapped relative path that does not match any prefix
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("quux/src/main.rs")),
-            &RealFileName::LocalPath(path("/abc")),
-        ),
-        RealFileName::LocalPath(path("/abc/quux/src/main.rs")),
-    );
-
-    // Already remapped absolute path
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::Remapped {
-                local_path: Some(path("/foo/src/main.rs")),
-                virtual_name: path("FOO/src/main.rs"),
+        mapping.to_real_filename(&working_directory, path("/foo/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/foo/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("FOO/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("FOO/src/main.rs")
             },
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+            scopes: RemapPathScopeComponents::all()
+        }
     );
 
-    // Already remapped absolute path, with unrelated working directory
+    // Absolute path with unrelated working directory
     assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::Remapped {
-                local_path: Some(path("/bar/src/main.rs")),
-                virtual_name: path("BAR/src/main.rs"),
+        mapping.to_real_filename(&working_directory, path("/bar/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/bar/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/bar/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("BAR/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("BAR/src/main.rs")
             },
-            &working_directory
-        ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
+            scopes: RemapPathScopeComponents::all()
+        }
     );
 
-    // Already remapped relative path
+    // Absolute path that does not match any prefix
     assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") },
-            &working_directory
+        mapping.to_real_filename(&working_directory, path("/quux/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/quux/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/quux/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("/quux/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("/quux/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::all()
+        }
+    );
+
+    // Relative path
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("FOO/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::all()
+        }
+    );
+
+    // Relative path with `./`
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("./src/main.rs"),),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("./src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("./src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("FOO/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::all()
+        }
+    );
+
+    // Relative path that does not match any prefix
+    assert_eq!(
+        mapping.to_real_filename(
+            &mapping.to_real_filename(&RealFileName::empty(), path("/abc")),
+            path("quux/src/main.rs"),
         ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("quux/src/main.rs"),
+                working_directory: path("/abc"),
+                embeddable_name: path("/abc/quux/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("quux/src/main.rs"),
+                working_directory: path("/abc"),
+                embeddable_name: path("/abc/quux/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::empty()
+        }
     );
 }
 
 #[test]
-fn path_prefix_remapping_expand_to_absolute_and_local() {
+fn to_real_filename_with_mixed_scopes() {
     // "virtual" working directory is relative path
     let mapping = &FilePathMapping::new(
         vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))],
-        FileNameDisplayPreference::Remapped,
-        FileNameEmbeddablePreference::LocalAndRemapped,
+        RemapPathScopeComponents::OBJECT,
     );
     let working_directory = path("/foo");
-    let working_directory = RealFileName::Remapped {
-        local_path: Some(working_directory.clone()),
-        virtual_name: mapping.map_prefix(working_directory).0.into_owned(),
-    };
+    let working_directory = mapping.to_real_filename(&RealFileName::empty(), working_directory);
 
-    assert_eq!(working_directory.remapped_path_if_available(), path("FOO"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DIAGNOSTICS), path("/foo"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::MACRO), path("FOO"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DEBUGINFO), path("FOO"));
 
-    // Unmapped absolute path
+    // Absolute path
     assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("/foo/src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped {
-            local_path: Some(path("/foo/src/main.rs")),
-            virtual_name: path("FOO/src/main.rs")
-        }
-    );
-
-    // Unmapped absolute path with unrelated working directory
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::LocalPath(path("/bar/src/main.rs")),
-            &working_directory
-        ),
-        RealFileName::Remapped {
-            local_path: Some(path("/bar/src/main.rs")),
-            virtual_name: path("BAR/src/main.rs")
-        }
-    );
-
-    // Already remapped absolute path, with unrelated working directory
-    assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::Remapped {
-                local_path: Some(path("/bar/src/main.rs")),
-                virtual_name: path("BAR/src/main.rs"),
+        mapping.to_real_filename(&working_directory, path("/foo/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/foo/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("FOO/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("FOO/src/main.rs")
             },
-            &working_directory
-        ),
-        RealFileName::Remapped {
-            local_path: Some(path("/bar/src/main.rs")),
-            virtual_name: path("BAR/src/main.rs")
+            scopes: RemapPathScopeComponents::OBJECT
         }
     );
 
-    // Already remapped relative path
+    // Absolute path with unrelated working directory
     assert_eq!(
-        mapping.to_embeddable_absolute_path(
-            RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") },
-            &working_directory
+        mapping.to_real_filename(&working_directory, path("/bar/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/bar/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/bar/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("BAR/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("BAR/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::OBJECT
+        }
+    );
+
+    // Absolute path without remapping
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("/quux/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/quux/src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/quux/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("/quux/src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("/quux/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::OBJECT
+        }
+    );
+
+    // Relative path
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("/foo"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("FOO"),
+                embeddable_name: path("FOO/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::OBJECT
+        }
+    );
+
+    // Relative path that does not match any prefix
+    assert_eq!(
+        mapping.to_real_filename(
+            &mapping.to_real_filename(&RealFileName::empty(), path("/abc")),
+            path("quux/src/main.rs"),
         ),
-        RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("quux/src/main.rs"),
+                working_directory: path("/abc"),
+                embeddable_name: path("/abc/quux/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("quux/src/main.rs"),
+                working_directory: path("/abc"),
+                embeddable_name: path("/abc/quux/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::empty()
+        }
+    );
+}
+#[test]
+fn to_real_filename_without_remapped_cwd() {
+    // "virtual" working directory is relative path
+    let mapping = &FilePathMapping::new(
+        vec![(path("/foo"), path("FOO")), (path("/cwd/bar"), path("CWDBAR"))],
+        RemapPathScopeComponents::OBJECT,
+    );
+    let working_directory = path("/cwd");
+    let working_directory = mapping.to_real_filename(&RealFileName::empty(), working_directory);
+
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DIAGNOSTICS), path("/cwd"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::MACRO), path("/cwd"));
+    assert_eq!(working_directory.path(RemapPathScopeComponents::DEBUGINFO), path("/cwd"));
+
+    // Absolute path
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("/foo/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/foo/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/foo/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("FOO/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("FOO/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::OBJECT
+        }
+    );
+
+    // Absolute path with unrelated root
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("/bar/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/bar/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/bar/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("/bar/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/bar/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::empty()
+        }
+    );
+
+    // Absolute path with cwd
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("/cwd/bar/src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("/cwd/bar/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/cwd/bar/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("CWDBAR/src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("CWDBAR/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::OBJECT
+        }
+    );
+
+    // Relative path
+    assert_eq!(
+        mapping.to_real_filename(&working_directory, path("src/main.rs")),
+        RealFileName {
+            local: Some(InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/cwd/src/main.rs")
+            }),
+            maybe_remapped: InnerRealFileName {
+                name: path("src/main.rs"),
+                working_directory: path("/cwd"),
+                embeddable_name: path("/cwd/src/main.rs")
+            },
+            scopes: RemapPathScopeComponents::empty()
+        }
     );
 }
 
@@ -526,8 +671,7 @@ fn path_prefix_remapping_reverse() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("abc"), path("/")), (path("def"), path("."))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(reverse_map_prefix(mapping, "/hello.rs"), None);
@@ -538,8 +682,7 @@ fn path_prefix_remapping_reverse() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("abc"), path("/redacted")), (path("def"), path("/redacted"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(reverse_map_prefix(mapping, "/redacted/hello.rs"), None);
@@ -549,8 +692,7 @@ fn path_prefix_remapping_reverse() {
     {
         let mapping = &FilePathMapping::new(
             vec![(path("abc"), path("/redacted")), (path("def/ghi"), path("/fake/dir"))],
-            FileNameDisplayPreference::Remapped,
-            FileNameEmbeddablePreference::RemappedOnly,
+            RemapPathScopeComponents::all(),
         );
 
         assert_eq!(
@@ -567,7 +709,7 @@ fn path_prefix_remapping_reverse() {
 #[test]
 fn test_next_point() {
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(PathBuf::from("example.rs").into(), "a…b".to_string());
+    sm.new_source_file(filename(&sm, "example.rs"), "a…b".to_string());
 
     // Dummy spans don't advance.
     let span = DUMMY_SP;

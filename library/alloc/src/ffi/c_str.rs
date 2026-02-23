@@ -103,6 +103,7 @@ use crate::vec::Vec;
 /// and other memory errors.
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[rustc_diagnostic_item = "cstring_type"]
+#[rustc_insignificant_dtor]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct CString {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
@@ -636,7 +637,7 @@ impl CString {
         Self { inner: v.into_boxed_slice() }
     }
 
-    /// Attempts to converts a <code>[Vec]<[u8]></code> to a [`CString`].
+    /// Attempts to convert a <code>[Vec]<[u8]></code> to a [`CString`].
     ///
     /// Runtime checks are present to ensure there is only one nul byte in the
     /// [`Vec`], its last element.
@@ -694,7 +695,6 @@ impl CString {
 // memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
-#[rustc_insignificant_dtor]
 impl Drop for CString {
     #[inline]
     fn drop(&mut self) {

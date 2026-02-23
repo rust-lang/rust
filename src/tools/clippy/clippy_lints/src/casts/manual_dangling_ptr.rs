@@ -15,6 +15,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: 
         let init_expr = expr_or_init(cx, from);
         if is_expr_const_aligned(cx, init_expr, ptr_ty.ty)
             && let Some(std_or_core) = std_or_core(cx)
+            && let pointee_ty = cx.typeck_results().node_type(ptr_ty.ty.hir_id)
+            && pointee_ty.is_sized(cx.tcx, cx.typing_env())
         {
             let sugg_fn = match ptr_ty.mutbl {
                 Mutability::Not => "ptr::dangling",

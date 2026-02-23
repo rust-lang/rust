@@ -1,11 +1,10 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::assert_matches::assert_matches;
-
 use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_data_structures::assert_matches;
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
@@ -844,6 +843,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
+
+            &RuntimeChecks(checks) => {
+                let val = M::runtime_checks(self, checks)?;
+                ImmTy::from_bool(val, self.tcx()).into()
+            }
 
             Constant(constant) => {
                 let c = self.instantiate_from_current_frame_and_normalize_erasing_regions(

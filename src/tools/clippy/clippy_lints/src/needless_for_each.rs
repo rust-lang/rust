@@ -56,8 +56,20 @@ declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
-            && let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind
+        if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind {
+            check_expr(cx, expr, stmt.span);
+        }
+    }
+
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
+        if let Some(expr) = block.expr {
+            check_expr(cx, expr, expr.span);
+        }
+    }
+}
+
+fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>, outer_span: Span) {
+    if let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind
             && let ExprKind::MethodCall(_, iter_recv, [], _) = for_each_recv.kind
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
@@ -76,69 +88,74 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
             // and suggesting `for … in … { unsafe { } }` is a little ugly.
             && !matches!(body.value.kind, ExprKind::Block(Block { rules: BlockCheckMode::UnsafeBlock(_), .. }, ..))
+    {
+        let mut applicability = Applicability::MachineApplicable;
+
+        // If any closure parameter has an explicit type specified, applying the lint would necessarily
+        // remove that specification, possibly breaking type inference
+        if fn_decl
+            .inputs
+            .iter()
+            .any(|input| matches!(input.kind, TyKind::Infer(..)))
         {
-            let mut applicability = Applicability::MachineApplicable;
+            applicability = Applicability::MaybeIncorrect;
+        }
 
-            // If any closure parameter has an explicit type specified, applying the lint would necessarily
-            // remove that specification, possibly breaking type inference
-            if fn_decl
-                .inputs
-                .iter()
-                .any(|input| matches!(input.kind, TyKind::Infer(..)))
-            {
-                applicability = Applicability::MaybeIncorrect;
-            }
+        let mut ret_collector = RetCollector::default();
+        ret_collector.visit_expr(body.value);
 
-            let mut ret_collector = RetCollector::default();
-            ret_collector.visit_expr(body.value);
+        // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
+        if ret_collector.ret_in_loop {
+            return;
+        }
 
-            // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
-            if ret_collector.ret_in_loop {
-                return;
-            }
+        let ret_suggs = if ret_collector.spans.is_empty() {
+            None
+        } else {
+            applicability = Applicability::MaybeIncorrect;
+            Some(
+                ret_collector
+                    .spans
+                    .into_iter()
+                    .map(|span| (span, "continue".to_string()))
+                    .collect(),
+            )
+        };
 
-            let ret_suggs = if ret_collector.spans.is_empty() {
-                None
+        let body_param_sugg = snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability);
+        let for_each_rev_sugg = snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability);
+        let (body_value_sugg, is_macro_call) =
+            snippet_with_context(cx, body.value.span, for_each_recv.span.ctxt(), "..", &mut applicability);
+
+        let sugg = format!(
+            "for {} in {} {}",
+            body_param_sugg,
+            for_each_rev_sugg,
+            if is_macro_call {
+                format!("{{ {body_value_sugg}; }}")
             } else {
-                applicability = Applicability::MaybeIncorrect;
-                Some(
-                    ret_collector
-                        .spans
-                        .into_iter()
-                        .map(|span| (span, "continue".to_string()))
-                        .collect(),
-                )
-            };
-
-            let body_param_sugg = snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability);
-            let for_each_rev_sugg = snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability);
-            let (body_value_sugg, is_macro_call) =
-                snippet_with_context(cx, body.value.span, for_each_recv.span.ctxt(), "..", &mut applicability);
-
-            let sugg = format!(
-                "for {} in {} {}",
-                body_param_sugg,
-                for_each_rev_sugg,
-                if is_macro_call {
-                    format!("{{ {body_value_sugg}; }}")
-                } else {
-                    match body.value.kind {
-                        ExprKind::Block(block, _) if is_let_desugar(block) => {
-                            format!("{{ {body_value_sugg} }}")
-                        },
-                        ExprKind::Block(_, _) => body_value_sugg.to_string(),
-                        _ => format!("{{ {body_value_sugg}; }}"),
-                    }
+                match body.value.kind {
+                    ExprKind::Block(block, _) if is_let_desugar(block) => {
+                        format!("{{ {body_value_sugg} }}")
+                    },
+                    ExprKind::Block(_, _) => body_value_sugg.to_string(),
+                    _ => format!("{{ {body_value_sugg}; }}"),
                 }
-            );
+            }
+        );
 
-            span_lint_and_then(cx, NEEDLESS_FOR_EACH, stmt.span, "needless use of `for_each`", |diag| {
-                diag.span_suggestion(stmt.span, "try", sugg, applicability);
+        span_lint_and_then(
+            cx,
+            NEEDLESS_FOR_EACH,
+            outer_span,
+            "needless use of `for_each`",
+            |diag| {
+                diag.span_suggestion(outer_span, "try", sugg, applicability);
                 if let Some(ret_suggs) = ret_suggs {
                     diag.multipart_suggestion("...and replace `return` with `continue`", ret_suggs, applicability);
                 }
-            });
-        }
+            },
+        );
     }
 }
 

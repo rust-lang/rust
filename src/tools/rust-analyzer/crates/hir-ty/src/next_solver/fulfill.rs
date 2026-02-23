@@ -48,6 +48,7 @@ pub struct FulfillmentCtxt<'db> {
     /// use the context in exactly this snapshot.
     #[expect(unused)]
     usable_in_snapshot: usize,
+    try_evaluate_obligations_scratch: PendingObligations<'db>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -115,6 +116,7 @@ impl<'db> FulfillmentCtxt<'db> {
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            try_evaluate_obligations_scratch: Default::default(),
         }
     }
 }
@@ -162,12 +164,12 @@ impl<'db> FulfillmentCtxt<'db> {
         // and select. They should use a different `ObligationCtxt` instead. Then we'll be also able
         // to not put the obligations queue in `InferenceTable`'s snapshots.
         // assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        self.try_evaluate_obligations_scratch.clear();
         let mut errors = Vec::new();
-        let mut obligations = Vec::new();
         loop {
             let mut any_changed = false;
-            obligations.extend(self.obligations.drain_pending(|_| true));
-            for (mut obligation, stalled_on) in obligations.drain(..) {
+            self.try_evaluate_obligations_scratch.extend(self.obligations.drain_pending(|_| true));
+            for (mut obligation, stalled_on) in self.try_evaluate_obligations_scratch.drain(..) {
                 if obligation.recursion_depth >= infcx.interner.recursion_limit() {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
@@ -187,6 +189,9 @@ impl<'db> FulfillmentCtxt<'db> {
                 }
 
                 let result = delegate.evaluate_root_goal(goal, Span::dummy(), stalled_on);
+                infcx.inspect_evaluated_obligation(&obligation, &result, || {
+                    Some(delegate.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1)
+                });
                 let GoalEvaluation { goal: _, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
@@ -249,7 +254,7 @@ impl<'db> FulfillmentCtxt<'db> {
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
             | TypingMode::PostAnalysis => return Default::default(),
         };
-        let stalled_coroutines = stalled_coroutines.inner();
+        let stalled_coroutines = stalled_coroutines.as_slice();
 
         if stalled_coroutines.is_empty() {
             return Default::default();

@@ -9,7 +9,6 @@ use std::{env, fs};
 mod tests;
 
 /// Returns path to database entry for `term`
-#[allow(deprecated)]
 pub(crate) fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
     let first_char = term.chars().next()?;

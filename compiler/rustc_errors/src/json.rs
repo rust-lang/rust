@@ -11,7 +11,7 @@
 
 use std::error::Report;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::vec;
 
@@ -20,20 +20,19 @@ use derive_setters::Setters;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
-use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{FileName, RealFileName, Span};
 use serde::Serialize;
 
 use crate::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use crate::diagnostic::IsLint;
 use crate::emitter::{
-    ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
-    TimingEvent, should_show_source_code,
+    ColorConfig, Destination, Emitter, HumanReadableErrorType, OutputTheme, TimingEvent,
+    should_show_source_code,
 };
-use crate::registry::Registry;
 use crate::timings::{TimingRecord, TimingSection};
-use crate::translation::{Translator, to_fluent_args};
+use crate::translation::{format_diag_message, format_diag_messages, to_fluent_args};
 use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
 
 #[cfg(test)]
@@ -45,8 +44,6 @@ pub struct JsonEmitter {
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     #[setters(skip)]
     sm: Option<Arc<SourceMap>>,
-    #[setters(skip)]
-    translator: Translator,
     #[setters(skip)]
     pretty: bool,
     ui_testing: bool,
@@ -64,7 +61,6 @@ impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
         sm: Option<Arc<SourceMap>>,
-        translator: Translator,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         color_config: ColorConfig,
@@ -72,7 +68,6 @@ impl JsonEmitter {
         JsonEmitter {
             dst: IntoDynSyncSend(dst),
             sm,
-            translator,
             pretty,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
@@ -107,8 +102,8 @@ enum EmitTyped<'a> {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: crate::DiagInner, registry: &Registry) {
-        let data = Diagnostic::from_errors_diagnostic(diag, self, registry);
+    fn emit_diagnostic(&mut self, diag: crate::DiagInner) {
+        let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
             panic!("failed to print diagnostics: {e:?}");
@@ -139,7 +134,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>, registry: &Registry) {
+    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>) {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
@@ -153,7 +148,7 @@ impl Emitter for JsonEmitter {
                 }
                 FutureBreakageItem {
                     diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
-                        diag, self, registry,
+                        diag, self,
                     )),
                 }
             })
@@ -180,10 +175,6 @@ impl Emitter for JsonEmitter {
 
     fn should_show_explain(&self) -> bool {
         !self.json_rendered.short()
-    }
-
-    fn translator(&self) -> &Translator {
-        &self.translator
     }
 }
 
@@ -307,15 +298,11 @@ struct UnusedExterns<'a> {
 
 impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
-    fn from_errors_diagnostic(
-        diag: crate::DiagInner,
-        je: &JsonEmitter,
-        registry: &Registry,
-    ) -> Diagnostic {
+    fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
-                je.translator.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
+                format_diag_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
@@ -346,12 +333,12 @@ impl Diagnostic {
             }
         }
 
-        let translated_message = je.translator.translate_messages(&diag.messages, &args);
+        let translated_message = format_diag_messages(&diag.messages, &args);
 
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
                 code: code.to_string(),
-                explanation: registry.try_find_description(code).ok(),
+                explanation: crate::codes::try_find_description(code).ok(),
             })
         } else if let Some(IsLint { name, .. }) = &diag.is_lint {
             Some(DiagnosticCode { code: name.to_string(), explanation: None })
@@ -378,38 +365,17 @@ impl Diagnostic {
                 choice => choice,
             },
         );
-        match je.json_rendered {
-            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
-                AnnotateSnippetEmitter::new(dst, je.translator.clone())
-                    .short_message(short)
-                    .sm(je.sm.clone())
-                    .diagnostic_width(je.diagnostic_width)
-                    .macro_backtrace(je.macro_backtrace)
-                    .track_diagnostics(je.track_diagnostics)
-                    .terminal_url(je.terminal_url)
-                    .ui_testing(je.ui_testing)
-                    .ignored_directories_in_source_blocks(
-                        je.ignored_directories_in_source_blocks.clone(),
-                    )
-                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .emit_diagnostic(diag, registry)
-            }
-            HumanReadableErrorType::Default { short } => {
-                HumanEmitter::new(dst, je.translator.clone())
-                    .short_message(short)
-                    .sm(je.sm.clone())
-                    .diagnostic_width(je.diagnostic_width)
-                    .macro_backtrace(je.macro_backtrace)
-                    .track_diagnostics(je.track_diagnostics)
-                    .terminal_url(je.terminal_url)
-                    .ui_testing(je.ui_testing)
-                    .ignored_directories_in_source_blocks(
-                        je.ignored_directories_in_source_blocks.clone(),
-                    )
-                    .theme(OutputTheme::Ascii)
-                    .emit_diagnostic(diag, registry)
-            }
-        }
+        AnnotateSnippetEmitter::new(dst)
+            .short_message(je.json_rendered.short)
+            .sm(je.sm.clone())
+            .diagnostic_width(je.diagnostic_width)
+            .macro_backtrace(je.macro_backtrace)
+            .track_diagnostics(je.track_diagnostics)
+            .terminal_url(je.terminal_url)
+            .ui_testing(je.ui_testing)
+            .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
+            .theme(if je.json_rendered.unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+            .emit_diagnostic(diag);
 
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
         let buf = String::from_utf8(buf).unwrap();
@@ -429,7 +395,7 @@ impl Diagnostic {
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translator.translate_messages(&subdiag.messages, args);
+        let translated_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,
@@ -453,7 +419,7 @@ impl DiagnosticSpan {
             span.is_primary,
             span.label
                 .as_ref()
-                .map(|m| je.translator.translate_message(m, args).unwrap())
+                .map(|m| format_diag_message(m, args).unwrap())
                 .map(|m| m.to_string()),
             suggestion,
             je,
@@ -490,8 +456,14 @@ impl DiagnosticSpan {
             None => {
                 span = rustc_span::DUMMY_SP;
                 empty_source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-                empty_source_map
-                    .new_source_file(std::path::PathBuf::from("empty.rs").into(), String::new());
+                empty_source_map.new_source_file(
+                    FileName::Real(
+                        empty_source_map
+                            .path_mapping()
+                            .to_real_filename(&RealFileName::empty(), PathBuf::from("empty.rs")),
+                    ),
+                    String::new(),
+                );
                 &empty_source_map
             }
         };

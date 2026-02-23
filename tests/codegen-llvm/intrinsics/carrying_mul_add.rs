@@ -11,10 +11,9 @@
 
 use std::intrinsics::{carrying_mul_add, fallback};
 
-// The fallbacks are emitted even when they're never used, but optimize out.
+// The fallbacks should not be emitted.
 
-// RAW: wide_mul_u128
-// OPT-NOT: wide_mul_u128
+// NOT: wide_mul_u128
 
 // CHECK-LABEL: @cma_u8
 #[no_mangle]

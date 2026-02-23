@@ -22,76 +22,83 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::{AmbigModChildKind, ModChild, Reexport};
+use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    AmbiguityKind, BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, Segment, Used, VisResolutionError, errors,
+    BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, IdentKey, MacroData,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver,
+    Segment, Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
-    /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
-    /// otherwise, reports an error.
-    pub(crate) fn define_binding_local(
+    /// Attempt to put the declaration with the given name and namespace into the module,
+    /// and report an error in case of a collision.
+    pub(crate) fn plant_decl_into_local_module(
         &mut self,
-        parent: Module<'ra>,
-        ident: Ident,
+        ident: IdentKey,
+        orig_ident_span: Span,
         ns: Namespace,
-        binding: NameBinding<'ra>,
+        decl: Decl<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
-            self.report_conflict(parent, ident, ns, old_binding, binding);
+        if let Err(old_decl) =
+            self.try_plant_decl_into_local_module(ident, orig_ident_span, ns, decl, false)
+        {
+            self.report_conflict(ident, ns, old_decl, decl);
         }
     }
 
+    /// Create a name definition from the given components, and put it into the local module.
     fn define_local(
         &mut self,
         parent: Module<'ra>,
-        ident: Ident,
+        orig_ident: Ident,
         ns: Namespace,
         res: Res,
         vis: Visibility,
         span: Span,
         expn_id: LocalExpnId,
     ) {
-        let binding = self.arenas.new_res_binding(res, vis.to_def_id(), span, expn_id);
-        self.define_binding_local(parent, ident, ns, binding);
+        let decl = self.arenas.new_def_decl(res, vis.to_def_id(), span, expn_id, Some(parent));
+        let ident = IdentKey::new(orig_ident);
+        self.plant_decl_into_local_module(ident, orig_ident.span, ns, decl);
     }
 
+    /// Create a name definition from the given components, and put it into the extern module.
     fn define_extern(
         &self,
         parent: Module<'ra>,
-        ident: Ident,
+        ident: IdentKey,
+        orig_ident_span: Span,
         ns: Namespace,
         child_index: usize,
         res: Res,
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+        ambiguity: Option<Decl<'ra>>,
     ) {
-        let binding = self.arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Res(res),
-            ambiguity,
+        let decl = self.arenas.alloc_decl(DeclData {
+            kind: DeclKind::Def(res),
+            ambiguity: CmCell::new(ambiguity),
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: true,
-            vis,
+            warn_ambiguity: CmCell::new(true),
+            vis: CmCell::new(vis),
             span,
             expansion,
+            parent_module: Some(parent),
         });
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
@@ -99,10 +106,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let key =
             BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap()); // 0 indicates no underscore
         if self
-            .resolution_or_default(parent, key)
+            .resolution_or_default(parent, key, orig_ident_span)
             .borrow_mut_unchecked()
-            .non_glob_binding
-            .replace(binding)
+            .non_glob_decl
+            .replace(decl)
             .is_some()
         {
             span_bug!(span, "an external binding was already defined");
@@ -254,7 +261,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &child.main,
                 parent_scope,
                 children.len() + i,
-                Some((&child.second, child.kind)),
+                Some(&child.second),
             )
         }
     }
@@ -265,7 +272,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         child: &ModChild,
         parent_scope: ParentScope<'ra>,
         child_index: usize,
-        ambig_child: Option<(&ModChild, AmbigModChildKind)>,
+        ambig_child: Option<&ModChild>,
     ) {
         let parent = parent_scope.module;
         let child_span = |this: &Self, reexport_chain: &[Reexport], res: def::Res<_>| {
@@ -276,24 +283,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .unwrap_or_else(|| res.def_id()),
             )
         };
-        let ModChild { ident, res, vis, ref reexport_chain } = *child;
+        let ModChild { ident: orig_ident, res, vis, ref reexport_chain } = *child;
+        let ident = IdentKey::new(orig_ident);
         let span = child_span(self, reexport_chain, res);
         let res = res.expect_non_local();
         let expansion = parent_scope.expansion;
-        let ambig = ambig_child.map(|(ambig_child, ambig_kind)| {
+        let ambig = ambig_child.map(|ambig_child| {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            let ambig_kind = match ambig_kind {
-                AmbigModChildKind::GlobVsGlob => AmbiguityKind::GlobVsGlob,
-                AmbigModChildKind::GlobVsExpanded => AmbiguityKind::GlobVsExpanded,
-            };
-            (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind)
+            self.arenas.new_def_decl(res, vis, span, expansion, Some(parent))
         });
 
         // Record primary definitions.
         let define_extern = |ns| {
-            self.define_extern(parent, ident, ns, child_index, res, vis, span, expansion, ambig)
+            self.define_extern(
+                parent,
+                ident,
+                orig_ident.span,
+                ns,
+                child_index,
+                res,
+                vis,
+                span,
+                expansion,
+                ambig,
+            )
         };
         match res {
             Res::Def(
@@ -454,9 +469,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed { span, label, suggestion, .. } => {
-                        Err(VisResolutionError::FailedToResolve(span, label, suggestion))
-                    }
+                    PathResult::Failed {
+                        span, label, suggestion, message, segment_name, ..
+                    } => Err(VisResolutionError::FailedToResolve(
+                        span,
+                        segment_name,
+                        label,
+                        suggestion,
+                        message,
+                    )),
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
             }
@@ -533,8 +554,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 if target.name != kw::Underscore {
                     self.r.per_ns(|this, ns| {
                         if !type_ns_only || ns == TypeNS {
-                            let key = BindingKey::new(target, ns);
-                            this.resolution_or_default(current_module, key)
+                            let key = BindingKey::new(IdentKey::new(target), ns);
+                            this.resolution_or_default(current_module, key, target.span)
                                 .borrow_mut(this)
                                 .single_imports
                                 .insert(import);
@@ -599,103 +620,109 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
         debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);
 
-        let empty_for_self = |prefix: &[Segment]| {
-            prefix.is_empty() || prefix.len() == 1 && prefix[0].ident.name == kw::PathRoot
-        };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
                 let mut ident = use_tree.ident();
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
-                let mut type_ns_only = false;
 
-                if nested {
-                    // Correctly handle `self`
-                    if source.ident.name == kw::SelfLower {
-                        type_ns_only = true;
+                // `true` for `...::{self [as target]}` imports, `false` otherwise.
+                let type_ns_only = nested && source.ident.name == kw::SelfLower;
 
-                        if empty_for_self(&module_path) {
-                            self.r.report_error(
-                                use_tree.span,
-                                ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix,
+                match source.ident.name {
+                    kw::DollarCrate => {
+                        if !module_path.is_empty() {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`$crate` in paths can only be used in start position",
                             );
                             return;
                         }
-
-                        // Replace `use foo::{ self };` with `use foo;`
-                        let self_span = source.ident.span;
-                        source = module_path.pop().unwrap();
-                        if rename.is_none() {
-                            // Keep the span of `self`, but the name of `foo`
-                            ident = Ident::new(source.ident.name, self_span);
+                    }
+                    kw::Crate => {
+                        if !module_path.is_empty() {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`crate` in paths can only be used in start position",
+                            );
+                            return;
                         }
                     }
-                } else {
-                    // Disallow `self`
-                    if source.ident.name == kw::SelfLower {
-                        let parent = module_path.last();
+                    kw::Super => {
+                        // Allow `self::super` as a valid prefix - `self` at position 0
+                        // followed by any number of `super` segments.
+                        let valid_prefix = module_path.iter().enumerate().all(|(i, seg)| {
+                            let name = seg.ident.name;
+                            name == kw::Super || (name == kw::SelfLower && i == 0)
+                        });
 
-                        let span = match parent {
-                            // only `::self` from `use foo::self as bar`
-                            Some(seg) => seg.ident.span.shrink_to_hi().to(source.ident.span),
-                            None => source.ident.span,
-                        };
-                        let span_with_rename = match rename {
-                            // only `self as bar` from `use foo::self as bar`
-                            Some(rename) => source.ident.span.to(rename.span),
-                            None => source.ident.span,
-                        };
-                        self.r.report_error(
-                            span,
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.is_none(),
-                                span_with_rename,
-                            },
-                        );
-
-                        // Error recovery: replace `use foo::self;` with `use foo;`
+                        if !valid_prefix {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`super` in paths can only be used in start position, after `self`, or after another `super`",
+                            );
+                            return;
+                        }
+                    }
+                    kw::SelfLower => {
                         if let Some(parent) = module_path.pop() {
+                            // Suggest `use prefix::{self};` for `use prefix::self;`
+                            if !type_ns_only
+                                && (parent.ident.name != kw::PathRoot
+                                    || self.r.path_root_is_crate_root(parent.ident))
+                            {
+                                let span_with_rename = match rename {
+                                    Some(rename) => source.ident.span.to(rename.span),
+                                    None => source.ident.span,
+                                };
+
+                                self.r.report_error(
+                                    parent.ident.span.shrink_to_hi().to(source.ident.span),
+                                    ResolutionError::SelfImportsOnlyAllowedWithin {
+                                        root: parent.ident.name == kw::PathRoot,
+                                        span_with_rename,
+                                    },
+                                );
+                            }
+
+                            let self_span = source.ident.span;
                             source = parent;
                             if rename.is_none() {
-                                ident = source.ident;
+                                ident = Ident::new(source.ident.name, self_span);
                             }
                         }
                     }
-
-                    // Disallow `use $crate;`
-                    if source.ident.name == kw::DollarCrate && module_path.is_empty() {
-                        let crate_root = self.r.resolve_crate_root(source.ident);
-                        let crate_name = match crate_root.kind {
-                            ModuleKind::Def(.., name) => name,
-                            ModuleKind::Block => unreachable!(),
-                        };
-                        // HACK(eddyb) unclear how good this is, but keeping `$crate`
-                        // in `source` breaks `tests/ui/imports/import-crate-var.rs`,
-                        // while the current crate doesn't have a valid `crate_name`.
-                        if let Some(crate_name) = crate_name {
-                            // `crate_name` should not be interpreted as relative.
-                            module_path.push(Segment::from_ident_and_id(
-                                Ident::new(kw::PathRoot, source.ident.span),
-                                self.r.next_node_id(),
-                            ));
-                            source.ident.name = crate_name;
-                        }
-                        if rename.is_none() {
-                            ident.name = sym::dummy;
-                        }
-
-                        self.r.dcx().emit_err(errors::CrateImported { span: item.span });
-                    }
+                    _ => {}
                 }
 
-                if ident.name == kw::Crate {
-                    self.r.dcx().emit_err(errors::UnnamedCrateRootImport { span: ident.span });
+                // Deny `use ::{self};` after edition 2015
+                if source.ident.name == kw::PathRoot
+                    && !self.r.path_root_is_crate_root(source.ident)
+                {
+                    self.r.dcx().span_err(use_tree.span, "extern prelude cannot be imported");
+                    return;
+                }
+
+                // Deny importing path-kw without renaming
+                if rename.is_none() && ident.is_path_segment_keyword() {
+                    let ident = use_tree.ident();
+
+                    // Don't suggest `use xx::self as name;` for `use xx::self;`
+                    // But it's OK to suggest `use xx::{self as name};` for `use xx::{self};`
+                    let sugg = if !type_ns_only && ident.name == kw::SelfLower {
+                        None
+                    } else {
+                        Some(errors::UnnamedImportSugg { span: ident.span, ident })
+                    };
+
+                    self.r.dcx().emit_err(errors::UnnamedImport { span: ident.span, sugg });
+                    return;
                 }
 
                 let kind = ImportKind::Single {
                     source: source.ident,
                     target: ident,
-                    bindings: Default::default(),
+                    decls: Default::default(),
                     type_ns_only,
                     nested,
                     id,
@@ -719,32 +746,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
-                // Ensure there is at most one `self` in the list
-                let self_spans = items
-                    .iter()
-                    .filter_map(|(use_tree, _)| {
-                        if let ast::UseTreeKind::Simple(..) = use_tree.kind
-                            && use_tree.ident().name == kw::SelfLower
-                        {
-                            return Some(use_tree.span);
-                        }
-
-                        None
-                    })
-                    .collect::<Vec<_>>();
-                if self_spans.len() > 1 {
-                    let mut e = self.r.into_struct_error(
-                        self_spans[0],
-                        ResolutionError::SelfImportCanOnlyAppearOnceInTheList,
-                    );
-
-                    for other_span in self_spans.iter().skip(1) {
-                        e.span_label(*other_span, "another `self` import appears here");
-                    }
-
-                    e.emit();
-                }
-
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
@@ -756,7 +757,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
                 // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
-                if items.is_empty() && !empty_for_self(&prefix) {
+                if items.is_empty()
+                    && !prefix.is_empty()
+                    && (prefix.len() > 1 || prefix[0].ident.name != kw::PathRoot)
+                {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),
@@ -843,7 +847,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     ident,
                     local_def_id,
                     vis,
-                    parent,
                 );
             }
 
@@ -960,7 +963,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl { .. }
+            | ItemKind::ForeignMod(..)
+            | ItemKind::GlobalAsm(..)
+            | ItemKind::ConstBlock(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
@@ -972,16 +978,16 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         &mut self,
         orig_name: Option<Symbol>,
         item: &Item,
-        ident: Ident,
+        orig_ident: Ident,
         local_def_id: LocalDefId,
         vis: Visibility,
-        parent: Module<'ra>,
     ) {
         let sp = item.span;
         let parent_scope = self.parent_scope;
+        let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
 
-        let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
+        let (used, module, decl) = if orig_name.is_none() && orig_ident.name == kw::SelfLower {
             self.r.dcx().emit_err(errors::ExternCrateSelfRequiresRenaming { span: sp });
             return;
         } else if orig_name == Some(kw::SelfLower) {
@@ -1001,14 +1007,14 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
         .map(|module| {
             let used = self.process_macro_use_imports(item, module);
-            let binding = self.r.arenas.new_pub_res_binding(module.res().unwrap(), sp, expansion);
-            (used, Some(ModuleOrUniformRoot::Module(module)), binding)
+            let decl = self.r.arenas.new_pub_def_decl(module.res().unwrap(), sp, expansion);
+            (used, Some(ModuleOrUniformRoot::Module(module)), decl)
         })
-        .unwrap_or((true, None, self.r.dummy_binding));
+        .unwrap_or((true, None, self.r.dummy_decl));
         let import = self.r.arenas.alloc_import(ImportData {
-            kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
+            kind: ImportKind::ExternCrate { source: orig_name, target: orig_ident, id: item.id },
             root_id: item.id,
-            parent_scope: self.parent_scope,
+            parent_scope,
             imported_module: CmCell::new(module),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
@@ -1023,15 +1029,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.import_use_map.insert(import, Used::Other);
         }
         self.r.potentially_unused_imports.push(import);
-        let imported_binding = self.r.import(binding, import);
+        let import_decl = self.r.new_import_decl(decl, import);
+        let ident = IdentKey::new(orig_ident);
         if ident.name != kw::Underscore && parent == self.r.graph_root {
-            let norm_ident = Macros20NormalizedIdent::new(ident);
             // FIXME: this error is technically unnecessary now when extern prelude is split into
             // two scopes, remove it with lang team approval.
-            if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
+            if let Some(entry) = self.r.extern_prelude.get(&ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
-                && entry.item_binding.is_none()
+                && entry.item_decl.is_none()
             {
                 self.r.dcx().emit_err(
                     errors::MacroExpandedExternCrateCannotShadowExternArguments { span: item.span },
@@ -1039,24 +1045,24 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             use indexmap::map::Entry;
-            match self.r.extern_prelude.entry(norm_ident) {
+            match self.r.extern_prelude.entry(ident) {
                 Entry::Occupied(mut occupied) => {
                     let entry = occupied.get_mut();
-                    if entry.item_binding.is_some() {
-                        let msg = format!("extern crate `{ident}` already in extern prelude");
+                    if entry.item_decl.is_some() {
+                        let msg = format!("extern crate `{orig_ident}` already in extern prelude");
                         self.r.tcx.dcx().span_delayed_bug(item.span, msg);
                     } else {
-                        entry.item_binding = Some((imported_binding, orig_name.is_some()));
+                        entry.item_decl = Some((import_decl, orig_ident.span, orig_name.is_some()));
                     }
                     entry
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
-                    item_binding: Some((imported_binding, true)),
-                    flag_binding: None,
+                    item_decl: Some((import_decl, orig_ident.span, true)),
+                    flag_decl: None,
                 }),
             };
         }
-        self.r.define_binding_local(parent, ident, TypeNS, imported_binding);
+        self.r.plant_decl_into_local_module(ident, orig_ident.span, TypeNS, import_decl);
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -1093,14 +1099,14 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn add_macro_use_binding(
+    fn add_macro_use_decl(
         &mut self,
         name: Symbol,
-        binding: NameBinding<'ra>,
+        decl: Decl<'ra>,
         span: Span,
         allow_shadowing: bool,
     ) {
-        if self.r.macro_use_prelude.insert(name, binding).is_some() && !allow_shadowing {
+        if self.r.macro_use_prelude.insert(name, decl).is_some() && !allow_shadowing {
             self.r.dcx().emit_err(errors::MacroUseNameAlreadyInUse { span, name });
         }
     }
@@ -1157,22 +1163,22 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         if let Some(span) = import_all {
             let import = macro_use_import(self, span, false);
             self.r.potentially_unused_imports.push(import);
-            module.for_each_child_mut(self, |this, ident, ns, binding| {
+            module.for_each_child_mut(self, |this, ident, _, ns, binding| {
                 if ns == MacroNS {
-                    let import = if this.r.is_accessible_from(binding.vis, this.parent_scope.module)
-                    {
-                        import
-                    } else {
-                        // FIXME: This branch is used for reporting the `private_macro_use` lint
-                        // and should eventually be removed.
-                        if this.r.macro_use_prelude.contains_key(&ident.name) {
-                            // Do not override already existing entries with compatibility entries.
-                            return;
-                        }
-                        macro_use_import(this, span, true)
-                    };
-                    let import_binding = this.r.import(binding, import);
-                    this.add_macro_use_binding(ident.name, import_binding, span, allow_shadowing);
+                    let import =
+                        if this.r.is_accessible_from(binding.vis(), this.parent_scope.module) {
+                            import
+                        } else {
+                            // FIXME: This branch is used for reporting the `private_macro_use` lint
+                            // and should eventually be removed.
+                            if this.r.macro_use_prelude.contains_key(&ident.name) {
+                                // Do not override already existing entries with compatibility entries.
+                                return;
+                            }
+                            macro_use_import(this, span, true)
+                        };
+                    let import_decl = this.r.new_import_decl(binding, import);
+                    this.add_macro_use_decl(ident.name, import_decl, span, allow_shadowing);
                 }
             });
         } else {
@@ -1187,13 +1193,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span, false);
                     self.r.potentially_unused_imports.push(import);
-                    let imported_binding = self.r.import(binding, import);
-                    self.add_macro_use_binding(
-                        ident.name,
-                        imported_binding,
-                        ident.span,
-                        allow_shadowing,
-                    );
+                    let import_decl = self.r.new_import_decl(binding, import);
+                    self.add_macro_use_decl(ident.name, import_decl, ident.span, allow_shadowing);
                 } else {
                     self.r.dcx().emit_err(errors::ImportedMacroNotFound { span: ident.span });
                 }
@@ -1273,7 +1274,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let expansion = parent_scope.expansion;
         let feed = self.r.feed(item.id);
         let def_id = feed.key();
-        let (res, ident, span, macro_rules) = match &item.kind {
+        let (res, orig_ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(ident, def) => {
                 (self.res(def_id), *ident, item.span, def.macro_rules)
             }
@@ -1296,7 +1297,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
         if macro_rules {
-            let ident = ident.normalize_to_macros_2_0();
+            let ident = IdentKey::new(orig_ident);
             self.r.macro_names.insert(ident);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
@@ -1304,14 +1305,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             } else {
                 Visibility::Restricted(CRATE_DEF_ID)
             };
-            let binding = self.r.arenas.new_res_binding(res, vis.to_def_id(), span, expansion);
-            self.r.set_binding_parent_module(binding, parent_scope.module);
+            let decl = self.r.arenas.new_def_decl(
+                res,
+                vis.to_def_id(),
+                span,
+                expansion,
+                Some(parent_scope.module),
+            );
             self.r.all_macro_rules.insert(ident.name);
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,
                     root_id: item.id,
-                    parent_scope: self.parent_scope,
+                    parent_scope: ParentScope { module: self.r.graph_root, ..parent_scope },
                     imported_module: CmCell::new(None),
                     has_attributes: false,
                     use_span_with_attributes: span,
@@ -1323,18 +1329,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
-                let import_binding = self.r.import(binding, import);
-                self.r.define_binding_local(self.r.graph_root, ident, MacroNS, import_binding);
+                let import_decl = self.r.new_import_decl(decl, import);
+                self.r.plant_decl_into_local_module(ident, orig_ident.span, MacroNS, import_decl);
             } else {
-                self.r.check_reserved_macro_name(ident, res);
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.r.check_reserved_macro_name(ident.name, orig_ident.span, res);
+                self.insert_unused_macro(orig_ident, def_id, item.id);
             }
             self.r.feed_visibility(feed, vis);
-            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
-                self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
+            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Def(
+                self.r.arenas.alloc_macro_rules_decl(MacroRulesDecl {
                     parent_macro_rules_scope: parent_scope.macro_rules,
-                    binding,
+                    decl,
                     ident,
+                    orig_ident_span: orig_ident.span,
                 }),
             ));
             self.r.macro_rules_scopes.insert(def_id, scope);
@@ -1350,9 +1357,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 _ => self.resolve_visibility(&item.vis),
             };
             if !vis.is_public() {
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.insert_unused_macro(orig_ident, def_id, item.id);
             }
-            self.r.define_local(module, ident, MacroNS, res, vis, span, expansion);
+            self.r.define_local(module, orig_ident, MacroNS, res, vis, span, expansion);
             self.r.feed_visibility(feed, vis);
             self.parent_scope.macro_rules
         }
@@ -1494,7 +1501,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         {
             // Don't add underscore names, they cannot be looked up anyway.
             let impl_def_id = self.r.tcx.local_parent(local_def_id);
-            let key = BindingKey::new(ident, ns);
+            let key = BindingKey::new(IdentKey::new(ident), ns);
             self.r.impl_binding_keys.entry(impl_def_id).or_default().insert(key);
         }
 

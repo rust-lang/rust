@@ -1,4 +1,4 @@
-use crate::simd::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{Mask, MaskElement, Simd, SimdElement};
 
 /// Constructs a new SIMD vector by copying elements from selected elements in other vectors.
 ///
@@ -82,8 +82,6 @@ pub trait Swizzle<const N: usize> {
     fn swizzle<T, const M: usize>(vector: Simd<T, M>) -> Simd<T, N>
     where
         T: SimdElement,
-        LaneCount<N>: SupportedLaneCount,
-        LaneCount<M>: SupportedLaneCount,
     {
         // Safety: `vector` is a vector, and the index is a const vector of u32.
         unsafe {
@@ -122,8 +120,6 @@ pub trait Swizzle<const N: usize> {
     fn concat_swizzle<T, const M: usize>(first: Simd<T, M>, second: Simd<T, M>) -> Simd<T, N>
     where
         T: SimdElement,
-        LaneCount<N>: SupportedLaneCount,
-        LaneCount<M>: SupportedLaneCount,
     {
         // Safety: `first` and `second` are vectors, and the index is a const vector of u32.
         unsafe {
@@ -161,11 +157,9 @@ pub trait Swizzle<const N: usize> {
     fn swizzle_mask<T, const M: usize>(mask: Mask<T, M>) -> Mask<T, N>
     where
         T: MaskElement,
-        LaneCount<N>: SupportedLaneCount,
-        LaneCount<M>: SupportedLaneCount,
     {
         // SAFETY: all elements of this mask come from another mask
-        unsafe { Mask::from_int_unchecked(Self::swizzle(mask.to_int())) }
+        unsafe { Mask::from_simd_unchecked(Self::swizzle(mask.to_simd())) }
     }
 
     /// Creates a new mask from the elements of `first` and `second`.
@@ -177,18 +171,17 @@ pub trait Swizzle<const N: usize> {
     fn concat_swizzle_mask<T, const M: usize>(first: Mask<T, M>, second: Mask<T, M>) -> Mask<T, N>
     where
         T: MaskElement,
-        LaneCount<N>: SupportedLaneCount,
-        LaneCount<M>: SupportedLaneCount,
     {
         // SAFETY: all elements of this mask come from another mask
-        unsafe { Mask::from_int_unchecked(Self::concat_swizzle(first.to_int(), second.to_int())) }
+        unsafe {
+            Mask::from_simd_unchecked(Self::concat_swizzle(first.to_simd(), second.to_simd()))
+        }
     }
 }
 
 impl<T, const N: usize> Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     /// Reverse the order of the elements in the vector.
     #[inline]
@@ -462,10 +455,7 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn resize<const M: usize>(self, value: T) -> Simd<T, M>
-    where
-        LaneCount<M>: SupportedLaneCount,
-    {
+    pub fn resize<const M: usize>(self, value: T) -> Simd<T, M> {
         struct Resize<const N: usize>;
         impl<const N: usize, const M: usize> Swizzle<M> for Resize<N> {
             const INDEX: [usize; M] = const {
@@ -493,10 +483,7 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn extract<const START: usize, const LEN: usize>(self) -> Simd<T, LEN>
-    where
-        LaneCount<LEN>: SupportedLaneCount,
-    {
+    pub fn extract<const START: usize, const LEN: usize>(self) -> Simd<T, LEN> {
         struct Extract<const N: usize, const START: usize>;
         impl<const N: usize, const START: usize, const LEN: usize> Swizzle<LEN> for Extract<N, START> {
             const INDEX: [usize; LEN] = const {
@@ -517,14 +504,13 @@ where
 impl<T, const N: usize> Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     /// Reverse the order of the elements in the mask.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn reverse(self) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().reverse()) }
+        unsafe { Self::from_simd_unchecked(self.to_simd().reverse()) }
     }
 
     /// Rotates the mask such that the first `OFFSET` elements of the slice move to the end
@@ -534,7 +520,7 @@ where
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_elements_left<const OFFSET: usize>(self) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_left::<OFFSET>()) }
+        unsafe { Self::from_simd_unchecked(self.to_simd().rotate_elements_left::<OFFSET>()) }
     }
 
     /// Rotates the mask such that the first `self.len() - OFFSET` elements of the mask move to
@@ -544,7 +530,7 @@ where
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_elements_right<const OFFSET: usize>(self) -> Self {
         // Safety: swizzles are safe for masks
-        unsafe { Self::from_int_unchecked(self.to_int().rotate_elements_right::<OFFSET>()) }
+        unsafe { Self::from_simd_unchecked(self.to_simd().rotate_elements_right::<OFFSET>()) }
     }
 
     /// Shifts the mask elements to the left by `OFFSET`, filling in with
@@ -554,7 +540,7 @@ where
     pub fn shift_elements_left<const OFFSET: usize>(self, padding: bool) -> Self {
         // Safety: swizzles are safe for masks
         unsafe {
-            Self::from_int_unchecked(self.to_int().shift_elements_left::<OFFSET>(if padding {
+            Self::from_simd_unchecked(self.to_simd().shift_elements_left::<OFFSET>(if padding {
                 T::TRUE
             } else {
                 T::FALSE
@@ -569,7 +555,7 @@ where
     pub fn shift_elements_right<const OFFSET: usize>(self, padding: bool) -> Self {
         // Safety: swizzles are safe for masks
         unsafe {
-            Self::from_int_unchecked(self.to_int().shift_elements_right::<OFFSET>(if padding {
+            Self::from_simd_unchecked(self.to_simd().shift_elements_right::<OFFSET>(if padding {
                 T::TRUE
             } else {
                 T::FALSE
@@ -598,9 +584,9 @@ where
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn interleave(self, other: Self) -> (Self, Self) {
-        let (lo, hi) = self.to_int().interleave(other.to_int());
+        let (lo, hi) = self.to_simd().interleave(other.to_simd());
         // Safety: swizzles are safe for masks
-        unsafe { (Self::from_int_unchecked(lo), Self::from_int_unchecked(hi)) }
+        unsafe { (Self::from_simd_unchecked(lo), Self::from_simd_unchecked(hi)) }
     }
 
     /// Deinterleave two masks.
@@ -627,12 +613,12 @@ where
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn deinterleave(self, other: Self) -> (Self, Self) {
-        let (even, odd) = self.to_int().deinterleave(other.to_int());
+        let (even, odd) = self.to_simd().deinterleave(other.to_simd());
         // Safety: swizzles are safe for masks
         unsafe {
             (
-                Self::from_int_unchecked(even),
-                Self::from_int_unchecked(odd),
+                Self::from_simd_unchecked(even),
+                Self::from_simd_unchecked(odd),
             )
         }
     }
@@ -653,13 +639,10 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn resize<const M: usize>(self, value: bool) -> Mask<T, M>
-    where
-        LaneCount<M>: SupportedLaneCount,
-    {
+    pub fn resize<const M: usize>(self, value: bool) -> Mask<T, M> {
         // Safety: swizzles are safe for masks
         unsafe {
-            Mask::<T, M>::from_int_unchecked(self.to_int().resize::<M>(if value {
+            Mask::<T, M>::from_simd_unchecked(self.to_simd().resize::<M>(if value {
                 T::TRUE
             } else {
                 T::FALSE
@@ -679,11 +662,8 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn extract<const START: usize, const LEN: usize>(self) -> Mask<T, LEN>
-    where
-        LaneCount<LEN>: SupportedLaneCount,
-    {
+    pub fn extract<const START: usize, const LEN: usize>(self) -> Mask<T, LEN> {
         // Safety: swizzles are safe for masks
-        unsafe { Mask::<T, LEN>::from_int_unchecked(self.to_int().extract::<START, LEN>()) }
+        unsafe { Mask::<T, LEN>::from_simd_unchecked(self.to_simd().extract::<START, LEN>()) }
     }
 }

@@ -86,7 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::{fmt, hash, intrinsics};
+use crate::{fmt, hash, intrinsics, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -905,4 +905,110 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
+}
+
+/// Returns `Some(&U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
+///
+/// # Compile-time failures
+/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
+/// In some cases, that resolution can exceed the recursion limit,
+/// and compilation will fail instead of this function returning `None`.
+/// # Examples
+///
+/// ```rust
+/// #![feature(try_as_dyn)]
+///
+/// use core::any::try_as_dyn;
+///
+/// trait Animal {
+///     fn speak(&self) -> &'static str;
+/// }
+///
+/// struct Dog;
+/// impl Animal for Dog {
+///     fn speak(&self) -> &'static str { "woof" }
+/// }
+///
+/// struct Rock; // does not implement Animal
+///
+/// let dog = Dog;
+/// let rock = Rock;
+///
+/// let as_animal: Option<&dyn Animal> = try_as_dyn::<Dog, dyn Animal>(&dog);
+/// assert_eq!(as_animal.unwrap().speak(), "woof");
+///
+/// let not_an_animal: Option<&dyn Animal> = try_as_dyn::<Rock, dyn Animal>(&rock);
+/// assert!(not_an_animal.is_none());
+/// ```
+#[must_use]
+#[unstable(feature = "try_as_dyn", issue = "144361")]
+pub const fn try_as_dyn<
+    T: Any + 'static,
+    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
+>(
+    t: &T,
+) -> Option<&U> {
+    let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
+    match vtable {
+        Some(dyn_metadata) => {
+            let pointer = ptr::from_raw_parts(t, dyn_metadata);
+            // SAFETY: `t` is a reference to a type, so we know it is valid.
+            // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
+            Some(unsafe { &*pointer })
+        }
+        None => None,
+    }
+}
+
+/// Returns `Some(&mut U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
+///
+/// # Compile-time failures
+/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
+/// In some cases, that resolution can exceed the recursion limit,
+/// and compilation will fail instead of this function returning `None`.
+/// # Examples
+///
+/// ```rust
+/// #![feature(try_as_dyn)]
+///
+/// use core::any::try_as_dyn_mut;
+///
+/// trait Animal {
+///     fn speak(&self) -> &'static str;
+/// }
+///
+/// struct Dog;
+/// impl Animal for Dog {
+///     fn speak(&self) -> &'static str { "woof" }
+/// }
+///
+/// struct Rock; // does not implement Animal
+///
+/// let mut dog = Dog;
+/// let mut rock = Rock;
+///
+/// let as_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Dog, dyn Animal>(&mut dog);
+/// assert_eq!(as_animal.unwrap().speak(), "woof");
+///
+/// let not_an_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Rock, dyn Animal>(&mut rock);
+/// assert!(not_an_animal.is_none());
+/// ```
+#[must_use]
+#[unstable(feature = "try_as_dyn", issue = "144361")]
+pub const fn try_as_dyn_mut<
+    T: Any + 'static,
+    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
+>(
+    t: &mut T,
+) -> Option<&mut U> {
+    let vtable: Option<ptr::DynMetadata<U>> = const { intrinsics::vtable_for::<T, U>() };
+    match vtable {
+        Some(dyn_metadata) => {
+            let pointer = ptr::from_raw_parts_mut(t, dyn_metadata);
+            // SAFETY: `t` is a reference to a type, so we know it is valid.
+            // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
+            Some(unsafe { &mut *pointer })
+        }
+        None => None,
+    }
 }

@@ -1,9 +1,10 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/missing-bound-in-derive-copy-impl-3.rs:10:17
+  --> $DIR/missing-bound-in-derive-copy-impl-3.rs:11:12
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^
-LL | pub struct AABB<K: Copy>{
+   |                 ---- in this derive macro expansion
+LL | pub struct AABB<K: Copy> {
+   |            ^^^^
 LL |     pub loc: Vector2<K>,
    |     ------------------- this field does not implement `Copy`
    |
@@ -14,7 +15,7 @@ LL |     pub loc: Vector2<K>,
    |              ^^^^^^^^^^
 help: consider further restricting type parameter `K` with trait `Debug`
    |
-LL | pub struct AABB<K: Copy + Debug>{
+LL | pub struct AABB<K: Copy + Debug> {
    |                         +++++++
 
 error[E0277]: `K` doesn't implement `Debug`
@@ -30,7 +31,7 @@ LL | pub struct Vector2<T: Debug + Copy + Clone>{
    |                       ^^^^^ required by this bound in `Vector2`
 help: consider further restricting type parameter `K` with trait `Debug`
    |
-LL | pub struct AABB<K: Copy + std::fmt::Debug>{
+LL | pub struct AABB<K: Copy + std::fmt::Debug> {
    |                         +++++++++++++++++
 
 error[E0277]: `K` doesn't implement `Debug`
@@ -38,13 +39,13 @@ error[E0277]: `K` doesn't implement `Debug`
    |
 LL | #[derive(Debug, Copy, Clone)]
    |                       ----- in this derive macro expansion
-LL | pub struct AABB<K: Copy>{
+LL | pub struct AABB<K: Copy> {
 LL |     pub loc: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `K`
    |
 help: consider further restricting type parameter `K` with trait `Debug`
    |
-LL | pub struct AABB<K: Copy + std::fmt::Debug>{
+LL | pub struct AABB<K: Copy + std::fmt::Debug> {
    |                         +++++++++++++++++
 
 error[E0277]: `K` doesn't implement `Debug`
@@ -58,7 +59,7 @@ LL |     pub size: Vector2<K>
    |
 help: consider further restricting type parameter `K` with trait `Debug`
    |
-LL | pub struct AABB<K: Copy + std::fmt::Debug>{
+LL | pub struct AABB<K: Copy + std::fmt::Debug> {
    |                         +++++++++++++++++
 
 error: aborting due to 4 previous errors

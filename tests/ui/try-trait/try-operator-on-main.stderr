@@ -22,7 +22,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
-   = help: the trait `Try` is not implemented for `()`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-operator-on-main.rs:10:7
@@ -37,7 +37,7 @@ error[E0277]: the trait bound `(): Try` is not satisfied
   --> $DIR/try-operator-on-main.rs:14:25
    |
 LL |     try_trait_generic::<()>();
-   |                         ^^ the trait `Try` is not implemented for `()`
+   |                         ^^ the nightly-only, unstable trait `Try` is not implemented for `()`
    |
 note: required by a bound in `try_trait_generic`
   --> $DIR/try-operator-on-main.rs:17:25
@@ -51,7 +51,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
-   = help: the trait `Try` is not implemented for `()`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
 error: aborting due to 5 previous errors
 

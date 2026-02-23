@@ -2,7 +2,8 @@
 //@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 //@ min-cdb-version: 10.0.18317.1001
 //@ ignore-backends: gcc
 

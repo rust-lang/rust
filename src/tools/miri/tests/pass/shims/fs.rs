@@ -28,16 +28,16 @@ fn main() {
     test_errors();
     test_from_raw_os_error();
     test_file_clone();
+    test_file_set_len();
+    test_file_sync();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
-        test_file_set_len();
-        test_file_sync();
         test_rename();
         test_directory();
         test_canonicalize();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+        #[cfg(not(any(target_os = "solaris", target_os = "android")))]
         test_flock();
     }
 }
@@ -77,6 +77,9 @@ fn test_file() {
     // However, writing 0 bytes can succeed or fail.
     let _ignore = file.write(&[]);
 
+    // Test calling File::create on an existing file, since that uses a different code path
+    File::create(&path).unwrap();
+
     // Removing file should succeed.
     remove_file(&path).unwrap();
 }
@@ -87,7 +90,6 @@ fn test_file_partial_reads_writes() {
 
     // Ensure we sometimes do incomplete writes.
     check_nondet(|| {
-        let _ = remove_file(&path1); // FIXME(win, issue #4483): errors if the file already exists
         let mut file = File::create(&path1).unwrap();
         file.write(&[0; 4]).unwrap() == 4
     });
@@ -210,7 +212,12 @@ fn test_file_set_len() {
 
     // Can't use set_len on a file not opened for writing
     let file = OpenOptions::new().read(true).open(&path).unwrap();
-    assert_eq!(ErrorKind::InvalidInput, file.set_len(14).unwrap_err().kind());
+    // Due to https://github.com/rust-lang/miri/issues/4457, we have to assume the failure could
+    // be either of the Windows or Unix kind, no matter which platform we're on.
+    assert!(
+        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput]
+            .contains(&file.set_len(14).unwrap_err().kind())
+    );
 
     remove_file(&path).unwrap();
 }
@@ -224,10 +231,16 @@ fn test_file_sync() {
     file.sync_data().unwrap();
     file.sync_all().unwrap();
 
-    // Test that we can call sync_data and sync_all on a file opened for reading.
+    // Test that we can call sync_data and sync_all on a file opened for reading on unix, but not
+    // on Windows
     let file = File::open(&path).unwrap();
-    file.sync_data().unwrap();
-    file.sync_all().unwrap();
+    if cfg!(unix) {
+        file.sync_data().unwrap();
+        file.sync_all().unwrap();
+    } else {
+        file.sync_data().unwrap_err();
+        file.sync_all().unwrap_err();
+    }
 
     remove_file(&path).unwrap();
 }
@@ -386,8 +399,8 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// This function does seem to exist on Illumos but std does not expose it there.
-#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+// The standard library does not support this operation on Solaris, Android
+#[cfg(not(any(target_os = "solaris", target_os = "android")))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);

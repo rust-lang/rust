@@ -7,8 +7,8 @@ use ide_db::{
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
     syntax_helpers::node_ext::{
-        eq_label_lt, for_each_tail_expr, full_path_of_name_ref, is_closure_or_blk_with_modif,
-        preorder_expr_with_ctx_checker,
+        eq_label_lt, find_loops, for_each_tail_expr, full_path_of_name_ref,
+        is_closure_or_blk_with_modif, preorder_expr_with_ctx_checker,
     },
 };
 use syntax::{
@@ -473,7 +473,7 @@ pub(crate) fn highlight_exit_points(
                 },
                 ast::BlockExpr(blk) => match blk.modifier() {
                     Some(ast::BlockModifier::Async(t)) => hl_exit_points(sema, Some(t), blk.into()),
-                    Some(ast::BlockModifier::Try(t)) if token.kind() != T![return] => {
+                    Some(ast::BlockModifier::Try { try_token: t, .. }) if token.kind() != T![return] => {
                         hl_exit_points(sema, Some(t), blk.into())
                     },
                     _ => continue,
@@ -562,7 +562,7 @@ pub(crate) fn highlight_break_points(
         Some(highlights)
     }
 
-    let Some(loops) = goto_definition::find_loops(sema, &token) else {
+    let Some(loops) = find_loops(sema, &token) else {
         return FxHashMap::default();
     };
 

@@ -4,9 +4,8 @@
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
 
 fn b<C>(e: C) { }

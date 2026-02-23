@@ -301,7 +301,7 @@ fn replace_in_pattern(
                     .collect::<Vec<_>>();
                 let fields_string = fields.join(", ");
 
-                let dot_dot_str = if dot_dot.is_some() { " .." } else { "" };
+                let dot_dot_str = if dot_dot.is_some() { ", .." } else { "" };
                 let (sn_pth, _) = snippet_with_context(cx, path.span(), span.ctxt(), "", app);
                 return format!("{sn_pth} {{ {fields_string}{dot_dot_str} }}");
             },
@@ -374,7 +374,7 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
         }
         let ty = typeck_results.pat_ty(pat);
         // Option and Result are allowed, everything else isn't.
-        if !(ty.is_diag_item(cx, sym::Option) || ty.is_diag_item(cx, sym::Result)) {
+        if !matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
             has_disallowed = true;
         }
     });

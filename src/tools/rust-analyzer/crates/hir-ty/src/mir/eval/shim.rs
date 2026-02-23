@@ -16,28 +16,13 @@ use crate::{
     mir::eval::{
         Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay,
         InternedClosure, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals,
-        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, pad16,
+        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported,
+        pad16,
     },
     next_solver::Region,
 };
 
 mod simd;
-
-macro_rules! from_bytes {
-    ($ty:tt, $value:expr) => {
-        ($ty::from_le_bytes(match ($value).try_into() {
-            Ok(it) => it,
-            #[allow(unreachable_patterns)]
-            Err(_) => return Err(MirEvalError::InternalError("mismatched size".into())),
-        }))
-    };
-}
-
-macro_rules! not_supported {
-    ($it: expr) => {
-        return Err(MirEvalError::NotSupported(format!($it)))
-    };
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EvalLangItem {
@@ -52,7 +37,7 @@ impl<'db> Evaluator<'db> {
         def: FunctionId,
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
-        locals: &Locals<'db>,
+        locals: &Locals,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, bool> {
@@ -149,7 +134,7 @@ impl<'db> Evaluator<'db> {
         def: FunctionId,
         args: &[IntervalAndTy<'db>],
         self_ty: Ty<'db>,
-        locals: &Locals<'db>,
+        locals: &Locals,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, ()> {
@@ -195,7 +180,7 @@ impl<'db> Evaluator<'db> {
                 self.exec_fn_with_args(
                     def,
                     args,
-                    GenericArgs::new_from_iter(self.interner(), [self_ty.into()]),
+                    GenericArgs::new_from_slice(&[self_ty.into()]),
                     locals,
                     destination,
                     None,
@@ -212,7 +197,7 @@ impl<'db> Evaluator<'db> {
         layout: Arc<Layout>,
         addr: Address,
         def: FunctionId,
-        locals: &Locals<'db>,
+        locals: &Locals,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, ()> {
@@ -318,7 +303,7 @@ impl<'db> Evaluator<'db> {
         it: EvalLangItem,
         generic_args: GenericArgs<'db>,
         args: &[IntervalAndTy<'db>],
-        locals: &Locals<'db>,
+        locals: &Locals,
         span: MirSpan,
     ) -> Result<'db, Vec<u8>> {
         use EvalLangItem::*;
@@ -390,7 +375,7 @@ impl<'db> Evaluator<'db> {
         id: i64,
         args: &[IntervalAndTy<'db>],
         destination: Interval,
-        _locals: &Locals<'db>,
+        _locals: &Locals,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         match id {
@@ -421,7 +406,7 @@ impl<'db> Evaluator<'db> {
         args: &[IntervalAndTy<'db>],
         _generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'db>,
+        locals: &Locals,
         span: MirSpan,
     ) -> Result<'db, ()> {
         match as_str {
@@ -587,7 +572,7 @@ impl<'db> Evaluator<'db> {
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'db>,
+        locals: &Locals,
         span: MirSpan,
         needs_override: bool,
     ) -> Result<'db, bool> {
@@ -1235,7 +1220,7 @@ impl<'db> Evaluator<'db> {
                         def,
                         &args,
                         // FIXME: wrong for manual impls of `FnOnce`
-                        GenericArgs::new_from_iter(self.interner(), []),
+                        GenericArgs::empty(self.interner()),
                         locals,
                         destination,
                         None,
@@ -1369,7 +1354,7 @@ impl<'db> Evaluator<'db> {
         &mut self,
         ty: Ty<'db>,
         metadata: Interval,
-        locals: &Locals<'db>,
+        locals: &Locals,
     ) -> Result<'db, (usize, usize)> {
         Ok(match ty.kind() {
             TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
@@ -1391,8 +1376,13 @@ impl<'db> Evaluator<'db> {
                     _ => not_supported!("unsized enum or union"),
                 };
                 let field_types = self.db.field_types(id.into());
-                let last_field_ty =
-                    field_types.iter().next_back().unwrap().1.instantiate(self.interner(), subst);
+                let last_field_ty = field_types
+                    .iter()
+                    .next_back()
+                    .unwrap()
+                    .1
+                    .get()
+                    .instantiate(self.interner(), subst);
                 let sized_part_size =
                     layout.fields.offset(field_types.iter().count() - 1).bytes_usize();
                 let sized_part_align = layout.align.bytes() as usize;
@@ -1423,7 +1413,7 @@ impl<'db> Evaluator<'db> {
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'db>,
+        locals: &Locals,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         // We are a single threaded runtime with no UB checking and no optimization, so

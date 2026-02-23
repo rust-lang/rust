@@ -9,14 +9,14 @@ use hir::{
 use ide_db::{
     FxIndexSet, RootDatabase,
     assists::GroupLabel,
-    defs::{Definition, NameRefClass},
+    defs::Definition,
     famous_defs::FamousDefs,
     helpers::mod_path_to_ast,
     imports::insert_use::{ImportScope, insert_use},
     search::{FileReference, ReferenceCategory, SearchScope},
     source_change::SourceChangeBuilder,
     syntax_helpers::node_ext::{
-        for_each_tail_expr, preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr,
+        for_each_tail_expr, preorder_expr, walk_pat, walk_patterns_in_expr,
     },
 };
 use itertools::Itertools;
@@ -25,7 +25,7 @@ use syntax::{
     SyntaxKind::{self, COMMENT},
     SyntaxNode, SyntaxToken, T, TextRange, TextSize, TokenAtOffset, WalkEvent,
     ast::{
-        self, AstNode, AstToken, HasGenericParams, HasName, edit::IndentLevel,
+        self, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, edit::IndentLevel,
         edit_in_place::Indent,
     },
     match_ast, ted,
@@ -120,7 +120,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             let params = body.extracted_function_params(ctx, &container_info, locals_used);
 
-            let name = make_function_name(&semantics_scope);
+            let name = make_function_name(&semantics_scope, &body);
 
             let fun = Function {
                 name,
@@ -241,7 +241,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     )
 }
 
-fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
+fn make_function_name(
+    semantics_scope: &hir::SemanticsScope<'_>,
+    body: &FunctionBody,
+) -> ast::NameRef {
     let mut names_in_scope = vec![];
     semantics_scope.process_all_names(&mut |name, _| {
         names_in_scope.push(
@@ -252,7 +255,10 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
 
     let default_name = "fun_name";
 
-    let mut name = default_name.to_owned();
+    let mut name = body
+        .suggest_name()
+        .filter(|name| name.len() > 2)
+        .unwrap_or_else(|| default_name.to_owned());
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
@@ -375,6 +381,7 @@ struct ContainerInfo<'db> {
     ret_type: Option<hir::Type<'db>>,
     generic_param_lists: Vec<ast::GenericParamList>,
     where_clauses: Vec<ast::WhereClause>,
+    attrs: Vec<ast::Attr>,
     edition: Edition,
 }
 
@@ -687,29 +694,6 @@ impl FunctionBody {
         }
     }
 
-    fn walk_expr(&self, cb: &mut dyn FnMut(ast::Expr)) {
-        match self {
-            FunctionBody::Expr(expr) => walk_expr(expr, cb),
-            FunctionBody::Span { parent, text_range, .. } => {
-                parent
-                    .statements()
-                    .filter(|stmt| text_range.contains_range(stmt.syntax().text_range()))
-                    .filter_map(|stmt| match stmt {
-                        ast::Stmt::ExprStmt(expr_stmt) => expr_stmt.expr(),
-                        ast::Stmt::Item(_) => None,
-                        ast::Stmt::LetStmt(stmt) => stmt.initializer(),
-                    })
-                    .for_each(|expr| walk_expr(&expr, cb));
-                if let Some(expr) = parent
-                    .tail_expr()
-                    .filter(|it| text_range.contains_range(it.syntax().text_range()))
-                {
-                    walk_expr(&expr, cb);
-                }
-            }
-        }
-    }
-
     fn preorder_expr(&self, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
         match self {
             FunctionBody::Expr(expr) => preorder_expr(expr, cb),
@@ -718,10 +702,24 @@ impl FunctionBody {
                     .statements()
                     .filter(|stmt| text_range.contains_range(stmt.syntax().text_range()))
                     .filter_map(|stmt| match stmt {
-                        ast::Stmt::ExprStmt(expr_stmt) => expr_stmt.expr(),
+                        ast::Stmt::ExprStmt(expr_stmt) => expr_stmt.expr().map(|e| vec![e]),
                         ast::Stmt::Item(_) => None,
-                        ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                        ast::Stmt::LetStmt(stmt) => {
+                            let init = stmt.initializer();
+                            let let_else = stmt
+                                .let_else()
+                                .and_then(|le| le.block_expr())
+                                .map(ast::Expr::BlockExpr);
+
+                            match (init, let_else) {
+                                (Some(i), Some(le)) => Some(vec![i, le]),
+                                (Some(i), _) => Some(vec![i]),
+                                (_, Some(le)) => Some(vec![le]),
+                                _ => None,
+                            }
+                        }
                     })
+                    .flatten()
                     .for_each(|expr| preorder_expr(&expr, cb));
                 if let Some(expr) = parent
                     .tail_expr()
@@ -787,6 +785,16 @@ impl FunctionBody {
     fn contains_node(&self, node: &SyntaxNode) -> bool {
         self.contains_range(node.text_range())
     }
+
+    fn suggest_name(&self) -> Option<String> {
+        if let Some(ast::Pat::IdentPat(pat)) = self.parent().and_then(ast::LetStmt::cast)?.pat()
+            && let Some(name) = pat.name().and_then(|it| it.ident_token())
+        {
+            Some(name.text().to_owned())
+        } else {
+            None
+        }
+    }
 }
 
 impl FunctionBody {
@@ -799,22 +807,14 @@ impl FunctionBody {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
 
-        fn local_from_name_ref(
-            sema: &Semantics<'_, RootDatabase>,
-            name_ref: ast::NameRef,
-        ) -> Option<hir::Local> {
-            match NameRefClass::classify(sema, &name_ref) {
-                Some(
-                    NameRefClass::Definition(Definition::Local(local_ref), _)
-                    | NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ },
-                ) => Some(local_ref),
-                _ => None,
-            }
-        }
+        let (text_range, element) = match self {
+            FunctionBody::Expr(expr) => (expr.syntax().text_range(), Either::Left(expr)),
+            FunctionBody::Span { parent, text_range, .. } => (*text_range, Either::Right(parent)),
+        };
 
         let mut add_name_if_local = |local_ref: Local| {
-            let InFile { file_id, value } = local_ref.primary_source(sema.db).source;
             // locals defined inside macros are not relevant to us
+            let InFile { file_id, value } = local_ref.primary_source(sema.db).source;
             if !file_id.is_macro() {
                 match value {
                     Either::Right(it) => {
@@ -826,59 +826,11 @@ impl FunctionBody {
                 }
             }
         };
-        self.walk_expr(&mut |expr| match expr {
-            ast::Expr::PathExpr(path_expr) => {
-                if let Some(local) = path_expr
-                    .path()
-                    .and_then(|it| it.as_single_name_ref())
-                    .and_then(|name_ref| local_from_name_ref(sema, name_ref))
-                {
-                    add_name_if_local(local);
-                }
-            }
-            ast::Expr::ClosureExpr(closure_expr) => {
-                if let Some(body) = closure_expr.body() {
-                    body.syntax()
-                        .descendants()
-                        .filter_map(ast::NameRef::cast)
-                        .filter_map(|name_ref| local_from_name_ref(sema, name_ref))
-                        .for_each(&mut add_name_if_local);
-                }
-            }
-            ast::Expr::MacroExpr(expr) => {
-                if let Some(tt) = expr.macro_call().and_then(|call| call.token_tree()) {
-                    tt.syntax()
-                        .descendants_with_tokens()
-                        .filter_map(SyntaxElement::into_token)
-                        .filter(|it| {
-                            matches!(it.kind(), SyntaxKind::STRING | SyntaxKind::IDENT | T![self])
-                        })
-                        .for_each(|t| {
-                            if ast::String::can_cast(t.kind()) {
-                                if let Some(parts) =
-                                    ast::String::cast(t).and_then(|s| sema.as_format_args_parts(&s))
-                                {
-                                    parts
-                                        .into_iter()
-                                        .filter_map(|(_, value)| value.and_then(|it| it.left()))
-                                        .filter_map(|path| match path {
-                                            PathResolution::Local(local) => Some(local),
-                                            _ => None,
-                                        })
-                                        .for_each(&mut add_name_if_local);
-                                }
-                            } else {
-                                sema.descend_into_macros_exact(t)
-                                    .into_iter()
-                                    .filter_map(|t| t.parent().and_then(ast::NameRef::cast))
-                                    .filter_map(|name_ref| local_from_name_ref(sema, name_ref))
-                                    .for_each(&mut add_name_if_local);
-                            }
-                        });
-                }
-            }
-            _ => (),
-        });
+
+        if let Some(locals) = sema.locals_used(element, text_range) {
+            locals.into_iter().for_each(&mut add_name_if_local);
+        }
+
         (res, self_param)
     }
 
@@ -907,7 +859,7 @@ impl FunctionBody {
                     ast::BlockExpr(block_expr) => {
                         let (constness, block) = match block_expr.modifier() {
                             Some(ast::BlockModifier::Const(_)) => (true, block_expr),
-                            Some(ast::BlockModifier::Try(_)) => (false, block_expr),
+                            Some(ast::BlockModifier::Try { .. }) => (false, block_expr),
                             Some(ast::BlockModifier::Label(label)) if label.lifetime().is_some() => (false, block_expr),
                             _ => continue,
                         };
@@ -976,6 +928,7 @@ impl FunctionBody {
         let parents = generic_parents(&parent);
         let generic_param_lists = parents.iter().filter_map(|it| it.generic_param_list()).collect();
         let where_clauses = parents.iter().filter_map(|it| it.where_clause()).collect();
+        let attrs = parents.iter().flat_map(|it| it.attrs()).filter(is_inherit_attr).collect();
 
         Some((
             ContainerInfo {
@@ -984,6 +937,7 @@ impl FunctionBody {
                 ret_type: ty,
                 generic_param_lists,
                 where_clauses,
+                attrs,
                 edition,
             },
             contains_tail_expr,
@@ -1166,6 +1120,14 @@ impl GenericParent {
             GenericParent::Fn(fn_) => fn_.where_clause(),
             GenericParent::Impl(impl_) => impl_.where_clause(),
             GenericParent::Trait(trait_) => trait_.where_clause(),
+        }
+    }
+
+    fn attrs(&self) -> impl Iterator<Item = ast::Attr> {
+        match self {
+            GenericParent::Fn(fn_) => fn_.attrs(),
+            GenericParent::Impl(impl_) => impl_.attrs(),
+            GenericParent::Trait(trait_) => trait_.attrs(),
         }
     }
 }
@@ -1643,7 +1605,7 @@ fn format_function(
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
 
     make::fn_(
-        None,
+        fun.mods.attrs.clone(),
         None,
         fun_name,
         generic_params,
@@ -2021,6 +1983,11 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 
 fn format_type(ty: &hir::Type<'_>, ctx: &AssistContext<'_>, module: hir::Module) -> String {
     ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_owned())
+}
+
+fn is_inherit_attr(attr: &ast::Attr) -> bool {
+    let Some(name) = attr.simple_name() else { return false };
+    matches!(name.as_str(), "track_caller" | "cfg")
 }
 
 fn make_ty(ty: &hir::Type<'_>, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
@@ -5479,12 +5446,12 @@ impl Struct {
 
 impl Trait for Struct {
     fn bar(&self) -> i32 {
-        let three_squared = fun_name();
+        let three_squared = three_squared();
         self.0 + three_squared
     }
 }
 
-fn $0fun_name() -> i32 {
+fn $0three_squared() -> i32 {
     3 * 3
 }
 "#,
@@ -6292,6 +6259,201 @@ fn foo() {
 fn $0fun_name(v: i32) {
     print!("{v:?}{}", v == 123);
 }"#,
+        );
+    }
+
+    #[test]
+    fn no_parameter_for_variable_used_only_let_else() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() -> u32 {
+    let x = 5;
+
+    $0let Some(y) = Some(1) else {
+        return x * 2;
+    };$0
+
+    y
+}"#,
+            r#"
+fn foo() -> u32 {
+    let x = 5;
+
+    let y = match fun_name(x) {
+        Ok(value) => value,
+        Err(value) => return value,
+    };
+
+    y
+}
+
+fn $0fun_name(x: u32) -> Result<_, u32> {
+    let Some(y) = Some(1) else {
+        return Err(x * 2);
+    };
+    Ok(y)
+}"#,
+        );
+    }
+
+    #[test]
+    fn deeply_nested_macros() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:ident) => { $val };
+}
+
+macro_rules! n {
+    ($v1:ident, $v2:ident) => { m!($v1) + $v2 };
+}
+
+macro_rules! o {
+    ($v1:ident, $v2:ident, $v3:ident) => { n!($v1, $v2) + $v3 };
+}
+
+fn foo() -> u32 {
+    let v1 = 1;
+    let v2 = 2;
+    $0let v3 = 3;
+    o!(v1, v2, v3)$0
+}"#,
+            r#"
+macro_rules! m {
+    ($val:ident) => { $val };
+}
+
+macro_rules! n {
+    ($v1:ident, $v2:ident) => { m!($v1) + $v2 };
+}
+
+macro_rules! o {
+    ($v1:ident, $v2:ident, $v3:ident) => { n!($v1, $v2) + $v3 };
+}
+
+fn foo() -> u32 {
+    let v1 = 1;
+    let v2 = 2;
+    fun_name(v1, v2)
+}
+
+fn $0fun_name(v1: u32, v2: u32) -> u32 {
+    let v3 = 3;
+    o!(v1, v2, v3)
+}"#,
+        );
+    }
+
+    #[test]
+    fn pattern_assignment() {
+        check_assist(
+            extract_function,
+            r#"
+struct Point {x: u32, y: u32};
+
+fn point() -> Point {
+    Point { x: 45, y: 50 };
+}
+
+fn foo() {
+    let mut a = 1;
+    let mut b = 3;
+    $0Point { x: a, y: b } = point();$0
+}
+"#,
+            r#"
+struct Point {x: u32, y: u32};
+
+fn point() -> Point {
+    Point { x: 45, y: 50 };
+}
+
+fn foo() {
+    let mut a = 1;
+    let mut b = 3;
+    fun_name(a, b);
+}
+
+fn $0fun_name(mut a: u32, mut b: u32) {
+    Point { x: a, y: b } = point();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_assignment() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let mut a = 3;
+    let mut b = 4;
+    $0(a, b) = (b, a);$0
+}
+"#,
+            r#"
+fn foo() {
+    let mut a = 3;
+    let mut b = 4;
+    fun_name(a, b);
+}
+
+fn $0fun_name(mut a: i32, mut b: i32) {
+    (a, b) = (b, a);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn with_cfg_attr() {
+        check_assist(
+            extract_function,
+            r#"
+//- /main.rs crate:main cfg:test
+#[cfg(test)]
+fn foo() {
+    foo($01 + 1$0);
+}
+"#,
+            r#"
+#[cfg(test)]
+fn foo() {
+    foo(fun_name());
+}
+
+#[cfg(test)]
+fn $0fun_name() -> i32 {
+    1 + 1
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn with_track_caller() {
+        check_assist(
+            extract_function,
+            r#"
+#[track_caller]
+fn foo() {
+    foo($01 + 1$0);
+}
+"#,
+            r#"
+#[track_caller]
+fn foo() {
+    foo(fun_name());
+}
+
+#[track_caller]
+fn $0fun_name() -> i32 {
+    1 + 1
+}
+"#,
         );
     }
 }

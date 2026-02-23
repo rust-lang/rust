@@ -32,7 +32,7 @@ LL |     sync :: Mutex,
    |     ^^^^^^^^^^^^^ help: try: `sync :: Mutex as StdMutie`
 
 error: this import should be renamed
-  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:20:5
+  --> tests/ui-toml/missing_enforced_import_rename/conf_missing_enforced_import_rename.rs:21:5
    |
 LL |     use std::collections::BTreeMap as OopsWrongRename;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `use std::collections::BTreeMap as Map`

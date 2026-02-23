@@ -6,7 +6,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
@@ -69,6 +68,7 @@ fn check_msg(body: &Body, expected: &str) {
                             })
                             .unwrap()
                     }
+                    Operand::RuntimeChecks(_) => panic!("unexpected runtime checks"),
                 };
                 let ConstantKind::Allocated(alloc) = msg_const.const_.kind() else {
                     unreachable!()

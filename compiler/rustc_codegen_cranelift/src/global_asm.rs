@@ -106,6 +106,7 @@ fn codegen_global_asm_inner<'tcx>(
         match *piece {
             InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
+                use rustc_codegen_ssa::back::symbol_export::escape_symbol_name;
                 match operands[operand_idx] {
                     GlobalAsmOperandRef::Const { ref string } => {
                         global_asm.push_str(string);
@@ -121,7 +122,7 @@ fn codegen_global_asm_inner<'tcx>(
                         let symbol = tcx.symbol_name(instance);
                         // FIXME handle the case where the function was made private to the
                         // current codegen unit
-                        global_asm.push_str(symbol.name);
+                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
                     }
                     GlobalAsmOperandRef::SymStatic { def_id } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
@@ -133,7 +134,7 @@ fn codegen_global_asm_inner<'tcx>(
 
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
-                        global_asm.push_str(symbol.name);
+                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
                     }
                 }
             }
@@ -233,7 +234,7 @@ pub(crate) fn compile_global_asm(
                 #![allow(internal_features)]
                 #![no_core]
                 #[rustc_builtin_macro]
-                #[rustc_macro_transparency = "semitransparent"]
+                #[rustc_macro_transparency = "semiopaque"]
                 macro global_asm() { /* compiler built-in */ }
                 global_asm!(r###"
                 "####,

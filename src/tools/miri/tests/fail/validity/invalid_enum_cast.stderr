@@ -6,13 +6,11 @@ LL |         let _val = *ptr as u32;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `cast` at tests/fail/validity/invalid_enum_cast.rs:LL:CC
-note: inside `main`
-  --> tests/fail/validity/invalid_enum_cast.rs:LL:CC
-   |
-LL |     cast(&v as *const u32 as *const E);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: cast
+               at tests/fail/validity/invalid_enum_cast.rs:LL:CC
+           1: main
+               at tests/fail/validity/invalid_enum_cast.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

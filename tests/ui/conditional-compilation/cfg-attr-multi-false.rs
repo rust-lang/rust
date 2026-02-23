@@ -5,7 +5,7 @@
 
 #![warn(unused_must_use)]
 
-#[cfg_attr(any(), deprecated, must_use)]
+#[cfg_attr(false, deprecated, must_use)]
 struct Struct {}
 
 impl Struct {

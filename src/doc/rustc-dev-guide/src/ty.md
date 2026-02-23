@@ -5,7 +5,7 @@ The `ty` module defines how the Rust compiler represents types internally. It al
 
 ## `ty::Ty`
 
-When we talk about how rustc represents types,  we usually refer to a type called `Ty` . There are
+When we talk about how rustc represents types, we usually refer to a type called `Ty`. There are
 quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
@@ -46,7 +46,7 @@ That is, they have two different [`Span`s][span] (locations).
 In addition, HIR might have information left out. This type
 `&u32` is incomplete, since in the full Rust type there is actually a lifetime, but we didn’t need
 to write those lifetimes. There are also some elision rules that insert information. The result may
-look like  `fn foo<'a>(x: &'a u32) -> &'a u32`.
+look like `fn foo<'a>(x: &'a u32) -> &'a u32`.
 
 In the HIR level, these things are not spelled out and you can say the picture is rather incomplete.
 However, at the `ty::Ty` level, these details are added and it is complete. Moreover, we will have

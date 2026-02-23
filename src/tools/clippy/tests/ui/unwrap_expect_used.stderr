@@ -82,5 +82,53 @@ LL |         let _ = open!(file).expect_err("can open");
    |
    = note: if this value is an `Ok`, it will panic
 
-error: aborting due to 10 previous errors
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/unwrap_expect_used.rs:89:5
+   |
+LL |     Option::unwrap(opt);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/unwrap_expect_used.rs:90:5
+   |
+LL |     Option::expect(opt, "error message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `unwrap()` on a `Result` value
+  --> tests/ui/unwrap_expect_used.rs:93:5
+   |
+LL |     Result::unwrap(res);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+
+error: used `expect()` on a `Result` value
+  --> tests/ui/unwrap_expect_used.rs:94:5
+   |
+LL |     Result::expect(res, "error message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+
+error: used `unwrap_err()` on a `Result` value
+  --> tests/ui/unwrap_expect_used.rs:95:5
+   |
+LL |     Result::unwrap_err(res);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Ok`, it will panic
+
+error: used `expect_err()` on a `Result` value
+  --> tests/ui/unwrap_expect_used.rs:96:5
+   |
+LL |     Result::expect_err(res, "error message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Ok`, it will panic
+
+error: aborting due to 16 previous errors
 

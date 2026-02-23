@@ -514,7 +514,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         };
 
         match item.kind {
-            TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
+            TraitItemKind::Const(ty, _, _) | TraitItemKind::Type(_, Some(ty)) => {
                 self.check_ty(cx, ty, context);
             },
             TraitItemKind::Fn(ref sig, trait_method) => {

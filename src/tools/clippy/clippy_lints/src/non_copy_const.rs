@@ -20,7 +20,7 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::is_in_const_context;
+use clippy_utils::{is_in_const_context, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
@@ -33,13 +33,13 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
     self, AliasTyKind, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
     TypeckResults, TypingEnv,
 };
 use rustc_session::impl_lint_pass;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
@@ -739,7 +739,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
@@ -907,7 +907,7 @@ fn does_adjust_borrow(adjust: &Adjustment<'_>) -> Option<BorrowCause> {
     match adjust.kind {
         Adjust::Borrow(_) => Some(BorrowCause::AutoBorrow),
         // Custom deref calls `<T as Deref>::deref(&x)` resulting in a borrow.
-        Adjust::Deref(Some(_)) => Some(BorrowCause::AutoDeref),
+        Adjust::Deref(DerefAdjustKind::Overloaded(_)) => Some(BorrowCause::AutoDeref),
         // All other adjustments read the value.
         _ => None,
     }
@@ -931,7 +931,7 @@ fn get_const_hir_value<'tcx>(
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
                 Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
-                Node::TraitItem(item) if let TraitItemKind::Const(.., Some(ct_rhs)) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs), _) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },

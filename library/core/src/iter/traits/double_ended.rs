@@ -134,7 +134,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// [`Ok(())`]: Ok
     /// [`Err(k)`]: Err
     #[inline]
-    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    #[unstable(feature = "iter_advance_by", issue = "77404")]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next_back().is_none() {
@@ -334,8 +334,18 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
+    /// assert_eq!(a.into_iter().rfind(|&x| x == 2), Some(2));
+    /// assert_eq!(a.into_iter().rfind(|&x| x == 5), None);
+    /// ```
     ///
+    /// Iterating over references:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// // `iter()` yields references i.e. `&i32` and `rfind()` takes a
+    /// // reference to each element.
+    /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
     /// assert_eq!(a.iter().rfind(|&&x| x == 5), None);
     /// ```
     ///

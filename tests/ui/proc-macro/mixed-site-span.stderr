@@ -42,80 +42,97 @@ error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:56:5
    |
 LL |     invoke_with_ident!{krate input proc_macro_item}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^
-   |     |                              |
-   |     |                              help: a similar name exists in the module: `proc_macro_rules`
-   |     no `proc_macro_item` in the root
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -     invoke_with_ident!{krate input proc_macro_item}
+LL +     invoke_with_ident!{krate input proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:57:5
    |
 LL |     with_crate!{krate input proc_macro_item}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^---------------^
-   |     |                       |
-   |     |                       help: a similar name exists in the module: `proc_macro_rules`
-   |     no `proc_macro_item` in the root
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
    |
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -     with_crate!{krate input proc_macro_item}
+LL +     with_crate!{krate input proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:58:5
    |
 LL |     with_crate!{krate call proc_macro_item}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^
-   |     |                      |
-   |     |                      help: a similar name exists in the module: `proc_macro_rules`
-   |     no `proc_macro_item` in the root
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
    |
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -     with_crate!{krate call proc_macro_item}
+LL +     with_crate!{krate call proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:62:28
    |
 LL |         invoke_with_ident!{$crate input proc_macro_item}
-   |                            ^^^^^^       --------------- help: a similar name exists in the module: `proc_macro_rules`
-   |                            |
-   |                            no `proc_macro_item` in the root
+   |                            ^^^^^^ no `proc_macro_item` in the root
 ...
 LL |     test!();
    |     ------- in this macro invocation
    |
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -         invoke_with_ident!{$crate input proc_macro_item}
+LL +         invoke_with_ident!{$crate input proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:63:21
    |
 LL |         with_crate!{$crate input proc_macro_item}
-   |                     ^^^^^^       --------------- help: a similar name exists in the module: `proc_macro_rules`
-   |                     |
-   |                     no `proc_macro_item` in the root
+   |                     ^^^^^^ no `proc_macro_item` in the root
 ...
 LL |     test!();
    |     ------- in this macro invocation
    |
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -         with_crate!{$crate input proc_macro_item}
+LL +         with_crate!{$crate input proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:64:9
    |
 LL |         with_crate!{$crate call proc_macro_item}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^---------------^
-   |         |                       |
-   |         |                       help: a similar name exists in the module: `proc_macro_rules`
-   |         no `proc_macro_item` in the root
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
 ...
 LL |     test!();
    |     ------- in this macro invocation
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a similar name exists in the module
+   |
+LL -         with_crate!{$crate call proc_macro_item}
+LL +         with_crate!{$crate call proc_macro_rules}
+   |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:69:5
+  --> $DIR/mixed-site-span.rs:67:9
    |
+LL |         invoke_with_ident!{$crate call proc_macro_item}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
+LL |     }}
 LL |     test!();
-   |     ^^^^^^^ no `proc_macro_item` in the root
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -262,10 +279,13 @@ LL +         token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:110:5
+  --> $DIR/mixed-site-span.rs:106:9
    |
+LL |         invoke_with_ident!{$crate mixed TokenItem}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
+...
 LL |     test!();
-   |     ^^^^^^^ no `TokenItem` in the root
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
@@ -417,10 +437,13 @@ LL +     ($m:ident $s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:150:5
+  --> $DIR/mixed-site-span.rs:145:9
    |
+LL |         invoke_with_ident!{$crate mixed ItemUse}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
+...
 LL |     test!();
-   |     ^^^^^^^ no `ItemUse` in the root
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
@@ -447,10 +470,13 @@ LL +         ItemUse as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:150:5
+  --> $DIR/mixed-site-span.rs:148:9
    |
+LL |         invoke_with_ident!{$crate call ItemUse}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
+LL |     }}
 LL |     test!();
-   |     ^^^^^^^ no `ItemUse` in the root
+   |     ------- in this macro invocation
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead

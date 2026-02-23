@@ -1,6 +1,6 @@
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, ItemKind, Node, find_attr};
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::lints::{ConstItemInteriorMutationsDiag, ConstItemInteriorMutationsSuggestionStatic};
@@ -77,10 +77,17 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
         if let ExprKind::Path(qpath) = &receiver.kind
             && let Res::Def(DefKind::Const | DefKind::AssocConst, const_did) =
                 typeck.qpath_res(qpath, receiver.hir_id)
+            // Don't consider derefs as those can do arbitrary things
+            // like using thread local (see rust-lang/rust#150157)
+            && !cx
+                .typeck_results()
+                .expr_adjustments(receiver)
+                .into_iter()
+                .any(|adj| matches!(adj.kind, Adjust::Deref(_)))
             // Let's do the attribute check after the other checks for perf reasons
             && find_attr!(
-                cx.tcx.get_all_attrs(method_did),
-                AttributeKind::RustcShouldNotBeCalledOnConstItems(_)
+                cx.tcx, method_did,
+                RustcShouldNotBeCalledOnConstItems(_)
             )
             && let Some(method_name) = cx.tcx.opt_item_ident(method_did)
             && let Some(const_name) = cx.tcx.opt_item_ident(const_did)

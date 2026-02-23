@@ -1,6 +1,6 @@
 # WASI notification group
 
-**Github Label:** [O-wasi] <br>
+**GitHub Label:** [O-wasi] <br>
 **Ping command:** `@rustbot ping wasi`
 
 [O-wasi]: https://github.com/rust-lang/rust/labels/O-wasi

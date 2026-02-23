@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
 
 use crate::ty::{
-    self, Binder, BoundConst, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
 };
 
@@ -58,28 +58,28 @@ where
 /// gets mapped to the same result. `BoundVarReplacer` caches by using
 /// a `DelayedMap` which does not cache the first few types it encounters.
 pub trait BoundVarReplacerDelegate<'tcx> {
-    fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
-    fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
-    fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx>;
+    fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx>;
+    fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx>;
+    fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx>;
 }
 
 /// A simple delegate taking 3 mutable functions. The used functions must
 /// always return the same result for each bound variable, no matter how
 /// frequently they are called.
 pub struct FnMutDelegate<'a, 'tcx> {
-    pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
-    pub consts: &'a mut (dyn FnMut(ty::BoundConst) -> ty::Const<'tcx> + 'a),
+    pub regions: &'a mut (dyn FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx> + 'a),
+    pub types: &'a mut (dyn FnMut(ty::BoundTy<'tcx>) -> Ty<'tcx> + 'a),
+    pub consts: &'a mut (dyn FnMut(ty::BoundConst<'tcx>) -> ty::Const<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
-    fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
+    fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
         (self.regions)(br)
     }
-    fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
+    fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx> {
         (self.types)(bt)
     }
-    fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+    fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
         (self.consts)(bc)
     }
 }
@@ -207,13 +207,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
-    ) -> (T, FxIndexMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, FxIndexMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>)
     where
-        F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+        F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut region_map = FxIndexMap::default();
-        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let real_fld_r =
+            |br: ty::BoundRegion<'tcx>| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = self.instantiate_bound_regions_uncached(value, real_fld_r);
         (value, region_map)
     }
@@ -224,7 +225,7 @@ impl<'tcx> TyCtxt<'tcx> {
         mut replace_regions: F,
     ) -> T
     where
-        F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+        F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = value.skip_binder();
@@ -292,14 +293,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.replace_escaping_bound_vars_uncached(
             value,
             FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion| {
+                regions: &mut |r: ty::BoundRegion<'tcx>| {
                     ty::Region::new_bound(
                         self,
                         ty::INNERMOST,
                         ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
                     )
                 },
-                types: &mut |t: ty::BoundTy| {
+                types: &mut |t: ty::BoundTy<'tcx>| {
                     Ty::new_bound(
                         self,
                         ty::INNERMOST,
@@ -307,11 +308,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 },
                 consts: &mut |c| {
-                    ty::Const::new_bound(
-                        self,
-                        ty::INNERMOST,
-                        ty::BoundConst { var: shift_bv(c.var) },
-                    )
+                    ty::Const::new_bound(self, ty::INNERMOST, ty::BoundConst::new(shift_bv(c.var)))
                 },
             },
         )
@@ -333,10 +330,10 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         struct Anonymize<'a, 'tcx> {
             tcx: TyCtxt<'tcx>,
-            map: &'a mut FxIndexMap<ty::BoundVar, ty::BoundVariableKind>,
+            map: &'a mut FxIndexMap<ty::BoundVar, ty::BoundVariableKind<'tcx>>,
         }
         impl<'tcx> BoundVarReplacerDelegate<'tcx> for Anonymize<'_, 'tcx> {
-            fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
                 let entry = self.map.entry(br.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
@@ -346,7 +343,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let br = ty::BoundRegion { var, kind };
                 ty::Region::new_bound(self.tcx, ty::INNERMOST, br)
             }
-            fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
+            fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx> {
                 let entry = self.map.entry(bt.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
@@ -355,12 +352,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     .expect_ty();
                 Ty::new_bound(self.tcx, ty::INNERMOST, BoundTy { var, kind })
             }
-            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+            fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
                 let entry = self.map.entry(bc.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                ty::Const::new_bound(self.tcx, ty::INNERMOST, BoundConst { var })
+                ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst::new(var))
             }
         }
 

@@ -17,7 +17,6 @@
 #![feature(cfg_emscripten_wasm_eh)]
 #![feature(cfg_select)]
 #![feature(core_intrinsics)]
-#![feature(lang_items)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
@@ -25,6 +24,7 @@
 #![panic_runtime]
 #![feature(panic_runtime)]
 #![allow(internal_features)]
+#![allow(unused_features)]
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 

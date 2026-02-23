@@ -496,7 +496,7 @@ mod tests {
     use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
-    use crate::{ItemContainerId, Lookup, ModuleIdLt, nameres::assoc::TraitItems, test_db::TestDB};
+    use crate::{ItemContainerId, Lookup, nameres::assoc::TraitItems, test_db::TestDB};
 
     use super::*;
 
@@ -628,8 +628,8 @@ mod tests {
         expect.assert_eq(&actual)
     }
 
-    fn render_path<'db>(db: &'db dyn DefDatabase, info: &ImportInfo) -> String {
-        let mut module: ModuleIdLt<'db> = info.container;
+    fn render_path(db: &dyn DefDatabase, info: &ImportInfo) -> String {
+        let mut module = info.container;
         let mut segments = vec![&info.name];
 
         let def_map = module.def_map(db);

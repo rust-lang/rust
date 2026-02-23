@@ -12,21 +12,43 @@ type Foo = impl Bar;
 
 This declares an opaque type named `Foo`, of which the only information is that
 it implements `Bar`. Therefore, any of `Bar`'s interface can be used on a `Foo`,
-but nothing else (regardless of whether it implements any other traits).
+but nothing else (regardless of whether the concrete type implements any other traits).
 
 Since there needs to be a concrete background type,
-you can (as of <!-- date-check --> January 2021) express that type
+you can (as of <!-- date-check --> May 2025) express that type
 by using the opaque type in a "defining use site".
 
 ```rust,ignore
 struct Struct;
 impl Bar for Struct { /* stuff */ }
+#[define_opaque(Foo)]
 fn foo() -> Foo {
     Struct
 }
 ```
 
 Any other "defining use site" needs to produce the exact same type.
+
+Note that defining a type alias to an opaque type is an unstable feature.
+To use it, you need `nightly` and the annotations `#![feature(type_alias_impl_trait)]` on the file and `#[define_opaque(Foo)]` on the method that links the opaque type to the concrete type.
+Complete example:
+
+```rust
+#![feature(type_alias_impl_trait)]
+
+trait Bar { /* stuff */ }
+
+type Foo = impl Bar;
+
+struct Struct;
+
+impl Bar for Struct { /* stuff */ }
+
+#[define_opaque(Foo)]
+fn foo() -> Foo {
+    Struct
+}
+```
 
 ## Defining use site(s)
 
@@ -59,5 +81,30 @@ struct Quux;
 impl Baz for Quux {
     type Foo = impl Bar;
     fn foo() -> Self::Foo { ... }
+}
+```
+
+For this you would also need to use `nightly` and the (different) `#![feature(impl_trait_in_assoc_type)]` annotation.
+Note that you don't need a `#[define_opaque(Foo)]` on the method anymore as the opaque type is mentioned in the function signature (behind the associated type).
+Complete example:
+
+```
+#![feature(impl_trait_in_assoc_type)]
+
+trait Bar {}
+struct Zap;
+
+impl Bar for Zap {}
+
+trait Baz {
+    type Foo;
+    fn foo() -> Self::Foo;
+}
+
+struct Quux;
+
+impl Baz for Quux {
+    type Foo = impl Bar;
+    fn foo() -> Self::Foo { Zap }
 }
 ```

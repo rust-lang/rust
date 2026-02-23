@@ -1,4 +1,4 @@
-use rustc_const_eval::interpret::InterpResult;
+use rustc_const_eval::interpret::{InterpResult, interp_ok};
 
 static SUPERVISOR: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -13,13 +13,13 @@ impl Supervisor {
         false
     }
 
-    pub fn do_ffi<'tcx, T>(
+    pub fn do_ffi<'tcx, T, U>(
         _: T,
-        f: impl FnOnce() -> InterpResult<'tcx, crate::ImmTy<'tcx>>,
-    ) -> InterpResult<'tcx, (crate::ImmTy<'tcx>, Option<super::MemEvents>)> {
+        f: impl FnOnce() -> U,
+    ) -> InterpResult<'tcx, (U, Option<super::MemEvents>)> {
         // We acquire the lock to ensure that no two FFI calls run concurrently.
         let _g = SUPERVISOR.lock().unwrap();
-        f().map(|v| (v, None))
+        interp_ok((f(), None))
     }
 }
 

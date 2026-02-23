@@ -45,7 +45,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for equality comparisons with `ptr::null`
+    /// This lint checks for equality comparisons with `ptr::null` or `ptr::null_mut`
     ///
     /// ### Why is this bad?
     /// It's easier and more readable to use the inherent
@@ -56,7 +56,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// use std::ptr;
     ///
-    /// if x == ptr::null {
+    /// if x == ptr::null() {
     ///     // ..
     /// }
     /// ```

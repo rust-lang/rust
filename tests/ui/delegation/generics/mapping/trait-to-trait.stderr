@@ -1,0 +1,1544 @@
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:26:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:32:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:49:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:53:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:62:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:66:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:75:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:79:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/trait-to-trait.rs:18:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:92:22
+   |
+LL |             ::bar1::<'static, String, true>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:92:15
+   |
+LL |             ::bar1::<'static, String, true>(&123);
+   |               ^^^^            ------  ---- supplied 2 generic arguments
+   |               |
+   |               expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:26:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |             ::bar1::<'static, String, true, M>(&123);
+   |                                           +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:95:33
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:95:26
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true>(&123);
+   |                          ^^^^            ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:49:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true, M>(&123);
+   |                                                      +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:98:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
+   |                                                  ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:98:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
+   |                                           ^^^^            ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:62:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true, M>(&123);
+   |                                                                       +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:101:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
+   |                                                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:101:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
+   |                                            ^^^^            ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:75:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true, M>(&123);
+   |                                                                        +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:111:22
+   |
+LL |             ::bar3::<'static, String, true>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:111:15
+   |
+LL |             ::bar3::<'static, String, true>(&123);
+   |               ^^^^            ------  ---- supplied 2 generic arguments
+   |               |
+   |               expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:32:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |             ::bar3::<'static, String, true, M>(&123);
+   |                                           +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:114:33
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:114:26
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true>(&123);
+   |                          ^^^^            ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:53:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true, M>(&123);
+   |                                                      +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:117:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
+   |                                                  ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:117:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
+   |                                           ^^^^            ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:66:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true, M>(&123);
+   |                                                                       +++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:120:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
+   |                                                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:18:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:120:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
+   |                                            ^^^^            ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:79:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true, M>(&123);
+   |                                                                        +++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:146:29
+   |
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:149:29
+   |
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:157:29
+   |
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:160:29
+   |
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:168:29
+   |
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:171:29
+   |
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:179:29
+   |
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:182:29
+   |
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                             ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_2::Trait::foo`
+  --> $DIR/trait-to-trait.rs:138:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:194:15
+   |
+LL |             ::bar1::<'static, String, true>(&123);
+   |               ^^^^            ------  ---- supplied 2 generic arguments
+   |               |
+   |               expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:146:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |             ::bar1::<'static, String, true, M>(&123);
+   |                                           +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:196:26
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true>(&123);
+   |                          ^^^^            ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:157:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true, M>(&123);
+   |                                                      +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:198:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
+   |                                           ^^^^            ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:168:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true, M>(&123);
+   |                                                                       +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:200:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
+   |                                            ^^^^            ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:179:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar1 { Self::get() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true, M>(&123);
+   |                                                                        +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:209:15
+   |
+LL |             ::bar3::<'static, String, true>(&123);
+   |               ^^^^            ------  ---- supplied 2 generic arguments
+   |               |
+   |               expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:149:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |             ::bar3::<'static, String, true, M>(&123);
+   |                                           +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:211:26
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true>(&123);
+   |                          ^^^^            ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:160:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true, M>(&123);
+   |                                                      +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:213:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
+   |                                           ^^^^            ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:171:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true, M>(&123);
+   |                                                                       +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:215:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
+   |                                            ^^^^            ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:182:36
+   |
+LL |     trait Trait<T>: Sized {
+   |                 -
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<i32>::foo as bar3 { self.get_self() }
+   |                                    ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true, M>(&123);
+   |                                                                        +++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:240:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar1 { Self::get() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:245:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar3 { self.get_self() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:255:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar1 { Self::get() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:260:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar3 { self.get_self() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:270:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar1 { Self::get() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:275:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar3 { self.get_self() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:285:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar1 { Self::get() }
+   |                                                      ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:289:51
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
+   |                                                   ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_3::Trait::foo`
+  --> $DIR/trait-to-trait.rs:232:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, 'static>::foo::<U, M> as bar3 { self.get_self() }
+   |                                                      ++++++++
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:302:22
+   |
+LL |             ::bar1::<'static, String, true>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:304:33
+   |
+LL |         <u32 as Trait3>::bar1::<'static, String, true>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:306:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
+   |                                                  ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:308:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
+   |                                                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:317:22
+   |
+LL |             ::bar3::<'static, String, true>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:319:33
+   |
+LL |         <u32 as Trait3>::bar3::<'static, String, true>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:321:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
+   |                                                  ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:323:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
+   |                                                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:232:42
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                                          ^
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:348:22
+   |
+LL |         reuse Trait::foo as bar1 { Self::get() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar1 { Self::get() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:351:22
+   |
+LL |         reuse Trait::foo as bar3 { self.get_self() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar3 { self.get_self() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:359:22
+   |
+LL |         reuse Trait::foo as bar1 { Self::get() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar1 { Self::get() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:362:22
+   |
+LL |         reuse Trait::foo as bar3 { self.get_self() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar3 { self.get_self() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:370:22
+   |
+LL |         reuse Trait::foo as bar1 { Self::get() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar1 { Self::get() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:373:22
+   |
+LL |         reuse Trait::foo as bar3 { self.get_self() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar3 { self.get_self() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:381:22
+   |
+LL |         reuse Trait::foo as bar1 { Self::get() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar1 { Self::get() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:384:22
+   |
+LL |         reuse Trait::foo as bar3 { self.get_self() }
+   |                      ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_4::Trait::foo`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse Trait::foo::<U, M> as bar3 { self.get_self() }
+   |                         ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:401:9
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar2`
+   |
+note: required by a const generic parameter in `test_4::Trait2::bar2`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait2::bar2`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
+   |                                                       ---- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:403:9
+   |
+LL |         <u32 as Trait3>::bar2(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar2`
+   |
+note: required by a const generic parameter in `test_4::Trait3::bar2`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait3::bar2`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
+   |                                                       ---- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait3>::bar2::<U, M>(&123);
+   |                              ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:405:9
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar2(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar2`
+   |
+note: required by a const generic parameter in `test_4::Trait4::bar2`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait4::bar2`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
+   |                                                       ---- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar2::<U, M>(&123);
+   |                                               ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:407:9
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar2(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar2`
+   |
+note: required by a const generic parameter in `test_4::Trait5::bar2`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait5::bar2`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
+   |                                                       ---- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:416:9
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar4`
+   |
+note: required by a const generic parameter in `test_4::Trait2::bar4`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait2::bar4`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
+   |                                                       ---- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:418:9
+   |
+LL |         <u32 as Trait3>::bar4(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar4`
+   |
+note: required by a const generic parameter in `test_4::Trait3::bar4`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait3::bar4`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
+   |                                                       ---- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait3>::bar4::<U, M>(&123);
+   |                              ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:420:9
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar4(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar4`
+   |
+note: required by a const generic parameter in `test_4::Trait4::bar4`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait4::bar4`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
+   |                                                       ---- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar4::<U, M>(&123);
+   |                                               ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:422:9
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar4(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `M` declared on the method `bar4`
+   |
+note: required by a const generic parameter in `test_4::Trait5::bar4`
+  --> $DIR/trait-to-trait.rs:340:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(&self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait5::bar4`
+...
+LL |         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
+   |                                                       ---- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:442:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:447:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:457:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:462:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:472:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:477:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:487:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0284]: type annotations needed
+  --> $DIR/trait-to-trait.rs:492:56
+   |
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                        ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_5::Trait::foo`
+  --> $DIR/trait-to-trait.rs:434:19
+   |
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                   ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:505:68
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1::<String, true>(&123);
+   |                                                                    ^^^^   ------  ---- supplied 2 generic arguments
+   |                                                                    |
+   |                                                                    expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:442:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1::<String, true, M>(&123);
+   |                                                                                       +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:507:26
+   |
+LL |         <u32 as Trait3>::bar1::<String, true>(&123);
+   |                          ^^^^   ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:457:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar1::<String, true, M>(&123);
+   |                                             +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:509:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<String, true>(&123);
+   |                                           ^^^^   ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:472:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<String, true, M>(&123);
+   |                                                              +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:511:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<String, true>(&123);
+   |                                            ^^^^   ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:487:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<String, true, M>(&123);
+   |                                                               +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:519:68
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar3::<String, true>(&123);
+   |                                                                    ^^^^   ------  ---- supplied 2 generic arguments
+   |                                                                    |
+   |                                                                    expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:447:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar3::<String, true, M>(&123);
+   |                                                                                       +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:521:26
+   |
+LL |         <u32 as Trait3>::bar3::<String, true>(&123);
+   |                          ^^^^   ------  ---- supplied 2 generic arguments
+   |                          |
+   |                          expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:462:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait3>::bar3::<String, true, M>(&123);
+   |                                             +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:523:43
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<String, true>(&123);
+   |                                           ^^^^   ------  ---- supplied 2 generic arguments
+   |                                           |
+   |                                           expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:477:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<String, true, M>(&123);
+   |                                                              +++
+
+error[E0107]: method takes 3 generic arguments but 2 generic arguments were supplied
+  --> $DIR/trait-to-trait.rs:525:44
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<String, true>(&123);
+   |                                            ^^^^   ------  ---- supplied 2 generic arguments
+   |                                            |
+   |                                            expected 3 generic arguments
+   |
+note: method defined here, with 3 generic parameters: `T`, `U`, `M`
+  --> $DIR/trait-to-trait.rs:492:63
+   |
+LL |     trait Trait<'b, 'c, 'a, T>: Sized {
+   |                             -
+LL |         fn foo<U, const M: bool>(&self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
+   |                                                               ^^^^
+help: add missing generic argument
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<String, true, M>(&123);
+   |                                                               +++
+
+error[E0282]: type annotations needed
+  --> $DIR/trait-to-trait.rs:581:9
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the method `bar1`
+
+error[E0282]: type annotations needed
+  --> $DIR/trait-to-trait.rs:640:9
+   |
+LL |         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the method `bar1`
+
+error[E0282]: type annotations needed
+  --> $DIR/trait-to-trait.rs:765:9
+   |
+LL | /         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
+LL | |
+LL | |             ::bar1::<'static, 'static>(&123);
+   | |______________________________________^ cannot infer type of the type parameter `T` declared on the method `bar1`
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:853:22
+   |
+LL |             ::bar1::<'static, 'static>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:855:33
+   |
+LL |         <u32 as Trait3>::bar1::<'static, 'static>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:857:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'a, 'a>(&123);
+   |                                                  ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:859:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar1::<'a, 'a>(&123);
+   |                                                   ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:868:22
+   |
+LL |             ::bar3::<'static, 'static>(&123);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:870:33
+   |
+LL |         <u32 as Trait3>::bar3::<'static, 'static>(&123);
+   |                                 ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:872:50
+   |
+LL |         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, 'static>(&123);
+   |                                                  ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/trait-to-trait.rs:874:51
+   |
+LL |         <u32 as Trait5<i32, u64, String>>::bar3::<'static, 'static>(&123);
+   |                                                   ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/trait-to-trait.rs:797:32
+   |
+LL |         fn foo<'a: 'a, 'b: 'b>(&self) {}
+   |                                ^
+
+error: aborting due to 99 previous errors
+
+Some errors have detailed explanations: E0107, E0282, E0284, E0794.
+For more information about an error, try `rustc --explain E0107`.

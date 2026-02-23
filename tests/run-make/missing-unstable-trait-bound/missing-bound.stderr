@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `T: Step` is not satisfied
+error[E0277]: `std::ops::Range<T>` is not an iterator
  --> missing-bound.rs:2:14
   |
 2 |     for _ in t {}
-  |              ^ the trait `Step` is not implemented for `T`
+  |              ^ `Range<T>` is not an iterator
   |
+  = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
   = note: required for `std::ops::Range<T>` to implement `Iterator`
   = note: required for `std::ops::Range<T>` to implement `IntoIterator`
 

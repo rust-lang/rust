@@ -9,7 +9,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
 use crate::edition::Edition;
-use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -19,7 +18,7 @@ string_enum! {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocJson => "rustdoc-json",
         CodegenUnits => "codegen-units",
         Incremental => "incremental",
@@ -70,7 +69,7 @@ string_enum! {
         Pretty => "pretty",
         RunMake => "run-make",
         RunMakeCargo => "run-make-cargo",
-        Rustdoc => "rustdoc",
+        RustdocHtml => "rustdoc-html",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
         RustdocJsStd=> "rustdoc-js-std",
@@ -78,6 +77,7 @@ string_enum! {
         RustdocUi => "rustdoc-ui",
         Ui => "ui",
         UiFullDeps => "ui-fulldeps",
+        BuildStd => "build-std",
     }
 }
 
@@ -439,6 +439,11 @@ pub struct Config {
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub with_std_debug_assertions: bool,
 
+    /// Whether *staged* `std` was built with remapping of debuginfo.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
+    pub with_std_remap_debuginfo: bool,
+
     /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
     ///
     /// FIXME(#139660): the current hand-rolled test executor intentionally mimics the `libtest`
@@ -597,11 +602,6 @@ pub struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// Whether to use colors in test output.
-    ///
-    /// Note: the exact control mechanism is delegated to [`colored`].
-    pub color: ColorConfig,
-
     /// Where to find the remote test client process, if we're using it.
     ///
     /// Note: this is *only* used for target platform executables created by `run-make` test
@@ -623,11 +623,11 @@ pub struct Config {
     /// created in `$test_suite_build_root/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// Whether to run `tidy` (html-tidy) when a rustdoc test fails.
-    pub has_html_tidy: bool,
-
     /// Whether to run `enzyme` autodiff tests.
     pub has_enzyme: bool,
+
+    /// Whether to run `offload` autodiff tests.
+    pub has_offload: bool,
 
     /// The current Rust channel info.
     ///
@@ -716,6 +716,11 @@ pub struct Config {
     pub override_codegen_backend: Option<String>,
     /// Whether to ignore `//@ ignore-backends`.
     pub bypass_ignore_backends: bool,
+
+    /// Number of parallel jobs configured for the build.
+    ///
+    /// This is forwarded from bootstrap's `jobs` configuration.
+    pub jobs: u32,
 }
 
 impl Config {
@@ -944,7 +949,9 @@ impl TargetCfgs {
         // actually be changed with `-C` flags.
         for config in query_rustc_output(
             config,
-            &["--print=cfg", "--target", &config.target],
+            // `-Zunstable-options` is necessary when compiletest is running with custom targets
+            // (such as synthetic targets used to bless mir-opt tests).
+            &["-Zunstable-options", "--print=cfg", "--target", &config.target],
             Default::default(),
         )
         .trim()
@@ -1066,9 +1073,25 @@ fn builtin_cfg_names(config: &Config) -> HashSet<String> {
         Default::default(),
     )
     .lines()
-    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .map(|l| extract_cfg_name(&l).unwrap().to_string())
     .chain(std::iter::once(String::from("test")))
     .collect()
+}
+
+/// Extract the cfg name from `cfg(name, values(...))` lines
+fn extract_cfg_name(check_cfg_line: &str) -> Result<&str, &'static str> {
+    let trimmed = check_cfg_line.trim();
+
+    #[rustfmt::skip]
+    let inner = trimmed
+        .strip_prefix("cfg(")
+        .ok_or("missing cfg(")?
+        .strip_suffix(")")
+        .ok_or("missing )")?;
+
+    let first_comma = inner.find(',').ok_or("no comma found")?;
+
+    Ok(inner[..first_comma].trim())
 }
 
 pub const KNOWN_CRATE_TYPES: &[&str] =

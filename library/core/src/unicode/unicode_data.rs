@@ -767,7 +767,8 @@ pub mod conversions {
             LOWERCASE_TABLE
                 .binary_search_by(|&(key, _)| key.cmp(&c))
                 .map(|i| {
-                    let u = LOWERCASE_TABLE[i].1;
+                    // SAFETY: i is the result of the binary search
+                    let u = unsafe { LOWERCASE_TABLE.get_unchecked(i) }.1;
                     char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
                         // SAFETY: Index comes from statically generated table
                         unsafe { *LOWERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
@@ -784,7 +785,8 @@ pub mod conversions {
             UPPERCASE_TABLE
                 .binary_search_by(|&(key, _)| key.cmp(&c))
                 .map(|i| {
-                    let u = UPPERCASE_TABLE[i].1;
+                    // SAFETY: i is the result of the binary search
+                    let u = unsafe { UPPERCASE_TABLE.get_unchecked(i) }.1;
                     char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
                         // SAFETY: Index comes from statically generated table
                         unsafe { *UPPERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }

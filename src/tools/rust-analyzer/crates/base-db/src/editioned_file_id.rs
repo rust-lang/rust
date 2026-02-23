@@ -26,6 +26,9 @@ const _: () = {
         krate: Crate,
     }
 
+    // FIXME: This poses an invalidation problem, if one constructs an `EditionedFileId` with a
+    // different crate then whatever the input of a memo used, it will invalidate the memo causing
+    // it to recompute even if the crate is not really used.
     /// We like to include the origin crate in an `EditionedFileId` (for use in the item tree),
     /// but this poses us a problem.
     ///

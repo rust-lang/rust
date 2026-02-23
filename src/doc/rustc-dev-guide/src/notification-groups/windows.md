@@ -1,6 +1,6 @@
 # Windows notification group
 
-**Github Label:** [O-Windows] <br>
+**GitHub Label:** [O-Windows] <br>
 **Ping command:** `@rustbot ping windows`
 
 [O-Windows]: https://github.com/rust-lang/rust/labels/O-Windows

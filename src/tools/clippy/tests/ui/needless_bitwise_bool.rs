@@ -34,7 +34,9 @@ fn main() {
         println!("true") // This is a const method call
     }
 
+    // Resolved
     if y & (0 < 1) {
+        //~^ needless_bitwise_bool
         println!("true") // This is a BinOp with no side effects
     }
 }

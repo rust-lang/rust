@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -103,7 +103,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    middle_deprecated_suggestion,
+    "replace the use of the deprecated {$kind}",
     code = "{suggestion}",
     style = "verbose",
     applicability = "machine-applicable"
@@ -119,7 +119,6 @@ pub struct DeprecationSuggestion {
 pub struct Deprecated {
     pub sub: Option<DeprecationSuggestion>,
 
-    // FIXME: make this translatable
     pub kind: String,
     pub path: String,
     pub note: Option<Symbol>,
@@ -129,10 +128,25 @@ pub struct Deprecated {
 impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.primary_message(match &self.since_kind {
-            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
-            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
+            DeprecatedSinceKind::InEffect => msg!(
+                "use of deprecated {$kind} `{$path}`{$has_note ->
+                    [true] : {$note}
+                    *[other] {\"\"}
+                }"
+            ),
+            DeprecatedSinceKind::InFuture => msg!(
+                "use of {$kind} `{$path}` that will be deprecated in a future Rust version{$has_note ->
+                    [true] : {$note}
+                    *[other] {\"\"}
+                }"
+            ),
             DeprecatedSinceKind::InVersion(_) => {
-                crate::fluent_generated::middle_deprecated_in_version
+                msg!(
+                    "use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+                        [true] : {$note}
+                        *[other] {\"\"}
+                    }"
+                )
             }
         });
         diag.arg("kind", self.kind);
@@ -185,7 +199,7 @@ pub fn early_report_macro_deprecation(
     let diag = BuiltinLintDiag::DeprecatedMacro {
         suggestion: depr.suggestion,
         suggestion_span: span,
-        note: depr.note,
+        note: depr.note.map(|ident| ident.name),
         path,
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
@@ -228,7 +242,7 @@ fn late_report_deprecation(
         }),
         kind: def_kind.to_owned(),
         path: def_path,
-        note: depr.note,
+        note: depr.note.map(|ident| ident.name),
         since_kind: deprecated_since_kind(is_in_effect, depr.since),
     };
     tcx.emit_node_span_lint(lint, hir_id, method_span, diag);

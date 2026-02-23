@@ -61,7 +61,7 @@ impl<'db> OpaqueTypeStorage<'db> {
 
     pub(crate) fn take_opaque_types(
         &mut self,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
+    ) -> impl IntoIterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> + use<'db> {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries))
     }

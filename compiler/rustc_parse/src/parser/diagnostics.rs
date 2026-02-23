@@ -6,13 +6,13 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind,
+    MgcaDisambiguation, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -31,21 +31,20 @@ use crate::errors::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
-    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
-    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
-    StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
+    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
+    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
+    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
+use crate::exp;
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
 use crate::parser::item::IsDotDotDot;
-use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -213,22 +212,6 @@ impl std::fmt::Display for UnaryFixity {
     }
 }
 
-#[derive(Debug, rustc_macros::Subdiagnostic)]
-#[suggestion(
-    parse_misspelled_kw,
-    applicability = "machine-applicable",
-    code = "{similar_kw}",
-    style = "verbose"
-)]
-struct MisspelledKw {
-    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
-    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
-    similar_kw: String,
-    #[primary_span]
-    span: Span,
-    is_incorrect_case: bool,
-}
-
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
 ///
 /// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
@@ -253,7 +236,7 @@ impl MultiSugg {
     }
 
     fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
+        err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 }
 
@@ -406,7 +389,7 @@ impl<'a> Parser<'a> {
                                 && let Ok(snippet) =
                                     self.psess.source_map().span_to_snippet(generic.span)
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                         format!("place the generic parameter name after the {ident_name} name"),
                                         vec![
                                             (self.token.span.shrink_to_hi(), snippet),
@@ -762,7 +745,9 @@ impl<'a> Parser<'a> {
         }
 
         // Check for misspelled keywords if there are no suggestions added to the diagnostic.
-        if matches!(&err.suggestions, Suggestions::Enabled(list) if list.is_empty()) {
+        if let Suggestions::Enabled(list) = &err.suggestions
+            && list.is_empty()
+        {
             self.check_for_misspelled_kw(&mut err, &expected);
         }
         Err(err)
@@ -1071,7 +1056,7 @@ impl<'a> Parser<'a> {
                 // and recover.
                 self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
 
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![
                         (prev.span.shrink_to_hi(), " {".to_string()),
@@ -1084,7 +1069,7 @@ impl<'a> Parser<'a> {
             _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![(prev.span.shrink_to_hi(), " {".to_string())],
                     Applicability::HasPlaceholders,
@@ -1287,7 +1272,7 @@ impl<'a> Parser<'a> {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            fluent::parse_sugg_turbofish_syntax,
+                            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
                             "::",
                             Applicability::MaybeIncorrect,
                         );
@@ -2263,7 +2248,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseParen)
         {
             // `fn foo(String s) {}`
-            let ident = self.parse_ident().unwrap();
+            let ident = self.parse_ident_common(true).unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
             err.span_suggestion(
@@ -2558,36 +2543,6 @@ impl<'a> Parser<'a> {
         Ok(false) // Don't continue.
     }
 
-    /// Attempt to parse a generic const argument that has not been enclosed in braces.
-    /// There are a limited number of expressions that are permitted without being encoded
-    /// in braces:
-    /// - Literals.
-    /// - Single-segment paths (i.e. standalone generic const parameters).
-    /// All other expressions that can be parsed will emit an error suggesting the expression be
-    /// wrapped in braces.
-    pub(super) fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
-        let start = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-        let (expr, _) =
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
-                err.span_label(
-                    start.shrink_to_lo(),
-                    "while parsing a const generic argument starting here",
-                );
-                err
-            })?;
-        if !self.expr_is_valid_const_arg(&expr) {
-            self.dcx().emit_err(ConstGenericWithoutBraces {
-                span: expr.span,
-                sugg: ConstGenericWithoutBracesSugg {
-                    left: expr.span.shrink_to_lo(),
-                    right: expr.span.shrink_to_hi(),
-                },
-            });
-        }
-        Ok(expr)
-    }
-
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
         let snapshot = self.create_snapshot_for_diagnostic();
         let param = match self.parse_const_param(AttrVec::new()) {
@@ -2623,7 +2578,11 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
 
         let value = self.mk_expr_err(param.span(), guar);
-        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
+        Some(GenericArg::Const(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::Direct,
+        }))
     }
 
     pub(super) fn recover_const_param_declaration(
@@ -2707,7 +2666,11 @@ impl<'a> Parser<'a> {
                     );
                     let guar = err.emit();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
-                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                    return Ok(GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value,
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
+                    }));
                 } else if snapshot.token == token::Colon
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))
@@ -2776,7 +2739,11 @@ impl<'a> Parser<'a> {
         );
         let guar = err.emit();
         let value = self.mk_expr_err(span, guar);
-        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+        GenericArg::Const(AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value,
+            mgca_disambiguation: MgcaDisambiguation::Direct,
+        })
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,
@@ -3056,27 +3023,53 @@ impl<'a> Parser<'a> {
         long_kind: &TokenKind,
         short_kind: &TokenKind,
     ) -> bool {
-        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
-            && self.look_ahead(3, |tok| tok == short_kind)
+        if long_kind == short_kind {
+            // For conflict marker chars like `%` and `\`.
+            (0..7).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+        } else {
+            // For conflict marker chars like `<` and `|`.
+            (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+                && self.look_ahead(3, |tok| tok == short_kind || tok == long_kind)
+        }
     }
 
-    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+    fn conflict_marker(
+        &mut self,
+        long_kind: &TokenKind,
+        short_kind: &TokenKind,
+        expected: Option<usize>,
+    ) -> Option<(Span, usize)> {
         if self.is_vcs_conflict_marker(long_kind, short_kind) {
             let lo = self.token.span;
-            for _ in 0..4 {
-                self.bump();
+            if self.psess.source_map().span_to_margin(lo) != Some(0) {
+                return None;
             }
-            return Some(lo.to(self.prev_token.span));
+            let mut len = 0;
+            while self.token.kind == *long_kind || self.token.kind == *short_kind {
+                if self.token.kind.break_two_token_op(1).is_some() {
+                    len += 2;
+                } else {
+                    len += 1;
+                }
+                self.bump();
+                if expected == Some(len) {
+                    break;
+                }
+            }
+            if expected.is_some() && expected != Some(len) {
+                return None;
+            }
+            return Some((lo.to(self.prev_token.span), len));
         }
         None
     }
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
+        let Some((start, len)) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt, None) else {
             return;
         };
-        let mut spans = Vec::with_capacity(3);
+        let mut spans = Vec::with_capacity(2);
         spans.push(start);
         // |||||||
         let mut middlediff3 = None;
@@ -3088,13 +3081,19 @@ impl<'a> Parser<'a> {
             if self.token == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or, Some(len))
+            {
                 middlediff3 = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq, Some(len))
+            {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt, Some(len))
+            {
                 spans.push(span);
                 end = Some(span);
                 break;
@@ -3103,22 +3102,24 @@ impl<'a> Parser<'a> {
         }
 
         let mut err = self.dcx().struct_span_fatal(spans, "encountered diff marker");
-        match middlediff3 {
+        let middle_marker = match middlediff3 {
             // We're using diff3
             Some(middlediff3) => {
                 err.span_label(
-                    start,
-                    "between this marker and `|||||||` is the code that we're merging into",
+                    middlediff3,
+                    "between this marker and `=======` is the base code (what the two refs \
+                     diverged from)",
                 );
-                err.span_label(middlediff3, "between this marker and `=======` is the base code (what the two refs diverged from)");
+                "|||||||"
             }
-            None => {
-                err.span_label(
-                    start,
-                    "between this marker and `=======` is the code that we're merging into",
-                );
-            }
+            None => "=======",
         };
+        err.span_label(
+            start,
+            format!(
+                "between this marker and `{middle_marker}` is the code that you are merging into",
+            ),
+        );
 
         if let Some(middle) = middle {
             err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
@@ -3133,16 +3134,15 @@ impl<'a> Parser<'a> {
              containing conflict markers",
         );
         err.help(
-            "if you're having merge conflicts after pulling new code:\n\
-             the top section is the code you already had and the bottom section is the remote code\n\
-             if you're in the middle of a rebase:\n\
-             the top section is the code being rebased onto and the bottom section is the code \
-             coming from the current commit being rebased",
+            "if you are in a merge, the top section is the code you already had checked out and \
+             the bottom section is the new code\n\
+             if you are in a rebase, the top section is the code being rebased onto and the bottom \
+             section is the code you had checked out which is being rebased",
         );
 
         err.note(
-            "for an explanation on these markers from the `git` documentation:\n\
-             visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
+            "for an explanation on these markers from the `git` documentation, visit \
+             <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
 
         err.emit();

@@ -3,12 +3,11 @@ use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macr
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks};
+use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
@@ -26,12 +25,10 @@ pub(super) fn check<'tcx>(
     let arg_root = get_arg_root(cx, arg);
     if contains_call(cx, arg_root) && !contains_return(arg_root) {
         let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
-        let closure_args = if receiver_type.is_diag_item(cx, sym::Option) {
-            "||"
-        } else if receiver_type.is_diag_item(cx, sym::Result) {
-            "|_|"
-        } else {
-            return;
+        let closure_args = match receiver_type.opt_diag_name(cx) {
+            Some(sym::Option) => "||",
+            Some(sym::Result) => "|_|",
+            _ => return,
         };
 
         let span_replace_word = method_span.with_hi(expr.span.hi());

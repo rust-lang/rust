@@ -4,9 +4,9 @@ error[E0492]: interior mutable shared borrows of temporaries that have their lif
 LL | static RAW_SYNC_S: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
    |                                                      ^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/refs-to-cell-in-final.rs:15:53
@@ -14,9 +14,9 @@ error[E0492]: interior mutable shared borrows of temporaries that have their lif
 LL | const RAW_SYNC_C: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
    |                                                     ^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/refs-to-cell-in-final.rs:41:57
@@ -31,9 +31,9 @@ LL | |     x
 LL | | };
    | |_^ this borrow of an interior mutable value refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 3 previous errors
 

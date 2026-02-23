@@ -1,9 +1,9 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
-#![feature(allocator_api)]
+#![feature(allocator_api, unsafe_unpin)]
 
-use std::marker::PhantomPinned;
+use std::marker::{PhantomPinned, UnsafeUnpin};
 use std::mem::MaybeUninit;
 use std::num::NonZero;
 use std::ptr::NonNull;
@@ -85,7 +85,7 @@ pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {}
 
-// CHECK: noundef align 4 dereferenceable(4) ptr @readonly_borrow_ret()
+// CHECK: noundef nonnull align 4 ptr @readonly_borrow_ret()
 #[no_mangle]
 pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
@@ -116,7 +116,7 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {}
 
-// CHECK: noundef align 4 dereferenceable(4) ptr @mutable_borrow_ret()
+// CHECK: noundef nonnull align 4 ptr @mutable_borrow_ret()
 #[no_mangle]
 pub fn mutable_borrow_ret() -> &'static mut i32 {
     loop {}
@@ -134,7 +134,7 @@ pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 #[no_mangle]
 pub fn notunpin_borrow(_: &NotUnpin) {}
 
-// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(none\))?}} dereferenceable(32) %_1)
+// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(none\))?}}{{( dead_on_return)?}} dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {}
 
@@ -259,11 +259,21 @@ pub fn trait_raw(_: *const dyn Drop) {}
 
 // CHECK: @trait_box(ptr noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<dyn Drop + Unpin>) {}
+pub fn trait_box(_: Box<dyn Drop + Unpin + UnsafeUnpin>) {}
+
+// Ensure that removing *either* `Unpin` or `UnsafeUnpin` is enough to lose the attribute.
+// CHECK: @trait_box_pin1(ptr noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
+#[no_mangle]
+pub fn trait_box_pin1(_: Box<dyn Drop + Unpin>) {}
+// CHECK: @trait_box_pin2(ptr noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
+#[no_mangle]
+pub fn trait_box_pin2(_: Box<dyn Drop + UnsafeUnpin>) {}
 
 // CHECK: { ptr, ptr } @trait_option(ptr noalias noundef align 1 %x.0, ptr %x.1)
 #[no_mangle]
-pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + Unpin>> {
+pub fn trait_option(
+    x: Option<Box<dyn Drop + Unpin + UnsafeUnpin>>,
+) -> Option<Box<dyn Drop + Unpin + UnsafeUnpin>> {
     x
 }
 

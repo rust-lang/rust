@@ -1,0 +1,14 @@
+warning: `try` blocks are unstable
+  --> $DIR/try-block-homogeneous-pre-expansion.rs:9:5
+   |
+LL |     try {}
+   |     ^^^^^^
+   |
+   = note: see issue #31436 <https://github.com/rust-lang/rust/issues/31436> for more information
+   = help: add `#![feature(try_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: 1 warning emitted
+

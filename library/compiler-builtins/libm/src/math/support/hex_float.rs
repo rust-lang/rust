@@ -121,7 +121,7 @@ const fn parse_finite(
         Ok(Parsed { sig, exp }) => (sig, exp),
     };
 
-    let mut round_bits = u128_ilog2(sig) as i32 - sig_bits as i32;
+    let mut round_bits = sig.ilog2() as i32 - sig_bits as i32;
 
     // Round at least up to min_lsb
     if exp < min_lsb - round_bits {
@@ -299,29 +299,11 @@ const fn parse_hex(mut b: &[u8]) -> Result<Parsed, HexFloatParseError> {
         ));
     };
 
-    {
-        let e;
-        if negate_exp {
-            e = (exp as i64) - (pexp as i64);
-        } else {
-            e = (exp as i64) + (pexp as i64);
-        };
-
-        exp = if e < i32::MIN as i64 {
-            i32::MIN
-        } else if e > i32::MAX as i64 {
-            i32::MAX
-        } else {
-            e as i32
-        };
-    }
-    /* FIXME(msrv): once MSRV >= 1.66, replace the above workaround block with:
     if negate_exp {
         exp = exp.saturating_sub_unsigned(pexp);
     } else {
         exp = exp.saturating_add_unsigned(pexp);
     };
-    */
 
     Ok(Parsed { sig, exp })
 }
@@ -340,14 +322,6 @@ const fn hex_digit(c: u8) -> Option<u8> {
         b'A'..=b'F' => Some(c - b'A' + 10),
         _ => None,
     }
-}
-
-/* FIXME(msrv): vendor some things that are not const stable at our MSRV */
-
-/// `u128::ilog2`
-const fn u128_ilog2(v: u128) -> u32 {
-    assert!(v != 0);
-    u128::BITS - 1 - v.leading_zeros()
 }
 
 #[cfg(any(test, feature = "unstable-public-internals"))]

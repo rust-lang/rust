@@ -1,5 +1,5 @@
 //@ proc-macro: multispan.rs
-//@ compile-flags: --error-format human-annotate-rs -Z unstable-options
+//@ compile-flags: --error-format human
 
 #![feature(proc_macro_hygiene)]
 

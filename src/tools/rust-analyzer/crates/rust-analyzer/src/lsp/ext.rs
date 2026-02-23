@@ -864,3 +864,18 @@ pub struct CompletionImport {
 pub struct ClientCommandOptions {
     pub commands: Vec<String>,
 }
+
+pub enum GetFailedObligations {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetFailedObligationsParams {
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position,
+}
+
+impl Request for GetFailedObligations {
+    type Params = GetFailedObligationsParams;
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/getFailedObligations";
+}

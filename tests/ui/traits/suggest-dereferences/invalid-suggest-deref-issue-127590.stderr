@@ -24,7 +24,11 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
 help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
   --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+  ::: $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -55,7 +59,11 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone(
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
 help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
   --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+  ::: $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -68,7 +76,11 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
 help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
   --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+  ::: $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -80,7 +92,11 @@ LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone(
    |
    = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
 help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter/macros.rs:LL:COL
   --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+  ::: $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 

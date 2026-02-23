@@ -2,6 +2,10 @@
 
 // It's useful to refer to code that is private in doc comments.
 #![allow(rustdoc::private_intra_doc_links)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
 
 mod completions;
 mod config;
@@ -258,6 +262,9 @@ pub fn completions(
                     attr,
                     extern_crate.as_ref(),
                 );
+            }
+            CompletionAnalysis::MacroSegment => {
+                completions::macro_def::complete_macro_segment(acc, ctx);
             }
             CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),
         }

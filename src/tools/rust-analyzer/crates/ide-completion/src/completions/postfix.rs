@@ -8,16 +8,18 @@ use ide_db::{
     RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
+    syntax_helpers::suggest_name::NameGenerator,
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
 use itertools::Itertools;
 use stdx::never;
 use syntax::{
+    SmolStr,
     SyntaxKind::{EXPR_STMT, STMT_LIST},
     T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
-    match_ast,
+    format_smolstr, match_ast,
 };
 
 use crate::{
@@ -117,15 +119,20 @@ pub(crate) fn complete_postfix(
         if let Some(parent_expr) = ast::Expr::cast(parent) {
             is_in_cond = is_in_condition(&parent_expr);
         }
+        let placeholder = suggest_receiver_name(dot_receiver, "0", &ctx.sema);
         match &try_enum {
             Some(try_enum) if is_in_cond => match try_enum {
                 TryEnum::Result => {
-                    postfix_snippet("let", "let Ok(_)", &format!("let Ok($0) = {receiver_text}"))
-                        .add_to(acc, ctx.db);
+                    postfix_snippet(
+                        "let",
+                        "let Ok(_)",
+                        &format!("let Ok({placeholder}) = {receiver_text}"),
+                    )
+                    .add_to(acc, ctx.db);
                     postfix_snippet(
                         "letm",
                         "let Ok(mut _)",
-                        &format!("let Ok(mut $0) = {receiver_text}"),
+                        &format!("let Ok(mut {placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -133,17 +140,21 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "let",
                         "let Some(_)",
-                        &format!("let Some($0) = {receiver_text}"),
+                        &format!("let Some({placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                     postfix_snippet(
                         "letm",
                         "let Some(mut _)",
-                        &format!("let Some(mut $0) = {receiver_text}"),
+                        &format!("let Some(mut {placeholder}) = {receiver_text}"),
                     )
                     .add_to(acc, ctx.db);
                 }
             },
+            _ if is_in_cond => {
+                postfix_snippet("let", "let", &format!("let $1 = {receiver_text}"))
+                    .add_to(acc, ctx.db);
+            }
             _ if matches!(second_ancestor.kind(), STMT_LIST | EXPR_STMT) => {
                 postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
                     .add_to(acc, ctx.db);
@@ -186,26 +197,29 @@ pub(crate) fn complete_postfix(
             }
         }
         if let Some(try_enum) = &try_enum {
+            let placeholder = suggest_receiver_name(dot_receiver, "1", &ctx.sema);
             match try_enum {
                 TryEnum::Result => {
                     postfix_snippet(
                         "ifl",
                         "if let Ok {}",
-                        &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("if let Ok({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "lete",
                         "let Ok else {}",
-                        &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                        &format!(
+                            "let Ok({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"
+                        ),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "while",
                         "while let Ok {}",
-                        &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("while let Ok({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -213,21 +227,23 @@ pub(crate) fn complete_postfix(
                     postfix_snippet(
                         "ifl",
                         "if let Some {}",
-                        &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("if let Some({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "lete",
                         "let Some else {}",
-                        &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                        &format!(
+                            "let Some({placeholder}) = {receiver_text} else {{\n    $2\n}};\n$0"
+                        ),
                     )
                     .add_to(acc, ctx.db);
 
                     postfix_snippet(
                         "while",
                         "while let Some {}",
-                        &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                        &format!("while let Some({placeholder}) = {receiver_text} {{\n    $0\n}}"),
                     )
                     .add_to(acc, ctx.db);
                 }
@@ -241,7 +257,6 @@ pub(crate) fn complete_postfix(
                 &format!("while {receiver_text} {{\n    $0\n}}"),
             )
             .add_to(acc, ctx.db);
-            postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
         } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator()
             && receiver_ty.impls_trait(ctx.db, trait_, &[])
         {
@@ -252,6 +267,10 @@ pub(crate) fn complete_postfix(
             )
             .add_to(acc, ctx.db);
         }
+    }
+
+    if receiver_ty.is_bool() || receiver_ty.is_unknown() {
+        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
     }
 
     let block_should_be_wrapped = if let ast::Expr::BlockExpr(block) = dot_receiver {
@@ -299,6 +318,34 @@ pub(crate) fn complete_postfix(
             ),
         )
         .add_to(acc, ctx.db);
+    }
+}
+
+fn suggest_receiver_name(
+    receiver: &ast::Expr,
+    n: &str,
+    sema: &Semantics<'_, RootDatabase>,
+) -> SmolStr {
+    let placeholder = |name| format_smolstr!("${{{n}:{name}}}");
+
+    match receiver {
+        ast::Expr::PathExpr(path) => {
+            if let Some(name) = path.path().and_then(|it| it.as_single_name_ref()) {
+                return placeholder(name.text().as_str());
+            }
+        }
+        ast::Expr::RefExpr(it) => {
+            if let Some(receiver) = it.expr() {
+                return suggest_receiver_name(&receiver, n, sema);
+            }
+        }
+        _ => {}
+    }
+
+    let name = NameGenerator::new_with_names([].into_iter()).try_for_variable(receiver, sema);
+    match name {
+        Some(name) => placeholder(&name),
+        None => format_smolstr!("${n}"),
     }
 }
 
@@ -546,6 +593,31 @@ fn main() {
     }
 
     #[test]
+    fn postfix_completion_works_in_if_condition() {
+        check(
+            r#"
+fn foo(cond: bool) {
+    if cond.$0
+}
+"#,
+            expect![[r#"
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn const      const {}
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn let             let
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+            "#]],
+        );
+    }
+
+    #[test]
     fn postfix_type_filtering() {
         check(
             r#"
@@ -616,7 +688,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if let Some($1) = bar {
+    if let Some(${1:bar}) = bar {
     $0
 }
 }
@@ -666,7 +738,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if let Some($0) = bar
+    if let Some(${0:bar}) = bar
 }
 "#,
         );
@@ -682,7 +754,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if true && let Some($0) = bar
+    if true && let Some(${0:bar}) = bar
 }
 "#,
         );
@@ -698,7 +770,26 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    if true && true && let Some($0) = bar
+    if true && true && let Some(${0:bar}) = bar
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn iflet_fallback_cond() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    let bar = 2;
+    if bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = 2;
+    if let $1 = bar
 }
 "#,
         );
@@ -718,7 +809,7 @@ fn main() {
             r#"
 fn main() {
     let bar = Some(true);
-    let Some($1) = bar else {
+    let Some(${1:bar}) = bar else {
     $2
 };
 $0
@@ -792,7 +883,7 @@ fn main() {
             r#"
 fn main() {
     let bar = &Some(true);
-    if let Some($1) = bar {
+    if let Some(${1:bar}) = bar {
     $0
 }
 }

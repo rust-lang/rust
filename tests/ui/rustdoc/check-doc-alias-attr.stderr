@@ -4,11 +4,13 @@ error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of s
 LL | #[doc(alias)]
    |       ^^^^^
 
-error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
-  --> $DIR/check-doc-alias-attr.rs:8:7
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/check-doc-alias-attr.rs:8:1
    |
 LL | #[doc(alias = 0)]
-   |       ^^^^^^^^^
+   | ^^^^^^^^^^^^^^-^^
+   |               |
+   |               expected a string literal here
 
 error: '"' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:9:15
@@ -54,25 +56,27 @@ error: `#[doc(alias = "...")]` attribute cannot have empty value
 LL | #[doc(alias = "")]
    |               ^^
 
-error: `#[doc(alias("a"))]` expects string literals
-  --> $DIR/check-doc-alias-attr.rs:19:13
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/check-doc-alias-attr.rs:19:1
    |
 LL | #[doc(alias(0))]
-   |             ^
+   | ^^^^^^^^^^^^-^^^
+   |             |
+   |             expected a string literal here
 
-error: '"' character isn't allowed in `#[doc(alias("..."))]`
+error: '"' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:20:13
    |
 LL | #[doc(alias("\""))]
    |             ^^^^
 
-error: '\n' character isn't allowed in `#[doc(alias("..."))]`
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:21:13
    |
 LL | #[doc(alias("\n"))]
    |             ^^^^
 
-error: '\n' character isn't allowed in `#[doc(alias("..."))]`
+error: '\n' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:22:13
    |
 LL |   #[doc(alias("
@@ -80,25 +84,25 @@ LL |   #[doc(alias("
 LL | | "))]
    | |_^
 
-error: '\t' character isn't allowed in `#[doc(alias("..."))]`
+error: '\t' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:24:13
    |
 LL | #[doc(alias("\t"))]
    |             ^^^^
 
-error: `#[doc(alias("..."))]` cannot start or end with ' '
+error: `#[doc(alias = "...")]` cannot start or end with ' '
   --> $DIR/check-doc-alias-attr.rs:25:13
    |
 LL | #[doc(alias(" hello"))]
    |             ^^^^^^^^
 
-error: `#[doc(alias("..."))]` cannot start or end with ' '
+error: `#[doc(alias = "...")]` cannot start or end with ' '
   --> $DIR/check-doc-alias-attr.rs:26:13
    |
 LL | #[doc(alias("hello "))]
    |             ^^^^^^^^
 
-error: `#[doc(alias("..."))]` attribute cannot have empty value
+error: `#[doc(alias = "...")]` attribute cannot have empty value
   --> $DIR/check-doc-alias-attr.rs:27:13
    |
 LL | #[doc(alias(""))]
@@ -106,3 +110,4 @@ LL | #[doc(alias(""))]
 
 error: aborting due to 17 previous errors
 
+For more information about this error, try `rustc --explain E0539`.

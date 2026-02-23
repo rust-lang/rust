@@ -5,7 +5,7 @@
 //! The reference is [Intel 64 and IA-32 Architectures Software Developer's
 //! Manual Volume 2: Instruction Set Reference, A-Z][intel64_ref].
 //!
-//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
 use crate::core_arch::x86::__m128i;
 
@@ -112,7 +112,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aesdec_si128() {
+    fn test_mm_aesdec_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664949.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let k = _mm_set_epi64x(0x1133557799bbddff, 0x0022446688aaccee);
@@ -122,7 +122,7 @@ mod tests {
     }
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aesdeclast_si128() {
+    fn test_mm_aesdeclast_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714178.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let k = _mm_set_epi64x(0x1133557799bbddff, 0x0022446688aaccee);
@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aesenc_si128() {
+    fn test_mm_aesenc_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664810.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let k = _mm_set_epi64x(0x1133557799bbddff, 0x0022446688aaccee);
@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aesenclast_si128() {
+    fn test_mm_aesenclast_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714136.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let k = _mm_set_epi64x(0x1133557799bbddff, 0x0022446688aaccee);
@@ -152,7 +152,7 @@ mod tests {
     }
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aesimc_si128() {
+    fn test_mm_aesimc_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714195.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let e = _mm_set_epi64x(0xc66c82284ee40aa0, 0x6633441122770055);
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[simd_test(enable = "aes")]
-    unsafe fn test_mm_aeskeygenassist_si128() {
+    fn test_mm_aeskeygenassist_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714138.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let e = _mm_set_epi64x(0x857c266b7c266e85, 0xeac4eea9c4eeacea);

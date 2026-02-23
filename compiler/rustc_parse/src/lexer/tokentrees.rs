@@ -117,7 +117,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             candidate = Some(*delimiter_span);
                         }
                     }
-                    let (_, _) = self.diag_info.open_delimiters.pop().unwrap();
+                    self.diag_info.open_delimiters.pop().unwrap();
                     self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         found_delim: Some(close_delim),
                         found_span: self.token.span,

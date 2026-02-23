@@ -7,9 +7,9 @@
 extern crate test_macros;
 
 #[derive(Empty)]
-#[cfg_attr(all(), empty_helper)]
+#[cfg_attr(true, empty_helper)]
 struct S {
-    #[cfg_attr(all(), empty_helper)]
+    #[cfg_attr(true, empty_helper)]
     field: u8,
 }
 

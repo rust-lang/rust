@@ -20,7 +20,7 @@ focused on the Component Model-based definition of WASI. At this point the
 `wasm32-wasip1` Rust target is intended for historical compatibility with
 [WASIp1] set of syscalls.
 
-[WASIp1]: https://github.com/WebAssembly/WASI/tree/main/legacy/preview1
+[WASIp1]: https://github.com/WebAssembly/WASI/tree/wasi-0.1/preview1
 [Component Model]: https://github.com/webassembly/component-model
 
 Today the `wasm32-wasip1` target will generate core WebAssembly modules

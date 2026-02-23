@@ -784,7 +784,7 @@ macro_rules! foo {
 
 pub use core::clone::Clone;
 "#,
-        |map| assert_eq!(map.modules[map.root].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 
@@ -806,7 +806,7 @@ pub macro Copy {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
-        |map| assert_eq!(map.modules[map.root].scope.impls().len(), 2),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 2),
     );
 }
 
@@ -849,7 +849,7 @@ pub macro derive($item:item) {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 "#,
-        |map| assert_eq!(map.modules[map.root].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 
@@ -1068,10 +1068,8 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
             - AnotherTrait : macro#
             - DummyTrait : macro#
             - TokenStream : type value
-            - attribute_macro : value macro#
-            - derive_macro : value
-            - derive_macro_2 : value
-            - function_like_macro : value macro!
+            - attribute_macro : macro#
+            - function_like_macro : macro!
         "#]],
     );
 }
@@ -1609,7 +1607,7 @@ macro_rules! derive { () => {} }
 #[derive(Clone)]
 struct S;
     "#,
-        |map| assert_eq!(map.modules[map.root].scope.impls().len(), 1),
+        |map| assert_eq!(map.modules[map.root].scope.builtin_derive_impls().len(), 1),
     );
 }
 

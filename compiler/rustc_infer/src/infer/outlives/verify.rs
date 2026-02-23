@@ -1,5 +1,4 @@
-use std::assert_matches::assert_matches;
-
+use rustc_data_structures::assert_matches;
 use rustc_middle::ty::outlives::{Component, compute_alias_components_recursive};
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
 use smallvec::smallvec;

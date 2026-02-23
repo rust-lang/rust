@@ -9,6 +9,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::core_arch::powerpc::*;
+use crate::core_arch::simd::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -34,6 +35,22 @@ types! {
     // pub struct vector_unsigned___int128 = i128x1;
 }
 
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+impl From<m64x2> for vector_bool_long {
+    #[inline]
+    fn from(value: m64x2) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+impl From<vector_bool_long> for m64x2 {
+    #[inline]
+    fn from(value: vector_bool_long) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
 #[allow(improper_ctypes)]
 unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vperm"]
@@ -46,7 +63,6 @@ unsafe extern "C" {
 
 mod sealed {
     use super::*;
-    use crate::core_arch::simd::*;
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPermDI {
@@ -221,14 +237,16 @@ mod tests {
     macro_rules! test_vec_xxpermdi {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vsx")]
-            unsafe fn $name() {
-                let a: $longtype = transmute($shorttype::new($($a),+, $($b),+));
-                let b = transmute($shorttype::new($($c),+, $($d),+));
+            fn $name() {
+                let a = $longtype::from($shorttype::new($($a),+, $($b),+));
+                let b = $longtype::from($shorttype::new($($c),+, $($d),+));
 
-                assert_eq!($shorttype::new($($a),+, $($c),+), transmute(vec_xxpermdi::<_, 0>(a, b)));
-                assert_eq!($shorttype::new($($b),+, $($c),+), transmute(vec_xxpermdi::<_, 1>(a, b)));
-                assert_eq!($shorttype::new($($a),+, $($d),+), transmute(vec_xxpermdi::<_, 2>(a, b)));
-                assert_eq!($shorttype::new($($b),+, $($d),+), transmute(vec_xxpermdi::<_, 3>(a, b)));
+                unsafe {
+                    assert_eq!($shorttype::new($($a),+, $($c),+), $shorttype::from(vec_xxpermdi::<_, 0>(a, b)));
+                    assert_eq!($shorttype::new($($b),+, $($c),+), $shorttype::from(vec_xxpermdi::<_, 1>(a, b)));
+                    assert_eq!($shorttype::new($($a),+, $($d),+), $shorttype::from(vec_xxpermdi::<_, 2>(a, b)));
+                    assert_eq!($shorttype::new($($b),+, $($d),+), $shorttype::from(vec_xxpermdi::<_, 3>(a, b)));
+                }
             }
         }
     }

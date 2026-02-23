@@ -748,6 +748,10 @@ pub enum BuiltinLintDiag {
     },
     UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
+    UnreachableCfg {
+        span: Span,
+        wildcard_span: Option<Span>,
+    },
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -785,6 +789,51 @@ pub enum AttributeLintKind {
     },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
+    DuplicateDocAlias {
+        first_definition: Span,
+    },
+    DocAutoCfgExpectsHideOrShow,
+    DocAutoCfgHideShowUnexpectedItem {
+        attr_name: Symbol,
+    },
+    DocAutoCfgHideShowExpectsList {
+        attr_name: Symbol,
+    },
+    DocInvalid,
+    AmbiguousDeriveHelpers,
+    DocUnknownInclude {
+        span: Span,
+        inner: &'static str,
+        value: Symbol,
+    },
+    DocUnknownSpotlight {
+        span: Span,
+    },
+    DocUnknownPasses {
+        name: Symbol,
+        span: Span,
+    },
+    DocUnknownPlugins {
+        span: Span,
+    },
+    DocUnknownAny {
+        name: Symbol,
+    },
+    DocAutoCfgWrongLiteral,
+    DocTestTakesList,
+    DocTestUnknown {
+        name: Symbol,
+    },
+    DocTestLiteral,
+    AttrCrateLevelOnly,
+    DoNotRecommendDoesNotExpectArgs,
+    CrateTypeUnknown {
+        span: Span,
+        suggested: Option<Symbol>,
+    },
+    MalformedDoc,
+    ExpectedNoArgs,
+    ExpectedNameValue,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

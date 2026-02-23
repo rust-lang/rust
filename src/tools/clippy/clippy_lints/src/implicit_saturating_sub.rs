@@ -1,9 +1,13 @@
+use std::borrow::Cow;
+
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::{
-    SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt, sym,
+    SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, is_integer_literal_untyped,
+    peel_blocks, peel_blocks_with_stmt, sym,
 };
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
@@ -238,10 +242,21 @@ fn check_subtraction(
         if eq_expr_value(cx, left, big_expr) && eq_expr_value(cx, right, little_expr) {
             // This part of the condition is voluntarily split from the one before to ensure that
             // if `snippet_opt` fails, it won't try the next conditions.
-            if (!is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST))
-                && let Some(big_expr_sugg) = Sugg::hir_opt(cx, big_expr).map(Sugg::maybe_paren)
-                && let Some(little_expr_sugg) = Sugg::hir_opt(cx, little_expr)
-            {
+            if !is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST) {
+                let mut applicability = Applicability::MachineApplicable;
+                let big_expr_sugg = (if is_integer_literal_untyped(big_expr) {
+                    let get_snippet = |span: Span| {
+                        let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
+                        let big_expr_ty = cx.typeck_results().expr_ty(big_expr);
+                        Cow::Owned(format!("{snippet}_{big_expr_ty}"))
+                    };
+                    Sugg::hir_from_snippet(cx, big_expr, get_snippet)
+                } else {
+                    Sugg::hir_with_applicability(cx, big_expr, "..", &mut applicability)
+                })
+                .maybe_paren();
+                let little_expr_sugg = Sugg::hir_with_applicability(cx, little_expr, "..", &mut applicability);
+
                 let sugg = format!(
                     "{}{big_expr_sugg}.saturating_sub({little_expr_sugg}){}",
                     if is_composited { "{ " } else { "" },
@@ -254,7 +269,7 @@ fn check_subtraction(
                     "manual arithmetic check found",
                     "replace it with",
                     sugg,
-                    Applicability::MachineApplicable,
+                    applicability,
                 );
             }
         } else if eq_expr_value(cx, left, little_expr)

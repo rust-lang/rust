@@ -17,7 +17,7 @@ use clap::Parser;
 use jobs::JobDatabase;
 use serde_yaml::Value;
 
-use crate::analysis::{output_largest_duration_changes, output_test_diffs};
+use crate::analysis::{output_largest_job_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::github::JobInfoResolver;
@@ -41,12 +41,12 @@ impl GitHubContext {
         match (self.event_name.as_str(), self.branch_ref.as_str()) {
             ("pull_request", _) => Some(RunType::PullRequest),
             ("push", "refs/heads/try-perf") => Some(RunType::TryJob { job_patterns: None }),
-            ("push", "refs/heads/try" | "refs/heads/automation/bors/try") => {
+            ("push", "refs/heads/automation/bors/try") => {
                 let patterns = self.get_try_job_patterns();
                 let patterns = if !patterns.is_empty() { Some(patterns) } else { None };
                 Some(RunType::TryJob { job_patterns: patterns })
             }
-            ("push", "refs/heads/auto") => Some(RunType::AutoJob),
+            ("push", "refs/heads/automation/bors/auto") => Some(RunType::AutoJob),
             ("push", "refs/heads/main") => Some(RunType::MainJob),
             _ => None,
         }
@@ -205,7 +205,7 @@ And then open `test-dashboard/index.html` in your browser to see an overview of 
         );
     });
 
-    output_largest_duration_changes(&metrics, &mut job_info_resolver);
+    output_largest_job_duration_changes(&metrics, &mut job_info_resolver);
 
     Ok(())
 }

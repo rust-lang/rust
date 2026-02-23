@@ -10,7 +10,7 @@ This is invoked automatically when building mdbook-style documentation, for exam
 
 ## Cargo workspace
 
-This package defines a separate cargo workspace from the main Rust workspace for a few reasons (ref [#127786](https://github.com/rust-lang/rust/pull/127786):
+This package defines a separate cargo workspace from the main Rust workspace for a few reasons (ref [#127786](https://github.com/rust-lang/rust/pull/127786)):
 
 - Avoids requiring checking out submodules for developers who are not working on the documentation. Otherwise, some submodules such as those that have custom preprocessors would be required for cargo to find the dependencies.
 - Avoids problems with updating dependencies. Unfortunately this workspace has a rather large set of dependencies, which can make coordinating updates difficult (see [#127890](https://github.com/rust-lang/rust/issues/127890)).

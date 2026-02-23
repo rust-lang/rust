@@ -1,39 +1,15 @@
 //! Applies changes to the IDE state transactionally.
 
-use base_db::SourceRootId;
 use profile::Bytes;
-use rustc_hash::FxHashSet;
-use salsa::{Database as _, Durability, Setter as _};
+use salsa::Database as _;
 
-use crate::{
-    ChangeWithProcMacros, RootDatabase,
-    symbol_index::{LibraryRoots, LocalRoots},
-};
+use crate::{ChangeWithProcMacros, RootDatabase};
 
 impl RootDatabase {
-    pub fn request_cancellation(&mut self) {
-        let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
-        self.synthetic_write(Durability::LOW);
-    }
-
     pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
-        self.request_cancellation();
+        self.trigger_cancellation();
         tracing::trace!("apply_change {:?}", change);
-        if let Some(roots) = &change.source_change.roots {
-            let mut local_roots = FxHashSet::default();
-            let mut library_roots = FxHashSet::default();
-            for (idx, root) in roots.iter().enumerate() {
-                let root_id = SourceRootId(idx as u32);
-                if root.is_library {
-                    library_roots.insert(root_id);
-                } else {
-                    local_roots.insert(root_id);
-                }
-            }
-            LocalRoots::get(self).set_roots(self).to(local_roots);
-            LibraryRoots::get(self).set_roots(self).to(library_roots);
-        }
         change.apply(self);
     }
 

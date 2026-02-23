@@ -9,7 +9,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
 use rustc_expand::configure;
 use rustc_feature::Features;
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
 use rustc_session::Session;
 use rustc_span::{Span, sym};
 use smallvec::SmallVec;
@@ -47,10 +47,7 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
     impl<'ast> visit::Visitor<'ast> for CfgFinder {
         type Result = ControlFlow<()>;
         fn visit_attribute(&mut self, attr: &'ast Attribute) -> ControlFlow<()> {
-            if attr
-                .ident()
-                .is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
-            {
+            if attr.name().is_some_and(|name| name == sym::cfg || name == sym::cfg_attr) {
                 ControlFlow::Break(())
             } else {
                 ControlFlow::Continue(())
@@ -113,7 +110,8 @@ impl CfgEval<'_> {
         let res: PResult<'_, Annotatable> = try {
             match annotatable {
                 Annotatable::Item(_) => {
-                    let item = parser.parse_item(ForceCollect::Yes)?.unwrap();
+                    let item =
+                        parser.parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?.unwrap();
                     Annotatable::Item(self.flat_map_item(item).pop().unwrap())
                 }
                 Annotatable::AssocItem(_, ctxt) => {

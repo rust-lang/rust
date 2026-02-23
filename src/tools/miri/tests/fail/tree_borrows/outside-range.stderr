@@ -19,13 +19,11 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
    |
 LL | unsafe fn stuff(x: &mut u8, y: *mut u8) {
    |                 ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `stuff` at tests/fail/tree_borrows/outside-range.rs:LL:CC
-note: inside `main`
-  --> tests/fail/tree_borrows/outside-range.rs:LL:CC
-   |
-LL |         stuff(&mut *raw, raw);
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: stuff
+               at tests/fail/tree_borrows/outside-range.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/outside-range.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

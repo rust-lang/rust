@@ -6,17 +6,19 @@ LL |             AllocInit::Uninitialized => alloc.allocate(layout),
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ resource exhaustion occurred here
    |
    = help: in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused
-   = note: BACKTRACE:
-   = note: inside `alloc::raw_vec::RawVecInner::try_allocate_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `alloc::raw_vec::RawVecInner::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `alloc::raw_vec::RawVec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-   = note: inside `std::vec::Vec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
-   = note: inside `std::vec::Vec::<u8>::with_capacity` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
-note: inside `miri_start`
-  --> tests/genmc/fail/simple/alloc_large.rs:LL:CC
-   |
-LL |             let _v = Vec::<u8>::with_capacity(1024 * 1024 * 1024);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: alloc::raw_vec::RawVecInner::try_allocate_in
+               at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+           1: alloc::raw_vec::RawVecInner::with_capacity_in
+               at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+           2: alloc::raw_vec::RawVec::with_capacity_in
+               at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+           3: std::vec::Vec::with_capacity_in
+               at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+           4: std::vec::Vec::with_capacity
+               at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+           5: miri_start
+               at tests/genmc/fail/simple/alloc_large.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

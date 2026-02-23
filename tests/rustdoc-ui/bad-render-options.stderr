@@ -1,58 +1,79 @@
-error: `doc(html_favicon_url)` expects a string value
-  --> $DIR/bad-render-options.rs:3:8
+error: expected this to be of the form `... = "..."`
+  --> $DIR/bad-render-options.rs:4:8
    |
 LL | #![doc(html_favicon_url)]
    |        ^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(invalid_doc_attributes)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+note: the lint level is defined here
+  --> $DIR/bad-render-options.rs:2:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: `doc(html_logo_url)` expects a string value
-  --> $DIR/bad-render-options.rs:4:8
+error: expected this to be of the form `... = "..."`
+  --> $DIR/bad-render-options.rs:7:8
    |
 LL | #![doc(html_logo_url)]
    |        ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(html_playground_url)` expects a string value
-  --> $DIR/bad-render-options.rs:5:8
+error: expected this to be of the form `... = "..."`
+  --> $DIR/bad-render-options.rs:10:8
    |
 LL | #![doc(html_playground_url)]
    |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(issue_tracker_base_url)` expects a string value
-  --> $DIR/bad-render-options.rs:6:8
+error: expected this to be of the form `... = "..."`
+  --> $DIR/bad-render-options.rs:13:8
    |
 LL | #![doc(issue_tracker_base_url)]
    |        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(html_favicon_url)` expects a string value
-  --> $DIR/bad-render-options.rs:7:8
+error: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:16:27
    |
 LL | #![doc(html_favicon_url = 1)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+   |                           ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(html_logo_url)` expects a string value
-  --> $DIR/bad-render-options.rs:8:8
+error: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:19:24
    |
 LL | #![doc(html_logo_url = 2)]
-   |        ^^^^^^^^^^^^^^^^^
+   |                        ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(html_playground_url)` expects a string value
-  --> $DIR/bad-render-options.rs:9:8
+error: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:22:30
    |
 LL | #![doc(html_playground_url = 3)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |                              ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(issue_tracker_base_url)` expects a string value
-  --> $DIR/bad-render-options.rs:10:8
+error: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:25:33
    |
 LL | #![doc(issue_tracker_base_url = 4)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: `doc(html_no_source)` does not accept a value
-  --> $DIR/bad-render-options.rs:11:8
+error: didn't expect any arguments here
+  --> $DIR/bad-render-options.rs:28:23
    |
 LL | #![doc(html_no_source = "asdf")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 9 previous errors
 

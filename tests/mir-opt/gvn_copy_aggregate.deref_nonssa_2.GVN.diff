@@ -1,0 +1,68 @@
+- // MIR for `deref_nonssa_2` before GVN
++ // MIR for `deref_nonssa_2` after GVN
+  
+  fn deref_nonssa_2() -> Single {
+      let mut _0: Single;
+      let mut _1: Single;
+      let mut _3: &Single;
+      let _4: &Single;
+      let mut _7: Single;
+      let mut _8: u8;
+      scope 1 {
+          debug a => _1;
+          let _2: SingleRef<'_>;
+          scope 2 {
+              debug r => _2;
+              let _5: &Single;
+              scope 3 {
+                  debug b => _5;
+                  let _6: u8;
+                  scope 4 {
+                      debug c => _6;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = Single(const 0_u8);
++         _1 = const Single(0_u8);
+          StorageLive(_2);
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = &_1;
+          _3 = &(*_4);
+-         _2 = SingleRef::<'_>(move _3);
+-         StorageDead(_3);
++         _2 = SingleRef::<'_>(copy _3);
++         nop;
+          StorageDead(_4);
+          StorageLive(_5);
+-         _5 = copy (_2.0: &Single);
+-         StorageLive(_6);
+-         _6 = copy ((*_5).0: u8);
++         _5 = copy _3;
++         nop;
++         _6 = copy ((*_3).0: u8);
+          StorageLive(_7);
+-         _7 = Single(const 1_u8);
+-         _1 = move _7;
++         _7 = const Single(1_u8);
++         _1 = const Single(1_u8);
+          StorageDead(_7);
+          StorageLive(_8);
+          _8 = copy _6;
+-         _0 = Single(move _8);
++         _0 = Single(copy _6);
+          StorageDead(_8);
+-         StorageDead(_6);
++         nop;
+          StorageDead(_5);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

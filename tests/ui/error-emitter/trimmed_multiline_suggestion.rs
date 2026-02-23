@@ -1,4 +1,4 @@
-//@ compile-flags: -Z ui-testing=no
+//@ compile-flags: -Z ui-testing=no --diagnostic-width=80
 fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32, f: i32) {}
 
 fn main() {

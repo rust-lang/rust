@@ -2,9 +2,11 @@
 
 //@ add-minicore
 //@ compile-flags: -Zsanitizer=kernel-address -Copt-level=0
-//@ revisions: aarch64 riscv64imac riscv64gc x86_64
+//@ revisions: aarch64 aarch64v8r riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64
+//@[aarch64v8r] compile-flags: --target aarch64v8r-unknown-none
+//@[aarch64v8r] needs-llvm-components: aarch64
 //@[riscv64imac] compile-flags: --target riscv64imac-unknown-none-elf
 //@[riscv64imac] needs-llvm-components: riscv
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-none-elf

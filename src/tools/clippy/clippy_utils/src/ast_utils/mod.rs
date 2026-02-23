@@ -355,7 +355,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs: lb,
+                rhs_kind: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -363,7 +363,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs: rb,
+                rhs_kind: rb,
                 define_opaque: _,
             }),
         ) => {
@@ -371,7 +371,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
+                && both(Some(lb), Some(rb), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {
@@ -382,6 +382,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -391,6 +392,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -554,6 +556,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -563,6 +566,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -611,7 +615,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs: lb,
+                rhs_kind: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -619,7 +623,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs: rb,
+                rhs_kind: rb,
                 define_opaque: _,
             }),
         ) => {
@@ -627,7 +631,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
+                && both(Some(lb), Some(rb), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {
@@ -638,6 +642,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -647,6 +652,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -785,12 +791,18 @@ pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
     eq_expr(&l.value, &r.value)
 }
 
-pub fn eq_const_item_rhs(l: &ConstItemRhs, r: &ConstItemRhs) -> bool {
-    use ConstItemRhs::*;
+pub fn eq_const_item_rhs(l: &ConstItemRhsKind, r: &ConstItemRhsKind) -> bool {
+    use ConstItemRhsKind::*;
     match (l, r) {
-        (TypeConst(l), TypeConst(r)) => eq_anon_const(l, r),
-        (Body(l), Body(r)) => eq_expr(l, r),
-        (TypeConst(..), Body(..)) | (Body(..), TypeConst(..)) => false,
+        (TypeConst { rhs: Some(l) }, TypeConst { rhs: Some(r) }) => eq_anon_const(l, r),
+        (TypeConst { rhs: None }, TypeConst { rhs: None }) | (Body { rhs: None }, Body { rhs: None }) => true,
+        (Body { rhs: Some(l) }, Body { rhs: Some(r) }) => eq_expr(l, r),
+        (TypeConst { rhs: Some(..) }, TypeConst { rhs: None })
+        | (TypeConst { rhs: None }, TypeConst { rhs: Some(..) })
+        | (Body { rhs: None }, Body { rhs: Some(..) })
+        | (Body { rhs: Some(..) }, Body { rhs: None })
+        | (TypeConst { .. }, Body { .. })
+        | (Body { .. }, TypeConst { .. }) => false,
     }
 }
 
@@ -807,7 +819,9 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
 pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
     matches!(
         (l, r),
-        (Defaultness::Final, Defaultness::Final) | (Defaultness::Default(_), Defaultness::Default(_))
+        (Defaultness::Implicit, Defaultness::Implicit)
+        | (Defaultness::Default(_), Defaultness::Default(_))
+        | (Defaultness::Final(_), Defaultness::Final(_))
     )
 }
 
@@ -970,9 +984,19 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
+            (Normal(l), Normal(r)) => {
+                eq_path(&l.item.path, &r.item.path) && eq_attr_item_kind(&l.item.args, &r.item.args)
+            },
             _ => false,
         }
+}
+
+pub fn eq_attr_item_kind(l: &AttrItemKind, r: &AttrItemKind) -> bool {
+    match (l, r) {
+        (AttrItemKind::Unparsed(l), AttrItemKind::Unparsed(r)) => eq_attr_args(l, r),
+        (AttrItemKind::Parsed(_l), AttrItemKind::Parsed(_r)) => todo!(),
+        _ => false,
+    }
 }
 
 pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {

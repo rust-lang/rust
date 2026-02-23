@@ -44,26 +44,22 @@ LL | trait Foo<const N: Bar<2>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `Foo::N`
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:3:11
+error: `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:3:20
    |
 LL | trait Foo<const N: Bar<2>> {
-   |           ^^^^^^^^^^^^^^^
+   |                    ^^^^^^
    |
-note: ...which requires computing type of `Bar::M`...
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:11
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: `(dyn Foo<2> + 'static)` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:11:20
    |
 LL | trait Bar<const M: Foo<2>> {}
-   |           ^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `Foo::N`, completing the cycle
-note: cycle used when checking that `Foo` is well-formed
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122989.rs:3:1
+   |                    ^^^^^^
    |
-LL | trait Foo<const N: Bar<2>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: the only supported types are integers, `bool`, and `char`
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to 3 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0391`.

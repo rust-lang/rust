@@ -1,9 +1,12 @@
 # powerpc64-unknown-linux-musl
 
-**Tier: 3**
+**Tier: 2**
 
 Target for 64-bit big endian PowerPC Linux programs using musl libc.
 This target uses the ELF v2 ABI.
+
+The baseline CPU required is a PowerPC 970, which means AltiVec is required and
+the oldest IBM server CPU supported is therefore POWER6.
 
 ## Target maintainers
 
@@ -38,9 +41,8 @@ linker = "powerpc64-linux-musl-gcc"
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will first need to build Rust with the target enabled (see
-"Building the target" above).
+This target is distributed through `rustup`, and otherwise requires no
+special configuration.
 
 ## Cross-compilation
 

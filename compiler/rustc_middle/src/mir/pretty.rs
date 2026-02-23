@@ -157,13 +157,13 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
     ///   or `typeck` and `bar` both appear in the name.
     pub fn dump_mir(&self, body: &Body<'tcx>) {
-        let _: io::Result<()> = try {
+        let _ = try {
             let mut file = self.create_dump_file("mir", body)?;
             self.dump_mir_to_writer(body, &mut file)?;
         };
 
         if self.tcx().sess.opts.unstable_opts.dump_mir_graphviz {
-            let _: io::Result<()> = try {
+            let _ = try {
                 let mut file = self.create_dump_file("dot", body)?;
                 write_mir_fn_graphviz(self.tcx(), body, false, &mut file)?;
             };
@@ -504,7 +504,7 @@ fn write_scope_tree(
                     "{0:1$} // at {2}",
                     indented_header,
                     ALIGN,
-                    tcx.sess.source_map().span_to_embeddable_string(span),
+                    tcx.sess.source_map().span_to_diagnostic_string(span),
                 )?;
             } else {
                 writeln!(w, "{indented_header}")?;
@@ -688,7 +688,7 @@ fn write_user_type_annotations(
             "| {:?}: user_ty: {}, span: {}, inferred_ty: {}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            tcx.sess.source_map().span_to_diagnostic_string(annotation.span),
             with_no_trimmed_paths!(format!("{}", annotation.inferred_ty)),
         )?;
     }
@@ -1097,15 +1097,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op) => match op {
-                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                    write!(fmt, "ContractChecks()")
-                }
-                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                    write!(fmt, "OverflowChecks()")
-                }
-            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1246,10 +1237,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 }
             }
 
-            ShallowInitBox(ref place, ref ty) => {
-                with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
-            }
-
             WrapUnsafeBinder(ref op, ty) => {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
@@ -1264,6 +1251,7 @@ impl<'tcx> Debug for Operand<'tcx> {
             Constant(ref a) => write!(fmt, "{a:?}"),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
+            RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
         }
     }
 }
@@ -1420,7 +1408,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             self.push("mir::ConstOperand");
             self.push(&format!(
                 "+ span: {}",
-                self.tcx.sess.source_map().span_to_embeddable_string(*span)
+                self.tcx.sess.source_map().span_to_diagnostic_string(*span)
             ));
             if let Some(user_ty) = user_ty {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
@@ -1503,7 +1491,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
 }
 
 fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    let location = tcx.sess.source_map().span_to_embeddable_string(span);
+    let location = tcx.sess.source_map().span_to_diagnostic_string(span);
     format!("scope {} at {}", scope.index(), location,)
 }
 
@@ -1879,13 +1867,16 @@ fn pretty_print_const_value_tcx<'tcx>(
     let u8_type = tcx.types.u8;
     match (ct, ty.kind()) {
         // Byte/string slices, printed as (byte) string literals.
-        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Str) => {
+        (_, ty::Ref(_, inner_ty, _)) if let ty::Str = inner_ty.kind() => {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 fmt.write_str(&format!("{:?}", String::from_utf8_lossy(data)))?;
                 return Ok(());
             }
         }
-        (_, ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Slice(t) if *t == u8_type) => {
+        (_, ty::Ref(_, inner_ty, _))
+            if let ty::Slice(t) = inner_ty.kind()
+                && *t == u8_type =>
+        {
             if let Some(data) = ct.try_get_slice_bytes_for_diagnostics(tcx) {
                 pretty_print_byte_str(fmt, data)?;
                 return Ok(());
@@ -1904,7 +1895,8 @@ fn pretty_print_const_value_tcx<'tcx>(
         // Aggregates, printed as array/tuple/struct/variant construction syntax.
         //
         // NB: the `has_non_region_param` check ensures that we can use
-        // the `destructure_const` query with an empty `ty::ParamEnv` without
+        // the `try_destructure_mir_constant_for_user_output ` query with
+        // an empty `TypingEnv::fully_monomorphized` without
         // introducing ICEs (e.g. via `layout_of`) from missing bounds.
         // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
         // to be able to destructure the tuple into `(0u8, *mut T)`

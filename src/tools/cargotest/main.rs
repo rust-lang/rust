@@ -84,7 +84,7 @@ const TEST_REPOS: &[Test] = &[
     Test {
         name: "diesel",
         repo: "https://github.com/diesel-rs/diesel",
-        sha: "91493fe47175076f330ce5fc518f0196c0476f56",
+        sha: "3db7c17c5b069656ed22750e84d6498c8ab5b81d",
         lock: None,
         packages: &[],
         // Test the embedded sqlite variant of diesel

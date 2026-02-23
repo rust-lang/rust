@@ -105,6 +105,7 @@ impl X86InlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg | Self::reg_abcd => {
@@ -115,21 +116,52 @@ impl X86InlineAsmRegClass {
                 }
             }
             Self::reg_byte => types! { _: I8; },
-            Self::xmm_reg => types! {
-                sse: I32, I64, F16, F32, F64, F128,
-                  VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
-            },
-            Self::ymm_reg => types! {
-                avx: I32, I64, F16, F32, F64, F128,
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
-                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4);
-            },
-            Self::zmm_reg => types! {
-                avx512f: I32, I64, F16, F32, F64, F128,
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
-                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4),
-                    VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF16(32), VecF32(16), VecF64(8);
-            },
+            Self::xmm_reg => {
+                if allow_experimental_reg {
+                    types! {
+                        sse: I32, I64, I128, F16, F32, F64, F128,
+                          VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
+                    }
+                } else {
+                    types! {
+                        sse: I32, I64, F16, F32, F64, F128,
+                          VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
+                    }
+                }
+            }
+            Self::ymm_reg => {
+                if allow_experimental_reg {
+                    types! {
+                        avx: I32, I64, I128, F16, F32, F64, F128,
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                            VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4);
+                    }
+                } else {
+                    types! {
+                        avx: I32, I64, F16, F32, F64, F128,
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                            VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4);
+                    }
+                }
+            }
+            Self::zmm_reg => {
+                if allow_experimental_reg {
+                    types! {
+                        avx512f: I32, I64, I128, F16, F32, F64, F128,
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                            VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4),
+                            VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF16(32), VecF32(16), VecF64(8);
+                    }
+                } else {
+                    types! {
+                    avx512f: I32, I64, F16, F32, F64, F128,
+                        VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2),
+                        VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF16(16), VecF32(8), VecF64(4),
+                        VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF16(32), VecF32(16), VecF64(8);
+                    }
+                }
+            }
+
             Self::kreg => types! {
                 avx512f: I8, I16;
                 avx512bw: I32, I64;

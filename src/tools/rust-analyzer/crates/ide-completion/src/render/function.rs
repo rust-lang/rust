@@ -887,4 +887,44 @@ fn bar() {
 "#,
         );
     }
+
+    #[test]
+    fn no_semicolon_in_arg_list() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(fo$0);
+}
+"#,
+            r#"
+fn foo() {}
+fn baz(_: impl FnOnce()) {}
+fn bar() {
+    baz(foo()$0);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_semicolon_in_array() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    let _ = [fo$0];
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    let _ = [foo()$0];
+}
+"#,
+        );
+    }
 }

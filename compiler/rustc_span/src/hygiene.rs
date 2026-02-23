@@ -30,7 +30,7 @@ use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
@@ -125,27 +125,6 @@ rustc_index::newtype_index! {
 // See https://github.com/rust-lang/rust/issues/90317.
 impl !Ord for LocalExpnId {}
 impl !PartialOrd for LocalExpnId {}
-
-/// Assert that the provided `HashStableContext` is configured with the 'default'
-/// `HashingControls`. We should always have bailed out before getting to here
-/// with a non-default mode. With this check in place, we can avoid the need
-/// to maintain separate versions of `ExpnData` hashes for each permutation
-/// of `HashingControls` settings.
-fn assert_default_hashing_controls(ctx: &impl HashStableContext, msg: &str) {
-    match ctx.hashing_controls() {
-        // Note that we require that `hash_spans` be set according to the global
-        // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
-        // which will cause us to require that this method always be called with `Span` hashing
-        // enabled.
-        //
-        // Span hashing can also be disabled without `-Z incremental-ignore-spans`.
-        // This is the case for instance when building a hash for name mangling.
-        // Such configuration must not be used for metadata.
-        HashingControls { hash_spans }
-            if hash_spans != ctx.unstable_opts_incremental_ignore_spans() => {}
-        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {other:?}"),
-    }
-}
 
 /// A unique hash value associated to an expansion.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
@@ -804,7 +783,7 @@ impl SyntaxContext {
 
     /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
     #[inline]
-    pub(crate) fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
             *self = data.normalize_to_macros_2_0(*self);
             data.adjust(self, expn_id)
@@ -837,11 +816,7 @@ impl SyntaxContext {
     /// ```
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
-    pub(crate) fn glob_adjust(
-        &mut self,
-        expn_id: ExpnId,
-        glob_span: Span,
-    ) -> Option<Option<ExpnId>> {
+    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             let mut scope = None;
             let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
@@ -865,7 +840,7 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub(crate) fn reverse_glob_adjust(
+    pub fn reverse_glob_adjust(
         &mut self,
         expn_id: ExpnId,
         glob_span: Span,
@@ -1510,7 +1485,7 @@ pub fn raw_encode_syntax_context(
 fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContext) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
-    assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
+    ctx.assert_default_hashing_controls("ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut ctx);
 
     let disambiguator = HygieneData::with(|data| {
@@ -1560,7 +1535,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
 
 impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        assert_default_hashing_controls(ctx, "ExpnId");
+        ctx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
             Fingerprint::ZERO
@@ -1569,5 +1544,11 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
         };
 
         hash.hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX: HashStableContext> HashStable<CTX> for LocalExpnId {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.to_expn_id().hash_stable(hcx, hasher);
     }
 }

@@ -1,4 +1,7 @@
-use std::assert_matches::debug_assert_matches;
+#[cfg(bootstrap)]
+pub use std::assert_matches::debug_assert_matches;
+#[cfg(not(bootstrap))]
+pub use std::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
 use std::{ascii, mem};
@@ -6,8 +9,10 @@ use std::{ascii, mem};
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_hir::attrs::DocAttribute;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
@@ -46,7 +51,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 if cx.tcx.is_compiler_builtins(it.item_id.krate()) {
                     cx.cache.masked_crates.insert(it.item_id.krate());
                 } else if it.is_extern_crate()
-                    && it.attrs.has_doc_flag(sym::masked)
+                    && it.attrs.has_doc_flag(|d| d.masked.is_some())
                     && let Some(def_id) = it.item_id.as_def_id()
                     && let Some(local_def_id) = def_id.as_local()
                     && let Some(cnum) = cx.tcx.extern_mod_stmt_cnum(local_def_id)
@@ -100,7 +105,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     // to align the arguments and parameters for the iteration below and to enable us to correctly
     // instantiate the generic parameter default later.
     let generics = cx.tcx.generics_of(owner);
-    let args = if !has_self && generics.parent.is_none() && generics.has_self {
+    let args = if !has_self && generics.has_own_self() {
         has_self = true;
         [cx.tcx.types.trait_object_dummy_self.into()]
             .into_iter()
@@ -355,7 +360,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
-            cv.valtree.unwrap_leaf().to_string()
+            cv.to_leaf().to_string()
         }
         _ => n.to_string(),
     }
@@ -562,24 +567,14 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
     }
 }
 
-/// Checks for the existence of `hidden` in the attribute below if `flag` is `sym::hidden`:
-///
-/// ```
-/// #[doc(hidden)]
-/// pub fn foo() {}
-/// ```
-///
 /// This function exists because it runs on `hir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
-pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
-    attrs_have_doc_flag(tcx.get_attrs(did, sym::doc), flag)
-}
-
-pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
-    flag: Symbol,
+pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(
+    tcx: TyCtxt<'_>,
+    did: DefId,
+    callback: F,
 ) -> bool {
-    attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))
+    find_attr!(tcx, did, Doc(d) if callback(d))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links

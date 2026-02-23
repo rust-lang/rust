@@ -21,7 +21,7 @@
                   let _9: main::Str<"���">;
                   scope 4 {
 -                     debug _non_utf8_str => _9;
-+                     debug _non_utf8_str => const Str::<"���">;
++                     debug _non_utf8_str => const main::Str::<"���">;
                   }
               }
           }

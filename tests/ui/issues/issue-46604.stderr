@@ -4,9 +4,9 @@ error[E0764]: mutable borrows of temporaries that have their lifetime extended u
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
    |                         ^^^^^^^^^^^^^^^^^^^^ this mutable borrow refers to such a temporary
    |
-   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
-   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
-   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
   --> $DIR/issue-46604.rs:6:5

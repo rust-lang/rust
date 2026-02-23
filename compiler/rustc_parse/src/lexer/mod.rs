@@ -36,6 +36,10 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
+const INVISIBLE_CHARACTERS: [char; 8] = [
+    '\u{200b}', '\u{200c}', '\u{2060}', '\u{2061}', '\u{2062}', '\u{00ad}', '\u{034f}', '\u{061c}',
+];
+
 #[derive(Clone, Debug)]
 pub(crate) struct UnmatchedDelim {
     pub found_delim: Option<Delimiter>,
@@ -316,7 +320,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
-                    let lifetime_name = self.str_from(start);
+                    let lifetime_name = nfc_normalize(self.str_from(start));
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
@@ -325,8 +329,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
-                    let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident, IdentIsRaw::No)
+                    token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }
                 rustc_lexer::TokenKind::RawLifetime => {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
@@ -373,7 +376,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
                         lifetime_name.push('\'');
                         lifetime_name += lifetime_name_without_tick.as_str();
-                        let sym = Symbol::intern(&lifetime_name);
+                        let sym = nfc_normalize(&lifetime_name);
 
                         // Make sure we mark this as a raw identifier.
                         self.psess.raw_identifier_spans.push(span);
@@ -393,9 +396,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         self.pos = lt_start;
                         self.cursor = Cursor::new(&str_before[2 as usize..], FrontmatterAllowed::No);
 
-                        let lifetime_name = self.str_from(start);
-                        let ident = Symbol::intern(lifetime_name);
-                        token::Lifetime(ident, IdentIsRaw::No)
+                        let lifetime_name = nfc_normalize(self.str_from(start));
+                        token::Lifetime(lifetime_name, IdentIsRaw::No)
                     }
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
@@ -457,7 +459,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         span: self.mk_sp(start, self.pos + Pos::from_usize(repeats * c.len_utf8())),
                         escaped: escaped_char(c),
                         sugg,
-                        null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
+                        null: c == '\x00',
+                        invisible: INVISIBLE_CHARACTERS.contains(&c),
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })
@@ -595,9 +598,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let s = self.str_from(start);
         let real_start = s.find("---").unwrap();
         let frontmatter_opening_pos = BytePos(real_start as u32) + start;
-        let s_new = &s[real_start..];
-        let within = s_new.trim_start_matches('-');
-        let len_opening = s_new.len() - within.len();
+        let real_s = &s[real_start..];
+        let within = real_s.trim_start_matches('-');
+        let len_opening = real_s.len() - within.len();
 
         let frontmatter_opening_end_pos = frontmatter_opening_pos + BytePos(len_opening as u32);
         if has_invalid_preceding_whitespace {
@@ -611,8 +614,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             });
         }
 
+        let line_end = real_s.find('\n').unwrap_or(real_s.len());
         if invalid_infostring {
-            let line_end = s[real_start..].find('\n').unwrap_or(s[real_start..].len());
             let span = self.mk_sp(
                 frontmatter_opening_end_pos,
                 frontmatter_opening_pos + BytePos(line_end as u32),
@@ -620,10 +623,18 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             self.dcx().emit_err(errors::FrontmatterInvalidInfostring { span });
         }
 
-        let last_line_start = within.rfind('\n').map_or(0, |i| i + 1);
-        let last_line = &within[last_line_start..];
+        let last_line_start = real_s.rfind('\n').map_or(line_end, |i| i + 1);
+
+        let content = &real_s[line_end..last_line_start];
+        if let Some(cr_offset) = content.find('\r') {
+            let cr_pos = start + BytePos((real_start + line_end + cr_offset) as u32);
+            let span = self.mk_sp(cr_pos, cr_pos + BytePos(1 as u32));
+            self.dcx().emit_err(errors::BareCrFrontmatter { span });
+        }
+
+        let last_line = &real_s[last_line_start..];
         let last_line_trimmed = last_line.trim_start_matches(is_horizontal_whitespace);
-        let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
+        let last_line_start_pos = frontmatter_opening_pos + BytePos(last_line_start as u32);
 
         let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
         self.psess.gated_spans.gate(sym::frontmatter, frontmatter_span);

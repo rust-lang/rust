@@ -43,12 +43,16 @@ impl<T> TaskPool<T> {
     pub(crate) fn len(&self) -> usize {
         self.pool.len()
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.pool.is_empty()
+    }
 }
 
 /// `DeferredTaskQueue` holds deferred tasks.
 ///
 /// These are tasks that must be run after
-/// [`GlobalState::process_changes`] has been called.
+/// `GlobalState::process_changes` has been called.
 pub(crate) struct DeferredTaskQueue {
     pub(crate) sender: crossbeam_channel::Sender<DeferredTask>,
     pub(crate) receiver: crossbeam_channel::Receiver<DeferredTask>,

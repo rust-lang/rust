@@ -219,14 +219,16 @@ fn test() {
 
 #[test]
 fn infer_try_block() {
-    // FIXME: We should test more cases, but it currently doesn't work, since
-    // our labeled block type inference is broken.
     check_types(
         r#"
-//- minicore: try, option
+//- minicore: try, option, result, from
 fn test() {
     let x: Option<_> = try { Some(2)?; };
       //^ Option<()>
+    let homogeneous = try { Ok::<(), u32>(())?; "hi" };
+      //^^^^^^^^^^^ Result<&'? str, u32>
+    let heterogeneous = try bikeshed Result<_, u64> { 1 };
+      //^^^^^^^^^^^^^ Result<i32, u64>
 }
 "#,
     );
@@ -429,7 +431,7 @@ fn associated_type_shorthand_from_method_bound() {
 trait Iterable {
     type Item;
 }
-struct S<T>;
+struct S<T>(T);
 impl<T> S<T> {
     fn foo(self) -> T::Item where T: Iterable { loop {} }
 }
@@ -851,7 +853,7 @@ struct S;
 trait Trait<T> {}
 impl Trait<&str> for S {}
 
-struct O<T>;
+struct O<T>(T);
 impl<U, T: Trait<U>> O<T> {
     fn foo(&self) -> U { loop {} }
 }
@@ -1103,40 +1105,50 @@ fn test() {
 fn argument_impl_trait_type_args_2() {
     check_infer_with_mismatches(
         r#"
-//- minicore: sized
+//- minicore: sized, phantom_data
+use core::marker::PhantomData;
+
 trait Trait {}
 struct S;
 impl Trait for S {}
-struct F<T>;
+struct F<T>(PhantomData<T>);
 impl<T> F<T> {
     fn foo<U>(self, x: impl Trait) -> (T, U) { loop {} }
 }
 
 fn test() {
-    F.foo(S);
-    F::<u32>.foo(S);
-    F::<u32>.foo::<i32>(S);
-    F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
+    F(PhantomData).foo(S);
+    F::<u32>(PhantomData).foo(S);
+    F::<u32>(PhantomData).foo::<i32>(S);
+    F::<u32>(PhantomData).foo::<i32, u32>(S); // extraneous argument should be ignored
 }"#,
         expect![[r#"
-            87..91 'self': F<T>
-            93..94 'x': impl Trait
-            118..129 '{ loop {} }': (T, U)
-            120..127 'loop {}': !
-            125..127 '{}': ()
-            143..283 '{     ...ored }': ()
-            149..150 'F': F<{unknown}>
-            149..157 'F.foo(S)': ({unknown}, {unknown})
-            155..156 'S': S
-            163..171 'F::<u32>': F<u32>
-            163..178 'F::<u32>.foo(S)': (u32, {unknown})
-            176..177 'S': S
-            184..192 'F::<u32>': F<u32>
-            184..206 'F::<u3...32>(S)': (u32, i32)
-            204..205 'S': S
-            212..220 'F::<u32>': F<u32>
-            212..239 'F::<u3...32>(S)': (u32, i32)
-            237..238 'S': S
+            135..139 'self': F<T>
+            141..142 'x': impl Trait
+            166..177 '{ loop {} }': (T, U)
+            168..175 'loop {}': !
+            173..175 '{}': ()
+            191..383 '{     ...ored }': ()
+            197..198 'F': fn F<{unknown}>(PhantomData<{unknown}>) -> F<{unknown}>
+            197..211 'F(PhantomData)': F<{unknown}>
+            197..218 'F(Phan...foo(S)': ({unknown}, {unknown})
+            199..210 'PhantomData': PhantomData<{unknown}>
+            216..217 'S': S
+            224..232 'F::<u32>': fn F<u32>(PhantomData<u32>) -> F<u32>
+            224..245 'F::<u3...mData)': F<u32>
+            224..252 'F::<u3...foo(S)': (u32, {unknown})
+            233..244 'PhantomData': PhantomData<u32>
+            250..251 'S': S
+            258..266 'F::<u32>': fn F<u32>(PhantomData<u32>) -> F<u32>
+            258..279 'F::<u3...mData)': F<u32>
+            258..293 'F::<u3...32>(S)': (u32, i32)
+            267..278 'PhantomData': PhantomData<u32>
+            291..292 'S': S
+            299..307 'F::<u32>': fn F<u32>(PhantomData<u32>) -> F<u32>
+            299..320 'F::<u3...mData)': F<u32>
+            299..339 'F::<u3...32>(S)': (u32, i32)
+            308..319 'PhantomData': PhantomData<u32>
+            337..338 'S': S
         "#]],
     );
 }
@@ -1492,7 +1504,7 @@ fn dyn_trait_in_impl() {
 trait Trait<T, U> {
     fn foo(&self) -> (T, U);
 }
-struct S<T, U> {}
+struct S<T, U>(T, U);
 impl<T, U> S<T, U> {
     fn bar(&self) -> &dyn Trait<T, U> { loop {} }
 }
@@ -1506,16 +1518,16 @@ fn test(s: S<u32, i32>) {
 }"#,
         expect![[r#"
             32..36 'self': &'? Self
-            102..106 'self': &'? S<T, U>
-            128..139 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
-            130..137 'loop {}': !
-            135..137 '{}': ()
-            175..179 'self': &'? Self
-            251..252 's': S<u32, i32>
-            267..289 '{     ...z(); }': ()
-            273..274 's': S<u32, i32>
-            273..280 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
-            273..286 's.bar().baz()': (u32, i32)
+            106..110 'self': &'? S<T, U>
+            132..143 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
+            134..141 'loop {}': !
+            139..141 '{}': ()
+            179..183 'self': &'? Self
+            255..256 's': S<u32, i32>
+            271..293 '{     ...z(); }': ()
+            277..278 's': S<u32, i32>
+            277..284 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
+            277..290 's.bar().baz()': (u32, i32)
         "#]],
     );
 }
@@ -4012,7 +4024,7 @@ fn f<F: Foo>() {
 fn dyn_map() {
     check_types(
         r#"
-pub struct Key<K, V, P = (K, V)> {}
+pub struct Key<K, V, P = (K, V)>(K, V, P);
 
 pub trait Policy {
     type K;
@@ -4024,7 +4036,7 @@ impl<K, V> Policy for (K, V) {
     type V = V;
 }
 
-pub struct KeyMap<KEY> {}
+pub struct KeyMap<KEY>(KEY);
 
 impl<P: Policy> KeyMap<Key<P::K, P::V, P>> {
     pub fn get(&self, key: &P::K) -> P::V {
@@ -4809,7 +4821,7 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             431..433 '{}': ()
             447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a>
+            500..503 'baz': impl Baz<Assoc = &'a (impl Foo + 'a)>
             544..546 '{}': ()
             560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()
@@ -4859,7 +4871,6 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
         expect![[r#"
             37..38 'a': T
             43..83 '{     ...ait; }': ()
-            43..83 '{     ...ait; }': impl Future<Output = ()>
             53..57 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             60..61 'a': T
             60..64 'a(0)': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
@@ -4868,7 +4879,6 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             70..80 'fut1.await': i32
             124..129 'mut b': T
             134..174 '{     ...ait; }': ()
-            134..174 '{     ...ait; }': impl Future<Output = ()>
             144..148 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             151..152 'b': T
             151..155 'b(0)': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
@@ -4877,7 +4887,6 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             161..171 'fut2.await': i32
             216..217 'c': T
             222..262 '{     ...ait; }': ()
-            222..262 '{     ...ait; }': impl Future<Output = ()>
             232..236 'fut3': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
             239..240 'c': T
             239..243 'c(0)': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
@@ -5023,7 +5032,7 @@ fn main() {
             278..280 '{}': ()
             290..291 '_': Box<dyn Iterator<Item = &'? [u8]> + '?>
             294..298 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
-            294..310 'iter.i...iter()': Box<dyn Iterator<Item = &'? [u8]> + 'static>
+            294..310 'iter.i...iter()': Box<dyn Iterator<Item = &'? [u8]> + '?>
             152..156 'self': &'? mut Box<I>
             177..208 '{     ...     }': Option<<I as Iterator>::Item>
             191..198 'loop {}': !
@@ -5075,6 +5084,26 @@ trait BaseLayerOne: Deref<Target = Base>{}
 fn foo(base_layer_two: &dyn BaseLayerOne) {
     let _r = base_layer_two.func();
      // ^^ i32
+}
+    "#,
+    );
+}
+
+#[test]
+fn default_assoc_types() {
+    check_types(
+        r#"
+trait Trait<T> {
+    type Assoc<U> = (T, U);
+    fn method(self) -> Self::Assoc<i32> { loop {} }
+}
+
+struct Struct<T>(T);
+impl<T> Trait<((), T)> for Struct<T> {}
+
+fn foo(v: Struct<f32>) {
+    v.method();
+ // ^^^^^^^^^^ (((), f32), i32)
 }
     "#,
     );

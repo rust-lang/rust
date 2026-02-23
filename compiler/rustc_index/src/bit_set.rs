@@ -634,21 +634,11 @@ impl<T: Idx> ChunkedBitSet<T> {
         match *chunk {
             Zeros => {
                 if chunk_domain_size > 1 {
-                    #[cfg(feature = "nightly")]
                     let mut words = {
                         // We take some effort to avoid copying the words.
                         let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
                         // SAFETY: `words` can safely be all zeroes.
                         unsafe { words.assume_init() }
-                    };
-                    #[cfg(not(feature = "nightly"))]
-                    let mut words = {
-                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#129396).
-                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
-                        // SAFETY: `words` can safely be all zeroes.
-                        let words = unsafe { words.assume_init() };
-                        // Unfortunate possibly-large copy
-                        Rc::new(words)
                     };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 
@@ -695,21 +685,11 @@ impl<T: Idx> ChunkedBitSet<T> {
             Zeros => false,
             Ones => {
                 if chunk_domain_size > 1 {
-                    #[cfg(feature = "nightly")]
                     let mut words = {
                         // We take some effort to avoid copying the words.
                         let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
                         // SAFETY: `words` can safely be all zeroes.
                         unsafe { words.assume_init() }
-                    };
-                    #[cfg(not(feature = "nightly"))]
-                    let mut words = {
-                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#129396).
-                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
-                        // SAFETY: `words` can safely be all zeroes.
-                        let words = unsafe { words.assume_init() };
-                        // Unfortunate possibly-large copy
-                        Rc::new(words)
                     };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 

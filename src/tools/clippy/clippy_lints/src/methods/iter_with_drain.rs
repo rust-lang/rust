@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_range_full;
+use clippy_utils::{is_range_full, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 
 use super::ITER_WITH_DRAIN;
 

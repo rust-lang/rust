@@ -126,4 +126,19 @@ fn issue15351() {
     }
 }
 
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val + 1) > 0
+        };
+    }
+
+    let x = 5;
+    match test_expr!(x) {
+        //~^ match_bool
+        true => 1,
+        false => 0,
+    };
+}
+
 fn main() {}

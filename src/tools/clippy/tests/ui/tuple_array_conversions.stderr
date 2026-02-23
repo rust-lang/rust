@@ -80,5 +80,13 @@ LL |     let x = [x.0, x.1];
    |
    = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
 
-error: aborting due to 10 previous errors
+error: it looks like you're trying to convert an array to a tuple
+  --> tests/ui/tuple_array_conversions.rs:139:18
+   |
+LL |     do_something((a, b));
+   |                  ^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+
+error: aborting due to 11 previous errors
 

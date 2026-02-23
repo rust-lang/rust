@@ -127,7 +127,7 @@ impl<'a> Sugg<'a> {
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(
+    pub fn hir_from_snippet(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
         mut get_snippet: impl FnMut(Span) -> Cow<'a, str>,

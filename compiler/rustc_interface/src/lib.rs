@@ -21,5 +21,3 @@ pub use queries::Linker;
 
 #[cfg(test)]
 mod tests;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

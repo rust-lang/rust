@@ -155,7 +155,7 @@ impl<'a, Ty> AsRef<LayoutData<FieldIdx, VariantIdx>> for TyAndLayout<'a, Ty> {
 
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
-pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
+pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
         cx: &C,
@@ -172,6 +172,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
 }
@@ -271,6 +272,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_transparent(self)
     }
 
+    pub fn is_scalable_vector<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_scalable_vector(self)
+    }
+
     /// If this method returns `true`, then this type should always have a `PassMode` of
     /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
     /// non-Rustic ABI (this is true for structs annotated with the
@@ -282,7 +290,19 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// function call isn't allowed (a.k.a. `va_list`).
     ///
     /// This function handles transparent types automatically.
-    pub fn pass_indirectly_in_non_rustic_abis<C>(mut self, cx: &C) -> bool
+    pub fn pass_indirectly_in_non_rustic_abis<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let base = self.peel_transparent_wrappers(cx);
+        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
+    }
+
+    /// Recursively peel away transparent wrappers, returning the inner value.
+    ///
+    /// The return value is not `repr(transparent)` and/or does
+    /// not have a non-1zst field.
+    pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -292,7 +312,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             self = field;
         }
 
-        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
+        self
     }
 
     /// Finds the one field that is not a 1-ZST.

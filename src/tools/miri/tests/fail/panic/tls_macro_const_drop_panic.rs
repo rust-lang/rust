@@ -4,6 +4,7 @@
 //@compile-flags: -Zmiri-backtrace=full
 //@normalize-stderr-test: "'main'|'<unnamed>'" -> "$$NAME"
 //@normalize-stderr-test: ".*(note|-->|\|).*\n" -> ""
+//@normalize-stderr-test: "\n *\d+:.*\n *at .*" -> ""
 
 pub struct NoisyDrop {}
 

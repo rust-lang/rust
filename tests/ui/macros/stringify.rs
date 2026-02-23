@@ -5,11 +5,11 @@
 #![allow(incomplete_features)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
+#![feature(const_block_items)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
-#![feature(if_let_guard)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(trait_alias)]
@@ -368,6 +368,9 @@ fn test_item() {
     // ItemKind::Const
     c1!(item, [ pub const S: () = {}; ], "pub const S: () = {};");
     c1!(item, [ const S: (); ], "const S: ();");
+
+    // ItemKind::ConstBlock
+    c1!(item, [ const {} ], "const {}");
 
     // ItemKind::Fn
     c1!(item,

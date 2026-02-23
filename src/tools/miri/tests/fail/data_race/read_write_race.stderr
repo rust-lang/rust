@@ -11,6 +11,16 @@ LL |             let _val = *c.0;
    |                        ^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/data_race/read_write_race.rs:LL:CC
+   |
+LL |   ...   let j2 = spawn(move || {
+   |  ________________^
+LL | | ...       let c = c; // avoid field capturing
+LL | | ...       *c.0 = 64;
+LL | | ...   });
+   | |________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

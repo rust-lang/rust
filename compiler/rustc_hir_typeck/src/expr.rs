@@ -15,13 +15,12 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
-use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
@@ -40,7 +39,7 @@ use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::coercion::{CoerceMany, DynamicCoerceMany};
+use crate::coercion::CoerceMany;
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
@@ -434,43 +433,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::UnOp::Not | hir::UnOp::Neg => expected,
             hir::UnOp::Deref => NoExpectation,
         };
-        let mut oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
+        let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
-        if !oprnd_t.references_error() {
-            oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
-            match unop {
-                hir::UnOp::Deref => {
-                    if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
-                        oprnd_t = ty;
-                    } else {
-                        let mut err =
-                            self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
-                        let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                        if let Some(sp) =
-                            tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
-                        {
-                            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                        }
-                        oprnd_t = Ty::new_error(tcx, err.emit());
-                    }
+        if let Err(guar) = oprnd_t.error_reported() {
+            return Ty::new_error(tcx, guar);
+        }
+
+        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        match unop {
+            hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
+                let mut err =
+                    self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
+                let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
+                if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
-                hir::UnOp::Not => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                    // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
-                        oprnd_t = result;
-                    }
-                }
-                hir::UnOp::Neg => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                    // If it's builtin, we can reuse the type, this helps inference.
-                    if !oprnd_t.is_numeric() {
-                        oprnd_t = result;
-                    }
-                }
+                Ty::new_error(tcx, err.emit())
+            }),
+            hir::UnOp::Not => {
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                // If it's builtin, we can reuse the type, this helps inference.
+                if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
+            }
+            hir::UnOp::Neg => {
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                // If it's builtin, we can reuse the type, this helps inference.
+                if oprnd_t.is_numeric() { oprnd_t } else { result }
             }
         }
-        oprnd_t
     }
 
     fn check_expr_addr_of(
@@ -1227,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
         let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
+        let mut coerce = CoerceMany::with_capacity(coerce_to_ty, 2);
 
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
@@ -1679,11 +1669,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
+                .and_then(|uty| {
+                    self.try_structurally_resolve_type(expr.span, uty)
+                        .builtin_index()
+                        // Avoid using the original type variable as the coerce_to type, as it may resolve
+                        // during the first coercion instead of being the LUB type.
+                        .filter(|t| !self.try_structurally_resolve_type(expr.span, *t).is_ty_var())
+                })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
-            let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+            let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
 
             for e in args {
+                // FIXME: the element expectation should use
+                // `try_structurally_resolve_and_adjust_for_branches` just like in `if` and `match`.
+                // While that fixes nested coercion, it will break [some
+                // code like this](https://github.com/rust-lang/rust/pull/140283#issuecomment-2958776528).
+                // If we find a way to support recursive tuple coercion, this break can be avoided.
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
@@ -1705,7 +1706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
-            let span = ct.span();
+            let span = ct.span;
             self.dcx().try_steal_modify_and_emit_err(
                 span,
                 StashKey::UnderscoreForArrayLengths,
@@ -1746,10 +1747,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_span = count.span();
+        let count_span = count.span;
         let count = self.try_structurally_resolve_const(
             count_span,
-            self.normalize(count_span, self.lower_const_arg(count, FeedConstTy::No)),
+            self.normalize(count_span, self.lower_const_arg(count, tcx.types.usize)),
         );
 
         if let Some(count) = count.try_to_target_usize(tcx) {
@@ -2447,7 +2448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .inherent_impls(def_id)
                 .into_iter()
-                .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+                .flat_map(|&i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
                 .filter(|item| item.is_fn() && !item.is_method())
                 .filter_map(|item| {
@@ -3180,6 +3181,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(within_macro_span, "due to this macro variable");
         }
 
+        // Check if there is an associated function with the same name.
+        if let Some(def_id) = base_ty.peel_refs().ty_adt_def().map(|d| d.did()) {
+            for &impl_def_id in self.tcx.inherent_impls(def_id) {
+                for item in self.tcx.associated_items(impl_def_id).in_definition_order() {
+                    if let ExprKind::Field(base_expr, _) = expr.kind
+                        && item.name() == field.name
+                        && matches!(item.kind, ty::AssocKind::Fn { has_self: false, .. })
+                    {
+                        err.span_label(field.span, "this is an associated function, not a method");
+                        err.note("found the following associated function; to be used as method, it must have a `self` parameter");
+                        let impl_ty = self.tcx.type_of(impl_def_id).instantiate_identity();
+                        err.span_note(
+                            self.tcx.def_span(item.def_id),
+                            format!("the candidate is defined in an impl for the type `{impl_ty}`"),
+                        );
+
+                        let ty_str = match base_ty.peel_refs().kind() {
+                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
+                            _ => base_ty.peel_refs().to_string(),
+                        };
+                        err.multipart_suggestion(
+                            "use associated function syntax instead",
+                            vec![
+                                (base_expr.span, ty_str),
+                                (base_expr.span.between(field.span), "::".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                        return err;
+                    }
+                }
+            }
+        }
+
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
@@ -3640,7 +3675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
         if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
-            if !find_attr!(self.tcx.get_all_attrs(self.body_id), AttributeKind::Naked(..)) {
+            if !find_attr!(self.tcx, self.body_id, Naked(..)) {
                 self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
             }
         }

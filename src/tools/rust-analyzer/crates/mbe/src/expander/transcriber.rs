@@ -3,8 +3,10 @@
 
 use intern::{Symbol, sym};
 use span::{Edition, Span};
+use stdx::itertools::Itertools;
 use tt::{Delimiter, TopSubtreeBuilder, iter::TtElement};
 
+use super::TokensOrigin;
 use crate::{
     ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
     expander::{Binding, Bindings, Fragment},
@@ -124,7 +126,7 @@ pub(super) fn transcribe(
     bindings: &Bindings<'_>,
     marker: impl Fn(&mut Span) + Copy,
     call_site: Span,
-) -> ExpandResult<tt::TopSubtree<Span>> {
+) -> ExpandResult<tt::TopSubtree> {
     let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), call_site };
     let mut builder = tt::TopSubtreeBuilder::new(tt::Delimiter::invisible_spanned(ctx.call_site));
     expand_subtree(&mut ctx, template, &mut builder, marker).map(|()| builder.build())
@@ -151,8 +153,8 @@ struct ExpandCtx<'a> {
 fn expand_subtree_with_delimiter(
     ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
-    delimiter: Option<Delimiter<Span>>,
+    builder: &mut tt::TopSubtreeBuilder,
+    delimiter: Option<Delimiter>,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     let delimiter = delimiter.unwrap_or_else(|| tt::Delimiter::invisible_spanned(ctx.call_site));
@@ -165,7 +167,7 @@ fn expand_subtree_with_delimiter(
 fn expand_subtree(
     ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     let mut err = None;
@@ -220,10 +222,10 @@ fn expand_subtree(
                 let index =
                     ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |nest| nest.idx);
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(index),
+                    text_and_suffix: Symbol::integer(index),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
-                    suffix: None,
+                    suffix_len: 0,
                 }));
             }
             Op::Len { depth } => {
@@ -232,10 +234,10 @@ fn expand_subtree(
                     0
                 });
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(length),
+                    text_and_suffix: Symbol::integer(length),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
-                    suffix: None,
+                    suffix_len: 0,
                 }));
             }
             Op::Count { name, depth } => {
@@ -276,9 +278,9 @@ fn expand_subtree(
                 let res = count(binding, 0, depth.unwrap_or(0));
 
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    symbol: Symbol::integer(res),
+                    text_and_suffix: Symbol::integer(res),
                     span: ctx.call_site,
-                    suffix: None,
+                    suffix_len: 0,
                     kind: tt::LitKind::Integer,
                 }));
             }
@@ -292,7 +294,7 @@ fn expand_subtree(
                         ConcatMetaVarExprElem::Literal(lit) => {
                             // FIXME: This isn't really correct wrt. escaping, but that's what rustc does and anyway
                             // escaping is used most of the times for characters that are invalid in identifiers.
-                            concatenated.push_str(lit.symbol.as_str())
+                            concatenated.push_str(lit.text())
                         }
                         ConcatMetaVarExprElem::Var(var) => {
                             // Handling of repetitions in `${concat}` isn't fleshed out in rustc, so we currently
@@ -313,7 +315,7 @@ fn expand_subtree(
                                 }
                             };
                             let values = match &var_value {
-                                Fragment::Tokens(tokens) => {
+                                Fragment::Tokens { tree: tokens, .. } => {
                                     let mut iter = tokens.iter();
                                     (iter.next(), iter.next())
                                 }
@@ -323,13 +325,11 @@ fn expand_subtree(
                                 }
                                 _ => (None, None),
                             };
-                            let value = match values {
+                            let value = match &values {
                                 (Some(TtElement::Leaf(tt::Leaf::Ident(ident))), None) => {
                                     ident.sym.as_str()
                                 }
-                                (Some(TtElement::Leaf(tt::Leaf::Literal(lit))), None) => {
-                                    lit.symbol.as_str()
-                                }
+                                (Some(TtElement::Leaf(tt::Leaf::Literal(lit))), None) => lit.text(),
                                 _ => {
                                     if err.is_none() {
                                         err = Some(ExpandError::binding_error(
@@ -381,7 +381,7 @@ fn expand_var(
     ctx: &mut ExpandCtx<'_>,
     v: &Symbol,
     id: Span,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     // We already handle $crate case in mbe parser
@@ -393,7 +393,13 @@ fn expand_var(
                 // rustc spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
                 // rustc uses them mostly for pretty printing. So we have to deviate a bit from what rustc does here.
                 // Basically, a metavariable can never be joined with whatever after it.
-                Fragment::Tokens(tt) => builder.extend_with_tt_alone(tt.strip_invisible()),
+                Fragment::Tokens { tree, origin } => {
+                    let view = match origin {
+                        TokensOrigin::Raw => tree.strip_invisible(),
+                        TokensOrigin::Ast => tree,
+                    };
+                    builder.extend_with_tt_alone(view);
+                }
                 Fragment::TokensOwned(tt) => {
                     builder.extend_with_tt_alone(tt.view().strip_invisible())
                 }
@@ -405,15 +411,15 @@ fn expand_var(
                     // Check if this is a simple negative literal (MINUS + LITERAL)
                     // that should not be wrapped in parentheses
                     let is_negative_literal = matches!(
-                        sub.flat_tokens(),
-                        [
-                            tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '-', .. })),
-                            tt::TokenTree::Leaf(tt::Leaf::Literal(_))
-                        ]
+                        sub.iter().collect_array(),
+                        Some([
+                            tt::TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: '-', .. })),
+                            tt::TtElement::Leaf(tt::Leaf::Literal(_))
+                        ])
                     );
 
                     let wrap_in_parens = !is_negative_literal
-                        && !matches!(sub.flat_tokens(), [tt::TokenTree::Leaf(_)])
+                        && !matches!(sub.iter().collect_array(), Some([tt::TtElement::Leaf(_)]))
                         && sub.try_into_subtree().is_none_or(|it| {
                             it.top_subtree().delimiter.kind == tt::DelimiterKind::Invisible
                         });
@@ -459,7 +465,7 @@ fn expand_repeat(
     template: &MetaTemplate,
     kind: RepeatKind,
     separator: Option<&Separator>,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
+    builder: &mut tt::TopSubtreeBuilder,
     marker: impl Fn(&mut Span) + Copy,
 ) -> ExpandResult<()> {
     ctx.nesting.push(NestingState { idx: 0, at_end: false, hit: false });
@@ -539,8 +545,8 @@ fn expand_repeat(
 /// we need this fixup.
 fn fix_up_and_push_path_tt(
     ctx: &ExpandCtx<'_>,
-    builder: &mut tt::TopSubtreeBuilder<Span>,
-    subtree: tt::TokenTreesView<'_, Span>,
+    builder: &mut tt::TopSubtreeBuilder,
+    subtree: tt::TokenTreesView<'_>,
 ) {
     let mut prev_was_ident = false;
     // Note that we only need to fix up the top-level `TokenTree`s because the
@@ -553,8 +559,8 @@ fn fix_up_and_push_path_tt(
             // argument list and thus needs `::` between it and `FnOnce`. However in
             // today's Rust this type of path *semantically* cannot appear as a
             // top-level expression-context path, so we can safely ignore it.
-            if let [tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '<', .. }))] =
-                tt.flat_tokens()
+            if let Some([tt::TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: '<', .. }))]) =
+                tt.iter().collect_array()
             {
                 builder.extend([
                     tt::Leaf::Punct(tt::Punct {
@@ -570,7 +576,8 @@ fn fix_up_and_push_path_tt(
                 ]);
             }
         }
-        prev_was_ident = matches!(tt.flat_tokens(), [tt::TokenTree::Leaf(tt::Leaf::Ident(_))]);
+        prev_was_ident =
+            matches!(tt.iter().collect_array(), Some([tt::TtElement::Leaf(tt::Leaf::Ident(_))]));
         builder.extend_with_tt(tt);
     }
 }

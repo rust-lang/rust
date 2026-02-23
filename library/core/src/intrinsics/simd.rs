@@ -37,11 +37,7 @@ pub const unsafe fn simd_extract<T, U>(x: T, idx: u32) -> U;
 /// `idx` must be in-bounds of the vector.
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub unsafe fn simd_insert_dyn<T, U>(mut x: T, idx: u32, val: U) -> T {
-    // SAFETY: `idx` must be in-bounds
-    unsafe { (&raw mut x).cast::<U>().add(idx as usize).write(val) }
-    x
-}
+pub const unsafe fn simd_insert_dyn<T, U>(x: T, idx: u32, val: U) -> T;
 
 /// Extracts an element from a vector.
 ///
@@ -54,10 +50,14 @@ pub unsafe fn simd_insert_dyn<T, U>(mut x: T, idx: u32, val: U) -> T {
 /// `idx` must be in-bounds of the vector.
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub unsafe fn simd_extract_dyn<T, U>(x: T, idx: u32) -> U {
-    // SAFETY: `idx` must be in-bounds
-    unsafe { (&raw const x).cast::<U>().add(idx as usize).read() }
-}
+pub const unsafe fn simd_extract_dyn<T, U>(x: T, idx: u32) -> U;
+
+/// Creates a vector where every lane has the provided value.
+///
+/// `T` must be a vector with element type `U`.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_splat<T, U>(value: U) -> T;
 
 /// Adds two simd vectors elementwise.
 ///
@@ -161,6 +161,18 @@ pub const unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
+
+/// Compute the carry-less product.
+///
+/// This is similar to long multiplication except that the carry is discarded.
+///
+/// This operation can be used to model multiplication in `GF(2)[X]`, the polynomial
+/// ring over `GF(2)`.
+///
+/// `T` must be a vector of integers.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_carryless_mul<T>(a: T, b: T) -> T;
 
 /// "And"s vectors elementwise.
 ///

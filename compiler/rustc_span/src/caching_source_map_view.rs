@@ -2,7 +2,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::source_map::SourceMap;
-use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData, StableSourceFileId};
+use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData};
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -114,7 +114,7 @@ impl<'sm> CachingSourceMapView<'sm> {
     pub fn span_data_to_lines_and_cols(
         &mut self,
         span_data: &SpanData,
-    ) -> Option<(StableSourceFileId, usize, BytePos, usize, BytePos)> {
+    ) -> Option<(&SourceFile, usize, BytePos, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if lo and hi are in the cached lines.
@@ -136,7 +136,7 @@ impl<'sm> CachingSourceMapView<'sm> {
             let lo = &self.line_cache[lo_cache_idx as usize];
             let hi = &self.line_cache[hi_cache_idx as usize];
             return Some((
-                lo.file.stable_id,
+                &lo.file,
                 lo.line_number,
                 span_data.lo - lo.line.start,
                 hi.line_number,
@@ -224,7 +224,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         assert_eq!(lo.file_index, hi.file_index);
 
         Some((
-            lo.file.stable_id,
+            &lo.file,
             lo.line_number,
             span_data.lo - lo.line.start,
             hi.line_number,

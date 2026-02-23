@@ -78,7 +78,6 @@
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
-// sparc64: https://github.com/rust-lang/rust/issues/115336
 // mips64: https://github.com/rust-lang/rust/issues/115404
 
 extern crate minicore;
@@ -246,7 +245,7 @@ test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+#[cfg(not(any(target_arch = "mips64")))]
 mod tuples {
     use super::*;
     // mixing in some floats since they often get special treatment
@@ -260,7 +259,6 @@ mod tuples {
     test_transparent!(tuple, (i32, f32, i64, f64));
 }
 // Some targets have special rules for arrays.
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
 mod arrays {
     use super::*;
     test_transparent!(empty_array, [u32; 0]);

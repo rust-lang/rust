@@ -2,7 +2,7 @@ use std::fs;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::join;
+use rustc_data_structures::sync::par_join;
 use rustc_middle::dep_graph::{
     DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
 };
@@ -14,7 +14,7 @@ use tracing::debug;
 
 use super::data::*;
 use super::fs::*;
-use super::{dirty_clean, file_format, work_product};
+use super::{clean, file_format, work_product};
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::errors;
 
@@ -42,9 +42,9 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
         let staging_dep_graph_path = staging_dep_graph_path(sess);
 
         sess.time("assert_dep_graph", || assert_dep_graph(tcx));
-        sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
+        sess.time("check_clean", || clean::check_clean_annotations(tcx));
 
-        join(
+        par_join(
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {

@@ -13,7 +13,7 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath};
+use rustc_hir::{self as hir, Node, PatKind, QPath, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
-use rustc_span::{Symbol, kw, sym};
+use rustc_span::{Symbol, kw};
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
@@ -380,7 +380,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
             && self.tcx.is_automatically_derived(impl_of)
             && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
-            && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
+            && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                 && let Some(adt_def_id) = adt_def.did().as_local()
@@ -422,7 +422,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 hir::ItemKind::Trait(.., trait_item_refs) => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
-                        if matches!(self.tcx.def_kind(trait_item.owner_id), DefKind::AssocTy) {
+                        if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
                             self.check_def_id(trait_item.owner_id.to_def_id());
                         }
                     }
@@ -702,12 +702,6 @@ fn has_allow_dead_code_or_lang_attr(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Option<ComesFromAllowExpect> {
-    fn has_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-        tcx.has_attr(def_id, sym::lang)
-            // Stable attribute for #[lang = "panic_impl"]
-            || tcx.has_attr(def_id, sym::panic_handler)
-    }
-
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
@@ -728,7 +722,7 @@ fn has_allow_dead_code_or_lang_attr(
 
     if has_allow_expect_dead_code(tcx, def_id) {
         Some(ComesFromAllowExpect::Yes)
-    } else if has_used_like_attr(tcx, def_id) || has_lang_attr(tcx, def_id) {
+    } else if has_used_like_attr(tcx, def_id) || find_attr!(tcx, def_id, Lang(..)) {
         Some(ComesFromAllowExpect::No)
     } else {
         None
@@ -778,6 +772,15 @@ fn maybe_record_as_seed<'tcx>(
                 match tcx.def_kind(parent) {
                     DefKind::Impl { of_trait: false } | DefKind::Trait => {}
                     DefKind::Impl { of_trait: true } => {
+                        if let Some(trait_item_def_id) =
+                            tcx.associated_item(owner_id.def_id).trait_item_def_id()
+                            && let Some(trait_item_local_def_id) = trait_item_def_id.as_local()
+                            && let Some(comes_from_allow) =
+                                has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
+                        {
+                            worklist.push((owner_id.def_id, comes_from_allow));
+                        }
+
                         // We only care about associated items of traits,
                         // because they cannot be visited directly,
                         // so we later mark them as live if their corresponding traits
@@ -791,6 +794,14 @@ fn maybe_record_as_seed<'tcx>(
         }
         DefKind::Impl { of_trait: true } => {
             if allow_dead_code.is_none() {
+                if let Some(trait_def_id) =
+                    tcx.impl_trait_ref(owner_id.def_id).skip_binder().def_id.as_local()
+                    && let Some(comes_from_allow) =
+                        has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
+                {
+                    worklist.push((owner_id.def_id, comes_from_allow));
+                }
+
                 unsolved_items.push(owner_id.def_id);
             }
         }
@@ -1179,7 +1190,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         // we have diagnosed them in the trait if they are unused,
         // for unused assoc items in unused trait,
         // we have diagnosed the unused trait.
-        if matches!(def_kind, DefKind::Impl { of_trait: false })
+        if def_kind == (DefKind::Impl { of_trait: false })
             || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
         {
             for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {

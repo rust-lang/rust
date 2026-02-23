@@ -5,7 +5,7 @@ use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
@@ -147,7 +147,8 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && !span_contains_cfg(cx, els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
-        let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();
+        let init_expr_str =
+            Sugg::hir_with_context(cx, init_expr, stmt.span.ctxt(), "..", &mut applicability).maybe_paren();
         // Take care when binding is `ref`
         let sugg = if let PatKind::Binding(
             BindingMode(ByRef::Yes(_, ref_mutability), binding_mutability),
@@ -295,7 +296,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
         && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
     {
         let mut applicability = Applicability::MachineApplicable;
-        let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
+        let receiver_str = snippet_with_context(cx, caller.span, expr.span.ctxt(), "..", &mut applicability).0;
         let by_ref = !cx.type_is_copy_modulo_regions(caller_ty)
             && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
         let sugg = if let Some(else_inner) = r#else {
@@ -473,7 +474,6 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         if_else,
         ..
     }) = higher::IfLet::hir(cx, expr)
-        && !is_else_clause(cx.tcx, expr)
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
         && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
@@ -508,10 +508,15 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             ByRef::Yes(_, Mutability::Not) => ".as_ref()",
             ByRef::No => "",
         };
-        let sugg = format!(
+
+        let mut sugg = format!(
             "{receiver_str}{method_call_str}?{}",
             if requires_semi { ";" } else { "" }
         );
+        if is_else_clause(cx.tcx, expr) {
+            sugg = format!("{{ {sugg} }}");
+        }
+
         span_lint_and_sugg(
             cx,
             QUESTION_MARK,

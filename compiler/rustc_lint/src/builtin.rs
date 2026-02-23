@@ -22,10 +22,10 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic};
+use rustc_errors::{Applicability, LintDiagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
@@ -61,10 +61,7 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
-use crate::{
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
-    fluent_generated as fluent,
-};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
     ///
@@ -396,24 +393,14 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment().is_some() {
+    if matches!(attr, hir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
         return true;
     }
 
-    if !attr.has_name(sym::doc) {
-        return false;
-    }
-
-    if attr.value_str().is_some() {
+    if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
+        && matches!(d.as_ref(), DocAttribute { hidden: Some(..), .. })
+    {
         return true;
-    }
-
-    if let Some(list) = attr.meta_item_list() {
-        for meta in list {
-            if meta.has_name(sym::hidden) {
-                return true;
-            }
-        }
     }
 
     false
@@ -822,19 +809,23 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
     let mut sugared_span: Option<Span> = None;
 
     while let Some(attr) = attrs.next() {
-        let is_doc_comment = attr.is_doc_comment();
+        let (is_doc_comment, is_doc_attribute) = match &attr.kind {
+            AttrKind::DocComment(..) => (true, false),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => (true, true),
+            _ => (false, false),
+        };
         if is_doc_comment {
             sugared_span =
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
+        if !is_doc_attribute && attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if is_doc_comment || attr.has_name(sym::doc) {
+        if is_doc_comment || is_doc_attribute {
             let sub = match attr.kind {
                 AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
                     BuiltinUnusedDocCommentSub::PlainHelp
@@ -989,15 +980,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
             hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, AttributeKind::NoMangle(..)) {
+                if find_attr!(attrs, NoMangle(..)) {
                     let suggestion =
                         if generics.params.is_empty() && generics.where_clause_span.is_empty() {
                             // account for "pub const" (#45562)
@@ -1023,9 +1013,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ImplItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
@@ -1078,11 +1067,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             cx: &LateContext<'tcx>,
             expr: &hir::Expr<'_>,
         ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
+            let hir::ExprKind::Path(ref qpath) = expr.kind else { return None };
+            let def = cx.qpath_res(qpath, expr.hir_id);
             if let Res::Def(DefKind::Fn, did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
@@ -1190,7 +1176,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller()
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::TrackCaller(span) => *span)
+            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
@@ -2664,8 +2650,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
                 let msg = match init {
-                    InitKind::Zeroed => fluent::lint_builtin_unpermitted_type_init_zeroed,
-                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
+                    InitKind::Zeroed => {
+                        msg!("the type `{$ty}` does not permit zero-initialization")
+                    }
+                    InitKind::Uninit => {
+                        msg!("the type `{$ty}` does not permit being left uninitialized")
+                    }
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
                 cx.emit_span_lint(
@@ -2692,7 +2682,6 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// # #![allow(unused)]
-    /// # #![cfg_attr(bootstrap, deny(deref_nullptr))]
     /// use std::ptr;
     /// unsafe {
     ///     let x = &*ptr::null::<i32>();

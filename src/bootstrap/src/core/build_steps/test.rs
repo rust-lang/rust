@@ -14,9 +14,9 @@ use std::{env, fs, iter};
 
 use build_helper::exit;
 
-use crate::core::build_steps::compile::{Std, run_cargo};
+use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
-use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
+use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
@@ -465,35 +465,80 @@ impl Step for RustAnalyzer {
 
     /// Runs `cargo test` for rust-analyzer
     fn run(self, builder: &Builder<'_>) {
-        let host = self.compilers.target();
+        let build_compiler = self.compilers.build_compiler();
+        let target = self.compilers.target();
 
-        let workspace_path = "src/tools/rust-analyzer";
-        // until the whole RA test suite runs on `i686`, we only run
-        // `proc-macro-srv` tests
-        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
+        // NOTE: rust-analyzer repo currently (as of 2025-12-11) does not run tests against 32-bit
+        // targets, so we also don't run them in rust-lang/rust CI (because that will just mean that
+        // subtree syncs will keep getting 32-bit-specific failures that are not observed in
+        // rust-analyzer repo CI).
+        //
+        // Some 32-bit specific failures include e.g. target pointer width specific hashes.
+
+        // FIXME: eventually, we should probably reduce the amount of target tuple substring
+        // matching in bootstrap.
+        if target.starts_with("i686") {
+            return;
+        }
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            self.compilers.build_compiler(),
+            build_compiler,
             Mode::ToolRustcPrivate,
-            host,
+            target,
             Kind::Test,
-            crate_path,
+            "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
-        let dir = builder.src.join(workspace_path);
-        // needed by rust-analyzer to find its own text fixtures, cf.
-        // https://github.com/rust-analyzer/expect-test/issues/33
-        cargo.env("CARGO_WORKSPACE_DIR", &dir);
+        // N.B. it turns out _setting_ `CARGO_WORKSPACE_DIR` actually somehow breaks `expect-test`,
+        // even though previously we actually needed to set that hack to allow `expect-test` to
+        // correctly discover the r-a workspace instead of the outer r-l/r workspace.
 
-        // RA's test suite tries to write to the source directory, that can't
-        // work in Rust CI
+        // FIXME: RA's test suite tries to write to the source directory, that can't work in Rust CI
+        // without properly wiring up the writable test dir.
         cargo.env("SKIP_SLOW_TESTS", "1");
 
+        // NOTE: we need to skip `src/tools/rust-analyzer/xtask` as they seem to exercise rustup /
+        // stable rustfmt.
+        //
+        // NOTE: you can only skip a specific workspace package via `--exclude=...` if you *also*
+        // specify `--workspace`.
+        cargo.arg("--workspace");
+        cargo.arg("--exclude=xtask");
+
+        if build_compiler.stage == 0 {
+            // This builds a proc macro against the bootstrap libproc_macro, which is not ABI
+            // compatible with the ABI proc-macro-srv expects to load.
+            cargo.arg("--exclude=proc-macro-srv");
+            cargo.arg("--exclude=proc-macro-srv-cli");
+        }
+
+        let mut skip_tests = vec![];
+
+        // NOTE: the following test skips is a bit cheeky in that it assumes there are no
+        // identically named tests across different r-a packages, where we want to run the
+        // identically named test in one package but not another. If we want to support that use
+        // case, we'd have to run the r-a tests in two batches (with one excluding the package that
+        // we *don't* want to run the test for, and the other batch including).
+
+        // Across all platforms.
+        skip_tests.extend_from_slice(&[
+            // FIXME: this test wants to find a `rustc`. We need to provide it with a path to staged
+            // in-tree `rustc`, but setting `RUSTC` env var requires some reworking of bootstrap.
+            "tests::smoke_test_real_sysroot_cargo",
+            // NOTE: part of `smol-str` test suite; this tries to access a stable rustfmt from the
+            // environment, which is not something we want to do.
+            "check_code_formatting",
+        ]);
+
+        let skip_tests = skip_tests.iter().map(|name| format!("--skip={name}")).collect::<Vec<_>>();
+        let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder);
+        run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -684,7 +729,6 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -890,8 +934,9 @@ impl Step for Clippy {
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
-        let host_libs =
-            builder.stage_out(build_compiler, Mode::ToolRustcPrivate).join(builder.cargo_dir());
+        let host_libs = builder
+            .stage_out(build_compiler, Mode::ToolRustcPrivate)
+            .join(builder.cargo_dir(Mode::ToolRustcPrivate));
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.
@@ -1255,19 +1300,19 @@ impl Step for Tidy {
     /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
-        cmd.arg(&builder.src);
-        cmd.arg(&builder.initial_cargo);
-        cmd.arg(&builder.out);
+        cmd.arg(format!("--root-path={}", &builder.src.display()));
+        cmd.arg(format!("--cargo-path={}", &builder.initial_cargo.display()));
+        cmd.arg(format!("--output-dir={}", &builder.out.display()));
         // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs` hasn't been configured.
         let jobs = builder.config.jobs.unwrap_or_else(|| {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
-        cmd.arg(jobs.to_string());
+        cmd.arg(format!("--concurrency={jobs}"));
         // pass the path to the yarn command used for installing js deps.
         if let Some(yarn) = &builder.config.yarn {
-            cmd.arg(yarn);
+            cmd.arg(format!("--npm-path={}", yarn.display()));
         } else {
-            cmd.arg("yarn");
+            cmd.arg("--npm-path=yarn");
         }
         if builder.is_verbose() {
             cmd.arg("--verbose");
@@ -1545,10 +1590,10 @@ test!(UiFullDeps {
     IS_HOST: true,
 });
 
-test!(Rustdoc {
-    path: "tests/rustdoc",
-    mode: CompiletestMode::Rustdoc,
-    suite: "rustdoc",
+test!(RustdocHtml {
+    path: "tests/rustdoc-html",
+    mode: CompiletestMode::RustdocHtml,
+    suite: "rustdoc-html",
     default: true,
     IS_HOST: true,
 });
@@ -1587,6 +1632,12 @@ test!(RunMakeCargo {
     mode: CompiletestMode::RunMake,
     suite: "run-make-cargo",
     default: true
+});
+test!(BuildStd {
+    path: "tests/build-std",
+    mode: CompiletestMode::RunMake,
+    suite: "build-std",
+    default: false
 });
 
 test!(AssemblyLlvm {
@@ -1911,7 +1962,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let stage0_rustc_path = builder.compiler(0, test_compiler.host);
             cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
 
-            if suite == "run-make-cargo" {
+            if matches!(suite, "run-make-cargo" | "build-std") {
                 let cargo_path = if test_compiler.stage == 0 {
                     // If we're using `--stage 0`, we should provide the bootstrap cargo.
                     builder.initial_cargo.clone()
@@ -1932,7 +1983,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if matches!(
             mode,
             CompiletestMode::RunMake
-                | CompiletestMode::Rustdoc
+                | CompiletestMode::RustdocHtml
                 | CompiletestMode::RustdocJs
                 | CompiletestMode::RustdocJson
         ) || matches!(suite, "rustdoc-ui" | "coverage-run-rustdoc")
@@ -2025,6 +2076,10 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         if builder.build.config.llvm_enzyme {
             cmd.arg("--has-enzyme");
+        }
+
+        if builder.build.config.llvm_offload {
+            cmd.arg("--has-offload");
         }
 
         if builder.config.cmd.bless() {
@@ -2129,6 +2184,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
+        if target.is_synthetic() {
+            cmd.arg("--target-rustcflags").arg("-Zunstable-options");
+        }
 
         cmd.arg("--python").arg(
             builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
@@ -2143,6 +2201,10 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         if mode == CompiletestMode::Debuginfo {
+            if let Some(debuggers::Cdb { cdb }) = debuggers::discover_cdb(target) {
+                cmd.arg("--cdb").arg(cdb);
+            }
+
             if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
             {
                 cmd.arg("--gdb").arg(gdb.as_ref());
@@ -2215,6 +2277,12 @@ Please disable assertions with `rust.debug-assertions = false`.
         if builder.config.std_debug_assertions {
             cmd.arg("--with-std-debug-assertions");
         }
+
+        if builder.config.rust_remap_debuginfo {
+            cmd.arg("--with-std-remap-debuginfo");
+        }
+
+        cmd.arg("--jobs").arg(builder.jobs().to_string());
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -2401,7 +2469,6 @@ Please disable assertions with `rust.debug-assertions = false`.
         let git_config = builder.config.git_config();
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
         cmd.arg("--git-merge-commit-email").arg(git_config.git_merge_commit_email);
-        cmd.force_coloring_in_ci();
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -2537,7 +2604,8 @@ impl BookTest {
                 let stamp = BuildStamp::new(&builder.cargo_out(test_compiler, mode, target))
                     .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
-                let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+                let output_paths =
+                    run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
                 let directories = output_paths
                     .into_iter()
                     .filter_map(|p| p.parent().map(ToOwned::to_owned))
@@ -2710,7 +2778,7 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
-        // tests in tests/rustdoc) so that it shares the same artifacts.
+        // tests in tests/rustdoc-html) so that it shares the same artifacts.
         let compilers = RustcPrivateCompilers::new(
             run.builder,
             run.builder.top_stage,
@@ -3091,7 +3159,7 @@ impl Step for CrateRustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["src/librustdoc", "src/tools/rustdoc"])
+        run.path("src/librustdoc").path("src/tools/rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3111,7 +3179,7 @@ impl Step for CrateRustdoc {
             builder.compiler(builder.top_stage, target)
         } else {
             // Use the previous stage compiler to reuse the artifacts that are
-            // created when running compiletest for tests/rustdoc. If this used
+            // created when running compiletest for tests/rustdoc-html. If this used
             // `compiler`, then it would cause rustdoc to be built *again*, which
             // isn't really necessary.
             builder.compiler_for(builder.top_stage, target, target)
@@ -3432,7 +3500,7 @@ impl Step for BootstrapPy {
         // Bootstrap tests might not be perfectly self-contained and can depend
         // on the environment, so only run them by default in CI, not locally.
         // See `test::Bootstrap::should_run`.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3471,7 +3539,7 @@ impl Step for Bootstrap {
         // Bootstrap tests might not be perfectly self-contained and can depend on the external
         // environment, submodules that are checked out, etc.
         // Therefore we only run them by default on CI.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     /// Tests the build system itself.
@@ -3752,7 +3820,7 @@ impl Step for CodegenCranelift {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift"])
+        run.path("compiler/rustc_codegen_cranelift")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3873,7 +3941,7 @@ impl Step for CodegenGCC {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_gcc"])
+        run.path("compiler/rustc_codegen_gcc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3919,7 +3987,7 @@ impl Step for CodegenGCC {
         let compilers = self.compilers;
         let target = self.target;
 
-        let gcc = builder.ensure(Gcc { target });
+        let gcc = builder.ensure(Gcc { target_pair: GccTargetPair::for_native_build(target) });
 
         builder.ensure(
             compile::Std::new(compilers.build_compiler(), target)
@@ -3960,12 +4028,13 @@ impl Step for CodegenGCC {
             .arg("--use-backend")
             .arg("gcc")
             .arg("--gcc-path")
-            .arg(gcc.libgccjit.parent().unwrap())
+            .arg(gcc.libgccjit().parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")
             .arg("--mini-tests")
             .arg("--std-tests");
+
         cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);

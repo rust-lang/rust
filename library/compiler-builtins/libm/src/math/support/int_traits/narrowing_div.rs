@@ -7,7 +7,6 @@ use crate::support::{CastInto, DInt, HInt, Int, MinInt, u256};
 /// This is the inverse of widening multiplication:
 ///  - for any `x` and nonzero `y`: `x.widen_mul(y).checked_narrowing_div_rem(y) == Some((x, 0))`,
 ///  - and for any `r in 0..y`: `x.carrying_mul(y, r).checked_narrowing_div_rem(y) == Some((x, r))`,
-#[allow(dead_code)]
 pub trait NarrowingDiv: DInt + MinInt<Unsigned = Self> {
     /// Computes `(self / n, self % n))`
     ///

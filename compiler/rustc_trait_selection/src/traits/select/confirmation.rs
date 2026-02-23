@@ -365,8 +365,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?src, ?dst);
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx);
-        let maybe_transmutable =
-            transmute_env.is_transmutable(rustc_transmute::Types { dst, src }, assume);
+        let maybe_transmutable = transmute_env.is_transmutable(src, dst, assume);
 
         let fully_flattened = match maybe_transmutable {
             Answer::No(_) => Err(SelectionError::Unimplemented)?,
@@ -1247,6 +1246,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// This trait is indirectly exposed on stable, so do *not* extend the set of types that
+    /// implement the trait without FCP!
     fn confirm_bikeshed_guaranteed_no_drop_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,

@@ -1,4 +1,5 @@
-use ide_db::assists::AssistId;
+use hir::Semantics;
+use ide_db::{RootDatabase, assists::AssistId, defs::Definition};
 use syntax::{
     AstNode,
     ast::{self, Expr, HasArgList, make},
@@ -60,8 +61,8 @@ pub(crate) fn replace_with_lazy_method(acc: &mut Assists, ctx: &AssistContext<'_
         format!("Replace {method_name} with {method_name_lazy}"),
         call.syntax().text_range(),
         |builder| {
+            let closured = into_closure(&last_arg, &method_name_lazy);
             builder.replace(method_name.syntax().text_range(), method_name_lazy);
-            let closured = into_closure(&last_arg);
             builder.replace_ast(last_arg, closured);
         },
     )
@@ -79,7 +80,7 @@ fn lazy_method_name(name: &str) -> String {
     }
 }
 
-fn into_closure(param: &Expr) -> Expr {
+fn into_closure(param: &Expr, name_lazy: &str) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 { Some(call.expr()?) } else { None }
@@ -87,7 +88,11 @@ fn into_closure(param: &Expr) -> Expr {
             None
         }
     })()
-    .unwrap_or_else(|| make::expr_closure(None, param.clone()).into())
+    .unwrap_or_else(|| {
+        let pats = (name_lazy == "and_then")
+            .then(|| make::untyped_param(make::ext::simple_ident_pat(make::name("it")).into()));
+        make::expr_closure(pats, param.clone()).into()
+    })
 }
 
 // Assist: replace_with_eager_method
@@ -146,21 +151,39 @@ pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'
         call.syntax().text_range(),
         |builder| {
             builder.replace(method_name.syntax().text_range(), method_name_eager);
-            let called = into_call(&last_arg);
+            let called = into_call(&last_arg, &ctx.sema);
             builder.replace_ast(last_arg, called);
         },
     )
 }
 
-fn into_call(param: &Expr) -> Expr {
+fn into_call(param: &Expr, sema: &Semantics<'_, RootDatabase>) -> Expr {
     (|| {
         if let ast::Expr::ClosureExpr(closure) = param {
-            if closure.param_list()?.params().count() == 0 { Some(closure.body()?) } else { None }
+            let mut params = closure.param_list()?.params();
+            match params.next() {
+                Some(_) if params.next().is_none() => {
+                    let params = sema.resolve_expr_as_callable(param)?.params();
+                    let used_param = Definition::Local(params.first()?.as_local(sema.db)?)
+                        .usages(sema)
+                        .at_least_one();
+                    if used_param { None } else { Some(closure.body()?) }
+                }
+                None => Some(closure.body()?),
+                Some(_) => None,
+            }
         } else {
             None
         }
     })()
-    .unwrap_or_else(|| make::expr_call(param.clone(), make::arg_list(Vec::new())).into())
+    .unwrap_or_else(|| {
+        let callable = if needs_parens_in_call(param) {
+            make::expr_paren(param.clone()).into()
+        } else {
+            param.clone()
+        };
+        make::expr_call(callable, make::arg_list(Vec::new())).into()
+    })
 }
 
 fn eager_method_name(name: &str) -> Option<&str> {
@@ -175,6 +198,12 @@ fn eager_method_name(name: &str) -> Option<&str> {
 
 fn ends_is(name: &str, end: &str) -> bool {
     name.strip_suffix(end).is_some_and(|s| s.is_empty() || s.ends_with('_'))
+}
+
+fn needs_parens_in_call(param: &Expr) -> bool {
+    let call = make::expr_call(make::ext::expr_unit(), make::arg_list(Vec::new()));
+    let callable = call.expr().expect("invalid make call");
+    param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
 #[cfg(test)]
@@ -333,7 +362,7 @@ fn foo() {
             r#"
 fn foo() {
     let foo = Some("foo");
-    return foo.and_then(|| Some("bar"));
+    return foo.and_then(|it| Some("bar"));
 }
 "#,
         )
@@ -347,13 +376,33 @@ fn foo() {
 //- minicore: option, fn
 fn foo() {
     let foo = Some("foo");
-    return foo.and_then$0(|| Some("bar"));
+    return foo.and_then$0(|it| Some("bar"));
 }
 "#,
             r#"
 fn foo() {
     let foo = Some("foo");
     return foo.and(Some("bar"));
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_and_then_with_and_used_param() {
+        check_assist(
+            replace_with_eager_method,
+            r#"
+//- minicore: option, fn
+fn foo() {
+    let foo = Some("foo");
+    return foo.and_then$0(|it| Some(it.strip_suffix("bar")));
+}
+"#,
+            r#"
+fn foo() {
+    let foo = Some("foo");
+    return foo.and((|it| Some(it.strip_suffix("bar")))());
 }
 "#,
         )
@@ -394,6 +443,30 @@ fn foo() {
 fn foo() {
     let foo = true;
     let x = foo.then_some(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_then_with_then_some_needs_parens() {
+        check_assist(
+            replace_with_eager_method,
+            r#"
+//- minicore: option, fn, bool_impl
+struct Func { f: fn() -> i32 }
+fn foo() {
+    let foo = true;
+    let func = Func { f: || 2 };
+    let x = foo.then$0(func.f);
+}
+"#,
+            r#"
+struct Func { f: fn() -> i32 }
+fn foo() {
+    let foo = true;
+    let func = Func { f: || 2 };
+    let x = foo.then_some((func.f)());
 }
 "#,
         )

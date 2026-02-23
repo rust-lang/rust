@@ -4,7 +4,7 @@ error[E0277]: the trait bound `MyPointer: DerefPure` is not satisfied
 LL |         () => {}
    |         ^^ unsatisfied trait bound
    |
-help: the trait `DerefPure` is not implemented for `MyPointer`
+help: the nightly-only, unstable trait `DerefPure` is not implemented for `MyPointer`
   --> $DIR/unsatisfied-bounds.rs:4:1
    |
 LL | struct MyPointer;

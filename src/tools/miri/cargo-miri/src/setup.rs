@@ -88,6 +88,11 @@ pub fn setup(
     };
     let cargo_cmd = {
         let mut command = cargo();
+        // Allow JSON targets since users do not have a good way to set this flag otherwise.
+        if env::var("RUSTC_STAGE").is_err() {
+            // ^ is a HACK for bootstrap cargo. FIXME(cfg(bootstrap)) remove the hack.
+            command.arg("-Zjson-target-spec");
+        }
         // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
         // We set ourselves (`cargo-miri`) instead of Miri directly to be able to patch the flags
         // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).

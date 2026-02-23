@@ -1,10 +1,22 @@
 //! Tidy check to ensure paths mentioned in triagebot.toml exist in the project.
 
+use std::collections::HashSet;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use toml::Value;
 
 use crate::diagnostics::TidyCtx;
+
+static SUBMODULES: LazyLock<Vec<&'static Path>> = LazyLock::new(|| {
+    // WORKSPACES doesn't list all submodules but it's contains the main at least
+    crate::deps::WORKSPACES
+        .iter()
+        .map(|ws| ws.submodules.iter())
+        .flatten()
+        .map(|p| Path::new(p))
+        .collect()
+});
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("triagebot");
@@ -22,6 +34,9 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
 
     // Check [mentions."*"] sections, i.e. [mentions."compiler/rustc_const_eval/src/"]
     if let Some(Value::Table(mentions)) = config.get("mentions") {
+        let mut builder = globset::GlobSetBuilder::new();
+        let mut glob_entries = Vec::new();
+
         for (entry_key, entry_val) in mentions.iter() {
             // If the type is set to something other than "filename", then this is not a path.
             if entry_val.get("type").is_some_and(|t| t.as_str().unwrap_or_default() != "filename") {
@@ -33,8 +48,52 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             let full_path = path.join(clean_path);
 
             if !full_path.exists() {
+                // The full-path doesn't exists, maybe it's a glob, let's add it to the glob set builder
+                // to be checked against all the file and directories in the repository.
+                let trimmed_path = clean_path.trim_end_matches('/');
+                builder.add(globset::Glob::new(&format!("{trimmed_path}{{,/*}}")).unwrap());
+                glob_entries.push(clean_path.to_string());
+            } else if is_in_submodule(Path::new(clean_path)) {
                 check.error(format!(
-                    "triagebot.toml [mentions.*] contains path '{clean_path}' which doesn't exist"
+                    "triagebot.toml [mentions.*] '{clean_path}' cannot match inside a submodule"
+                ));
+            }
+        }
+
+        let gs = builder.build().unwrap();
+
+        let mut found = HashSet::new();
+        let mut matches = Vec::new();
+
+        let cloned_path = path.to_path_buf();
+
+        // Walk the entire repository and match any entry against the remaining paths
+        for entry in ignore::WalkBuilder::new(&path)
+            .filter_entry(move |entry| {
+                // Ignore entries inside submodules as triagebot cannot detect them
+                let entry_path = entry.path().strip_prefix(&cloned_path).unwrap();
+                is_not_in_submodule(entry_path)
+            })
+            .build()
+            .flatten()
+        {
+            // Strip the prefix as mentions entries are always relative to the repo
+            let entry_path = entry.path().strip_prefix(path).unwrap();
+
+            // Find the matches and add them to the found set
+            gs.matches_into(entry_path, &mut matches);
+            found.extend(matches.iter().copied());
+
+            // Early-exist if all the globs have been matched
+            if found.len() == glob_entries.len() {
+                break;
+            }
+        }
+
+        for (i, clean_path) in glob_entries.iter().enumerate() {
+            if !found.contains(&i) {
+                check.error(format!(
+                    "triagebot.toml [mentions.*] contains '{clean_path}' which doesn't match any file or directory in the repository"
                 ));
             }
         }
@@ -92,4 +151,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             }
         }
     }
+}
+
+fn is_not_in_submodule(path: &Path) -> bool {
+    SUBMODULES.contains(&path) || !SUBMODULES.iter().any(|p| path.starts_with(*p))
+}
+
+fn is_in_submodule(path: &Path) -> bool {
+    !SUBMODULES.contains(&path) && SUBMODULES.iter().any(|p| path.starts_with(*p))
 }

@@ -271,7 +271,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
+impl<'tcx> Stable<'tcx> for ty::BoundTyKind<'tcx> {
     type T = crate::ty::BoundTyKind;
 
     fn stable<'cx>(
@@ -290,7 +290,7 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
+impl<'tcx> Stable<'tcx> for ty::BoundRegionKind<'tcx> {
     type T = crate::ty::BoundRegionKind;
 
     fn stable<'cx>(
@@ -307,12 +307,12 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
                 cx.tcx.item_name(*def_id).to_string(),
             ),
             ty::BoundRegionKind::ClosureEnv => BoundRegionKind::BrEnv,
-            ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
+            ty::BoundRegionKind::NamedForPrinting(_) => bug!("only used for pretty printing"),
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
+impl<'tcx> Stable<'tcx> for ty::BoundVariableKind<'tcx> {
     type T = crate::ty::BoundVariableKind;
 
     fn stable<'cx>(
@@ -546,7 +546,7 @@ impl<'tcx> Stable<'tcx> for ty::ParamTy {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundTy {
+impl<'tcx> Stable<'tcx> for ty::BoundTy<'tcx> {
     type T = crate::ty::BoundTy;
     fn stable<'cx>(
         &self,
@@ -597,7 +597,7 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
                 .must_implement_one_of
                 .as_ref()
                 .map(|idents| idents.iter().map(|ident| opaque(ident)).collect()),
-            implement_via_object: self.implement_via_object,
+            force_dyn_incompatible: self.force_dyn_incompatible.stable(tables, cx),
             deny_explicit_impl: self.deny_explicit_impl,
         }
     }
@@ -1020,6 +1020,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::RustCall => Abi::RustCall,
             ExternAbi::Unadjusted => Abi::Unadjusted,
             ExternAbi::RustCold => Abi::RustCold,
+            ExternAbi::RustPreserveNone => Abi::RustPreserveNone,
             ExternAbi::RustInvalid => Abi::RustInvalid,
             ExternAbi::RiscvInterruptM => Abi::RiscvInterruptM,
             ExternAbi::RiscvInterruptS => Abi::RiscvInterruptS,

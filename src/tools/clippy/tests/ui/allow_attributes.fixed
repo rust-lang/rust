@@ -63,6 +63,11 @@ fn msrv_1_80() {
     let x = 1;
 }
 
+#[rustfmt::skip]
+#[ expect ( dead_code ) ]
+//~^ allow_attributes
+struct Spaced;
+
 #[deny(clippy::allow_attributes)]
 fn deny_allow_attributes() -> Option<u8> {
     let allow = None;

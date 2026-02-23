@@ -419,9 +419,7 @@ mod tests {
     fn conformance_tests_f16() {
         let cases = [
             (f16::PI, 0x3f17_u16),
-            // 10_000.0, using a hex literal for MSRV hack (Rust < 1.67 checks literal widths as
-            // part of the AST, so the `cfg` is irrelevant here).
-            (f16::from_bits(0x70e2), 0x5640_u16),
+            (10000.0_f16, 0x5640_u16),
             (f16::from_bits(0x0000000f), 0x13bf_u16),
             (f16::INFINITY, f16::INFINITY.to_bits()),
         ];

@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeQPath};
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
 use clippy_utils::{
     SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -273,6 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             let string_expression = &expressions[0].0;
 
             let snippet_app = snippet_with_applicability(cx, string_expression.span, "..", &mut applicability);
+            let (right_snip, _) = snippet_with_context(cx, right.span, e.span.ctxt(), "..", &mut applicability);
 
             span_lint_and_sugg(
                 cx,
@@ -280,7 +282,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                 e.span,
                 "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                 "try",
-                format!("Some(&{snippet_app}[{}])", snippet(cx, right.span, "..")),
+                format!("Some(&{snippet_app}[{right_snip}])"),
                 applicability,
             );
         }
@@ -404,9 +406,27 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
                 "`to_string()` called on a `&str`",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
+                    let (snippet, _) =
+                        snippet_with_context(cx, self_arg.span, expr.span.ctxt(), "..", &mut applicability);
                     diag.span_suggestion(expr.span, "try", format!("{snippet}.to_owned()"), applicability);
                 },
+            );
+        } else if let ExprKind::Path(_) = expr.kind
+            && let Some(parent) = get_parent_expr(cx, expr)
+            && let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = &parent.kind
+            && args.iter().any(|a| a.hir_id == expr.hir_id)
+            && let Res::Def(DefKind::AssocFn, def_id) = expr.res(cx)
+            && cx.tcx.is_diagnostic_item(sym::to_string_method, def_id)
+        {
+            // Detected `ToString::to_string` passed as an argument (generic: any call or method call)
+            span_lint_and_sugg(
+                cx,
+                STR_TO_STRING,
+                expr.span,
+                "`ToString::to_string` used as `&str` to `String` converter",
+                "try",
+                "ToOwned::to_owned".to_string(),
+                Applicability::MachineApplicable,
             );
         }
     }

@@ -3,6 +3,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::is_never_like;
 use clippy_utils::{is_in_test, is_inside_always_const_context, is_lint_allowed};
 use rustc_hir::Expr;
+use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, Lint};
 use rustc_middle::ty;
 use rustc_span::sym;
@@ -46,19 +47,19 @@ pub(super) fn check(
 ) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
 
-    let (kind, none_value, none_prefix) = if ty.is_diag_item(cx, sym::Option) && !is_err {
-        ("an `Option`", "None", "")
-    } else if ty.is_diag_item(cx, sym::Result)
-        && let ty::Adt(_, substs) = ty.kind()
-        && let Some(t_or_e_ty) = substs[usize::from(!is_err)].as_type()
-    {
-        if is_never_like(t_or_e_ty) {
-            return;
-        }
+    let (kind, none_value, none_prefix) = match ty.opt_diag_name(cx) {
+        Some(sym::Option) if !is_err => ("an `Option`", "None", ""),
+        Some(sym::Result)
+            if let ty::Adt(_, substs) = ty.kind()
+                && let Some(t_or_e_ty) = substs[usize::from(!is_err)].as_type() =>
+        {
+            if is_never_like(t_or_e_ty) {
+                return;
+            }
 
-        ("a `Result`", if is_err { "Ok" } else { "Err" }, "an ")
-    } else {
-        return;
+            ("a `Result`", if is_err { "Ok" } else { "Err" }, "an ")
+        },
+        _ => return,
     };
 
     let method_suffix = if is_err { "_err" } else { "" };
@@ -86,4 +87,71 @@ pub(super) fn check(
             }
         },
     );
+}
+
+#[expect(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+pub(super) fn check_call(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    func: &Expr<'_>,
+    args: &[Expr<'_>],
+    allow_unwrap_in_consts: bool,
+    allow_unwrap_in_tests: bool,
+    allow_expect_in_consts: bool,
+    allow_expect_in_tests: bool,
+) {
+    let Some(recv) = args.first() else {
+        return;
+    };
+    let Some((DefKind::AssocFn, def_id)) = cx.typeck_results().type_dependent_def(func.hir_id) else {
+        return;
+    };
+
+    match cx.tcx.item_name(def_id) {
+        sym::unwrap => {
+            check(
+                cx,
+                expr,
+                recv,
+                false,
+                allow_unwrap_in_consts,
+                allow_unwrap_in_tests,
+                Variant::Unwrap,
+            );
+        },
+        sym::expect => {
+            check(
+                cx,
+                expr,
+                recv,
+                false,
+                allow_expect_in_consts,
+                allow_expect_in_tests,
+                Variant::Expect,
+            );
+        },
+        clippy_utils::sym::unwrap_err => {
+            check(
+                cx,
+                expr,
+                recv,
+                true,
+                allow_unwrap_in_consts,
+                allow_unwrap_in_tests,
+                Variant::Unwrap,
+            );
+        },
+        clippy_utils::sym::expect_err => {
+            check(
+                cx,
+                expr,
+                recv,
+                true,
+                allow_expect_in_consts,
+                allow_expect_in_tests,
+                Variant::Expect,
+            );
+        },
+        _ => (),
+    }
 }

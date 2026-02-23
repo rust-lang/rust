@@ -2,7 +2,7 @@ use std::env;
 use std::process::Command;
 use std::sync::Arc;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 
 use crate::common::{Config, Debugger};
 
@@ -52,51 +52,6 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     config.lldb.as_ref()?;
 
     Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
-}
-
-/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
-fn is_pc_windows_msvc_target(target: &str) -> bool {
-    target.ends_with("-pc-windows-msvc")
-}
-
-/// FIXME: this is very questionable...
-fn find_cdb(target: &str) -> Option<Utf8PathBuf> {
-    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
-        return None;
-    }
-
-    let pf86 = Utf8PathBuf::from_path_buf(
-        env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?.into(),
-    )
-    .unwrap();
-    let cdb_arch = if cfg!(target_arch = "x86") {
-        "x86"
-    } else if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "arm") {
-        "arm"
-    } else {
-        return None; // No compatible CDB.exe in the Windows 10 SDK
-    };
-
-    let mut path = pf86;
-    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-    path.push(cdb_arch);
-    path.push(r"cdb.exe");
-
-    if !path.exists() {
-        return None;
-    }
-
-    Some(path)
-}
-
-/// Returns Path to CDB
-pub(crate) fn discover_cdb(cdb: Option<String>, target: &str) -> Option<Utf8PathBuf> {
-    let cdb = cdb.map(Utf8PathBuf::from).or_else(|| find_cdb(target));
-    cdb
 }
 
 pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {

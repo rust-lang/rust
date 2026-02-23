@@ -1,7 +1,7 @@
 //@ revisions: pin_ergonomics normal
 //@ edition:2024
 #![cfg_attr(pin_ergonomics, feature(pin_ergonomics))]
-#![feature(if_let_guard, negative_impls)]
+#![feature(negative_impls)]
 #![allow(incomplete_features)]
 
 use std::pin::Pin;

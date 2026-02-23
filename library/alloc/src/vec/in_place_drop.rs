@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 use core::ptr::{self, NonNull, drop_in_place};
-use core::slice::{self};
 
 use crate::alloc::Global;
 use crate::raw_vec::RawVec;
@@ -22,7 +21,7 @@ impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
+            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.inner, self.len()));
         }
     }
 }

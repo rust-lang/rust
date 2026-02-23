@@ -1,4 +1,4 @@
-use super::{log1pf, logf, sqrtf};
+use super::{Float, log1pf, logf, sqrtf};
 
 const LN2: f32 = 0.693147180559945309417232121458176568;
 
@@ -9,18 +9,19 @@ const LN2: f32 = 0.693147180559945309417232121458176568;
 /// `x` must be a number greater than or equal to 1.
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn acoshf(x: f32) -> f32 {
-    let u = x.to_bits();
-    let a = u & 0x7fffffff;
+    let ux = x.to_bits();
 
-    if a < 0x3f800000 + (1 << 23) {
-        /* |x| < 2, invalid if x < 1 or nan */
+    /* x < 1 domain error is handled in the called functions */
+    if (ux & !f32::SIGN_MASK) < 2_f32.to_bits() {
+        /* |x| < 2, invalid if x < 1 */
         /* up to 2ulp error in [1,1.125] */
-        return log1pf(x - 1.0 + sqrtf((x - 1.0) * (x - 1.0) + 2.0 * (x - 1.0)));
+        let x_1 = x - 1.0;
+        log1pf(x_1 + sqrtf(x_1 * x_1 + 2.0 * x_1))
+    } else if ux < ((1 << 12) as f32).to_bits() {
+        /* 2 <= x < 0x1p12 */
+        logf(2.0 * x - 1.0 / (x + sqrtf(x * x - 1.0)))
+    } else {
+        /* x >= 0x1p12 or x <= -2 or nan */
+        logf(x) + LN2
     }
-    if a < 0x3f800000 + (12 << 23) {
-        /* |x| < 0x1p12 */
-        return logf(2.0 * x - 1.0 / (x + sqrtf(x * x - 1.0)));
-    }
-    /* x >= 0x1p12 */
-    return logf(x) + LN2;
 }

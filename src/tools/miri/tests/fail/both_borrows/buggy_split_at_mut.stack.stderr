@@ -22,13 +22,11 @@ help: <TAG> was later invalidated at offsets [0x0..0x10] by a Unique retag
    |
 LL |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `safe::split_at_mut::<i32>` at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
-   |
-LL |     let (a, b) = safe::split_at_mut(&mut array, 0);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: safe::split_at_mut
+               at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
+           1: main
+               at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

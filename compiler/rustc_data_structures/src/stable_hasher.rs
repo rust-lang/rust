@@ -607,7 +607,7 @@ where
 /// result (for example, using a `Fingerprint` produced while
 /// hashing `Span`s when a `Fingerprint` without `Span`s is
 /// being requested)
-#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
 pub struct HashingControls {
     pub hash_spans: bool,
 }

@@ -55,8 +55,9 @@ fn macros() {
         r#"
 //- proc_macros: mirror, identity, derive_identity
 //- minicore: fmt, include, concat
-//- /lib.rs crate:lib
+//- /lib.rs crate:lib deps:pm
 use proc_macros::{mirror, identity, DeriveIdentity};
+use pm::proc_macro;
 
 mirror! {
     {
@@ -126,6 +127,11 @@ fn main() {
 //- /foo/foo.rs crate:foo
 mod foo {}
 use self::foo as bar;
+//- /pm.rs crate:pm
+#![crate_type = "proc-macro"]
+
+#[proc_macro_attribute]
+pub fn proc_macro() {}
 "#,
         expect_file!["./test_data/highlight_macros.html"],
         false,
@@ -1494,6 +1500,23 @@ fn main() {
             ..HL_CONFIG
         },
         expect_file!["./test_data/highlight_comments_disabled.html"],
+        false,
+    );
+}
+
+#[test]
+fn test_strings_highlighting_disabled() {
+    // Test that comments are not highlighted when disabled
+    check_highlighting_with_config(
+        r#"
+//- minicore: fmt
+fn main() {
+    format_args!("foo\nbar");
+    format_args!("foo\invalid");
+}
+"#,
+        HighlightConfig { strings: false, ..HL_CONFIG },
+        expect_file!["./test_data/highlight_strings_disabled.html"],
         false,
     );
 }

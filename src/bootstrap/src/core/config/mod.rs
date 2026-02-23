@@ -425,7 +425,7 @@ impl std::str::FromStr for RustcLto {
 }
 
 /// Determines how will GCC be provided.
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub enum GccCiMode {
     /// Build GCC from the local `src/gcc` submodule.
     BuildLocally,

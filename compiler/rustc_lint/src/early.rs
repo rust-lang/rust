@@ -33,7 +33,6 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
 }
 
 impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
-    #[allow(rustc::diagnostic_outside_of_impl)]
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;

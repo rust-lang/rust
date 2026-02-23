@@ -107,7 +107,7 @@ pub fn check(
             &tests_path.join("ui"),
             &tests_path.join("ui-fulldeps"),
             &tests_path.join("rustdoc-ui"),
-            &tests_path.join("rustdoc"),
+            &tests_path.join("rustdoc-html"),
         ],
         |path, _is_dir| {
             filter_dirs(path)

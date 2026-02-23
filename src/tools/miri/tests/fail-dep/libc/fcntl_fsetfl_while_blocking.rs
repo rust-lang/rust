@@ -1,5 +1,4 @@
 //@ignore-target: windows # Sockets/pipes are not implemented yet
-//~^ ERROR: the evaluated program deadlocked
 //@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
 

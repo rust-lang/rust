@@ -123,15 +123,15 @@ struct Foo {
 }
 
 #[attr1]
+#[derive(Bar)]
+#[attr2] struct S;
+#[attr1]
 #[my_cool_derive()] struct Foo {
     v1: i32, #[attr3]v2: fn(#[attr4]param2: u32), v3: Foo< {
         456
     }
     >,
-}
-#[attr1]
-#[derive(Bar)]
-#[attr2] struct S;"#]],
+}"#]],
     );
 }
 

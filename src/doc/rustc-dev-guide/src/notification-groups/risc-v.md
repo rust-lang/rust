@@ -1,6 +1,6 @@
 # RISC-V notification group
 
-**Github Label:** [O-riscv] <br>
+**GitHub Label:** [O-riscv] <br>
 **Ping command:** `@rustbot ping risc-v`
 
 [O-riscv]: https://github.com/rust-lang/rust/labels/O-riscv

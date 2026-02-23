@@ -296,8 +296,12 @@ fn main() {
 #[rustc_deprecated_safe_2024]
 fn set_var() {}
 
+#[rustc_deprecated_safe_2024(audit_that = "something")]
+fn set_var2() {}
+
 fn main() {
     set_var();
+    set_var2();
 }
 "#,
         );

@@ -1,6 +1,6 @@
 //! Maps syntax elements through disjoint syntax nodes.
 //!
-//! [`SyntaxMappingBuilder`] should be used to create mappings to add to a [`SyntaxEditor`]
+//! [`SyntaxMappingBuilder`] should be used to create mappings to add to a `SyntaxEditor`
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;

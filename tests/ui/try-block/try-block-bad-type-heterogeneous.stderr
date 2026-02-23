@@ -30,7 +30,7 @@ error[E0277]: a `try` block must return `Result` or `Option` (or another type th
 LL |     let res = try bikeshed () { };
    |                                 ^ could not wrap the final value of the block as `()` doesn't implement `Try`
    |
-   = help: the trait `Try` is not implemented for `()`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `()`
 
 error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-bad-type-heterogeneous.rs:20:34
@@ -38,7 +38,7 @@ error[E0277]: a `try` block must return `Result` or `Option` (or another type th
 LL |     let res = try bikeshed i32 { 5 };
    |                                  ^ could not wrap the final value of the block as `i32` doesn't implement `Try`
    |
-   = help: the trait `Try` is not implemented for `i32`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `i32`
 
 error: aborting due to 5 previous errors
 

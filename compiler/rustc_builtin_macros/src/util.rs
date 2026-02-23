@@ -78,8 +78,6 @@ type UnexpectedExprKind<'a> = Result<(Diag<'a>, bool /* has_suggestions */), Err
 /// The returned bool indicates whether an applicable suggestion has already been
 /// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
 /// indicates that an ast error was encountered.
-// FIXME(Nilstrieb) Make this function setup translatable
-#[allow(rustc::untranslatable_diagnostic)]
 pub(crate) fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: Box<ast::Expr>,

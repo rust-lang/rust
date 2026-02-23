@@ -4089,6 +4089,7 @@ fn foo() {
     let fo$0o = async { S };
 }
 //- /core.rs crate:core
+#![feature(lang_items)]
 pub mod future {
     #[lang = "future_trait"]
     pub trait Future {}
@@ -8199,19 +8200,31 @@ fn main() {
 
 #[test]
 fn hover_underscore_type() {
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: _$0 = 0;
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
-    check_hover_no_result(
+    check(
         r#"
 fn main() {
     let x: (_$0,) = (0,);
 }
 "#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
     );
 }
 
@@ -9707,6 +9720,99 @@ fn test_hover_function_with_pat_param() {
 }
 
 #[test]
+fn test_hover_function_with_too_long_param() {
+    check(
+        r#"
+fn fn_$0(
+    attrs: impl IntoIterator<Item = ast::Attr>,
+    visibility: Option<ast::Visibility>,
+    fn_name: ast::Name,
+    type_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    params: ast::ParamList,
+    body: ast::BlockExpr,
+    ret_type: Option<ast::RetType>,
+    is_async: bool,
+    is_const: bool,
+    is_unsafe: bool,
+    is_gen: bool,
+) -> ast::Fn {}
+        "#,
+        expect![[r#"
+            *fn_*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn fn_(
+                attrs: impl IntoIterator<Item = ast::Attr>,
+                visibility: Option<ast::Visibility>,
+                fn_name: ast::Name,
+                type_params: Option<ast::GenericParamList>,
+                where_clause: Option<ast::WhereClause>,
+                params: ast::ParamList,
+                body: ast::BlockExpr,
+                ret_type: Option<ast::RetType>,
+                is_async: bool,
+                is_const: bool,
+                is_unsafe: bool,
+                is_gen: bool
+            ) -> ast::Fn
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+fn fn_$0(
+    &self,
+    attrs: impl IntoIterator<Item = ast::Attr>,
+    visibility: Option<ast::Visibility>,
+    fn_name: ast::Name,
+    type_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    params: ast::ParamList,
+    body: ast::BlockExpr,
+    ret_type: Option<ast::RetType>,
+    is_async: bool,
+    is_const: bool,
+    is_unsafe: bool,
+    is_gen: bool,
+    ...
+) -> ast::Fn {}
+        "#,
+        expect![[r#"
+            *fn_*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn fn_(
+                &self,
+                attrs: impl IntoIterator<Item = ast::Attr>,
+                visibility: Option<ast::Visibility>,
+                fn_name: ast::Name,
+                type_params: Option<ast::GenericParamList>,
+                where_clause: Option<ast::WhereClause>,
+                params: ast::ParamList,
+                body: ast::BlockExpr,
+                ret_type: Option<ast::RetType>,
+                is_async: bool,
+                is_const: bool,
+                is_unsafe: bool,
+                is_gen: bool,
+                ...
+            ) -> ast::Fn
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_path_inside_block_scope() {
     check(
         r#"
@@ -11166,6 +11272,135 @@ fn foo() {
             ---
 
             no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn hover_trait_impl_shows_generic_args() {
+    // Single generic arg
+    check(
+        r#"
+trait Foo<T> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<()> for T {
+    fn fo$0o(&self) {}
+}
+
+fn bar() {
+    ().foo();
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<()> for T
+            fn foo(&self)
+            ```
+        "#]],
+    );
+
+    // Multiple generic args
+    check(
+        r#"
+trait Foo<A, B> {
+    fn foo(&self) {}
+}
+
+impl<T> Foo<i32, u64> for T {
+    fn fo$0o(&self) {}
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            impl<T> Foo<i32, u64> for T
+            fn foo(&self)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn doc_link_enum_self_variant() {
+    check(
+        r#"
+/// - [`VariantOne$0`](Self::One)
+pub enum MyEnum {
+    One,
+    Two,
+}
+    "#,
+        expect![[r#"
+            *[`VariantOne`](Self::One)*
+
+            ```rust
+            ra_test_fixture::MyEnum
+            ```
+
+            ```rust
+            One = 0
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn doc_link_trait_self() {
+    check(
+        r#"
+/// - [`do_something$0`](Self::do_something)
+pub trait MyTrait {
+    fn do_something(&self);
+}
+    "#,
+        expect![[r#"
+            *[`do_something`](Self::do_something)*
+
+            ```rust
+            ra_test_fixture::MyTrait
+            ```
+
+            ```rust
+            pub trait MyTrait
+            pub fn do_something(&self)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+pub trait MyTrait {
+    /// - [`do_something$0`](Self::do_something)
+    fn do_something(&self);
+}
+    "#,
+        expect![[r#"
+            *[`do_something`](Self::do_something)*
+
+            ```rust
+            ra_test_fixture::MyTrait
+            ```
+
+            ```rust
+            pub trait MyTrait
+            pub fn do_something(&self)
+            ```
+
+            ---
+
+            * [`do_something`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/trait.MyTrait.html#tymethod.do_something)
         "#]],
     );
 }

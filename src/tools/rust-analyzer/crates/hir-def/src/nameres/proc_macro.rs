@@ -2,10 +2,11 @@
 
 use hir_expand::name::{AsName, Name};
 use intern::sym;
+use itertools::Itertools;
 
 use crate::{
     item_tree::Attrs,
-    tt::{Leaf, TokenTree, TopSubtree, TtElement},
+    tt::{Leaf, TopSubtree, TtElement},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -61,35 +62,35 @@ impl Attrs<'_> {
 
 // This fn is intended for `#[proc_macro_derive(..)]` and `#[rustc_builtin_macro(..)]`, which have
 // the same structure.
-#[rustfmt::skip]
 pub(crate) fn parse_macro_name_and_helper_attrs(tt: &TopSubtree) -> Option<(Name, Box<[Name]>)> {
-    match tt.token_trees().flat_tokens() {
+    if let Some([TtElement::Leaf(Leaf::Ident(trait_name))]) =
+        tt.token_trees().iter().collect_array()
+    {
         // `#[proc_macro_derive(Trait)]`
         // `#[rustc_builtin_macro(Trait)]`
-        [TokenTree::Leaf(Leaf::Ident(trait_name))] => Some((trait_name.as_name(), Box::new([]))),
-
+        Some((trait_name.as_name(), Box::new([])))
+    } else if let Some(
+        [
+            TtElement::Leaf(Leaf::Ident(trait_name)),
+            TtElement::Leaf(Leaf::Punct(comma)),
+            TtElement::Leaf(Leaf::Ident(attributes)),
+            TtElement::Subtree(_, helpers),
+        ],
+    ) = tt.token_trees().iter().collect_array()
+        && comma.char == ','
+        && attributes.sym == sym::attributes
+    {
         // `#[proc_macro_derive(Trait, attributes(helper1, helper2, ...))]`
         // `#[rustc_builtin_macro(Trait, attributes(helper1, helper2, ...))]`
-        [
-            TokenTree::Leaf(Leaf::Ident(trait_name)),
-            TokenTree::Leaf(Leaf::Punct(comma)),
-            TokenTree::Leaf(Leaf::Ident(attributes)),
-            TokenTree::Subtree(_),
-            ..
-        ] if comma.char == ',' && attributes.sym == sym::attributes =>
-        {
-            let helpers = tt::TokenTreesView::new(&tt.token_trees().flat_tokens()[3..]).try_into_subtree()?;
-            let helpers = helpers
-                .iter()
-                .filter_map(|tt| match tt {
-                    TtElement::Leaf(Leaf::Ident(helper)) => Some(helper.as_name()),
-                    _ => None,
-                })
-                .collect::<Box<[_]>>();
+        let helpers = helpers
+            .filter_map(|tt| match tt {
+                TtElement::Leaf(Leaf::Ident(helper)) => Some(helper.as_name()),
+                _ => None,
+            })
+            .collect::<Box<[_]>>();
 
-            Some((trait_name.as_name(), helpers))
-        }
-
-        _ => None,
+        Some((trait_name.as_name(), helpers))
+    } else {
+        None
     }
 }

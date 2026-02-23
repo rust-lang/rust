@@ -1,6 +1,6 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
-use rustc_ast::{self as ast, ModKind, TraitAlias};
+use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -51,7 +51,7 @@ impl<'a> State<'a> {
                 expr.as_deref(),
                 vis,
                 *safety,
-                ast::Defaultness::Final,
+                ast::Defaultness::Implicit,
                 define_opaque.as_deref(),
             ),
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
@@ -201,16 +201,27 @@ impl<'a> State<'a> {
                     body.as_deref(),
                     &item.vis,
                     ast::Safety::Default,
-                    ast::Defaultness::Final,
+                    ast::Defaultness::Implicit,
                     define_opaque.as_deref(),
                 );
+            }
+            ast::ItemKind::ConstBlock(ast::ConstBlockItem { id: _, span: _, block }) => {
+                let ib = self.ibox(INDENT_UNIT);
+                self.word("const");
+                self.nbsp();
+                {
+                    let cb = self.cbox(0);
+                    let ib = self.ibox(0);
+                    self.print_block_with_attrs(block, &[], cb, ib);
+                }
+                self.end(ib);
             }
             ast::ItemKind::Const(box ast::ConstItem {
                 defaultness,
                 ident,
                 generics,
                 ty,
-                rhs,
+                rhs_kind,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -218,7 +229,7 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    rhs.as_ref().map(|ct| ct.expr()),
+                    rhs_kind.expr(),
                     &item.vis,
                     ast::Safety::Default,
                     *defaultness,
@@ -562,7 +573,7 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 ty,
-                rhs,
+                rhs_kind,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -570,7 +581,7 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    rhs.as_ref().map(|ct| ct.expr()),
+                    rhs_kind.expr(),
                     vis,
                     ast::Safety::Default,
                     *defaultness,
@@ -671,9 +682,24 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
-        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque } = func;
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impls } =
+            func;
 
         self.print_define_opaques(define_opaque.as_deref());
+
+        for EiiImpl { eii_macro_path, impl_safety, .. } in eii_impls {
+            self.word("#[");
+            if let Safety::Unsafe(..) = impl_safety {
+                self.word("unsafe");
+                self.popen();
+            }
+            self.print_path(eii_macro_path, false, 0);
+            if let Safety::Unsafe(..) = impl_safety {
+                self.pclose();
+            }
+            self.word("]");
+            self.hardbreak();
+        }
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
 

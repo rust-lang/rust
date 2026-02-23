@@ -252,7 +252,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::mem::{self, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
@@ -261,7 +261,7 @@ use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::pin::PinCoerceUnsized;
-use core::ptr::{self, NonNull, drop_in_place};
+use core::ptr::{self, Alignment, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
@@ -289,6 +289,7 @@ struct RcInner<T: ?Sized> {
 }
 
 /// Calculate layout for `RcInner<T>` using the inner value's layout
+#[inline]
 fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
@@ -2417,14 +2418,14 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
     }
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
@@ -2518,15 +2519,25 @@ impl<T: Default> Default for Rc<T> {
     /// ```
     #[inline]
     fn default() -> Self {
+        // First create an uninitialized allocation before creating an instance
+        // of `T`. This avoids having `T` on the stack and avoids the need to
+        // codegen a call to the destructor for `T` leading to generally better
+        // codegen. See #131460 for some more details.
+        let mut rc = Rc::new_uninit();
+
+        // SAFETY: this is a freshly allocated `Rc` so it's guaranteed there are
+        // no other strong or weak pointers other than `rc` itself.
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::write(
-                    Box::new_uninit(),
-                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
-                ))
-                .into(),
-            )
+            let raw = Rc::get_mut_unchecked(&mut rc);
+
+            // Note that `ptr::write` here is used specifically instead of
+            // `MaybeUninit::write` to avoid creating an extra stack copy of `T`
+            // in debug mode. See #136043 for more context.
+            ptr::write(raw.as_mut_ptr(), T::default());
         }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { rc.assume_init() }
     }
 }
 
@@ -3845,15 +3856,15 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Because RcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
+    // satisfy the requirements of Alignment::of_val_raw; this is an implementation
     // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
+    unsafe { data_offset_alignment(Alignment::of_val_raw(ptr)) }
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> usize {
+fn data_offset_alignment(alignment: Alignment) -> usize {
     let layout = Layout::new::<RcInner<()>>();
-    layout.size() + layout.padding_needed_for(align)
+    layout.size() + layout.padding_needed_for(alignment)
 }
 
 /// A uniquely owned [`Rc`].
@@ -4478,7 +4489,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
 
     /// Returns the pointer to be written into to initialize the [`Rc`].
     fn data_ptr(&mut self) -> *mut T {
-        let offset = data_offset_align(self.layout_for_value.align());
+        let offset = data_offset_alignment(self.layout_for_value.alignment());
         unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
     }
 

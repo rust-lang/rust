@@ -154,7 +154,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         let field_vis = if is_enum { None } else { Some(self.db().field_visibilities(variant)) };
 
         for (fid, _) in fields.iter() {
-            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid], subst)?;
+            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].get(), subst)?;
         }
         CONTINUE_OPAQUELY_INHABITED
     }

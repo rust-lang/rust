@@ -1,0 +1,69 @@
+#![warn(clippy::manual_take)]
+
+fn main() {
+    msrv_1_39();
+    msrv_1_40();
+    let mut x = true;
+    let mut y = false;
+
+    let _lint_negated = if x {
+        //~^ manual_take
+        x = false;
+        false
+    } else {
+        true
+    };
+
+    let _ = if x {
+        y = false;
+        true
+    } else {
+        false
+    };
+
+    let _ = if x {
+        x = true;
+        true
+    } else {
+        false
+    };
+
+    let _ = if x {
+        x = false;
+        y = true;
+        false
+    } else {
+        true
+    };
+
+    let _ = if x {
+        x = false;
+        false
+    } else {
+        y = true;
+        true
+    };
+}
+
+#[clippy::msrv = "1.39.0"]
+fn msrv_1_39() -> bool {
+    let mut x = true;
+    if x {
+        x = false;
+        true
+    } else {
+        false
+    }
+}
+
+#[clippy::msrv = "1.40.0"]
+fn msrv_1_40() -> bool {
+    let mut x = true;
+    if x {
+        //~^ manual_take
+        x = false;
+        true
+    } else {
+        false
+    }
+}

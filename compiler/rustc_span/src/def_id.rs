@@ -81,7 +81,7 @@ impl fmt::Display for CrateNum {
 /// because it depends on the set of crates in the entire crate graph of a
 /// compilation session. Again, using the same crate with a different version
 /// number would fix the issue with a high probability -- but that might be
-/// easier said then done if the crates in questions are dependencies of
+/// easier said than done if the crates in questions are dependencies of
 /// third-party crates.
 ///
 /// That being said, given a high quality hash function, the collision
@@ -540,7 +540,7 @@ macro_rules! typed_def_id {
 }
 
 // N.B.: when adding new typed `DefId`s update the corresponding trait impls in
-// `rustc_middle::dep_graph::def_node` for `DepNodeParams`.
+// `rustc_middle::dep_graph::dep_node_key` for `DepNodeKey`.
 typed_def_id! { ModDefId, LocalModDefId }
 
 impl LocalModDefId {

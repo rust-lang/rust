@@ -1,6 +1,5 @@
 // This should fail even without validation
 //@compile-flags: -Zmiri-disable-validation
-//@require-annotations-for-level: ERROR
 
 #![feature(never_type)]
 #![allow(unused, invalid_value)]
@@ -18,5 +17,4 @@ mod m {
 fn main() {
     let v = unsafe { std::mem::transmute::<(), m::Void>(()) };
     m::f(v);
-    //~^ NOTE: inside `main`
 }

@@ -19,6 +19,7 @@ mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
 mod manual_dangling_ptr;
+mod needless_type_cast;
 mod ptr_as_ptr;
 mod ptr_cast_constness;
 mod ref_as_ptr;
@@ -142,6 +143,12 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// let _ = i32::try_from(u32::MAX).ok();
+    /// ```
+    ///
+    /// If the wrapping is intended, you can use:
+    /// ```no_run
+    /// let _ = u32::MAX.cast_signed();
+    /// let _ = (-1i32).cast_unsigned();
     /// ```
     ///
     #[clippy::version = "pre 1.29.0"]
@@ -813,6 +820,32 @@ declare_clippy_lint! {
     "casting a primitive method pointer to any integer type"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for bindings (constants, statics, or let bindings) that are defined
+    /// with one numeric type but are consistently cast to a different type in all usages.
+    ///
+    /// ### Why is this bad?
+    /// If a binding is always cast to a different type when used, it would be clearer
+    /// and more efficient to define it with the target type from the start.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// const SIZE: u16 = 15;
+    /// let arr: [u8; SIZE as usize] = [0; SIZE as usize];
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// const SIZE: usize = 15;
+    /// let arr: [u8; SIZE] = [0; SIZE];
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub NEEDLESS_TYPE_CAST,
+    nursery,
+    "binding defined with one type but always cast to another"
+}
+
 pub struct Casts {
     msrv: Msrv,
 }
@@ -851,6 +884,7 @@ impl_lint_pass!(Casts => [
     AS_POINTER_UNDERSCORE,
     MANUAL_DANGLING_PTR,
     CONFUSING_METHOD_TO_NUMERIC_CAST,
+    NEEDLESS_TYPE_CAST,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -919,5 +953,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ptr_alignment::check_cast_method(cx, expr);
         cast_slice_different_sizes::check(cx, expr, self.msrv);
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
+    }
+
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
+        needless_type_cast::check(cx, body);
     }
 }

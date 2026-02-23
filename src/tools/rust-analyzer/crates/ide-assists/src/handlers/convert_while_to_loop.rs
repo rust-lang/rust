@@ -1,6 +1,5 @@
 use std::iter;
 
-use either::Either;
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
     AstNode, T,
@@ -9,6 +8,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
+    syntax_editor::{Element, Position},
 };
 
 use crate::{
@@ -44,43 +44,53 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let while_expr = while_kw.parent().and_then(ast::WhileExpr::cast)?;
     let while_body = while_expr.loop_body()?;
     let while_cond = while_expr.condition()?;
+    let l_curly = while_body.stmt_list()?.l_curly_token()?;
 
     let target = while_expr.syntax().text_range();
     acc.add(
         AssistId::refactor_rewrite("convert_while_to_loop"),
         "Convert while to loop",
         target,
-        |edit| {
+        |builder| {
+            let mut edit = builder.make_editor(while_expr.syntax());
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
             let break_block = make::block_expr(
                 iter::once(make::expr_stmt(make::expr_break(None, None)).into()),
                 None,
             )
-            .indent(while_indent_level);
-            let block_expr = if is_pattern_cond(while_cond.clone()) {
-                let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
+            .indent(IndentLevel(1));
+
+            edit.replace_all(
+                while_kw.syntax_element()..=while_cond.syntax().syntax_element(),
+                vec![make::token(T![loop]).syntax_element()],
+            );
+
+            if is_pattern_cond(while_cond.clone()) {
+                let then_branch = while_body.reset_indent().indent(IndentLevel(1));
+                let if_expr = make::expr_if(while_cond, then_branch, Some(break_block.into()));
                 let stmts = iter::once(make::expr_stmt(if_expr.into()).into());
-                make::block_expr(stmts, None)
+                let block_expr = make::block_expr(stmts, None);
+                edit.replace(while_body.syntax(), block_expr.indent(while_indent_level).syntax());
             } else {
                 let if_cond = invert_boolean_expression_legacy(while_cond);
-                let if_expr = make::expr_if(if_cond, break_block, None).syntax().clone().into();
-                let elements = while_body.stmt_list().map_or_else(
-                    || Either::Left(iter::empty()),
-                    |stmts| {
-                        Either::Right(stmts.syntax().children_with_tokens().filter(|node_or_tok| {
-                            // Filter out the trailing expr
-                            !node_or_tok
-                                .as_node()
-                                .is_some_and(|node| ast::Expr::can_cast(node.kind()))
-                        }))
-                    },
+                let if_expr = make::expr_if(if_cond, break_block, None).indent(while_indent_level);
+                if !while_body.syntax().text().contains_char('\n') {
+                    edit.insert(
+                        Position::after(&l_curly),
+                        make::tokens::whitespace(&format!("\n{while_indent_level}")),
+                    );
+                }
+                edit.insert_all(
+                    Position::after(&l_curly),
+                    vec![
+                        make::tokens::whitespace(&format!("\n{}", while_indent_level + 1)).into(),
+                        if_expr.syntax().syntax_element(),
+                    ],
                 );
-                make::hacky_block_expr(iter::once(if_expr).chain(elements), while_body.tail_expr())
             };
 
-            let replacement = make::expr_loop(block_expr.indent(while_indent_level));
-            edit.replace(target, replacement.syntax().text())
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
@@ -109,6 +119,110 @@ fn main() {
             break;
         }
         foo();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_with_label() {
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    'x: while$0 cond {
+        foo();
+        break 'x
+    }
+}
+"#,
+            r#"
+fn main() {
+    'x: loop {
+        if !cond {
+            break;
+        }
+        foo();
+        break 'x
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    'x: while$0 let Some(x) = cond {
+        foo();
+        break 'x
+    }
+}
+"#,
+            r#"
+fn main() {
+    'x: loop {
+        if let Some(x) = cond {
+            foo();
+            break 'x
+        } else {
+            break;
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_with_attributes() {
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    #[allow(unused)]
+    while$0 cond {
+        foo();
+        break 'x
+    }
+}
+"#,
+            r#"
+fn main() {
+    #[allow(unused)]
+    loop {
+        if !cond {
+            break;
+        }
+        foo();
+        break 'x
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    #[allow(unused)]
+    #[deny(unsafe_code)]
+    while$0 let Some(x) = cond {
+        foo();
+    }
+}
+"#,
+            r#"
+fn main() {
+    #[allow(unused)]
+    #[deny(unsafe_code)]
+    loop {
+        if let Some(x) = cond {
+            foo();
+        } else {
+            break;
+        }
     }
 }
 "#,
@@ -178,6 +292,76 @@ fn main() {
             bar();
         } else {
             break;
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn indentation() {
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    {
+        {
+            while$0 cond {
+                foo(
+                    "xxx",
+                );
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    {
+        {
+            loop {
+                if !cond {
+                    break;
+                }
+                foo(
+                    "xxx",
+                );
+            }
+        }
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    {
+        {
+            while$0 let Some(_) = foo() {
+                bar(
+                    "xxx",
+                );
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    {
+        {
+            loop {
+                if let Some(_) = foo() {
+                    bar(
+                        "xxx",
+                    );
+                } else {
+                    break;
+                }
+            }
         }
     }
 }

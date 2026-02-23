@@ -278,14 +278,20 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
         Some(m.complete(p, OFFSET_OF_EXPR))
     } else if p.eat_contextual_kw(T![format_args]) {
+        // test format_args_named_arg_keyword
+        // fn main() {
+        //     builtin#format_args("{type}", type=1);
+        // }
         p.expect(T!['(']);
         expr(p);
         if p.eat(T![,]) {
             while !p.at(EOF) && !p.at(T![')']) {
                 let m = p.start();
-                if p.at(IDENT) && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
-                    name(p);
+                if p.current().is_any_identifier() && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
+                    let m = p.start();
+                    p.bump_any();
                     p.bump(T![=]);
+                    m.complete(p, FORMAT_ARGS_ARG_NAME);
                 }
                 if expr(p).is_none() {
                     m.abandon(p);
@@ -970,11 +976,17 @@ fn break_expr(p: &mut Parser<'_>, r: Restrictions) -> CompletedMarker {
 // test try_block_expr
 // fn foo() {
 //     let _ = try {};
+//     let _ = try bikeshed T<U> {};
 // }
 fn try_block_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![try]));
     let m = m.unwrap_or_else(|| p.start());
+    let try_modifier = p.start();
     p.bump(T![try]);
+    if p.eat_contextual_kw(T![bikeshed]) {
+        type_(p);
+    }
+    try_modifier.complete(p, TRY_BLOCK_MODIFIER);
     if p.at(T!['{']) {
         stmt_list(p);
     } else {

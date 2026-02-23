@@ -1,5 +1,4 @@
-use rustc_errors::MultiSpan;
-use rustc_hir::attrs::AttributeKind;
+use rustc_errors::{MultiSpan, msg};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind, find_attr};
@@ -9,7 +8,7 @@ use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::{ExpnKind, Span, kw};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -199,10 +198,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 let mut ms = MultiSpan::from_span(impl_span);
 
                 for path in &collector.paths {
-                    // FIXME: While a translatable diagnostic message can have an argument
-                    // we (currently) have no way to set different args per diag msg with
-                    // `MultiSpan::push_span_label`.
-                    #[allow(rustc::untranslatable_diagnostic)]
                     ms.push_span_label(
                         path_span_without_args(path),
                         format!("`{}` is not local", path_name_to_string(path)),
@@ -214,7 +209,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 if !doctest {
                     ms.push_span_label(
                         cx.tcx.def_span(parent),
-                        fluent::lint_non_local_definitions_impl_move_help,
+                        msg!(
+                            "move the `impl` block outside of this {$body_kind_descr} {$depth ->
+                                [one] `{$body_name}`
+                                *[other] `{$body_name}` and up {$depth} bodies
+                            }"
+                        ),
                     );
                 }
 
@@ -242,10 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 )
             }
             ItemKind::Macro(_, _macro, _kinds)
-                if find_attr!(
-                    cx.tcx.get_all_attrs(item.owner_id.def_id),
-                    AttributeKind::MacroExport { .. }
-                ) =>
+                if find_attr!(cx.tcx, item.owner_id.def_id, MacroExport { .. }) =>
             {
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,

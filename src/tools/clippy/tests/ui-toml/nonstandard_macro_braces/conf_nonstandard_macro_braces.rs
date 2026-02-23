@@ -1,6 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::nonstandard_macro_braces)]
+#![allow(clippy::println_empty_string)]
 
 extern crate proc_macro_derive;
 extern crate quote;
@@ -74,4 +75,17 @@ fn issue9913() {
     println! {"hello world"}
     [0]; // separate statement, not indexing into the result of println.
     //~^^ nonstandard_macro_braces
+}
+
+fn issue15594() {
+    println!();
+    println!("");
+    println![];
+    //~^ nonstandard_macro_braces
+    println![""];
+    //~^ nonstandard_macro_braces
+    println! {};
+    //~^ nonstandard_macro_braces
+    println! {""};
+    //~^ nonstandard_macro_braces
 }

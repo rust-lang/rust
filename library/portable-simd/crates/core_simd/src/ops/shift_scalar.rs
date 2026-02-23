@@ -1,13 +1,11 @@
 // Shift operations uniquely typically only have a scalar on the right-hand side.
 // Here, we implement shifts for scalar RHS arguments.
 
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::Simd;
 
 macro_rules! impl_splatted_shifts {
     { impl $trait:ident :: $trait_fn:ident for $ty:ty } => {
         impl<const N: usize> core::ops::$trait<$ty> for Simd<$ty, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -17,8 +15,6 @@ macro_rules! impl_splatted_shifts {
         }
 
         impl<const N: usize> core::ops::$trait<&$ty> for Simd<$ty, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -28,8 +24,6 @@ macro_rules! impl_splatted_shifts {
         }
 
         impl<'lhs, const N: usize> core::ops::$trait<$ty> for &'lhs Simd<$ty, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<$ty, N>;
             #[inline]
@@ -39,8 +33,6 @@ macro_rules! impl_splatted_shifts {
         }
 
         impl<'lhs, const N: usize> core::ops::$trait<&$ty> for &'lhs Simd<$ty, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<$ty, N>;
             #[inline]

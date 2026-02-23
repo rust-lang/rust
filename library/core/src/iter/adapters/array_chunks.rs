@@ -15,7 +15,7 @@ use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 /// method on [`Iterator`]. See its documentation for more.
 #[derive(Debug, Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+#[unstable(feature = "iter_array_chunks", issue = "100450")]
 pub struct ArrayChunks<I: Iterator, const N: usize> {
     iter: I,
     remainder: Option<array::IntoIter<I::Item, N>>,
@@ -44,7 +44,7 @@ where
     /// assert_eq!(rem.next(), Some(5));
     /// assert_eq!(rem.next(), None);
     /// ```
-    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+    #[unstable(feature = "iter_array_chunks", issue = "100450")]
     #[inline]
     pub fn into_remainder(mut self) -> array::IntoIter<I::Item, N> {
         if self.remainder.is_none() {
@@ -54,7 +54,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+#[unstable(feature = "iter_array_chunks", issue = "100450")]
 impl<I, const N: usize> Iterator for ArrayChunks<I, N>
 where
     I: Iterator,
@@ -108,7 +108,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+#[unstable(feature = "iter_array_chunks", issue = "100450")]
 impl<I, const N: usize> DoubleEndedIterator for ArrayChunks<I, N>
 where
     I: DoubleEndedIterator + ExactSizeIterator,
@@ -173,13 +173,13 @@ where
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+#[unstable(feature = "iter_array_chunks", issue = "100450")]
 impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
 unsafe impl<I, const N: usize> TrustedFused for ArrayChunks<I, N> where I: TrustedFused + Iterator {}
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+#[unstable(feature = "iter_array_chunks", issue = "100450")]
 impl<I, const N: usize> ExactSizeIterator for ArrayChunks<I, N>
 where
     I: ExactSizeIterator,

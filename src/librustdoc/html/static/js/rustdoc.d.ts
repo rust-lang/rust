@@ -243,6 +243,7 @@ declare namespace rustdoc {
         parent: number?,
         traitParent: number?,
         deprecated: boolean,
+        unstable: boolean,
         associatedItemDisambiguator: string?,
     }
 
@@ -292,6 +293,7 @@ declare namespace rustdoc {
         path: PathData?,
         functionData: FunctionData?,
         deprecated: boolean,
+        unstable: boolean,
         parent: RowParent,
         traitParent: RowParent,
     }
@@ -520,11 +522,12 @@ declare namespace rustdoc {
      * Provided by generated `trait.impl` files.
      */
     type Implementors = {
-        [key: string]: Array<[string, number, Array<string>]>
+        [key: string]: Array<[string, 0|1, number, Array<string>]>
     }
 
     type TypeImpls = {
-        [cratename: string]: Array<Array<string|0>>
+        /* [text, traitName (0 if not a trait), ...types] */
+        [cratename: string]: Array<[string, string|0, ...string[]]>
     }
 
     /**
@@ -576,4 +579,16 @@ declare namespace rustdoc {
         "typeNameIdOfHof": number,
         "typeNameIdOfNever": number,
     };
+
+    type VarName = "name"
+        | "root-path"
+        | "static-root-path"
+        | "current-crate"
+        | "themes"
+        | "resource-suffix"
+        | "rustdoc-version"
+        | "channel"
+        | "search-js"
+        | "stringdex-js"
+        | "settings-js";
 }

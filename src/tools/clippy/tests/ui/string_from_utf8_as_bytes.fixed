@@ -1,6 +1,16 @@
 #![warn(clippy::string_from_utf8_as_bytes)]
 
+macro_rules! test_range {
+    ($start:expr, $end:expr) => {
+        $start..$end
+    };
+}
+
 fn main() {
     let _ = Some(&"Hello World!"[6..11]);
+    //~^ string_from_utf8_as_bytes
+
+    let s = "Hello World!";
+    let _ = Some(&s[test_range!(6, 11)]);
     //~^ string_from_utf8_as_bytes
 }

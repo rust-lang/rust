@@ -1,5 +1,5 @@
 error: unused doc comment
-  --> $DIR/useless-comment.rs:9:1
+  --> $DIR/useless-comment.rs:10:1
    |
 LL | /// foo
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
@@ -12,7 +12,7 @@ LL | #![deny(unused_doc_comments)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:12:1
+  --> $DIR/useless-comment.rs:13:1
    |
 LL | /// a
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | unsafe extern "C" { }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:13:1
+  --> $DIR/useless-comment.rs:14:1
    |
 LL | #[doc(test(attr(allow(dead_code))))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL | unsafe extern "C" { }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:38:5
+  --> $DIR/useless-comment.rs:41:5
    |
 LL |     /// bar
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
@@ -41,28 +41,29 @@ LL |     /// bar
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:17:5
+  --> $DIR/useless-comment.rs:18:5
    |
 LL |     /// a
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     #[doc(test(attr(allow(dead_code))))]
+...
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:18:5
+  --> $DIR/useless-comment.rs:19:5
    |
 LL |     #[doc(test(attr(allow(dead_code))))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:21:5
+  --> $DIR/useless-comment.rs:23:5
    |
 LL | /     /// multi-line
 LL | |     /// doc comment
@@ -72,6 +73,7 @@ LL | /     match x {
 LL | |         /// c
 LL | |         1 => {},
 LL | |         #[doc(test(attr(allow(dead_code))))]
+LL | |
 LL | |         _ => {}
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
@@ -79,7 +81,7 @@ LL | |     }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:25:9
+  --> $DIR/useless-comment.rs:27:9
    |
 LL |         /// c
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,17 +91,18 @@ LL |         1 => {},
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:27:9
+  --> $DIR/useless-comment.rs:29:9
    |
 LL |         #[doc(test(attr(allow(dead_code))))]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         _ => {}
    |         ------- rustdoc does not generate documentation for match arms
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:31:5
+  --> $DIR/useless-comment.rs:34:5
    |
 LL |     /// foo
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +112,7 @@ LL |     unsafe {}
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:34:5
+  --> $DIR/useless-comment.rs:37:5
    |
 LL |     #[doc = "foo"]
    |     ^^^^^^^^^^^^^^
@@ -120,7 +123,7 @@ LL |     3;
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:35:5
+  --> $DIR/useless-comment.rs:38:5
    |
 LL |     #[doc = "bar"]
    |     ^^^^^^^^^^^^^^
@@ -130,17 +133,18 @@ LL |     3;
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:41:5
+  --> $DIR/useless-comment.rs:44:5
    |
 LL |     #[doc(test(attr(allow(dead_code))))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |     let x = /** comment */ 47;
    |     -------------------------- rustdoc does not generate documentation for statements
    |
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:42:13
+  --> $DIR/useless-comment.rs:46:13
    |
 LL |     let x = /** comment */ 47;
    |             ^^^^^^^^^^^^^^ -- rustdoc does not generate documentation for expressions
@@ -148,7 +152,7 @@ LL |     let x = /** comment */ 47;
    = help: use `/* */` for a plain comment
 
 error: unused doc comment
-  --> $DIR/useless-comment.rs:44:5
+  --> $DIR/useless-comment.rs:48:5
    |
 LL |       /// dox
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

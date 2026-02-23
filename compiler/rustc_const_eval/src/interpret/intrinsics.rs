@@ -4,26 +4,29 @@
 
 mod simd;
 
-use std::assert_matches::assert_matches;
-
-use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_data_structures::assert_matches;
+use rustc_errors::msg;
+use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, Ty, TyCtxt};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
+use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::trace;
 
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
-    throw_ub_custom, throw_ub_format,
+    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok,
+    throw_inval, throw_ub, throw_ub_custom, throw_ub_format, throw_unsup_format,
 };
-use crate::fluent_generated as fluent;
+use crate::interpret::Writeable;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -65,11 +68,16 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId
 }
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Generates a value of `TypeId` for `ty` in-place.
-    fn write_type_id(
+    pub(crate) fn write_type_id(
         &mut self,
         ty: Ty<'tcx>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()> {
+        debug_assert!(
+            !ty.has_erasable_regions(),
+            "type {ty:?} has regions that need erasing before writing a TypeId",
+        );
+
         let tcx = self.tcx;
         let type_id_hash = tcx.type_id_hash(ty).as_u128();
         let op = self.const_val_to_op(
@@ -218,6 +226,44 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let offset = layout.fields.offset(field).bytes();
 
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
+            }
+            sym::vtable_for => {
+                let tp_ty = instance.args.type_at(0);
+                let result_ty = instance.args.type_at(1);
+
+                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tcx, result_ty)?;
+                let ty::Dynamic(preds, _) = result_ty.kind() else {
+                    span_bug!(
+                        self.find_closest_untracked_caller_location(),
+                        "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
+                    );
+                };
+
+                let (infcx, param_env) =
+                    self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+
+                let ocx = ObligationCtxt::new(&infcx);
+                ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {
+                    let pred = pred.with_self_ty(tcx, tp_ty);
+                    // Lifetimes can only be 'static because of the bound on T
+                    let pred = ty::fold_regions(tcx, pred, |r, _| {
+                        if r == tcx.lifetimes.re_erased { tcx.lifetimes.re_static } else { r }
+                    });
+                    Obligation::new(tcx, ObligationCause::dummy(), param_env, pred)
+                }));
+                let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+                // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
+                let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
+
+                if regions_are_valid && type_impls_trait {
+                    let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
+                    self.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    // Write `None`
+                    self.write_discriminant(FIRST_VARIANT, dest)?;
+                }
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
@@ -397,7 +443,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         _ => {
                             // Not into the same allocation -- this is UB.
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_different_allocations,
+                                msg!(
+                                    "`{$name}` called on two different pointers that are not both derived from the same allocation"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -418,7 +466,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_unsigned_overflow,
+                                msg!(
+                                    "`ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
+                                        [true] address
+                                        *[false] offset
+                                    } than second: {$a_offset} < {$b_offset}"
+                                ),
                                 a_offset = a_offset,
                                 b_offset = b_offset,
                                 is_addr = is_addr,
@@ -430,7 +483,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let dist = val.to_target_isize(self)?;
                         if dist >= 0 || i128::from(dist) == self.pointer_size().signed_int_min() {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_underflow,
+                                msg!(
+                                    "`{$name}` called when first pointer is too far before second"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -442,7 +497,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // because they were more than isize::MAX apart.
                         if dist < 0 {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_overflow,
+                                msg!(
+                                    "`{$name}` called when first pointer is too far ahead of second"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -461,12 +518,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             && a_alloc_id == b_alloc_id
                         {
                             err_ub_custom!(
-                                fluent::const_eval_offset_from_out_of_bounds,
+                                msg!("`{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation"),
                                 name = intrinsic_name,
                             )
                         } else {
                             err_ub_custom!(
-                                fluent::const_eval_offset_from_different_allocations,
+                                msg!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
                                 name = intrinsic_name,
                             )
                         }
@@ -481,7 +538,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .map_err_kind(|_| {
                     // Make the error more specific.
                     err_ub_custom!(
-                        fluent::const_eval_offset_from_different_allocations,
+                        msg!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
                         name = intrinsic_name,
                     )
                 })?;
@@ -693,6 +750,57 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Nondeterministic)?
             }
 
+            sym::va_copy => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                let varargs = self.get_ptr_va_list(key)?;
+                let copy_key = self.va_list_ptr(varargs.clone());
+
+                let copy_key_mplace = self.va_list_key_field(dest)?;
+                self.write_pointer(copy_key, &copy_key_mplace)?;
+            }
+
+            sym::va_end => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                self.deallocate_va_list(key)?;
+            }
+
+            sym::va_arg => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                // Invalidate the old list and get its content. We'll recreate the
+                // new list (one element shorter) below.
+                let mut varargs = self.deallocate_va_list(key)?;
+
+                let Some(arg_mplace) = varargs.pop_front() else {
+                    throw_ub!(VaArgOutOfBounds);
+                };
+
+                // NOTE: In C some type conversions are allowed (e.g. casting between signed and
+                // unsigned integers). For now we require c-variadic arguments to be read with the
+                // exact type they were passed as.
+                if arg_mplace.layout.ty != dest.layout.ty {
+                    throw_unsup_format!(
+                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
+                        dest.layout.ty,
+                        arg_mplace.layout.ty
+                    );
+                }
+                // Copy the argument.
+                self.copy_op(&arg_mplace, dest)?;
+
+                // Update the VaList pointer.
+                let new_key = self.va_list_ptr(varargs);
+                self.write_pointer(new_key, &key_mplace)?;
+            }
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -711,7 +819,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 let cond = self.read_scalar(&op)?.to_bool()?;
                 if !cond {
-                    throw_ub_custom!(fluent::const_eval_assume_false);
+                    throw_ub_custom!(msg!("`assume` called with `false`"));
                 }
                 interp_ok(())
             }
@@ -741,7 +849,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let bits_out = match name {
             sym::ctpop => u128::from(bits.count_ones()),
             sym::ctlz_nonzero | sym::cttz_nonzero if bits == 0 => {
-                throw_ub_custom!(fluent::const_eval_call_nonzero_intrinsic, name = name,);
+                throw_ub_custom!(msg!("`{$name}` called on 0"), name = name,);
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
@@ -774,7 +882,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // sign does not matter for 0 test, so `to_bits` is fine
         if rem.to_scalar().to_bits(a.layout.size)? != 0 {
             throw_ub_custom!(
-                fluent::const_eval_exact_div_has_remainder,
+                msg!("exact_div: {$a} cannot be divided by {$b} without remainder"),
                 a = format!("{a}"),
                 b = format!("{b}")
             )
@@ -815,7 +923,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             } else {
                 // unsigned
-                if matches!(mir_op, BinOp::Add) {
+                if mir_op == BinOp::Add {
                     // max unsigned
                     Scalar::from_uint(size.unsigned_int_max(), size)
                 } else {
@@ -859,7 +967,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
             err_ub_custom!(
-                fluent::const_eval_size_overflow,
+                msg!("overflow computing total size of `{$name}`"),
                 name = if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
             )
         })?;
@@ -922,9 +1030,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = self
-            .compute_size_in_bytes(layout.size, count)
-            .ok_or_else(|| err_ub_custom!(fluent::const_eval_size_overflow, name = name))?;
+        let len = self.compute_size_in_bytes(layout.size, count).ok_or_else(|| {
+            err_ub_custom!(msg!("overflow computing total size of `{$name}`"), name = name)
+        })?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -1172,5 +1280,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // The INEXACT flag is ignored on purpose to allow rounding.
             interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
         }
+    }
+
+    /// Get the MPlace of the key from the place storing the VaList.
+    pub(super) fn va_list_key_field<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        va_list: &P,
+    ) -> InterpResult<'tcx, P> {
+        // The struct wrapped by VaList.
+        let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
+
+        // Find the first pointer field in this struct. The exact index is target-specific.
+        let ty::Adt(adt, substs) = va_list_inner.layout().ty.kind() else {
+            bug!("invalid VaListImpl layout");
+        };
+
+        for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.ty(*self.tcx, substs).is_raw_ptr() {
+                return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
+            }
+        }
+
+        bug!("no VaListImpl field is a pointer");
     }
 }

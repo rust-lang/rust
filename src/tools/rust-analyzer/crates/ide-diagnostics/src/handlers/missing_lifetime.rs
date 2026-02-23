@@ -100,4 +100,19 @@ fn foo<T: Fn(WithLifetime) -> WithLifetime>() {}
         "#,
         );
     }
+
+    #[test]
+    fn regression_21430() {
+        check_diagnostics(
+            r#"
+struct S {
+    f: fn(A<()>),
+}
+
+struct A<'a, T> {
+    a: &'a T,
+}
+        "#,
+        );
+    }
 }

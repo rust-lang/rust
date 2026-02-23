@@ -217,7 +217,7 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_stable(feature = "const_mul_add", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_mul_add", since = "1.94.0")]
     pub const fn mul_add(self, a: f32, b: f32) -> f32 {
         core::f32::math::mul_add(self, a, b)
     }

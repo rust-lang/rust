@@ -13,11 +13,6 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
-if [[ "$target" = *"wasm"* ]]; then
-    # Enable the random backend
-    export RUSTFLAGS="${RUSTFLAGS:-} --cfg getrandom_backend=\"wasm_js\""
-fi
-
 if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
     # Install nonstandard components if we have control of the environment
     rustup target list --installed |
@@ -36,8 +31,6 @@ else
     "${test_builtins[@]}" --features c --release
     "${test_builtins[@]}" --features no-asm
     "${test_builtins[@]}" --features no-asm --release
-    "${test_builtins[@]}" --features no-f16-f128
-    "${test_builtins[@]}" --features no-f16-f128 --release
     "${test_builtins[@]}" --benches
     "${test_builtins[@]}" --benches --release
 
@@ -53,8 +46,8 @@ fi
 # Ensure there are no duplicate symbols or references to `core` when
 # `compiler-builtins` is built with various features. Symcheck invokes Cargo to
 # build with the arguments we provide it, then validates the built artifacts.
+SYMCHECK_TEST_TARGET="$target" cargo test -p symbol-check --release
 symcheck=(cargo run -p symbol-check --release)
-[[ "$target" = "wasm"* ]] && symcheck+=(--features wasm)
 symcheck+=(-- build-and-check)
 
 "${symcheck[@]}" "$target" -- -p compiler_builtins
@@ -63,8 +56,6 @@ symcheck+=(-- build-and-check)
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features c --release
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm --release
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128 --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
@@ -161,7 +152,8 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
 
     echo "can't run tests on $target; skipping"
 else
-    mflags+=(--workspace --target "$target")
+    # symcheck tests need specific env setup, and is already tested above
+    mflags+=(--workspace --exclude symbol-check --target "$target")
     cmd=(cargo test "${mflags[@]}")
     profile_flag="--profile"
 

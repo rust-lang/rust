@@ -336,8 +336,8 @@ impl Rewrite for ast::Attribute {
             rewrite_doc_comment(snippet, shape.comment(context.config), context.config)
         } else {
             let should_skip = self
-                .ident()
-                .map(|s| context.skip_context.attributes.skip(s.name.as_str()))
+                .name()
+                .map(|s| context.skip_context.attributes.skip(s.as_str()))
                 .unwrap_or(false);
             let prefix = attr_prefix(self);
 

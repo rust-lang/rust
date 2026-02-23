@@ -105,6 +105,7 @@ impl T {}
   // ^ dyn
 impl T for (T) {}
          // ^ dyn
+impl T for {}
 impl T
 "#,
         );

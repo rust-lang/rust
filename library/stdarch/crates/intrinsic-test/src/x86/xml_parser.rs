@@ -30,8 +30,8 @@ struct XMLIntrinsic {
     pub return_data: Parameter,
     #[serde(rename = "@name")]
     pub name: String,
-    // #[serde(rename = "@tech")]
-    // tech: String,
+    #[serde(rename = "@tech")]
+    tech: String,
     #[serde(rename = "CPUID", default)]
     cpuid: Vec<String>,
     #[serde(rename = "parameter", default)]
@@ -65,6 +65,16 @@ pub fn get_xml_intrinsics(
     let parsed_intrinsics: Vec<Intrinsic<X86IntrinsicType>> = data
         .intrinsics
         .into_iter()
+        .filter(|intrinsic| {
+            intrinsic.tech != "SVML"
+                && intrinsic.tech != "MMX"
+                && !intrinsic.cpuid.contains(&"MPX".to_string())
+                && intrinsic.return_data.type_data != "__m64"
+                && !intrinsic
+                    .parameters
+                    .iter()
+                    .any(|param| param.type_data.contains("__m64"))
+        })
         .filter_map(|intr| {
             // Some(xml_to_intrinsic(intr, target).expect("Couldn't parse XML properly!"))
             xml_to_intrinsic(intr).ok()

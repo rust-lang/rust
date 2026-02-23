@@ -207,7 +207,7 @@ impl<F: Float, I: Int> EitherPrim<Domain<F>, Domain<I>> {
     .into_prim_float()];
 
     /// Domain for `loggamma`
-    const LGAMMA: [Self; 1] = Self::STRICTLY_POSITIVE;
+    const LGAMMA: [Self; 1] = Self::UNBOUNDED1;
 
     /// Domain for `jn` and `yn`.
     // FIXME: the domain should provide some sort of "reasonable range" so we don't actually test

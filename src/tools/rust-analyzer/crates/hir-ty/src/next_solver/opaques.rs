@@ -1,37 +1,74 @@
 //! Things related to opaques in the next-trait-solver.
 
+use intern::{Interned, InternedRef, impl_internable};
+use macros::GenericTypeVisitable;
 use rustc_ast_ir::try_visit;
 use rustc_type_ir::inherent::SliceLike;
 
-use super::{DbInterner, SolverDefId, Ty, interned_vec_db, interned_vec_nolifetime_salsa};
+use crate::next_solver::{impl_foldable_for_interned_slice, interned_slice};
+
+use super::{DbInterner, SolverDefId, Ty};
 
 pub type OpaqueTypeKey<'db> = rustc_type_ir::OpaqueTypeKey<DbInterner<'db>>;
 
 type PredefinedOpaque<'db> = (OpaqueTypeKey<'db>, Ty<'db>);
-interned_vec_db!(PredefinedOpaques, PredefinedOpaque);
+interned_slice!(
+    PredefinedOpaquesStorage,
+    PredefinedOpaques,
+    StoredPredefinedOpaques,
+    predefined_opaques,
+    PredefinedOpaque<'db>,
+    PredefinedOpaque<'static>,
+);
+impl_foldable_for_interned_slice!(PredefinedOpaques);
 
 pub type ExternalConstraintsData<'db> =
     rustc_type_ir::solve::ExternalConstraintsData<DbInterner<'db>>;
 
-interned_vec_nolifetime_salsa!(SolverDefIds, SolverDefId);
+interned_slice!(
+    SolverDefIdsStorage,
+    SolverDefIds,
+    StoredSolverDefIds,
+    def_ids,
+    SolverDefId,
+    SolverDefId,
+);
+impl_foldable_for_interned_slice!(SolverDefIds);
 
-#[salsa::interned(constructor = new_, debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExternalConstraints<'db> {
-    #[returns(ref)]
-    kind_: rustc_type_ir::solve::ExternalConstraintsData<DbInterner<'db>>,
+    interned: InternedRef<'db, ExternalConstraintsInterned>,
 }
 
+#[derive(PartialEq, Eq, Hash, GenericTypeVisitable)]
+pub(super) struct ExternalConstraintsInterned(ExternalConstraintsData<'static>);
+
+impl_internable!(gc; ExternalConstraintsInterned);
+
+const _: () = {
+    const fn is_copy<T: Copy>() {}
+    is_copy::<ExternalConstraints<'static>>();
+};
+
 impl<'db> ExternalConstraints<'db> {
-    pub fn new(interner: DbInterner<'db>, data: ExternalConstraintsData<'db>) -> Self {
-        ExternalConstraints::new_(interner.db(), data)
+    #[inline]
+    pub fn new(_interner: DbInterner<'db>, data: ExternalConstraintsData<'db>) -> Self {
+        let data = unsafe {
+            std::mem::transmute::<ExternalConstraintsData<'db>, ExternalConstraintsData<'static>>(
+                data,
+            )
+        };
+        Self { interned: Interned::new_gc(ExternalConstraintsInterned(data)) }
     }
 
+    #[inline]
     pub fn inner(&self) -> &ExternalConstraintsData<'db> {
-        crate::with_attached_db(|db| {
-            let inner = self.kind_(db);
-            // SAFETY: ¯\_(ツ)_/¯
-            unsafe { std::mem::transmute(inner) }
-        })
+        let inner = &self.interned.0;
+        unsafe {
+            std::mem::transmute::<&ExternalConstraintsData<'static>, &ExternalConstraintsData<'db>>(
+                inner,
+            )
+        }
     }
 }
 
@@ -40,6 +77,12 @@ impl<'db> std::ops::Deref for ExternalConstraints<'db> {
 
     fn deref(&self) -> &Self::Target {
         self.inner()
+    }
+}
+
+impl std::fmt::Debug for ExternalConstraints<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.inner().fmt(f)
     }
 }
 

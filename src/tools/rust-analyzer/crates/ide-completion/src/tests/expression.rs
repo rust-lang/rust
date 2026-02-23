@@ -706,7 +706,30 @@ fn completes_after_ref_expr() {
             kw while
             kw while let
         "#]],
-    )
+    );
+    check(
+        r#"fn main() { let _ = &$0x.foo() }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
 }
 
 #[test]
@@ -2157,6 +2180,32 @@ fn foo() { match () { () => if foo {} $0, _ => (), } }
             kw else if
             kw mut
             kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn foo() -> (i32, i32) { if foo {} el$0 (2, 3) }
+"#,
+        expect![[r#"
+            fn foo fn() -> (i32, i32)
+            bt u32                u32
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+            ex foo()
         "#]],
     );
     // FIXME: support else completion after ast::RecordExprField

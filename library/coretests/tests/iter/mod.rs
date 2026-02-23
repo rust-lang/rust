@@ -99,3 +99,18 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
+#[test]
+pub fn test_const_iter() {
+    const X: bool = {
+        let it = Some(42);
+        let mut run = false;
+        #[expect(for_loops_over_fallibles)]
+        for x in it {
+            assert!(x == 42);
+            run = true;
+        }
+        run
+    };
+    assert_eq!(true, X);
+}

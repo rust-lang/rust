@@ -17,8 +17,12 @@ declare_lint_pass! {
         AARCH64_SOFTFLOAT_NEON,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
+        AMBIGUOUS_DERIVE_HELPERS,
+        AMBIGUOUS_GLOB_IMPORTED_TRAITS,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
+        AMBIGUOUS_IMPORT_VISIBILITIES,
+        AMBIGUOUS_PANIC_IMPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
         BAD_ASM_STYLE,
@@ -48,6 +52,7 @@ declare_lint_pass! {
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
         INLINE_NO_SANITIZE,
         INVALID_DOC_ATTRIBUTES,
         INVALID_MACRO_EXPORT_ARGUMENTS,
@@ -119,6 +124,7 @@ declare_lint_pass! {
         UNKNOWN_LINTS,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
+        UNREACHABLE_CFG_SELECT_PREDICATES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -849,6 +855,34 @@ declare_lint! {
     pub UNREACHABLE_PATTERNS,
     Warn,
     "detects unreachable patterns"
+}
+
+declare_lint! {
+    /// The `unreachable_cfg_select_predicates` lint detects unreachable configuration
+    /// predicates in the `cfg_select!` macro.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(cfg_select)]
+    /// cfg_select! {
+    ///     _ => (),
+    ///     windows => (),
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This usually indicates a mistake in how the predicates are specified or
+    /// ordered. In this example, the `_` predicate will always match, so the
+    /// `windows` is impossible to reach. Remember, arms match in order, you
+    /// probably wanted to put the `windows` case above the `_` case.
+    pub UNREACHABLE_CFG_SELECT_PREDICATES,
+    Warn,
+    "detects unreachable configuration predicates in the cfg_select macro",
+    @feature_gate = cfg_select;
 }
 
 declare_lint! {
@@ -2345,8 +2379,7 @@ declare_lint! {
     /// [sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// ```rust,no_run
     /// #![feature(sanitize)]
     ///
     /// #[sanitize(realtime = "nonblocking")]
@@ -2355,8 +2388,7 @@ declare_lint! {
     /// fn main() {
     ///     x();
     /// }
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -3456,7 +3488,7 @@ declare_lint! {
     /// but this lint was introduced to avoid breaking any existing
     /// crates which included them.
     pub INVALID_DOC_ATTRIBUTES,
-    Deny,
+    Warn,
     "detects invalid `#[doc(...)]` attributes",
 }
 
@@ -3627,10 +3659,10 @@ declare_lint! {
     /// `stdcall`, `fastcall`, and `cdecl` calling conventions (or their unwind
     /// variants) on targets that cannot meaningfully be supported for the requested target.
     ///
-    /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
+    /// For example, `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
     /// code, because this calling convention was never specified for those targets.
     ///
-    /// Historically MSVC toolchains have fallen back to the regular C calling convention for
+    /// Historically, MSVC toolchains have fallen back to the regular C calling convention for
     /// targets other than x86, but Rust doesn't really see a similar need to introduce a similar
     /// hack across many more targets.
     ///
@@ -3657,7 +3689,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
+    /// On most of the targets, the behaviour of `stdcall` and similar calling conventions is not
     /// defined at all, but was previously accepted due to a bug in the implementation of the
     /// compiler.
     pub UNSUPPORTED_CALLING_CONVENTIONS,
@@ -4237,6 +4269,75 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `ambiguous_derive_helpers` lint detects cases where a derive macro's helper attribute
+    /// is the same name as that of a built-in attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (proc-macro)
+    /// #![crate_type = "proc-macro"]
+    /// #![deny(ambiguous_derive_helpers)]
+    ///
+    /// use proc_macro::TokenStream;
+    ///
+    /// #[proc_macro_derive(Trait, attributes(ignore))]
+    /// pub fn example(input: TokenStream) -> TokenStream {
+    ///     TokenStream::new()
+    /// }
+    /// ```
+    ///
+    /// Produces:
+    ///
+    /// ```text
+    /// warning: there exists a built-in attribute with the same name
+    ///   --> file.rs:5:39
+    ///    |
+    ///  5 | #[proc_macro_derive(Trait, attributes(ignore))]
+    ///    |                                       ^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #151152 <https://github.com/rust-lang/rust/issues/151152>
+    ///    = note: `#[deny(ambiguous_derive_helpers)]` (part of `#[deny(future_incompatible)]`) on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Attempting to use this helper attribute will throw an error:
+    ///
+    /// ```rust,ignore (needs-dependency)
+    /// #[derive(Trait)]
+    /// struct Example {
+    ///     #[ignore]
+    ///     fields: ()
+    /// }
+    /// ```
+    ///
+    /// Produces:
+    ///
+    /// ```text
+    /// error[E0659]: `ignore` is ambiguous
+    ///  --> src/lib.rs:5:7
+    ///   |
+    /// 5 |     #[ignore]
+    ///   |       ^^^^^^ ambiguous name
+    ///   |
+    ///   = note: ambiguous because of a name conflict with a builtin attribute
+    ///   = note: `ignore` could refer to a built-in attribute
+    /// note: `ignore` could also refer to the derive helper attribute defined here
+    ///  --> src/lib.rs:3:10
+    ///   |
+    /// 3 | #[derive(Trait)]
+    ///   |          ^^^^^
+    /// ```
+    pub AMBIGUOUS_DERIVE_HELPERS,
+    Warn,
+    "detects derive helper attributes that are ambiguous with built-in attributes",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #151276),
+    };
+}
+
+declare_lint! {
     /// The `private_interfaces` lint detects types in a primary interface of an item,
     /// that are more private than the item itself. Primary interface of an item is all
     /// its interface except for bounds on generic parameters and where clauses.
@@ -4465,11 +4566,150 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_GLOB_IMPORTS,
-    Deny,
+    Warn,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_glob_imported_traits` lint reports uses of traits that are
+    /// imported ambiguously via glob imports. Previously, this was not enforced
+    /// due to a bug in rustc.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_glob_imported_traits)]
+    /// mod m1 {
+    ///    pub trait Trait {
+    ///            fn method1(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///    mod m2 {
+    ///        pub trait Trait {
+    ///            fn method2(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///
+    ///  fn main() {
+    ///      use m1::*;
+    ///      use m2::*;
+    ///      0u8.method1();
+    ///      0u8.method2();
+    ///  }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When multiple traits with the same name are brought into scope through glob imports,
+    /// one trait becomes the "primary" one while the others are shadowed. Methods from the
+    /// shadowed traits (e.g. `method2`) become inaccessible, while methods from the "primary"
+    /// trait (e.g. `method1`) still resolve. Ideally, none of the ambiguous traits would be in scope,
+    /// but we have to allow this for now because of backwards compatibility.
+    /// This lint reports uses of these "primary" traits that are ambiguous.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+    Warn,
+    "detects uses of ambiguously glob imported traits",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #147992),
+        report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_panic_imports` lint detects ambiguous core and std panic imports, but
+    /// previously didn't do that due to `#[macro_use]` prelude macro import.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_panic_imports)]
+    /// #![no_std]
+    ///
+    /// extern crate std;
+    /// use std::prelude::v1::*;
+    ///
+    /// fn xx() {
+    ///     panic!(); // resolves to core::panic
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Future versions of Rust will no longer accept the ambiguous resolution.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_PANIC_IMPORTS,
+    Warn,
+    "detects ambiguous core and std panic imports",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #147319),
+        report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_import_visibilities` lint detects imports that should report ambiguity
+    /// errors, but previously didn't do that due to rustc bugs.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unknown_lints)]
+    /// #![deny(ambiguous_import_visibilities)]
+    /// mod reexport {
+    ///     mod m {
+    ///         pub struct S {}
+    ///     }
+    ///
+    ///     macro_rules! mac {
+    ///         () => { use m::S; }
+    ///     }
+    ///
+    ///     pub use m::*;
+    ///     mac!();
+    ///
+    ///     pub use S as Z; // ambiguous visibility
+    /// }
+    ///
+    /// fn main() {
+    ///     reexport::Z {};
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust compile it successfully because it
+    /// fetched the glob import's visibility for `pub use S as Z` import, and ignored the private
+    /// `use m::S` import that appeared later.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_IMPORT_VISIBILITIES,
+    Warn,
+    "detects certain glob imports that require reporting an ambiguity error",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #149145),
     };
 }
 
@@ -4906,8 +5146,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(supertrait_item_shadowing)]
     /// #![deny(resolving_to_items_shadowing_supertrait_items)]
     ///
@@ -4923,8 +5162,7 @@ declare_lint! {
     ///
     /// struct MyType;
     /// MyType.hello();
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -4950,8 +5188,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #![feature(supertrait_item_shadowing)]
     /// #![deny(shadowing_supertrait_items)]
     ///
@@ -4964,8 +5201,7 @@ declare_lint! {
     ///     fn hello(&self) {}
     /// }
     /// impl<T> Downstream for T {}
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

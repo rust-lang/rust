@@ -1,14 +1,14 @@
-ARG IMAGE=ubuntu:25.04
+ARG IMAGE=ubuntu:25.10
 FROM $IMAGE
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc libc6-dev ca-certificates \
-    gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user-static
+    gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user
 
 ENV TOOLCHAIN_PREFIX=arm-linux-gnueabihf-
 ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER="$TOOLCHAIN_PREFIX"gcc \
-    CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER=qemu-arm-static \
+    CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER=qemu-arm \
     AR_armv7_unknown_linux_gnueabihf="$TOOLCHAIN_PREFIX"ar \
     CC_armv7_unknown_linux_gnueabihf="$TOOLCHAIN_PREFIX"gcc \
     QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf \

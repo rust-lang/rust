@@ -103,6 +103,7 @@ impl Tester {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
@@ -185,7 +186,7 @@ impl Tester {
 
             if !worker.is_finished() {
                 // attempt to cancel the worker, won't work for chalk hangs unfortunately
-                self.host.request_cancellation();
+                self.host.trigger_garbage_collection();
             }
             worker.join().and_then(identity)
         });

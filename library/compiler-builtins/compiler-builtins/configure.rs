@@ -95,16 +95,13 @@ pub fn configure_aliases(target: &Target) {
      * * https://github.com/rust-lang/rustc_codegen_cranelift/blob/c713ffab3c6e28ab4b4dd4e392330f786ea657ad/src/lib.rs#L196-L226
      */
 
-    // If the feature is set, disable both of these types.
-    let no_f16_f128 = target.cargo_features.iter().any(|s| s == "no-f16-f128");
-
     println!("cargo::rustc-check-cfg=cfg(f16_enabled)");
-    if target.reliable_f16 && !no_f16_f128 {
+    if target.reliable_f16 {
         println!("cargo::rustc-cfg=f16_enabled");
     }
 
     println!("cargo::rustc-check-cfg=cfg(f128_enabled)");
-    if target.reliable_f128 && !no_f16_f128 {
+    if target.reliable_f128 {
         println!("cargo::rustc-cfg=f128_enabled");
     }
 }

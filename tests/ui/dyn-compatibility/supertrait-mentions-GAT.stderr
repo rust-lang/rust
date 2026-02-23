@@ -18,7 +18,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
   --> $DIR/supertrait-mentions-GAT.rs:4:10
    |
 LL |     type Gat<'a>
-   |          ^^^ ...because it contains the generic associated type `Gat`
+   |          ^^^ ...because it contains generic associated type `Gat`
 ...
 LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
    |       ---------- this trait is not dyn compatible...

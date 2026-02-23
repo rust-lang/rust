@@ -2,8 +2,12 @@ use std::{env, fs};
 
 use gccjit::{Context, OutputKind};
 use rustc_codegen_ssa::back::link::ensure_removed;
-use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, SharedEmitter,
+};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_errors::DiagCtxt;
 use rustc_fs_util::link_or_copy;
 use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
@@ -11,17 +15,19 @@ use rustc_target::spec::SplitDebuginfo;
 
 use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
-use crate::{GccCodegenBackend, GccContext, LtoMode};
+use crate::{GccContext, LtoMode};
 
 pub(crate) fn codegen(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
+    shared_emitter: &SharedEmitter,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let dcx = cgcx.create_dcx();
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
-    let _timer = cgcx.prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
+    let _timer = prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;
 
@@ -40,9 +46,8 @@ pub(crate) fn codegen(
         );
 
         if config.bitcode_needed() {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("GCC_module_codegen_make_bitcode", &*module.name);
+            let _timer =
+                prof.generic_activity_with_arg("GCC_module_codegen_make_bitcode", &*module.name);
 
             // TODO(antoyo)
             /*if let Some(bitcode_filename) = bc_out.file_name() {
@@ -54,8 +59,7 @@ pub(crate) fn codegen(
             }*/
 
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                let _timer = cgcx
-                    .prof
+                let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
                 if lto_supported {
                     context.add_command_line_option("-flto=auto");
@@ -66,8 +70,7 @@ pub(crate) fn codegen(
             }
 
             if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                let _timer = cgcx
-                    .prof
+                let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
                 if lto_supported {
                     // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
@@ -94,7 +97,7 @@ pub(crate) fn codegen(
 
         if config.emit_asm {
             let _timer =
-                cgcx.prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
+                prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path_for_cgu(
                 OutputType::Assembly,
                 &module.name,
@@ -105,9 +108,8 @@ pub(crate) fn codegen(
 
         match config.emit_obj {
             EmitObj::ObjectCode(_) => {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("GCC_module_codegen_emit_obj", &*module.name);
+                let _timer =
+                    prof.generic_activity_with_arg("GCC_module_codegen_emit_obj", &*module.name);
                 if env::var("CG_GCCJIT_DUMP_MODULE_NAMES").as_deref() == Ok("1") {
                     println!("Module {}", module.name);
                 }
@@ -223,7 +225,7 @@ pub(crate) fn codegen(
 }
 
 pub(crate) fn save_temp_bitcode(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     _module: &ModuleCodegen<GccContext>,
     _name: &str,
 ) {

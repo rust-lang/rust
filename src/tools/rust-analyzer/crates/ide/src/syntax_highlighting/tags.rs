@@ -144,6 +144,7 @@ impl HlTag {
                 SymbolKind::BuiltinAttr => "builtin_attr",
                 SymbolKind::Const => "constant",
                 SymbolKind::ConstParam => "const_param",
+                SymbolKind::CrateRoot => "crate_root",
                 SymbolKind::Derive => "derive",
                 SymbolKind::DeriveHelper => "derive_helper",
                 SymbolKind::Enum => "enum",

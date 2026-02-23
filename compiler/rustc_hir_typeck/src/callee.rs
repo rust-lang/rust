@@ -2,10 +2,10 @@ use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
@@ -25,8 +25,8 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::errors;
 use crate::method::TreatNotYetDefinedOpaques;
-use crate::{errors, fluent_generated};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -87,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
 
-        match autoderef.final_ty().kind() {
+        match *autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
                 let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
                 self.check_call_abi(abi, call_expr.span);
@@ -96,6 +96,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_call_abi(header.abi, call_expr.span);
             }
             _ => { /* cannot have a non-rust abi */ }
+        }
+
+        if self.is_scalable_vector_ctor(autoderef.final_ty()) {
+            let mut err = self.dcx().create_err(errors::ScalableVectorCtor {
+                span: callee_expr.span,
+                ty: autoderef.final_ty(),
+            });
+            err.span_label(callee_expr.span, "you can create scalable vectors using intrinsics");
+            Ty::new_error(self.tcx, err.emit());
         }
 
         self.register_predicates(autoderef.into_obligations());
@@ -169,27 +178,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let valid = match canon_abi {
+        match canon_abi {
             // Rust doesn't know how to call functions with this ABI.
-            CanonAbi::Custom => false,
-
-            // These is an entry point for the host, and cannot be called on the GPU.
-            CanonAbi::GpuKernel => false,
-
+            CanonAbi::Custom
             // The interrupt ABIs should only be called by the CPU. They have complex
             // pre- and postconditions, and can use non-standard instructions like `iret` on x86.
-            CanonAbi::Interrupt(_) => false,
+            | CanonAbi::Interrupt(_) => {
+                let err = crate::errors::AbiCannotBeCalled { span, abi };
+                self.tcx.dcx().emit_err(err);
+            }
+
+            // This is an entry point for the host, and cannot be called directly.
+            CanonAbi::GpuKernel => {
+                let err = crate::errors::GpuKernelAbiCannotBeCalled { span };
+                self.tcx.dcx().emit_err(err);
+            }
 
             CanonAbi::C
             | CanonAbi::Rust
             | CanonAbi::RustCold
+            | CanonAbi::RustPreserveNone
             | CanonAbi::Arm(_)
-            | CanonAbi::X86(_) => true,
-        };
-
-        if !valid {
-            let err = crate::errors::AbiCannotBeCalled { span, abi };
-            self.tcx.dcx().emit_err(err);
+            | CanonAbi::X86(_) => {}
         }
     }
 
@@ -419,6 +429,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
+    fn is_scalable_vector_ctor(&self, callee_ty: Ty<'_>) -> bool {
+        if let ty::FnDef(def_id, _) = *callee_ty.kind()
+            && let def::DefKind::Ctor(def::CtorOf::Struct, _) = self.tcx.def_kind(def_id)
+        {
+            self.tcx
+                .opt_parent(def_id)
+                .and_then(|id| self.tcx.adt_def(id).repr().scalable)
+                .is_some()
+        } else {
+            false
+        }
+    }
+
     /// Give appropriate suggestion when encountering `||{/* not callable */}()`, where the
     /// likely intention is to call the closure, suggest `(||{})()`. (#55851)
     fn identify_bad_closure_def_and_call(
@@ -458,15 +481,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Actually need to unwrap one more layer of HIR to get to
             // the _real_ closure...
-            if let hir::Node::Expr(&hir::Expr {
+            let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) = self.tcx.parent_hir_node(parent_hir_id)
-            {
-                fn_decl_span
-            } else {
+            else {
                 return;
-            }
+            };
+            fn_decl_span
         } else {
             return;
         };
@@ -525,12 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
-                // Untranslatable diagnostics are okay for rustc internals
-                #[allow(rustc::untranslatable_diagnostic)]
-                #[allow(rustc::diagnostic_outside_of_impl)]
-                if self.has_rustc_attrs
-                    && self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses)
-                {
+                if self.has_rustc_attrs && find_attr!(self.tcx, def_id, RustcEvaluateWhereClauses) {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
@@ -835,12 +852,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (Some((_, kind, path)), _) => {
                     err.arg("kind", kind);
                     err.arg("path", path);
-                    Some(fluent_generated::hir_typeck_invalid_defined_kind)
+                    Some(msg!("{$kind} `{$path}` defined here"))
                 }
                 (_, Some(hir::QPath::Resolved(_, path))) => {
                     self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(|p| {
                         err.arg("func", p);
-                        fluent_generated::hir_typeck_invalid_fn_defined
+                        msg!("`{$func}` defined here returns `{$ty}`")
                     })
                 }
                 _ => {
@@ -849,15 +866,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
                             err.arg("local_name", self.tcx.hir_name(hir_id));
-                            Some(fluent_generated::hir_typeck_invalid_local)
+                            Some(msg!("`{$local_name}` has type `{$ty}`"))
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
                             err.arg("path", self.tcx.def_path_str(def_id));
-                            Some(fluent_generated::hir_typeck_invalid_defined)
+                            Some(msg!("`{$path}` defined here"))
                         }
                         _ => {
                             err.arg("path", callee_ty);
-                            Some(fluent_generated::hir_typeck_invalid_defined)
+                            Some(msg!("`{$path}` defined here"))
                         }
                     }
                 }
@@ -904,16 +921,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
-        // This can be done as soon as we convert the standard library back to
-        // using const traits, since if we were to enforce these conditions now,
-        // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
-        if !self.tcx.features().const_trait_impl() {
-            return;
-        }
-
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.has_rustc_attrs && self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
+        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
             return;
         }
 

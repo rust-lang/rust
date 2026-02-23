@@ -16,12 +16,12 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
     type Item = DebugVisualizer;
     const CONVERT: ConvertFn<Self::Item> = |v, _| AttributeKind::DebuggerVisualizer(v);
 
-    fn extend<'c>(
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        args: &'c ArgParser<'_>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
         let Some(l) = args.list() else {
-            cx.expected_list(args.span().unwrap_or(cx.attr_span));
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
         let Some(single) = l.single() else {

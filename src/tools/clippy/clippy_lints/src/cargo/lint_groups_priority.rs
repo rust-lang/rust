@@ -100,7 +100,7 @@ fn check_table(cx: &LateContext<'_>, table: &DeTable<'_>, known_groups: &FxHashS
                             "to have lints override the group set `{}` to a lower priority",
                             group.as_ref()
                         ),
-                        format!("{{ level = {:?}, priority = {low_priority} }}", group_config.level,),
+                        format!("{{ level = {:?}, priority = {low_priority} }}", group_config.level),
                         Applicability::MaybeIncorrect,
                     );
                 },
@@ -135,7 +135,7 @@ pub fn check(cx: &LateContext<'_>) {
     {
         let mut rustc_groups = FxHashSet::default();
         let mut clippy_groups = FxHashSet::default();
-        for (group, ..) in unerased_lint_store(cx.tcx.sess).get_lint_groups() {
+        for group in unerased_lint_store(cx.tcx.sess).get_all_group_names() {
             match group.split_once("::") {
                 None => {
                     rustc_groups.insert(group);

@@ -1,4 +1,4 @@
-use crate::{is_arm64ec, is_win7, is_windows, is_windows_msvc, uname};
+use crate::{is_arm64ec, is_win7, is_windows, is_windows_msvc, target, uname};
 
 fn get_windows_msvc_libs() -> Vec<&'static str> {
     let mut libs =
@@ -22,14 +22,22 @@ pub fn extra_c_flags() -> Vec<&'static str> {
             vec!["-lws2_32", "-luserenv", "-lbcrypt", "-lntdll", "-lsynchronization"]
         }
     } else {
-        match uname() {
-            n if n.contains("Darwin") => vec!["-lresolv"],
-            n if n.contains("FreeBSD") => vec!["-lm", "-lpthread", "-lgcc_s"],
-            n if n.contains("SunOS") => {
-                vec!["-lm", "-lpthread", "-lposix4", "-lsocket", "-lresolv"]
+        // For cross-compilation targets, we need to check the target, not the host
+        let target_triple = target();
+        if target_triple.contains("hexagon") {
+            // Hexagon targets need unwind support but don't have some Linux libraries
+            vec!["-lunwind", "-lclang_rt.builtins-hexagon"]
+        } else {
+            // For host-based detection, fall back to uname() for non-cross compilation
+            match uname() {
+                n if n.contains("Darwin") => vec!["-lresolv"],
+                n if n.contains("FreeBSD") => vec!["-lm", "-lpthread", "-lgcc_s"],
+                n if n.contains("SunOS") => {
+                    vec!["-lm", "-lpthread", "-lposix4", "-lsocket", "-lresolv"]
+                }
+                n if n.contains("OpenBSD") => vec!["-lm", "-lpthread", "-lc++abi"],
+                _ => vec!["-lm", "-lrt", "-ldl", "-lpthread"],
             }
-            n if n.contains("OpenBSD") => vec!["-lm", "-lpthread", "-lc++abi"],
-            _ => vec!["-lm", "-lrt", "-ldl", "-lpthread"],
         }
     }
 }

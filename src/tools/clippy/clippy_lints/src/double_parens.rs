@@ -114,6 +114,8 @@ fn check_source(cx: &EarlyContext<'_>, inner: &Expr) -> bool {
         && inner.starts_with('(')
         && inner.ends_with(')')
         && outer_after_inner.trim_start().starts_with(')')
+        // Don't lint macro repetition patterns like `($($result),*)` where parens are necessary
+        && !inner.trim_start_matches('(').trim_start().starts_with("$(")
     {
         true
     } else {

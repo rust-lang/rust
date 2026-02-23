@@ -25,6 +25,14 @@ pub extern "C" { //~ ERROR visibility qualifiers are not permitted here
     pub static St: u8;
 }
 
+enum Bird {
+    pub Duck,
+    //~^ ERROR visibility qualifiers are not permitted here
+    pub(crate) Dove,
+    //~^ ERROR visibility qualifiers are not permitted here
+    Goose,
+}
+
 const MAIN: u8 = {
     pub trait Tr {
         fn f();
@@ -78,5 +86,12 @@ fn main() {
     pub extern "C" { //~ ERROR visibility qualifiers are not permitted here
         pub fn f();
         pub static St: u8;
+    }
+    enum Bird {
+        pub Duck,
+        //~^ ERROR visibility qualifiers are not permitted here
+        pub(crate) Dove,
+        //~^ ERROR visibility qualifiers are not permitted here
+        Goose,
     }
 }

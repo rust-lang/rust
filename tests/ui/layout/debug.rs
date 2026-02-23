@@ -68,12 +68,12 @@ union P5 { zst: [u16; 0], byte: u8 } //~ ERROR: layout_of
 #[rustc_layout(debug)]
 type X = std::mem::MaybeUninit<u8>; //~ ERROR: layout_of
 
-#[rustc_layout(debug)]
-const C: () = (); //~ ERROR: can only be applied to
+#[rustc_layout(debug)] //~ ERROR: cannot be used on constants
+const C: () = ();
 
 impl S {
-    #[rustc_layout(debug)]
-    const C: () = (); //~ ERROR: can only be applied to
+    #[rustc_layout(debug)] //~ ERROR: cannot be used on associated consts
+    const C: () = ();
 }
 
 #[rustc_layout(debug)]

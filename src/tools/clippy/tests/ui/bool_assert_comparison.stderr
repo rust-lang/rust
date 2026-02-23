@@ -444,5 +444,29 @@ LL -     assert_eq!(b + b, false);
 LL +     assert!(!(b + b));
    |
 
-error: aborting due to 37 previous errors
+error: used `assert_eq!` with a literal bool
+  --> tests/ui/bool_assert_comparison.rs:227:5
+   |
+LL |     assert_eq!(is_empty!("a"), false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_eq!(is_empty!("a"), false);
+LL +     assert!(!is_empty!("a"));
+   |
+
+error: used `assert_eq!` with a literal bool
+  --> tests/ui/bool_assert_comparison.rs:229:5
+   |
+LL |     assert_eq!(is_empty!(""), true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_eq!(is_empty!(""), true);
+LL +     assert!(is_empty!(""));
+   |
+
+error: aborting due to 39 previous errors
 

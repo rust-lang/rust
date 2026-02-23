@@ -28,12 +28,21 @@ pub struct CpuidResult {
 /// Returns the result of the `cpuid` instruction for a given `leaf` (`EAX`)
 /// and `sub_leaf` (`ECX`).
 ///
-/// The highest-supported leaf value is returned by the first tuple argument of
-/// [`__get_cpuid_max(0)`](fn.__get_cpuid_max.html). For leaves containing
-/// sub-leaves, the second tuple argument returns the highest-supported
-/// sub-leaf value.
+/// There are two types of information leaves - basic leaves (with `leaf < 0x8000000`)
+/// and extended leaves (with `leaf >= 0x80000000`). The highest supported basic and
+/// extended leaves can be obtained by calling CPUID with `0` and `0x80000000`,
+/// respectively, and reading the value in the `EAX` register. If the leaf supports
+/// more than one sub-leaf, then the procedure of obtaining the highest supported
+/// sub-leaf, as well as the behavior if a invalid sub-leaf value is passed, depends
+/// on the specific leaf.
 ///
-/// The [CPUID Wikipedia page][wiki_cpuid] contains how to query which
+/// If the `leaf` value is higher than the maximum supported basic or extended leaf
+/// for the processor, this returns the information for the highest supported basic
+/// information leaf (with the passed `sub_leaf` value). If the `leaf` value is less
+/// than or equal to the highest basic or extended leaf value, but the leaf is not
+/// supported on the processor, all zeros are returned.
+///
+/// The [CPUID Wikipedia page][wiki_cpuid] contains information on how to query which
 /// information using the `EAX` and `ECX` registers, and the interpretation of
 /// the results returned in `EAX`, `EBX`, `ECX`, and `EDX`.
 ///
@@ -45,11 +54,15 @@ pub struct CpuidResult {
 ///
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: https://cdrdv2-public.intel.com/671110/325383-sdm-vol-2abcd.pdf
-/// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+/// [amd64_ref]: https://docs.amd.com/v/u/en-US/24594_3.37
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
+pub fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
+    if cfg!(target_env = "sgx") {
+        panic!("`__cpuid` cannot be used in SGX");
+    }
+
     let eax;
     let ebx;
     let ecx;
@@ -58,7 +71,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     // LLVM sometimes reserves `ebx` for its internal use, we so we need to use
     // a scratch register for it instead.
     #[cfg(target_arch = "x86")]
-    {
+    unsafe {
         asm!(
             "mov {0}, ebx",
             "cpuid",
@@ -71,7 +84,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
         );
     }
     #[cfg(target_arch = "x86_64")]
-    {
+    unsafe {
         asm!(
             "mov {0:r}, rbx",
             "cpuid",
@@ -86,27 +99,26 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     CpuidResult { eax, ebx, ecx, edx }
 }
 
+/// Calls CPUID with the provided `leaf` value, with `sub_leaf` set to 0.
 /// See [`__cpuid_count`](fn.__cpuid_count.html).
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
+pub fn __cpuid(leaf: u32) -> CpuidResult {
     __cpuid_count(leaf, 0)
 }
 
-/// Returns the highest-supported `leaf` (`EAX`) and sub-leaf (`ECX`) `cpuid`
-/// values.
+/// Returns the EAX and EBX register after calling CPUID with the provided `leaf`,
+/// with `sub_leaf` set to 0.
 ///
-/// If `cpuid` is supported, and `leaf` is zero, then the first tuple argument
-/// contains the highest `leaf` value that `cpuid` supports. For `leaf`s
-/// containing sub-leafs, the second tuple argument contains the
-/// highest-supported sub-leaf value.
+/// If `leaf` if 0 or `0x80000000`, the first tuple argument contains the maximum
+/// supported basic or extended leaf, respectively.
 ///
 /// See also [`__cpuid`](fn.__cpuid.html) and
 /// [`__cpuid_count`](fn.__cpuid_count.html).
 #[inline]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
+pub fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
     let CpuidResult { eax, ebx, .. } = __cpuid(leaf);
     (eax, ebx)
 }

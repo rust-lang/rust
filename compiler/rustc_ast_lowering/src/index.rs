@@ -281,6 +281,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_const_arg_expr_field(&mut self, field: &'hir ConstArgExprField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::ConstArgExprField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_const_arg_expr_field(this, field);
+        })
+    }
+
     fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {
         self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
 
@@ -305,7 +312,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir, AmbigArg>) {
         self.insert(
-            const_arg.as_unambig_ct().span(),
+            const_arg.as_unambig_ct().span,
             const_arg.hir_id,
             Node::ConstArg(const_arg.as_unambig_ct()),
         );

@@ -7,7 +7,7 @@
  .p2align 5
 __hexagon_fmadf4:
 __hexagon_fmadf5:
-fma:
+.Lfma:
  {
   p0 = dfclass(r1:0,#2)
   p0 = dfclass(r3:2,#2)
@@ -400,7 +400,7 @@ fma:
   r3:2 = insert(r11:10,#63,#0)
   r1 -= asl(r28,#20)
  }
- jump fma
+ jump .Lfma
 
 .Lfma_ab_tiny:
  r9:8 = combine(##0x00100000,#0)
@@ -408,7 +408,7 @@ fma:
   r1:0 = insert(r9:8,#63,#0)
   r3:2 = insert(r9:8,#63,#0)
  }
- jump fma
+ jump .Lfma
 
 .Lab_inf:
  {
@@ -531,4 +531,3 @@ fma:
   r5 = insert(r28,#11,#20)
   jump .Lfma_abnormal_c_restart
  }
-.size fma,.-fma

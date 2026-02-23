@@ -29,16 +29,19 @@ xpy=$(dirname "$(realpath "$0")")/x.py
 # On MacOS, `py` tries to install "Developer command line tools". Try `python3` first.
 # NOTE: running `bash -c ./x` from Windows doesn't set OSTYPE.
 case ${OSTYPE:-} in
-    cygwin*|msys*) SEARCH="py python3 python python2";;
-    *) SEARCH="python3 python py python2";;
+    cygwin*|msys*) SEARCH="py python3 python python2 uv";;
+    *) SEARCH="python3 python py python2 uv";;
 esac
 for SEARCH_PYTHON in $SEARCH; do
     if python=$(command -v $SEARCH_PYTHON) && [ -x "$python" ]; then
-        if [ $SEARCH_PYTHON = py ]; then
-            extra_arg="-3"
-        else
-            extra_arg=""
-        fi
+        case $SEARCH_PYTHON in
+            py)
+                extra_arg="-3";;
+            uv)
+                extra_arg="run";;
+            *)
+                extra_arg="";;
+        esac
         exec "$python" $extra_arg "$xpy" "$@"
     fi
 done

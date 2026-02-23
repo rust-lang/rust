@@ -1,4 +1,4 @@
-error: crate-level attribute should be in the root module
+error: the `#![crate_type]` attribute can only be used at the crate root
   --> $DIR/lint-misplaced-attr.rs:7:5
    |
 LL |     #![crate_type = "bin"]
@@ -10,16 +10,17 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: crate-level attribute should be an inner attribute
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_type]`
   --> $DIR/lint-misplaced-attr.rs:10:1
    |
 LL | #[crate_type = "bin"] fn main() {}
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-help: add a `!`
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/lint-misplaced-attr.rs:10:23
    |
-LL | #![crate_type = "bin"] fn main() {}
-   |  +
+LL | #[crate_type = "bin"] fn main() {}
+   |                       ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

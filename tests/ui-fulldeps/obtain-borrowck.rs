@@ -28,6 +28,7 @@ extern crate rustc_session;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::process::ExitCode;
 use std::thread_local;
 
 use rustc_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
@@ -37,21 +38,20 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_interface::Config;
 use rustc_interface::interface::Compiler;
-use rustc_middle::query::queries::mir_borrowck::ProvidedValue;
+use rustc_middle::queries::mir_borrowck::ProvidedValue;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 
-fn main() {
-    let exit_code = rustc_driver::catch_with_exit_code(move || {
+fn main() -> ExitCode {
+    rustc_driver::catch_with_exit_code(move || {
         let mut rustc_args: Vec<_> = std::env::args().collect();
         // We must pass -Zpolonius so that the borrowck information is computed.
         rustc_args.push("-Zpolonius".to_owned());
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
         rustc_driver::run_compiler(&rustc_args, &mut callbacks);
-    });
-    std::process::exit(exit_code);
+    })
 }
 
 #[derive(Default)]
@@ -114,7 +114,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
 }
 
 fn override_queries(_session: &Session, local: &mut Providers) {
-    local.mir_borrowck = mir_borrowck;
+    local.queries.mir_borrowck = mir_borrowck;
 }
 
 // Since mir_borrowck does not have access to any other state, we need to use a
@@ -142,8 +142,8 @@ fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'t
         }
     });
     let mut providers = Providers::default();
-    rustc_borrowck::provide(&mut providers);
-    let original_mir_borrowck = providers.mir_borrowck;
+    rustc_borrowck::provide(&mut providers.queries);
+    let original_mir_borrowck = providers.queries.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }
 

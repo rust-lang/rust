@@ -147,5 +147,47 @@ LL +         println!("foo is false");
 LL +     }
    |
 
-error: aborting due to 6 previous errors
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:82:5
+   |
+LL | /     if !matches!(x, 0..10) {
+LL | |
+LL | |         println!(":)");
+LL | |     } else {
+LL | |         println!(":(");
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if matches!(x, 0..10) {
+LL +         println!(":(");
+LL +     } else {
+LL +
+LL +         println!(":)");
+LL +     }
+   |
+
+error: unnecessary `!=` operation
+  --> tests/ui/if_not_else.rs:89:5
+   |
+LL | /     if dbg!(x) != 1 {
+LL | |
+LL | |         println!(":)");
+LL | |     } else {
+LL | |         println!(":(");
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if dbg!(x) == 1 {
+LL +         println!(":(");
+LL +     } else {
+LL +
+LL +         println!(":)");
+LL +     }
+   |
+
+error: aborting due to 8 previous errors
 

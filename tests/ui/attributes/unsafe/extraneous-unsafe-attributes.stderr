@@ -1,7 +1,7 @@
 error: `cfg` is not an unsafe attribute
   --> $DIR/extraneous-unsafe-attributes.rs:3:3
    |
-LL | #[unsafe(cfg(any()))]
+LL | #[unsafe(cfg(false))]
    |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes
@@ -9,7 +9,7 @@ LL | #[unsafe(cfg(any()))]
 error: `cfg_attr` is not an unsafe attribute
   --> $DIR/extraneous-unsafe-attributes.rs:6:3
    |
-LL | #[unsafe(cfg_attr(any(), allow(dead_code)))]
+LL | #[unsafe(cfg_attr(false, allow(dead_code)))]
    |   ^^^^^^ this is not an unsafe attribute
    |
    = note: extraneous unsafe is not allowed in attributes

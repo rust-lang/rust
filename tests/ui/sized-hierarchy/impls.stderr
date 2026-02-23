@@ -164,7 +164,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<Foo>();
    |                       ^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `main::Foo`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
    |
@@ -222,7 +222,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<(Foo, Foo)>();
    |                       ^^^^^^^^^^ doesn't have a known size
    |
-   = help: within `(main::Foo, main::Foo)`, the trait `MetaSized` is not implemented for `main::Foo`
+   = help: within `(main::Foo, main::Foo)`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
    = note: required because it appears within the type `(main::Foo, main::Foo)`
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
@@ -273,7 +273,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<(u32, Foo)>();
    |                       ^^^^^^^^^^ doesn't have a known size
    |
-   = help: within `(u32, main::Foo)`, the trait `MetaSized` is not implemented for `main::Foo`
+   = help: within `(u32, main::Foo)`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
    = note: required because it appears within the type `(u32, main::Foo)`
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
@@ -323,7 +323,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<StructAllFieldsUnsized>();
    |                       ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: within `StructAllFieldsUnsized`, the trait `MetaSized` is not implemented for `main::Foo`
+   = help: within `StructAllFieldsUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructAllFieldsUnsized`
   --> $DIR/impls.rs:243:12
    |
@@ -377,7 +377,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<StructLastFieldUnsized>();
    |                       ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
    |
-   = help: within `StructLastFieldUnsized`, the trait `MetaSized` is not implemented for `main::Foo`
+   = help: within `StructLastFieldUnsized`, the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required because it appears within the type `StructLastFieldUnsized`
   --> $DIR/impls.rs:259:12
    |

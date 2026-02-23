@@ -12,7 +12,7 @@ use crate::ptr::{self, NonNull};
 #[allow_internal_unstable(thread_local_internals)]
 #[allow_internal_unsafe]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro thread_local_inner {
     // NOTE: we cannot import `Storage` or `LocalKey` with a `use` because that can shadow user
     // provided type or type alias with a matching name. Please update the shadowing test in
@@ -261,7 +261,7 @@ unsafe extern "C" fn destroy_value<T: 'static, const ALIGN: usize>(ptr: *mut u8)
     });
 }
 
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub(crate) macro local_pointer {
     () => {},
     ($vis:vis static $name:ident; $($rest:tt)*) => {

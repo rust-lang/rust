@@ -5,6 +5,7 @@
 new_issue = true
 exclude_labels = [
     "A-diagnostics",
+    "C-date-reference-triage",
     "C-tracking-issue",
 ]
 
@@ -53,17 +54,10 @@ allow-unauthenticated = [
 # Documentation at: https://forge.rust-lang.org/triagebot/note.html
 [note]
 
-# Prevents mentions in commits to avoid users being spammed
-# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
-[no-mentions]
-
 # Canonicalize issue numbers to avoid closing the wrong issue
 # when commits are included in subtrees, as well as warning links in commits.
 # Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
 [issue-links]
-
-[behind-upstream]
-days-threshold = 7
 
 # Enable triagebot (PR) assignment.
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
@@ -91,5 +85,9 @@ does not need reviews. You can request a review using `r? rustc-dev-guide` or \
 rustc-dev-guide = [
     "@BoxyUwU",
     "@jyn514",
+    "@reddevilmidzy",
     "@tshepang",
 ]
+
+# Make rebases more easy to read: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]

@@ -29,10 +29,6 @@ use rustc_session::config::OutputFilenames;
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
-    fn locale_resource(&self) -> &'static str {
-        ""
-    }
-
     fn name(&self) -> &'static str {
         "the-backend"
     }

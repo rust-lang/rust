@@ -604,6 +604,14 @@ fn compute_type_match(
         return None;
     }
 
+    // &mut ty -> &ty
+    if completion_ty.is_mutable_reference()
+        && let Some(expected_type) = expected_type.remove_ref()
+        && let Some(completion_ty) = completion_ty.remove_ref()
+    {
+        return match_types(ctx, &expected_type, &completion_ty);
+    }
+
     match_types(ctx, expected_type, completion_ty)
 }
 
@@ -622,6 +630,8 @@ fn compute_ref_match(
         return None;
     }
     if let Some(expected_without_ref) = &expected_without_ref
+        && (completion_without_ref.is_none()
+            || completion_ty.could_unify_with(ctx.db, expected_without_ref))
         && completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref)
     {
         cov_mark::hit!(suggest_ref);
@@ -2050,6 +2060,17 @@ fn go(world: &WorldSnapshot) { go(w$0) }
     }
 
     #[test]
+    fn prioritize_mutable_ref_as_immutable_ref_match() {
+        check_relevance(
+            r#"fn foo(r: &mut i32) -> &i32 { $0 }"#,
+            expect![[r#"
+                lc r &mut i32 [type+local]
+                fn foo(…) fn(&mut i32) -> &i32 [type]
+            "#]],
+        );
+    }
+
+    #[test]
     fn too_many_arguments() {
         cov_mark::check!(too_many_arguments);
         check_relevance(
@@ -2209,6 +2230,24 @@ fn main() {
                 ex S  [type]
                 ex ssss  [type]
                 fn foo(…) fn(&mut S) []
+                fn main() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: &&S) {}
+fn main() {
+    let mut ssss = &S;
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                st S S []
+                lc ssss &S [local]
+                lc &ssss [type+local]
+                st S S []
+                fn foo(…) fn(&&S) []
                 fn main() fn() []
             "#]],
         );
@@ -3234,6 +3273,48 @@ struct S {
 impl S {
     fn some_fn(&self) {
         let l = self.length
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn field_access_includes_closure_this_param() {
+        check_edit(
+            "length",
+            r#"
+//- minicore: fn
+struct S {
+    length: i32
+}
+
+impl S {
+    fn pack(&mut self, f: impl FnOnce(&mut Self, i32)) {
+        self.length += 1;
+        f(self, 3);
+        self.length -= 1;
+    }
+
+    fn some_fn(&mut self) {
+        self.pack(|this, n| len$0);
+    }
+}
+"#,
+            r#"
+struct S {
+    length: i32
+}
+
+impl S {
+    fn pack(&mut self, f: impl FnOnce(&mut Self, i32)) {
+        self.length += 1;
+        f(self, 3);
+        self.length -= 1;
+    }
+
+    fn some_fn(&mut self) {
+        self.pack(|this, n| this.length);
     }
 }
 "#,

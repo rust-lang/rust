@@ -6,6 +6,8 @@ LL |     const N: C::M = 4u8;
    |
    = note: expected associated type `<C as O>::M`
                          found type `u8`
+   = note: the associated type `<C as O>::M` is defined as `u8` in the implementation, but the where-bound `C` shadows this definition
+           see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information
 help: consider constraining the associated type `<C as O>::M` to `u8`
    |
 LL | impl<C: O<M = u8>> U<C> for u16 {

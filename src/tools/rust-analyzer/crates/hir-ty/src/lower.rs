@@ -15,8 +15,8 @@ use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GeneralConstId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId,
-    LifetimeParamId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId,
-    TypeParamId, UnionId, VariantId,
+    LifetimeParamId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, HygieneId, path::Path},
     hir::generics::{
@@ -27,8 +27,8 @@ use hir_def::{
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs, ValueNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
-        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
-        TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
+        ConstRef, FnType, LifetimeRefId, PathId, TraitBoundModifier, TraitRef as HirTraitRef,
+        TypeBound, TypeRef, TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -53,7 +53,7 @@ use tracing::debug;
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind, all_super_traits,
     consteval::intern_const_ref,
     db::{HirDatabase, InternedOpaqueTyId},
     generics::{Generics, generics, trait_self_param_idx},
@@ -61,41 +61,44 @@ use crate::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const,
         DbInterner, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FxIndexMap, GenericArg,
         GenericArgs, ParamConst, ParamEnv, PolyFnSig, Predicate, Region, SolverDefId,
-        TraitPredicate, TraitRef, Ty, Tys, UnevaluatedConst, abi::Safety, util::BottomUpFolder,
+        StoredClauses, StoredEarlyBinder, StoredGenericArg, StoredGenericArgs, StoredPolyFnSig,
+        StoredTy, TraitPredicate, TraitRef, Ty, Tys, UnevaluatedConst, abi::Safety,
+        util::BottomUpFolder,
     },
 };
 
 pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 
 #[derive(PartialEq, Eq, Debug, Hash)]
-pub struct ImplTraits<'db> {
-    pub(crate) impl_traits: Arena<ImplTrait<'db>>,
+pub struct ImplTraits {
+    pub(crate) impl_traits: Arena<ImplTrait>,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash)]
-pub struct ImplTrait<'db> {
-    pub(crate) predicates: Box<[Clause<'db>]>,
+pub struct ImplTrait {
+    pub(crate) predicates: StoredClauses,
+    pub(crate) assoc_ty_bounds_start: u32,
 }
 
-pub type ImplTraitIdx<'db> = Idx<ImplTrait<'db>>;
+pub type ImplTraitIdx = Idx<ImplTrait>;
 
 #[derive(Debug, Default)]
-struct ImplTraitLoweringState<'db> {
+struct ImplTraitLoweringState {
     /// When turning `impl Trait` into opaque types, we have to collect the
     /// bounds at the same time to get the IDs correct (without becoming too
     /// complicated).
     mode: ImplTraitLoweringMode,
     // This is structured as a struct with fields and not as an enum because it helps with the borrow checker.
-    opaque_type_data: Arena<ImplTrait<'db>>,
+    opaque_type_data: Arena<ImplTrait>,
 }
 
-impl<'db> ImplTraitLoweringState<'db> {
-    fn new(mode: ImplTraitLoweringMode) -> ImplTraitLoweringState<'db> {
+impl ImplTraitLoweringState {
+    fn new(mode: ImplTraitLoweringMode) -> ImplTraitLoweringState {
         Self { mode, opaque_type_data: Arena::new() }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LifetimeElisionKind<'db> {
     /// Create a new anonymous lifetime parameter and reference it.
     ///
@@ -164,17 +167,24 @@ impl<'db> LifetimeElisionKind<'db> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum GenericPredicateSource {
+    SelfOnly,
+    AssocTyBound,
+}
+
 #[derive(Debug)]
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
     interner: DbInterner<'db>,
+    types: &'db crate::next_solver::DefaultAny<'db>,
     lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
     store: &'a ExpressionStore,
     def: GenericDefId,
     generics: OnceCell<Generics>,
     in_binders: DebruijnIndex,
-    impl_trait_mode: ImplTraitLoweringState<'db>,
+    impl_trait_mode: ImplTraitLoweringState,
     /// Tracks types with explicit `?Sized` bounds.
     pub(crate) unsized_types: FxHashSet<Ty<'db>>,
     pub(crate) diagnostics: Vec<TyLoweringDiagnostic>,
@@ -199,6 +209,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             db,
             // Can provide no block since we don't use it for trait solving.
             interner,
+            types: crate::next_solver::default_types(db),
             lang_items: interner.lang_items(),
             resolver,
             def,
@@ -277,21 +288,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             hir_def::hir::Expr::Path(path) => {
                 self.path_to_const(path).unwrap_or_else(|| unknown_const(const_type))
             }
-            hir_def::hir::Expr::Literal(literal) => intern_const_ref(
-                self.db,
-                &match *literal {
-                    hir_def::hir::Literal::Float(_, _)
-                    | hir_def::hir::Literal::String(_)
-                    | hir_def::hir::Literal::ByteString(_)
-                    | hir_def::hir::Literal::CString(_) => LiteralConstRef::Unknown,
-                    hir_def::hir::Literal::Char(c) => LiteralConstRef::Char(c),
-                    hir_def::hir::Literal::Bool(b) => LiteralConstRef::Bool(b),
-                    hir_def::hir::Literal::Int(val, _) => LiteralConstRef::Int(val),
-                    hir_def::hir::Literal::Uint(val, _) => LiteralConstRef::UInt(val),
-                },
-                const_type,
-                self.resolver.krate(),
-            ),
+            hir_def::hir::Expr::Literal(literal) => {
+                intern_const_ref(self.db, literal, const_type, self.resolver.krate())
+            }
             hir_def::hir::Expr::UnaryOp { expr: inner_expr, op: hir_def::hir::UnaryOp::Neg } => {
                 if let hir_def::hir::Expr::Literal(literal) = &self.store[*inner_expr] {
                     // Only handle negation for signed integers and floats
@@ -300,7 +299,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             if let Some(negated_literal) = literal.clone().negate() {
                                 intern_const_ref(
                                     self.db,
-                                    &negated_literal.into(),
+                                    &negated_literal,
                                     const_type,
                                     self.resolver.krate(),
                                 )
@@ -337,7 +336,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 }
             }
             Some(ValueNs::ConstId(c)) => {
-                let args = GenericArgs::new_from_iter(self.interner, []);
+                let args = GenericArgs::empty(self.interner);
                 Some(Const::new(
                     self.interner,
                     rustc_type_ir::ConstKind::Unevaluated(UnevaluatedConst::new(
@@ -397,7 +396,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let type_ref = &self.store[type_ref_id];
         tracing::debug!(?type_ref);
         let ty = match type_ref {
-            TypeRef::Never => Ty::new(interner, TyKind::Never),
+            TypeRef::Never => self.types.types.never,
             TypeRef::Tuple(inner) => {
                 let inner_tys = inner.iter().map(|&tr| self.lower_ty(tr));
                 Ty::new_tup_from_iter(interner, inner_tys)
@@ -438,26 +437,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 Ty::new_ref(interner, lifetime, inner_ty, lower_mutability(ref_.mutability))
             }
             TypeRef::Placeholder => Ty::new_error(interner, ErrorGuaranteed),
-            TypeRef::Fn(fn_) => {
-                let substs = self.with_shifted_in(
-                    DebruijnIndex::from_u32(1),
-                    |ctx: &mut TyLoweringContext<'_, '_>| {
-                        Tys::new_from_iter(
-                            interner,
-                            fn_.params.iter().map(|&(_, tr)| ctx.lower_ty(tr)),
-                        )
-                    },
-                );
-                Ty::new_fn_ptr(
-                    interner,
-                    Binder::dummy(FnSig {
-                        abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-                        safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
-                        c_variadic: fn_.is_varargs,
-                        inputs_and_output: substs,
-                    }),
-                )
-            }
+            TypeRef::Fn(fn_) => self.lower_fn_ptr(fn_),
             TypeRef::DynTrait(bounds) => self.lower_dyn_trait(bounds),
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode.mode {
@@ -473,10 +453,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // this dance is to make sure the data is in the right
                         // place even if we encounter more opaque types while
                         // lowering the bounds
-                        let idx = self
-                            .impl_trait_mode
-                            .opaque_type_data
-                            .alloc(ImplTrait { predicates: Box::default() });
+                        let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
+                            predicates: Clauses::empty(interner).store(),
+                            assoc_ty_bounds_start: 0,
+                        });
 
                         let impl_trait_id = origin.either(
                             |f| ImplTraitId::ReturnTypeImplTrait(f, idx),
@@ -516,6 +496,30 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             TypeRef::Error => Ty::new_error(self.interner, ErrorGuaranteed),
         };
         (ty, res)
+    }
+
+    fn lower_fn_ptr(&mut self, fn_: &FnType) -> Ty<'db> {
+        let interner = self.interner;
+        let (params, ret_ty) = fn_.split_params_and_ret();
+        let old_lifetime_elision = self.lifetime_elision;
+        let mut args = Vec::with_capacity(fn_.params.len());
+        self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx: &mut TyLoweringContext<'_, '_>| {
+            ctx.lifetime_elision =
+                LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
+            args.extend(params.iter().map(|&(_, tr)| ctx.lower_ty(tr)));
+            ctx.lifetime_elision = LifetimeElisionKind::for_fn_ret(interner);
+            args.push(ctx.lower_ty(ret_ty));
+        });
+        self.lifetime_elision = old_lifetime_elision;
+        Ty::new_fn_ptr(
+            interner,
+            Binder::dummy(FnSig {
+                abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
+                safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
+                c_variadic: fn_.is_varargs,
+                inputs_and_output: Tys::new_from_slice(&args),
+            }),
+        )
     }
 
     /// This is only for `generic_predicates_for_param`, where we can't just
@@ -616,7 +620,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         ignore_bindings: bool,
         generics: &Generics,
         predicate_filter: PredicateFilter,
-    ) -> impl Iterator<Item = Clause<'db>> + use<'a, 'b, 'db> {
+    ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -642,8 +646,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 let self_ty = self.lower_ty(*target);
                 Either::Left(Either::Right(self.lower_type_bound(bound, self_ty, ignore_bindings)))
             }
-            &WherePredicate::Lifetime { bound, target } => {
-                Either::Right(iter::once(Clause(Predicate::new(
+            &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
+                Clause(Predicate::new(
                     self.interner,
                     Binder::dummy(rustc_type_ir::PredicateKind::Clause(
                         rustc_type_ir::ClauseKind::RegionOutlives(OutlivesPredicate(
@@ -651,8 +655,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             self.lower_lifetime(target),
                         )),
                     )),
-                ))))
-            }
+                )),
+                GenericPredicateSource::SelfOnly,
+            ))),
         }
         .into_iter()
     }
@@ -662,7 +667,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         bound: &'b TypeBound,
         self_ty: Ty<'db>,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = Clause<'db>> + use<'b, 'a, 'db> {
+    ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'b, 'a, 'db> {
         let interner = self.interner;
         let meta_sized = self.lang_items.MetaSized;
         let pointee_sized = self.lang_items.PointeeSized;
@@ -720,7 +725,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
             TypeBound::Use(_) | TypeBound::Error => {}
         }
-        clause.into_iter().chain(assoc_bounds.into_iter().flatten())
+        clause
+            .into_iter()
+            .map(|pred| (pred, GenericPredicateSource::SelfOnly))
+            .chain(assoc_bounds.into_iter().flatten())
     }
 
     fn lower_dyn_trait(&mut self, bounds: &[TypeBound]) -> Ty<'db> {
@@ -740,7 +748,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
             for b in bounds {
                 let db = ctx.db;
-                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|b| {
+                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|(b, _)| {
                     match b.kind().skip_binder() {
                         rustc_type_ir::ClauseKind::Trait(t) => {
                             let id = t.def_id();
@@ -823,6 +831,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             let mut ordered_associated_types = vec![];
 
             if let Some(principal_trait) = principal {
+                // Generally we should not elaborate in lowering as this can lead to cycles, but
+                // here rustc cycles as well.
                 for clause in elaborate::elaborate(
                     interner,
                     [Clause::upcast_from(
@@ -858,7 +868,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                 TermKind::Ty(ty) => {
                                     ty.walk().any(|arg| arg == dummy_self_ty.into())
                                 }
-                                // FIXME(associated_const_equality): We should walk the const instead of not doing anything
+                                // FIXME(mgca): We should walk the const instead of not doing anything
                                 TermKind::Const(_) => false,
                             };
 
@@ -989,7 +999,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         }
     }
 
-    fn lower_impl_trait(&mut self, def_id: SolverDefId, bounds: &[TypeBound]) -> ImplTrait<'db> {
+    fn lower_impl_trait(&mut self, def_id: SolverDefId, bounds: &[TypeBound]) -> ImplTrait {
         let interner = self.interner;
         cov_mark::hit!(lower_rpit);
         let args = GenericArgs::identity_for_item(interner, def_id);
@@ -998,35 +1008,49 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             rustc_type_ir::AliasTyKind::Opaque,
             AliasTy::new_from_args(interner, def_id, args),
         );
-        let predicates = self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
-            let mut predicates = Vec::new();
-            for b in bounds {
-                predicates.extend(ctx.lower_type_bound(b, self_ty, false));
-            }
+        let (predicates, assoc_ty_bounds_start) =
+            self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
+                let mut predicates = Vec::new();
+                let mut assoc_ty_bounds = Vec::new();
+                for b in bounds {
+                    for (pred, source) in ctx.lower_type_bound(b, self_ty, false) {
+                        match source {
+                            GenericPredicateSource::SelfOnly => predicates.push(pred),
+                            GenericPredicateSource::AssocTyBound => assoc_ty_bounds.push(pred),
+                        }
+                    }
+                }
 
-            if !ctx.unsized_types.contains(&self_ty) {
-                let sized_trait = self.lang_items.Sized;
-                let sized_clause = sized_trait.map(|trait_id| {
-                    let trait_ref = TraitRef::new_from_args(
-                        interner,
-                        trait_id.into(),
-                        GenericArgs::new_from_iter(interner, [self_ty.into()]),
-                    );
-                    Clause(Predicate::new(
-                        interner,
-                        Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                            rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                trait_ref,
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            }),
-                        )),
-                    ))
-                });
-                predicates.extend(sized_clause);
-            }
-            predicates.into_boxed_slice()
-        });
-        ImplTrait { predicates }
+                if !ctx.unsized_types.contains(&self_ty) {
+                    let sized_trait = self.lang_items.Sized;
+                    let sized_clause = sized_trait.map(|trait_id| {
+                        let trait_ref = TraitRef::new_from_args(
+                            interner,
+                            trait_id.into(),
+                            GenericArgs::new_from_slice(&[self_ty.into()]),
+                        );
+                        Clause(Predicate::new(
+                            interner,
+                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                                    trait_ref,
+                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                }),
+                            )),
+                        ))
+                    });
+                    predicates.extend(sized_clause);
+                }
+
+                let assoc_ty_bounds_start = predicates.len() as u32;
+                predicates.extend(assoc_ty_bounds);
+                (predicates, assoc_ty_bounds_start)
+            });
+
+        ImplTrait {
+            predicates: Clauses::new_from_slice(&predicates).store(),
+            assoc_ty_bounds_start,
+        }
     }
 
     pub(crate) fn lower_lifetime(&mut self, lifetime: LifetimeRefId) -> Region<'db> {
@@ -1090,28 +1114,50 @@ pub(crate) fn impl_trait_query<'db>(
     db.impl_trait_with_diagnostics(impl_id).map(|it| it.0)
 }
 
-pub(crate) fn impl_trait_with_diagnostics_query<'db>(
+pub(crate) fn impl_trait_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> Option<(EarlyBinder<'db, TraitRef<'db>>, Diagnostics)> {
-    let impl_data = db.impl_signature(impl_id);
-    let resolver = impl_id.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    );
-    let self_ty = db.impl_self_ty(impl_id).skip_binder();
-    let target_trait = impl_data.target_trait.as_ref()?;
-    let trait_ref = EarlyBinder::bind(ctx.lower_trait_ref(target_trait, self_ty)?);
-    Some((trait_ref, create_diagnostics(ctx.diagnostics)))
+    return impl_trait_with_diagnostics_query(db, impl_id).as_ref().map(|(binder, diags)| {
+        (
+            binder.get_with(|(trait_id, args)| {
+                TraitRef::new_from_args(
+                    DbInterner::new_no_crate(db),
+                    (*trait_id).into(),
+                    args.as_ref(),
+                )
+            }),
+            diags.clone(),
+        )
+    });
+
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn impl_trait_with_diagnostics_query<'db>(
+        db: &'db dyn HirDatabase,
+        impl_id: ImplId,
+    ) -> Option<(StoredEarlyBinder<(TraitId, StoredGenericArgs)>, Diagnostics)> {
+        let impl_data = db.impl_signature(impl_id);
+        let resolver = impl_id.resolver(db);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &impl_data.store,
+            impl_id.into(),
+            LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
+        );
+        let self_ty = db.impl_self_ty(impl_id).skip_binder();
+        let target_trait = impl_data.target_trait.as_ref()?;
+        let trait_ref = ctx.lower_trait_ref(target_trait, self_ty)?;
+        Some((
+            StoredEarlyBinder::bind((trait_ref.def_id.0, trait_ref.args.store())),
+            create_diagnostics(ctx.diagnostics),
+        ))
+    }
 }
 
-impl<'db> ImplTraitId<'db> {
+impl ImplTraitId {
     #[inline]
-    pub fn predicates(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
         let (impl_traits, idx) = match self {
             ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
                 (ImplTraits::return_type_impl_traits(db, owner), idx)
@@ -1123,8 +1169,32 @@ impl<'db> ImplTraitId<'db> {
         impl_traits
             .as_deref()
             .expect("owner should have opaque type")
-            .as_ref()
-            .map_bound(|it| &*it.impl_traits[idx].predicates)
+            .get_with(|it| it.impl_traits[idx].predicates.as_ref().as_slice())
+    }
+
+    #[inline]
+    pub fn self_predicates<'db>(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        let (impl_traits, idx) = match self {
+            ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
+                (ImplTraits::return_type_impl_traits(db, owner), idx)
+            }
+            ImplTraitId::TypeAliasImplTrait(owner, idx) => {
+                (ImplTraits::type_alias_impl_traits(db, owner), idx)
+            }
+        };
+        let predicates =
+            impl_traits.as_deref().expect("owner should have opaque type").get_with(|it| {
+                let impl_trait = &it.impl_traits[idx];
+                (
+                    impl_trait.predicates.as_ref().as_slice(),
+                    impl_trait.assoc_ty_bounds_start as usize,
+                )
+            });
+
+        predicates.map_bound(|(preds, len)| &preds[..len])
     }
 }
 
@@ -1133,15 +1203,23 @@ impl InternedOpaqueTyId {
     pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
         self.loc(db).predicates(db)
     }
+
+    #[inline]
+    pub fn self_predicates<'db>(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        self.loc(db).self_predicates(db)
+    }
 }
 
 #[salsa::tracked]
-impl<'db> ImplTraits<'db> {
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+impl ImplTraits {
+    #[salsa::tracked(returns(ref))]
     pub(crate) fn return_type_impl_traits(
-        db: &'db dyn HirDatabase,
+        db: &dyn HirDatabase,
         def: hir_def::FunctionId,
-    ) -> Option<Box<EarlyBinder<'db, ImplTraits<'db>>>> {
+    ) -> Option<Box<StoredEarlyBinder<ImplTraits>>> {
         // FIXME unify with fn_sig_for_fn instead of doing lowering twice, maybe
         let data = db.function_signature(def);
         let resolver = def.resolver(db);
@@ -1162,15 +1240,15 @@ impl<'db> ImplTraits<'db> {
             None
         } else {
             return_type_impl_traits.impl_traits.shrink_to_fit();
-            Some(Box::new(EarlyBinder::bind(return_type_impl_traits)))
+            Some(Box::new(StoredEarlyBinder::bind(return_type_impl_traits)))
         }
     }
 
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+    #[salsa::tracked(returns(ref))]
     pub(crate) fn type_alias_impl_traits(
-        db: &'db dyn HirDatabase,
+        db: &dyn HirDatabase,
         def: hir_def::TypeAliasId,
-    ) -> Option<Box<EarlyBinder<'db, ImplTraits<'db>>>> {
+    ) -> Option<Box<StoredEarlyBinder<ImplTraits>>> {
         let data = db.type_alias_signature(def);
         let resolver = def.resolver(db);
         let mut ctx = TyLoweringContext::new(
@@ -1190,7 +1268,7 @@ impl<'db> ImplTraits<'db> {
             None
         } else {
             type_alias_impl_traits.impl_traits.shrink_to_fit();
-            Some(Box::new(EarlyBinder::bind(type_alias_impl_traits)))
+            Some(Box::new(StoredEarlyBinder::bind(type_alias_impl_traits)))
         }
     }
 }
@@ -1246,17 +1324,20 @@ pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBind
 
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
-fn type_for_fn<'db>(db: &'db dyn HirDatabase, def: FunctionId) -> EarlyBinder<'db, Ty<'db>> {
+fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> StoredEarlyBinder<StoredTy> {
     let interner = DbInterner::new_no_crate(db);
-    EarlyBinder::bind(Ty::new_fn_def(
-        interner,
-        CallableDefId::FunctionId(def).into(),
-        GenericArgs::identity_for_item(interner, def.into()),
-    ))
+    StoredEarlyBinder::bind(
+        Ty::new_fn_def(
+            interner,
+            CallableDefId::FunctionId(def).into(),
+            GenericArgs::identity_for_item(interner, def.into()),
+        )
+        .store(),
+    )
 }
 
 /// Build the declared type of a const.
-fn type_for_const<'db>(db: &'db dyn HirDatabase, def: ConstId) -> EarlyBinder<'db, Ty<'db>> {
+fn type_for_const(db: &dyn HirDatabase, def: ConstId) -> StoredEarlyBinder<StoredTy> {
     let resolver = def.resolver(db);
     let data = db.const_signature(def);
     let parent = def.loc(db).container;
@@ -1268,11 +1349,11 @@ fn type_for_const<'db>(db: &'db dyn HirDatabase, def: ConstId) -> EarlyBinder<'d
         LifetimeElisionKind::AnonymousReportError,
     );
     ctx.set_lifetime_elision(LifetimeElisionKind::for_const(ctx.interner, parent));
-    EarlyBinder::bind(ctx.lower_ty(data.type_ref))
+    StoredEarlyBinder::bind(ctx.lower_ty(data.type_ref).store())
 }
 
 /// Build the declared type of a static.
-fn type_for_static<'db>(db: &'db dyn HirDatabase, def: StaticId) -> EarlyBinder<'db, Ty<'db>> {
+fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> StoredEarlyBinder<StoredTy> {
     let resolver = def.resolver(db);
     let data = db.static_signature(def);
     let mut ctx = TyLoweringContext::new(
@@ -1283,99 +1364,129 @@ fn type_for_static<'db>(db: &'db dyn HirDatabase, def: StaticId) -> EarlyBinder<
         LifetimeElisionKind::AnonymousReportError,
     );
     ctx.set_lifetime_elision(LifetimeElisionKind::Elided(Region::new_static(ctx.interner)));
-    EarlyBinder::bind(ctx.lower_ty(data.type_ref))
+    StoredEarlyBinder::bind(ctx.lower_ty(data.type_ref).store())
 }
 
 /// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor<'db>(
-    db: &'db dyn HirDatabase,
+fn type_for_struct_constructor(
+    db: &dyn HirDatabase,
     def: StructId,
-) -> Option<EarlyBinder<'db, Ty<'db>>> {
-    let struct_data = def.fields(db);
+) -> Option<StoredEarlyBinder<StoredTy>> {
+    let struct_data = db.struct_signature(def);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),
         FieldsShape::Tuple => {
             let interner = DbInterner::new_no_crate(db);
-            Some(EarlyBinder::bind(Ty::new_fn_def(
-                interner,
-                CallableDefId::StructId(def).into(),
-                GenericArgs::identity_for_item(interner, def.into()),
-            )))
+            Some(StoredEarlyBinder::bind(
+                Ty::new_fn_def(
+                    interner,
+                    CallableDefId::StructId(def).into(),
+                    GenericArgs::identity_for_item(interner, def.into()),
+                )
+                .store(),
+            ))
         }
     }
 }
 
 /// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor<'db>(
-    db: &'db dyn HirDatabase,
+fn type_for_enum_variant_constructor(
+    db: &dyn HirDatabase,
     def: EnumVariantId,
-) -> Option<EarlyBinder<'db, Ty<'db>>> {
+) -> Option<StoredEarlyBinder<StoredTy>> {
     let struct_data = def.fields(db);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.loc(db).parent.into())),
         FieldsShape::Tuple => {
             let interner = DbInterner::new_no_crate(db);
-            Some(EarlyBinder::bind(Ty::new_fn_def(
-                interner,
-                CallableDefId::EnumVariantId(def).into(),
-                GenericArgs::identity_for_item(interner, def.loc(db).parent.into()),
-            )))
+            Some(StoredEarlyBinder::bind(
+                Ty::new_fn_def(
+                    interner,
+                    CallableDefId::EnumVariantId(def).into(),
+                    GenericArgs::identity_for_item(interner, def.loc(db).parent.into()),
+                )
+                .store(),
+            ))
         }
     }
 }
 
-pub(crate) fn value_ty_query<'db>(
+pub(crate) fn value_ty<'db>(
     db: &'db dyn HirDatabase,
     def: ValueTyDefId,
 ) -> Option<EarlyBinder<'db, Ty<'db>>> {
-    match def {
-        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
-        ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
-        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
-        ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
-        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
-        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
+    return value_ty_query(db, def).as_ref().map(|it| it.get());
+
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn value_ty_query<'db>(
+        db: &'db dyn HirDatabase,
+        def: ValueTyDefId,
+    ) -> Option<StoredEarlyBinder<StoredTy>> {
+        match def {
+            ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
+            ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
+            ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
+            ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
+            ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
+            ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
+        }
     }
 }
 
-pub(crate) fn type_for_type_alias_with_diagnostics_query<'db>(
+pub(crate) fn type_for_type_alias_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     t: TypeAliasId,
 ) -> (EarlyBinder<'db, Ty<'db>>, Diagnostics) {
-    let type_alias_data = db.type_alias_signature(t);
-    let mut diags = None;
-    let resolver = t.resolver(db);
-    let interner = DbInterner::new_no_crate(db);
-    let inner = if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
-        EarlyBinder::bind(Ty::new_foreign(interner, t.into()))
-    } else {
-        let mut ctx = TyLoweringContext::new(
-            db,
-            &resolver,
-            &type_alias_data.store,
-            t.into(),
-            LifetimeElisionKind::AnonymousReportError,
-        )
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
-        let res = EarlyBinder::bind(
-            type_alias_data
-                .ty
-                .map(|type_ref| ctx.lower_ty(type_ref))
-                .unwrap_or_else(|| Ty::new_error(interner, ErrorGuaranteed)),
-        );
-        diags = create_diagnostics(ctx.diagnostics);
-        res
-    };
-    (inner, diags)
-}
+    let (ty, diags) = type_for_type_alias_with_diagnostics_query(db, t);
+    return (ty.get(), diags.clone());
 
-pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result<'db>(
-    db: &'db dyn HirDatabase,
-    _adt: TypeAliasId,
-) -> (EarlyBinder<'db, Ty<'db>>, Diagnostics) {
-    (EarlyBinder::bind(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed)), None)
+    #[salsa::tracked(returns(ref), cycle_result = type_for_type_alias_with_diagnostics_cycle_result)]
+    pub(crate) fn type_for_type_alias_with_diagnostics_query<'db>(
+        db: &'db dyn HirDatabase,
+        t: TypeAliasId,
+    ) -> (StoredEarlyBinder<StoredTy>, Diagnostics) {
+        let type_alias_data = db.type_alias_signature(t);
+        let mut diags = None;
+        let resolver = t.resolver(db);
+        let interner = DbInterner::new_no_crate(db);
+        let inner = if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
+            StoredEarlyBinder::bind(Ty::new_foreign(interner, t.into()).store())
+        } else {
+            let mut ctx = TyLoweringContext::new(
+                db,
+                &resolver,
+                &type_alias_data.store,
+                t.into(),
+                LifetimeElisionKind::AnonymousReportError,
+            )
+            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
+            let res = StoredEarlyBinder::bind(
+                type_alias_data
+                    .ty
+                    .map(|type_ref| ctx.lower_ty(type_ref))
+                    .unwrap_or_else(|| Ty::new_error(interner, ErrorGuaranteed))
+                    .store(),
+            );
+            diags = create_diagnostics(ctx.diagnostics);
+            res
+        };
+        (inner, diags)
+    }
+
+    pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result(
+        db: &dyn HirDatabase,
+        _: salsa::Id,
+        _adt: TypeAliasId,
+    ) -> (StoredEarlyBinder<StoredTy>, Diagnostics) {
+        (
+            StoredEarlyBinder::bind(
+                Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
+            ),
+            None,
+        )
+    }
 }
 
 pub(crate) fn impl_self_ty_query<'db>(
@@ -1385,30 +1496,45 @@ pub(crate) fn impl_self_ty_query<'db>(
     db.impl_self_ty_with_diagnostics(impl_id).0
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_query<'db>(
+pub(crate) fn impl_self_ty_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> (EarlyBinder<'db, Ty<'db>>, Diagnostics) {
-    let resolver = impl_id.resolver(db);
+    let (ty, diags) = impl_self_ty_with_diagnostics_query(db, impl_id);
+    return (ty.get(), diags.clone());
 
-    let impl_data = db.impl_signature(impl_id);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    );
-    let ty = ctx.lower_ty(impl_data.self_ty);
-    assert!(!ty.has_escaping_bound_vars());
-    (EarlyBinder::bind(ty), create_diagnostics(ctx.diagnostics))
-}
+    #[salsa::tracked(returns(ref), cycle_result = impl_self_ty_with_diagnostics_cycle_result)]
+    pub(crate) fn impl_self_ty_with_diagnostics_query<'db>(
+        db: &'db dyn HirDatabase,
+        impl_id: ImplId,
+    ) -> (StoredEarlyBinder<StoredTy>, Diagnostics) {
+        let resolver = impl_id.resolver(db);
 
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    _impl_id: ImplId,
-) -> (EarlyBinder<'_, Ty<'_>>, Diagnostics) {
-    (EarlyBinder::bind(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed)), None)
+        let impl_data = db.impl_signature(impl_id);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &impl_data.store,
+            impl_id.into(),
+            LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
+        );
+        let ty = ctx.lower_ty(impl_data.self_ty);
+        assert!(!ty.has_escaping_bound_vars());
+        (StoredEarlyBinder::bind(ty.store()), create_diagnostics(ctx.diagnostics))
+    }
+
+    pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
+        db: &dyn HirDatabase,
+        _: salsa::Id,
+        _impl_id: ImplId,
+    ) -> (StoredEarlyBinder<StoredTy>, Diagnostics) {
+        (
+            StoredEarlyBinder::bind(
+                Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
+            ),
+            None,
+        )
+    }
 }
 
 pub(crate) fn const_param_ty_query<'db>(db: &'db dyn HirDatabase, def: ConstParamId) -> Ty<'db> {
@@ -1416,56 +1542,69 @@ pub(crate) fn const_param_ty_query<'db>(db: &'db dyn HirDatabase, def: ConstPara
 }
 
 // returns None if def is a type arg
-pub(crate) fn const_param_ty_with_diagnostics_query<'db>(
+pub(crate) fn const_param_ty_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     def: ConstParamId,
 ) -> (Ty<'db>, Diagnostics) {
-    let (parent_data, store) = db.generic_params_and_store(def.parent());
-    let data = &parent_data[def.local_id()];
-    let resolver = def.parent().resolver(db);
-    let interner = DbInterner::new_no_crate(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &store,
-        def.parent(),
-        LifetimeElisionKind::AnonymousReportError,
-    );
-    let ty = match data {
-        TypeOrConstParamData::TypeParamData(_) => {
-            never!();
-            Ty::new_error(interner, ErrorGuaranteed)
-        }
-        TypeOrConstParamData::ConstParamData(d) => ctx.lower_ty(d.ty),
-    };
-    (ty, create_diagnostics(ctx.diagnostics))
+    let (ty, diags) = const_param_ty_with_diagnostics_query(db, (), def);
+    return (ty.as_ref(), diags.clone());
+
+    // FIXME: Make this query non-interned.
+    #[salsa::tracked(returns(ref), cycle_result = const_param_ty_with_diagnostics_cycle_result)]
+    pub(crate) fn const_param_ty_with_diagnostics_query<'db>(
+        db: &'db dyn HirDatabase,
+        _: (),
+        def: ConstParamId,
+    ) -> (StoredTy, Diagnostics) {
+        let (parent_data, store) = db.generic_params_and_store(def.parent());
+        let data = &parent_data[def.local_id()];
+        let resolver = def.parent().resolver(db);
+        let interner = DbInterner::new_no_crate(db);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &store,
+            def.parent(),
+            LifetimeElisionKind::AnonymousReportError,
+        );
+        let ty = match data {
+            TypeOrConstParamData::TypeParamData(_) => {
+                never!();
+                Ty::new_error(interner, ErrorGuaranteed)
+            }
+            TypeOrConstParamData::ConstParamData(d) => ctx.lower_ty(d.ty),
+        };
+        (ty.store(), create_diagnostics(ctx.diagnostics))
+    }
+
+    pub(crate) fn const_param_ty_with_diagnostics_cycle_result(
+        db: &dyn HirDatabase,
+        _: salsa::Id,
+        _: (),
+        _def: ConstParamId,
+    ) -> (StoredTy, Diagnostics) {
+        let interner = DbInterner::new_no_crate(db);
+        (Ty::new_error(interner, ErrorGuaranteed).store(), None)
+    }
 }
 
-pub(crate) fn const_param_ty_with_diagnostics_cycle_result<'db>(
-    db: &'db dyn HirDatabase,
-    _: crate::db::HirDatabaseData,
-    _def: ConstParamId,
-) -> (Ty<'db>, Diagnostics) {
-    let interner = DbInterner::new_no_crate(db);
-    (Ty::new_error(interner, ErrorGuaranteed), None)
-}
-
-pub(crate) fn field_types_query<'db>(
-    db: &'db dyn HirDatabase,
+pub(crate) fn field_types_query(
+    db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> Arc<ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>> {
-    db.field_types_with_diagnostics(variant_id).0
+) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>> {
+    &db.field_types_with_diagnostics(variant_id).0
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
+#[salsa::tracked(returns(ref))]
 pub(crate) fn field_types_with_diagnostics_query<'db>(
     db: &'db dyn HirDatabase,
     variant_id: VariantId,
-) -> (Arc<ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>>, Diagnostics) {
+) -> (ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>, Diagnostics) {
     let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
-        return (Arc::new(ArenaMap::default()), None);
+        return (ArenaMap::default(), None);
     }
 
     let (resolver, def): (_, GenericDefId) = match variant_id {
@@ -1482,27 +1621,32 @@ pub(crate) fn field_types_with_diagnostics_query<'db>(
         LifetimeElisionKind::AnonymousReportError,
     );
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, EarlyBinder::bind(ctx.lower_ty(field_data.type_ref)));
+        res.insert(field_id, StoredEarlyBinder::bind(ctx.lower_ty(field_data.type_ref).store()));
     }
-    (Arc::new(res), create_diagnostics(ctx.diagnostics))
+    (res, create_diagnostics(ctx.diagnostics))
 }
 
+/// Predicates for `param_id` of the form `P: SomeTrait`. If
+/// `assoc_name` is provided, only return predicates referencing traits
+/// that have an associated type of that name.
+///
 /// This query exists only to be used when resolving short-hand associated types
 /// like `T::Item`.
 ///
 /// See the analogous query in rustc and its comment:
 /// <https://github.com/rust-lang/rust/blob/9150f844e2624eb013ec78ca08c1d416e6644026/src/librustc_typeck/astconv.rs#L46>
+///
 /// This is a query mostly to handle cycles somewhat gracefully; e.g. the
 /// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 #[tracing::instrument(skip(db), ret)]
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type), cycle_result = generic_predicates_for_param_cycle_result)]
+#[salsa::tracked(returns(ref), cycle_result = generic_predicates_for_param_cycle_result)]
 pub(crate) fn generic_predicates_for_param<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
     param_id: TypeOrConstParamId,
     assoc_name: Option<Name>,
-) -> EarlyBinder<'db, Box<[Clause<'db>]>> {
+) -> StoredEarlyBinder<StoredClauses> {
     let generics = generics(db, def);
     let interner = DbInterner::new_no_crate(db);
     let resolver = def.resolver(db);
@@ -1515,7 +1659,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
     );
 
     // we have to filter out all other predicates *first*, before attempting to lower them
-    let predicate = |pred: &_, ctx: &mut TyLoweringContext<'_, '_>| match pred {
+    let has_relevant_bound = |pred: &_, ctx: &mut TyLoweringContext<'_, '_>| match pred {
         WherePredicate::ForLifetime { target, bound, .. }
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = { ctx.lower_ty_only_param(*target) != Some(param_id) };
@@ -1563,11 +1707,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
                         return false;
                     };
 
-                    rustc_type_ir::elaborate::supertrait_def_ids(interner, tr.into()).any(|tr| {
-                        tr.0.trait_items(db).items.iter().any(|(name, item)| {
-                            matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
-                        })
-                    })
+                    trait_or_supertrait_has_assoc_type(db, tr, assoc_name)
                 }
                 TypeBound::Use(_) | TypeBound::Lifetime(_) | TypeBound::Error => false,
             }
@@ -1580,13 +1720,16 @@ pub(crate) fn generic_predicates_for_param<'db>(
     {
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
-            if predicate(pred, &mut ctx) {
-                predicates.extend(ctx.lower_where_predicate(
-                    pred,
-                    true,
-                    maybe_parent_generics,
-                    PredicateFilter::All,
-                ));
+            if has_relevant_bound(pred, &mut ctx) {
+                predicates.extend(
+                    ctx.lower_where_predicate(
+                        pred,
+                        true,
+                        maybe_parent_generics,
+                        PredicateFilter::All,
+                    )
+                    .map(|(pred, _)| pred),
+                );
             }
         }
     }
@@ -1604,16 +1747,38 @@ pub(crate) fn generic_predicates_for_param<'db>(
             predicates.extend(implicitly_sized_predicates);
         };
     }
-    EarlyBinder::bind(predicates.into_boxed_slice())
+    StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store())
 }
 
-pub(crate) fn generic_predicates_for_param_cycle_result<'db>(
-    _db: &'db dyn HirDatabase,
+pub(crate) fn generic_predicates_for_param_cycle_result(
+    db: &dyn HirDatabase,
+    _: salsa::Id,
     _def: GenericDefId,
     _param_id: TypeOrConstParamId,
     _assoc_name: Option<Name>,
-) -> EarlyBinder<'db, Box<[Clause<'db>]>> {
-    EarlyBinder::bind(Box::new([]))
+) -> StoredEarlyBinder<StoredClauses> {
+    StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store())
+}
+
+/// Check if this trait or any of its supertraits define an associated
+/// type with the given name.
+fn trait_or_supertrait_has_assoc_type(
+    db: &dyn HirDatabase,
+    tr: TraitId,
+    assoc_name: &Name,
+) -> bool {
+    for trait_id in all_super_traits(db, tr) {
+        if trait_id
+            .trait_items(db)
+            .items
+            .iter()
+            .any(|(name, item)| matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name)
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[inline]
@@ -1621,84 +1786,165 @@ pub(crate) fn type_alias_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
 ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-    type_alias_bounds_with_diagnostics(db, type_alias).0.as_ref().map_bound(|it| &**it)
+    type_alias_bounds_with_diagnostics(db, type_alias).0.predicates.map_bound(|it| it.as_slice())
 }
 
-#[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
-pub fn type_alias_bounds_with_diagnostics<'db>(
+#[inline]
+pub(crate) fn type_alias_self_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> (EarlyBinder<'db, Box<[Clause<'db>]>>, Diagnostics) {
-    let type_alias_data = db.type_alias_signature(type_alias);
-    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &type_alias_data.store,
-        type_alias.into(),
-        LifetimeElisionKind::AnonymousReportError,
+) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    let (TypeAliasBounds { predicates, assoc_ty_bounds_start }, _) =
+        type_alias_bounds_with_diagnostics(db, type_alias);
+    predicates.map_bound(|it| &it.as_slice()[..assoc_ty_bounds_start as usize])
+}
+
+#[derive(PartialEq, Eq, Debug, Hash)]
+struct TypeAliasBounds<T> {
+    predicates: T,
+    assoc_ty_bounds_start: u32,
+}
+
+fn type_alias_bounds_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
+    type_alias: TypeAliasId,
+) -> (TypeAliasBounds<EarlyBinder<'db, Clauses<'db>>>, Diagnostics) {
+    let (TypeAliasBounds { predicates, assoc_ty_bounds_start }, diags) =
+        type_alias_bounds_with_diagnostics_query(db, type_alias);
+    return (
+        TypeAliasBounds {
+            predicates: predicates.get(),
+            assoc_ty_bounds_start: *assoc_ty_bounds_start,
+        },
+        diags.clone(),
     );
-    let interner = ctx.interner;
-    let def_id = type_alias.into();
 
-    let item_args = GenericArgs::identity_for_item(interner, def_id);
-    let interner_ty = Ty::new_projection_from_args(interner, def_id, item_args);
+    #[salsa::tracked(returns(ref))]
+    pub fn type_alias_bounds_with_diagnostics_query<'db>(
+        db: &'db dyn HirDatabase,
+        type_alias: TypeAliasId,
+    ) -> (TypeAliasBounds<StoredEarlyBinder<StoredClauses>>, Diagnostics) {
+        let type_alias_data = db.type_alias_signature(type_alias);
+        let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &type_alias_data.store,
+            type_alias.into(),
+            LifetimeElisionKind::AnonymousReportError,
+        );
+        let interner = ctx.interner;
+        let def_id = type_alias.into();
 
-    let mut bounds = Vec::new();
-    for bound in &type_alias_data.bounds {
-        ctx.lower_type_bound(bound, interner_ty, false).for_each(|pred| {
-            bounds.push(pred);
-        });
-    }
+        let item_args = GenericArgs::identity_for_item(interner, def_id);
+        let interner_ty = Ty::new_projection_from_args(interner, def_id, item_args);
 
-    if !ctx.unsized_types.contains(&interner_ty) {
-        let sized_trait = ctx.lang_items.Sized;
-        if let Some(sized_trait) = sized_trait {
-            let trait_ref = TraitRef::new_from_args(
-                interner,
-                sized_trait.into(),
-                GenericArgs::new_from_iter(interner, [interner_ty.into()]),
+        let mut bounds = Vec::new();
+        let mut assoc_ty_bounds = Vec::new();
+        for bound in &type_alias_data.bounds {
+            ctx.lower_type_bound(bound, interner_ty, false).for_each(
+                |(pred, source)| match source {
+                    GenericPredicateSource::SelfOnly => {
+                        bounds.push(pred);
+                    }
+                    GenericPredicateSource::AssocTyBound => {
+                        assoc_ty_bounds.push(pred);
+                    }
+                },
             );
-            bounds.push(trait_ref.upcast(interner));
-        };
-    }
+        }
 
-    (EarlyBinder::bind(bounds.into_boxed_slice()), create_diagnostics(ctx.diagnostics))
+        if !ctx.unsized_types.contains(&interner_ty) {
+            let sized_trait = ctx.lang_items.Sized;
+            if let Some(sized_trait) = sized_trait {
+                let trait_ref = TraitRef::new_from_args(
+                    interner,
+                    sized_trait.into(),
+                    GenericArgs::new_from_slice(&[interner_ty.into()]),
+                );
+                bounds.push(trait_ref.upcast(interner));
+            };
+        }
+
+        let assoc_ty_bounds_start = bounds.len() as u32;
+        bounds.extend(assoc_ty_bounds);
+
+        (
+            TypeAliasBounds {
+                predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&bounds).store()),
+                assoc_ty_bounds_start,
+            },
+            create_diagnostics(ctx.diagnostics),
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericPredicates<'db> {
-    // The order is the following: first, if `parent_is_trait == true`, comes the implicit trait predicate for the
-    // parent. Then come the explicit predicates for the parent, then the explicit trait predicate for the child,
+pub struct GenericPredicates {
+    // The order is the following: first, if `parent_is_trait == true`, comes the implicit trait
+    // predicate for the parent. Then come the bounds of the associated types of the parents,
+    // then the explicit, self-only predicates for the parent, then the explicit, self-only trait
+    // predicate for the child, then the bounds of the associated types of the child,
     // then the implicit trait predicate for the child, if `is_trait` is `true`.
-    predicates: EarlyBinder<'db, Box<[Clause<'db>]>>,
+    predicates: StoredEarlyBinder<StoredClauses>,
+    parent_explicit_self_predicates_start: u32,
     own_predicates_start: u32,
+    own_assoc_ty_bounds_start: u32,
     is_trait: bool,
     parent_is_trait: bool,
 }
 
 #[salsa::tracked]
-impl<'db> GenericPredicates<'db> {
+impl<'db> GenericPredicates {
     /// Resolve the where clause(s) of an item with generics.
     ///
     /// Diagnostics are computed only for this item's predicates, not for parents.
-    #[salsa::tracked(returns(ref), unsafe(non_update_return_type))]
+    #[salsa::tracked(returns(ref), cycle_result=generic_predicates_cycle_result)]
     pub fn query_with_diagnostics(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> (GenericPredicates<'db>, Diagnostics) {
+    ) -> (GenericPredicates, Diagnostics) {
         generic_predicates_filtered_by(db, def, PredicateFilter::All, |_| true)
     }
 }
 
-impl<'db> GenericPredicates<'db> {
+/// A cycle can occur from malformed code.
+fn generic_predicates_cycle_result(
+    _db: &dyn HirDatabase,
+    _: salsa::Id,
+    _def: GenericDefId,
+) -> (GenericPredicates, Diagnostics) {
+    (
+        GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
+            Clauses::default().store(),
+        )),
+        None,
+    )
+}
+
+impl GenericPredicates {
     #[inline]
-    pub fn query(db: &'db dyn HirDatabase, def: GenericDefId) -> &'db GenericPredicates<'db> {
+    pub(crate) fn from_explicit_own_predicates(
+        predicates: StoredEarlyBinder<StoredClauses>,
+    ) -> Self {
+        let len = predicates.get().skip_binder().len() as u32;
+        Self {
+            predicates,
+            parent_explicit_self_predicates_start: 0,
+            own_predicates_start: 0,
+            own_assoc_ty_bounds_start: len,
+            is_trait: false,
+            parent_is_trait: false,
+        }
+    }
+
+    #[inline]
+    pub fn query(db: &dyn HirDatabase, def: GenericDefId) -> &GenericPredicates {
         &Self::query_with_diagnostics(db, def).0
     }
 
     #[inline]
-    pub fn query_all(
+    pub fn query_all<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
@@ -1706,7 +1952,7 @@ impl<'db> GenericPredicates<'db> {
     }
 
     #[inline]
-    pub fn query_own(
+    pub fn query_own<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
@@ -1714,7 +1960,7 @@ impl<'db> GenericPredicates<'db> {
     }
 
     #[inline]
-    pub fn query_explicit(
+    pub fn query_explicit<'db>(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
@@ -1722,20 +1968,37 @@ impl<'db> GenericPredicates<'db> {
     }
 
     #[inline]
-    pub fn all_predicates(&self) -> EarlyBinder<'db, &[Clause<'db>]> {
-        self.predicates.as_ref().map_bound(|it| &**it)
+    pub fn query_explicit_implied<'db>(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+    ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        Self::query(db, def).explicit_implied_predicates()
     }
 
     #[inline]
-    pub fn own_predicates(&self) -> EarlyBinder<'db, &[Clause<'db>]> {
-        self.predicates.as_ref().map_bound(|it| &it[self.own_predicates_start as usize..])
+    pub fn all_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.predicates.get().map_bound(|it| it.as_slice())
     }
 
-    /// Returns the predicates, minus the implicit `Self: Trait` predicate for a trait.
     #[inline]
-    pub fn explicit_predicates(&self) -> EarlyBinder<'db, &[Clause<'db>]> {
-        self.predicates.as_ref().map_bound(|it| {
-            &it[usize::from(self.parent_is_trait)..it.len() - usize::from(self.is_trait)]
+    pub fn own_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.predicates.get().map_bound(|it| &it.as_slice()[self.own_predicates_start as usize..])
+    }
+
+    /// Returns the predicates, minus the implicit `Self: Trait` predicate and bounds of the
+    /// associated types for a trait.
+    #[inline]
+    pub fn explicit_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.predicates.get().map_bound(|it| {
+            &it.as_slice()[self.parent_explicit_self_predicates_start as usize
+                ..self.own_assoc_ty_bounds_start as usize]
+        })
+    }
+
+    #[inline]
+    pub fn explicit_implied_predicates(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.predicates.get().map_bound(|it| {
+            &it.as_slice()[usize::from(self.parent_is_trait)..it.len() - usize::from(self.is_trait)]
         })
     }
 }
@@ -1750,18 +2013,33 @@ pub(crate) fn trait_environment_for_body_query(
     db.trait_environment(def)
 }
 
-pub(crate) fn trait_environment_query<'db>(
-    db: &'db dyn HirDatabase,
-    def: GenericDefId,
+pub(crate) fn param_env_from_predicates<'db>(
+    interner: DbInterner<'db>,
+    predicates: &'db GenericPredicates,
 ) -> ParamEnv<'db> {
-    let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate(db));
-    let predicates = GenericPredicates::query_all(db, def);
-    let clauses = rustc_type_ir::elaborate::elaborate(interner, predicates.iter_identity_copied());
+    let clauses = rustc_type_ir::elaborate::elaborate(
+        interner,
+        predicates.all_predicates().iter_identity_copied(),
+    );
     let clauses = Clauses::new_from_iter(interner, clauses);
 
     // FIXME: We should normalize projections here, like rustc does.
     ParamEnv { clauses }
+}
+
+pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId) -> ParamEnv<'db> {
+    return ParamEnv { clauses: trait_environment_query(db, def).as_ref() };
+
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn trait_environment_query<'db>(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+    ) -> StoredClauses {
+        let module = def.module(db);
+        let interner = DbInterner::new_with(db, module.krate(db));
+        let predicates = GenericPredicates::query(db, def);
+        param_env_from_predicates(interner, predicates).clauses.store()
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1773,12 +2051,12 @@ pub(crate) enum PredicateFilter {
 /// Resolve the where clause(s) of an item with generics,
 /// with a given filter
 #[tracing::instrument(skip(db, filter), ret)]
-pub(crate) fn generic_predicates_filtered_by<'db, F>(
-    db: &'db dyn HirDatabase,
+pub(crate) fn generic_predicates_filtered_by<F>(
+    db: &dyn HirDatabase,
     def: GenericDefId,
     predicate_filter: PredicateFilter,
     filter: F,
-) -> (GenericPredicates<'db>, Diagnostics)
+) -> (GenericPredicates, Diagnostics)
 where
     F: Fn(GenericDefId) -> bool,
 {
@@ -1794,26 +2072,22 @@ where
     );
     let sized_trait = ctx.lang_items.Sized;
 
-    let mut predicates = Vec::new();
+    // We need to lower parents and self separately - see the comment below lowering of implicit
+    // `Sized` predicates for why.
+    let mut own_predicates = Vec::new();
+    let mut parent_predicates = Vec::new();
+    let mut own_assoc_ty_bounds = Vec::new();
+    let mut parent_assoc_ty_bounds = Vec::new();
     let all_generics =
         std::iter::successors(Some(&generics), |generics| generics.parent_generics())
             .collect::<ArrayVec<_, 2>>();
-    let mut is_trait = false;
-    let mut parent_is_trait = false;
-    if all_generics.len() > 1 {
-        add_implicit_trait_predicate(
-            interner,
-            all_generics.last().unwrap().def(),
-            predicate_filter,
-            &mut predicates,
-            &mut parent_is_trait,
-        );
-    }
-    // We need to lower parent predicates first - see the comment below lowering of implicit `Sized` predicates
-    // for why.
-    let mut own_predicates_start = 0;
+    let own_implicit_trait_predicate = implicit_trait_predicate(interner, def, predicate_filter);
+    let parent_implicit_trait_predicate = if all_generics.len() > 1 {
+        implicit_trait_predicate(interner, all_generics.last().unwrap().def(), predicate_filter)
+    } else {
+        None
+    };
     for &maybe_parent_generics in all_generics.iter().rev() {
-        let current_def_predicates_start = predicates.len();
         // Collect only diagnostics from the child, not including parents.
         ctx.diagnostics.clear();
 
@@ -1821,15 +2095,37 @@ where
             ctx.store = maybe_parent_generics.store();
             for pred in maybe_parent_generics.where_predicates() {
                 tracing::debug!(?pred);
-                predicates.extend(ctx.lower_where_predicate(
-                    pred,
-                    false,
-                    maybe_parent_generics,
-                    predicate_filter,
-                ));
+                for (pred, source) in
+                    ctx.lower_where_predicate(pred, false, maybe_parent_generics, predicate_filter)
+                {
+                    match source {
+                        GenericPredicateSource::SelfOnly => {
+                            if maybe_parent_generics.def() == def {
+                                own_predicates.push(pred);
+                            } else {
+                                parent_predicates.push(pred);
+                            }
+                        }
+                        GenericPredicateSource::AssocTyBound => {
+                            if maybe_parent_generics.def() == def {
+                                own_assoc_ty_bounds.push(pred);
+                            } else {
+                                parent_assoc_ty_bounds.push(pred);
+                            }
+                        }
+                    }
+                }
             }
 
-            push_const_arg_has_type_predicates(db, &mut predicates, maybe_parent_generics);
+            if maybe_parent_generics.def() == def {
+                push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
+            } else {
+                push_const_arg_has_type_predicates(
+                    db,
+                    &mut parent_predicates,
+                    maybe_parent_generics,
+                );
+            }
 
             if let Some(sized_trait) = sized_trait {
                 let mut add_sized_clause = |param_idx, param_id, param_data| {
@@ -1852,7 +2148,7 @@ where
                     let trait_ref = TraitRef::new_from_args(
                         interner,
                         sized_trait.into(),
-                        GenericArgs::new_from_iter(interner, [param_ty.into()]),
+                        GenericArgs::new_from_slice(&[param_ty.into()]),
                     );
                     let clause = Clause(Predicate::new(
                         interner,
@@ -1863,7 +2159,11 @@ where
                             }),
                         )),
                     ));
-                    predicates.push(clause);
+                    if maybe_parent_generics.def() == def {
+                        own_predicates.push(clause);
+                    } else {
+                        parent_predicates.push(clause);
+                    }
                 };
                 let parent_params_len = maybe_parent_generics.len_parent();
                 maybe_parent_generics.iter_self().enumerate().for_each(
@@ -1882,30 +2182,55 @@ where
             // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
             // But we do have to lower the parent first.
         }
-
-        if maybe_parent_generics.def() == def {
-            own_predicates_start = current_def_predicates_start as u32;
-        }
     }
 
-    add_implicit_trait_predicate(interner, def, predicate_filter, &mut predicates, &mut is_trait);
-
     let diagnostics = create_diagnostics(ctx.diagnostics);
+
+    // The order is:
+    //
+    // 1. parent implicit trait pred
+    // 2. parent assoc bounds
+    // 3. parent self only preds
+    // 4. own self only preds
+    // 5. own assoc ty bounds
+    // 6. own implicit trait pred
+    //
+    // The purpose of this is to index the slice of the followings, without making extra `Vec`s or
+    // iterators:
+    // - explicit self only predicates, of own or own + self
+    // - explicit predicates, of own or own + self
+    let predicates = parent_implicit_trait_predicate
+        .iter()
+        .chain(parent_assoc_ty_bounds.iter())
+        .chain(parent_predicates.iter())
+        .chain(own_predicates.iter())
+        .chain(own_assoc_ty_bounds.iter())
+        .chain(own_implicit_trait_predicate.iter())
+        .copied()
+        .collect::<Vec<_>>();
+    let parent_is_trait = parent_implicit_trait_predicate.is_some();
+    let is_trait = own_implicit_trait_predicate.is_some();
+    let parent_explicit_self_predicates_start =
+        parent_is_trait as u32 + parent_assoc_ty_bounds.len() as u32;
+    let own_predicates_start =
+        parent_explicit_self_predicates_start + parent_predicates.len() as u32;
+    let own_assoc_ty_bounds_start = own_predicates_start + own_predicates.len() as u32;
+
     let predicates = GenericPredicates {
+        parent_explicit_self_predicates_start,
         own_predicates_start,
+        own_assoc_ty_bounds_start,
         is_trait,
         parent_is_trait,
-        predicates: EarlyBinder::bind(predicates.into_boxed_slice()),
+        predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
     };
     return (predicates, diagnostics);
 
-    fn add_implicit_trait_predicate<'db>(
+    fn implicit_trait_predicate<'db>(
         interner: DbInterner<'db>,
         def: GenericDefId,
         predicate_filter: PredicateFilter,
-        predicates: &mut Vec<Clause<'db>>,
-        set_is_trait: &mut bool,
-    ) {
+    ) -> Option<Clause<'db>> {
         // For traits, add `Self: Trait` predicate. This is
         // not part of the predicates that a user writes, but it
         // is something that one must prove in order to invoke a
@@ -1921,8 +2246,9 @@ where
         if let GenericDefId::TraitId(def_id) = def
             && predicate_filter == PredicateFilter::All
         {
-            *set_is_trait = true;
-            predicates.push(TraitRef::identity(interner, def_id.into()).upcast(interner));
+            Some(TraitRef::identity(interner, def_id.into()).upcast(interner))
+        } else {
+            None
         }
     }
 }
@@ -1984,7 +2310,7 @@ fn implicitly_sized_clauses<'a, 'subst, 'db>(
                 let trait_ref = TraitRef::new_from_args(
                     interner,
                     sized_trait.into(),
-                    GenericArgs::new_from_iter(interner, [self_ty.into()]),
+                    GenericArgs::new_from_slice(&[self_ty.into()]),
                 );
                 Clause(Predicate::new(
                     interner,
@@ -2000,19 +2326,16 @@ fn implicitly_sized_clauses<'a, 'subst, 'db>(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct GenericDefaults<'db>(Option<Arc<[Option<EarlyBinder<'db, GenericArg<'db>>>]>>);
+pub struct GenericDefaults(Option<Arc<[Option<StoredEarlyBinder<StoredGenericArg>>]>>);
 
-impl<'db> GenericDefaults<'db> {
+impl GenericDefaults {
     #[inline]
-    pub fn get(&self, idx: usize) -> Option<EarlyBinder<'db, GenericArg<'db>>> {
-        self.0.as_ref()?[idx]
+    pub fn get<'db>(&self, idx: usize) -> Option<EarlyBinder<'db, GenericArg<'db>>> {
+        Some(self.0.as_ref()?[idx].as_ref()?.get_with(|it| it.as_ref()))
     }
 }
 
-pub(crate) fn generic_defaults_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> GenericDefaults<'_> {
+pub(crate) fn generic_defaults_query(db: &dyn HirDatabase, def: GenericDefId) -> GenericDefaults {
     db.generic_defaults_with_diagnostics(def).0
 }
 
@@ -2022,7 +2345,7 @@ pub(crate) fn generic_defaults_query(
 pub(crate) fn generic_defaults_with_diagnostics_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> (GenericDefaults<'_>, Diagnostics) {
+) -> (GenericDefaults, Diagnostics) {
     let generic_params = generics(db, def);
     if generic_params.is_empty() {
         return (GenericDefaults(None), None);
@@ -2068,20 +2391,23 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
         ctx: &mut TyLoweringContext<'db, '_>,
         idx: usize,
         p: GenericParamDataRef<'_>,
-    ) -> (Option<EarlyBinder<'db, GenericArg<'db>>>, bool) {
+    ) -> (Option<StoredEarlyBinder<StoredGenericArg>>, bool) {
         ctx.lowering_param_default(idx as u32);
         match p {
             GenericParamDataRef::TypeParamData(p) => {
                 let ty = p.default.map(|ty| ctx.lower_ty(ty));
-                (ty.map(|ty| EarlyBinder::bind(ty.into())), p.default.is_some())
+                (
+                    ty.map(|ty| StoredEarlyBinder::bind(GenericArg::from(ty).store())),
+                    p.default.is_some(),
+                )
             }
             GenericParamDataRef::ConstParamData(p) => {
                 let val = p.default.map(|c| {
                     let param_ty = ctx.lower_ty(p.ty);
                     let c = ctx.lower_const(c, param_ty);
-                    c.into()
+                    GenericArg::from(c).store()
                 });
-                (val.map(EarlyBinder::bind), p.default.is_some())
+                (val.map(StoredEarlyBinder::bind), p.default.is_some())
             }
             GenericParamDataRef::LifetimeParamData(_) => (None, false),
         }
@@ -2090,27 +2416,33 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
 
 pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     _db: &dyn HirDatabase,
+    _: salsa::Id,
     _def: GenericDefId,
-) -> (GenericDefaults<'_>, Diagnostics) {
+) -> (GenericDefaults, Diagnostics) {
     (GenericDefaults(None), None)
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub(crate) fn callable_item_signature_query<'db>(
+pub(crate) fn callable_item_signature<'db>(
     db: &'db dyn HirDatabase,
     def: CallableDefId,
 ) -> EarlyBinder<'db, PolyFnSig<'db>> {
-    match def {
-        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
+    return callable_item_signature_query(db, def).get_with(|sig| sig.get());
+
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn callable_item_signature_query<'db>(
+        db: &'db dyn HirDatabase,
+        def: CallableDefId,
+    ) -> StoredEarlyBinder<StoredPolyFnSig> {
+        match def {
+            CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
+            CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
+            CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
+        }
     }
 }
 
-fn fn_sig_for_fn<'db>(
-    db: &'db dyn HirDatabase,
-    def: FunctionId,
-) -> EarlyBinder<'db, PolyFnSig<'db>> {
+fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> StoredEarlyBinder<StoredPolyFnSig> {
     let data = db.function_signature(def);
     let resolver = def.resolver(db);
     let interner = DbInterner::new_no_crate(db);
@@ -2140,56 +2472,56 @@ fn fn_sig_for_fn<'db>(
 
     let inputs_and_output = Tys::new_from_iter(interner, params.chain(Some(ret)));
     // If/when we track late bound vars, we need to switch this to not be `dummy`
-    EarlyBinder::bind(rustc_type_ir::Binder::dummy(FnSig {
+    StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
         abi: data.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
         c_variadic: data.is_varargs(),
         safety: if data.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
         inputs_and_output,
-    }))
+    })))
 }
 
-fn type_for_adt<'db>(db: &'db dyn HirDatabase, adt: AdtId) -> EarlyBinder<'db, Ty<'db>> {
+fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> StoredEarlyBinder<StoredTy> {
     let interner = DbInterner::new_no_crate(db);
     let args = GenericArgs::identity_for_item(interner, adt.into());
     let ty = Ty::new_adt(interner, adt, args);
-    EarlyBinder::bind(ty)
+    StoredEarlyBinder::bind(ty.store())
 }
 
-fn fn_sig_for_struct_constructor<'db>(
-    db: &'db dyn HirDatabase,
+fn fn_sig_for_struct_constructor(
+    db: &dyn HirDatabase,
     def: StructId,
-) -> EarlyBinder<'db, PolyFnSig<'db>> {
+) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binder());
+    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
     let ret = type_for_adt(db, def.into()).skip_binder();
 
     let inputs_and_output =
-        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret)));
-    EarlyBinder::bind(Binder::dummy(FnSig {
+        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
+    StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
         abi: FnAbi::RustCall,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
-    }))
+    })))
 }
 
-fn fn_sig_for_enum_variant_constructor<'db>(
-    db: &'db dyn HirDatabase,
+fn fn_sig_for_enum_variant_constructor(
+    db: &dyn HirDatabase,
     def: EnumVariantId,
-) -> EarlyBinder<'db, PolyFnSig<'db>> {
+) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binder());
+    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
     let parent = def.lookup(db).parent;
     let ret = type_for_adt(db, parent.into()).skip_binder();
 
     let inputs_and_output =
-        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret)));
-    EarlyBinder::bind(Binder::dummy(FnSig {
+        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
+    StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
         abi: FnAbi::RustCall,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
-    }))
+    })))
 }
 
 // FIXME(next-solver): should merge this with `explicit_item_bounds` in some way
@@ -2213,7 +2545,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
 
     let mut bounds = Vec::new();
     for bound in &type_alias_data.bounds {
-        ctx.lower_type_bound(bound, self_ty, false).for_each(|pred| {
+        ctx.lower_type_bound(bound, self_ty, false).for_each(|(pred, _)| {
             if let Some(bound) = pred
                 .kind()
                 .map_bound(|c| match c {
@@ -2226,10 +2558,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                             Some(ExistentialPredicate::Trait(ExistentialTraitRef::new_from_args(
                                 interner,
                                 t.def_id(),
-                                GenericArgs::new_from_iter(
-                                    interner,
-                                    t.trait_ref.args.iter().skip(1),
-                                ),
+                                GenericArgs::new_from_slice(&t.trait_ref.args[1..]),
                             )))
                         }
                     }
@@ -2237,10 +2566,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                         ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
                             interner,
                             p.def_id(),
-                            GenericArgs::new_from_iter(
-                                interner,
-                                p.projection_term.args.iter().skip(1),
-                            ),
+                            GenericArgs::new_from_slice(&p.projection_term.args[1..]),
                             p.term,
                         )),
                     ),
@@ -2270,7 +2596,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
         bounds.push(sized_clause);
     }
 
-    EarlyBinder::bind(BoundExistentialPredicates::new_from_iter(interner, bounds))
+    EarlyBinder::bind(BoundExistentialPredicates::new_from_slice(&bounds))
 }
 
 pub(crate) fn associated_type_by_name_including_super_traits<'db>(
@@ -2280,11 +2606,13 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
     let module = trait_ref.def_id.0.module(db);
     let interner = DbInterner::new_with(db, module.krate(db));
-    rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
-        let trait_id = t.as_ref().skip_binder().def_id.0;
-        let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
-        Some((t.skip_binder(), assoc_type))
-    })
+    all_supertraits_trait_refs(db, trait_ref.def_id.0)
+        .map(|t| t.instantiate(interner, trait_ref.args))
+        .find_map(|t| {
+            let trait_id = t.def_id.0;
+            let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
+            Some((t, assoc_type))
+        })
 }
 
 pub fn associated_type_shorthand_candidates(
@@ -2336,7 +2664,7 @@ fn named_associated_type_shorthand_candidates<'db, R>(
             if let Some(alias) = check_trait(trait_ref) {
                 return Some(alias);
             }
-            for pred in generic_predicates_filtered_by(
+            let predicates = generic_predicates_filtered_by(
                 db,
                 GenericDefId::TraitId(trait_ref.def_id.0),
                 PredicateFilter::SelfTrait,
@@ -2347,9 +2675,8 @@ fn named_associated_type_shorthand_candidates<'db, R>(
                 |pred| pred != def && pred == GenericDefId::TraitId(trait_ref.def_id.0),
             )
             .0
-            .predicates
-            .instantiate_identity()
-            {
+            .predicates;
+            for pred in predicates.get().instantiate_identity() {
                 tracing::debug!(?pred);
                 let sup_trait_ref = match pred.kind().skip_binder() {
                     rustc_type_ir::ClauseKind::Trait(pred) => pred.trait_ref,
@@ -2396,8 +2723,8 @@ fn named_associated_type_shorthand_candidates<'db, R>(
             let predicates =
                 generic_predicates_for_param(db, def, param_id.into(), assoc_name.clone());
             predicates
-                .as_ref()
-                .iter_identity_copied()
+                .get()
+                .iter_identity()
                 .find_map(|pred| match pred.kind().skip_binder() {
                     rustc_type_ir::ClauseKind::Trait(trait_predicate) => Some(trait_predicate),
                     _ => None,
@@ -2412,5 +2739,98 @@ fn named_associated_type_shorthand_candidates<'db, R>(
                 })
         }
         _ => None,
+    }
+}
+
+/// During lowering, elaborating supertraits can cause cycles. To avoid that, we have a separate query
+/// to only collect supertraits.
+///
+/// Technically, it is possible to avoid even more cycles by only collecting the `TraitId` of supertraits
+/// without their args. However rustc doesn't do that, so we don't either.
+pub(crate) fn all_supertraits_trait_refs(
+    db: &dyn HirDatabase,
+    trait_: TraitId,
+) -> impl ExactSizeIterator<Item = EarlyBinder<'_, TraitRef<'_>>> {
+    let interner = DbInterner::new_no_crate(db);
+    return all_supertraits_trait_refs_query(db, trait_).iter().map(move |trait_ref| {
+        trait_ref.get_with(|(trait_, args)| {
+            TraitRef::new_from_args(interner, (*trait_).into(), args.as_ref())
+        })
+    });
+
+    #[salsa_macros::tracked(returns(deref), cycle_result = all_supertraits_trait_refs_cycle_result)]
+    pub(crate) fn all_supertraits_trait_refs_query(
+        db: &dyn HirDatabase,
+        trait_: TraitId,
+    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
+        let resolver = trait_.resolver(db);
+        let signature = db.trait_signature(trait_);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &signature.store,
+            trait_.into(),
+            LifetimeElisionKind::AnonymousReportError,
+        );
+        let interner = ctx.interner;
+
+        let self_param_ty = Ty::new_param(
+            interner,
+            TypeParamId::from_unchecked(TypeOrConstParamId {
+                parent: trait_.into(),
+                local_id: Idx::from_raw(la_arena::RawIdx::from_u32(0)),
+            }),
+            0,
+        );
+
+        let mut supertraits = FxHashSet::default();
+        supertraits.insert(StoredEarlyBinder::bind((
+            trait_,
+            GenericArgs::identity_for_item(interner, trait_.into()).store(),
+        )));
+
+        for pred in signature.generic_params.where_predicates() {
+            let WherePredicate::TypeBound { target, bound } = pred else {
+                continue;
+            };
+            let target = &signature.store[*target];
+            if let TypeRef::TypeParam(param_id) = target
+                && param_id.local_id().into_raw().into_u32() == 0
+            {
+                // This is `Self`.
+            } else if let TypeRef::Path(path) = target
+                && path.is_self_type()
+            {
+                // Also `Self`.
+            } else {
+                // Not `Self`!
+                continue;
+            }
+
+            ctx.lower_type_bound(bound, self_param_ty, true).for_each(|(clause, _)| {
+                if let ClauseKind::Trait(trait_ref) = clause.kind().skip_binder() {
+                    supertraits.extend(
+                        all_supertraits_trait_refs(db, trait_ref.trait_ref.def_id.0).map(|t| {
+                            let trait_ref = t.instantiate(interner, trait_ref.trait_ref.args);
+                            StoredEarlyBinder::bind((trait_ref.def_id.0, trait_ref.args.store()))
+                        }),
+                    );
+                }
+            });
+        }
+
+        Box::from_iter(supertraits)
+    }
+
+    pub(crate) fn all_supertraits_trait_refs_cycle_result(
+        db: &dyn HirDatabase,
+        _: salsa::Id,
+        trait_: TraitId,
+    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
+        let interner = DbInterner::new_no_crate(db);
+        Box::new([StoredEarlyBinder::bind((
+            trait_,
+            GenericArgs::identity_for_item(interner, trait_.into()).store(),
+        ))])
     }
 }

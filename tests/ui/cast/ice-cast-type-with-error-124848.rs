@@ -14,5 +14,4 @@ fn main() {
     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
     //~^ ERROR use of undeclared lifetime name `'a`
     //~| ERROR use of undeclared lifetime name `'a`
-    //~| ERROR casting `&MyType<'_>` as `*const Cell<Option<&mut MyType<'_>>>` is invalid
 }

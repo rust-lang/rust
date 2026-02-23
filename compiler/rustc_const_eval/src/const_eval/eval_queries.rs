@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
-use rustc_errors::E0080;
+use rustc_errors::{E0080, msg};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -394,8 +394,10 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
-    let is_static = tcx.is_static(def);
+    // `type const` don't have bodys
+    debug_assert!(!tcx.is_type_const(def), "CTFE tried to evaluate type-const: {:?}", def);
 
+    let is_static = tcx.is_static(def);
     let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
@@ -465,7 +467,15 @@ fn report_eval_error<'tcx>(
             let num_frames = frames.len();
             // FIXME(oli-obk): figure out how to use structured diagnostics again.
             diag.code(E0080);
-            diag.span_label(span, crate::fluent_generated::const_eval_error);
+            diag.span_label(
+                span,
+                msg!(
+                    "evaluation of `{$instance}` failed {$num_frames ->
+                        [0] here
+                        *[other] inside this call
+                    }"
+                ),
+            );
             for frame in frames {
                 diag.subdiagnostic(frame);
             }
@@ -504,8 +514,8 @@ fn report_validation_error<'tcx>(
         move |diag, span, frames| {
             // FIXME(oli-obk): figure out how to use structured diagnostics again.
             diag.code(E0080);
-            diag.span_label(span, crate::fluent_generated::const_eval_validation_failure);
-            diag.note(crate::fluent_generated::const_eval_validation_failure_note);
+            diag.span_label(span, "it is undefined behavior to use this value");
+            diag.note("the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.");
             for frame in frames {
                 diag.subdiagnostic(frame);
             }

@@ -127,3 +127,13 @@ mod issue15051 {
         result_with_ref_mut(x).as_mut().ok()
     }
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            Ok::<i32, ()>($val)
+        };
+    }
+
+    let _ = test_expr!(42).ok();
+}

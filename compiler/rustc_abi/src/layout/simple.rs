@@ -16,7 +16,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
                 offsets: IndexVec::new(),
-                memory_index: IndexVec::new(),
+                in_memory_order: IndexVec::new(),
             },
             backend_repr: BackendRepr::Memory { sized },
             largest_niche: None,
@@ -108,7 +108,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
-                memory_index: [0, 1].into(),
+                in_memory_order: [FieldIdx::new(0), FieldIdx::new(1)].into(),
             },
             backend_repr: BackendRepr::ScalarPair(a, b),
             largest_niche,
@@ -133,7 +133,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
                 Some(fields) => FieldsShape::Union(fields),
                 None => FieldsShape::Arbitrary {
                     offsets: IndexVec::new(),
-                    memory_index: IndexVec::new(),
+                    in_memory_order: IndexVec::new(),
                 },
             },
             backend_repr: BackendRepr::Memory { sized: true },

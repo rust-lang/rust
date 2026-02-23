@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as os from "os";
 import type { Config } from "./config";
-import { type Env, log, spawnAsync } from "./util";
+import { type Env, log, RUST_TOOLCHAIN_FILES, spawnAsync } from "./util";
 import type { PersistentState } from "./persistent_state";
 import { exec } from "child_process";
 import { TextDecoder } from "node:util";
@@ -59,8 +59,12 @@ async function getServer(
             // otherwise check if there is a toolchain override for the current vscode workspace
             // and if the toolchain of this override has a rust-analyzer component
             // if so, use the rust-analyzer component
-            const toolchainUri = vscode.Uri.joinPath(workspaceFolder.uri, "rust-toolchain.toml");
-            if (await hasToolchainFileWithRaDeclared(toolchainUri)) {
+            // Check both rust-toolchain.toml and rust-toolchain files
+            for (const toolchainFile of RUST_TOOLCHAIN_FILES) {
+                const toolchainUri = vscode.Uri.joinPath(workspaceFolder.uri, toolchainFile);
+                if (!(await hasToolchainFileWithRaDeclared(toolchainUri))) {
+                    continue;
+                }
                 const res = await spawnAsync("rustup", ["which", "rust-analyzer"], {
                     env: { ...process.env },
                     cwd: workspaceFolder.uri.fsPath,
@@ -71,6 +75,7 @@ async function getServer(
                         res.stdout.trim(),
                         raVersionResolver,
                     );
+                    break;
                 }
             }
         }

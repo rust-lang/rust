@@ -14,8 +14,6 @@ error[E0308]: mismatched types
    |
 LL |     b"abc".iter().for_each(|x| dbg!(x));
    |                                ^^^^^^^ expected `()`, found `&u8`
-   |
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/closure-ty-mismatch-issue-128561.rs:8:9

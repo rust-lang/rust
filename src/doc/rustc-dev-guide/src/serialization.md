@@ -126,20 +126,22 @@ and `Encodable`.
   all `Encoders` and `Decoders`. These should be used in crates that don't
   depend on [`rustc_middle`], or that have to be serialized by a type that does
   not implement `TyEncoder`.
-- [`MetadataEncodable`] and [`MetadataDecodable`] generate implementations that
-  only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`] and
-  [`rustc_metadata::rmeta::decoder::DecodeContext`]. These are used for types
-  that contain [`rustc_metadata::rmeta::`]`Lazy*`.
+- [`MetadataEncodable`] generates implementations that
+  only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`].
+- [`BlobDecodable`] and [`LazyDecodable`] serve as the decoding counterparts to
+  `MetadataEncodable`. They generate implementations that decode with the
+  metadata blob decoders in `rustc_metadata::rmeta`; use `BlobDecodable` when
+  the type has no lazy metadata handles, and `LazyDecodable` when it does.
 - `TyEncodable` and `TyDecodable` generate implementation that apply to any
   `TyEncoder` or `TyDecoder`. These should be used for types that are only
   serialized in crate metadata and/or the incremental cache, which is most
   serializable types in `rustc_middle`.
 
-[`MetadataDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.MetadataDecodable.html
+[`BlobDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.BlobDecodable.html
+[`LazyDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.LazyDecodable.html
 [`MetadataEncodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.MetadataEncodable.html
 [`rustc_macros`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_macros
-[`rustc_metadata::rmeta::`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/index.html
-[`rustc_metadata::rmeta::decoder::DecodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/decoder/struct.DecodeContext.html
+[`rustc_metadata::rmeta`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/index.html
 [`rustc_metadata::rmeta::encoder::EncodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/encoder/struct.EncodeContext.html
 [`rustc_middle`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_middle
 

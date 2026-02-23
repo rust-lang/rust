@@ -17,7 +17,7 @@ error[E0277]: the size for values of type `main::Foo` cannot be known
 LL |     needs_metasized::<Foo>();
    |                       ^^^ doesn't have a known size
    |
-   = help: the trait `MetaSized` is not implemented for `main::Foo`
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `main::Foo`
 note: required by a bound in `needs_metasized`
   --> $DIR/feature-gate-sized-hierarchy.rs:7:23
    |

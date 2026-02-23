@@ -44,7 +44,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let right = if is_64_bit { right.to_u64()? } else { u64::from(right.to_u32()?) };
 
         let result = match unprefixed_name {
-            // Extract a contigous range of bits from an unsigned integer.
+            // Extract a contiguous range of bits from an unsigned integer.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_bextr_u32
             "bextr" => {
                 let start = u32::try_from(right & 0xff).unwrap();

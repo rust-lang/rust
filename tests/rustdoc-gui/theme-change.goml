@@ -7,8 +7,7 @@ store-value: (background_light, "white")
 store-value: (background_dark, "#353535")
 store-value: (background_ayu, "#0f1419")
 
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#theme-ayu"
+call-function: ("open-settings-menu", {})
 click: "#theme-ayu"
 // should be the ayu theme so let's check the color.
 wait-for-css: ("body", { "background-color": |background_ayu| })
@@ -22,10 +21,6 @@ click: "#theme-dark"
 wait-for-css: ("body", { "background-color": |background_dark| })
 assert-local-storage: { "rustdoc-theme": "dark" }
 
-set-local-storage: {
-    "rustdoc-preferred-light-theme": "light",
-    "rustdoc-preferred-dark-theme": "light",
-}
 go-to: "file://" + |DOC_PATH| + "/settings.html"
 
 wait-for: "#settings"
@@ -75,8 +70,7 @@ store-value: (background_dark, "#353535")
 store-value: (background_ayu, "#0f1419")
 store-value: (background_custom_theme, "red")
 
-click: "rustdoc-toolbar .settings-menu"
-wait-for: "#theme-ayu"
+call-function: ("open-settings-menu", {})
 click: "#theme-ayu"
 // should be the ayu theme so let's check the color.
 wait-for-css: ("body", { "background-color": |background_ayu| })

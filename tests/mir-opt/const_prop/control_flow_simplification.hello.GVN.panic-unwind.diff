@@ -10,7 +10,7 @@
       }
   
       bb1: {
-          _1 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
+          _1 = std::rt::begin_panic::<&str>(const "explicit panic") -> unwind continue;
       }
   
       bb2: {

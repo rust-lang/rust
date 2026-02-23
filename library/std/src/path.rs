@@ -19,6 +19,20 @@
 //! matter the platform or filesystem. An exception to this is made for Windows
 //! drive letters.
 //!
+//! ## Path normalization
+//!
+//! Several methods in this module perform basic path normalization by disregarding
+//! repeated separators, non-leading `.` components, and trailing separators. These include:
+//! - Methods for iteration, such as [`Path::components`] and [`Path::iter`]
+//! - Methods for inspection, such as [`Path::has_root`]
+//! - Comparisons using [`PartialEq`], [`PartialOrd`], and [`Ord`]
+//!
+//! [`Path::join`] and [`PathBuf::push`] also disregard trailing slashes.
+//!
+// FIXME(normalize_lexically): mention normalize_lexically once stable
+//! These methods **do not** resolve `..` components or symlinks. For full normalization
+//! including `..` resolution, use [`Path::canonicalize`] (which does access the filesystem).
+//!
 //! ## Simple usage
 //!
 //! Path manipulation includes both parsing components from slices and building
@@ -2972,6 +2986,15 @@ impl Path {
     ///
     /// If `path` is absolute, it replaces the current path.
     ///
+    /// On Windows:
+    ///
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it
+    ///   replaces and returns everything except for the prefix (if any) of `self`.
+    /// * if `path` has a prefix but no root, `self` is ignored and `path` is returned.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
+    ///
     /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
     ///
     /// # Examples
@@ -3204,6 +3227,18 @@ impl Path {
     #[inline]
     pub fn display(&self) -> Display<'_> {
         Display { inner: self.inner.display() }
+    }
+
+    /// Returns the same path as `&Path`.
+    ///
+    /// This method is redundant when used directly on `&Path`, but
+    /// it helps dereferencing other `PathBuf`-like types to `Path`s,
+    /// for example references to `Box<Path>` or `Arc<Path>`.
+    #[inline]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn as_path(&self) -> &Path {
+        self
     }
 
     /// Queries the file system to get information about a file, directory, etc.
@@ -3807,9 +3842,9 @@ impl<'a> IntoIterator for &'a Path {
 }
 
 macro_rules! impl_cmp {
-    (<$($life:lifetime),*> $lhs:ty, $rhs: ty) => {
+    ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "partialeq_path", since = "1.6.0")]
-        impl<$($life),*> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <Path as PartialEq>::eq(self, other)
@@ -3817,7 +3852,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "partialeq_path", since = "1.6.0")]
-        impl<$($life),*> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <Path as PartialEq>::eq(self, other)
@@ -3825,7 +3860,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other)
@@ -3833,7 +3868,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other)
@@ -3842,16 +3877,16 @@ macro_rules! impl_cmp {
     };
 }
 
-impl_cmp!(<> PathBuf, Path);
-impl_cmp!(<'a> PathBuf, &'a Path);
-impl_cmp!(<'a> Cow<'a, Path>, Path);
-impl_cmp!(<'a, 'b> Cow<'a, Path>, &'b Path);
-impl_cmp!(<'a> Cow<'a, Path>, PathBuf);
+impl_cmp!(PathBuf, Path);
+impl_cmp!(PathBuf, &Path);
+impl_cmp!(Cow<'_, Path>, Path);
+impl_cmp!(Cow<'_, Path>, &Path);
+impl_cmp!(Cow<'_, Path>, PathBuf);
 
 macro_rules! impl_cmp_os_str {
-    (<$($life:lifetime),*> $lhs:ty, $rhs: ty) => {
+    ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <Path as PartialEq>::eq(self, other.as_ref())
@@ -3859,7 +3894,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <Path as PartialEq>::eq(self.as_ref(), other)
@@ -3867,7 +3902,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self, other.as_ref())
@@ -3875,7 +3910,7 @@ macro_rules! impl_cmp_os_str {
         }
 
         #[stable(feature = "cmp_path", since = "1.8.0")]
-        impl<$($life),*> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <Path as PartialOrd>::partial_cmp(self.as_ref(), other)
@@ -3884,20 +3919,20 @@ macro_rules! impl_cmp_os_str {
     };
 }
 
-impl_cmp_os_str!(<> PathBuf, OsStr);
-impl_cmp_os_str!(<'a> PathBuf, &'a OsStr);
-impl_cmp_os_str!(<'a> PathBuf, Cow<'a, OsStr>);
-impl_cmp_os_str!(<> PathBuf, OsString);
-impl_cmp_os_str!(<> Path, OsStr);
-impl_cmp_os_str!(<'a> Path, &'a OsStr);
-impl_cmp_os_str!(<'a> Path, Cow<'a, OsStr>);
-impl_cmp_os_str!(<> Path, OsString);
-impl_cmp_os_str!(<'a> &'a Path, OsStr);
-impl_cmp_os_str!(<'a, 'b> &'a Path, Cow<'b, OsStr>);
-impl_cmp_os_str!(<'a> &'a Path, OsString);
-impl_cmp_os_str!(<'a> Cow<'a, Path>, OsStr);
-impl_cmp_os_str!(<'a, 'b> Cow<'a, Path>, &'b OsStr);
-impl_cmp_os_str!(<'a> Cow<'a, Path>, OsString);
+impl_cmp_os_str!(PathBuf, OsStr);
+impl_cmp_os_str!(PathBuf, &OsStr);
+impl_cmp_os_str!(PathBuf, Cow<'_, OsStr>);
+impl_cmp_os_str!(PathBuf, OsString);
+impl_cmp_os_str!(Path, OsStr);
+impl_cmp_os_str!(Path, &OsStr);
+impl_cmp_os_str!(Path, Cow<'_, OsStr>);
+impl_cmp_os_str!(Path, OsString);
+impl_cmp_os_str!(&Path, OsStr);
+impl_cmp_os_str!(&Path, Cow<'_, OsStr>);
+impl_cmp_os_str!(&Path, OsString);
+impl_cmp_os_str!(Cow<'_, Path>, OsStr);
+impl_cmp_os_str!(Cow<'_, Path>, &OsStr);
+impl_cmp_os_str!(Cow<'_, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {

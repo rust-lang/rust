@@ -6,14 +6,15 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
+    AllocatorTy,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::{AttributeKind, DebuggerVisualizerType, OptimizeAttr};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -48,9 +49,7 @@ use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{
-    CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
-};
+use crate::{CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, errors, meth, mir};
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match (op, signed) {
@@ -671,7 +670,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
         methods.push(AllocatorMethod {
             name: ALLOC_ERROR_HANDLER,
             special: None,
-            inputs: &[],
+            inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
             output: AllocatorTy::Never,
         });
     }
@@ -895,7 +894,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let windows_subsystem = find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::WindowsSubsystem(kind, _) => *kind);
+        let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind, _) => *kind);
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
@@ -912,7 +911,7 @@ impl CrateInfo {
             .rev()
             .copied()
             .filter(|&cnum| {
-                let link = !tcx.dep_kind(cnum).macros_only();
+                let link = !tcx.crate_dep_kind(cnum).macros_only();
                 if link && tcx.is_compiler_builtins(cnum) {
                     compiler_builtins = Some(cnum);
                     return false;
@@ -1010,7 +1009,7 @@ impl CrateInfo {
             info.linked_symbols
                 .iter_mut()
                 .filter(|(crate_type, _)| {
-                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                    !matches!(crate_type, CrateType::Rlib | CrateType::StaticLib)
                 })
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
@@ -1042,7 +1041,7 @@ impl CrateInfo {
                 // this is a rare use case and we don't want to slow down the common case.
                 false
             }
-            CrateType::Staticlib | CrateType::Rlib => {
+            CrateType::StaticLib | CrateType::Rlib => {
                 // We don't invoke the linker for these, so we don't need to collect the NatVis for
                 // them.
                 false
@@ -1112,7 +1111,7 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(&dep_node, || {
+    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
         format!(
             "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
             cgu.name()
@@ -1125,9 +1124,8 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
         // reuse pre-LTO artifacts
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
-            &tcx.sess.opts,
+            tcx.sess.opts.cg.linker_plugin_lto.enabled(),
             tcx.crate_types(),
-            ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,
             _ => CguReuse::PreLto,

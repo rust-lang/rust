@@ -7,7 +7,7 @@
 use libc::{gid_t, pid_t, uid_t};
 
 /// Credentials for a UNIX process for credentials passing.
-#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+#[unstable(feature = "peer_credentials_unix_socket", issue = "42839")]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct UCred {
     /// The UID part of the peer credential. This is the effective UID of the process at the domain

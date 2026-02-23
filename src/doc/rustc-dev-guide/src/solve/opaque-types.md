@@ -51,7 +51,7 @@ We then check whether we're able to *semantically* unify the generic arguments o
 with the arguments of any opaque type already in the opaque types storage. If so, we unify the
 previously stored type with the expected type of this `normalizes-to` call: [source][eq-prev][^1].
 
-If not, we insert the expected type in the opaque types storage: [source][insert-storage][^2]. 
+If not, we insert the expected type in the opaque types storage: [source][insert-storage][^2].
 Finally, we check whether the item bounds of the opaque hold for the expected type:
 [source][item-bounds-ck].
 
@@ -98,7 +98,7 @@ end up leaking placeholders.
 The handling of member constraints does not change in the new solver. See the
 [relevant existing chapter][member-constraints] for that.
 
-[member-constraints]: ../borrow_check/region_inference/member_constraints.md
+[member-constraints]: ../borrow-check/region-inference/member-constraints.md
 
 ## calling methods on opaque types
 

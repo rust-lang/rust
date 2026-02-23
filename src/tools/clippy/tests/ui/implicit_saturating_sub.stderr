@@ -238,5 +238,11 @@ error: manual arithmetic check found
 LL |     let _ = if a < b * 2 { 0 } else { a - b * 2 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b * 2)`
 
-error: aborting due to 27 previous errors
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:332:13
+   |
+LL |     let y = if x >= 100 { 0 } else { 100 - x };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `100_u8.saturating_sub(x)`
+
+error: aborting due to 28 previous errors
 

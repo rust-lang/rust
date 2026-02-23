@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// Checks for usage of indexing or slicing that may panic at runtime.
     ///
     /// This lint does not report on indexing or slicing operations
-    /// that always panic, clippy's `out_of_bound_indexing` already
+    /// that always panic, [out_of_bounds_indexing](#out_of_bounds_indexing) already
     /// handles those cases.
     ///
     /// ### Why restrict this?

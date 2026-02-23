@@ -209,5 +209,22 @@ error: redundant pattern matching, consider using `is_err()`
 LL |     let _ = matches!(x, Err(_));
    |             ^^^^^^^^^^^^^^^^^^^ help: try: `x.is_err()`
 
-error: aborting due to 28 previous errors
+error: redundant pattern matching, consider using `is_ok()`
+  --> tests/ui/redundant_pattern_matching_result.rs:216:13
+   |
+LL |       let _ = match test_expr!(42) {
+   |  _____________^
+LL | |
+LL | |         Ok(_) => true,
+LL | |         Err(_) => false,
+LL | |     };
+   | |_____^ help: try: `test_expr!(42).is_ok()`
+
+error: redundant pattern matching, consider using `is_ok()`
+  --> tests/ui/redundant_pattern_matching_result.rs:229:13
+   |
+LL |     let _ = matches!(x, Ok(_) if test_guard!(42));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.is_ok() && test_guard!(42)`
+
+error: aborting due to 30 previous errors
 

@@ -16,8 +16,6 @@ impl Edition {
     pub const DEFAULT: Edition = Edition::Edition2015;
     pub const LATEST: Edition = Edition::Edition2024;
     pub const CURRENT: Edition = Edition::Edition2024;
-    /// The current latest stable edition, note this is usually not the right choice in code.
-    pub const CURRENT_FIXME: Edition = Edition::Edition2024;
 
     pub fn from_u32(u32: u32) -> Edition {
         match u32 {

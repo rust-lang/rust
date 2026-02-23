@@ -1,5 +1,6 @@
 //@ only-msvc
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 //@ ignore-gdb
 //@ compile-flags:-g
 

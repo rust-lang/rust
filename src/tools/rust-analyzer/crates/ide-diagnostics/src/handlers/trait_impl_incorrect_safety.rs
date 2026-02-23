@@ -64,6 +64,7 @@ unsafe trait Unsafe {}
     fn drop_may_dangle() {
         check_diagnostics(
             r#"
+#![feature(lang_items)]
 #[lang = "drop"]
 trait Drop {}
 struct S<T>;

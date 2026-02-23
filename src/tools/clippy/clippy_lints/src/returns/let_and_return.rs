@@ -27,7 +27,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
         && !initexpr.span.in_external_macro(cx.sess().source_map())
         && !retexpr.span.in_external_macro(cx.sess().source_map())
         && !local.span.from_expansion()
-        && !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), true)
+        && !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), false)
     {
         span_lint_hir_and_then(
             cx,

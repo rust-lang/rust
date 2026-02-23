@@ -1,6 +1,7 @@
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
+#![allow(unstable_name_collisions)] // FIXME(float_bits_const): remove when stable
 
 pub mod domain;
 mod f8_impl;

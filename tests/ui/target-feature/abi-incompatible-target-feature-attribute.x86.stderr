@@ -1,4 +1,4 @@
-error: target feature `soft-float` cannot be enabled with `#[target_feature]`: this feature is incompatible with the target ABI
+error: target feature `soft-float` cannot be enabled with `#[target_feature]`: use a soft-float target instead
   --> $DIR/abi-incompatible-target-feature-attribute.rs:17:32
    |
 LL | #[cfg_attr(x86, target_feature(enable = "soft-float"))] #[cfg_attr(riscv, target_feature(enable = "d"))]

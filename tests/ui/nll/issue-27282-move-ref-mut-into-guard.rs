@@ -2,8 +2,6 @@
 // mutable borrows in match guards by hiding the mutable borrow in a
 // guard behind a move (of the ref mut pattern id) within a closure.
 
-#![feature(if_let_guard)]
-
 fn main() {
     match Some(&4) {
         None => {},

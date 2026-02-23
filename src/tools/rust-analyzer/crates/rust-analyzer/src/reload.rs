@@ -13,7 +13,7 @@
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
 // FIXME: This is a mess that needs some untangling work
-use std::{iter, mem};
+use std::{iter, mem, sync::atomic::AtomicUsize};
 
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
@@ -25,7 +25,9 @@ use load_cargo::{ProjectFolders, load_proc_macro};
 use lsp_types::FileSystemWatcher;
 use paths::Utf8Path;
 use proc_macro_api::ProcMacroClient;
-use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
+use project_model::{
+    ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts, project_json,
+};
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, ChangeKind};
@@ -699,15 +701,19 @@ impl GlobalState {
                     _ => Default::default(),
                 };
                 info!("Using proc-macro server at {path}");
+                let num_process = self.config.proc_macro_num_processes();
 
-                Some(ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref()).map_err(|err| {
-                    tracing::error!(
-                        "Failed to run proc-macro server from path {path}, error: {err:?}",
-                    );
-                    anyhow::format_err!(
-                        "Failed to run proc-macro server from path {path}, error: {err:?}",
-                    )
-                }))
+                Some(
+                    ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref(), num_process)
+                        .map_err(|err| {
+                            tracing::error!(
+                                "Failed to run proc-macro server from path {path}, error: {err:?}",
+                            );
+                            anyhow::format_err!(
+                                "Failed to run proc-macro server from path {path}, error: {err:?}",
+                            )
+                        }),
+                )
             }))
         }
 
@@ -866,14 +872,16 @@ impl GlobalState {
         let invocation_strategy = config.invocation_strategy();
         let next_gen =
             self.flycheck.iter().map(FlycheckHandle::generation).max().unwrap_or_default() + 1;
+        let generation = Arc::new(AtomicUsize::new(next_gen));
 
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => {
                 vec![FlycheckHandle::spawn(
                     0,
-                    next_gen,
+                    generation.clone(),
                     sender.clone(),
                     config,
+                    crate::flycheck::FlycheckConfigJson::default(),
                     None,
                     self.config.root_path().clone(),
                     None,
@@ -893,16 +901,25 @@ impl GlobalState {
                                     cargo: Some((cargo, _, _)),
                                     ..
                                 } => (
+                                    crate::flycheck::FlycheckConfigJson::default(),
                                     cargo.workspace_root(),
                                     Some(cargo.manifest_path()),
                                     Some(cargo.target_directory()),
                                 ),
                                 ProjectWorkspaceKind::Json(project) => {
+                                    let config_json = crate::flycheck::FlycheckConfigJson {
+                                        single_template: project
+                                            .runnable_template(project_json::RunnableKind::Flycheck)
+                                            .cloned(),
+                                    };
                                     // Enable flychecks for json projects if a custom flycheck command was supplied
                                     // in the workspace configuration.
                                     match config {
+                                        _ if config_json.any_configured() => {
+                                            (config_json, project.path(), None, None)
+                                        }
                                         FlycheckConfig::CustomCommand { .. } => {
-                                            (project.path(), None, None)
+                                            (config_json, project.path(), None, None)
                                         }
                                         _ => return None,
                                     }
@@ -912,12 +929,13 @@ impl GlobalState {
                             ws.sysroot.root().map(ToOwned::to_owned),
                         ))
                     })
-                    .map(|(id, (root, manifest_path, target_dir), sysroot_root)| {
+                    .map(|(id, (config_json, root, manifest_path, target_dir), sysroot_root)| {
                         FlycheckHandle::spawn(
                             id,
-                            next_gen,
+                            generation.clone(),
                             sender.clone(),
                             config.clone(),
+                            config_json,
                             sysroot_root,
                             root.to_path_buf(),
                             manifest_path.map(|it| it.to_path_buf()),
@@ -928,6 +946,7 @@ impl GlobalState {
             }
         }
         .into();
+        self.flycheck_formatted_commands = vec![];
     }
 }
 

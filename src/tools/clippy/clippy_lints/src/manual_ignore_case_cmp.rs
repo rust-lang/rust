@@ -1,7 +1,7 @@
 use crate::manual_ignore_case_cmp::MatchType::{Literal, ToAscii};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -111,14 +111,12 @@ impl LateLintPass<'_> for ManualIgnoreCaseCmp {
                 "manual case-insensitive ASCII comparison",
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
+                    let (left_snip, _) = snippet_with_context(cx, left_span, expr.span.ctxt(), "..", &mut app);
+                    let (right_snip, _) = snippet_with_context(cx, right_span, expr.span.ctxt(), "..", &mut app);
                     diag.span_suggestion_verbose(
                         expr.span,
                         "consider using `.eq_ignore_ascii_case()` instead",
-                        format!(
-                            "{neg}{}.eq_ignore_ascii_case({deref}{})",
-                            snippet_with_applicability(cx, left_span, "_", &mut app),
-                            snippet_with_applicability(cx, right_span, "_", &mut app)
-                        ),
+                        format!("{neg}{left_snip}.eq_ignore_ascii_case({deref}{right_snip})"),
                         app,
                     );
                 },

@@ -2,8 +2,8 @@
 #[path = "../unsupported/os.rs"]
 mod unsupported_os;
 pub use unsupported_os::{
-    JoinPathsError, SplitPaths, chdir, current_exe, errno, error_string, getcwd, getpid, home_dir,
-    join_paths, split_paths, temp_dir,
+    JoinPathsError, SplitPaths, chdir, current_exe, getcwd, getpid, home_dir, join_paths,
+    split_paths, temp_dir,
 };
 
 pub use super::unsupported;

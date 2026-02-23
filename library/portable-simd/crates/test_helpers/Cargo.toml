@@ -6,3 +6,4 @@ publish = false
 
 [dependencies]
 proptest = { version = "0.10", default-features = false, features = ["alloc"] }
+float-cmp = "0.10"

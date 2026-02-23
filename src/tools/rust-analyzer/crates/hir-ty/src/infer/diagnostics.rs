@@ -25,10 +25,10 @@ use crate::{
 // to our resolver and so we cannot have mutable reference, but we really want to have
 // ability to dispatch diagnostics during this work otherwise the code becomes a complete mess.
 #[derive(Debug, Default, Clone)]
-pub(super) struct Diagnostics<'db>(RefCell<ThinVec<InferenceDiagnostic<'db>>>);
+pub(super) struct Diagnostics(RefCell<ThinVec<InferenceDiagnostic>>);
 
-impl<'db> Diagnostics<'db> {
-    pub(super) fn push(&self, diagnostic: InferenceDiagnostic<'db>) {
+impl Diagnostics {
+    pub(super) fn push(&self, diagnostic: InferenceDiagnostic) {
         self.0.borrow_mut().push(diagnostic);
     }
 
@@ -42,19 +42,19 @@ impl<'db> Diagnostics<'db> {
         );
     }
 
-    pub(super) fn finish(self) -> ThinVec<InferenceDiagnostic<'db>> {
+    pub(super) fn finish(self) -> ThinVec<InferenceDiagnostic> {
         self.0.into_inner()
     }
 }
 
-pub(crate) struct PathDiagnosticCallbackData<'a, 'db> {
+pub(crate) struct PathDiagnosticCallbackData<'a> {
     node: ExprOrPatId,
-    diagnostics: &'a Diagnostics<'db>,
+    diagnostics: &'a Diagnostics,
 }
 
 pub(super) struct InferenceTyLoweringContext<'db, 'a> {
     ctx: TyLoweringContext<'db, 'a>,
-    diagnostics: &'a Diagnostics<'db>,
+    diagnostics: &'a Diagnostics,
     source: InferenceTyDiagnosticSource,
 }
 
@@ -64,7 +64,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         db: &'db dyn HirDatabase,
         resolver: &'a Resolver<'db>,
         store: &'a ExpressionStore,
-        diagnostics: &'a Diagnostics<'db>,
+        diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
         generic_def: GenericDefId,
         lifetime_elision: LifetimeElisionKind<'db>,

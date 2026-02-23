@@ -173,7 +173,7 @@ fn handle(
                 expr.span,
                 format!("this pattern reimplements `{ty_name}::unwrap_or`"),
                 "replace with",
-                format!("{suggestion}.unwrap_or({reindented_or_body})",),
+                format!("{suggestion}.unwrap_or({reindented_or_body})"),
                 app,
             );
         }

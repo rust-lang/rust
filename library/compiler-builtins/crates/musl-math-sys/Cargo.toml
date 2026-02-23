@@ -5,10 +5,8 @@ edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
 
-[dependencies]
-
 [dev-dependencies]
-libm = { path = "../../libm" }
+libm.workspace = true
 
 [build-dependencies]
-cc = "1.2.29"
+cc.workspace = true

@@ -72,7 +72,7 @@ impl<'tcx> IrPrint<PatternKind<'tcx>> for TyCtxt<'tcx> {
                 write!(f, "{start}")?;
 
                 if let Some(c) = end.try_to_value() {
-                    let end = c.valtree.unwrap_leaf();
+                    let end = c.to_leaf();
                     let size = end.size();
                     let max = match c.ty.kind() {
                         ty::Int(_) => {

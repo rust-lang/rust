@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(rustc::default_hash_types)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
@@ -233,13 +232,21 @@ decl_derive!(
         multipart_suggestion,
         multipart_suggestion_short,
         multipart_suggestion_hidden,
-        multipart_suggestion_verbose,
         // field attributes
         skip_arg,
         primary_span,
         suggestion_part,
         applicability)] => diagnostics::subdiagnostic_derive
 );
+
+/// This macro creates a translatable `DiagMessage` from a fluent format string.
+/// It should be used in places where a translatable message is needed, but struct diagnostics are undesired.
+///
+/// This macro statically checks that the message is valid Fluent, but not that variables in the Fluent message actually exist.
+#[proc_macro]
+pub fn msg(input: TokenStream) -> TokenStream {
+    diagnostics::msg_macro(input)
+}
 
 decl_derive! {
     [PrintAttribute] =>

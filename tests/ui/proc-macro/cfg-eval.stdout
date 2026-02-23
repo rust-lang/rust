@@ -1,5 +1,5 @@
-PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true: u8, }
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true : u8, }
+PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(true)] #[allow()] field_true: u8, }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): struct S1 { #[cfg(true)] #[allow()] field_true : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -28,19 +28,14 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
-                                ident: "all",
-                                span: $DIR/cfg-eval.rs:20:11: 20:14 (#0),
-                            },
-                            Group {
-                                delimiter: Parenthesis,
-                                stream: TokenStream [],
-                                span: $DIR/cfg-eval.rs:20:14: 20:24 (#0),
+                                ident: "true",
+                                span: $DIR/cfg-eval.rs:20:11: 20:15 (#0),
                             },
                         ],
-                        span: $DIR/cfg-eval.rs:20:10: 20:25 (#0),
+                        span: $DIR/cfg-eval.rs:20:10: 20:16 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval.rs:20:6: 20:26 (#0),
+                span: $DIR/cfg-eval.rs:20:6: 20:17 (#0),
             },
             Punct {
                 ch: '#',
@@ -52,15 +47,15 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 stream: TokenStream [
                     Ident {
                         ident: "allow",
-                        span: $DIR/cfg-eval.rs:22:31: 22:36 (#0),
+                        span: $DIR/cfg-eval.rs:22:22: 22:27 (#0),
                     },
                     Group {
                         delimiter: Parenthesis,
                         stream: TokenStream [],
-                        span: $DIR/cfg-eval.rs:22:36: 22:38 (#0),
+                        span: $DIR/cfg-eval.rs:22:27: 22:29 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval.rs:22:6: 22:40 (#0),
+                span: $DIR/cfg-eval.rs:22:6: 22:31 (#0),
             },
             Ident {
                 ident: "field_true",
@@ -84,7 +79,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/cfg-eval.rs:17:11: 24:2 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] (#[cfg(all())] 1,)
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] (#[cfg(true)] 1,)
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -120,32 +115,27 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
-                                ident: "all",
-                                span: $DIR/cfg-eval.rs:36:29: 36:32 (#0),
-                            },
-                            Group {
-                                delimiter: Parenthesis,
-                                stream: TokenStream [],
-                                span: $DIR/cfg-eval.rs:36:32: 36:42 (#0),
+                                ident: "true",
+                                span: $DIR/cfg-eval.rs:36:29: 36:33 (#0),
                             },
                         ],
-                        span: $DIR/cfg-eval.rs:36:28: 36:43 (#0),
+                        span: $DIR/cfg-eval.rs:36:28: 36:34 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval.rs:36:24: 36:44 (#0),
+                span: $DIR/cfg-eval.rs:36:24: 36:35 (#0),
             },
             Literal {
                 kind: Integer,
                 symbol: "1",
                 suffix: None,
-                span: $DIR/cfg-eval.rs:36:45: 36:46 (#0),
+                span: $DIR/cfg-eval.rs:36:36: 36:37 (#0),
             },
             Punct {
                 ch: ',',
                 spacing: Alone,
-                span: $DIR/cfg-eval.rs:36:46: 36:47 (#0),
+                span: $DIR/cfg-eval.rs:36:37: 36:38 (#0),
             },
         ],
-        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
+        span: $DIR/cfg-eval.rs:36:5: 36:39 (#0),
     },
 ]

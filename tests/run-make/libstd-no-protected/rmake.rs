@@ -15,10 +15,8 @@ type SymbolTable<'data> = run_make_support::object::read::elf::SymbolTable<'data
 
 fn main() {
     // Find libstd-...rlib
-    let sysroot = rustc().print("sysroot").run().stdout_utf8();
-    let sysroot = sysroot.trim();
-    let target_sysroot = path(sysroot).join("lib/rustlib").join(target()).join("lib");
-    let mut libs = shallow_find_files(&target_sysroot, |path| {
+    let sysroot_libs_dir = rustc().print("target-libdir").target(target()).run().stdout_utf8();
+    let mut libs = shallow_find_files(sysroot_libs_dir.trim(), |path| {
         has_prefix(path, "libstd-") && has_suffix(path, ".rlib")
     });
     assert_eq!(libs.len(), 1);

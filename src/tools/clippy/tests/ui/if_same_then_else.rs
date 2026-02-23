@@ -11,6 +11,8 @@
     unreachable_code
 )]
 
+use std::ops::*;
+
 struct Foo {
     bar: u8,
 }
@@ -133,18 +135,6 @@ fn func() {
 
 fn f(val: &[u8]) {}
 
-mod issue_5698 {
-    fn mul_not_always_commutative(x: i32, y: i32) -> i32 {
-        if x == 42 {
-            x * y
-        } else if x == 21 {
-            y * x
-        } else {
-            0
-        }
-    }
-}
-
 mod issue_8836 {
     fn do_not_lint() {
         if true {
@@ -245,3 +235,73 @@ mod issue_11213 {
 }
 
 fn main() {}
+
+fn issue16416<T>(x: bool, a: T, b: T)
+where
+    T: Add + Sub + Mul + Div + Rem + BitAnd + BitOr + BitXor + PartialEq + Eq + PartialOrd + Ord + Shr + Shl + Copy,
+{
+    // Non-guaranteed-commutative operators
+    _ = if x { a * b } else { b * a };
+    _ = if x { a + b } else { b + a };
+    _ = if x { a - b } else { b - a };
+    _ = if x { a / b } else { b / a };
+    _ = if x { a % b } else { b % a };
+    _ = if x { a << b } else { b << a };
+    _ = if x { a >> b } else { b >> a };
+    _ = if x { a & b } else { b & a };
+    _ = if x { a ^ b } else { b ^ a };
+    _ = if x { a | b } else { b | a };
+
+    // Guaranteed commutative operators
+    //~v if_same_then_else
+    _ = if x { a == b } else { b == a };
+    //~v if_same_then_else
+    _ = if x { a != b } else { b != a };
+
+    // Symetric operators
+    //~v if_same_then_else
+    _ = if x { a < b } else { b > a };
+    //~v if_same_then_else
+    _ = if x { a <= b } else { b >= a };
+    //~v if_same_then_else
+    _ = if x { a > b } else { b < a };
+    //~v if_same_then_else
+    _ = if x { a >= b } else { b <= a };
+}
+
+fn issue16416_prim(x: bool, a: u32, b: u32) {
+    // Non-commutative operators
+    _ = if x { a - b } else { b - a };
+    _ = if x { a / b } else { b / a };
+    _ = if x { a % b } else { b % a };
+    _ = if x { a << b } else { b << a };
+    _ = if x { a >> b } else { b >> a };
+
+    // Commutative operators on primitive types
+    //~v if_same_then_else
+    _ = if x { a * b } else { b * a };
+    //~v if_same_then_else
+    _ = if x { a + b } else { b + a };
+    //~v if_same_then_else
+    _ = if x { a & b } else { b & a };
+    //~v if_same_then_else
+    _ = if x { a ^ b } else { b ^ a };
+    //~v if_same_then_else
+    _ = if x { a | b } else { b | a };
+
+    // Always commutative operators
+    //~v if_same_then_else
+    _ = if x { a == b } else { b == a };
+    //~v if_same_then_else
+    _ = if x { a != b } else { b != a };
+
+    // Symetric operators
+    //~v if_same_then_else
+    _ = if x { a < b } else { b > a };
+    //~v if_same_then_else
+    _ = if x { a <= b } else { b >= a };
+    //~v if_same_then_else
+    _ = if x { a > b } else { b < a };
+    //~v if_same_then_else
+    _ = if x { a >= b } else { b <= a };
+}

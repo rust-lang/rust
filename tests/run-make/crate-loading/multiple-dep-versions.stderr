@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `dep_2_reexport::Type: Trait` is not satisfied
+error[E0277]: the trait bound `dep_2_reexport::Type: dependency::Trait` is not satisfied
   --> replaced
    |
 LL |     do_something(Type);
-   |     ------------ ^^^^ the trait `Trait` is not implemented for `dep_2_reexport::Type`
+   |     ------------ ^^^^ the trait `dependency::Trait` is not implemented for `dep_2_reexport::Type`
    |     |
    |     required by a bound introduced by this call
    |
@@ -17,7 +17,7 @@ LL | pub trait Trait {
 LL | pub trait Trait {
    | --------------- this is the found trait
    = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `Trait` is implemented for `dependency::Type`
+help: the trait `dependency::Trait` is implemented for `dependency::Type`
   --> replaced
    |
 LL | impl Trait for Type {
@@ -64,11 +64,11 @@ LL | pub trait Trait {
    | --------------- this is the trait that was imported
    = help: you can use `cargo tree` to explore your dependency tree
 
-error[E0277]: the trait bound `OtherType: Trait` is not satisfied
+error[E0277]: the trait bound `OtherType: dependency::Trait` is not satisfied
   --> replaced
    |
 LL |     do_something(OtherType);
-   |     ------------ ^^^^^^^^^ the trait `Trait` is not implemented for `OtherType`
+   |     ------------ ^^^^^^^^^ the trait `dependency::Trait` is not implemented for `OtherType`
    |     |
    |     required by a bound introduced by this call
    |
@@ -83,7 +83,7 @@ LL | pub trait Trait {
 LL | pub trait Trait {
    | --------------- this is the found trait
    = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `Trait` is implemented for `dependency::Type`
+help: the trait `dependency::Trait` is implemented for `dependency::Type`
   --> replaced
    |
 LL | impl Trait for Type {
@@ -144,7 +144,51 @@ note: function defined here
 LL | pub fn do_something_trait(_: Box<dyn Trait2>) {}
    |        ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0277]: `?` couldn't convert the error to `dependency::Error`
+  --> replaced
+   |
+LL | fn main() -> Result<(), Error> {
+   |              ----------------- expected `dependency::Error` because of this
+...
+LL |     Err(Error2)?;
+   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::Error`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<Error2>` is not implemented for `dependency::Error`
+      but trait `From<()>` is implemented for it
+  --> replaced
+   |
+LL | impl From<()> for Error {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `()`, found `Error2`
+   = note: there are multiple different versions of crate `dependency` in the dependency graph
+   = help: you can use `cargo tree` to explore your dependency tree
+
+error[E0277]: `?` couldn't convert the error to `dependency::OtherError`
+  --> replaced
+   |
+LL | fn foo() -> Result<(), OtherError> {
+   |             ---------------------- expected `dependency::OtherError` because of this
+LL |     Err(Error2)?;
+   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::OtherError`
+   |     |
+   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the following other types implement trait `From<T>`
+  --> replaced
+   |
+LL | impl From<()> for OtherError {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<()>`
+...
+LL | impl From<i32> for OtherError {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<i32>`
+   = note: there are multiple different versions of crate `dependency` in the dependency graph
+   = help: you can use `cargo tree` to explore your dependency tree
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0599.
 For more information about an error, try `rustc --explain E0277`.

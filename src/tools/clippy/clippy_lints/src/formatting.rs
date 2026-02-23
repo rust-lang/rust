@@ -337,7 +337,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
             else_span,
             format!("this looks like {looks_like} but the `else` is missing"),
             None,
-            format!("to remove this lint, add the missing `else` or add a new line before {next_thing}",),
+            format!("to remove this lint, add the missing `else` or add a new line before {next_thing}"),
         );
     }
 }

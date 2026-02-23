@@ -2,7 +2,7 @@ error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:8:5: 8:8}: C
   --> $DIR/gen_block_is_coro.rs:7:13
    |
 LL | fn foo() -> impl Coroutine<Yield = u32, Return = ()> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:8:5: 8:8}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:8:5: 8:8}`
 LL |     gen { yield 42 }
    |     ---------------- return type was inferred to be `{gen block@$DIR/gen_block_is_coro.rs:8:5: 8:8}` here
 
@@ -10,7 +10,7 @@ error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:12:5: 12:8}:
   --> $DIR/gen_block_is_coro.rs:11:13
    |
 LL | fn bar() -> impl Coroutine<Yield = i64, Return = ()> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:12:5: 12:8}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:12:5: 12:8}`
 LL |     gen { yield 42 }
    |     ---------------- return type was inferred to be `{gen block@$DIR/gen_block_is_coro.rs:12:5: 12:8}` here
 
@@ -18,7 +18,7 @@ error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:16:5: 16:8}:
   --> $DIR/gen_block_is_coro.rs:15:13
    |
 LL | fn baz() -> impl Coroutine<Yield = i32, Return = ()> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:16:5: 16:8}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:16:5: 16:8}`
 LL |     gen { yield 42 }
    |     ---------------- return type was inferred to be `{gen block@$DIR/gen_block_is_coro.rs:16:5: 16:8}` here
 

@@ -67,5 +67,11 @@ error: manual implementation of `.is_multiple_of()`
 LL |         let d = |n: u32| -> u32 { (1..=n / 2).filter(|i| n % i == 0).sum() };
    |                                                          ^^^^^^^^^^ help: replace with: `n.is_multiple_of(*i)`
 
-error: aborting due to 11 previous errors
+error: manual implementation of `.is_multiple_of()`
+  --> tests/ui/manual_is_multiple_of.rs:115:8
+   |
+LL |     if dot_0!(a) % dot_0!(b) == 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `dot_0!(a).is_multiple_of(dot_0!(b))`
+
+error: aborting due to 12 previous errors
 

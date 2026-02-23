@@ -128,10 +128,12 @@ pub(crate) mod filters {
     use askama::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    pub(crate) fn wrapped<T, V: askama::Values>(v: T, _: V) -> askama::Result<Safe<impl Display>>
-    where
-        T: Display,
-    {
+
+    #[askama::filter_fn]
+    pub(crate) fn wrapped(
+        v: impl Display,
+        _: &dyn askama::Values,
+    ) -> askama::Result<Safe<impl Display>> {
         let string = v.to_string();
         Ok(Safe(fmt::from_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
     }

@@ -7,9 +7,8 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use std::assert_matches::assert_matches;
-
 use itertools::Itertools;
+use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
@@ -127,6 +126,31 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
+    //  FIXME(BoxyUwU): This should probably be part of a larger borrowck dev-guide chapter
+    //
+    /// Enforce that the types of the locals corresponding to the inputs and output of
+    /// the body are equal to those of the (normalized) signature.
+    ///
+    /// This is necessary for two reasons:
+    /// - Locals in the MIR all start out with `'erased` regions and then are replaced
+    ///    with unconstrained nll vars. If we have a function returning `&'a u32` then
+    ///    the local `_0: &'?10 u32` needs to have its region var equated with the nll
+    ///    var representing `'a`. i.e. borrow check must uphold that `'?10 = 'a`.
+    /// - When computing the normalized signature we may introduce new unconstrained nll
+    ///    vars due to higher ranked where clauses ([#136547]). We then wind up with implied
+    ///    bounds involving these vars.
+    ///
+    ///    For this reason it is important that we equate with the *normalized* signature
+    ///    which was produced when computing implied bounds. If we do not do so then we will
+    ///    wind up with implied bounds on nll vars which cannot actually be used as the nll
+    ///    var never gets related to anything.
+    ///
+    /// For 'closure-like' bodies this function effectively relates the *inferred* signature
+    /// of the closure against the locals corresponding to the closure's inputs/output. It *does
+    /// not* relate the user provided types for the signature to the locals, this is handled
+    /// separately by: [`TypeChecker::check_signature_annotation`].
+    ///
+    /// [#136547]: <https://www.github.com/rust-lang/rust/issues/136547>
     #[instrument(skip(self), level = "debug")]
     pub(super) fn equate_inputs_and_outputs(&mut self, normalized_inputs_and_output: &[Ty<'tcx>]) {
         let (&normalized_output_ty, normalized_input_tys) =
@@ -174,38 +198,44 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        // Return types are a bit more complex. They may contain opaque `impl Trait` types.
-        let mir_output_ty = self.body.local_decls[RETURN_PLACE].ty;
+        // Equate expected output ty with the type of the RETURN_PLACE in MIR
+        let mir_output_ty = self.body.return_ty();
         let output_span = self.body.local_decls[RETURN_PLACE].source_info.span;
         self.equate_normalized_input_or_output(normalized_output_ty, mir_output_ty, output_span);
     }
 
     #[instrument(skip(self), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
+        if self.infcx.next_trait_solver() {
+            return self
+                .eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
+                .unwrap_or_else(|terr| {
+                    span_mirbug!(
+                        self,
+                        Location::START,
+                        "equate_normalized_input_or_output: `{a:?}=={b:?}` failed with `{terr:?}`",
+                    );
+                });
+        }
+
+        // This is a hack. `body.local_decls` are not necessarily normalized in the old
+        // solver due to not deeply normalizing in writeback. So we must re-normalize here.
+        //
+        // However, in most cases normalizing is unnecessary so we only do so if it may be
+        // necessary for type equality to hold. This leads to some (very minor) performance
+        // wins.
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {
-            // FIXME(jackh726): This is a hack. It's somewhat like
-            // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
-            // like to normalize *before* inserting into `local_decls`, but
-            // doing so ends up causing some other trouble.
             let b = self.normalize(b, Locations::All(span));
-
-            // Note: if we have to introduce new placeholders during normalization above, then we
-            // won't have added those universes to the universe info, which we would want in
-            // `relate_tys`.
-            if let Err(terr) =
-                self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
-            {
-                span_mirbug!(
-                    self,
-                    Location::START,
-                    "equate_normalized_input_or_output: `{:?}=={:?}` failed with `{:?}`",
-                    a,
-                    b,
-                    terr
-                );
-            }
-        }
+            self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
+                .unwrap_or_else(|terr| {
+                    span_mirbug!(
+                        self,
+                        Location::START,
+                        "equate_normalized_input_or_output: `{a:?}=={b:?}` failed with `{terr:?}`",
+                    );
+                });
+        };
     }
 }

@@ -12,7 +12,7 @@ use rustc_hir::{
 };
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
@@ -488,7 +488,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            let silence = if let DefKind::AssocFn = self.tcx.def_kind(body_def_id)
+                && let parent = self.tcx.parent(body_def_id.into())
+                && self.tcx.is_automatically_derived(parent)
+                && let Some(parent) = parent.as_local()
+                && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(parent)
+                && let hir::ItemKind::Impl(imp) = item.kind
+                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = imp.self_ty.kind
+                && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, def_id) = path.res
+                && let Some(def_id) = def_id.as_local()
+                && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(def_id)
+            {
+                // We have encountered an inference error within an automatically derived `impl`,
+                // from a `#[derive(..)]` on an item that had a parse error. Because the parse
+                // error might have caused the expanded code to be malformed, we silence the
+                // inference error.
+                item.kind.recovered()
+            } else {
+                false
+            };
+            let mut err = self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            if silence {
+                err.downgrade_to_delayed_bug();
+            }
+            return err;
         };
 
         let (source_kind, name, long_ty_path) = kind.ty_localized_msg(self);
@@ -592,7 +615,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // first adjustment was not a builtin deref.
                     let adjustment = match typeck_results.expr_adjustments(receiver) {
                         [
-                            Adjustment { kind: Adjust::Deref(None), target: _ },
+                            Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
                             ..,
                             Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
                         ] => "",
@@ -1000,7 +1023,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             hir::ExprKind::MethodCall(segment, ..) => {
                 if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let generics = tcx.generics_of(def_id);
-                    let insertable: Option<_> = try {
+                    let insertable = try {
                         if generics.has_impl_trait() {
                             None?
                         }
@@ -1038,7 +1061,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         //
         // FIXME: We deal with that one separately for now,
         // would be good to remove this special case.
-        let last_segment_using_path_data: Option<_> = try {
+        let last_segment_using_path_data = try {
             let generics_def_id = tcx.res_generics_def_id(path.res)?;
             let generics = tcx.generics_of(generics_def_id);
             if generics.has_impl_trait() {
@@ -1094,19 +1117,18 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 };
 
                 let generics = tcx.generics_of(def_id);
-                let segment: Option<_> = try {
-                    if !segment.infer_args || generics.has_impl_trait() {
-                        do yeet ();
-                    }
+                let segment = if !segment.infer_args || generics.has_impl_trait() {
+                    None
+                } else {
                     let span = tcx.hir_span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
-                    InsertableGenericArgs {
+                    Some(InsertableGenericArgs {
                         insert_span,
                         args,
                         generics_def_id: def_id,
                         def_id,
                         have_turbofish: false,
-                    }
+                    })
                 };
 
                 let parent_def_id = generics.parent.unwrap();
@@ -1240,7 +1262,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 .iter()
                 .position(|&arg| self.generic_arg_contains_target(arg))
             {
-                if generics.parent.is_none() && generics.has_self {
+                if generics.has_own_self() {
                     argument_index += 1;
                 }
                 let args = self.tecx.resolve_vars_if_possible(args);

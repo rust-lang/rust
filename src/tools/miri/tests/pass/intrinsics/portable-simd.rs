@@ -471,7 +471,7 @@ fn simd_ops_i32() {
 fn simd_mask() {
     use std::intrinsics::simd::*;
 
-    let intmask = Mask::from_int(i32x4::from_array([0, -1, 0, 0]));
+    let intmask = Mask::from_simd(i32x4::from_array([0, -1, 0, 0]));
     assert_eq!(intmask, Mask::from_array([false, true, false, false]));
     assert_eq!(intmask.to_array(), [false, true, false, false]);
 
@@ -486,8 +486,8 @@ fn simd_mask() {
 
     // Also directly call intrinsic, to test both kinds of return types.
     unsafe {
-        let bitmask1: u16 = simd_bitmask(mask.to_int());
-        let bitmask2: [u8; 2] = simd_bitmask(mask.to_int());
+        let bitmask1: u16 = simd_bitmask(mask.to_simd());
+        let bitmask2: [u8; 2] = simd_bitmask(mask.to_simd());
         if cfg!(target_endian = "little") {
             assert_eq!(bitmask1, 0b1010001101001001);
             assert_eq!(bitmask2, [0b01001001, 0b10100011]);
@@ -506,8 +506,8 @@ fn simd_mask() {
     assert_eq!(bitmask, 0b1000);
     assert_eq!(Mask::<i64, 4>::from_bitmask(bitmask), mask);
     unsafe {
-        let bitmask1: u8 = simd_bitmask(mask.to_int());
-        let bitmask2: [u8; 1] = simd_bitmask(mask.to_int());
+        let bitmask1: u8 = simd_bitmask(mask.to_simd());
+        let bitmask2: [u8; 1] = simd_bitmask(mask.to_simd());
         if cfg!(target_endian = "little") {
             assert_eq!(bitmask1, 0b1000);
             assert_eq!(bitmask2, [0b1000]);

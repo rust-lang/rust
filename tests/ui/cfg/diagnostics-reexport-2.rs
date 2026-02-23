@@ -40,22 +40,22 @@ mod reexport32 {
 
 fn main() {
     reexport::gated::foo();
-    //~^ ERROR failed to resolve: could not find `gated` in `reexport`
+    //~^ ERROR cannot find
     //~| NOTE  could not find `gated` in `reexport`
 
     reexport2::gated::foo();
-    //~^ ERROR failed to resolve: could not find `gated` in `reexport2`
+    //~^ ERROR cannot find
     //~| NOTE  could not find `gated` in `reexport2`
 
     reexport30::gated::foo();
-    //~^ ERROR failed to resolve: could not find `gated` in `reexport30`
+    //~^ ERROR cannot find
     //~| NOTE  could not find `gated` in `reexport30`
 
     reexport31::gated::foo();
-    //~^ ERROR failed to resolve: could not find `gated` in `reexport31`
+    //~^ ERROR cannot find
     //~| NOTE  could not find `gated` in `reexport31`
 
     reexport32::gated::foo();
-    //~^ ERROR failed to resolve: could not find `gated` in `reexport32`
+    //~^ ERROR cannot find
     //~| NOTE  could not find `gated` in `reexport32`
 }

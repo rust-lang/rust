@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
     SpanlessEq, get_parent_expr, higher, is_block_like, is_else_clause, is_parent_stmt, is_receiver_of_method_call,
@@ -171,8 +171,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 && SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
             {
                 let mut applicability = Applicability::MachineApplicable;
-                let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
-                let lhs = snippet_with_applicability(cx, lhs_a.span, "..", &mut applicability);
+                let cond = Sugg::hir_with_context(cx, cond, e.span.ctxt(), "..", &mut applicability);
+                let (lhs, _) = snippet_with_context(cx, lhs_a.span, e.span.ctxt(), "..", &mut applicability);
                 let mut sugg = if a == b {
                     format!("{cond}; {lhs} = {a:?};")
                 } else {

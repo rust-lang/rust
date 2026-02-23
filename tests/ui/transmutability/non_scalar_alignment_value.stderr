@@ -1,0 +1,35 @@
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/non_scalar_alignment_value.rs:1:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: struct expression with missing field initialiser for `alignment`
+  --> $DIR/non_scalar_alignment_value.rs:15:32
+   |
+LL |                     alignment: Assume {},
+   |                                ^^^^^^^^^
+
+error: struct expression with missing field initialiser for `lifetimes`
+  --> $DIR/non_scalar_alignment_value.rs:15:32
+   |
+LL |                     alignment: Assume {},
+   |                                ^^^^^^^^^
+
+error: struct expression with missing field initialiser for `safety`
+  --> $DIR/non_scalar_alignment_value.rs:15:32
+   |
+LL |                     alignment: Assume {},
+   |                                ^^^^^^^^^
+
+error: struct expression with missing field initialiser for `validity`
+  --> $DIR/non_scalar_alignment_value.rs:15:32
+   |
+LL |                     alignment: Assume {},
+   |                                ^^^^^^^^^
+
+error: aborting due to 4 previous errors; 1 warning emitted
+

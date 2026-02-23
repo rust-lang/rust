@@ -16,6 +16,7 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[cfg(not(test))]
+#[doc(test(attr(allow(unused_features))))]
 impl f128 {
     /// Raises a number to a floating point power.
     ///

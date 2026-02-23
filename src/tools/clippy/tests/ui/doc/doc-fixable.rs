@@ -75,7 +75,7 @@ fn test_units() {
 /// IPv4 IPv6
 /// InfiniBand RoCE
 /// ClojureScript CoffeeScript JavaScript PostScript PureScript TypeScript
-/// PowerPC WebAssembly
+/// PowerPC PowerShell WebAssembly
 /// NaN NaNs
 /// OAuth GraphQL
 /// OCaml

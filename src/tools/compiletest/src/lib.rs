@@ -24,7 +24,6 @@ use core::panic;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, fs, vec};
@@ -43,7 +42,7 @@ use crate::common::{
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
-use crate::executor::{CollectedTest, ColorConfig};
+use crate::executor::CollectedTest;
 
 /// Creates the `Config` instance for this invocation of compiletest.
 ///
@@ -86,7 +85,7 @@ fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc-html \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
         )
@@ -105,8 +104,10 @@ fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
+        .optflag("", "has-offload", "run tests that require offload")
         .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
         .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
+        .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
         .optmulti(
             "",
             "skip",
@@ -136,7 +137,6 @@ fn parse_config(args: Vec<String>) -> Config {
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
         .optflag("", "fail-fast", "stop as soon as possible after any test fails")
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
@@ -218,7 +218,8 @@ fn parse_config(args: Vec<String>) -> Config {
             "the codegen backend to use instead of the default one",
             "CODEGEN BACKEND [NAME | PATH]",
         )
-        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives");
+        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
+        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -265,7 +266,7 @@ fn parse_config(args: Vec<String>) -> Config {
     let adb_device_status = target.contains("android") && adb_test_dir.is_some();
 
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
-    let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
+    let cdb = matches.opt_str("cdb").map(Utf8PathBuf::from);
     let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
     // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     let gdb = matches.opt_str("gdb").map(Utf8PathBuf::from);
@@ -274,12 +275,6 @@ fn parse_config(args: Vec<String>) -> Config {
     let lldb = matches.opt_str("lldb").map(Utf8PathBuf::from);
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
-    let color = match matches.opt_str("color").as_deref() {
-        Some("auto") | None => ColorConfig::AutoColor,
-        Some("always") => ColorConfig::AlwaysColor,
-        Some("never") => ColorConfig::NeverColor,
-        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
-    };
     // FIXME: this is very questionable, we really should be obtaining LLVM version info from
     // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
     // `FileCheck` binary.
@@ -303,18 +298,10 @@ fn parse_config(args: Vec<String>) -> Config {
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
+    let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_html_tidy = if mode == TestMode::Rustdoc {
-        Command::new("tidy")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .status()
-            .map_or(false, |status| status.success())
-    } else {
-        // Avoid spawning an external command when we know html-tidy won't be used.
-        false
-    };
     let has_enzyme = matches.opt_present("has-enzyme");
+    let has_offload = matches.opt_present("has-offload");
     let filters = if mode == TestMode::RunMake {
         matches
             .free
@@ -377,6 +364,11 @@ fn parse_config(args: Vec<String>) -> Config {
     let build_test_suite_root = opt_path(matches, "build-test-suite-root");
     assert!(build_test_suite_root.starts_with(&build_root));
 
+    let jobs = match matches.opt_str("jobs") {
+        Some(jobs) => jobs.parse::<u32>().expect("expected `--jobs` to be an `u32`"),
+        None => panic!("`--jobs` is required"),
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -420,6 +412,7 @@ fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         with_rustc_debug_assertions,
         with_std_debug_assertions,
+        with_std_remap_debuginfo,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -455,12 +448,11 @@ fn parse_config(args: Vec<String>) -> Config {
         adb_device_status,
         verbose: matches.opt_present("verbose"),
         only_modified: matches.opt_present("only-modified"),
-        color,
         remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_html_tidy,
         has_enzyme,
+        has_offload,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition").as_deref().map(parse_edition),
@@ -495,6 +487,8 @@ fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend,
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
+
+        jobs,
     }
 }
 
@@ -1108,8 +1102,8 @@ fn make_test_name_and_filterable_path(
 /// of some other tests's name.
 ///
 /// For example, suppose the test suite contains these two test files:
-/// - `tests/rustdoc/primitive.rs`
-/// - `tests/rustdoc/primitive/no_std.rs`
+/// - `tests/rustdoc-html/primitive.rs`
+/// - `tests/rustdoc-html/primitive/no_std.rs`
 ///
 /// The test runner might put the output from those tests in these directories:
 /// - `$build/test/rustdoc/primitive/`
@@ -1144,10 +1138,6 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
 }
 
 fn early_config_check(config: &Config) {
-    if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
-        warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
-    }
-
     if !config.profiler_runtime && config.mode == TestMode::CoverageRun {
         let actioned = if config.bless { "blessed" } else { "checked" };
         warning!("profiler runtime is not available, so `.coverage` files won't be {actioned}");

@@ -33,6 +33,9 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-profiler \
       --enable-sanitizers \
       --disable-docs \
+      --set rust.jemalloc \
+      --set rust.lto=thin \
+      --set rust.codegen-units=1 \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \
       --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr
 

@@ -622,11 +622,6 @@ impl<T: ?Sized> Deref for Box<T> {
     }
 }
 
-#[lang = "exchange_malloc"]
-unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    unsafe { libc::malloc(size) }
-}
-
 #[lang = "drop"]
 pub trait Drop {
     fn drop(&mut self);
@@ -744,43 +739,43 @@ unsafe extern "C" {
 pub struct VaList<'a>(&'a mut VaListImpl);
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro stringify($($t:tt)*) {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro file() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro line() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro cfg() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro asm() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro global_asm() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro naked_asm() {
     /* compiler built-in */
 }

@@ -152,7 +152,9 @@ fn check_int_to_ptr_transmute<'tcx>(
         return;
     };
     // bail-out if the argument is literal 0 as we have other lints for those cases
-    if matches!(arg.kind, hir::ExprKind::Lit(hir::Lit { node: LitKind::Int(v, _), .. }) if v == 0) {
+    if let hir::ExprKind::Lit(hir::Lit { node: LitKind::Int(v, _), .. }) = arg.kind
+        && v == 0
+    {
         return;
     }
     // bail-out if the inner type is a ZST
@@ -367,8 +369,10 @@ fn check_unnecessary_transmute<'tcx>(
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_undefined_transmute)]
-#[note]
-#[note(lint_note2)]
-#[help]
+#[diag("pointers cannot be transmuted to integers during const eval")]
+#[note("at compile-time, pointers do not have an integer value")]
+#[note(
+    "avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior"
+)]
+#[help("for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html")]
 pub(crate) struct UndefinedTransmuteLint;

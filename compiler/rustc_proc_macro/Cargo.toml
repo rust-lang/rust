@@ -16,7 +16,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-literal-escaper = "0.0.5"
+rustc-literal-escaper = "0.0.7"
 # tidy-alphabetical-end
 
 [features]

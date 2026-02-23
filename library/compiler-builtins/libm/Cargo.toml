@@ -1,14 +1,23 @@
 [package]
 name = "libm"
-version = "0.2.15"
-authors = ["Jorge Aparicio <jorge@japaric.io>"]
+version = "0.2.16"
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
 description = "libm in pure Rust"
 categories = ["no-std"]
 keywords = ["libm", "math"]
 repository = "https://github.com/rust-lang/compiler-builtins"
 license = "MIT"
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.67"
+
+[dev-dependencies]
+# FIXME(msrv): switch to `no-panic.workspace` when possible
+no-panic = "0.1.35"
 
 [features]
 default = ["arch"]
@@ -36,9 +45,6 @@ unstable-float = []
 # Rust dependencies. Setting this overrides all features that may enable
 # hard float operations.
 force-soft-floats = []
-
-[dev-dependencies]
-no-panic = "0.1.35"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [

@@ -8,7 +8,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                     return;
                 }
                 let attrs = cx.tcx.hir_attrs(hir_id);
-                if find_attr!(attrs, AttributeKind::Inline(InlineAttr::Always, _)) {
+                if find_attr!(attrs, Inline(InlineAttr::Always, _)) {
                     return;
                 }
 

@@ -66,7 +66,7 @@ use crate::os::fd::AsRawFd;
 use crate::sync::OnceLock;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::atomic::{Atomic, AtomicBool};
-use crate::sys::pal::os::errno;
+use crate::sys::io::errno;
 use crate::sys::pal::weak::syscall;
 
 fn getrandom(mut bytes: &mut [u8], insecure: bool) {

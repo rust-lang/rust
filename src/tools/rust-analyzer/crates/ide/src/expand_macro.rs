@@ -4,7 +4,7 @@ use ide_db::{
     FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
     syntax_helpers::prettify_macro_expansion,
 };
-use span::{SpanMap, SyntaxContext, TextRange, TextSize};
+use span::{SpanMap, TextRange, TextSize};
 use stdx::format_to;
 use syntax::{AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T, ast, ted};
 
@@ -63,7 +63,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
-        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone();
+        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone()?;
         let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
         let expansion_span_map = db.expansion_span_map(expansion_file_id);
         let mut expansion = format(
@@ -142,7 +142,7 @@ fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContext>,
+    result_span_map: &mut SpanMap,
     offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
     let ExpandResult { value: expanded, err } = match macro_call {
@@ -171,7 +171,7 @@ fn expand(
     sema: &Semantics<'_, RootDatabase>,
     expanded: SyntaxNode,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContext>,
+    result_span_map: &mut SpanMap,
     mut offset_in_original_node: i32,
 ) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
@@ -208,7 +208,7 @@ fn format(
     kind: SyntaxKind,
     file_id: FileId,
     expanded: SyntaxNode,
-    span_map: &SpanMap<SyntaxContext>,
+    span_map: &SpanMap,
     krate: Crate,
 ) -> String {
     let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();
@@ -583,26 +583,16 @@ fn main() {
     fn macro_expand_derive() {
         check(
             r#"
-//- proc_macros: identity
-//- minicore: clone, derive
+//- proc_macros: identity, derive_identity
+//- minicore: derive
 
 #[proc_macros::identity]
-#[derive(C$0lone)]
+#[derive(proc_macros::DeriveIde$0ntity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Clone
-                impl <>core::clone::Clone for Foo< >where {
-                    fn clone(&self) -> Self {
-                        match self {
-                            Foo{}
-                             => Foo{}
-                            ,
-
-                            }
-                    }
-
-                    }"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
     }
 
@@ -610,15 +600,17 @@ struct Foo {}
     fn macro_expand_derive2() {
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Cop$0y)]
-#[derive(Clone)]
+#[derive(proc_macros::$0DeriveIdentity)]
+#[derive(proc_macros::DeriveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Copy
-                impl <>core::marker::Copy for Foo< >where{}"#]],
+                proc_macros::DeriveIdentity
+                #[derive(proc_macros::DeriveIdentity)]
+                struct Foo{}"#]],
         );
     }
 
@@ -626,35 +618,27 @@ struct Foo {}
     fn macro_expand_derive_multi() {
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Cop$0y, Clone)]
+#[derive(proc_macros::DeriveIdent$0ity, proc_macros::DeriveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Copy
-                impl <>core::marker::Copy for Foo< >where{}"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
         check(
             r#"
-//- minicore: copy, clone, derive
+//- proc_macros: derive_identity
+//- minicore: derive
 
-#[derive(Copy, Cl$0one)]
+#[derive(proc_macros::DeriveIdentity, proc_macros::De$0riveIdentity)]
 struct Foo {}
 "#,
             expect![[r#"
-                Clone
-                impl <>core::clone::Clone for Foo< >where {
-                    fn clone(&self) -> Self {
-                        match self {
-                            Foo{}
-                             => Foo{}
-                            ,
-
-                            }
-                    }
-
-                    }"#]],
+                proc_macros::DeriveIdentity
+                struct Foo{}"#]],
         );
     }
 
@@ -862,6 +846,21 @@ struct S {
             expect![[r#"
                 foo!
                 u32"#]],
+        );
+    }
+
+    #[test]
+    fn regression_21489() {
+        check(
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive, fmt
+#[derive(Debug, proc_macros::DeriveIdentity$0)]
+struct Foo;
+        "#,
+            expect![[r#"
+                proc_macros::DeriveIdentity
+                struct Foo;"#]],
         );
     }
 }

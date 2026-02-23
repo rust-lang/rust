@@ -8,13 +8,13 @@ impl std::marker::ConstParamTy_ for ImplementsConstParamTy {}
 struct CantParam(ImplementsConstParamTy);
 
 impl std::marker::ConstParamTy_ for CantParam {}
-//~^ error: the type `CantParam` does not `#[derive(PartialEq)]`
-//~| ERROR the trait bound `CantParam: Eq` is not satisfied
+//~^ ERROR: the type `CantParam` does not `#[derive(PartialEq)]`
+//~| ERROR: the trait bound `CantParam: Eq` is not satisfied
 
 #[derive(std::marker::ConstParamTy)]
-//~^ error: the type `CantParamDerive` does not `#[derive(PartialEq)]`
-//~| ERROR the trait bound `CantParamDerive: Eq` is not satisfied
 struct CantParamDerive(ImplementsConstParamTy);
+//~^ ERROR: the type `CantParamDerive` does not `#[derive(PartialEq)]`
+//~| ERROR: the trait bound `CantParamDerive: Eq` is not satisfied
 
 fn check<T: std::marker::ConstParamTy_>() {}
 

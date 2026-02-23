@@ -1,20 +1,20 @@
 error: attribute requires -Z query-dep-graph to be enabled
   --> $DIR/dep-graph-check-attr.rs:8:1
    |
-LL | #[rustc_clean(hir_owner)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_clean(cfg = "foo")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute requires -Z query-dep-graph to be enabled
   --> $DIR/dep-graph-check-attr.rs:11:1
    |
-LL | #[rustc_if_this_changed(hir_owner)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_if_this_changed]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute requires -Z query-dep-graph to be enabled
   --> $DIR/dep-graph-check-attr.rs:16:1
    |
-LL | #[rustc_clean(hir_owner)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_clean(cfg = "foo")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute requires -Z query-dep-graph to be enabled
   --> $DIR/dep-graph-check-attr.rs:19:1

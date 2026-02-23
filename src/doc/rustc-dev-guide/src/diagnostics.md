@@ -228,7 +228,7 @@ Guidelines for different diagnostic levels:
   The error or warning portion should *not* suggest how to fix the problem,
   only the "help" sub-diagnostic should.
 
-- `note`: emitted to given more context and identify additional circumstances
+- `note`: emitted to give more context and identify additional circumstances
   and parts of the code that caused the warning or error. For example, the
   borrow checker will note any previous conflicting borrows.
 
@@ -788,7 +788,7 @@ add_lint_group!(sess,
 ```
 
 This defines the `nonstandard_style` group which turns on the listed lints. A
-user can turn on these lints with a `!#[warn(nonstandard_style)]` attribute in
+user can turn on these lints with a `#![warn(nonstandard_style)]` attribute in
 the source code, or by passing `-W nonstandard-style` on the command line.
 
 Some lint groups are created automatically in `LintStore::register_lints`. For instance,
@@ -944,7 +944,7 @@ You can filter on the following boolean flags:
  - `crate_local`: whether the code causing the trait bound to not be
    fulfilled is part of the user's crate. This is used to avoid suggesting
    code changes that would require modifying a dependency.
- - `direct`: whether this is an user-specified rather than derived obligation.
+ - `direct`: whether this is a user-specified rather than derived obligation.
  - `from_desugaring`: whether we are in some kind of desugaring, like `?`
    or a `try` block for example. This flag can also be matched on, see below.
 

@@ -14,16 +14,8 @@ pub struct TidyFlags {
 }
 
 impl TidyFlags {
-    pub fn new(cfg_args: &[String]) -> Self {
-        let mut flags = Self::default();
-
-        for arg in cfg_args {
-            match arg.as_str() {
-                "--bless" => flags.bless = true,
-                _ => continue,
-            }
-        }
-        flags
+    pub fn new(bless: bool) -> Self {
+        Self { bless }
     }
 }
 
@@ -213,7 +205,7 @@ impl RunningCheck {
         }
     }
 
-    /// Has an error already occured for this check?
+    /// Has an error already occurred for this check?
     pub fn is_bad(&self) -> bool {
         self.bad
     }

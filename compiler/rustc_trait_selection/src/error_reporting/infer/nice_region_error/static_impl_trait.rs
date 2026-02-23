@@ -238,15 +238,15 @@ pub fn suggest_new_region_bound(
                             format!("you can use the named lifetime parameter `{name}`")
                         };
                         spans_suggs.push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
-                        err.multipart_suggestion_verbose(
-                            format!("{declare} `{ty}` {captures}, {use_lt}",),
+                        err.multipart_suggestion(
+                            format!("{declare} `{ty}` {captures}, {use_lt}"),
                             spans_suggs,
                             Applicability::MaybeIncorrect,
                         );
                     } else {
                         err.span_suggestion_verbose(
                             fn_return.span.shrink_to_hi(),
-                            format!("{declare} `{ty}` {captures}, {explicit}",),
+                            format!("{declare} `{ty}` {captures}, {explicit}"),
                             &plus_lt,
                             Applicability::MaybeIncorrect,
                         );
@@ -257,7 +257,7 @@ pub fn suggest_new_region_bound(
                 if let LifetimeKind::ImplicitObjectLifetimeDefault = lt.kind {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
-                        format!("{declare} the trait object {captures}, {explicit}",),
+                        format!("{declare} the trait object {captures}, {explicit}"),
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );

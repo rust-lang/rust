@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
@@ -19,8 +20,7 @@ use super::errors::{
     RegisterConflict,
 };
 use crate::{
-    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt, fluent_generated as fluent,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -51,13 +51,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | asm::InlineAsmArch::LoongArch32
                     | asm::InlineAsmArch::LoongArch64
                     | asm::InlineAsmArch::S390x
+                    | asm::InlineAsmArch::PowerPC
+                    | asm::InlineAsmArch::PowerPC64
             );
-            if !is_stable && !self.tcx.features().asm_experimental_arch() {
+            if !is_stable
+                && !self.tcx.features().asm_experimental_arch()
+                && sp
+                    .ctxt()
+                    .outer_expn_data()
+                    .allow_internal_unstable
+                    .filter(|features| features.contains(&sym::asm_experimental_arch))
+                    .is_none()
+            {
                 feature_err(
                     &self.tcx.sess,
                     sym::asm_experimental_arch,
                     sp,
-                    fluent::ast_lowering_unstable_inline_assembly,
+                    msg!("inline assembly is not stable yet on this architecture"),
                 )
                 .emit();
             }
@@ -74,7 +84,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 &self.tcx.sess,
                 sym::asm_unwind,
                 sp,
-                fluent::ast_lowering_unstable_may_unwind,
+                msg!("the `may_unwind` option is unstable"),
             )
             .emit();
         }
@@ -489,7 +499,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     sess,
                     sym::asm_goto_with_outputs,
                     *op_sp,
-                    fluent::ast_lowering_unstable_inline_assembly_label_operand_with_outputs,
+                    msg!("using both label and output operands for inline assembly is unstable"),
                 )
                 .emit();
             }

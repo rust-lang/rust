@@ -1,5 +1,5 @@
 #![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs)]
-#![warn(clippy::collapsible_if, clippy::collapsible_else_if)]
+#![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]
 fn main() {
@@ -85,6 +85,19 @@ fn main() {
     //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
+        if y == "world" {
+            print!("Hello ");
+        } else {
+            println!("world");
+        }
+    } else {
+        if let Some(42) = Some(42) {
+            println!("42");
+        }
+    }
+    //~^^^^^ collapsible_else_if
+
+    if x == "hello" {
         print!("Hello ");
     } else {
         #[cfg(not(roflol))]
@@ -92,6 +105,21 @@ fn main() {
             println!("world!")
         }
     }
+
+    if x == "hello" {
+        if y == "world" {
+            print!("Hello ");
+        } else {
+            println!("world");
+        }
+    } else {
+        if let Some(42) = Some(42) {
+            println!("42");
+        } else {
+            println!("!");
+        }
+    }
+
 }
 
 #[rustfmt::skip]
@@ -104,28 +132,10 @@ fn issue_7318() {
 }
 
 fn issue_13365() {
-    // all the `expect`s that we should fulfill
+    // ensure we fulfill `#[expect]`
     if true {
     } else {
         #[expect(clippy::collapsible_else_if)]
-        if false {}
-    }
-
-    if true {
-    } else {
-        #[expect(clippy::style)]
-        if false {}
-    }
-
-    if true {
-    } else {
-        #[expect(clippy::all)]
-        if false {}
-    }
-
-    if true {
-    } else {
-        #[expect(warnings)]
         if false {}
     }
 }

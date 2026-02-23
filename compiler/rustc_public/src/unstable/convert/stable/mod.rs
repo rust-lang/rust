@@ -82,6 +82,18 @@ impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_span::def_id::DefId {
+    type T = crate::DefId;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        tables.create_def_id(*self)
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_span::Span {
     type T = crate::ty::Span;
 

@@ -62,19 +62,9 @@ jobs:
           rustup toolchain install --no-self-update --profile minimal $TOOLCHAIN
           rustup default $TOOLCHAIN
 
-      - name: cargo update compiler & tools
-        # Remove first line that always just says "Updating crates.io index"
-        run: |
-          echo -e "\ncompiler & tools dependencies:" >> cargo_update.log
-          cargo update 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-      - name: cargo update library
-        run: |
-          echo -e "\nlibrary dependencies:" >> cargo_update.log
-          cargo update --manifest-path library/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
-      - name: cargo update rustbook
-        run: |
-          echo -e "\nrustbook dependencies:" >> cargo_update.log
-          cargo update --manifest-path src/tools/rustbook/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+      - name: cargo update
+        run: ./src/tools/update-lockfile.sh
+
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v4
         with:

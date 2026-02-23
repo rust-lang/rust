@@ -7,6 +7,7 @@ IBM z/Architecture (s390x) targets (including IBM Z and LinuxONE) running Linux.
 ## Target maintainers
 
 [@uweigand](https://github.com/uweigand)
+[@Gelbpunkt](https://github.com/Gelbpunkt)
 
 ## Requirements
 

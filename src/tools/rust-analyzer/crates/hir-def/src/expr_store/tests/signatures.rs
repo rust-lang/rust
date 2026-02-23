@@ -197,3 +197,15 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
         "#]],
     );
 }
+
+#[test]
+fn regression_21138() {
+    lower_and_print(
+        r#"
+fn foo(v: for<'a> Trait1 + Trait2) {}
+    "#,
+        expect![[r#"
+            fn foo(dyn for<'a> Trait1 + Trait2) {...}
+        "#]],
+    );
+}

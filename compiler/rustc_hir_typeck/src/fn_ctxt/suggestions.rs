@@ -5,13 +5,13 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag, MultiSpan, listify};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
-    GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
-    WherePredicateKind, expr_needs_parens, is_range_literal,
+    GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,
+    TyKind, WherePredicateKind, expr_needs_parens, is_range_literal,
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
@@ -33,10 +33,10 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
+use crate::errors;
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
-use crate::{errors, fluent_generated as fluent};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
@@ -156,11 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            err.multipart_suggestion_verbose(
-                format!("use parentheses to {msg}"),
-                sugg,
-                applicability,
-            );
+            err.multipart_suggestion(format!("use parentheses to {msg}"), sugg, applicability);
             return true;
         }
         false
@@ -245,7 +241,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            err.multipart_suggestion_verbose("use parentheses to call these", sugg, applicability);
+            err.multipart_suggestion("use parentheses to call these", sugg, applicability);
 
             true
         } else {
@@ -298,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.multipart_suggestion_verbose(msg, suggestion, applicability);
+                err.multipart_suggestion(msg, suggestion, applicability);
             } else {
                 err.multipart_suggestion(msg, suggestion, applicability);
             }
@@ -482,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sugg = prefix_wrap(".map(|x| x.as_str())");
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
-                    fluent::hir_typeck_convert_to_str,
+                    msg!("try converting the passed type into a `&str`"),
                     sugg,
                     Applicability::MachineApplicable,
                 );
@@ -571,7 +567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
-            let suggest_boxing = match found.kind() {
+            let suggest_boxing = match *found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
@@ -1170,15 +1166,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let found = self.resolve_vars_if_possible(found);
 
-        let in_loop = self.is_loop(id)
-            || self
-                .tcx
+        let innermost_loop = if self.is_loop(id) {
+            Some(self.tcx.hir_node(id))
+        } else {
+            self.tcx
                 .hir_parent_iter(id)
                 .take_while(|(_, node)| {
                     // look at parents until we find the first body owner
                     node.body_id().is_none()
                 })
-                .any(|(parent_id, _)| self.is_loop(parent_id));
+                .find_map(|(parent_id, node)| self.is_loop(parent_id).then_some(node))
+        };
+        let can_break_with_value = innermost_loop.is_some_and(|node| {
+            matches!(
+                node,
+                Node::Expr(Expr { kind: ExprKind::Loop(_, _, LoopSource::Loop, ..), .. })
+            )
+        });
 
         let in_local_statement = self.is_local_statement(id)
             || self
@@ -1186,7 +1190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .hir_parent_iter(id)
                 .any(|(parent_id, _)| self.is_local_statement(parent_id));
 
-        if in_loop && in_local_statement {
+        if can_break_with_value && in_local_statement {
             err.multipart_suggestion(
                 "you might have meant to break the loop with this value",
                 vec![
@@ -1291,7 +1295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !is_in_arm(expr, self.tcx) {
                 suggs.push((span.shrink_to_hi(), ";".to_string()));
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "you might have meant to return this value",
                 suggs,
                 Applicability::MaybeIncorrect,
@@ -1603,7 +1607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             msg,
             vec![
                 (call_ident.span, "map_or".to_owned()),
@@ -1631,7 +1635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && snippet.starts_with('{')
                 && snippet.ends_with('}')
             {
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "to create an array, use square brackets instead of curly braces",
                     vec![
                         (
@@ -1795,7 +1799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(ty),
                 hir::Path { segments: [segment], .. },
             ))
-            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
+            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment))
                 if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
                     && let Ok(pick) = self.probe_for_name(
                         Mode::Path,
@@ -1805,12 +1809,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self_ty,
                         expr.hir_id,
                         ProbeScope::TraitsInScope,
-                    )
-                {
-                    (pick.item, segment)
-                } else {
-                    return false;
-                }
+                    ) =>
+            {
+                (pick.item, segment)
             }
             hir::ExprKind::Path(QPath::Resolved(
                 None,
@@ -1821,16 +1822,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if old_item_name != segment.ident.name {
                     return false;
                 }
-                if let Some(item) = self
+                let Some(item) = self
                     .tcx
                     .associated_items(self.tcx.parent(old_def_id))
                     .filter_by_name_unhygienic(capitalized_name)
                     .next()
-                {
-                    (*item, segment)
-                } else {
+                else {
                     return false;
-                }
+                };
+                (*item, segment)
             }
             _ => return false,
         };
@@ -1928,25 +1928,94 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
+                let mut suggest_derive = true;
                 if let Some(errors) =
                     self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
+                    let manually_impl = "consider manually implementing `Clone` to avoid the \
+                        implicit type parameter bounds";
                     match &errors[..] {
                         [] => {}
                         [error] => {
-                            diag.help(format!(
-                                "`Clone` is not implemented because the trait bound `{}` is \
-                                 not satisfied",
-                                error.obligation.predicate,
-                            ));
+                            let msg = "`Clone` is not implemented because a trait bound is not \
+                                satisfied";
+                            if let traits::ObligationCauseCode::ImplDerived(data) =
+                                error.obligation.cause.code()
+                            {
+                                let mut span: MultiSpan = data.span.into();
+                                if self.tcx.is_automatically_derived(data.impl_or_alias_def_id) {
+                                    span.push_span_label(
+                                        data.span,
+                                        format!(
+                                            "derive introduces an implicit `{}` bound",
+                                            error.obligation.predicate
+                                        ),
+                                    );
+                                }
+                                diag.span_help(span, msg);
+                                if self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
+                                    && data.impl_or_alias_def_id.is_local()
+                                {
+                                    diag.help(manually_impl);
+                                    suggest_derive = false;
+                                }
+                            } else {
+                                diag.help(msg);
+                            }
                         }
                         _ => {
-                            diag.help(format!(
-                                "`Clone` is not implemented because the following trait bounds \
-                                 could not be satisfied: {}",
-                                listify(&errors, |e| format!("`{}`", e.obligation.predicate))
-                                    .unwrap(),
-                            ));
+                            let unsatisfied_bounds: Vec<_> = errors
+                                .iter()
+                                .filter_map(|error| match error.obligation.cause.code() {
+                                    traits::ObligationCauseCode::ImplDerived(data) => {
+                                        let pre = if self
+                                            .tcx
+                                            .is_automatically_derived(data.impl_or_alias_def_id)
+                                        {
+                                            "derive introduces an implicit "
+                                        } else {
+                                            ""
+                                        };
+                                        Some((
+                                            data.span,
+                                            format!(
+                                                "{pre}unsatisfied trait bound `{}`",
+                                                error.obligation.predicate
+                                            ),
+                                        ))
+                                    }
+                                    _ => None,
+                                })
+                                .collect();
+                            let msg = "`Clone` is not implemented because the some trait bounds \
+                                could not be satisfied";
+                            if errors.len() == unsatisfied_bounds.len() {
+                                let mut unsatisfied_bounds_spans: MultiSpan = unsatisfied_bounds
+                                    .iter()
+                                    .map(|(span, _)| *span)
+                                    .collect::<Vec<Span>>()
+                                    .into();
+                                for (span, label) in unsatisfied_bounds {
+                                    unsatisfied_bounds_spans.push_span_label(span, label);
+                                }
+                                diag.span_help(unsatisfied_bounds_spans, msg);
+                                if errors.iter().all(|error| match error.obligation.cause.code() {
+                                    traits::ObligationCauseCode::ImplDerived(data) => {
+                                        self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
+                                            && data.impl_or_alias_def_id.is_local()
+                                    }
+                                    _ => false,
+                                }) {
+                                    diag.help(manually_impl);
+                                    suggest_derive = false;
+                                }
+                            } else {
+                                diag.help(format!(
+                                    "{msg}: {}",
+                                    listify(&errors, |e| format!("`{}`", e.obligation.predicate))
+                                        .unwrap(),
+                                ));
+                            }
                         }
                     }
                     for error in errors {
@@ -1964,7 +2033,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.suggest_derive(diag, &vec![(trait_ref.upcast(self.tcx), None, None)]);
+                if suggest_derive {
+                    self.suggest_derive(diag, &vec![(trait_ref.upcast(self.tcx), None, None)]);
+                }
             }
         }
     }
@@ -2529,7 +2600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => { /* No variants to format */ }
                 [(variant, ctor_kind, field_name, note)] => {
                     // Just a single matching variant.
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
@@ -3035,6 +3106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
+                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =
@@ -3300,7 +3372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     (msg, suggestion)
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         let suggest_to_change_suffix_or_into =
@@ -3335,7 +3407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     into_suggestion.clone()
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         match (expected_ty.kind(), checked_ty.kind()) {
@@ -3389,14 +3461,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{cast_msg}, producing the closest possible value"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3406,14 +3478,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{msg}, rounding the float towards zero"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3424,7 +3496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Uint(found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{msg}, producing the floating point representation of the integer",
                         ),
@@ -3432,14 +3504,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{cast_msg}, producing the floating point representation of the integer, \
                                  rounded if necessary",
@@ -3453,7 +3525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Int(found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer",
                             msg.clone(),
@@ -3462,14 +3534,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer, \
                                 rounded if necessary",
@@ -3486,7 +3558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | &ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
                 &ty::Char,
             ) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("{cast_msg}, since a `char` always occupies 4 bytes"),
                     cast_suggestion,
                     Applicability::MachineApplicable,

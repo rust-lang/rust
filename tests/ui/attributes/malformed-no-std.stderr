@@ -58,7 +58,7 @@ error: crate-level attribute should be an inner attribute: add an exclamation ma
 LL | #[no_std]
    | ^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this extern crate
+note: this attribute does not have an `!`, which means it is applied to this extern crate
   --> $DIR/malformed-no-std.rs:26:1
    |
 LL | extern crate core;
@@ -75,7 +75,7 @@ error: crate-level attribute should be an inner attribute: add an exclamation ma
 LL | #[no_core]
    | ^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this extern crate
+note: this attribute does not have an `!`, which means it is applied to this extern crate
   --> $DIR/malformed-no-std.rs:26:1
    |
 LL | extern crate core;

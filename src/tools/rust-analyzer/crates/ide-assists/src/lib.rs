@@ -105,6 +105,7 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
 
     mod add_braces;
+    mod add_explicit_dot_deref;
     mod add_explicit_enum_discriminant;
     mod add_explicit_type;
     mod add_label_to_loop;
@@ -242,12 +243,12 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_braces::add_braces,
+            add_explicit_dot_deref::add_explicit_method_call_deref,
             add_explicit_enum_discriminant::add_explicit_enum_discriminant,
             add_explicit_type::add_explicit_type,
             add_label_to_loop::add_label_to_loop,
             add_lifetime_to_type::add_lifetime_to_type,
             add_missing_match_arms::add_missing_match_arms,
-            add_return_type::add_return_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan_iterator,
             apply_demorgan::apply_demorgan,
@@ -392,6 +393,7 @@ mod handlers {
             // used as a tie-breaker.
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
+            add_return_type::add_return_type,
             //
             replace_string_with_char::replace_string_with_char,
             replace_string_with_char::replace_char_with_string,

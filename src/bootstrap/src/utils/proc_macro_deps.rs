@@ -3,8 +3,7 @@
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
-    "annotate-snippets",
-    "anstyle",
+    "askama_derive",
     "askama_parser",
     "basic-toml",
     "block-buffer",
@@ -21,6 +20,7 @@ pub static CRATES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
+    "foldhash",
     "generic-array",
     "hashbrown",
     "heck",
@@ -57,7 +57,6 @@ pub static CRATES: &[&str] = &[
     "unic-langid-impl",
     "unic-langid-macros",
     "unicode-ident",
-    "unicode-width",
     "version_check",
     "wasm-bindgen-macro-support",
     "wasm-bindgen-shared",

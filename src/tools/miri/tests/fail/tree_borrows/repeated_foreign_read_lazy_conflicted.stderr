@@ -18,13 +18,11 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |     do_something(*orig_ptr);
    |                  ^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span):
-   = note: inside `access_after_sub_1` at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
-note: inside `main`
-  --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
-   |
-LL |         access_after_sub_1(&mut *(foo as *mut u8).byte_add(1), orig_ptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: access_after_sub_1
+               at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

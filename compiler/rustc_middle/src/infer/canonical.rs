@@ -169,7 +169,7 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
         ) {
             return Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
-                variables: List::empty(),
+                var_kinds: List::empty(),
                 value: key,
             };
         }

@@ -5,8 +5,8 @@
 // Issue #148892.
 //@ aux-crate:crate1=crate1.rs
 
-struct MyStruct; //~ HELP  the trait `Trait` is not implemented for `MyStruct`
+struct MyStruct; //~ HELP the trait `crate1::Trait` is not implemented for `MyStruct`
 
 fn main() {
-    crate1::foo(MyStruct); //~ ERROR the trait bound `MyStruct: Trait` is not satisfied
+    crate1::foo(MyStruct); //~ ERROR the trait bound `MyStruct: crate1::Trait` is not satisfied
 }

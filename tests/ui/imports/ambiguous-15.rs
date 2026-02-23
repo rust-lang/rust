@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1638206152
-
+//@ check-pass
 mod t2 {
     #[derive(Debug)]
     pub enum Error {}
@@ -20,7 +20,7 @@ mod t3 {
 
 use self::t3::*;
 fn a<E: Error>(_: E) {}
-//~^ ERROR `Error` is ambiguous
+//~^ WARN `Error` is ambiguous
 //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 fn main() {}

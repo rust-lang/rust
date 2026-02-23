@@ -3,13 +3,12 @@ use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, ScalableElt, Scalar, Size, StructKind,
+    TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
-use rustc_index::IndexVec;
+use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
@@ -374,7 +373,7 @@ fn layout_of_uncached<'tcx>(
             // specifically care about pattern types will have to handle it.
             layout.fields = FieldsShape::Arbitrary {
                 offsets: [Size::ZERO].into_iter().collect(),
-                memory_index: [0].into_iter().collect(),
+                in_memory_order: [FieldIdx::new(0)].into_iter().collect(),
             };
             tcx.mk_layout(layout)
         }
@@ -567,6 +566,37 @@ fn layout_of_uncached<'tcx>(
             univariant(tys, kind)?
         }
 
+        // Scalable vector types
+        //
+        // ```rust (ignore, example)
+        // #[rustc_scalable_vector(3)]
+        // struct svuint32_t(u32);
+        // ```
+        ty::Adt(def, args)
+            if matches!(def.repr().scalable, Some(ScalableElt::ElementCount(..))) =>
+        {
+            let Some(element_ty) = def
+                .is_struct()
+                .then(|| &def.variant(FIRST_VARIANT).fields)
+                .filter(|fields| fields.len() == 1)
+                .map(|fields| fields[FieldIdx::ZERO].ty(tcx, args))
+            else {
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
+            };
+            let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
+            };
+
+            let element_layout = cx.layout_of(element_ty)?;
+            map_layout(cx.calc.scalable_vector_type(element_layout, element_count as u64))?
+        }
+
         // SIMD vector types.
         ty::Adt(def, args) if def.repr().simd() => {
             // Supported SIMD vectors are ADTs with a single array field:
@@ -593,8 +623,8 @@ fn layout_of_uncached<'tcx>(
 
             // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
             if let Some(limit) = find_attr!(
-                tcx.get_all_attrs(def.did()),
-                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+                tcx, def.did(),
+                RustcSimdMonomorphizeLaneLimit(limit) => limit
             ) {
                 if !limit.value_within_limit(e_len as usize) {
                     return Err(map_error(
@@ -733,14 +763,22 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::Alias(..) => {
-            // NOTE(eddyb) `layout_of` query should've normalized these away,
-            // if that was possible, so there's no reason to try again here.
-            let err = if ty.has_param() {
+            // In case we're still in a generic context, aliases might be rigid. E.g.
+            // if we've got a `T: Trait` where-bound, `T::Assoc` cannot be normalized
+            // in the current context.
+            //
+            // For some builtin traits, generic aliases can be rigid even in an empty environment,
+            // e.g. `<T as Pointee>::Metadata`.
+            //
+            // Due to trivial bounds, this can even be the case if the alias does not reference
+            // any generic parameters, e.g. a `for<'a> u32: Trait<'a>` where-bound means that
+            // `<u32 as Trait<'static>>::Assoc` is rigid.
+            let err = if ty.has_param() || !cx.typing_env.param_env.caller_bounds().is_empty() {
                 LayoutError::TooGeneric(ty)
             } else {
-                // This is only reachable with unsatisfiable predicates. For example, if we have
-                // `u8: Iterator`, then we can't compute the layout of `<u8 as Iterator>::Item`.
-                LayoutError::Unknown(ty)
+                LayoutError::ReferencesError(cx.tcx().dcx().delayed_bug(format!(
+                    "unexpected rigid alias in layout_of after normalization: {ty:?}"
+                )))
             };
             return Err(error(cx, err));
         }

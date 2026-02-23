@@ -692,6 +692,12 @@ declare_clippy_lint! {
     /// ///
     /// /// It was chosen by a fair dice roll.
     /// ```
+    ///
+    /// ### Terminal punctuation marks
+    /// This lint treats these characters as end markers: '.', '?', '!', '…' and ':'.
+    ///
+    /// The colon is not exactly a terminal punctuation mark, but this is required for paragraphs that
+    /// introduce a table or a list for example.
     #[clippy::version = "1.93.0"]
     pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
     restriction,
@@ -861,7 +867,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if attr.doc_str_and_comment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
+            if attr.doc_str_and_fragment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -869,10 +875,12 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         }),
         true,
     );
-    let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
-        add_doc_fragment(&mut acc, fragment);
-        acc
-    });
+
+    let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
+
+    for fragment in &fragments {
+        add_doc_fragment(&mut doc, fragment);
+    }
     doc.pop();
 
     if doc.trim().is_empty() {
@@ -1008,6 +1016,7 @@ struct CodeTags {
     no_run: bool,
     ignore: bool,
     compile_fail: bool,
+    test_harness: bool,
 
     rust: bool,
 }
@@ -1018,6 +1027,7 @@ impl Default for CodeTags {
             no_run: false,
             ignore: false,
             compile_fail: false,
+            test_harness: false,
 
             rust: true,
         }
@@ -1051,7 +1061,11 @@ impl CodeTags {
                     tags.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 },
-                "test_harness" | "standalone_crate" => {
+                "test_harness" => {
+                    tags.test_harness = true;
+                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                },
+                "standalone_crate" => {
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 },
                 _ if item.starts_with("ignore-") => seen_rust_tags = true,
@@ -1287,7 +1301,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     if tags.rust && !tags.compile_fail && !tags.ignore {
                         needless_doctest_main::check(cx, &text, range.start, fragments);
 
-                        if !tags.no_run {
+                        if !tags.no_run && !tags.test_harness {
                             test_attr_in_doctest::check(cx, &text, range.start, fragments);
                         }
                     }

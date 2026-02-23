@@ -139,6 +139,7 @@ fn parse_args() -> Vec<(PathBuf, Option<PathBuf>)> {
         .into_iter()
         .filter_map(Result::ok)
         .filter(|f| f.file_type().is_file())
+        .filter(|f| f.file_name().to_string_lossy().ends_with(".yml"))
         .map(|f| (f.into_path(), out_dir.clone()))
         .collect()
 }

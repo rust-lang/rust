@@ -1,6 +1,6 @@
 //@ check-pass
 //@compile-flags: -Clink-arg=-nostartfiles
-//@ignore-target: apple windows
+//@ignore-target: windows
 
 #![crate_type = "lib"]
 #![no_std]

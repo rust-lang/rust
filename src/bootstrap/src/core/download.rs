@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
+use build_helper::ci::CiEnv;
 use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
@@ -381,7 +382,7 @@ impl Config {
         }
         let base = &self.stage0_metadata.config.artifacts_server;
         let version = self.artifact_version_part(gcc_sha);
-        let filename = format!("gcc-{version}-{}.tar.xz", self.host_target.triple);
+        let filename = format!("gcc-dev-{version}-{}.tar.xz", self.host_target.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci
@@ -396,7 +397,7 @@ impl Config {
     ";
             self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
         }
-        self.unpack(&tarball, root_dir, "gcc");
+        self.unpack(&tarball, root_dir, "gcc-dev");
     }
 }
 
@@ -411,7 +412,13 @@ pub(crate) struct DownloadContext<'a> {
     pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
     pub llvm_assertions: bool,
     pub bootstrap_cache_path: &'a Option<PathBuf>,
-    pub is_running_on_ci: bool,
+    pub ci_env: CiEnv,
+}
+
+impl<'a> DownloadContext<'a> {
+    pub fn is_running_on_ci(&self) -> bool {
+        self.ci_env.is_running_in_ci()
+    }
 }
 
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
@@ -432,7 +439,7 @@ impl<'a> From<&'a Config> for DownloadContext<'a> {
             stage0_metadata: &value.stage0_metadata,
             llvm_assertions: value.llvm_assertions,
             bootstrap_cache_path: &value.bootstrap_cache_path,
-            is_running_on_ci: value.is_running_on_ci,
+            ci_env: value.ci_env,
         }
     }
 }
@@ -460,6 +467,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
         "loongarch64-unknown-linux-gnu",
         "powerpc-unknown-linux-gnu",
         "powerpc64-unknown-linux-gnu",
+        "powerpc64-unknown-linux-musl",
         "powerpc64le-unknown-linux-gnu",
         "powerpc64le-unknown-linux-musl",
         "riscv64gc-unknown-linux-gnu",
@@ -667,6 +675,7 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
         // the `.nix-deps` location.
         //
         // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+        // cc.lib: Needed similarly for `libstdc++.so.6`.
         // zlib: Needed as a system dependency of `libLLVM-*.so`.
         // patchelf: Needed for patching ELF binaries (see doc comment above).
         let nix_deps_dir = out.join(".nix-deps");
@@ -678,6 +687,7 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
                 zlib
                 patchelf
                 stdenv.cc.bintools
+                stdenv.cc.cc.lib
             ];
         }
         ";
@@ -980,7 +990,7 @@ fn download_file<'a>(
     match url.split_once("://").map(|(proto, _)| proto) {
         Some("http") | Some("https") => download_http_with_retries(
             dwn_ctx.host_target,
-            dwn_ctx.is_running_on_ci,
+            dwn_ctx.is_running_on_ci(),
             dwn_ctx.exec_ctx,
             &tempfile,
             url,

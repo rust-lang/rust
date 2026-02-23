@@ -21,6 +21,7 @@
                     "hello-world",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$hello-world",
@@ -106,6 +107,7 @@
                     "hello-world",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$hello-world",
@@ -191,6 +193,7 @@
                     "hello-world",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$hello-world",
@@ -276,6 +279,7 @@
                     "hello-world",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$hello-world",
@@ -344,6 +348,7 @@
                 ),
                 name: "libc",
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98",

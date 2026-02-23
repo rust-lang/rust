@@ -10,7 +10,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_middle;
 extern crate rustc_hir;
@@ -24,7 +23,7 @@ use rustc_public::mir::mono::{Instance, InstanceKind};
 use rustc_public::mir::visit::{Location, MirVisitor};
 use rustc_public::mir::{LocalDecl, Terminator, TerminatorKind};
 use rustc_public::ty::{FnDef, GenericArgs, RigidTy, TyKind};
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;

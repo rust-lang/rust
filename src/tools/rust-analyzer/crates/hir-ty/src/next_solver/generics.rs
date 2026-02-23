@@ -4,14 +4,15 @@ use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
     hir::generics::{GenericParams, TypeOrConstParamData},
 };
+use rustc_type_ir::inherent::GenericsOf;
 
-use crate::{db::HirDatabase, generics::parent_generic_def};
+use crate::generics::parent_generic_def;
 
 use super::SolverDefId;
 
 use super::DbInterner;
 
-pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
+pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics {
     let mk_lt = |parent, index, local_id| {
         let id = GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id });
         GenericParamDef { index, id }
@@ -50,6 +51,7 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
         result
     };
 
+    let db = interner.db;
     let (parent, own_params) = match (def.try_into(), def) {
         (Ok(def), _) => (
             parent_generic_def(db, def),
@@ -66,9 +68,12 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                 }
             }
         }
+        (_, SolverDefId::BuiltinDeriveImplId(id)) => {
+            return crate::builtin_derive::generics_of(interner, id);
+        }
         _ => panic!("No generics for {def:?}"),
     };
-    let parent_generics = parent.map(|def| Box::new(generics(db, def.into())));
+    let parent_generics = parent.map(|def| Box::new(generics(interner, def.into())));
 
     Generics {
         parent,
@@ -82,6 +87,13 @@ pub struct Generics {
     pub parent: Option<GenericDefId>,
     pub parent_count: usize,
     pub own_params: Vec<GenericParamDef>,
+}
+
+impl Generics {
+    pub(crate) fn push_param(&mut self, id: GenericParamId) {
+        let index = self.count() as u32;
+        self.own_params.push(GenericParamDef { index, id });
+    }
 }
 
 #[derive(Debug)]

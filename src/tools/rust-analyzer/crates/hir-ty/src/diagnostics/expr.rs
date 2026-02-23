@@ -41,7 +41,7 @@ use crate::{
 pub(crate) use hir_def::{
     LocalFieldId, VariantId,
     expr_store::Body,
-    hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
+    hir::{Expr, ExprId, MatchArm, Pat, PatId, RecordSpread, Statement},
 };
 
 pub enum BodyValidationDiagnostic {
@@ -99,7 +99,7 @@ impl BodyValidationDiagnostic {
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
-    infer: &'db InferenceResult<'db>,
+    infer: &'db InferenceResult,
     env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
@@ -123,7 +123,7 @@ impl<'db> ExprValidator<'db> {
         }
 
         for (id, expr) in body.exprs() {
-            if let Some((variant, missed_fields, true)) =
+            if let Some((variant, missed_fields)) =
                 record_literal_missing_fields(db, self.infer, id, expr)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
@@ -154,7 +154,7 @@ impl<'db> ExprValidator<'db> {
         }
 
         for (id, pat) in body.pats() {
-            if let Some((variant, missed_fields, true)) =
+            if let Some((variant, missed_fields)) =
                 record_pattern_missing_fields(db, self.infer, id, pat)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
@@ -313,7 +313,7 @@ impl<'db> ExprValidator<'db> {
                 );
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
-            Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind() {
+            Expr::Field { expr, .. } => match self.infer.expr_ty(*expr).kind() {
                 TyKind::Adt(adt, ..) if matches!(adt.def_id().0, AdtId::UnionId(_)) => false,
                 _ => self.is_known_valid_scrutinee(*expr),
             },
@@ -554,12 +554,12 @@ impl<'db> FilterMapNextChecker<'db> {
 
 pub fn record_literal_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult<'_>,
+    infer: &InferenceResult,
     id: ExprId,
     expr: &Expr,
-) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
-    let (fields, exhaustive) = match expr {
-        Expr::RecordLit { fields, spread, .. } => (fields, spread.is_none()),
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, spread) = match expr {
+        Expr::RecordLit { fields, spread, .. } => (fields, spread),
         _ => return None,
     };
 
@@ -571,25 +571,38 @@ pub fn record_literal_missing_fields(
     let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // don't show missing fields if:
+    // - has ..expr
+    // - or has default value + ..
+    // - or already in code
     let missed_fields: Vec<LocalFieldId> = variant_data
         .fields()
         .iter()
-        .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
+        .filter_map(|(f, d)| {
+            if specified_fields.contains(&d.name)
+                || matches!(spread, RecordSpread::Expr(_))
+                || (d.default_value.is_some() && matches!(spread, RecordSpread::FieldDefaults))
+            {
+                None
+            } else {
+                Some(f)
+            }
+        })
         .collect();
     if missed_fields.is_empty() {
         return None;
     }
-    Some((variant_def, missed_fields, exhaustive))
+    Some((variant_def, missed_fields))
 }
 
 pub fn record_pattern_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult<'_>,
+    infer: &InferenceResult,
     id: PatId,
     pat: &Pat,
-) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
-    let (fields, exhaustive) = match pat {
-        Pat::Record { path: _, args, ellipsis } => (args, !ellipsis),
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, ellipsis) = match pat {
+        Pat::Record { path: _, args, ellipsis } => (args, *ellipsis),
         _ => return None,
     };
 
@@ -601,19 +614,26 @@ pub fn record_pattern_missing_fields(
     let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // don't show missing fields if:
+    // - in code
+    // - or has ..
     let missed_fields: Vec<LocalFieldId> = variant_data
         .fields()
         .iter()
-        .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
+        .filter_map(
+            |(f, d)| {
+                if specified_fields.contains(&d.name) || ellipsis { None } else { Some(f) }
+            },
+        )
         .collect();
     if missed_fields.is_empty() {
         return None;
     }
-    Some((variant_def, missed_fields, exhaustive))
+    Some((variant_def, missed_fields))
 }
 
-fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult<'_>) -> bool {
-    fn walk(pat: PatId, body: &Body, infer: &InferenceResult<'_>, has_type_mismatches: &mut bool) {
+fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
+    fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
         match infer.type_mismatch_for_pat(pat) {
             Some(_) => *has_type_mismatches = true,
             None if *has_type_mismatches => (),

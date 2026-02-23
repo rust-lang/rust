@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -23,7 +24,7 @@ use rustc_middle::ty::{
 };
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;
@@ -496,22 +497,19 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative predicates
-    // do not need intercrate mode enabled.
+    // N.B. We need to unify impl headers *with* `TypingMode::Coherence`,
+    // even if proving negative predicates doesn't need `TypingMode::Coherence`.
     let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::Coherence);
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id, is_of_trait);
-    let param_env =
-        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header.impl_args);
-
     let impl2_header = fresh_impl_header(infcx, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
     let Some(equate_obligations) =
-        equate_impl_headers(infcx, param_env, &impl1_header, &impl2_header)
+        equate_impl_headers(infcx, ty::ParamEnv::empty(), &impl1_header, &impl2_header)
     else {
         return false;
     };
@@ -529,7 +527,16 @@ fn impl_intersection_has_negative_obligation(
         root_universe,
         (impl1_header.impl_args, impl2_header.impl_args),
     );
-    let param_env = infcx.resolve_vars_if_possible(param_env);
+
+    // Right above we plug inference variables with placeholders,
+    // this gets us new impl1_header_args with the inference variables actually resolved
+    // to those placeholders.
+    let impl1_header_args = infcx.resolve_vars_if_possible(impl1_header.impl_args);
+    // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
+    assert!(!impl1_header_args.has_non_region_infer());
+
+    let param_env =
+        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header_args);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .elaborate_sized()
@@ -566,7 +573,7 @@ fn plug_infer_with_placeholders<'tcx>(
                         ty,
                         Ty::new_placeholder(
                             self.infcx.tcx,
-                            ty::Placeholder::new(
+                            ty::PlaceholderType::new(
                                 self.universe,
                                 ty::BoundTy { var: self.next_var(), kind: ty::BoundTyKind::Anon },
                             ),
@@ -592,9 +599,9 @@ fn plug_infer_with_placeholders<'tcx>(
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
-                            ty::Placeholder::new(
+                            ty::PlaceholderConst::new(
                                 self.universe,
-                                ty::BoundConst { var: self.next_var() },
+                                ty::BoundConst::new(self.next_var()),
                             ),
                         ),
                     )
@@ -623,7 +630,7 @@ fn plug_infer_with_placeholders<'tcx>(
                             r,
                             ty::Region::new_placeholder(
                                 self.infcx.tcx,
-                                ty::Placeholder::new(
+                                ty::PlaceholderRegion::new(
                                     self.universe,
                                     ty::BoundRegion {
                                         var: self.next_var(),
@@ -758,11 +765,9 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             } = cand.kind()
                 && let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id)
             {
-                let message = infcx
-                    .tcx
-                    .get_attr(def_id, sym::rustc_reservation_impl)
-                    .and_then(|a| a.value_str());
-                if let Some(message) = message {
+                if let Some(message) =
+                    find_attr!(infcx.tcx, def_id, RustcReservationImpl(_, message) => *message)
+                {
                     self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
                 }
             }

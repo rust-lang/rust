@@ -9,7 +9,7 @@ use hir_def::{
 use rustc_type_ir::{
     TypeFoldable,
     elaborate::elaborate,
-    inherent::{BoundExistentialPredicates, IntoKind, SliceLike, Ty as _},
+    inherent::{BoundExistentialPredicates, IntoKind, Ty as _},
 };
 use tracing::debug;
 
@@ -45,7 +45,7 @@ struct ConfirmContext<'a, 'b, 'db> {
 pub(crate) struct ConfirmResult<'db> {
     pub(crate) callee: MethodCallee<'db>,
     pub(crate) illegal_sized_bound: bool,
-    pub(crate) adjustments: Box<[Adjustment<'db>]>,
+    pub(crate) adjustments: Box<[Adjustment]>,
 }
 
 impl<'a, 'db> InferenceContext<'a, 'db> {
@@ -145,7 +145,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = method_sig.inputs().as_slice()[0];
+        let method_sig_rcvr = method_sig.inputs()[0];
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?}",
             self_ty, method_sig_rcvr, method_sig
@@ -177,7 +177,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         &mut self,
         unadjusted_self_ty: Ty<'db>,
         pick: &probe::Pick<'db>,
-    ) -> (Ty<'db>, Box<[Adjustment<'db>]>) {
+    ) -> (Ty<'db>, Box<[Adjustment]>) {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef = self.ctx.table.autoderef_with_tracking(unadjusted_self_ty);
@@ -200,8 +200,10 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
                 // for two-phase borrows.
                 let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
 
-                adjustments
-                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target });
+                adjustments.push(Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                    target: target.store(),
+                });
 
                 if unsize {
                     let unsized_ty = if let TyKind::Array(elem_ty, _) = base_ty.kind() {
@@ -213,8 +215,10 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
                         )
                     };
                     target = Ty::new_ref(self.interner(), region, unsized_ty, mutbl.into());
-                    adjustments
-                        .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
+                    adjustments.push(Adjustment {
+                        kind: Adjust::Pointer(PointerCast::Unsize),
+                        target: target.store(),
+                    });
                 }
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
@@ -228,7 +232,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
 
                 adjustments.push(Adjustment {
                     kind: Adjust::Pointer(PointerCast::MutToConstPointer),
-                    target,
+                    target: target.store(),
                 });
             }
             None => {}
@@ -482,7 +486,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
                 if self.ctx.unstable_features.arbitrary_self_types {
                     self.ctx.result.type_mismatches.get_or_insert_default().insert(
                         self.expr.into(),
-                        TypeMismatch { expected: method_self_ty, actual: self_ty },
+                        TypeMismatch { expected: method_self_ty.store(), actual: self_ty.store() },
                     );
                 }
             }

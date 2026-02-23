@@ -1,6 +1,8 @@
 // This test ensures that the "Auto-hide item contents for large items" setting is working as
 // expected.
 
+include: "utils.goml"
+
 // We need to disable this check because `trait.impl/test_docs/trait.Iterator.js` doesn't exist.
 fail-on-request-error: false
 
@@ -9,8 +11,7 @@ define-function: (
     [storage_value, setting_attribute_value, toggle_attribute_value],
     block {
         assert-local-storage: {"rustdoc-auto-hide-large-items": |storage_value|}
-        click: "rustdoc-toolbar .settings-menu"
-        wait-for: "#settings"
+        call-function: ("open-settings-menu", {})
         assert-property: ("#auto-hide-large-items", {"checked": |setting_attribute_value|})
         assert-attribute: (".item-decl .type-contents-toggle", {"open": |toggle_attribute_value|})
     }

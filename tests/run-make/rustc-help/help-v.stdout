@@ -51,7 +51,7 @@ Options:
         --explain <OPT> Provide a detailed explanation of an error message
         --test          Build a test harness
         --target <TARGET>
-                        Target triple for which the code is compiled
+                        Target tuple for which the code is compiled
     -A, --allow <LINT>  Set lint allowed
     -W, --warn <LINT>   Set lint warnings
         --force-warn <LINT>
@@ -83,6 +83,9 @@ Options:
         --remap-path-prefix <FROM>=<TO>
                         Remap source names in all output (compiler messages
                         and output files)
+        --remap-path-scope <macro,diagnostics,debuginfo,coverage,object,all>
+                        Defines which scopes of paths should be remapped by
+                        `--remap-path-prefix`
     @path               Read newline separated options from `path`
 
 Additional help:

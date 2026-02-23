@@ -7,12 +7,11 @@ platform.
 
 ## Target maintainers
 
-[@RDambrosio016](https://github.com/RDambrosio016)
 [@kjetilkjeka](https://github.com/kjetilkjeka)
 
 ## Requirements
 
-This target is `no_std` and will typically be built with crate-type `cdylib` and `-C linker-flavor=llbc`, which generates PTX.
+This target is `no_std`, and uses the `llvm-bitcode-linker` by default. For PTX output, build with crate-type `cdylib`.
 The necessary components for this workflow are:
 
 - `rustup toolchain add nightly`
@@ -38,7 +37,7 @@ While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")
 A `no_std` crate containing one or more functions with `extern "ptx-kernel"` can be compiled to PTX using a command like the following.
 
 ```console
-$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly rustc --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib -- -Clinker-flavor=llbc -Zunstable-options
+$ RUSTFLAGS='-Ctarget-cpu=sm_89' cargo +nightly rustc --target=nvptx64-nvidia-cuda -Zbuild-std=core --crate-type=cdylib
 ```
 
 Intrinsics in `core::arch::nvptx` may use `#[cfg(target_feature = "...")]`, thus it's necessary to use `-Zbuild-std=core` with appropriate `RUSTFLAGS`. The following components are needed for this workflow:
@@ -49,6 +48,39 @@ $ rustup component add llvm-tools --toolchain nightly
 $ rustup component add llvm-bitcode-linker --toolchain nightly
 ```
 
+## Target specific restrictions
+
+The PTX instruction set architecture has special requirements regarding what is
+and isn't allowed. In order to avoid producing invalid PTX or generating undefined
+behavior by LLVM, some Rust language features are disallowed when compiling for this target.
+
+### Static initializers must be acyclic
+
+A static's initializer must not form a cycle with itself or another static's
+initializer. Therefore, the compiler will reject not only the self-referencing static `A`,
+but all of the following statics.
+
+```Rust
+struct Foo(&'static Foo);
+
+static A: Foo = Foo(&A); //~ ERROR static initializer forms a cycle involving `A`
+
+static B0: Foo = Foo(&B1); //~ ERROR static initializer forms a cycle involving `B0`
+static B1: Foo = Foo(&B0);
+
+static C0: Foo = Foo(&C1); //~ ERROR static initializer forms a cycle involving `C0`
+static C1: Foo = Foo(&C2);
+static C2: Foo = Foo(&C0);
+```
+
+Initializers that are acyclic are allowed:
+
+```Rust
+struct Bar(&'static u32);
+
+static BAR: Bar = Bar(&INT); // is allowed
+static INT: u32 = 42u32; // also allowed
+```
 
 <!-- FIXME: fill this out
 

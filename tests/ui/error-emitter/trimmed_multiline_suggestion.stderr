@@ -10,7 +10,7 @@ error[E0061]: this function takes 6 arguments but 5 arguments were supplied
 note: function defined here
  --> $DIR/trimmed_multiline_suggestion.rs:2:4
   |
-2 | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32, f: i32) {}
+2 | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i3...
   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^         -------
 help: provide the argument
   |

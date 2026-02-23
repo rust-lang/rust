@@ -27,7 +27,6 @@ extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_fluent_macro;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_index;
@@ -77,20 +76,22 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use back::lto::{ThinBuffer, ThinData};
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
-use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::traits::{
+    CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
+};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -98,15 +99,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::filesearch::make_target_lib_path;
 use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
 use crate::gcc_util::{target_cpu, to_gcc_features};
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -180,8 +178,6 @@ pub struct GccCodegenBackend {
     lto_supported: Arc<AtomicBool>,
 }
 
-static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
-
 fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
@@ -198,29 +194,47 @@ fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
 }
 
 impl CodegenBackend for GccCodegenBackend {
-    fn locale_resource(&self) -> &'static str {
-        crate::DEFAULT_LOCALE_RESOURCE
-    }
-
     fn name(&self) -> &'static str {
         "gcc"
     }
 
     fn init(&self, sess: &Session) {
+        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+            let rustlib_path =
+                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            sysroot_path
+                .join(rustlib_path)
+                .join("codegen-backends")
+                .join("lib")
+                .join(sess.target.llvm_target.as_ref())
+                .join("libgccjit.so")
+        }
+
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
         for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file =
-                make_target_lib_path(path, &sess.target.llvm_target).join("libgccjit.so");
+            let libgccjit_target_lib_file = file_path(path, sess);
             if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
                 load_libgccjit_if_needed(&libgccjit_target_lib_file);
                 break;
             }
         }
 
+        if !gccjit::is_loaded() {
+            let mut paths = vec![];
+            for path in sess.opts.sysroot.all_paths() {
+                let libgccjit_target_lib_file = file_path(path, sess);
+                paths.push(libgccjit_target_lib_file);
+            }
+
+            panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
+        }
+
         #[cfg(feature = "master")]
         {
+            gccjit::set_lang_name(c"GNU Rust");
+
             let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
@@ -236,7 +250,6 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature = "master")]
         {
             let lto_supported = gccjit::is_lto_supported();
-            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
             self.lto_supported.store(lto_supported, Ordering::SeqCst);
 
             gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
@@ -266,8 +279,13 @@ impl CodegenBackend for GccCodegenBackend {
         }
     }
 
+    fn thin_lto_supported(&self) -> bool {
+        false
+    }
+
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
+        providers.queries.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -361,7 +379,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         _features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
         // TODO(antoyo): set opt level.
-        Arc::new(|_| Ok(()))
+        Arc::new(|_, _| ())
     }
 }
 
@@ -405,33 +423,45 @@ unsafe impl Send for SyncContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "CodegenBackend::supports_parallel()".
 unsafe impl Sync for SyncContext {}
 
+pub struct ThinBuffer;
+
+impl ThinBufferMethods for ThinBuffer {
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+}
+
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
-    type TargetMachineError = ();
     type ModuleBuffer = ModuleBuffer;
-    type ThinData = ThinData;
+    type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
     fn run_and_optimize_fat_lto(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(cgcx, prof, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
-        cgcx: &CodegenContext<Self>,
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
-        each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ThinBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        _each_linked_rlib_for_lto: &[PathBuf],
+        _modules: Vec<(String, Self::ThinBuffer)>,
+        _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
-        back::lto::run_thin(cgcx, each_linked_rlib_for_lto, modules, cached_modules)
+        unreachable!()
     }
 
     fn print_pass_timings(&self) {
@@ -443,8 +473,9 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn optimize(
-        _cgcx: &CodegenContext<Self>,
-        _dcx: DiagCtxtHandle<'_>,
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) {
@@ -452,22 +483,27 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn optimize_thin(
-        cgcx: &CodegenContext<Self>,
-        thin: ThinModule<Self>,
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
+        _thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::optimize_thin_module(thin, cgcx)
+        unreachable!()
     }
 
     fn codegen(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule {
-        back::write::codegen(cgcx, module, config)
+        back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
 
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module)
+    fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        unreachable!()
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {

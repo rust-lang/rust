@@ -1,13 +1,13 @@
 //! Performs various peephole optimizations.
 
 use rustc_abi::ExternAbi;
-use rustc_ast::attr;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, find_attr};
 use rustc_middle::bug;
+use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
-use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::simplify::simplify_duplicate_switch_targets;
 
@@ -29,22 +29,21 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let preserve_ub_checks = find_attr!(tcx.hir_krate_attrs(), RustcPreserveUbChecks);
+        if !preserve_ub_checks {
+            SimplifyUbCheck { tcx }.visit_body(body);
+        }
         let ctx = InstSimplifyContext {
             tcx,
             local_decls: &body.local_decls,
             typing_env: body.typing_env(tcx),
         };
-        let preserve_ub_checks =
-            attr::contains_name(tcx.hir_krate_attrs(), sym::rustc_preserve_ub_checks);
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 let StatementKind::Assign(box (.., rvalue)) = &mut statement.kind else {
                     continue;
                 };
 
-                if !preserve_ub_checks {
-                    ctx.simplify_ub_check(rvalue);
-                }
                 ctx.simplify_bool_cmp(rvalue);
                 ctx.simplify_ref_deref(rvalue);
                 ctx.simplify_ptr_aggregate(rvalue);
@@ -55,7 +54,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
 
             let terminator = block.terminator.as_mut().unwrap();
             ctx.simplify_primitive_clone(terminator, &mut block.statements);
-            ctx.simplify_align_of_slice_val(terminator, &mut block.statements);
+            ctx.simplify_size_or_align_of_val(terminator, &mut block.statements);
             ctx.simplify_intrinsic_assert(terminator);
             ctx.simplify_nounwind_call(terminator);
             simplify_duplicate_switch_targets(terminator);
@@ -168,17 +167,6 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         }
     }
 
-    fn simplify_ub_check(&self, rvalue: &mut Rvalue<'tcx>) {
-        // FIXME: Should we do the same for overflow checks?
-        let Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks)) = *rvalue else {
-            return;
-        };
-
-        let const_ = Const::from_bool(self.tcx, self.tcx.sess.ub_checks());
-        let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
-        *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
-    }
-
     fn simplify_cast(&self, rvalue: &mut Rvalue<'tcx>) {
         let Rvalue::Cast(kind, operand, cast_ty) = rvalue else { return };
 
@@ -256,13 +244,18 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         terminator.kind = TerminatorKind::Goto { target: *destination_block };
     }
 
-    // Convert `align_of_val::<[T]>(ptr)` to `align_of::<T>()`, since the
-    // alignment of a slice doesn't actually depend on metadata at all
-    // and the element type is always `Sized`.
-    //
-    // This is here so it can run after inlining, where it's more useful.
-    // (LowerIntrinsics is done in cleanup, before the optimization passes.)
-    fn simplify_align_of_slice_val(
+    /// Simplify `size_of_val` and `align_of_val` if we don't actually need
+    /// to look at the value in order to calculate the result:
+    /// - For `Sized` types we can always do this for both,
+    /// - For `align_of_val::<[T]>` we can return `align_of::<T>()`, since it
+    ///   doesn't depend on the slice's length and the elements are sized.
+    ///
+    /// This is here so it can run after inlining, where it's more useful.
+    /// (LowerIntrinsics is done in cleanup, before the optimization passes.)
+    ///
+    /// Note that we intentionally just produce the lang item constants so this
+    /// works on generic types and avoids any risk of layout calculation cycles.
+    fn simplify_size_or_align_of_val(
         &self,
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
@@ -273,19 +266,35 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         } = &terminator.kind
             && args.len() == 1
             && let Some((fn_def_id, generics)) = func.const_fn_def()
-            && self.tcx.is_intrinsic(fn_def_id, sym::align_of_val)
-            && let ty::Slice(elem_ty) = *generics.type_at(0).kind()
         {
-            let align_def_id = self.tcx.require_lang_item(LangItem::AlignOf, source_info.span);
-            let align_const = Operand::unevaluated_constant(
+            let lang_item = if self.tcx.is_intrinsic(fn_def_id, sym::size_of_val) {
+                LangItem::SizeOf
+            } else if self.tcx.is_intrinsic(fn_def_id, sym::align_of_val) {
+                LangItem::AlignOf
+            } else {
+                return;
+            };
+            let generic_ty = generics.type_at(0);
+            let ty = if generic_ty.is_sized(self.tcx, self.typing_env) {
+                generic_ty
+            } else if let LangItem::AlignOf = lang_item
+                && let ty::Slice(elem_ty) = *generic_ty.kind()
+            {
+                elem_ty
+            } else {
+                return;
+            };
+
+            let const_def_id = self.tcx.require_lang_item(lang_item, source_info.span);
+            let const_op = Operand::unevaluated_constant(
                 self.tcx,
-                align_def_id,
-                &[elem_ty.into()],
+                const_def_id,
+                &[ty.into()],
                 source_info.span,
             );
             statements.push(Statement::new(
                 source_info,
-                StatementKind::Assign(Box::new((*destination, Rvalue::Use(align_const)))),
+                StatementKind::Assign(Box::new((*destination, Rvalue::Use(const_op)))),
             ));
             terminator.kind = TerminatorKind::Goto { target: *destination_block };
         }
@@ -361,4 +370,27 @@ fn resolve_rust_intrinsic<'tcx>(
     let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
     Some((intrinsic.name, args))
+}
+
+struct SimplifyUbCheck<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for SimplifyUbCheck<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
+        if let Operand::RuntimeChecks(RuntimeChecks::UbChecks) = operand {
+            *operand = Operand::Constant(Box::new(ConstOperand {
+                span: rustc_span::DUMMY_SP,
+                user_ty: None,
+                const_: Const::Val(
+                    ConstValue::from_bool(self.tcx.sess.ub_checks()),
+                    self.tcx.types.bool,
+                ),
+            }));
+        }
+    }
 }

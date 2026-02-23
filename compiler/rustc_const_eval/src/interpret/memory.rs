@@ -6,7 +6,6 @@
 //! integer. It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
-use std::assert_matches::assert_matches;
 use std::borrow::{Borrow, Cow};
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -14,7 +13,9 @@ use std::{fmt, ptr};
 
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_errors::msg;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, throw_ub_format};
@@ -22,12 +23,11 @@ use tracing::{debug, instrument, trace};
 
 use super::{
     AllocBytes, AllocId, AllocInit, AllocMap, AllocRange, Allocation, CheckAlignMsg,
-    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
-    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
+    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine,
+    MayLeak, Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
     err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::const_eval::ConstEvalErrKind;
-use crate::fluent_generated as fluent;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -67,6 +67,8 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
+    /// A variable argument list allocation (used by c-variadic functions).
+    VaList,
     /// A vtable allocation.
     VTable,
     /// A TypeId allocation.
@@ -126,6 +128,9 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     /// Map for "extra" function pointers.
     extra_fn_ptr_map: FxIndexMap<AllocId, M::ExtraFnVal>,
 
+    /// Map storing variable argument lists.
+    va_list_map: FxIndexMap<AllocId, VecDeque<MPlaceTy<'tcx, M::Provenance>>>,
+
     /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
@@ -161,6 +166,7 @@ impl<'tcx, M: Machine<'tcx>> Memory<'tcx, M> {
         Memory {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxIndexMap::default(),
+            va_list_map: FxIndexMap::default(),
             dead_alloc_map: FxIndexMap::default(),
             validation_in_progress: Cell::new(false),
         }
@@ -199,9 +205,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 return M::extern_static_pointer(self, def_id);
             }
             None => {
+                let is_fn_ptr = self.memory.extra_fn_ptr_map.contains_key(&alloc_id);
+                let is_va_list = self.memory.va_list_map.contains_key(&alloc_id);
                 assert!(
-                    self.memory.extra_fn_ptr_map.contains_key(&alloc_id),
-                    "{alloc_id:?} is neither global nor a function pointer"
+                    is_fn_ptr || is_va_list,
+                    "{alloc_id:?} is neither global, va_list nor a function pointer"
                 );
             }
             _ => {}
@@ -226,6 +234,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         // Functions are global allocations, so make sure we get the right root pointer.
         // We know this is not an `extern static` so this cannot fail.
+        self.global_root_pointer(Pointer::from(id)).unwrap()
+    }
+
+    /// Insert a new variable argument list in the global map of variable argument lists.
+    pub fn va_list_ptr(
+        &mut self,
+        varargs: VecDeque<MPlaceTy<'tcx, M::Provenance>>,
+    ) -> Pointer<M::Provenance> {
+        let id = self.tcx.reserve_alloc_id();
+        let old = self.memory.va_list_map.insert(id, varargs);
+        assert!(old.is_none());
+        // Variable argument lists are global allocations, so make sure we get the right root
+        // pointer. We know this is not an `extern static` so this cannot fail.
         self.global_root_pointer(Pointer::from(id)).unwrap()
     }
 
@@ -291,7 +312,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
             throw_ub_custom!(
-                fluent::const_eval_realloc_or_alloc_with_offset,
+                msg!(
+                    "{$kind ->
+                        [dealloc] deallocating
+                        [realloc] reallocating
+                        *[other] {\"\"}
+                    } {$ptr} which does not point to the beginning of an object"
+                ),
                 ptr = format!("{ptr:?}"),
                 kind = "realloc"
             );
@@ -327,7 +354,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return Err(ConstEvalErrKind::ConstMakeGlobalWithOffset(ptr)).into();
         }
 
-        if matches!(self.tcx.try_get_global_alloc(alloc_id), Some(_)) {
+        if self.tcx.try_get_global_alloc(alloc_id).is_some() {
             // This points to something outside the current interpreter.
             return Err(ConstEvalErrKind::ConstMakeGlobalPtrIsNonHeap(ptr)).into();
         }
@@ -371,7 +398,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if offset.bytes() != 0 {
             throw_ub_custom!(
-                fluent::const_eval_realloc_or_alloc_with_offset,
+                msg!(
+                    "{$kind ->
+                        [dealloc] deallocating
+                        [realloc] reallocating
+                        *[other] {\"\"}
+                    } {$ptr} which does not point to the beginning of an object"
+                ),
                 ptr = format!("{ptr:?}"),
                 kind = "dealloc",
             );
@@ -382,28 +415,56 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return Err(match self.tcx.try_get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Function { .. }) => {
                     err_ub_custom!(
-                        fluent::const_eval_invalid_dealloc,
+                        msg!(
+                            "deallocating {$alloc_id}, which is {$kind ->
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
+                        ),
                         alloc_id = alloc_id,
                         kind = "fn",
                     )
                 }
                 Some(GlobalAlloc::VTable(..)) => {
                     err_ub_custom!(
-                        fluent::const_eval_invalid_dealloc,
+                        msg!(
+                            "deallocating {$alloc_id}, which is {$kind ->
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
+                        ),
                         alloc_id = alloc_id,
                         kind = "vtable",
                     )
                 }
                 Some(GlobalAlloc::TypeId { .. }) => {
                     err_ub_custom!(
-                        fluent::const_eval_invalid_dealloc,
+                        msg!(
+                            "deallocating {$alloc_id}, which is {$kind ->
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
+                        ),
                         alloc_id = alloc_id,
                         kind = "typeid",
                     )
                 }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                     err_ub_custom!(
-                        fluent::const_eval_invalid_dealloc,
+                        msg!(
+                            "deallocating {$alloc_id}, which is {$kind ->
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
+                        ),
                         alloc_id = alloc_id,
                         kind = "static_mem"
                     )
@@ -414,11 +475,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         if alloc.mutability.is_not() {
-            throw_ub_custom!(fluent::const_eval_dealloc_immutable, alloc = alloc_id,);
+            throw_ub_custom!(msg!("deallocating immutable allocation {$alloc}"), alloc = alloc_id,);
         }
         if alloc_kind != kind {
             throw_ub_custom!(
-                fluent::const_eval_dealloc_kind_mismatch,
+                msg!(
+                    "deallocating {$alloc}, which is {$alloc_kind} memory, using {$kind} deallocation operation"
+                ),
                 alloc = alloc_id,
                 alloc_kind = format!("{alloc_kind}"),
                 kind = format!("{kind}"),
@@ -427,7 +490,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some((size, align)) = old_size_and_align {
             if size != alloc.size() || align != alloc.align {
                 throw_ub_custom!(
-                    fluent::const_eval_dealloc_incorrect_layout,
+                    msg!(
+                        "incorrect layout on deallocation: {$alloc} has size {$size} and alignment {$align}, but gave size {$size_found} and alignment {$align_found}"
+                    ),
                     alloc = alloc_id,
                     size = alloc.size().bytes(),
                     align = alloc.align.bytes(),
@@ -912,6 +977,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn is_alloc_live(&self, id: AllocId) -> bool {
         self.memory.alloc_map.contains_key_ref(&id)
             || self.memory.extra_fn_ptr_map.contains_key(&id)
+            || self.memory.va_list_map.contains_key(&id)
             // We check `tcx` last as that has to acquire a lock in `many-seeds` mode.
             // This also matches the order in `get_alloc_info`.
             || self.tcx.try_get_global_alloc(id).is_some()
@@ -951,6 +1017,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return AllocInfo::new(Size::ZERO, align, AllocKind::Function, Mutability::Not);
         }
 
+        // # Variable argument lists
+        if self.memory.va_list_map.contains_key(&id) {
+            return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::VaList, Mutability::Not);
+        }
+
         // # Global allocations
         if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
             // NOTE: `static` alignment from attributes has already been applied to the allocation.
@@ -981,7 +1052,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, (Size, Align)> {
         let info = self.get_alloc_info(id);
-        if matches!(info.kind, AllocKind::Dead) {
+        if info.kind == AllocKind::Dead {
             throw_ub!(PointerUseAfterFree(id, msg))
         }
         interp_ok((info.size, info.align))
@@ -1023,6 +1094,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.get_fn_alloc(alloc_id)
             .ok_or_else(|| err_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset))))
             .into()
+    }
+
+    pub fn get_ptr_va_list(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, &VecDeque<MPlaceTy<'tcx, M::Provenance>>> {
+        trace!("get_ptr_va_list({:?})", ptr);
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        let Some(va_list) = self.memory.va_list_map.get(&alloc_id) else {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        };
+
+        interp_ok(va_list)
+    }
+
+    /// Removes this VaList from the global map of variable argument lists. This does not deallocate
+    /// the VaList elements, that happens when the Frame is popped.
+    pub fn deallocate_va_list(
+        &mut self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, VecDeque<MPlaceTy<'tcx, M::Provenance>>> {
+        trace!("deallocate_va_list({:?})", ptr);
+        let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        }
+
+        let Some(va_list) = self.memory.va_list_map.swap_remove(&alloc_id) else {
+            throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
+        };
+
+        self.memory.dead_alloc_map.insert(alloc_id, (Size::ZERO, Align::ONE));
+        interp_ok(va_list)
     }
 
     /// Get the dynamic type of the given vtable pointer.
@@ -1072,7 +1180,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Recurse, if there is data here.
             // Do this *before* invoking the callback, as the callback might mutate the
             // allocation and e.g. replace all provenance by wildcards!
-            if matches!(info.kind, AllocKind::LiveData) {
+            if info.kind == AllocKind::LiveData {
                 let alloc = self.get_alloc_raw(id)?;
                 for prov in alloc.provenance().provenances() {
                     if let Some(id) = prov.get_alloc_id() {
@@ -1546,7 +1654,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if (src_offset <= dest_offset && src_offset + size > dest_offset)
                         || (dest_offset <= src_offset && dest_offset + size > src_offset)
                     {
-                        throw_ub_custom!(fluent::const_eval_copy_nonoverlapping_overlapping);
+                        throw_ub_custom!(msg!(
+                            "`copy_nonoverlapping` called on overlapping ranges"
+                        ));
                     }
                 }
             }
@@ -1605,7 +1715,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
                         let info = self.get_alloc_info(alloc_id);
-                        if matches!(info.kind, AllocKind::TypeId) {
+                        if info.kind == AllocKind::TypeId {
                             // We *could* actually precisely answer this question since here,
                             // the offset *is* the integer value. But the entire point of making
                             // this a pointer is not to leak the integer value, so we say everything

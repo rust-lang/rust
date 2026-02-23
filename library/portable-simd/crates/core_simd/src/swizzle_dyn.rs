@@ -1,10 +1,7 @@
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::Simd;
 use core::mem;
 
-impl<const N: usize> Simd<u8, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Simd<u8, N> {
     /// Swizzle a vector of bytes according to the index vector.
     /// Indices within range select the appropriate byte.
     /// Indices "out of bounds" instead select 0.
@@ -139,7 +136,7 @@ unsafe fn armv7_neon_swizzle_u8x16(bytes: Simd<u8, 16>, idxs: Simd<u8, 16>) -> S
 #[inline]
 #[allow(clippy::let_and_return)]
 unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
-    use crate::simd::cmp::SimdPartialOrd;
+    use crate::simd::{Select, cmp::SimdPartialOrd};
     #[cfg(target_arch = "x86")]
     use core::arch::x86;
     #[cfg(target_arch = "x86_64")]
@@ -184,10 +181,7 @@ unsafe fn transize<T, const N: usize>(
     f: unsafe fn(T, T) -> T,
     a: Simd<u8, N>,
     b: Simd<u8, N>,
-) -> Simd<u8, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+) -> Simd<u8, N> {
     // SAFETY: Same obligation to use this function as to use mem::transmute_copy.
     unsafe { mem::transmute_copy(&f(mem::transmute_copy(&a), mem::transmute_copy(&b))) }
 }
@@ -196,11 +190,8 @@ where
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(unused)]
 #[inline(always)]
-fn zeroing_idxs<const N: usize>(idxs: Simd<u8, N>) -> Simd<u8, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
-    use crate::simd::cmp::SimdPartialOrd;
+fn zeroing_idxs<const N: usize>(idxs: Simd<u8, N>) -> Simd<u8, N> {
+    use crate::simd::{Select, cmp::SimdPartialOrd};
     idxs.simd_lt(Simd::splat(N as u8))
         .select(idxs, Simd::splat(u8::MAX))
 }

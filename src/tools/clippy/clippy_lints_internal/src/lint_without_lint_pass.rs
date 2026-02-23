@@ -250,8 +250,8 @@ pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<
         if let hir::Attribute::Unparsed(attr_kind) = &attr
             // Identify attribute
             && let [tool_name, attr_name] = &attr_kind.path.segments[..]
-            && tool_name.name == sym::clippy
-            && attr_name.name == sym::version
+            && tool_name == &sym::clippy
+            && attr_name == &sym::version
             && let Some(version) = attr.value_str()
         {
             Some(version)

@@ -9,13 +9,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
@@ -36,7 +35,7 @@ use crate::{
     config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
     discover,
-    flycheck::{FlycheckHandle, FlycheckMessage},
+    flycheck::{FlycheckHandle, FlycheckMessage, PackageSpecifier},
     line_index::{LineEndings, LineIndex},
     lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
@@ -113,6 +112,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<FlycheckMessage>,
     pub(crate) flycheck_receiver: Receiver<FlycheckMessage>,
     pub(crate) last_flycheck_error: Option<String>,
+    pub(crate) flycheck_formatted_commands: Vec<String>,
 
     // Test explorer
     pub(crate) test_run_session: Option<Vec<CargoTestHandle>>,
@@ -188,18 +188,19 @@ pub(crate) struct GlobalState {
     /// been called.
     pub(crate) deferred_task_queue: DeferredTaskQueue,
 
-    /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
+    /// HACK: Workaround for <https://github.com/rust-lang/rust-analyzer/issues/19709>
     /// This is marked true if we failed to load a crate root file at crate graph creation,
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
     pub(crate) incomplete_crate_graph: bool,
 
     pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
+    pub(crate) last_gc_revision: Revision,
 }
 
 // FIXME: This should move to the VFS once the rewrite is done.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct MiniCoreRustAnalyzerInternalOnly {
-    pub(crate) minicore_text: Option<String>,
+    pub(crate) minicore_text: Option<Arc<str>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -256,6 +257,8 @@ impl GlobalState {
 
         let (discover_sender, discover_receiver) = unbounded();
 
+        let last_gc_revision = analysis_host.raw_database().nonce_and_revision().1;
+
         let mut this = GlobalState {
             sender,
             req_queue: ReqQueue::default(),
@@ -286,6 +289,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
             last_flycheck_error: None,
+            flycheck_formatted_commands: vec![],
 
             test_run_session: None,
             test_run_sender,
@@ -319,6 +323,7 @@ impl GlobalState {
             incomplete_crate_graph: false,
 
             minicore: MiniCoreRustAnalyzerInternalOnly::default(),
+            last_gc_revision,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -343,11 +348,11 @@ impl GlobalState {
 
         let (change, modified_rust_files, workspace_structure_change) =
             self.cancellation_pool.scoped(|s| {
-                // start cancellation in parallel, this will kick off lru eviction
+                // start cancellation in parallel,
                 // allowing us to do meaningful work while waiting
                 let analysis_host = AssertUnwindSafe(&mut self.analysis_host);
                 s.spawn(thread::ThreadIntent::LatencySensitive, || {
-                    { analysis_host }.0.request_cancellation()
+                    { analysis_host }.0.trigger_cancellation()
                 });
 
                 // downgrade to read lock to allow more readers while we are normalizing text
@@ -435,6 +440,7 @@ impl GlobalState {
             });
 
         self.analysis_host.apply_change(change);
+
         if !modified_ratoml_files.is_empty()
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
@@ -728,7 +734,7 @@ impl GlobalState {
 
 impl Drop for GlobalState {
     fn drop(&mut self) {
-        self.analysis_host.request_cancellation();
+        self.analysis_host.trigger_cancellation();
     }
 }
 
@@ -820,7 +826,7 @@ impl GlobalStateSnapshot {
                     let Some(krate) = project.crate_by_root(path) else {
                         continue;
                     };
-                    let Some(build) = krate.build else {
+                    let Some(build) = krate.build.clone() else {
                         continue;
                     };
 
@@ -828,6 +834,7 @@ impl GlobalStateSnapshot {
                         label: build.label,
                         target_kind: build.target_kind,
                         shell_runnables: project.runnables().to_owned(),
+                        project_root: project.project_root().to_owned(),
                     }));
                 }
                 ProjectWorkspaceKind::DetachedFile { .. } => {}
@@ -839,23 +846,43 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn all_workspace_dependencies_for_package(
         &self,
-        package: &Arc<PackageId>,
-    ) -> Option<FxHashSet<Arc<PackageId>>> {
-        for workspace in self.workspaces.iter() {
-            match &workspace.kind {
-                ProjectWorkspaceKind::Cargo { cargo, .. }
-                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
-                    let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+        package: &PackageSpecifier,
+    ) -> Option<FxHashSet<PackageSpecifier>> {
+        match package {
+            PackageSpecifier::Cargo { package_id } => {
+                self.workspaces.iter().find_map(|workspace| match &workspace.kind {
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                        let package = cargo.packages().find(|p| cargo[*p].id == *package_id)?;
 
-                    return cargo[package]
-                        .all_member_deps
-                        .as_ref()
-                        .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
-                }
-                _ => {}
+                        cargo[package].all_member_deps.as_ref().map(|deps| {
+                            deps.iter()
+                                .map(|dep| cargo[*dep].id.clone())
+                                .map(|p| PackageSpecifier::Cargo { package_id: p })
+                                .collect()
+                        })
+                    }
+                    _ => None,
+                })
+            }
+            PackageSpecifier::BuildInfo { label } => {
+                self.workspaces.iter().find_map(|workspace| match &workspace.kind {
+                    ProjectWorkspaceKind::Json(p) => {
+                        let krate = p.crate_by_label(label)?;
+                        Some(
+                            krate
+                                .iter_deps()
+                                .filter_map(|dep| p[dep].build.as_ref())
+                                .map(|build| PackageSpecifier::BuildInfo {
+                                    label: build.label.clone(),
+                                })
+                                .collect(),
+                        )
+                    }
+                    _ => None,
+                })
             }
         }
-        None
     }
 
     pub(crate) fn file_exists(&self, file_id: FileId) -> bool {

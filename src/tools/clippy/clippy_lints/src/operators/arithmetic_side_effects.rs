@@ -33,7 +33,10 @@ impl ArithmeticSideEffects {
         allowed_binary.extend([
             ("f32", FxHashSet::from_iter(["f32"])),
             ("f64", FxHashSet::from_iter(["f64"])),
-            ("std::string::String", FxHashSet::from_iter(["str"])),
+            (
+                "std::string::String",
+                FxHashSet::from_iter(["str", "std::string::String"]),
+            ),
         ]);
         for (lhs, rhs) in &conf.arithmetic_side_effects_allowed_binary {
             allowed_binary.entry(lhs).or_default().insert(rhs);

@@ -3,6 +3,11 @@ error[E0574]: expected struct, variant or union type, found trait `Trait`
    |
 LL |         Trait { x: 42 } => ()
    |         ^^^^^ not a struct, variant or union type
+   |
+help: consider importing this struct instead
+   |
+LL + use std::mem::type_info::Trait;
+   |
 
 error: aborting due to 1 previous error
 

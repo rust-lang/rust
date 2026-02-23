@@ -1,0 +1,26 @@
+error: Rust has no postfix increment operator
+  --> $DIR/cfg_select_parse_error.rs:8:22
+   |
+LL |         false => { 1 ++ 2 }
+   |                      ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -         false => { 1 ++ 2 }
+LL +         false => { { let tmp = 1 ; 1 += 1; tmp } 2 }
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/cfg_select_parse_error.rs:15:29
+   |
+LL |     false => { fn foo() { 1 +++ 2 } }
+   |                             ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     false => { fn foo() { 1 +++ 2 } }
+LL +     false => { fn foo() { { let tmp = 1 ; 1 += 1; tmp }+ 2 } }
+   |
+
+error: aborting due to 2 previous errors
+

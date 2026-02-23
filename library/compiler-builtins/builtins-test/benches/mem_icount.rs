@@ -1,11 +1,11 @@
-//! Benchmarks that use Callgrind (via `iai_callgrind`) to report instruction count metrics. This
+//! Benchmarks that use Callgrind (via `gungraun`) to report instruction count metrics. This
 //! is stable enough to be tested in CI.
 
 use std::hint::black_box;
 use std::{ops, slice};
 
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 const PAGE_SIZE: usize = 0x1000; // 4 kiB
 const MAX_ALIGN: usize = 512; // assume we may use avx512 operations one day
@@ -108,7 +108,7 @@ mod mcpy {
         ],
         setup = setup,
     )]
-    fn bench((len, mut dst, src): (usize, AlignedSlice, AlignedSlice)) {
+    fn bench_cpy((len, mut dst, src): (usize, AlignedSlice, AlignedSlice)) {
         unsafe {
             black_box(memcpy(
                 black_box(dst.as_mut_ptr()),
@@ -118,7 +118,7 @@ mod mcpy {
         }
     }
 
-    library_benchmark_group!(name = memcpy; benchmarks = bench);
+    library_benchmark_group!(name = memcpy; benchmarks = bench_cpy);
 }
 
 mod mset {
@@ -157,7 +157,7 @@ mod mset {
         ],
         setup = setup,
     )]
-    fn bench((len, mut dst): (usize, AlignedSlice)) {
+    fn bench_set((len, mut dst): (usize, AlignedSlice)) {
         unsafe {
             black_box(memset(
                 black_box(dst.as_mut_ptr()),
@@ -167,7 +167,7 @@ mod mset {
         }
     }
 
-    library_benchmark_group!(name = memset; benchmarks = bench);
+    library_benchmark_group!(name = memset; benchmarks = bench_set);
 }
 
 mod mcmp {
@@ -225,7 +225,7 @@ mod mcmp {
         ],
         setup = setup
     )]
-    fn bench((len, mut dst, src): (usize, AlignedSlice, AlignedSlice)) {
+    fn bench_cmp((len, mut dst, src): (usize, AlignedSlice, AlignedSlice)) {
         unsafe {
             black_box(memcmp(
                 black_box(dst.as_mut_ptr()),
@@ -235,7 +235,7 @@ mod mcmp {
         }
     }
 
-    library_benchmark_group!(name = memcmp; benchmarks = bench);
+    library_benchmark_group!(name = memcmp; benchmarks = bench_cmp);
 }
 
 mod mmove {
@@ -384,7 +384,7 @@ mod mmove {
         ],
         setup = setup_forward
     )]
-    fn forward((len, spread, mut buf): (usize, usize, AlignedSlice)) {
+    fn forward_move((len, spread, mut buf): (usize, usize, AlignedSlice)) {
         // Test moving from the start of the buffer toward the end
         unsafe {
             black_box(memmove(
@@ -478,7 +478,7 @@ mod mmove {
         ],
         setup = setup_backward
     )]
-    fn backward((len, spread, mut buf): (usize, usize, AlignedSlice)) {
+    fn backward_move((len, spread, mut buf): (usize, usize, AlignedSlice)) {
         // Test moving from the end of the buffer toward the start
         unsafe {
             black_box(memmove(
@@ -489,7 +489,7 @@ mod mmove {
         }
     }
 
-    library_benchmark_group!(name = memmove; benchmarks = forward, backward);
+    library_benchmark_group!(name = memmove; benchmarks = forward_move, backward_move);
 }
 
 use mcmp::memcmp;

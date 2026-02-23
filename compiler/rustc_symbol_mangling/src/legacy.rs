@@ -293,7 +293,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
             ty::ConstKind::Value(cv) if cv.ty.is_integral() => {
                 // The `pretty_print_const` formatting depends on -Zverbose-internals
                 // flag, so we cannot reuse it here.
-                let scalar = cv.valtree.unwrap_leaf();
+                let scalar = cv.to_leaf();
                 let signed = matches!(cv.ty.kind(), ty::Int(_));
                 write!(
                     self,

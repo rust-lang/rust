@@ -1,0 +1,98 @@
+error: `#[eii_declaration(...)]` is only valid on macros
+  --> $DIR/errors.rs:8:1
+   |
+LL | #[eii_declaration(bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_declaration(...)]` is only valid on macros
+  --> $DIR/errors.rs:10:5
+   |
+LL |     #[eii_declaration(bar)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_declaration(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:14:1
+   |
+LL | #[eii_declaration]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_declaration(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:15:1
+   |
+LL | #[eii_declaration()]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: expected this argument to be "unsafe"
+  --> $DIR/errors.rs:16:24
+   |
+LL | #[eii_declaration(bar, hello)]
+   |                        ^^^^^
+   |
+note: the second argument is optional
+  --> $DIR/errors.rs:16:24
+   |
+LL | #[eii_declaration(bar, hello)]
+   |                        ^^^^^
+
+error: `#[eii_declaration(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:17:1
+   |
+LL | #[eii_declaration(bar, "unsafe", hello)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_declaration(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:18:1
+   |
+LL | #[eii_declaration(bar, hello, "unsafe")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[eii_declaration(...)]` expects a list of one or two elements
+  --> $DIR/errors.rs:19:1
+   |
+LL | #[eii_declaration = "unsafe"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:28:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:30:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/errors.rs:32:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:35:1
+   |
+LL | #[foo()]
+   | ^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:37:1
+   |
+LL | #[foo(default, bar)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:39:1
+   |
+LL | #[foo("default")]
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
+  --> $DIR/errors.rs:41:1
+   |
+LL | #[foo = "default"]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+

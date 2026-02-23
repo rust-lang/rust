@@ -97,7 +97,7 @@ pub enum Adjust {
     NeverToAny,
 
     /// Dereference once, producing a place.
-    Deref(Option<OverloadedDeref>),
+    Deref(DerefAdjustKind),
 
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow),
@@ -106,6 +106,12 @@ pub enum Adjust {
 
     /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
     ReborrowPin(hir::Mutability),
+}
+
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub enum DerefAdjustKind {
+    Builtin,
+    Overloaded(OverloadedDeref),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`

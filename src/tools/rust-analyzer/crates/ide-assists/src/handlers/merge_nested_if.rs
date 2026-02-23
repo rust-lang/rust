@@ -1,7 +1,6 @@
-use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
     T,
-    ast::{self, AstNode, BinaryOp},
+    ast::{self, AstNode, BinaryOp, edit::AstNodeEdit},
 };
 
 use crate::{
@@ -39,10 +38,6 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     }
 
     let cond = expr.condition()?;
-    //should not apply for if-let
-    if is_pattern_cond(cond.clone()) {
-        return None;
-    }
 
     let cond_range = cond.syntax().text_range();
 
@@ -62,12 +57,8 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         return None;
     }
     let nested_if_cond = nested_if_to_merge.condition()?;
-    if is_pattern_cond(nested_if_cond.clone()) {
-        return None;
-    }
 
     let nested_if_then_branch = nested_if_to_merge.then_branch()?;
-    let then_branch_range = then_branch.syntax().text_range();
 
     acc.add(AssistId::refactor_rewrite("merge_nested_if"), "Merge nested if", if_range, |edit| {
         let cond_text = if has_logic_op_or(&cond) {
@@ -85,7 +76,7 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         let replace_cond = format!("{cond_text} && {nested_if_cond_text}");
 
         edit.replace(cond_range, replace_cond);
-        edit.replace(then_branch_range, nested_if_then_branch.syntax().text());
+        edit.replace_ast(then_branch, nested_if_then_branch.dedent(1.into()));
     })
 }
 
@@ -112,8 +103,20 @@ mod tests {
     fn merge_nested_if_test1() {
         check_assist(
             merge_nested_if,
-            "fn f() { i$0f x == 3 { if y == 4 { 1 } } }",
-            "fn f() { if x == 3 && y == 4 { 1 } }",
+            "
+            fn f() {
+                i$0f x == 3 {
+                    if y == 4 {
+                        1
+                    }
+                }
+            }",
+            "
+            fn f() {
+                if x == 3 && y == 4 {
+                    1
+                }
+            }",
         )
     }
 
@@ -172,6 +175,24 @@ mod tests {
     }
 
     #[test]
+    fn merge_nested_if_test8() {
+        check_assist(
+            merge_nested_if,
+            "fn f() { i$0f let Some(x) = y { if x == 4 { 1 } } }",
+            "fn f() { if let Some(x) = y && x == 4 { 1 } }",
+        )
+    }
+
+    #[test]
+    fn merge_nested_if_test9() {
+        check_assist(
+            merge_nested_if,
+            "fn f() { i$0f y == 0 { if let Some(x) = y { 1 } } }",
+            "fn f() { if y == 0 && let Some(x) = y { 1 } }",
+        )
+    }
+
+    #[test]
     fn merge_nested_if_do_not_apply_to_if_with_else_branch() {
         check_assist_not_applicable(
             merge_nested_if,
@@ -184,22 +205,6 @@ mod tests {
         check_assist_not_applicable(
             merge_nested_if,
             "fn f() { i$0f x == 3 { if y == 4 { 1 } else { 2 } } }",
-        )
-    }
-
-    #[test]
-    fn merge_nested_if_do_not_apply_to_if_let() {
-        check_assist_not_applicable(
-            merge_nested_if,
-            "fn f() { i$0f let Some(x) = y { if x == 4 { 1 } } }",
-        )
-    }
-
-    #[test]
-    fn merge_nested_if_do_not_apply_to_nested_if_let() {
-        check_assist_not_applicable(
-            merge_nested_if,
-            "fn f() { i$0f y == 0 { if let Some(x) = y { 1 } } }",
         )
     }
 

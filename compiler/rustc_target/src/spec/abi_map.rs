@@ -56,6 +56,7 @@ impl AbiMap {
                 ArmVer::Other
             }),
             Arch::Avr => ArchKind::Avr,
+            Arch::LoongArch32 | Arch::LoongArch64 => ArchKind::LoongArch,
             Arch::Msp430 => ArchKind::Msp430,
             Arch::Nvptx64 => ArchKind::Nvptx,
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
@@ -87,6 +88,7 @@ impl AbiMap {
 
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
+            (ExternAbi::RustPreserveNone, _) => CanonAbi::RustPreserveNone,
 
             (ExternAbi::Custom, _) => CanonAbi::Custom,
 
@@ -108,7 +110,10 @@ impl AbiMap {
 
             (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::EfiApi, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
-            (ExternAbi::EfiApi, ArchKind::Aarch64 | ArchKind::Riscv | ArchKind::X86) => CanonAbi::C,
+            (
+                ExternAbi::EfiApi,
+                ArchKind::Aarch64 | ArchKind::LoongArch | ArchKind::Riscv | ArchKind::X86,
+            ) => CanonAbi::C,
             (ExternAbi::EfiApi, _) => return AbiMapping::Invalid,
 
             /* arm */
@@ -196,6 +201,7 @@ enum ArchKind {
     Amdgpu,
     Arm(ArmVer),
     Avr,
+    LoongArch,
     Msp430,
     Nvptx,
     Riscv,

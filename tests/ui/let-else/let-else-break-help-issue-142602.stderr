@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/let-else-break-help-issue-142602.rs:10:19
+   |
+LL |             break;
+   |             ----- expected because of this `break`
+...
+LL |             break 3;
+   |                   ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-break-help-issue-142602.rs:20:19
+   |
+LL |             break;
+   |             ----- expected because of this `break`
+...
+LL |             break 3;
+   |                   ^ expected `()`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

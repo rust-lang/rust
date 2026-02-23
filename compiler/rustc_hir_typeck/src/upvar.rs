@@ -36,10 +36,9 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -761,6 +760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///       ],
     /// }
     /// ```
+    #[instrument(level = "debug", skip(self))]
     fn compute_min_captures(
         &self,
         closure_def_id: LocalDefId,
@@ -1742,7 +1742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn should_log_capture_analysis(&self, closure_def_id: LocalDefId) -> bool {
-        self.has_rustc_attrs && self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
+        self.has_rustc_attrs && find_attr!(self.tcx, closure_def_id, RustcCaptureAnalysis)
     }
 
     fn log_capture_analysis_first_pass(
@@ -2029,6 +2029,7 @@ struct InferBorrowKind<'tcx> {
 }
 
 impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
+    #[instrument(skip(self), level = "debug")]
     fn fake_read(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -2119,6 +2120,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
 }
 
 /// Rust doesn't permit moving fields out of a type that implements drop
+#[instrument(skip(fcx), ret, level = "debug")]
 fn restrict_precision_for_drop_types<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     mut place: Place<'tcx>,
@@ -2179,6 +2181,7 @@ fn restrict_precision_for_unsafe(
 /// - No unsafe block is required to capture `place`.
 ///
 /// Returns the truncated place and updated capture mode.
+#[instrument(ret, level = "debug")]
 fn restrict_capture_precision(
     place: Place<'_>,
     curr_mode: ty::UpvarCapture,
@@ -2208,6 +2211,7 @@ fn restrict_capture_precision(
 }
 
 /// Truncate deref of any reference.
+#[instrument(ret, level = "debug")]
 fn adjust_for_move_closure(
     mut place: Place<'_>,
     mut kind: ty::UpvarCapture,
@@ -2222,6 +2226,7 @@ fn adjust_for_move_closure(
 }
 
 /// Truncate deref of any reference.
+#[instrument(ret, level = "debug")]
 fn adjust_for_use_closure(
     mut place: Place<'_>,
     mut kind: ty::UpvarCapture,
@@ -2237,6 +2242,7 @@ fn adjust_for_use_closure(
 
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
+#[instrument(ret, level = "debug")]
 fn adjust_for_non_move_closure(
     mut place: Place<'_>,
     mut kind: ty::UpvarCapture,
@@ -2559,6 +2565,7 @@ fn determine_place_ancestry_relation<'tcx>(
 ///     // it is constrained to `'a`
 /// }
 /// ```
+#[instrument(ret, level = "debug")]
 fn truncate_capture_for_optimization(
     mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,

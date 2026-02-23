@@ -1,6 +1,6 @@
 # WebAssembly (WASM) notification group
 
-**Github Label:** [O-wasm] <br>
+**GitHub Label:** [O-wasm] <br>
 **Ping command:** `@rustbot ping wasm`
 
 [O-wasm]: https://github.com/rust-lang/rust/labels/O-wasm

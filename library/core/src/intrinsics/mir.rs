@@ -289,7 +289,7 @@
     reason = "MIR is an implementation detail and extremely unstable",
     issue = "none"
 )]
-#![allow(unused_variables, non_snake_case, missing_debug_implementations)]
+#![allow(unused_variables, non_snake_case, missing_debug_implementations, missing_docs)]
 
 /// Type representing basic blocks.
 ///

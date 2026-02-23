@@ -308,8 +308,8 @@ pub const trait AsRef<T: PointeeSized>: PointeeSized {
 /// both `AsMut<Vec<T>>` and `AsMut<[T]>`.
 ///
 /// In the following, the example functions `caesar` and `null_terminate` provide a generic
-/// interface which work with any type that can be converted by cheap mutable-to-mutable conversion
-/// into a byte slice (`[u8]`) or byte vector (`Vec<u8>`), respectively.
+/// interface which works with any type that can be converted by cheap mutable-to-mutable conversion
+/// into a byte slice (`[u8]`) or a byte vector (`Vec<u8>`), respectively.
 ///
 /// [dereference]: core::ops::DerefMut
 /// [target type]: core::ops::Deref::Target

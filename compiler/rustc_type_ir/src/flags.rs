@@ -74,7 +74,7 @@ bitflags::bitflags! {
         /// Does this have `Projection`?
         const HAS_TY_PROJECTION           = 1 << 10;
         /// Does this have `Free` aliases?
-        const HAS_TY_FREE_ALIAS                 = 1 << 11;
+        const HAS_TY_FREE_ALIAS           = 1 << 11;
         /// Does this have `Opaque`?
         const HAS_TY_OPAQUE               = 1 << 12;
         /// Does this have `Inherent`?
@@ -135,7 +135,7 @@ bitflags::bitflags! {
         const HAS_TY_CORO                 = 1 << 24;
 
         /// Does this have have a `Bound(BoundVarIndexKind::Canonical, _)`?
-        const HAS_CANONICAL_BOUND      = 1 << 25;
+        const HAS_CANONICAL_BOUND         = 1 << 25;
     }
 }
 
@@ -477,7 +477,17 @@ impl<I: Interner> FlagComputation<I> {
             ty::ConstKind::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            ty::ConstKind::Value(cv) => self.add_ty(cv.ty()),
+            ty::ConstKind::Value(cv) => {
+                self.add_ty(cv.ty());
+                match cv.valtree().kind() {
+                    ty::ValTreeKind::Leaf(_) => (),
+                    ty::ValTreeKind::Branch(cts) => {
+                        for ct in cts {
+                            self.add_const(*ct);
+                        }
+                    }
+                }
+            }
             ty::ConstKind::Expr(e) => self.add_args(e.args().as_slice()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }

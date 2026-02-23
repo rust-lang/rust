@@ -3,7 +3,7 @@
 //! The reference is [Intel 64 and IA-32 Architectures Software Developer's
 //! Manual Volume 2: Instruction Set Reference, A-Z][intel64_ref] (p. 4-241).
 //!
-//! [intel64_ref]: http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [intel64_ref]: https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
 use crate::core_arch::x86::__m128i;
 
@@ -45,7 +45,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "pclmulqdq")]
-    unsafe fn test_mm_clmulepi64_si128() {
+    fn test_mm_clmulepi64_si128() {
         // Constants taken from https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf
         let a = _mm_set_epi64x(0x7b5b546573745665, 0x63746f725d53475d);
         let b = _mm_set_epi64x(0x4869285368617929, 0x5b477565726f6e5d);

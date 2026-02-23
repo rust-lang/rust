@@ -64,7 +64,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             ValueNs::LocalBinding(pat) => {
                 return match self.result.type_of_binding.get(pat) {
-                    Some(ty) => Some(ValuePathResolution::NonGeneric(*ty)),
+                    Some(ty) => Some(ValuePathResolution::NonGeneric(ty.as_ref())),
                     None => {
                         never!("uninferred pattern?");
                         None
@@ -93,6 +93,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if let GenericDefId::StaticId(_) = generic_def {
             // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
             let ty = self.db.value_ty(value_def)?.skip_binder();
+            let ty = self.process_remote_user_written_ty(ty);
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 
@@ -102,7 +103,7 @@ impl<'db> InferenceContext<'_, 'db> {
             // This is something like `TypeAlias::<Args>::EnumVariant`. Do not call `substs_from_path()`,
             // as it'll try to re-lower the previous segment assuming it refers to the enum, but it refers
             // to the type alias and they may have different generics.
-            self.types.empty_args
+            self.types.empty.generic_args
         } else {
             self.with_body_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);
@@ -163,11 +164,11 @@ impl<'db> InferenceContext<'_, 'db> {
             let value_or_partial = path_ctx.resolve_path_in_value_ns(hygiene)?;
 
             match value_or_partial {
-                ResolveValueResult::ValueNs(it, _) => {
+                ResolveValueResult::ValueNs(it) => {
                     drop_ctx(ctx, no_diagnostics);
                     (it, None)
                 }
-                ResolveValueResult::Partial(def, remaining_index, _) => {
+                ResolveValueResult::Partial(def, remaining_index) => {
                     // there may be more intermediate segments between the resolved one and
                     // the end. Only the last segment needs to be resolved to a value; from
                     // the segments before that, we need to get either a type or a trait ref.
@@ -240,11 +241,8 @@ impl<'db> InferenceContext<'_, 'db> {
 
         if let ItemContainerId::TraitId(trait_) = container {
             let parent_len = generics(self.db, def).parent_generics().map_or(0, |g| g.len_self());
-            let parent_subst = GenericArgs::new_from_iter(
-                interner,
-                subst.as_slice()[..parent_len].iter().copied(),
-            );
-            let trait_ref = TraitRef::new(interner, trait_.into(), parent_subst);
+            let parent_subst = GenericArgs::new_from_slice(&subst.as_slice()[..parent_len]);
+            let trait_ref = TraitRef::new_from_args(interner, trait_.into(), parent_subst);
             self.table.register_predicate(Obligation::new(
                 interner,
                 ObligationCause::new(),
@@ -339,7 +337,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     [ty.into()],
                     |_, id, _| self.table.next_var_for_param(id),
                 );
-                let trait_ref = TraitRef::new(self.interner(), trait_.into(), args);
+                let trait_ref = TraitRef::new_from_args(self.interner(), trait_.into(), args);
                 self.table.register_predicate(Obligation::new(
                     self.interner(),
                     ObligationCause::new(),

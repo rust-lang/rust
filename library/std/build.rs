@@ -13,6 +13,9 @@ fn main() {
         println!("cargo:rustc-cfg=netbsd10");
     }
 
+    // Needed for `#![doc(auto_cfg(hide(no_global_oom_handling)))]` attribute.
+    println!("cargo::rustc-check-cfg=cfg(no_global_oom_handling)");
+
     println!("cargo:rustc-check-cfg=cfg(restricted_std)");
     if target_os == "linux"
         || target_os == "android"

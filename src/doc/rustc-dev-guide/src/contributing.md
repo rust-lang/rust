@@ -60,7 +60,7 @@ See [The Rust Book] for more details on Rust’s train release model.
   This is the only channel where unstable features are intended to be used,
   which happens via opt-in feature gates.
 
-See [this chapter on implementing new features](./implementing_new_features.md) for more
+See [this chapter on implementing new features](./implementing-new-features.md) for more
 information.
 
 [The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
@@ -283,7 +283,7 @@ this can take a while and the queue can sometimes be long.
 Also, note that PRs are never merged by hand.
 
 [@rustbot]: https://github.com/rustbot
-[@bors]: https://github.com/bors
+[@bors]: https://github.com/rust-lang/bors
 
 ### Opening a PR
 
@@ -324,7 +324,7 @@ When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-rev
 GitHub allows [closing issues using keywords][closing-keywords].
 This feature should be used to keep the issue tracker tidy.
 However, it is generally preferred
-to put the "closes #123" text in the PR description rather than the issue commit;
+to put the "closes #123" text in the PR description rather than the commit message;
 particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
 

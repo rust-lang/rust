@@ -1,4 +1,4 @@
-use crate::parse::{DeprecatedLint, Lint, ParseCx};
+use crate::parse::{DeprecatedLint, Lint, ParseCx, RenamedLint};
 use crate::update_lints::generate_lint_files;
 use crate::utils::{UpdateMode, Version};
 use std::ffi::OsStr;
@@ -55,6 +55,58 @@ pub fn deprecate<'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'cx str,
     if remove_lint_declaration(name, &mod_path, &mut lints).unwrap_or(false) {
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
         println!("info: `{name}` has successfully been deprecated");
+        println!("note: you must run `cargo uitest` to update the test results");
+    } else {
+        eprintln!("error: lint not found");
+    }
+}
+
+pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'env str, new_name: &'env str) {
+    let mut lints = cx.find_lint_decls();
+    let (deprecated_lints, mut renamed_lints) = cx.read_deprecated_lints();
+
+    let Some(lint) = lints.iter().find(|l| l.name == old_name) else {
+        eprintln!("error: failed to find lint `{old_name}`");
+        return;
+    };
+
+    let old_name_prefixed = cx.str_buf.with(|buf| {
+        buf.extend(["clippy::", old_name]);
+        cx.arena.alloc_str(buf)
+    });
+    for lint in &mut renamed_lints {
+        if lint.new_name == old_name_prefixed {
+            lint.new_name = new_name;
+        }
+    }
+    match renamed_lints.binary_search_by(|x| x.old_name.cmp(old_name_prefixed)) {
+        Ok(_) => {
+            println!("`{old_name}` is already deprecated");
+            return;
+        },
+        Err(idx) => renamed_lints.insert(
+            idx,
+            RenamedLint {
+                old_name: old_name_prefixed,
+                new_name,
+                version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
+            },
+        ),
+    }
+
+    let mod_path = {
+        let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
+        if mod_path.is_dir() {
+            mod_path = mod_path.join("mod");
+        }
+
+        mod_path.set_extension("rs");
+        mod_path
+    };
+
+    if remove_lint_declaration(old_name, &mod_path, &mut lints).unwrap_or(false) {
+        generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
+        println!("info: `{old_name}` has successfully been uplifted");
         println!("note: you must run `cargo uitest` to update the test results");
     } else {
         eprintln!("error: lint not found");

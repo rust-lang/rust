@@ -54,9 +54,9 @@
 //! * <code>[std::convert]::{[AsRef], [AsMut], [Into], [From]}</code>, generic
 //!   conversions, used by savvy API authors to create overloaded methods.
 //! * <code>[std::default]::[Default]</code>, types that have default values.
-//! * <code>[std::iter]::{[Iterator], [Extend], [IntoIterator], [DoubleEndedIterator], [ExactSizeIterator]}</code>,
-//!   iterators of various
-//!   kinds.
+//! * <code>[std::iter]::{[Iterator], [Extend], [IntoIterator], [DoubleEndedIterator],
+//!   [ExactSizeIterator]}</code>, iterators of various kinds.
+//! * Most of the standard macros.
 //! * <code>[std::option]::[Option]::{[self][Option], [Some], [None]}</code>, a
 //!   type which expresses the presence or absence of a value. This type is so
 //!   commonly used, its variants are also exported.
@@ -145,6 +145,11 @@ pub mod rust_2021 {
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2021::*;
+
+    // There are two different panic macros, one in `core` and one in `std`. They are slightly
+    // different. For `std` we explicitly want the one defined in `std`.
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
+    pub use super::v1::panic;
 }
 
 /// The 2024 version of the prelude of The Rust Standard Library.
@@ -159,6 +164,11 @@ pub mod rust_2024 {
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2024::*;
+
+    // There are two different panic macros, one in `core` and one in `std`. They are slightly
+    // different. For `std` we explicitly want the one defined in `std`.
+    #[stable(feature = "prelude_2024", since = "1.85.0")]
+    pub use super::v1::panic;
 }
 
 /// The Future version of the prelude of The Rust Standard Library.
@@ -174,4 +184,9 @@ pub mod rust_future {
     #[unstable(feature = "prelude_next", issue = "none")]
     #[doc(no_inline)]
     pub use core::prelude::rust_future::*;
+
+    // There are two different panic macros, one in `core` and one in `std`. They are slightly
+    // different. For `std` we explicitly want the one defined in `std`.
+    #[unstable(feature = "prelude_next", issue = "none")]
+    pub use super::v1::panic;
 }

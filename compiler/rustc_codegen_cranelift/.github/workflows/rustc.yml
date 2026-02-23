@@ -20,7 +20,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
+        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
 
     - name: Test
       run: ./scripts/test_bootstrap.sh
@@ -40,7 +40,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
+        key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
 
     - name: Install ripgrep
       run: |

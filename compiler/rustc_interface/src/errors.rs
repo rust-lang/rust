@@ -1,11 +1,15 @@
 use std::io;
 use std::path::Path;
 
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_hir::attrs::CrateType;
+use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::TargetTuple;
 
 #[derive(Diagnostic)]
-#[diag(interface_crate_name_does_not_match)]
+#[diag(
+    "`--crate-name` and `#[crate_name]` are required to match, but `{$crate_name}` != `{$attr_crate_name}`"
+)]
 pub(crate) struct CrateNameDoesNotMatch {
     #[primary_span]
     pub(crate) span: Span,
@@ -14,23 +18,27 @@ pub(crate) struct CrateNameDoesNotMatch {
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_crate_name_invalid)]
+#[diag("crate names cannot start with a `-`, but `{$crate_name}` has a leading hyphen")]
 pub(crate) struct CrateNameInvalid<'a> {
     pub(crate) crate_name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_ferris_identifier)]
+#[diag("Ferris cannot be used as an identifier")]
 pub struct FerrisIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "{ferris_fix}", applicability = "maybe-incorrect")]
+    #[suggestion(
+        "try using their name instead",
+        code = "{ferris_fix}",
+        applicability = "maybe-incorrect"
+    )]
     pub first_span: Span,
     pub ferris_fix: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_emoji_identifier)]
+#[diag("identifiers cannot contain emoji: `{$ident}`")]
 pub struct EmojiIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -38,88 +46,97 @@ pub struct EmojiIdentifier {
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_mixed_bin_crate)]
+#[diag("cannot mix `bin` crate type with others")]
 pub struct MixedBinCrate;
 
 #[derive(Diagnostic)]
-#[diag(interface_mixed_proc_macro_crate)]
+#[diag("cannot mix `proc-macro` crate type with others")]
 pub struct MixedProcMacroCrate;
 
 #[derive(Diagnostic)]
-#[diag(interface_error_writing_dependencies)]
+#[diag("error writing dependencies to `{$path}`: {$error}")]
 pub struct ErrorWritingDependencies<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_input_file_would_be_overwritten)]
+#[diag("the input file \"{$path}\" would be overwritten by the generated executable")]
 pub struct InputFileWouldBeOverWritten<'a> {
     pub path: &'a Path,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_generated_file_conflicts_with_directory)]
+#[diag(
+    "the generated executable for the input file \"{$input_path}\" conflicts with the existing directory \"{$dir_path}\""
+)]
 pub struct GeneratedFileConflictsWithDirectory<'a> {
     pub input_path: &'a Path,
     pub dir_path: &'a Path,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_temps_dir_error)]
+#[diag("failed to find or create the directory specified by `--temps-dir`")]
 pub struct TempsDirError;
 
 #[derive(Diagnostic)]
-#[diag(interface_out_dir_error)]
+#[diag("failed to find or create the directory specified by `--out-dir`")]
 pub struct OutDirError;
 
 #[derive(Diagnostic)]
-#[diag(interface_failed_writing_file)]
+#[diag("failed to write file {$path}: {$error}\"")]
 pub struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(interface_proc_macro_crate_panic_abort)]
+#[diag(
+    "building proc macro crate with `panic=abort` or `panic=immediate-abort` may crash the compiler should the proc-macro panic"
+)]
 pub struct ProcMacroCratePanicAbort;
 
 #[derive(Diagnostic)]
-#[diag(interface_multiple_output_types_adaption)]
+#[diag(
+    "due to multiple output types requested, the explicitly specified output file name will be adapted for each output type"
+)]
 pub struct MultipleOutputTypesAdaption;
 
 #[derive(Diagnostic)]
-#[diag(interface_ignoring_extra_filename)]
+#[diag("ignoring -C extra-filename flag due to -o flag")]
 pub struct IgnoringExtraFilename;
 
 #[derive(Diagnostic)]
-#[diag(interface_ignoring_out_dir)]
+#[diag("ignoring --out-dir flag due to -o flag")]
 pub struct IgnoringOutDir;
 
 #[derive(Diagnostic)]
-#[diag(interface_multiple_output_types_to_stdout)]
+#[diag("can't use option `-o` or `--emit` to write multiple output types to stdout")]
 pub struct MultipleOutputTypesToStdout;
 
 #[derive(Diagnostic)]
-#[diag(interface_abi_required_feature)]
-#[note]
-#[note(interface_abi_required_feature_issue)]
+#[diag(
+    "target feature `{$feature}` must be {$enabled} to ensure that the ABI of the current target can be implemented correctly"
+)]
+#[note(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[note("for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>")]
 pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(interface_invalid_crate_type_value)]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSub>,
+#[derive(Diagnostic)]
+#[diag("dropping unsupported crate type `{$crate_type}` for codegen backend `{$codegen_backend}`")]
+pub(crate) struct UnsupportedCrateTypeForCodegenBackend {
+    pub(crate) crate_type: CrateType,
+    pub(crate) codegen_backend: &'static str,
 }
 
-#[derive(Subdiagnostic)]
-#[suggestion(interface_suggestion, code = r#""{snippet}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSub {
-    #[primary_span]
-    pub span: Span,
-    pub snippet: Symbol,
+#[derive(Diagnostic)]
+#[diag("dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`")]
+pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
+    pub(crate) crate_type: CrateType,
+    pub(crate) target_triple: &'a TargetTuple,
 }

@@ -1,17 +1,17 @@
 //! The expansion from a test function to the appropriate test struct for libtest
 //! Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
-use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
-use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Ident, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Ident, RemapPathScopeComponents, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -283,13 +283,13 @@ pub(crate) fn expand_test_or_bench(
             // const $ident: test::TestDescAndFn =
             ast::ItemKind::Const(
                 ast::ConstItem {
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     ident: Ident::new(fn_.ident.name, sp),
                     generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     define_opaque: None,
                     // test::TestDescAndFn {
-                    rhs: Some(ast::ConstItemRhs::Body(
+                    rhs_kind: ast::ConstItemRhsKind::new_body(
                         cx.expr_struct(
                             sp,
                             test_path("TestDescAndFn"),
@@ -371,7 +371,7 @@ pub(crate) fn expand_test_or_bench(
                         field("testfn", test_fn), // }
                     ],
                         ), // }
-                    )),
+                    ),
                 }
                 .into(),
             ),
@@ -445,7 +445,7 @@ fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, 
         cx.sess.source_map().span_to_location_info(span);
 
     let file_name = match source_file {
-        Some(sf) => sf.name.display(FileNameDisplayPreference::Remapped).to_string(),
+        Some(sf) => sf.name.display(RemapPathScopeComponents::MACRO).to_string(),
         None => "no-location".to_string(),
     };
 

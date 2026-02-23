@@ -259,10 +259,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             break;
         }
 
-        #[cfg(bootstrap)]
-        let tracked_env = proc_macro::tracked_env::var(env_var.value());
-
-        #[cfg(not(bootstrap))]
         let tracked_env = proc_macro::tracked::env_var(env_var.value());
 
         let value = match tracked_env {

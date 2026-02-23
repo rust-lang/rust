@@ -74,7 +74,7 @@ impl<'a, 'db> std::fmt::Debug for InspectCandidate<'a, 'db> {
 /// treat `NormalizesTo` goals as if they apply the expected
 /// type at the end of each candidate.
 #[derive(Debug, Copy, Clone)]
-struct NormalizesToTermHack<'db> {
+pub(crate) struct NormalizesToTermHack<'db> {
     term: Term<'db>,
     unconstrained_term: Term<'db>,
 }
@@ -311,10 +311,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// Visit all nested goals of this candidate, rolling back
     /// all inference constraints.
     #[expect(dead_code, reason = "used in rustc")]
-    pub(crate) fn visit_nested_in_probe<V: ProofTreeVisitor<'db>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
+    fn visit_nested_in_probe<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
         self.goal.infcx.probe(|_| self.visit_nested_no_probe(visitor))
     }
 }
@@ -430,7 +427,7 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
         candidates.pop().filter(|_| candidates.is_empty())
     }
 
-    fn new(
+    pub(crate) fn new(
         infcx: &'a InferCtxt<'db>,
         depth: usize,
         root: inspect::GoalEvaluation<DbInterner<'db>>,

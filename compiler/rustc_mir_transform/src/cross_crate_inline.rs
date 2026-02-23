@@ -1,6 +1,8 @@
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
@@ -35,6 +37,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
 
     // FIXME(autodiff): replace this as per discussion in https://github.com/rust-lang/rust/pull/149033#discussion_r2535465880
+    #[allow(deprecated)]
     if tcx.has_attr(def_id, sym::autodiff_forward)
         || tcx.has_attr(def_id, sym::autodiff_reverse)
         || tcx.has_attr(def_id, sym::rustc_autodiff)
@@ -42,7 +45,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+    if find_attr!(tcx, def_id, RustcIntrinsic) {
         // Intrinsic fallback bodies are always cross-crate inlineable.
         // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
         // bodies even when the backend would implement something better, we stop
@@ -110,6 +113,15 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         && checker.statements <= threshold
 }
 
+// The threshold that CostChecker computes is balancing the desire to make more things
+// inlinable cross crates against the growth in incremental CGU size that happens when too many
+// things in the sysroot are made inlinable.
+// Permitting calls causes the size of some incremental CGUs to grow, because more functions are
+// made inlinable out of the sysroot or dependencies.
+// Assert terminators are similar to calls, but do not have the same impact on compile time, so
+// those are just treated as statements.
+// A threshold exists at all because we don't want to blindly mark a huge function as inlinable.
+
 struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
     callee_body: &'b Body<'tcx>,
@@ -129,9 +141,10 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _: Location) {
+        self.statements += 1;
         let tcx = self.tcx;
-        match terminator.kind {
-            TerminatorKind::Drop { ref place, unwind, .. } => {
+        match &terminator.kind {
+            TerminatorKind::Drop { place, unwind, .. } => {
                 let ty = place.ty(self.callee_body, tcx).ty;
                 if !ty.is_trivially_pure_clone_copy() {
                     self.calls += 1;
@@ -140,13 +153,13 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { ref func, unwind, .. } => {
+            TerminatorKind::Call { func, unwind, .. } => {
                 // We track calls because they make our function not a leaf (and in theory, the
                 // number of calls indicates how likely this function is to perturb other CGUs).
                 // But intrinsics don't have a body that gets assigned to a CGU, so they are
                 // ignored.
                 if let Some((fn_def_id, _)) = func.const_fn_def()
-                    && self.tcx.has_attr(fn_def_id, sym::rustc_intrinsic)
+                    && find_attr!(tcx, fn_def_id, RustcIntrinsic)
                 {
                     return;
                 }
@@ -155,21 +168,31 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     self.landing_pads += 1;
                 }
             }
-            TerminatorKind::Assert { unwind, .. } => {
+            TerminatorKind::TailCall { .. } => {
                 self.calls += 1;
+            }
+            TerminatorKind::Assert { unwind, .. } => {
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;
                 }
             }
             TerminatorKind::UnwindResume => self.resumes += 1,
             TerminatorKind::InlineAsm { unwind, .. } => {
-                self.statements += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;
                 }
             }
-            TerminatorKind::Return => {}
-            _ => self.statements += 1,
+            TerminatorKind::Return
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::UnwindTerminate(_) => {}
+            kind @ (TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::CoroutineDrop) => {
+                bug!("{kind:?} should not be in runtime MIR");
+            }
         }
     }
 }

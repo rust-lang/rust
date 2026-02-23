@@ -40,6 +40,14 @@ LL | pub extern "cmse-nonsecure-entry" fn f5(_: [u32; 5]) {}
    |
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass all their arguments via the 4 32-bit argument registers
 
-error: aborting due to 5 previous errors
+error[E0798]: arguments for `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/params-via-stack.rs:47:46
+   |
+LL | pub extern "cmse-nonsecure-entry" fn five(_: Five) {}
+   |                                              ^^^^ does not fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass all their arguments via the 4 32-bit argument registers
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0798`.

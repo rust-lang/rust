@@ -17,6 +17,7 @@ rustc-hash.workspace = true
 either.workspace = true
 arrayvec.workspace = true
 itertools.workspace = true
+serde_json.workspace = true
 smallvec.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
 triomphe.workspace = true

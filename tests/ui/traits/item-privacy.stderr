@@ -141,15 +141,15 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
   --> $DIR/item-privacy.rs:26:15
    |
 LL |         const A: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `A`
 ...
 LL |         const B: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `B`
 ...
 LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `C`
    = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
@@ -166,15 +166,15 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
   --> $DIR/item-privacy.rs:26:15
    |
 LL |         const A: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `A`
 ...
 LL |         const B: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `B`
 ...
 LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
-   |               ^ ...because it contains this associated `const`
+   |               ^ ...because it contains associated const `C`
    = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait

@@ -3,7 +3,7 @@ use std::process::Command;
 use super::{DocKind, TestCx, remove_and_create_dir_all};
 
 impl TestCx<'_> {
-    pub(super) fn run_rustdoc_test(&self) {
+    pub(super) fn run_rustdoc_html_test(&self) {
         assert!(self.revision.is_none(), "revisions not supported in this test suite");
 
         let out_dir = self.output_base_dir();
@@ -28,9 +28,7 @@ impl TestCx<'_> {
             }
             let res = self.run_command_to_procres(&mut cmd);
             if !res.status.success() {
-                self.fatal_proc_rec_general("htmldocck failed!", None, &res, || {
-                    self.compare_to_default_rustdoc(&out_dir);
-                });
+                self.fatal_proc_rec("htmldocck failed!", &res);
             }
         }
     }

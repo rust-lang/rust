@@ -6,8 +6,8 @@ use semver::Version;
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
-    line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
+    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
 
@@ -105,6 +105,7 @@ fn test_parse_normalize_rule() {
 #[derive(Default)]
 struct ConfigBuilder {
     mode: Option<String>,
+    suite: Option<String>,
     channel: Option<String>,
     edition: Option<Edition>,
     host: Option<String>,
@@ -117,11 +118,17 @@ struct ConfigBuilder {
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
+    std_remap_debuginfo: bool,
 }
 
 impl ConfigBuilder {
     fn mode(&mut self, s: &str) -> &mut Self {
         self.mode = Some(s.to_owned());
+        self
+    }
+
+    fn suite(&mut self, s: &str) -> &mut Self {
+        self.suite = Some(s.to_owned());
         self
     }
 
@@ -185,12 +192,18 @@ impl ConfigBuilder {
         self
     }
 
+    fn std_remap_debuginfo(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_remap_debuginfo = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
             "--mode",
             self.mode.as_deref().unwrap_or("ui"),
-            "--suite=ui",
+            "--suite",
+            self.suite.as_deref().unwrap_or("ui"),
             "--compile-lib-path=",
             "--run-lib-path=",
             "--python=",
@@ -219,6 +232,7 @@ impl ConfigBuilder {
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",
+            "--jobs=0",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -245,6 +259,9 @@ impl ConfigBuilder {
         }
         if self.std_debug_assertions {
             args.push("--with-std-debug-assertions".to_owned());
+        }
+        if self.std_remap_debuginfo {
+            args.push("--with-std-remap-debuginfo".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -398,6 +415,19 @@ fn std_debug_assertions() {
 
     assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
     assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
+}
+
+#[test]
+fn std_remap_debuginfo() {
+    let config: Config = cfg().std_remap_debuginfo(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(!check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
+
+    let config: Config = cfg().std_remap_debuginfo(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-remap-debuginfo"));
+    assert!(check_ignore(&config, "//@ ignore-std-remap-debuginfo"));
 }
 
 #[test]
@@ -608,7 +638,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let modes = [
         "pretty",
         "debuginfo",
-        "rustdoc",
+        "rustdoc-html",
         "rustdoc-json",
         "codegen-units",
         "incremental",
@@ -996,11 +1026,99 @@ fn test_needs_target_std() {
     assert!(!check_ignore(&config, "//@ needs-target-std"));
 }
 
+#[test]
+fn implied_needs_target_std() {
+    let config = cfg().mode("codegen").suite("codegen-llvm").target("x86_64-unknown-none").build();
+    // Implied `needs-target-std` due to no `#![no_std]`/`#![no_core]`.
+    assert!(check_ignore(&config, ""));
+    assert!(check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    // Make sure that `//@ needs-target-std` takes precedence.
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config =
+        cfg().mode("codegen").suite("codegen-llvm").target("x86_64-unknown-linux-gnu").build();
+    assert!(!check_ignore(&config, ""));
+    assert!(!check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config = cfg().mode("ui").suite("ui").target("x86_64-unknown-none").build();
+    // The implied `//@ needs-target-std` is only applicable for mode=codegen tests.
+    assert!(!check_ignore(&config, ""));
+    assert!(check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+
+    let config = cfg().mode("ui").suite("ui").target("x86_64-unknown-linux-gnu").build();
+    assert!(!check_ignore(&config, ""));
+    assert!(!check_ignore(&config, "//@ needs-target-std"));
+    assert!(!check_ignore(&config, "#![no_std]"));
+    assert!(!check_ignore(&config, "#![no_core]"));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_std]
+        "#
+    ));
+    assert!(!check_ignore(
+        &config,
+        r#"
+        //@ needs-target-std
+        #![no_core]
+        "#
+    ));
+}
+
 fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
+    let line =
+        line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment).unwrap();
 
     super::parse_edition_range(&config, &line)
 }

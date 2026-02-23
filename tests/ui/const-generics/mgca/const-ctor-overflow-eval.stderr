@@ -1,0 +1,80 @@
+error[E0275]: overflow evaluating the requirement `S<U> well-formed`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL |     S<{ U }>:;
+   |     ^^^^^^^^
+   |
+note: required by a bound in `S`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL | struct S<const N: U>()
+   |        - required by a bound in this struct
+LL | where
+LL |     S<{ U }>:;
+   |     ^^^^^^^^ required by this bound in `S`
+
+error[E0275]: overflow evaluating the requirement `S<U> well-formed`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL |     S<{ U }>:;
+   |     ^^^^^^^^
+   |
+note: required by a bound in `S`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL | struct S<const N: U>()
+   |        - required by a bound in this struct
+LL | where
+LL |     S<{ U }>:;
+   |     ^^^^^^^^ required by this bound in `S`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `S<U> well-formed`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL |     S<{ U }>:;
+   |     ^^^^^^^^
+   |
+note: required by a bound in `S`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL | struct S<const N: U>()
+   |        - required by a bound in this struct
+LL | where
+LL |     S<{ U }>:;
+   |     ^^^^^^^^ required by this bound in `S`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `S<U> well-formed`
+  --> $DIR/const-ctor-overflow-eval.rs:8:24
+   |
+LL | #[derive(ConstParamTy, PartialEq, Eq)]
+   |                        ^^^^^^^^^
+   |
+note: required by a bound in `S`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL | struct S<const N: U>()
+   |        - required by a bound in this struct
+LL | where
+LL |     S<{ U }>:;
+   |     ^^^^^^^^ required by this bound in `S`
+
+error[E0275]: overflow evaluating the requirement `S<U> well-formed`
+  --> $DIR/const-ctor-overflow-eval.rs:8:35
+   |
+LL | #[derive(ConstParamTy, PartialEq, Eq)]
+   |                                   ^^
+   |
+note: required by a bound in `S`
+  --> $DIR/const-ctor-overflow-eval.rs:14:5
+   |
+LL | struct S<const N: U>()
+   |        - required by a bound in this struct
+LL | where
+LL |     S<{ U }>:;
+   |     ^^^^^^^^ required by this bound in `S`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

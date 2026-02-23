@@ -2426,7 +2426,7 @@ data-types = V8SI, V4DI, V4DI
 /// lasx_xvorn_v
 name = lasx_xvorn_v
 asm-fmts = xd, xj, xk
-data-types = V32QI, V32QI, V32QI
+data-types = UV32QI, UV32QI, UV32QI
 
 /// lasx_xvldi
 name = lasx_xvldi
@@ -3702,4 +3702,94 @@ data-types = V16HI, HI
 name = lasx_xvrepli_w
 asm-fmts = xd, si10
 data-types = V8SI, HI
+
+/// lasx_cast_128_s
+name = lasx_cast_128_s
+asm-fmts = xd, vj
+data-types = V8SF, V4SF
+
+/// lasx_cast_128_d
+name = lasx_cast_128_d
+asm-fmts = xd, vj
+data-types = V4DF, V2DF
+
+/// lasx_cast_128
+name = lasx_cast_128
+asm-fmts = xd, vj
+data-types = V4DI, V2DI
+
+/// lasx_concat_128_s
+name = lasx_concat_128_s
+asm-fmts = xd, vj, vk
+data-types = V8SF, V4SF, V4SF
+
+/// lasx_concat_128_d
+name = lasx_concat_128_d
+asm-fmts = xd, vj, vk
+data-types = V4DF, V2DF, V2DF
+
+/// lasx_concat_128
+name = lasx_concat_128
+asm-fmts = xd, vj, vk
+data-types = V4DI, V2DI, V2DI
+
+/// lasx_extract_128_lo_s
+name = lasx_extract_128_lo_s
+asm-fmts = vd, xj
+data-types = V4SF, V8SF
+
+/// lasx_extract_128_hi_s
+name = lasx_extract_128_hi_s
+asm-fmts = vd, xj
+data-types = V4SF, V8SF
+
+/// lasx_extract_128_lo_d
+name = lasx_extract_128_lo_d
+asm-fmts = vd, xj
+data-types = V2DF, V4DF
+
+/// lasx_extract_128_hi_d
+name = lasx_extract_128_hi_d
+asm-fmts = vd, xj
+data-types = V2DF, V4DF
+
+/// lasx_extract_128_lo
+name = lasx_extract_128_lo
+asm-fmts = vd, xj
+data-types = V2DI, V4DI
+
+/// lasx_extract_128_hi
+name = lasx_extract_128_hi
+asm-fmts = vd, xj
+data-types = V2DI, V4DI
+
+/// lasx_insert_128_lo_s
+name = lasx_insert_128_lo_s
+asm-fmts = xd, xj, vk
+data-types = V8SF, V8SF, V4SF
+
+/// lasx_insert_128_hi_s
+name = lasx_insert_128_hi_s
+asm-fmts = xd, xj, vk
+data-types = V8SF, V8SF, V4SF
+
+/// lasx_insert_128_lo_d
+name = lasx_insert_128_lo_d
+asm-fmts = xd, xj, vk
+data-types = V4DF, V4DF, V2DF
+
+/// lasx_insert_128_hi_d
+name = lasx_insert_128_hi_d
+asm-fmts = xd, xj, vk
+data-types = V4DF, V4DF, V2DF
+
+/// lasx_insert_128_lo
+name = lasx_insert_128_lo
+asm-fmts = xd, xj, vk
+data-types = V4DI, V4DI, V2DI
+
+/// lasx_insert_128_hi
+name = lasx_insert_128_hi
+asm-fmts = xd, xj, vk
+data-types = V4DI, V4DI, V2DI
 

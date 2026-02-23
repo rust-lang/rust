@@ -13,13 +13,11 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x1]
    |
 LL |         let x = core::ptr::addr_of!(x);
    |                 ^^^^^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::ptr::drop_in_place::<u8> - shim(None)` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main`
-  --> tests/fail/stacked_borrows/drop_in_place_retag.rs:LL:CC
-   |
-LL |         core::ptr::drop_in_place(x.cast_mut());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: std::ptr::drop_in_place - shim(None)
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           1: main
+               at tests/fail/stacked_borrows/drop_in_place_retag.rs:LL:CC
    = note: this error originates in the macro `core::ptr::addr_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

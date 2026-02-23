@@ -1,3 +1,5 @@
+#![deny(invalid_doc_attributes)]
+
 #[cfg_attr] //~ ERROR malformed `cfg_attr` attribute
 struct S1;
 

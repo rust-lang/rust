@@ -468,7 +468,7 @@ Here `$mvar` is called a _metavariable_. Unlike normal variables, rather than
 binding to a value _at runtime_, a metavariable binds _at compile time_ to a
 tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
 identifier (e.g. `foo`) or punctuation (e.g. `=>`). There are also other
-special tokens, such as `EOF`, which its self indicates that there are no more
+special tokens, such as `EOF`, which itself indicates that there are no more
 tokens. There are token trees resulting from the paired parentheses-like
 characters (`(`...`)`, `[`...`]`, and `{`...`}`) – they include the open and
 close and all the tokens in between (Rust requires that parentheses-like

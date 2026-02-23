@@ -1,6 +1,11 @@
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::map_unwrap_or)]
+#![allow(
+    clippy::unnecessary_lazy_evaluations,
+    clippy::manual_is_variant_and,
+    clippy::unnecessary_map_or
+)]
 
 #[macro_use]
 extern crate option_helpers;
@@ -56,4 +61,38 @@ fn result_methods() {
 fn main() {
     option_methods();
     result_methods();
+}
+
+fn issue15714() {
+    let o: Option<i32> = Some(3);
+    let r: Result<i32, ()> = Ok(3);
+    println!("{}", o.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+    println!("{}", o.map(|y| y + 1).unwrap_or_else(|| 3));
+    //~^ map_unwrap_or
+    println!("{}", r.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+    println!("{}", r.map(|y| y + 1).unwrap_or_else(|()| 3));
+    //~^ map_unwrap_or
+
+    println!("{}", r.map(|y| y == 1).unwrap_or(false));
+    //~^ map_unwrap_or
+}
+
+fn issue15713() {
+    let x = &Some(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+
+    let x: &Result<i32, ()> = &Ok(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or(3));
+    //~^ map_unwrap_or
+
+    let x = &Some(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or_else(|| 3));
+    //~^ map_unwrap_or
+
+    let x: &Result<i32, ()> = &Ok(3);
+    println!("{}", x.map(|y| y + 1).unwrap_or_else(|_| 3));
+    //~^ map_unwrap_or
 }

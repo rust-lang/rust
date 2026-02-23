@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
+use crate::BorrowIndex;
 use crate::polonius::LiveLoans;
-use crate::{BorrowIndex, TyCtxt};
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
@@ -131,9 +131,17 @@ impl LivenessValues {
         }
     }
 
-    /// Returns whether `region` is marked live at the given `location`.
+    /// Returns whether `region` is marked live at the given
+    /// [`location`][rustc_middle::mir::Location].
     pub(crate) fn is_live_at(&self, region: RegionVid, location: Location) -> bool {
         let point = self.location_map.point_from_location(location);
+        self.is_live_at_point(region, point)
+    }
+
+    /// Returns whether `region` is marked live at the given
+    /// [`point`][rustc_mir_dataflow::points::PointIndex].
+    #[inline]
+    pub(crate) fn is_live_at_point(&self, region: RegionVid, point: PointIndex) -> bool {
         if let Some(points) = &self.points {
             points.row(region).is_some_and(|r| r.contains(point))
         } else {
@@ -420,18 +428,18 @@ impl ToElementIndex<'_> for RegionVid {
 impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool
     where
-        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+        Self: Into<ty::PlaceholderRegion<'tcx>>,
     {
-        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.insert(row, index)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool
     where
-        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+        Self: Into<ty::PlaceholderRegion<'tcx>>,
     {
-        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.contains(row, index)
     }

@@ -5,12 +5,11 @@ use std::ops::ControlFlow;
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasVisibility, Semantics};
 use ide_db::{
-    FxHashMap, RootDatabase, SymbolKind,
+    RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     syntax_helpers::node_ext::walk_pat,
 };
 use span::Edition;
-use stdx::hash_once;
 use syntax::{
     AstNode, AstPtr, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
@@ -64,7 +63,6 @@ pub(super) fn token(
 pub(super) fn name_like(
     sema: &Semantics<'_, RootDatabase>,
     krate: Option<hir::Crate>,
-    bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     syntactic_name_ref_highlighting: bool,
     name_like: ast::NameLike,
@@ -75,22 +73,15 @@ pub(super) fn name_like(
         ast::NameLike::NameRef(name_ref) => highlight_name_ref(
             sema,
             krate,
-            bindings_shadow_count,
             &mut binding_hash,
             is_unsafe_node,
             syntactic_name_ref_highlighting,
             name_ref,
             edition,
         ),
-        ast::NameLike::Name(name) => highlight_name(
-            sema,
-            bindings_shadow_count,
-            &mut binding_hash,
-            is_unsafe_node,
-            krate,
-            name,
-            edition,
-        ),
+        ast::NameLike::Name(name) => {
+            highlight_name(sema, &mut binding_hash, is_unsafe_node, krate, name, edition)
+        }
         ast::NameLike::Lifetime(lifetime) => match IdentClass::classify_lifetime(sema, &lifetime) {
             Some(IdentClass::NameClass(NameClass::Definition(def))) => {
                 highlight_def(sema, krate, def, edition, false) | HlMod::Definition
@@ -273,7 +264,6 @@ fn keyword(token: SyntaxToken, kind: SyntaxKind) -> Highlight {
 fn highlight_name_ref(
     sema: &Semantics<'_, RootDatabase>,
     krate: Option<hir::Crate>,
-    bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     syntactic_name_ref_highlighting: bool,
@@ -306,12 +296,8 @@ fn highlight_name_ref(
     };
     let mut h = match name_class {
         NameRefClass::Definition(def, _) => {
-            if let Definition::Local(local) = &def
-                && let Some(bindings_shadow_count) = bindings_shadow_count
-            {
-                let name = local.name(sema.db);
-                let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+            if let Definition::Local(local) = &def {
+                *binding_hash = Some(local.as_id() as u64);
             };
 
             let mut h = highlight_def(sema, krate, def, edition, true);
@@ -399,7 +385,7 @@ fn highlight_name_ref(
             highlight_def(sema, krate, field_ref.into(), edition, true)
         }
         NameRefClass::ExternCrateShorthand { decl, krate: resolved_krate } => {
-            let mut h = HlTag::Symbol(SymbolKind::Module).into();
+            let mut h = HlTag::Symbol(SymbolKind::CrateRoot).into();
 
             if krate.as_ref().is_some_and(|krate| resolved_krate != *krate) {
                 h |= HlMod::Library;
@@ -417,7 +403,6 @@ fn highlight_name_ref(
             if is_deprecated {
                 h |= HlMod::Deprecated;
             }
-            h |= HlMod::CrateRoot;
             h
         }
     };
@@ -433,7 +418,6 @@ fn highlight_name_ref(
 
 fn highlight_name(
     sema: &Semantics<'_, RootDatabase>,
-    bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     krate: Option<hir::Crate>,
@@ -441,13 +425,8 @@ fn highlight_name(
     edition: Edition,
 ) -> Highlight {
     let name_kind = NameClass::classify(sema, &name);
-    if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind
-        && let Some(bindings_shadow_count) = bindings_shadow_count
-    {
-        let name = local.name(sema.db);
-        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-        *shadow_count += 1;
-        *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+    if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
+        *binding_hash = Some(local.as_id() as u64);
     };
     match name_kind {
         Some(NameClass::Definition(def)) => {
@@ -475,10 +454,6 @@ fn highlight_name(
     }
 }
 
-fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
-    hash_once::<ide_db::FxHasher>((name.as_str(), shadow_count))
-}
-
 pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
     krate: Option<hir::Crate>,
@@ -495,16 +470,15 @@ pub(super) fn highlight_def(
             (Highlight::new(HlTag::Symbol(SymbolKind::Field)), Some(field.attrs(sema.db)))
         }
         Definition::TupleField(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Field)), None),
-        Definition::Crate(krate) => (
-            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot,
-            Some(krate.attrs(sema.db)),
-        ),
+        Definition::Crate(krate) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot)), Some(krate.attrs(sema.db)))
+        }
         Definition::Module(module) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root(db) {
-                h |= HlMod::CrateRoot;
-            }
-
+            let h = Highlight::new(HlTag::Symbol(if module.is_crate_root(db) {
+                SymbolKind::CrateRoot
+            } else {
+                SymbolKind::Module
+            }));
             (h, Some(module.attrs(sema.db)))
         }
         Definition::Function(func) => {
@@ -662,8 +636,7 @@ pub(super) fn highlight_def(
             (h, None)
         }
         Definition::ExternCrateDecl(extern_crate) => {
-            let mut highlight =
-                Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot;
+            let mut highlight = Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot));
             if extern_crate.alias(db).is_none() {
                 highlight |= HlMod::Library;
             }
@@ -805,6 +778,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         TYPE_PARAM => SymbolKind::TypeParam,
         RECORD_FIELD => SymbolKind::Field,
         MODULE => SymbolKind::Module,
+        EXTERN_CRATE => SymbolKind::CrateRoot,
         FN => SymbolKind::Function,
         CONST => SymbolKind::Const,
         STATIC => SymbolKind::Static,
@@ -835,7 +809,7 @@ fn highlight_name_ref_by_syntax(
     };
 
     match parent.kind() {
-        EXTERN_CRATE => HlTag::Symbol(SymbolKind::Module) | HlMod::CrateRoot,
+        EXTERN_CRATE => HlTag::Symbol(SymbolKind::CrateRoot).into(),
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
             .and_then(|it| highlight_method_call(sema, krate, &it, is_unsafe_node))
             .unwrap_or_else(|| SymbolKind::Method.into()),

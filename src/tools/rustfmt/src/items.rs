@@ -319,12 +319,13 @@ impl<'a> FnSig<'a> {
         method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
         visibility: &'a ast::Visibility,
+        defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         FnSig {
             safety: method_sig.header.safety,
             coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
             constness: method_sig.header.constness,
-            defaultness: ast::Defaultness::Final,
+            defaultness,
             ext: method_sig.header.ext,
             decl: &*method_sig.decl,
             generics,
@@ -339,9 +340,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::Fn(visit::FnCtxt::Assoc(..), vis, ast::Fn { sig, generics, .. }) => {
-                let mut fn_sig = FnSig::from_method_sig(sig, generics, vis);
-                fn_sig.defaultness = defaultness;
-                fn_sig
+                FnSig::from_method_sig(sig, generics, vis, defaultness)
             }
             visit::FnKind::Fn(_, vis, ast::Fn { sig, generics, .. }) => FnSig {
                 decl,
@@ -459,6 +458,7 @@ impl<'a> FmtVisitor<'a> {
         sig: &ast::FnSig,
         vis: &ast::Visibility,
         generics: &ast::Generics,
+        defaultness: ast::Defaultness,
         span: Span,
     ) -> RewriteResult {
         // Drop semicolon or it will be interpreted as comment.
@@ -469,7 +469,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig, generics, vis),
+            &FnSig::from_method_sig(sig, generics, vis, defaultness),
             span,
             FnBraceStyle::None,
         )?;
@@ -971,7 +971,7 @@ fn format_impl_ref_and_type(
         result.push_str(format_defaultness(of_trait.defaultness));
         result.push_str(format_safety(of_trait.safety));
     } else {
-        result.push_str(format_constness_right(*constness));
+        result.push_str(format_constness(*constness));
     }
 
     let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
@@ -2028,12 +2028,16 @@ impl<'a> StaticParts<'a> {
                 ),
                 ast::ItemKind::Const(c) => (
                     Some(c.defaultness),
-                    "const",
+                    if c.rhs_kind.is_type_const() {
+                        "type const"
+                    } else {
+                        "const"
+                    },
                     ast::Safety::Default,
                     c.ident,
                     &c.ty,
                     ast::Mutability::Not,
-                    c.rhs.as_ref().map(|rhs| rhs.expr()),
+                    c.rhs_kind.expr(),
                     Some(&c.generics),
                 ),
                 _ => unreachable!(),
@@ -2053,17 +2057,25 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
+        let (defaultness, ty, expr_opt, generics, prefix) = match &ti.kind {
+            ast::AssocItemKind::Const(c) => {
+                let prefix = if c.rhs_kind.is_type_const() {
+                    "type const"
+                } else {
+                    "const"
+                };
+                (
+                    c.defaultness,
+                    &c.ty,
+                    c.rhs_kind.expr(),
+                    Some(&c.generics),
+                    prefix,
+                )
+            }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix: "const",
+            prefix,
             safety: ast::Safety::Default,
             vis: &ti.vis,
             ident,
@@ -2077,17 +2089,25 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
-        let (defaultness, ty, expr_opt, generics) = match &ii.kind {
-            ast::AssocItemKind::Const(c) => (
-                c.defaultness,
-                &c.ty,
-                c.rhs.as_ref().map(|rhs| rhs.expr()),
-                Some(&c.generics),
-            ),
+        let (defaultness, ty, expr_opt, generics, prefix) = match &ii.kind {
+            ast::AssocItemKind::Const(c) => {
+                let prefix = if c.rhs_kind.is_type_const() {
+                    "type const"
+                } else {
+                    "const"
+                };
+                (
+                    c.defaultness,
+                    &c.ty,
+                    c.rhs_kind.expr(),
+                    Some(&c.generics),
+                    prefix,
+                )
+            }
             _ => unreachable!(),
         };
         StaticParts {
-            prefix: "const",
+            prefix,
             safety: ast::Safety::Default,
             vis: &ii.vis,
             ident,
@@ -3475,7 +3495,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         ident,
-                        &FnSig::from_method_sig(sig, generics, &self.vis),
+                        &FnSig::from_method_sig(sig, generics, &self.vis, defaultness),
                         span,
                         FnBraceStyle::None,
                     )

@@ -39,6 +39,7 @@ impl OwnedTargetMachine {
         debug_info_compression: llvm::CompressionKind,
         use_emulated_tls: bool,
         use_wasm_eh: bool,
+        large_data_threshold: u64,
     ) -> Result<Self, LlvmError<'static>> {
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
         let tm_ptr = unsafe {
@@ -65,6 +66,7 @@ impl OwnedTargetMachine {
                 debug_info_compression,
                 use_emulated_tls,
                 use_wasm_eh,
+                large_data_threshold,
             )
         };
 

@@ -9,10 +9,10 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-heck = "0.5.0"
-proc-macro2 = "1.0.95"
-quote = "1.0.40"
-syn = { version = "2.0.104", features = ["full", "extra-traits", "visit-mut"] }
+heck.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full", "extra-traits", "visit-mut"] }
 
 [lints.rust]
 # Values used during testing

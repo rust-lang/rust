@@ -13,7 +13,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                            },
                            fields: Arbitrary {
                                offsets: $OFFSETS,
-                               memory_index: $MEMORY_INDEX,
+                               in_memory_order: $MEMORY_INDEX,
                            },
                            largest_niche: None,
                            uninhabited: false,
@@ -52,7 +52,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -91,7 +91,7 @@ error: fn_abi_of(take_va_list_sysv64) = FnAbi {
                            },
                            fields: Arbitrary {
                                offsets: $OFFSETS,
-                               memory_index: $MEMORY_INDEX,
+                               in_memory_order: $MEMORY_INDEX,
                            },
                            largest_niche: None,
                            uninhabited: false,
@@ -130,7 +130,7 @@ error: fn_abi_of(take_va_list_sysv64) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -171,7 +171,7 @@ error: fn_abi_of(take_va_list_win64) = FnAbi {
                            },
                            fields: Arbitrary {
                                offsets: $OFFSETS,
-                               memory_index: $MEMORY_INDEX,
+                               in_memory_order: $MEMORY_INDEX,
                            },
                            largest_niche: None,
                            uninhabited: false,
@@ -210,7 +210,7 @@ error: fn_abi_of(take_va_list_win64) = FnAbi {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,

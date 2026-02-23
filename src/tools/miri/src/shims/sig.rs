@@ -17,45 +17,129 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 
 /// Construct a `ShimSig` with convenient syntax:
 /// ```rust,ignore
-/// shim_sig!(this, extern "C" fn (*const T, i32) -> usize)
+/// shim_sig!(extern "C" fn (*const T, i32) -> usize)
 /// ```
+///
+/// The following types are supported:
+/// - primitive integer types
+/// - `()`
+/// - (thin) raw pointers, written `*const _` and `*mut _` since the pointee type is irrelevant
+/// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
+/// - `winapi::$ty` for a type from `std::sys::pal::windows::c`
 #[macro_export]
 macro_rules! shim_sig {
-    (extern $abi:literal fn($($arg:ty),*) -> $ret:ty) => {
+    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
         |this| $crate::shims::sig::ShimSig {
             abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
-            args: [$(shim_sig_arg!(this, $arg)),*],
-            ret: shim_sig_arg!(this, $ret),
+            args: shim_sig_args_sep!(this, [$($args)*]),
+            ret: shim_sig_arg!(this, $($ret)*),
         }
     };
 }
 
 /// Helper for `shim_sig!`.
+///
+/// Groups tokens into comma-separated chunks and calls the provided macro on them.
+///
+/// # Examples
+///
+/// ```ignore
+/// shim_sig_args_sep!(this, [*const _, i32, libc::off64_t]);
+/// // expands to:
+/// [shim_sig_arg!(*const _), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
+/// ```
+#[macro_export]
+macro_rules! shim_sig_args_sep {
+    ($this:ident, [$($tt:tt)*]) => {
+        shim_sig_args_sep!(@ $this [] [] $($tt)*)
+    };
+
+    // All below matchers form a fairly simple iterator over the input.
+    // - Non-comma token - append to collector
+    // - Comma token - call the provided macro on the collector and reset the collector
+    // - End of input - empty collector one last time. emit output as an array
+
+    // Handles `,` token - take collected type and call shim_sig_arg on it.
+    // Append the result to the final output.
+    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $this [$($final)* shim_sig_arg!($this, $($collected)*), ] [] $($tt)*)
+    };
+    // Handle non-comma token - append to collected type.
+    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $this [$($final)*] [$($collected)* $first] $($tt)*)
+    };
+    // No more tokens - emit final output, including final non-comma type.
+    (@ $this:ident [$($final:tt)*] [$($collected:tt)+] ) => {
+        [$($final)* shim_sig_arg!($this, $($collected)*)]
+    };
+    // No more tokens - emit final output.
+    (@ $this:ident [$($final:tt)*] [] ) => {
+        [$($final)*]
+    };
+}
+
+/// Helper for `shim_sig!`.
+///
+/// Converts a type
 #[macro_export]
 macro_rules! shim_sig_arg {
-    // Unfortuantely we cannot take apart a `ty`-typed token at compile time,
-    // so we have to stringify it and match at runtime.
-    ($this:ident, $x:ty) => {{
-        match stringify!($x) {
-            "i8" => $this.tcx.types.i8,
-            "i16" => $this.tcx.types.i16,
-            "i32" => $this.tcx.types.i32,
-            "i64" => $this.tcx.types.i64,
-            "i128" => $this.tcx.types.i128,
-            "isize" => $this.tcx.types.isize,
-            "u8" => $this.tcx.types.u8,
-            "u16" => $this.tcx.types.u16,
-            "u32" => $this.tcx.types.u32,
-            "u64" => $this.tcx.types.u64,
-            "u128" => $this.tcx.types.u128,
-            "usize" => $this.tcx.types.usize,
-            "()" => $this.tcx.types.unit,
-            "*const _" => $this.machine.layouts.const_raw_ptr.ty,
-            "*mut _" => $this.machine.layouts.mut_raw_ptr.ty,
-            ty if let Some(libc_ty) = ty.strip_prefix("libc::") => $this.libc_ty_layout(libc_ty).ty,
-            ty => panic!("unsupported signature type {ty:?}"),
-        }
-    }};
+    ($this:ident, i8) => {
+        $this.tcx.types.i8
+    };
+    ($this:ident, i16) => {
+        $this.tcx.types.i16
+    };
+    ($this:ident, i32) => {
+        $this.tcx.types.i32
+    };
+    ($this:ident, i64) => {
+        $this.tcx.types.i64
+    };
+    ($this:ident, i128) => {
+        $this.tcx.types.i128
+    };
+    ($this:ident, isize) => {
+        $this.tcx.types.isize
+    };
+    ($this:ident, u8) => {
+        $this.tcx.types.u8
+    };
+    ($this:ident, u16) => {
+        $this.tcx.types.u16
+    };
+    ($this:ident, u32) => {
+        $this.tcx.types.u32
+    };
+    ($this:ident, u64) => {
+        $this.tcx.types.u64
+    };
+    ($this:ident, u128) => {
+        $this.tcx.types.u128
+    };
+    ($this:ident, usize) => {
+        $this.tcx.types.usize
+    };
+    ($this:ident, ()) => {
+        $this.tcx.types.unit
+    };
+    ($this:ident, bool) => {
+        $this.tcx.types.bool
+    };
+    ($this:ident, *const _) => {
+        $this.machine.layouts.const_raw_ptr.ty
+    };
+    ($this:ident, *mut _) => {
+        $this.machine.layouts.mut_raw_ptr.ty
+    };
+    ($this:ident, winapi::$ty:ident) => {
+        $this.windows_ty_layout(stringify!($ty)).ty
+    };
+    ($this:ident, $krate:ident :: $($path:ident)::+) => {
+        helpers::path_ty_layout($this, &[stringify!($krate), $(stringify!($path)),*]).ty
+    };
+    ($this:ident, $($other:tt)*) => {
+        compile_error!(concat!("unsupported signature type: ", stringify!($($other)*)))
+    }
 }
 
 /// Helper function to compare two ABIs.

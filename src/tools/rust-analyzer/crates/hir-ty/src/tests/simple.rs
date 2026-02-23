@@ -1,5 +1,7 @@
 use expect_test::expect;
 
+use crate::tests::check_infer_with_mismatches;
+
 use super::{check, check_infer, check_no_mismatches, check_types};
 
 #[test]
@@ -62,20 +64,37 @@ fn type_alias_in_struct_lit() {
 
 #[test]
 fn infer_ranges() {
-    check_types(
+    check_no_mismatches(
         r#"
-//- minicore: range
-fn test() {
-    let a = ..;
-    let b = 1..;
-    let c = ..2u32;
-    let d = 1..2usize;
-    let e = ..=10;
-    let f = 'a'..='z';
+//- minicore: range, new_range
 
-    let t = (a, b, c, d, e, f);
-    t;
-} //^ (RangeFull, RangeFrom<i32>, RangeTo<u32>, Range<usize>, RangeToInclusive<i32>, RangeInclusive<char>)
+fn test() {
+    let _: core::ops::RangeFull = ..;
+    let _: core::ops::RangeFrom<i32> = 1..;
+    let _: core::ops::RangeTo<u32> = ..2u32;
+    let _: core::ops::Range<usize> = 1..2usize;
+    let _: core::ops::RangeToInclusive<i32> = ..=10;
+    let _: core::ops::RangeInclusive<char> = 'a'..='z';
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_ranges_new_range() {
+    check_no_mismatches(
+        r#"
+//- minicore: range, new_range
+#![feature(new_range)]
+
+fn test() {
+    let _: core::ops::RangeFull = ..;
+    let _: core::range::RangeFrom<i32> = 1..;
+    let _: core::ops::RangeTo<u32> = ..2u32;
+    let _: core::range::Range<usize> = 1..2usize;
+    let _: core::range::RangeToInclusive<i32> = ..=10;
+    let _: core::range::RangeInclusive<char> = 'a'..='z';
+}
 "#,
     );
 }
@@ -2133,11 +2152,11 @@ async fn main() {
     let z: core::ops::ControlFlow<(), _> = try { () };
     let w = const { 92 };
     let t = 'a: { 92 };
+    let u = try bikeshed core::ops::ControlFlow<(), _> { () };
 }
         "#,
         expect![[r#"
-            16..193 '{     ...2 }; }': ()
-            16..193 '{     ...2 }; }': impl Future<Output = ()>
+            16..256 '{     ...) }; }': ()
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
             39..41 '92': i32
@@ -2158,6 +2177,13 @@ async fn main() {
             176..177 't': i32
             180..190 ''a: { 92 }': i32
             186..188 '92': i32
+            200..201 'u': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': fn from_output<ControlFlow<(), ()>>(<ControlFlow<(), ()> as Try>::Output) -> ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            249..251 '()': ()
         "#]],
     )
 }
@@ -2700,6 +2726,8 @@ fn box_into_vec() {
     check_infer(
         r#"
 //- /core.rs crate:core
+#![feature(lang_items)]
+
 #[lang = "sized"]
 pub trait Sized {}
 
@@ -2743,22 +2771,22 @@ struct Astruct;
 impl B for Astruct {}
 "#,
         expect![[r#"
-            614..618 'self': Box<[T], A>
-            647..679 '{     ...     }': Vec<T, A>
-            693..863 '{     ...])); }': ()
-            703..706 'vec': Vec<i32, Global>
-            709..724 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
-            709..755 '<[_]>:...i32]))': Vec<i32, Global>
-            725..754 '#[rust...1i32])': Box<[i32; 1], Global>
-            747..753 '[1i32]': [i32; 1]
-            748..752 '1i32': i32
-            765..766 'v': Vec<Box<dyn B + 'static, Global>, Global>
-            786..803 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
-            786..860 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
-            804..859 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
-            826..858 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
-            827..857 '#[rust...truct)': Box<Astruct, Global>
-            849..856 'Astruct': Astruct
+            639..643 'self': Box<[T], A>
+            672..704 '{     ...     }': Vec<T, A>
+            718..888 '{     ...])); }': ()
+            728..731 'vec': Vec<i32, Global>
+            734..749 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
+            734..780 '<[_]>:...i32]))': Vec<i32, Global>
+            750..779 '#[rust...1i32])': Box<[i32; 1], Global>
+            772..778 '[1i32]': [i32; 1]
+            773..777 '1i32': i32
+            790..791 'v': Vec<Box<dyn B + 'static, Global>, Global>
+            811..828 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
+            811..885 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
+            829..884 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
+            851..883 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
+            852..882 '#[rust...truct)': Box<Astruct, Global>
+            874..881 'Astruct': Astruct
         "#]],
     )
 }
@@ -3645,6 +3673,8 @@ fn main() {
 fn cstring_literals() {
     check_types(
         r#"
+#![feature(lang_items)]
+
 #[lang = "CStr"]
 pub struct CStr;
 
@@ -3702,7 +3732,7 @@ fn main() {
 }
 
 #[test]
-fn macro_semitransparent_hygiene() {
+fn macro_semiopaque_hygiene() {
     check_types(
         r#"
 macro_rules! m {
@@ -3952,6 +3982,129 @@ fn foo(a: [u8; 3]) {}
 
 fn bar() {
     foo([0; _]);
+}
+    "#,
+    );
+}
+
+#[test]
+fn cannot_coerce_capturing_closure_to_fn_ptr() {
+    check_infer_with_mismatches(
+        r#"
+fn foo() {
+    let a = 1;
+    let _: fn() -> i32 = || a;
+}
+    "#,
+        expect![[r#"
+            9..58 '{     ...| a; }': ()
+            19..20 'a': i32
+            23..24 '1': i32
+            34..35 '_': fn() -> i32
+            51..55 '|| a': impl Fn() -> i32
+            54..55 'a': i32
+            51..55: expected fn() -> i32, got impl Fn() -> i32
+        "#]],
+    );
+}
+
+#[test]
+fn naked_asm_returns_never() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+
+#[unsafe(naked)]
+extern "C" fn foo() -> ! {
+    core::arch::naked_asm!("");
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21478() {
+    check_infer(
+        r#"
+//- minicore: unsize, coerce_unsized
+struct LazyLock<T>(T);
+
+impl<T> LazyLock<T> {
+    const fn new() -> Self {
+        loop {}
+    }
+
+    fn force(this: &Self) -> &T {
+        loop {}
+    }
+}
+
+static VALUES_LAZY_LOCK: LazyLock<[u32; { 0 }]> = LazyLock::new();
+
+fn foo() {
+    let _ = LazyLock::force(&VALUES_LAZY_LOCK);
+}
+    "#,
+        expect![[r#"
+            73..96 '{     ...     }': LazyLock<T>
+            83..90 'loop {}': !
+            88..90 '{}': ()
+            111..115 'this': &'? LazyLock<T>
+            130..153 '{     ...     }': &'? T
+            140..147 'loop {}': !
+            145..147 '{}': ()
+            207..220 'LazyLock::new': fn new<[u32; _]>() -> LazyLock<[u32; _]>
+            207..222 'LazyLock::new()': LazyLock<[u32; _]>
+            234..285 '{     ...CK); }': ()
+            244..245 '_': &'? [u32; _]
+            248..263 'LazyLock::force': fn force<[u32; _]>(&'? LazyLock<[u32; _]>) -> &'? [u32; _]
+            248..282 'LazyLo..._LOCK)': &'? [u32; _]
+            264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; _]>
+            265..281 'VALUES...Y_LOCK': LazyLock<[u32; _]>
+        "#]],
+    );
+}
+
+#[test]
+fn include_bytes_len_mismatch() {
+    check_no_mismatches(
+        r#"
+//- minicore: include_bytes
+static S: &[u8; 158] = include_bytes!("/foo/bar/baz.txt");
+    "#,
+    );
+}
+
+#[test]
+fn proc_macros_are_functions_inside_defining_crate_and_macros_outside() {
+    check_types(
+        r#"
+//- /pm.rs crate:pm
+#![crate_type = "proc-macro"]
+
+#[proc_macro_attribute]
+pub fn proc_macro() {}
+
+fn foo() {
+    proc_macro;
+ // ^^^^^^^^^^ fn proc_macro()
+}
+
+mod bar {
+    use super::proc_macro;
+
+    fn baz() {
+        super::proc_macro;
+     // ^^^^^^^^^^^^^^^^^ fn proc_macro()
+        proc_macro;
+     // ^^^^^^^^^^ fn proc_macro()
+    }
+}
+
+//- /lib.rs crate:lib deps:pm
+fn foo() {
+    pm::proc_macro;
+ // ^^^^^^^^^^^^^^ {unknown}
 }
     "#,
     );

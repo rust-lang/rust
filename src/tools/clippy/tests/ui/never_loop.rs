@@ -546,3 +546,13 @@ fn issue15673() {
         return;
     }
 }
+
+#[expect(clippy::diverging_sub_expression, clippy::short_circuit_statement)]
+fn issue16462() {
+    let mut n = 10;
+    loop {
+        println!("{n}");
+        n -= 1;
+        n >= 0 || break;
+    }
+}

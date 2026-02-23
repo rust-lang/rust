@@ -28,13 +28,13 @@ fn collect_autodiff_fn_from_arg<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     let (instance, span) = match arg.kind() {
-        ty::GenericArgKind::Type(ty) => match ty.kind() {
+        ty::GenericArgKind::Type(ty) => match *ty.kind() {
             ty::FnDef(def_id, substs) => {
                 let span = tcx.def_span(def_id);
                 let instance = ty::Instance::expect_resolve(
                     tcx,
                     ty::TypingEnv::non_body_analysis(tcx, def_id),
-                    *def_id,
+                    def_id,
                     substs,
                     span,
                 );

@@ -1,14 +1,14 @@
 #![crate_type = "lib"]
 #![feature(rustdoc_internals)]
 
-#![doc(keyword = "hello")]
+#![doc(keyword = "match")]
 //~^ ERROR `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
-#[doc(keyword = "hell")] //~ ERROR `#[doc(keyword = "...")]` should be used on empty modules
+#[doc(keyword = "match")] //~ ERROR `#[doc(keyword = "...")]` should be used on empty modules
 mod foo {
     fn hell() {}
 }
 
-#[doc(keyword = "hall")] //~ ERROR `#[doc(keyword = "...")]` should be used on modules
+#[doc(keyword = "match")] //~ ERROR `#[doc(keyword = "...")]` should be used on modules
 fn foo() {}
 
 

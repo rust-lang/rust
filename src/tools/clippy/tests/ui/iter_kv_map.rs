@@ -193,3 +193,9 @@ fn issue14595() {
     let _ = map.as_ref().iter().map(|(_, v)| v).copied().collect::<Vec<_>>();
     //~^ iter_kv_map
 }
+
+fn issue16340() {
+    let hm: HashMap<&str, &str> = HashMap::new();
+    let _ = hm.iter().map(|(key, _)| vec![key]);
+    //~^ iter_kv_map
+}

@@ -247,7 +247,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 
@@ -264,7 +264,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if bk.allows_two_phase_borrow() {
+                        if bk.is_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -297,8 +297,9 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/) => {
+                self.consume_operand(location, operand)
+            }
 
             &Rvalue::Discriminant(place) => {
                 self.access_place(
@@ -313,8 +314,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }
-
-            Rvalue::NullaryOp(_op) => {}
 
             Rvalue::Aggregate(_, operands) => {
                 for operand in operands {
@@ -386,7 +385,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(borrow.kind.allows_two_phase_borrow());
+                            assert!(borrow.kind.is_two_phase_borrow());
                             return ControlFlow::Continue(());
                         }
 

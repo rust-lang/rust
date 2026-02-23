@@ -1,33 +1,33 @@
-error: a dangling pointer will be produced because the temporary `String` will be dropped
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
   --> $DIR/example-from-issue123613.rs:5:48
    |
 LL |     let str1 = String::with_capacity(MAX_PATH).as_mut_ptr();
-   |                ------------------------------- ^^^^^^^^^^ this pointer will immediately be invalid
+   |                ------------------------------- ^^^^^^^^^^ pointer created here
    |                |
-   |                this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |                this `String` is dropped at end of statement
    |
-   = note: pointers do not have a lifetime; when calling `as_mut_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_mut_ptr`
-   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
-   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_mut_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 note: the lint level is defined here
   --> $DIR/example-from-issue123613.rs:1:9
    |
 LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: a dangling pointer will be produced because the temporary `String` will be dropped
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
   --> $DIR/example-from-issue123613.rs:7:70
    |
 LL |     let str2 = String::from("TotototototototototototototototototoT").as_ptr();
-   |                ----------------------------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |                ----------------------------------------------------- ^^^^^^ pointer created here
    |                |
-   |                this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |                this `String` is dropped at end of statement
    |
-   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
-   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
-   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
-   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: aborting due to 2 previous errors
 

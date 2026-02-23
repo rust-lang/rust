@@ -11,16 +11,15 @@ use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::{GenericRequirement, extract};
+use rustc_hir::lang_items::GenericRequirement;
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
 
 use crate::errors::{
     DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
-    UnknownLangItem,
 };
 use crate::weak_lang_items;
 
@@ -62,7 +61,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
     ) {
-        if let Some((name, attr_span)) = extract(attrs) {
+        if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
                 // Known lang item with attribute on correct target.
                 Some(lang_item) if actual_target == lang_item.target() => {
@@ -86,7 +85,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
                 // Unknown lang item.
                 _ => {
-                    self.tcx.dcx().emit_err(UnknownLangItem { span: attr_span, name });
+                    self.tcx.dcx().delayed_bug("unknown lang item");
                 }
             }
         }
@@ -276,7 +275,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
-            ast::ItemKind::Const(_) => Target::Const,
+            ast::ItemKind::Const(_) | ast::ItemKind::ConstBlock(_) => Target::Const,
             ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
             ast::ItemKind::Mod(..) => Target::Mod,
             ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
@@ -357,6 +356,20 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
         visit::walk_assoc_item(self, i, ctxt);
     }
+}
+
+/// Extracts the first `lang = "$name"` out of a list of attributes.
+/// The `#[panic_handler]` attribute is also extracted out when found.
+///
+/// This function is used for `ast::Attribute`, for `hir::Attribute` use the `find_attr!` macro with `AttributeKind::Lang`
+pub(crate) fn extract_ast(attrs: &[rustc_ast::ast::Attribute]) -> Option<(Symbol, Span)> {
+    attrs.iter().find_map(|attr| {
+        Some(match attr {
+            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
+            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
+            _ => return None,
+        })
+    })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

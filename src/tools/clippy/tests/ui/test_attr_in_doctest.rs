@@ -46,3 +46,11 @@
 /// fn not_even_rust() { panic!("Ouch") }
 /// ```
 fn test_attr_in_doctests() {}
+
+/// ```test_harness
+/// #[test]
+/// fn foo() {
+///     panic!();
+/// }
+/// ```
+pub fn issue16447() {}

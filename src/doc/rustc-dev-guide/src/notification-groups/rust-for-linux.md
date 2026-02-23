@@ -1,6 +1,6 @@
 # Rust for Linux notification group
 
-**Github Label:** [A-rust-for-linux] <br>
+**GitHub Label:** [A-rust-for-linux] <br>
 **Ping command:** `@rustbot ping rfl`
 
 [A-rust-for-linux]: https://github.com/rust-lang/rust/labels/A-rust-for-linux

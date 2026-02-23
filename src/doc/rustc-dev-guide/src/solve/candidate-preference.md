@@ -260,31 +260,6 @@ We prefer builtin trait object impls over user-written impls. This is **unsound*
 
 The candidate preference behavior during normalization is implemented in [`fn assemble_and_merge_candidates`].
 
-### Where-bounds shadow impls
-
-Normalization of associated items does not consider impls if the corresponding trait goal has been proven via a `ParamEnv` or `AliasBound` candidate.
-This means that for where-bounds which do not constrain associated types, the associated types remain *rigid*.
-
-This is necessary to avoid unnecessary region constraints from applying impls.
-```rust
-trait Trait<'a> {
-    type Assoc;
-}
-impl Trait<'static> for u32 {
-    type Assoc = u32;
-}
-
-fn bar<'b, T: Trait<'b>>() -> T::Assoc { todo!() }
-fn foo<'a>()
-where
-    u32: Trait<'a>,
-{
-    // Normalizing the return type would use the impl, proving
-    // the `T: Trait` where-bound would use the where-bound, resulting
-    // in different region constraints.
-    bar::<'_, u32>();
-}
-```
 
 ### We always consider `AliasBound` candidates
 
@@ -418,6 +393,67 @@ where
 }
 ```
 
+### Trait where-bounds shadow impls
+
+Normalization of associated items does not consider impls if the corresponding trait goal has been proven via a `ParamEnv` or `AliasBound` candidate.
+This means that for where-bounds which do not constrain associated types, the associated types remain *rigid*.
+
+#### Using impls results in different region constraints
+
+This is necessary to avoid unnecessary region constraints from applying impls.
+```rust
+trait Trait<'a> {
+    type Assoc;
+}
+impl Trait<'static> for u32 {
+    type Assoc = u32;
+}
+
+fn bar<'b, T: Trait<'b>>() -> T::Assoc { todo!() }
+fn foo<'a>()
+where
+    u32: Trait<'a>,
+{
+    // Normalizing the return type would use the impl, proving
+    // the `T: Trait` where-bound would use the where-bound, resulting
+    // in different region constraints.
+    bar::<'_, u32>();
+}
+```
+
+#### RPITIT `type_of` cycles
+
+We currently have to avoid impl candidates if there are where-bounds to avoid query cycles for RPITIT, see [#139762]. It feels desirable to me to stop relying on auto-trait leakage of during RPITIT computation to remove this issue, see [#139788].
+
+```rust
+use std::future::Future;
+pub trait ReactiveFunction: Send {
+    type Output;
+
+    fn invoke(self) -> Self::Output;
+}
+
+trait AttributeValue {
+    fn resolve(self) -> impl Future<Output = ()> + Send;
+}
+
+impl<F, V> AttributeValue for F
+where
+    F: ReactiveFunction<Output = V>,
+    V: AttributeValue,
+{
+    async fn resolve(self) {
+        // We're awaiting `<V as AttributeValue>::{synthetic#0}` here.
+        // Normalizing that one via the the impl we're currently in
+        // relies on `collect_return_position_impl_trait_in_trait_tys` which
+        // ends up relying on auto-trait leakage when checking that the
+        // opaque return type of this function implements the `Send` item
+        // bound of the trait definition.
+        self.invoke().resolve().await
+    }
+}
+```
+
 [`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/struct.Candidate.html
 [`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/enum.CandidateSource.html
 [`fn merge_trait_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/trait_goals.rs#L1342-L1424
@@ -425,3 +461,5 @@ where
 [trait-system-refactor-initiative#76]: https://github.com/rust-lang/trait-system-refactor-initiative/issues/76
 [#24066]: https://github.com/rust-lang/rust/issues/24066
 [#133044]: https://github.com/rust-lang/rust/issues/133044
+[#139762]: https://github.com/rust-lang/rust/pull/139762
+[#139788]: https://github.com/rust-lang/rust/issues/139788

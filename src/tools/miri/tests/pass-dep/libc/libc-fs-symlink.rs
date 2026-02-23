@@ -4,11 +4,14 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::ffi::CString;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 use std::os::unix::ffi::OsStrExt;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
 #[path = "../../utils/mod.rs"]
 mod utils;
+use libc_utils::errno_result;
 
 fn main() {
     test_readlink();
@@ -31,44 +34,48 @@ fn test_readlink() {
     // Make the buf one byte larger than it needs to be,
     // and check that the last byte is not overwritten.
     let mut large_buf = vec![0xFF; expected_path.len() + 1];
-    let res =
-        unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len())
+    })
+    .unwrap();
     // Check that the resolved path was properly written into the buf.
     assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
     assert_eq!(large_buf.last(), Some(&0xFF));
-    assert_eq!(res, large_buf.len() as isize - 1);
+    assert_eq!(res, (large_buf.len() - 1) as isize);
 
     // Test that the resolved path is truncated if the provided buffer
     // is too small.
     let mut small_buf = [0u8; 2];
-    let res =
-        unsafe { libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len()) };
+    let res = errno_result(unsafe {
+        libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len())
+    })
+    .unwrap();
     assert_eq!(small_buf, &expected_path[..small_buf.len()]);
     assert_eq!(res, small_buf.len() as isize);
 
     // Test that we report a proper error for a missing path.
-    let res = unsafe {
+    let err = errno_result(unsafe {
         libc::readlink(
             c"MIRI_MISSING_FILE_NAME".as_ptr(),
             small_buf.as_mut_ptr().cast(),
             small_buf.len(),
         )
-    };
-    assert_eq!(res, -1);
-    assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+    })
+    .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
 }
 
 fn test_nofollow_symlink() {
-    let bytes = b"Hello, World!\n";
-    let path = utils::prepare_with_content("test_nofollow_symlink_target.txt", bytes);
+    let path = utils::prepare_with_content("test_nofollow_symlink_target.txt", b"Hello, World!\n");
 
     let symlink_path = utils::prepare("test_nofollow_symlink.txt");
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
 
     let symlink_cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
 
-    let ret = unsafe { libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
-    assert_eq!(ret, -1);
-    let err = Error::last_os_error().raw_os_error().unwrap();
-    assert_eq!(err, libc::ELOOP);
+    let err = errno_result(unsafe {
+        libc::open(symlink_cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::ELOOP));
 }

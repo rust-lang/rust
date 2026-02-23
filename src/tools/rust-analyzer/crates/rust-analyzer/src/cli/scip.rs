@@ -52,6 +52,7 @@ impl flags::Scip {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
+            proc_macro_processes: config.proc_macro_num_processes(),
         };
         let cargo_config = config.cargo(None);
         let (db, vfs, _) = load_workspace_at(
@@ -600,6 +601,29 @@ pub mod example_mod {
 }
 "#,
             "rust-analyzer cargo foo 0.1.0 example_mod/func().",
+        );
+    }
+
+    #[test]
+    fn operator_overload() {
+        check_symbol(
+            r#"
+//- minicore: add
+//- /workspace/lib.rs crate:main
+use core::ops::AddAssign;
+
+struct S;
+
+impl AddAssign for S {
+    fn add_assign(&mut self, _rhs: Self) {}
+}
+
+fn main() {
+    let mut s = S;
+    s +=$0 S;
+}
+"#,
+            "rust-analyzer cargo main . impl#[S][`AddAssign<Self>`]add_assign().",
         );
     }
 

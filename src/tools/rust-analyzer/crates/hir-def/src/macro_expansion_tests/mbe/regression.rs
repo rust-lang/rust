@@ -109,6 +109,42 @@ fn main() {
 }
 
 #[test]
+fn ty_fragment_followed_by_expr() {
+    check(
+        r#"
+macro_rules! a {
+    ($t:tt) => {};
+}
+
+macro_rules! b {
+    ($t:ty) => {
+        a!($t);
+    };
+}
+
+fn main() {
+    b!(&'static str);
+}
+"#,
+        expect![[r#"
+macro_rules! a {
+    ($t:tt) => {};
+}
+
+macro_rules! b {
+    ($t:ty) => {
+        a!($t);
+    };
+}
+
+fn main() {
+    a!(&'static str);;
+}
+"#]],
+    );
+}
+
+#[test]
 fn test_winapi_struct() {
     // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/macros.rs#L366
 

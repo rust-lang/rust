@@ -86,7 +86,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
             }
         };
 
-        match (r < 0).then(super::os::errno) {
+        match (r < 0).then(crate::sys::io::errno) {
             Some(libc::ETIMEDOUT) => return false,
             Some(libc::EINTR) => continue,
             _ => return true,
@@ -167,7 +167,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         )
     };
 
-    r == 0 || super::os::errno() != libc::ETIMEDOUT
+    r == 0 || crate::sys::io::errno() != libc::ETIMEDOUT
 }
 
 #[cfg(target_os = "openbsd")]
@@ -210,7 +210,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         libc::umtx_sleep(futex as *const Atomic<u32> as *const i32, expected as i32, timeout_ms)
     };
 
-    r == 0 || super::os::errno() != libc::ETIMEDOUT
+    r == 0 || crate::sys::io::errno() != libc::ETIMEDOUT
 }
 
 // DragonflyBSD doesn't tell us how many threads are woken up, so this always returns false.

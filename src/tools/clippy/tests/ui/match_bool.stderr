@@ -183,5 +183,15 @@ LL +         break 'a;
 LL +     } }
    |
 
-error: aborting due to 13 previous errors
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:137:5
+   |
+LL | /     match test_expr!(x) {
+LL | |
+LL | |         true => 1,
+LL | |         false => 0,
+LL | |     };
+   | |_____^ help: consider using an `if`/`else` expression: `if test_expr!(x) { 1 } else { 0 }`
+
+error: aborting due to 14 previous errors
 

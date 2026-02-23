@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{expr_or_init, fn_def_id_with_node_args};
+use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -14,7 +14,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use std::ops::ControlFlow;
 
@@ -335,8 +335,8 @@ impl UnconditionalRecursion {
             let impls = cx.tcx.trait_impls_of(default_trait_id);
             for (ty, impl_def_ids) in impls.non_blanket_impls() {
                 let Some(self_def_id) = ty.def() else { continue };
-                for impl_def_id in impl_def_ids {
-                    if !cx.tcx.is_automatically_derived(*impl_def_id) &&
+                for &impl_def_id in impl_def_ids {
+                    if !cx.tcx.is_automatically_derived(impl_def_id) &&
                         let Some(assoc_item) = cx
                             .tcx
                             .associated_items(impl_def_id)

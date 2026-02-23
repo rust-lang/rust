@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for ToplevelRefArg {
                     diag.span_suggestion(
                         stmt.span,
                         "try",
-                        format!("let {name}{tyopt} = {initref};", name = snippet(cx, name.span, ".."),),
+                        format!("let {name}{tyopt} = {initref};", name = snippet(cx, name.span, "..")),
                         app,
                     );
                 },

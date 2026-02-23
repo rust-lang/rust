@@ -332,6 +332,7 @@ fn pretty_operand(operand: &Operand) -> String {
             format!("move {mv:?}")
         }
         Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
+        Operand::RuntimeChecks(checks) => format!("{checks:?}"),
     }
 }
 
@@ -382,12 +383,8 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::Repeat(op, cnst) => {
             write!(writer, "[{}; {}]", pretty_operand(op), pretty_ty_const(cnst))
         }
-        Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
-        }
-        Rvalue::NullaryOp(nul) => {
-            write!(writer, "{nul:?}() \" \"")
         }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))

@@ -4,7 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::core::build_steps::compile::{
-    add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
+    ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
+    std_crates_for_run_make,
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
@@ -86,7 +87,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            Kind::Check,
+            builder.config.cmd.kind(),
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -96,7 +97,7 @@ impl Step for Std {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            builder.config.cmd.kind(),
             format_args!("library artifacts{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,
@@ -111,8 +112,7 @@ impl Step for Std {
             builder.config.free_args.clone(),
             &check_stamp,
             vec![],
-            true,
-            false,
+            ArtifactKeepMode::OnlyRmeta,
         );
 
         drop(_guard);
@@ -148,7 +148,14 @@ impl Step for Std {
             build_compiler,
             target,
         );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(
+            builder,
+            cargo,
+            builder.config.free_args.clone(),
+            &stamp,
+            vec![],
+            ArtifactKeepMode::OnlyRmeta,
+        );
         check_stamp
     }
 
@@ -368,7 +375,14 @@ impl Step for Rustc {
         let stamp =
             build_stamp::librustc_stamp(builder, build_compiler, target).with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(
+            builder,
+            cargo,
+            builder.config.free_args.clone(),
+            &stamp,
+            vec![],
+            ArtifactKeepMode::OnlyRmeta,
+        );
 
         stamp
     }
@@ -568,7 +582,14 @@ impl Step for CraneliftCodegenBackend {
         )
         .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(
+            builder,
+            cargo,
+            builder.config.free_args.clone(),
+            &stamp,
+            vec![],
+            ArtifactKeepMode::OnlyRmeta,
+        );
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -639,7 +660,14 @@ impl Step for GccCodegenBackend {
         )
         .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(
+            builder,
+            cargo,
+            builder.config.free_args.clone(),
+            &stamp,
+            vec![],
+            ArtifactKeepMode::OnlyRmeta,
+        );
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -678,7 +706,7 @@ macro_rules! tool_check_step {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.paths(&[ $path, $( $alt_path ),* ])
+                run.path($path) $( .path( $alt_path ) )*
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -777,7 +805,14 @@ fn run_tool_check_step(
         .with_prefix(&format!("{display_name}-check"));
 
     let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
-    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    run_cargo(
+        builder,
+        cargo,
+        builder.config.free_args.clone(),
+        &stamp,
+        vec![],
+        ArtifactKeepMode::OnlyRmeta,
+    );
 }
 
 tool_check_step!(Rustdoc {
@@ -793,8 +828,7 @@ tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustcPrivate
 tool_check_step!(Miri {
     path: "src/tools/miri",
     mode: Mode::ToolRustcPrivate,
-    enable_features: ["stack-cache"],
-    default_features: false,
+    enable_features: ["check_only"],
 });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustcPrivate });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustcPrivate });

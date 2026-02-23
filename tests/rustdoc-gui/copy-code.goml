@@ -1,5 +1,6 @@
 // Checks that the "copy code" button is not triggering JS error and its display
 // isn't broken.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
 define-function: (
@@ -42,7 +43,31 @@ store-size: (".example-wrap:nth-of-type(1) .copy-button", {
 })
 assert: |copy_height| > 0 && |copy_width| > 0
 
-// Checking same things for the copy button when there is no run button.
+
+// We now check that copying code when line numbers are displayed don't include these line numbers.
+
+// First we ensure that the clipboard is empty.
+assert-clipboard: ""
+
+// We make the line numbers appear.
+call-function: ("open-settings-menu", {})
+click: "#line-numbers"
+wait-for-local-storage: {"rustdoc-line-numbers": "true" }
+
+// We close the settings menu.
+call-function: ("close-settings-menu", {})
+
+// We ensure that there are actually line numbers generated in the DOM.
+assert-text: (".example-wrap pre.rust code span[data-nosnippet]", "1")
+// We make the copy button appear.
+move-cursor-to: ".example-wrap pre.rust code"
+wait-for-css: (".example-wrap .button-holder", {"visibility": "visible"})
+// We click on the copy button.
+click: ".example-wrap .button-holder .copy-button"
+assert-clipboard: 'println!("nothing fancy");
+println!("but with two lines!");'
+
+// Back to UI checks, checking same things for the copy button when there is no run button.
 go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
 call-function: ("check-copy-button", {})
 // Ensure there is no run button.

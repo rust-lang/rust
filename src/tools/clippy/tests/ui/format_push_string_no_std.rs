@@ -1,0 +1,15 @@
+#![warn(clippy::format_push_string)]
+#![no_std]
+
+extern crate alloc;
+
+use alloc::format;
+use alloc::string::String;
+
+fn foo(string: &mut String) {
+    use core::fmt::Write;
+
+    // TODO: recognize the already imported `fmt::Write`, and don't suggest importing it again
+    string.push_str(&format!("{:?}", 1234));
+    //~^ format_push_string
+}

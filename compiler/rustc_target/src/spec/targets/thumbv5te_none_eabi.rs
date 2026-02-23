@@ -1,4 +1,4 @@
-//! Targets the ARMv5TE, with code as `t32` code by default.
+//! Targets the ARMv5TE architecture, with `t32` code by default.
 
 use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 

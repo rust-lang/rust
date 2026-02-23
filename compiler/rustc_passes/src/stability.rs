@@ -96,9 +96,8 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 }
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    let depr = find_attr!(attrs,
-        AttributeKind::Deprecation { deprecation, span: _ } => *deprecation
+    let depr = find_attr!(tcx, def_id,
+        Deprecation { deprecation, span: _ } => *deprecation
     );
 
     let Some(depr) = depr else {
@@ -161,8 +160,7 @@ fn lookup_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Stability> {
     }
 
     // # Regular stability
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    let stab = find_attr!(attrs, AttributeKind::Stability { stability, span: _ } => *stability);
+    let stab = find_attr!(tcx, def_id, Stability { stability, span: _ } => *stability);
 
     if let Some(stab) = stab {
         return Some(stab);
@@ -195,9 +193,8 @@ fn lookup_default_body_stability(
         return None;
     }
 
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
     // FIXME: check that this item can have body stability
-    find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability)
+    find_attr!(tcx, def_id, RustcBodyStability { stability, .. } => *stability)
 }
 
 #[instrument(level = "debug", skip(tcx))]
@@ -212,9 +209,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
                 && let Some(fn_sig) = tcx.hir_node_by_def_id(def_id).fn_sig()
                 && fn_sig.header.is_const()
             {
-                let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-                let const_stability_indirect =
-                    find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
+                let const_stability_indirect = find_attr!(tcx, def_id, RustcConstStabilityIndirect);
                 return Some(ConstStability::unmarked(const_stability_indirect, parent_stab));
             }
         }
@@ -222,10 +217,9 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
         return None;
     }
 
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-    let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
+    let const_stability_indirect = find_attr!(tcx, def_id, RustcConstStabilityIndirect);
     let const_stab =
-        find_attr!(attrs, AttributeKind::ConstStability { stability, span: _ } => *stability);
+        find_attr!(tcx, def_id, RustcConstStability { stability, span: _ } => *stability);
 
     // After checking the immediate attributes, get rid of the span and compute implied
     // const stability: inherit feature gate from regular stability.
@@ -393,7 +387,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         if let Some(fn_sig) = fn_sig
             && !fn_sig.header.is_const()
             && const_stab.is_some()
-            && find_attr_span!(ConstStability).is_some()
+            && find_attr_span!(RustcConstStability).is_some()
         {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
@@ -403,7 +397,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && let Some(fn_sig) = fn_sig
             && const_stab.is_const_stable()
             && !stab.is_some_and(|s| s.is_stable())
-            && let Some(const_span) = find_attr_span!(ConstStability)
+            && let Some(const_span) = find_attr_span!(RustcConstStability)
         {
             self.tcx
                 .dcx()
@@ -413,7 +407,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         if let Some(stab) = &const_stab
             && stab.is_const_stable()
             && stab.const_stable_indirect
-            && let Some(span) = find_attr_span!(ConstStability)
+            && let Some(span) = find_attr_span!(RustcConstStability)
         {
             self.tcx.dcx().emit_err(errors::RustcConstStableIndirectPairing { span });
         }
@@ -599,15 +593,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
-                    let stab = find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
+                    let stab = find_attr!(attrs, Stability{stability, span} => (*stability, *span));
 
                     // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-                    let const_stab = find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
+                    let const_stab =
+                        find_attr!(attrs, RustcConstStability{stability, ..} => *stability);
 
-                    let unstable_feature_stab =
-                        find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
-                            .map(|i| i.as_slice())
-                            .unwrap_or_default();
+                    let unstable_feature_stab = find_attr!(attrs, UnstableFeatureBound(i) => i)
+                        .map(|i| i.as_slice())
+                        .unwrap_or_default();
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

@@ -518,8 +518,8 @@ pub struct JoinPathsError {
 ///
 /// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
-/// variable (a double quote on Windows or a colon on Unix), or if the system
-/// does not have a `PATH`-like variable (e.g. UEFI or WASI).
+/// variable (a double quote on Windows or a colon on Unix or semicolon on
+/// UEFI), or if the system does not have a `PATH`-like variable (e.g. WASI).
 ///
 /// # Examples
 ///
@@ -728,7 +728,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// You expected to safely execute the current executable, but you're
 /// instead executing something completely different. The code you
-/// just executed run with your privileges.
+/// just executed runs with your privileges.
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly.

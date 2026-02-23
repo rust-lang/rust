@@ -3,7 +3,7 @@ use realstd::collections::TryReserveErrorKind::*;
 
 use super::Entry::{Occupied, Vacant};
 use super::HashMap;
-use crate::assert_matches::assert_matches;
+use crate::assert_matches;
 use crate::cell::RefCell;
 use crate::hash::{BuildHasher, BuildHasherDefault, DefaultHasher, RandomState};
 use crate::test_helpers::test_rng;
@@ -1053,4 +1053,7 @@ fn const_with_hasher() {
     assert_eq!(y.len(), 0);
     y.insert((), ());
     assert_eq!(y.len(), 1);
+
+    const Z: HashMap<(), (), BuildHasherDefault<DefaultHasher>> = Default::default();
+    assert_eq!(X, Z);
 }

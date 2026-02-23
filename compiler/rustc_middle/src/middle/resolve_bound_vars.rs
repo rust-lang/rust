@@ -48,7 +48,7 @@ pub enum ObjectLifetimeDefault {
 /// Maps the id of each bound variable reference to the variable decl
 /// that it corresponds to.
 #[derive(Debug, Default, HashStable)]
-pub struct ResolveBoundVars {
+pub struct ResolveBoundVars<'tcx> {
     // Maps from every use of a named (not anonymous) bound var to a
     // `ResolvedArg` describing how that variable is bound.
     pub defs: SortedMap<ItemLocalId, ResolvedArg>,
@@ -59,7 +59,7 @@ pub struct ResolveBoundVars {
     // - closures
     // - trait refs
     // - bound types (like `T` in `for<'a> T<'a>: Foo`)
-    pub late_bound_vars: SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>>,
+    pub late_bound_vars: SortedMap<ItemLocalId, Vec<ty::BoundVariableKind<'tcx>>>,
 
     // List captured variables for each opaque type.
     pub opaque_captured_lifetimes: LocalDefIdMap<Vec<(ResolvedArg, LocalDefId)>>,

@@ -30,6 +30,7 @@ run() {
       --env CARGO_HOME=/cargo \
       --env CARGO_TARGET_DIR=/checkout/target \
       --env TARGET="${1}" \
+      --env PROFILE \
       --env "${HOST_LINKER}"="cc" \
       --env STDARCH_DISABLE_ASSERT_INSTR \
       --env NOSTD \

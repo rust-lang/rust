@@ -5,8 +5,9 @@ use std::hash::Hash;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
+use rustc_errors::msg;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
+use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -19,7 +20,6 @@ use tracing::debug;
 
 use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
-use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
@@ -208,15 +208,10 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
 
-        use rustc_session::RemapFileNameExt;
-        use rustc_session::config::RemapPathScopeComponents;
+        use rustc_span::RemapPathScopeComponents;
         (
             Symbol::intern(
-                &caller
-                    .file
-                    .name
-                    .for_scope(self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
-                    .to_string_lossy(),
+                &caller.file.name.display(RemapPathScopeComponents::DIAGNOSTICS).to_string_lossy(),
             ),
             u32::try_from(caller.line).unwrap(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
@@ -240,7 +235,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         if self.tcx.is_lang_item(def_id, LangItem::PanicDisplay)
             || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
-            let args = self.copy_fn_args(args);
+            let args = Self::copy_fn_args(args);
             // &str or &&str
             assert!(args.len() == 1);
 
@@ -445,7 +440,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a `const trait`. These
             // *are* const-checked!
-            if !ecx.tcx.is_const_fn(def) || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check) {
+            if !ecx.tcx.is_const_fn(def) || find_attr!(ecx.tcx, def, RustcDoNotConstCheck) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)
@@ -494,7 +489,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
                     Err(err) => throw_ub_custom!(
-                        fluent::const_eval_invalid_align_details,
+                        msg!(
+                            "invalid align passed to `{$name}`: {$align} is {$err_kind ->
+                                [not_power_of_two] not a power of 2
+                                [too_large] too large
+                                *[other] {\"\"}
+                            }"
+                        ),
                         name = "const_allocate",
                         err_kind = err.diag_ident(),
                         align = err.align()
@@ -518,7 +519,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
                     Err(err) => throw_ub_custom!(
-                        fluent::const_eval_invalid_align_details,
+                        msg!(
+                            "invalid align passed to `{$name}`: {$align} is {$err_kind ->
+                                [not_power_of_two] not a power of 2
+                                [too_large] too large
+                                *[other] {\"\"}
+                            }"
+                        ),
                         name = "const_deallocate",
                         err_kind = err.diag_ident(),
                         align = err.align()
@@ -591,6 +598,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
+            sym::type_of => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_type_info(ty, dest)?;
+            }
+
             _ => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
@@ -640,6 +652,16 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             InvalidEnumConstruction(source) => InvalidEnumConstruction(eval_to_int(source)?),
         };
         Err(ConstEvalErrKind::AssertFailure(err)).into()
+    }
+
+    #[inline(always)]
+    fn runtime_checks(
+        _ecx: &InterpCx<'tcx, Self>,
+        _r: mir::RuntimeChecks,
+    ) -> InterpResult<'tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        interp_ok(true)
     }
 
     fn binary_ptr_op(

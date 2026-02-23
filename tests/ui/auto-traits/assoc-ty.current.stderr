@@ -1,9 +1,9 @@
 error[E0380]: auto traits cannot have associated items
-  --> $DIR/assoc-ty.rs:10:10
+  --> $DIR/assoc-ty.rs:11:10
    |
 LL | auto trait Trait {
    |            ----- auto traits cannot have associated items
-LL |
+...
 LL |     type Output;
    |          ^^^^^^
 
@@ -12,8 +12,9 @@ error[E0658]: auto traits are experimental and possibly buggy
    |
 LL | / auto trait Trait {
 LL | |
-LL | |     type Output;
 LL | |
+LL | |     type Output;
+...  |
 LL | | }
    | |_^
    |
@@ -22,7 +23,7 @@ LL | | }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0308]: mismatched types
-  --> $DIR/assoc-ty.rs:15:36
+  --> $DIR/assoc-ty.rs:17:36
    |
 LL |     let _: <() as Trait>::Output = ();
    |            ---------------------   ^^ expected associated type, found `()`

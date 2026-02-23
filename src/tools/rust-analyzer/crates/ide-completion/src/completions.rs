@@ -13,6 +13,7 @@ pub(crate) mod format_string;
 pub(crate) mod item_list;
 pub(crate) mod keyword;
 pub(crate) mod lifetime;
+pub(crate) mod macro_def;
 pub(crate) mod mod_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;

@@ -6,13 +6,11 @@ error: abnormal termination: the program aborted execution
 LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `panic_handler` at tests/fail/panic/no_std.rs:LL:CC
-note: inside `miri_start`
-  --> tests/fail/panic/no_std.rs:LL:CC
-   |
-LL |     panic!("blarg I am dead")
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: panic_handler
+               at tests/fail/panic/no_std.rs:LL:CC
+           1: miri_start
+               at RUSTLIB/core/src/panic.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

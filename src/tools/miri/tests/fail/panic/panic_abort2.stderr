@@ -9,19 +9,23 @@ error: abnormal termination: the program aborted execution
 LL |     crate::process::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = note: BACKTRACE:
-   = note: inside `std::rt::__rust_abort` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
-   = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside `std::panicking::panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-note: inside `main`
-  --> tests/fail/panic/panic_abort2.rs:LL:CC
-   |
-LL |     std::panic!("{}-panicking from libstd", 42);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: std::rt::__rust_abort
+               at RUSTLIB/std/src/rt.rs:LL:CC
+           1: panic_abort::__rust_start_panic
+               at RUSTLIB/panic_abort/src/lib.rs:LL:CC
+           2: std::panicking::rust_panic
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           3: std::panicking::panic_with_hook
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           4: std::panicking::panic_handler::{closure#0}
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           5: std::sys::backtrace::__rust_end_short_backtrace
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           6: std::panicking::panic_handler
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           7: main
+               at RUSTLIB/core/src/panic.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -269,5 +269,11 @@ error: iterating on a map's values
 LL |     let _ = map.as_ref().iter().map(|(_, v)| v).copied().collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.as_ref().values()`
 
-error: aborting due to 39 previous errors
+error: iterating on a map's keys
+  --> tests/ui/iter_kv_map.rs:199:13
+   |
+LL |     let _ = hm.iter().map(|(key, _)| vec![key]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hm.keys().map(|key| vec![key])`
+
+error: aborting due to 40 previous errors
 

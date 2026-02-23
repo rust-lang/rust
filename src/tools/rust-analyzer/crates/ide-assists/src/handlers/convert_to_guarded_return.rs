@@ -42,6 +42,21 @@ use crate::{
 //     bar();
 // }
 // ```
+// ---
+// ```
+// //- minicore: option
+// fn foo() -> Option<i32> { None }
+// fn main() {
+//     $0let x = foo();
+// }
+// ```
+// ->
+// ```
+// fn foo() -> Option<i32> { None }
+// fn main() {
+//     let Some(x) = foo() else { return };
+// }
+// ```
 pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     match ctx.find_node_at_offset::<Either<ast::LetStmt, ast::IfExpr>>()? {
         Either::Left(let_stmt) => let_stmt_to_guarded_return(let_stmt, acc, ctx),
@@ -80,7 +95,9 @@ fn if_expr_to_guarded_return(
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
-    if parent_block.tail_expr()? != if_expr.clone().into() {
+    if parent_block.tail_expr() != Some(if_expr.clone().into())
+        && !(else_block.is_some() && ast::ExprStmt::can_cast(if_expr.syntax().parent()?.kind()))
+    {
         return None;
     }
 
@@ -203,7 +220,7 @@ fn let_stmt_to_guarded_return(
                 let let_else_stmt = make::let_else_stmt(
                     happy_pattern,
                     let_stmt.ty(),
-                    expr,
+                    expr.reset_indent(),
                     ast::make::tail_only_block_expr(early_expression),
                 );
                 let let_else_stmt = let_else_stmt.indent(let_indent_level);
@@ -260,11 +277,11 @@ fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
         && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
         && let (Some(lhs), Some(rhs)) = (bin_expr.lhs(), bin_expr.rhs())
     {
-        reduce_cond(rhs);
+        reduce_cond(rhs.reset_indent());
         expr = lhs;
     }
 
-    reduce_cond(expr);
+    reduce_cond(expr.reset_indent());
     chains.reverse();
     chains
 }
@@ -482,6 +499,36 @@ fn main() {
         return
     };
     foo(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_if_let_has_else_block_in_statement() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    some_statements();
+    if$0 let Ok(x) = Err(92) {
+        foo(x);
+    } else {
+        // needless comment
+        return;
+    }
+    some_statements();
+}
+"#,
+            r#"
+fn main() {
+    some_statements();
+    let Ok(x) = Err(92) else {
+        // needless comment
+        return;
+    };
+    foo(x);
+    some_statements();
 }
 "#,
         );
@@ -1005,6 +1052,63 @@ fn main() {
     }
 
     #[test]
+    fn indentations() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+mod indent {
+    fn main() {
+        $0if let None = Some(
+            92
+        ) {
+            foo(
+                93
+            );
+        }
+    }
+}
+"#,
+            r#"
+mod indent {
+    fn main() {
+        let None = Some(
+            92
+        ) else { return };
+        foo(
+            93
+        );
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+mod indent {
+    fn foo(_: i32) -> Option<i32> { None }
+    fn main() {
+        $0let x = foo(
+            2
+        );
+    }
+}
+"#,
+            r#"
+mod indent {
+    fn foo(_: i32) -> Option<i32> { None }
+    fn main() {
+        let Some(x) = foo(
+            2
+        ) else { return };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn ignore_already_converted_if() {
         check_assist_not_applicable(
             convert_to_guarded_return,
@@ -1059,6 +1163,44 @@ fn main() {
     } else {
         bar()
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_else_if() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    some_statements();
+    if cond {
+        ()
+    } else if$0 let Ok(x) = Err(92) {
+        foo(x);
+    } else {
+        return;
+    }
+    some_statements();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_if_inside_let() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    some_statements();
+    let _ = if$0 let Ok(x) = Err(92) {
+        foo(x);
+    } else {
+        return;
+    }
+    some_statements();
 }
 "#,
         );

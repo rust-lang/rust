@@ -158,6 +158,7 @@ const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
 
 const MAX_RESULTS = 200;
 const NO_TYPE_FILTER = -1;
+const DEPRECATED_COUNT_SELECTOR = "deprecated-count";
 
 /**
  * The [edit distance] is a metric for measuring the difference between two strings.
@@ -1633,10 +1634,12 @@ class DocSearch {
          * parent,
          * trait_parent,
          * deprecated,
+         * unstable,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1653,7 +1656,8 @@ class DocSearch {
             parent: raw[4] === 0 ? null : raw[4] - 1,
             traitParent: raw[5] === 0 ? null : raw[5] - 1,
             deprecated: raw[6] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
+            unstable: raw[7] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 8 ? null : raw[8],
         };
     }
 
@@ -1946,6 +1950,7 @@ class DocSearch {
             path,
             functionData,
             deprecated: entry ? entry.deprecated : false,
+            unstable: entry ? entry.unstable : false,
             parent,
             traitParent,
         };
@@ -2854,6 +2859,13 @@ class DocSearch {
                     // sort deprecated items later
                     a = Number(aai.deprecated);
                     b = Number(bbi.deprecated);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort unstable items later
+                    a = Number(aai.unstable);
+                    b = Number(bbi.unstable);
                     if (a !== b) {
                         return a - b;
                     }
@@ -4904,7 +4916,12 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
     let output = document.createElement("ul");
     output.className = "search-results " + extraClass;
 
+    const deprecatedCountElem = document.createElement("span");
+    deprecatedCountElem.className = DEPRECATED_COUNT_SELECTOR;
+    output.appendChild(deprecatedCountElem);
+
     let count = 0;
+    let deprecatedCount = 0;
 
     /** @type {Promise<string|null>[]} */
     const descList = [];
@@ -4920,6 +4937,13 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
 
         const link = document.createElement("a");
         link.className = "result-" + type;
+        if (obj.item.deprecated) {
+            link.className += " deprecated";
+            deprecatedCount += 1;
+            const plural = deprecatedCount > 1 ? "s" : "";
+            deprecatedCountElem.innerText =
+                `${deprecatedCount} deprecated item${plural} hidden by setting`;
+        }
         link.href = obj.href;
 
         const resultName = document.createElement("span");
@@ -5408,7 +5432,7 @@ function registerSearchEvents() {
             const active = document.activeElement;
             if (active) {
                 const previous = active.previousElementSibling;
-                if (previous) {
+                if (previous && previous.className !== DEPRECATED_COUNT_SELECTOR) {
                     // @ts-expect-error
                     previous.focus();
                 } else {

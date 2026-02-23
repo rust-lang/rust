@@ -2,45 +2,45 @@ PRINT-BANG INPUT (DISPLAY): FirstStruct
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "FirstStruct",
-        span: $DIR/auxiliary/nested-macro-rules.rs:16:14: 16:25 (#6),
+        span: $DIR/auxiliary/nested-macro-rules.rs:16:14: 16:25 (#7),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct FirstAttrStruct {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#5),
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#6),
     },
     Ident {
         ident: "FirstAttrStruct",
-        span: $DIR/auxiliary/nested-macro-rules.rs:16:27: 16:42 (#6),
+        span: $DIR/auxiliary/nested-macro-rules.rs:16:27: 16:42 (#7),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#5),
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#6),
     },
 ]
 PRINT-BANG INPUT (DISPLAY): SecondStruct
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "SecondStruct",
-        span: $DIR/nested-macro-rules.rs:23:38: 23:50 (#15),
+        span: $DIR/nested-macro-rules.rs:23:38: 23:50 (#16),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct SecondAttrStruct {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#14),
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#15),
     },
     Ident {
         ident: "SecondAttrStruct",
-        span: $DIR/nested-macro-rules.rs:23:52: 23:68 (#15),
+        span: $DIR/nested-macro-rules.rs:23:52: 23:68 (#16),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#14),
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#15),
     },
 ]

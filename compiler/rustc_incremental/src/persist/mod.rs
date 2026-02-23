@@ -2,8 +2,8 @@
 //! into the given directory. At the same time, it also hashes the
 //! various HIR nodes.
 
+mod clean;
 mod data;
-mod dirty_clean;
 mod file_format;
 mod fs;
 mod load;

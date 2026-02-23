@@ -9,7 +9,7 @@ use gccjit::Type;
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
-use rustc_abi::{BackendRepr, HasDataLayout};
+use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -20,8 +20,9 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    IntrinsicCallBuilderMethods,
+    IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
@@ -207,6 +208,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let f128_type = cx.type_f128();
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
+        sym::fabsf128 => "fabsf128",
         sym::floorf128 => "floorf128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
@@ -261,6 +263,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
+        sym::fabsf16 => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::maxnumf16 => "__builtin_fmaxf",
@@ -327,6 +330,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
+            | sym::fabsf16
             | sym::floorf16
             | sym::fmaf16
             | sym::maxnumf16
@@ -395,9 +399,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::breakpoint => {
                 unimplemented!();
             }
-            sym::va_copy => {
-                unimplemented!();
-            }
             sym::va_arg => {
                 unimplemented!();
             }
@@ -460,9 +461,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         }
                         sym::bitreverse => self.bit_reverse(width, args[0].immediate()),
                         sym::rotate_left | sym::rotate_right => {
-                            // TODO(antoyo): implement using algorithm from:
+                            // Using optimized branchless algorithm from:
                             // https://blog.regehr.org/archives/1063
-                            // for other platforms.
+                            // This implementation uses the pattern (x<<n) | (x>>(-n&(width-1)))
+                            // which generates efficient code for other platforms.
                             let is_left = name == sym::rotate_left;
                             let val = args[0].immediate();
                             let raw_shift = args[1].immediate();
@@ -503,7 +505,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let layout = self.layout_of(tp_ty).layout;
                 let _use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    SimdVector { .. } => false,
+                    SimdVector { .. } | ScalableVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -608,6 +610,86 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         Ok(())
     }
 
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value {
+        let func = if let Some(&func) = self.intrinsic_instances.borrow().get(&instance) {
+            func
+        } else {
+            let sym = self.tcx.symbol_name(instance).name;
+
+            let func = if let Some(func) = self.intrinsics.borrow().get(sym) {
+                *func
+            } else {
+                self.linkage.set(FunctionType::Extern);
+
+                let func = match sym {
+                    "llvm.fma.f16" => {
+                        // fma is not a target builtin, but a normal builtin, so we handle it differently
+                        // here.
+                        self.context.get_builtin_function("fma")
+                    }
+                    _ => llvm::intrinsic(sym, self),
+                };
+
+                self.intrinsics.borrow_mut().insert(sym.to_string(), func);
+
+                self.on_stack_function_params.borrow_mut().insert(func, FxHashSet::default());
+
+                crate::attributes::from_fn_attrs(self, func, instance);
+
+                func
+            };
+
+            self.intrinsic_instances.borrow_mut().insert(instance, func);
+
+            func
+        };
+        let fn_ptr = func.get_address(None);
+        let fn_ty = fn_ptr.get_type();
+
+        let mut call_args = vec![];
+
+        for arg in args {
+            match arg.val {
+                OperandValue::ZeroSized => {}
+                OperandValue::Immediate(_) => call_args.push(arg.immediate()),
+                OperandValue::Pair(a, b) => {
+                    call_args.push(a);
+                    call_args.push(b);
+                }
+                OperandValue::Ref(op_place_val) => {
+                    let mut llval = op_place_val.llval;
+                    // We can't use `PlaceRef::load` here because the argument
+                    // may have a type we don't treat as immediate, but the ABI
+                    // used for this call is passing it by-value. In that case,
+                    // the load would just produce `OperandValue::Ref` instead
+                    // of the `OperandValue::Immediate` we need for the call.
+                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
+                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                        if scalar.is_bool() {
+                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
+                        }
+                        // We store bools as `i8` so we need to truncate to `i1`.
+                        llval = self.to_immediate_scalar(llval, scalar);
+                    }
+                    call_args.push(llval);
+                }
+            }
+        }
+
+        // FIXME directly use the llvm intrinsic adjustment functions here
+        let llret = self.call(fn_ty, None, None, fn_ptr, &call_args, None, None);
+        if is_cleanup {
+            self.apply_attrs_to_cleanup_callsite(llret);
+        }
+
+        llret
+    }
+
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
@@ -641,7 +723,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     }
 
     fn va_end(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+        // TODO(antoyo): implement.
+        self.context.new_rvalue_from_int(self.int_type, 0)
     }
 }
 

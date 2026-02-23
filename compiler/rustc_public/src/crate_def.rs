@@ -34,6 +34,10 @@ impl DefId {
     pub fn parent(&self) -> Option<DefId> {
         with(|cx| cx.def_parent(*self))
     }
+
+    pub fn span(&self) -> Span {
+        with(|cx| cx.span_of_a_def(*self))
+    }
 }
 
 /// A trait for retrieving information about a particular definition.
@@ -68,8 +72,7 @@ pub trait CrateDef {
 
     /// Return the span of this definition.
     fn span(&self) -> Span {
-        let def_id = self.def_id();
-        with(|cx| cx.span_of_an_item(def_id))
+        self.def_id().span()
     }
 
     /// Return registered tool attributes with the given attribute name.

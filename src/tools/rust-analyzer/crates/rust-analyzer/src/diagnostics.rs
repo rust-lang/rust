@@ -3,7 +3,6 @@ pub(crate) mod flycheck_to_proto;
 
 use std::mem;
 
-use cargo_metadata::PackageId;
 use ide::FileId;
 use ide_db::{FxHashMap, base_db::DbPanicContext};
 use itertools::Itertools;
@@ -12,10 +11,13 @@ use smallvec::SmallVec;
 use stdx::iter_eq_by;
 use triomphe::Arc;
 
-use crate::{global_state::GlobalStateSnapshot, lsp, lsp_ext, main_loop::DiagnosticsTaskKind};
+use crate::{
+    flycheck::PackageSpecifier, global_state::GlobalStateSnapshot, lsp, lsp_ext,
+    main_loop::DiagnosticsTaskKind,
+};
 
 pub(crate) type CheckFixes =
-    Arc<Vec<FxHashMap<Option<Arc<PackageId>>, FxHashMap<FileId, Vec<Fix>>>>>;
+    Arc<Vec<FxHashMap<Option<PackageSpecifier>, FxHashMap<FileId, Vec<Fix>>>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
@@ -29,7 +31,7 @@ pub(crate) type DiagnosticsGeneration = usize;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct WorkspaceFlycheckDiagnostic {
-    pub(crate) per_package: FxHashMap<Option<Arc<PackageId>>, PackageFlycheckDiagnostic>,
+    pub(crate) per_package: FxHashMap<Option<PackageSpecifier>, PackageFlycheckDiagnostic>,
 }
 
 #[derive(Debug, Clone)]
@@ -85,7 +87,7 @@ impl DiagnosticCollection {
     pub(crate) fn clear_check_for_package(
         &mut self,
         flycheck_id: usize,
-        package_id: Arc<PackageId>,
+        package_id: PackageSpecifier,
     ) {
         let Some(check) = self.check.get_mut(flycheck_id) else {
             return;
@@ -124,7 +126,7 @@ impl DiagnosticCollection {
     pub(crate) fn clear_check_older_than_for_package(
         &mut self,
         flycheck_id: usize,
-        package_id: Arc<PackageId>,
+        package_id: PackageSpecifier,
         generation: DiagnosticsGeneration,
     ) {
         let Some(check) = self.check.get_mut(flycheck_id) else {
@@ -154,7 +156,7 @@ impl DiagnosticCollection {
         &mut self,
         flycheck_id: usize,
         generation: DiagnosticsGeneration,
-        package_id: &Option<Arc<PackageId>>,
+        package_id: &Option<PackageSpecifier>,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
         fix: Option<Box<Fix>>,
@@ -287,34 +289,40 @@ pub(crate) fn fetch_native_diagnostics(
     let mut diagnostics = subscriptions[slice]
         .iter()
         .copied()
-        .filter_map(|file_id| {
-            let line_index = snapshot.file_line_index(file_id).ok()?;
-            let source_root = snapshot.analysis.source_root_id(file_id).ok()?;
+        .map(|file_id| {
+            let diagnostics = (|| {
+                let line_index = snapshot.file_line_index(file_id).ok()?;
+                let source_root = snapshot.analysis.source_root_id(file_id).ok()?;
 
-            let config = &snapshot.config.diagnostics(Some(source_root));
-            let diagnostics = match kind {
-                NativeDiagnosticsFetchKind::Syntax => {
-                    snapshot.analysis.syntax_diagnostics(config, file_id).ok()?
-                }
-
-                NativeDiagnosticsFetchKind::Semantic if config.enabled => snapshot
-                    .analysis
-                    .semantic_diagnostics(config, ide::AssistResolveStrategy::None, file_id)
-                    .ok()?,
-                NativeDiagnosticsFetchKind::Semantic => return None,
-            };
-            let diagnostics = diagnostics
-                .into_iter()
-                .filter_map(|d| {
-                    if d.range.file_id == file_id {
-                        Some(convert_diagnostic(&line_index, d))
-                    } else {
-                        odd_ones.push(d);
-                        None
+                let config = &snapshot.config.diagnostics(Some(source_root));
+                let diagnostics = match kind {
+                    NativeDiagnosticsFetchKind::Syntax => {
+                        snapshot.analysis.syntax_diagnostics(config, file_id).ok()?
                     }
-                })
-                .collect::<Vec<_>>();
-            Some((file_id, diagnostics))
+
+                    NativeDiagnosticsFetchKind::Semantic if config.enabled => snapshot
+                        .analysis
+                        .semantic_diagnostics(config, ide::AssistResolveStrategy::None, file_id)
+                        .ok()?,
+                    NativeDiagnosticsFetchKind::Semantic => return None,
+                };
+                Some(
+                    diagnostics
+                        .into_iter()
+                        .filter_map(|d| {
+                            if d.range.file_id == file_id {
+                                Some(convert_diagnostic(&line_index, d))
+                            } else {
+                                odd_ones.push(d);
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })()
+            .unwrap_or_default();
+
+            (file_id, diagnostics)
         })
         .collect::<Vec<_>>();
 

@@ -11,8 +11,7 @@ macro_rules! one_rep {
 macro_rules! issue_128346 {
     ( $($a:ident)* ) => {
         A(
-            const ${concat($a, Z)}: i32 = 3;
-            //~^ ERROR invalid syntax
+            const ${concat($a, Z)}: i32 = 3; //~ ERROR `${concat(...)}` variable is still repeating at this depth
         )*
     };
 }
@@ -20,8 +19,8 @@ macro_rules! issue_128346 {
 macro_rules! issue_131393 {
     ($t:ident $($en:ident)?) => {
         read::<${concat($t, $en)}>()
-        //~^ ERROR invalid syntax
-        //~| ERROR invalid syntax
+        //~^ ERROR `${concat(...)}` variable is still repeating at this depth
+        //~| ERROR `${concat(...)}` variable is still repeating at this depth
     }
 }
 

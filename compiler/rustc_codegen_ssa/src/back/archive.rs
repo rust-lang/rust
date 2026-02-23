@@ -22,10 +22,11 @@ use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
 use crate::common;
-// Re-exporting for rustc_codegen_llvm::back::archive
-pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
+// Public for ArchiveBuilderBuilder::extract_bundled_libs
+pub use crate::errors::ExtractBundledLibsError;
 use crate::errors::{
-    DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
+    ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
+    ErrorWritingDEFFile, UnknownArchiveKind,
 };
 
 /// An item to be included in an import library.

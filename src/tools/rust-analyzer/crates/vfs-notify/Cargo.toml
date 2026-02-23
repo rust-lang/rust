@@ -16,7 +16,7 @@ doctest = false
 tracing.workspace = true
 walkdir = "2.5.0"
 crossbeam-channel.workspace = true
-notify = "8.0.0"
+notify = "8.2.0"
 rayon = "1.10.0"
 
 stdx.workspace = true

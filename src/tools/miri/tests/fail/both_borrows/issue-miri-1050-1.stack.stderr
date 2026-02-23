@@ -11,14 +11,13 @@ help: ALLOC was allocated here:
    |
 LL |         let ptr = Box::into_raw(Box::new(0u16));
    |                                 ^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::boxed::Box::<u32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::boxed::Box::<u32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-note: inside `main`
-  --> tests/fail/both_borrows/issue-miri-1050-1.rs:LL:CC
-   |
-LL |         drop(Box::from_raw(ptr as *mut u32));
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: std::boxed::Box::from_raw_in
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::boxed::Box::from_raw
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           2: main
+               at tests/fail/both_borrows/issue-miri-1050-1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

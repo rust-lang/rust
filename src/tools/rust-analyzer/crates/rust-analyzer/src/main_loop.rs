@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, never, select};
-use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
+use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -309,10 +309,10 @@ impl GlobalState {
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
-        if tracing::enabled!(tracing::Level::INFO) {
+        if tracing::enabled!(tracing::Level::TRACE) {
             let task_queue_len = self.task_pool.handle.len();
             if task_queue_len > 0 {
-                tracing::info!("task queue len: {}", task_queue_len);
+                tracing::trace!("task queue len: {}", task_queue_len);
             }
         }
 
@@ -383,7 +383,7 @@ impl GlobalState {
                             ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
+                            self.analysis_host.trigger_garbage_collection();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
@@ -437,11 +437,17 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
-                self.handle_flycheck_msg(message);
+                let mut cargo_finished = false;
+                self.handle_flycheck_msg(message, &mut cargo_finished);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
-                    self.handle_flycheck_msg(message);
+                    self.handle_flycheck_msg(message, &mut cargo_finished);
+                }
+                if cargo_finished {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
                 }
             }
             Event::TestResult(message) => {
@@ -528,6 +534,16 @@ impl GlobalState {
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
+            }
+
+            let current_revision = self.analysis_host.raw_database().nonce_and_revision().1;
+            // no work is currently being done, now we can block a bit and clean up our garbage
+            if self.task_pool.handle.is_empty()
+                && self.fmt_pool.handle.is_empty()
+                && current_revision != self.last_gc_revision
+            {
+                self.analysis_host.trigger_garbage_collection();
+                self.last_gc_revision = current_revision;
             }
         }
 
@@ -650,31 +666,33 @@ impl GlobalState {
                 move |sender| {
                     // We aren't observing the semantics token cache here
                     let snapshot = AssertUnwindSafe(&snapshot);
-                    let Ok(diags) = std::panic::catch_unwind(|| {
+                    let diags = std::panic::catch_unwind(|| {
                         fetch_native_diagnostics(
                             &snapshot,
                             subscriptions.clone(),
                             slice.clone(),
                             NativeDiagnosticsFetchKind::Syntax,
                         )
-                    }) else {
-                        return;
-                    };
+                    })
+                    .unwrap_or_else(|_| {
+                        subscriptions.iter().map(|&id| (id, Vec::new())).collect::<Vec<_>>()
+                    });
                     sender
                         .send(Task::Diagnostics(DiagnosticsTaskKind::Syntax(generation, diags)))
                         .unwrap();
 
                     if fetch_semantic {
-                        let Ok(diags) = std::panic::catch_unwind(|| {
+                        let diags = std::panic::catch_unwind(|| {
                             fetch_native_diagnostics(
                                 &snapshot,
                                 subscriptions.clone(),
                                 slice.clone(),
                                 NativeDiagnosticsFetchKind::Semantic,
                             )
-                        }) else {
-                            return;
-                        };
+                        })
+                        .unwrap_or_else(|_| {
+                            subscriptions.iter().map(|&id| (id, Vec::new())).collect::<Vec<_>>()
+                        });
                         sender
                             .send(Task::Diagnostics(DiagnosticsTaskKind::Semantic(
                                 generation, diags,
@@ -809,33 +827,29 @@ impl GlobalState {
             }
             Task::DiscoverLinkedProjects(arg) => {
                 if let Some(cfg) = self.config.discover_workspace_config() {
-                    // the clone is unfortunately necessary to avoid a borrowck error when
-                    // `self.report_progress` is called later
-                    let title = &cfg.progress_label.clone();
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
-
-                    if self.discover_jobs_active == 0 {
-                        self.report_progress(title, Progress::Begin, None, None, None);
-                    }
-                    self.discover_jobs_active += 1;
 
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    let handle = discover
-                        .spawn(
-                            arg,
-                            &std::env::current_dir()
-                                .expect("Failed to get cwd during project discovery"),
-                        )
-                        .unwrap_or_else(|e| {
-                            panic!("Failed to spawn project discovery command: {e}")
-                        });
-
-                    self.discover_handles.push(handle);
+                    match discover.spawn(arg, self.config.root_path().as_ref()) {
+                        Ok(handle) => {
+                            if self.discover_jobs_active == 0 {
+                                let title = &cfg.progress_label.clone();
+                                self.report_progress(title, Progress::Begin, None, None, None);
+                            }
+                            self.discover_jobs_active += 1;
+                            self.discover_handles.push(handle)
+                        }
+                        Err(e) => self.show_message(
+                            lsp_types::MessageType::ERROR,
+                            format!("Failed to spawn project discovery command: {e:#}"),
+                            false,
+                        ),
+                    }
                 }
             }
             Task::FetchBuildData(progress) => {
@@ -901,7 +915,8 @@ impl GlobalState {
                         // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
                         self.minicore.minicore_text = contents
                             .as_ref()
-                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                            .and_then(|contents| str::from_utf8(contents).ok())
+                            .map(triomphe::Arc::from);
                     }
 
                     let path = VfsPath::from(path);
@@ -1109,7 +1124,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
+    fn handle_flycheck_msg(&mut self, message: FlycheckMessage, cargo_finished: &mut bool) {
         match message {
             FlycheckMessage::AddDiagnostic {
                 id,
@@ -1162,11 +1177,28 @@ impl GlobalState {
                 kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
             } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
+                let format_with_id = |user_facing_command: String| {
+                    if self.flycheck.len() == 1 {
+                        user_facing_command
+                    } else {
+                        format!("{user_facing_command} (#{})", id + 1)
+                    }
+                };
+
+                self.flycheck_formatted_commands
+                    .resize_with(self.flycheck.len().max(id + 1), || {
+                        format_with_id(self.config.flycheck(None).to_string())
+                    });
+
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => (Progress::Begin, None),
+                    flycheck::Progress::DidStart { user_facing_command } => {
+                        self.flycheck_formatted_commands[id] = format_with_id(user_facing_command);
+                        (Progress::Begin, None)
+                    }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                     flycheck::Progress::DidFailToRestart(err) => {
@@ -1177,17 +1209,13 @@ impl GlobalState {
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                 };
 
-                // When we're running multiple flychecks, we have to include a disambiguator in
-                // the title, or the editor complains. Note that this is a user-facing string.
-                let title = if self.flycheck.len() == 1 {
-                    format!("{}", self.config.flycheck(None))
-                } else {
-                    format!("{} (#{})", self.config.flycheck(None), id + 1)
-                };
+                // Clone because we &mut self for report_progress
+                let title = self.flycheck_formatted_commands[id].clone();
                 self.report_progress(
                     &title,
                     state,
@@ -1320,6 +1348,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
             //
             .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
+            .on::<RETRY, lsp_ext::GetFailedObligations>(handlers::get_failed_obligations)
             .finish();
     }
 

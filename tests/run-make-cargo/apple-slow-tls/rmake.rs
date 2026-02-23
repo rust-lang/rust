@@ -26,6 +26,7 @@ fn main() {
             "--target",
             "t.json",
             "-Zbuild-std=std,core,panic_abort",
+            "-Zjson-target-spec",
         ])
         .run();
 

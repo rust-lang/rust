@@ -7,8 +7,8 @@ LL |   impl Tr3<N
 LL | | = 42, T2 = Qux, T3 = usize> for Bar {
    | |____^
    |
-   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
-   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated const equality is incomplete
@@ -17,8 +17,8 @@ error[E0658]: associated const equality is incomplete
 LL | impl Tr3<n = 42, T2 = Qux, T3 = usize> for Qux {
    |          ^^^^^^
    |
-   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
-   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated const equality is incomplete
@@ -27,8 +27,8 @@ error[E0658]: associated const equality is incomplete
 LL | impl Tr3<42, T2 = 42, T3 = usize> for Bar {
    |              ^^^^^^^
    |
-   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
-   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated const equality is incomplete
@@ -37,8 +37,8 @@ error[E0658]: associated const equality is incomplete
 LL | impl Tr3<X = 42, Y = Qux, Z = usize> for Bar {
    |          ^^^^^^
    |
-   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
-   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0229]: associated item constraints are not allowed here

@@ -8,7 +8,7 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{ProcMacroKind, codec::Codec};
+use crate::{ProcMacroKind, transport::json};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -155,24 +155,44 @@ impl ExpnGlobals {
 }
 
 pub trait Message: serde::Serialize + DeserializeOwned {
-    fn read<R: BufRead, C: Codec>(inp: &mut R, buf: &mut C::Buf) -> io::Result<Option<Self>> {
-        Ok(match C::read(inp, buf)? {
+    type Buf;
+    fn read(inp: &mut dyn BufRead, buf: &mut Self::Buf) -> io::Result<Option<Self>>;
+    fn write(self, out: &mut dyn Write) -> io::Result<()>;
+}
+
+impl Message for Request {
+    type Buf = String;
+
+    fn read(inp: &mut dyn BufRead, buf: &mut Self::Buf) -> io::Result<Option<Self>> {
+        Ok(match json::read(inp, buf)? {
             None => None,
-            Some(buf) => Some(C::decode(buf)?),
+            Some(buf) => Some(json::decode(buf)?),
         })
     }
-    fn write<W: Write, C: Codec>(self, out: &mut W) -> io::Result<()> {
-        let value = C::encode(&self)?;
-        C::write(out, &value)
+    fn write(self, out: &mut dyn Write) -> io::Result<()> {
+        let value = json::encode(&self)?;
+        json::write(out, &value)
     }
 }
 
-impl Message for Request {}
-impl Message for Response {}
+impl Message for Response {
+    type Buf = String;
+
+    fn read(inp: &mut dyn BufRead, buf: &mut Self::Buf) -> io::Result<Option<Self>> {
+        Ok(match json::read(inp, buf)? {
+            None => None,
+            Some(buf) => Some(json::decode(buf)?),
+        })
+    }
+    fn write(self, out: &mut dyn Write) -> io::Result<()> {
+        let value = json::encode(&self)?;
+        json::write(out, &value)
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use intern::{Symbol, sym};
+    use intern::Symbol;
     use span::{
         Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
     };
@@ -185,7 +205,7 @@ mod tests {
 
     use super::*;
 
-    fn fixture_token_tree_top_many_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_many_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -232,16 +252,15 @@ mod tests {
             }
             .into(),
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: Symbol::intern("Foo"),
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new_no_suffix(
+            "Foo",
+            Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Str,
-            suffix: None,
-        }));
+            tt::LitKind::Str,
+        )));
         builder.push(Leaf::Punct(Punct {
             char: '@',
             span: Span {
@@ -267,16 +286,16 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
         );
-        builder.push(Leaf::Literal(Literal {
-            symbol: sym::INTEGER_0,
-            span: Span {
+        builder.push(Leaf::Literal(Literal::new(
+            "0",
+            Span {
                 range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
-            kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32),
-        }));
+            tt::LitKind::Integer,
+            "u32",
+        )));
         builder.close(Span {
             range: TextRange::at(TextSize::new(20), TextSize::of(']')),
             anchor,
@@ -292,7 +311,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_none() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_none() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -318,7 +337,7 @@ mod tests {
         builder.build()
     }
 
-    fn fixture_token_tree_top_empty_brace() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_empty_brace() -> TopSubtree {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),

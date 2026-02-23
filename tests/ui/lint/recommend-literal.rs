@@ -1,3 +1,5 @@
+//~vv HELP consider importing this struct
+
 type Real = double;
 //~^ ERROR cannot find type `double` in this scope
 //~| HELP perhaps you intended to use this type

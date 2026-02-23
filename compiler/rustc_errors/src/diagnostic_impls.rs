@@ -6,10 +6,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_span::{Span, Symbol};
 
 use crate::diagnostic::DiagLocation;
-use crate::{
-    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
-    fluent_generated as fluent,
-};
+use crate::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic, msg};
 
 impl IntoDiagArg for DiagLocation {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
@@ -44,43 +41,50 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                Diag::new(dcx, level, fluent::errors_target_invalid_address_space)
+                Diag::new(dcx, level, msg!("invalid address space `{$addr_space}` for `{$cause}` in \"data-layout\": {$err}"))
                     .with_arg("addr_space", addr_space)
                     .with_arg("cause", cause)
                     .with_arg("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                Diag::new(dcx, level, fluent::errors_target_invalid_bits)
+                Diag::new(dcx, level, msg!("invalid {$kind} `{$bit}` for `{$cause}` in \"data-layout\": {$err}"))
                     .with_arg("kind", kind)
                     .with_arg("bit", bit)
                     .with_arg("cause", cause)
                     .with_arg("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                Diag::new(dcx, level, fluent::errors_target_missing_alignment)
+                Diag::new(dcx, level, msg!("missing alignment for `{$cause}` in \"data-layout\""))
                     .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                Diag::new(dcx, level, fluent::errors_target_invalid_alignment)
-                    .with_arg("cause", cause)
-                    .with_arg("err_kind", err.diag_ident())
-                    .with_arg("align", err.align())
+                Diag::new(dcx, level, msg!(
+                    "invalid alignment for `{$cause}` in \"data-layout\": `{$align}` is {$err_kind ->
+                        [not_power_of_two] not a power of 2
+                        [too_large] too large
+                        *[other] {\"\"}
+                    }"
+                ))
+                .with_arg("cause", cause)
+                .with_arg("err_kind", err.diag_ident())
+                .with_arg("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                Diag::new(dcx, level, fluent::errors_target_inconsistent_architecture)
-                    .with_arg("dl", dl)
-                    .with_arg("target", target)
+                Diag::new(dcx, level, msg!(
+                    "inconsistent target specification: \"data-layout\" claims architecture is {$dl}-endian, while \"target-endian\" is `{$target}`"
+                ))
+                .with_arg("dl", dl).with_arg("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                Diag::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
-                    .with_arg("pointer_size", pointer_size)
-                    .with_arg("target", target)
+                Diag::new(dcx, level, msg!(
+                    "inconsistent target specification: \"data-layout\" claims pointers are {$pointer_size}-bit, while \"target-pointer-width\" is `{$target}`"
+                )).with_arg("pointer_size", pointer_size).with_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                Diag::new(dcx, level, fluent::errors_target_invalid_bits_size).with_arg("err", err)
+                Diag::new(dcx, level, msg!("{$err}")).with_arg("err", err)
             }
             TargetDataLayoutErrors::UnknownPointerSpecification { err } => {
-                Diag::new(dcx, level, fluent::errors_target_invalid_datalayout_pointer_spec)
+                Diag::new(dcx, level, msg!("unknown pointer specification `{$err}` in datalayout string"))
                     .with_arg("err", err)
             }
         }
@@ -99,7 +103,12 @@ impl Subdiagnostic for SingleLabelManySpans {
 }
 
 #[derive(Subdiagnostic)]
-#[label(errors_expected_lifetime_parameter)]
+#[label(
+    "expected lifetime {$count ->
+        [1] parameter
+        *[other] parameters
+    }"
+)]
 pub struct ExpectedLifetimeParameter {
     #[primary_span]
     pub span: Span,
@@ -107,7 +116,14 @@ pub struct ExpectedLifetimeParameter {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
+#[suggestion(
+    "indicate the anonymous {$count ->
+        [1] lifetime
+        *[other] lifetimes
+    }",
+    code = "{suggestion}",
+    style = "verbose"
+)]
 pub struct IndicateAnonymousLifetime {
     #[primary_span]
     pub span: Span,

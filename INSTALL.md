@@ -97,7 +97,7 @@ See [the rustc-dev-guide for more info][sysllvm].
       --set llvm.ninja=false \
       --set rust.debug-assertions=false \
       --set rust.jemalloc \
-      --set rust.use-lld=true \
+      --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1
    ```
@@ -233,7 +233,7 @@ itself back on after some time).
 
 ### MSVC
 
-MSVC builds of Rust additionally requires an installation of:
+MSVC builds of Rust additionally require an installation of:
 
 - Visual Studio 2022 (or later) build tools so `rustc` can use its linker. Older
   Visual Studio versions such as 2019 *may* work but aren't actively tested.

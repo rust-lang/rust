@@ -7,11 +7,19 @@
 # manifest that is identical except for the `core` dependency and forwards
 # to the same sources, which acts as the `compiler-builtins` Cargo entrypoint
 # for out of tree testing
+#
+# Ideally we can eventually replace this with a patch in the workspace
+# manifest <https://github.com/rust-lang/cargo/issues/4648>.
 
 [package]
 name = "compiler_builtins"
 version = "0.1.160"
-authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
 description = "Compiler intrinsics used by the Rust compiler."
 repository = "https://github.com/rust-lang/compiler-builtins"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
@@ -28,7 +36,7 @@ doctest = false
 test = false
 
 [build-dependencies]
-cc = { optional = true, version = "1.2" }
+cc = { version = "1.2", optional = true }
 
 [features]
 default = ["compiler-builtins"]
@@ -41,10 +49,6 @@ c = ["dep:cc"]
 # specific version, use the generic version. This is meant to enable testing
 # the generic versions on all platforms.
 no-asm = []
-
-# Workaround for codegen backends which haven't yet implemented `f16` and
-# `f128` support. Disabled any intrinsics which use those types.
-no-f16-f128 = []
 
 # Flag this library as the unstable compiler-builtins lib
 compiler-builtins = []

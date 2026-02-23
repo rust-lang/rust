@@ -160,3 +160,23 @@ fn ref_osstring(a: OsString, b: &OsString) {
     b.eq_ignore_ascii_case(a);
     //~^ manual_ignore_case_cmp
 }
+
+fn wrongly_unmangled_macros(a: &str, b: &str) -> bool {
+    struct S<'a> {
+        inner: &'a str,
+    }
+
+    let a = S { inner: a };
+    let b = S { inner: b };
+
+    macro_rules! dot_inner {
+        ($s:expr) => {
+            $s.inner
+        };
+    }
+
+    dot_inner!(a).eq_ignore_ascii_case(dot_inner!(b))
+    //~^ manual_ignore_case_cmp
+        || dot_inner!(a).eq_ignore_ascii_case("abc")
+    //~^ manual_ignore_case_cmp
+}

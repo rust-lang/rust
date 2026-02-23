@@ -5,8 +5,11 @@ edition = "2024"
 publish = false
 
 [dependencies]
-object = "0.37.1"
-serde_json = "1.0.140"
+object.workspace = true
+regex.workspace = true
+serde_json.workspace = true
 
-[features]
-wasm = ["object/wasm"]
+[dev-dependencies]
+assert_cmd.workspace = true
+cc.workspace = true
+tempfile.workspace = true

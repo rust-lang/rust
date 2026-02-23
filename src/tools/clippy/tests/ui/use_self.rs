@@ -10,6 +10,9 @@
     clippy::needless_lifetimes,
     clippy::missing_transmute_annotations
 )]
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
+#![feature(unsized_const_params)]
 
 #[macro_use]
 extern crate proc_macro_derive;
@@ -767,5 +770,27 @@ mod issue_13277 {
         // when checking whether `Option<Bar<'foo>>` has a lifetime, check not only the outer
         // `Option<T>`, but also the inner `Bar<'foo>`
         type Item<'foo> = Option<Bar<'foo>>;
+    }
+}
+
+mod issue16164 {
+    trait Bits {
+        fn bit<const I: u8>(self) -> bool;
+    }
+
+    impl Bits for u8 {
+        fn bit<const I: u8>(self) -> bool {
+            todo!()
+        }
+    }
+
+    trait T {
+        fn f<const C: (u8, u8)>(self) -> bool;
+    }
+
+    impl T for u8 {
+        fn f<const C: (u8, u8)>(self) -> bool {
+            todo!()
+        }
     }
 }

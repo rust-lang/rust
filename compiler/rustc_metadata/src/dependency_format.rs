@@ -68,8 +68,7 @@ use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcDriverHelp, RustcLibRequired,
-    TwoPanicRuntimes,
+    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -104,7 +103,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
                 if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
             }
-            CrateType::Staticlib => {
+            CrateType::StaticLib => {
                 if sess.opts.unstable_opts.staticlib_prefer_dynamic {
                     Linkage::Dynamic
                 } else {
@@ -141,13 +140,13 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
             // Static executables must have all static dependencies.
             // If any are not found, generate some nice pretty errors.
-            if (ty == CrateType::Staticlib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
+            if (ty == CrateType::StaticLib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
                 || (ty == CrateType::Executable
                     && sess.crt_static(Some(ty))
                     && !sess.target.crt_static_allows_dylibs)
             {
                 for &cnum in tcx.crates(()).iter() {
-                    if tcx.dep_kind(cnum).macros_only() {
+                    if tcx.crate_dep_kind(cnum).macros_only() {
                         continue;
                     }
                     let src = tcx.used_crate_source(cnum);
@@ -164,7 +163,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     let all_dylibs = || {
         tcx.crates(()).iter().filter(|&&cnum| {
-            !tcx.dep_kind(cnum).macros_only()
+            !tcx.crate_dep_kind(cnum).macros_only()
                 && (tcx.used_crate_source(cnum).dylib.is_some()
                     || tcx.used_crate_source(cnum).sdylib_interface.is_some())
         })
@@ -242,7 +241,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == CrateDepKind::Explicit
+            && tcx.crate_dep_kind(cnum) == CrateDepKind::Unconditional
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
@@ -318,7 +317,7 @@ fn add_library(
                         .drain(..)
                         .map(|cnum| NonStaticCrateDep { crate_name_: tcx.crate_name(cnum) })
                         .collect(),
-                    rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
+                    rustc_driver_help: linking_to_rustc_driver,
                 });
             }
         }
@@ -334,7 +333,7 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
         .iter()
         .copied()
         .filter_map(|cnum| {
-            if tcx.dep_kind(cnum).macros_only() {
+            if tcx.crate_dep_kind(cnum).macros_only() {
                 return None;
             }
             let is_rlib = tcx.used_crate_source(cnum).rlib.is_some();
@@ -354,9 +353,9 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     assert_eq!(ret.push(Linkage::Static), LOCAL_CRATE);
     for &cnum in tcx.crates(()) {
         assert_eq!(
-            ret.push(match tcx.dep_kind(cnum) {
-                CrateDepKind::Explicit => Linkage::Static,
-                CrateDepKind::MacrosOnly | CrateDepKind::Implicit => Linkage::NotLinked,
+            ret.push(match tcx.crate_dep_kind(cnum) {
+                CrateDepKind::Unconditional => Linkage::Static,
+                CrateDepKind::MacrosOnly | CrateDepKind::Conditional => Linkage::NotLinked,
             }),
             cnum
         );

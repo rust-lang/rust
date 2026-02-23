@@ -25,7 +25,7 @@ macro_rules! all_eq {
     }};
 }
 
-fn extract_insert_dyn() {
+const fn extract_insert_dyn() {
     let x2 = i32x2::from_array([20, 21]);
     let x4 = i32x4::from_array([40, 41, 42, 43]);
     let x8 = i32x8::from_array([80, 81, 82, 83, 84, 85, 86, 87]);
@@ -141,6 +141,7 @@ const fn swizzle() {
 }
 
 fn main() {
+    const { extract_insert_dyn() };
     extract_insert_dyn();
     const { swizzle() };
     swizzle();

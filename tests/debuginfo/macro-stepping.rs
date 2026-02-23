@@ -4,7 +4,8 @@
 //! and we can match on them for testing purposes.
 
 //@ ignore-android
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 //@ min-gdb-version: 13.0
 
 //@ aux-build:macro-stepping.rs
@@ -14,8 +15,10 @@
 #[macro_use]
 extern crate macro_stepping; // exports new_scope!()
 
-//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
-// SingleUseConsts shouldn't need to be disabled, see #128945
+//@ compile-flags: -g
+// FIXME(#128945): SingleUseConsts shouldn't need to be disabled.
+//@ revisions: default-mir-passes no-SingleUseConsts-mir-pass
+//@ [no-SingleUseConsts-mir-pass] compile-flags: -Zmir-enable-passes=-SingleUseConsts
 
 // === GDB TESTS ===================================================================================
 
@@ -48,7 +51,7 @@ extern crate macro_stepping; // exports new_scope!()
 //@ gdb-check:[...]#inc-loc2[...]
 //@ gdb-command:next
 //@ gdb-command:frame
-//@ gdb-check:[...]#inc-loc3[...]
+//@ [no-SingleUseConsts-mir-pass] gdb-check:[...]#inc-loc3[...]
 
 // === LLDB TESTS ==================================================================================
 

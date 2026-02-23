@@ -6,7 +6,7 @@ mod backtrace;
 mod files;
 mod math;
 #[cfg(all(unix, feature = "native-lib"))]
-mod native_lib;
+pub mod native_lib;
 mod unix;
 mod windows;
 mod x86;

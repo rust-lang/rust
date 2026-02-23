@@ -6,11 +6,10 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_hash::FxHashSet;
+use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
-use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -63,7 +62,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         // Go over the modules.
         for &segment in modules {
             let Some(next_item) = find_children(tcx, cur_item, segment)
-                .find(|item| tcx.def_kind(item) == DefKind::Mod)
+                .find(|&item| tcx.def_kind(item) == DefKind::Mod)
             else {
                 continue 'crates;
             };
@@ -73,7 +72,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         match item {
             Some((item_name, namespace)) => {
                 let Some(item) = find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))
+                    .find(|&item| tcx.def_kind(item).ns() == Some(namespace))
                 else {
                     continue 'crates;
                 };
@@ -139,7 +138,7 @@ pub fn iter_exported_symbols<'tcx>(
     }
 
     // Next, all our dependencies.
-    // `dependency_formats` includes all the transitive informations needed to link a crate,
+    // `dependency_formats` includes all the transitive information needed to link a crate,
     // which is what we need here since we need to dig out `exported_symbols` from all transitive
     // dependencies.
     let dependency_formats = tcx.dependency_formats(());
@@ -583,13 +582,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_iter(
-                memory_index: &IndexVec<FieldIdx, u32>,
-            ) -> impl Iterator<Item = FieldIdx> + 'static {
-                let inverse_memory_index = memory_index.invert_bijective_mapping();
-                inverse_memory_index.into_iter()
-            }
-
             // Hook to detect `UnsafeCell`.
             fn visit_value(&mut self, v: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
@@ -663,7 +655,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 // Deduplicate these warnings *by shim* (not by span)
                 static DEDUP: Mutex<FxHashSet<String>> =
-                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                    Mutex::new(FxHashSet::with_hasher(FxBuildHasher));
                 let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
@@ -1156,7 +1148,7 @@ impl ToUsize for u32 {
 }
 
 /// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
-/// converion from `usize` to `u64`.
+/// conversion from `usize` to `u64`.
 pub trait ToU64 {
     fn to_u64(self) -> u64;
 }

@@ -4,7 +4,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |     func(async { Ok::<_, i32>(()) })?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), i32>>`
    |
-   = help: the trait `Try` is not implemented for `impl Future<Output = Result<(), i32>>`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = Result<(), i32>>`
 help: consider `await`ing on the `Future`
    |
 LL |     func(async { Ok::<_, i32>(()) }).await?;

@@ -143,7 +143,7 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty_ascription: &T
                 && new.ident.name == sym::new
             {
                 let mut applicability = Applicability::MaybeIncorrect;
-                let arg = Sugg::hir_with_applicability(cx, arg, "_", &mut applicability);
+                let arg = Sugg::hir_with_context(cx, arg, expr.span.ctxt(), "_", &mut applicability);
                 let mut suggs = vec![(expr.span, format!("std::sync::atomic::{atomic_name}::new({arg})"))];
                 match ty_ascription {
                     TypeAscriptionKind::Required(ty_ascription) => {

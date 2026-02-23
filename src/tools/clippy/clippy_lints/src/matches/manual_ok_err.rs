@@ -135,7 +135,7 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
     } else {
         Applicability::MachineApplicable
     };
-    let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_paren();
+    let scrut = Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_paren();
 
     let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee);
     let (_, _, mutability) = peel_and_count_ty_refs(scrutinee_ty);

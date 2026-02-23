@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 64,
-        data_layout: "E-m:e-i1:8:16-i8:8:16-i64:64-f128:64-v128:64-a:8:16-n32:64".into(),
+        data_layout: "E-S64-m:e-i1:8:16-i8:8:16-i64:64-f128:64-v128:64-a:8:16-n32:64".into(),
         arch: Arch::S390x,
         options: base,
     }

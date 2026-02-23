@@ -1,0 +1,21 @@
+error: call to deprecated safe function `std::os::unix::process::CommandExt::before_exec` is unsafe and requires unsafe block
+  --> $DIR/unsafe-before_exec-suggestion.rs:13:5
+   |
+LL |     cmd.before_exec(|| Ok(()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/newly-unsafe-functions.html>
+note: the lint level is defined here
+  --> $DIR/unsafe-before_exec-suggestion.rs:5:9
+   |
+LL | #![deny(deprecated_safe_2024)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: you can wrap the call in an `unsafe` block if you can guarantee that the closure is async-signal-safe
+   |
+LL +     // TODO: Audit that the closure is async-signal-safe.
+LL ~     unsafe { cmd.before_exec(|| Ok(())) };
+   |
+
+error: aborting due to 1 previous error
+

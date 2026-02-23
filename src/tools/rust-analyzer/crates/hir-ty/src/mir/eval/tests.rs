@@ -15,7 +15,7 @@ use crate::{
 
 use super::{MirEvalError, interpret_mir};
 
-fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError<'_>> {
+fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
     crate::attach_db(db, || {
         let interner = DbInterner::new_no_crate(db);
         let module_id = db.module_for_file(file_id.file_id(db));
@@ -39,11 +39,12 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         let body = db
             .monomorphized_mir_body(
                 func_id.into(),
-                GenericArgs::new_from_iter(interner, []),
+                GenericArgs::empty(interner).store(),
                 crate::ParamEnvAndCrate {
                     param_env: db.trait_environment(func_id.into()),
                     krate: func_id.krate(db),
-                },
+                }
+                .store(),
             )
             .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
@@ -122,7 +123,7 @@ fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: 
 
 fn check_error_with(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    expect_err: impl FnOnce(MirEvalError<'_>) -> bool,
+    expect_err: impl FnOnce(MirEvalError) -> bool,
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     crate::attach_db(&db, || {

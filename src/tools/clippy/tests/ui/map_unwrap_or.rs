@@ -156,3 +156,11 @@ mod issue_10579 {
         println!("{y:?}");
     }
 }
+
+fn issue15752() {
+    struct Foo<'a>(&'a [u32]);
+
+    let x = Some(Foo(&[1, 2, 3]));
+    x.map(|y| y.0).unwrap_or(&[]);
+    //~^ map_unwrap_or
+}

@@ -38,6 +38,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
+    show_rename_conflicts: true,
 };
 
 pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
@@ -59,6 +60,7 @@ pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
     code_action_grouping: false,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
+    show_rename_conflicts: true,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -80,6 +82,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
+    show_rename_conflicts: true,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -101,6 +104,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
+    show_rename_conflicts: true,
 };
 
 fn assists(

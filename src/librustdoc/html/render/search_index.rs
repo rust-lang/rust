@@ -13,7 +13,6 @@ use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -616,6 +615,7 @@ impl SerializedSearchIndex {
                          parent,
                          trait_parent,
                          deprecated,
+                         unstable,
                          associated_item_disambiguator,
                      }| EntryData {
                         krate: *map.get(krate).unwrap(),
@@ -626,6 +626,7 @@ impl SerializedSearchIndex {
                         parent: parent.and_then(|path_id| map.get(&path_id).copied()),
                         trait_parent: trait_parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
+                        unstable: *unstable,
                         associated_item_disambiguator: associated_item_disambiguator.clone(),
                     },
                 ),
@@ -896,6 +897,7 @@ struct EntryData {
     parent: Option<usize>,
     trait_parent: Option<usize>,
     deprecated: bool,
+    unstable: bool,
     associated_item_disambiguator: Option<String>,
 }
 
@@ -912,6 +914,7 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.trait_parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
+        seq.serialize_element(&if self.unstable { 1 } else { 0 })?;
         if let Some(disambig) = &self.associated_item_disambiguator {
             seq.serialize_element(&disambig)?;
         }
@@ -946,6 +949,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     v.next_element()?.ok_or_else(|| A::Error::missing_field("trait_parent"))?;
 
                 let deprecated: u32 = v.next_element()?.unwrap_or(0);
+                let unstable: u32 = v.next_element()?.unwrap_or(0);
                 let associated_item_disambiguator: Option<String> = v.next_element()?;
                 Ok(EntryData {
                     krate,
@@ -956,6 +960,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     parent: Option::<i32>::from(parent).map(|path| path as usize),
                     trait_parent: Option::<i32>::from(trait_parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
+                    unstable: unstable != 0,
                     associated_item_disambiguator,
                 })
             }
@@ -1282,7 +1287,8 @@ pub(crate) fn build_index(
                     cache,
                 ),
                 aliases: item.attrs.get_doc_aliases(),
-                deprecation: item.deprecation(tcx),
+                is_deprecated: item.is_deprecated(tcx),
+                is_unstable: item.is_unstable(),
             });
         }
     }
@@ -1382,6 +1388,7 @@ pub(crate) fn build_index(
                         parent: None,
                         trait_parent: None,
                         deprecated: false,
+                        unstable: false,
                         associated_item_disambiguator: None,
                     }),
                     crate_doc,
@@ -1456,7 +1463,7 @@ pub(crate) fn build_index(
                         return None;
                     }
                     let path = if item.ty == ItemType::Macro
-                        && find_attr!(tcx.get_all_attrs(defid), AttributeKind::MacroExport { .. })
+                        && find_attr!(tcx, defid, MacroExport { .. })
                     {
                         // `#[macro_export]` always exports to the crate root.
                         vec![tcx.crate_name(defid.krate)]
@@ -1519,7 +1526,8 @@ pub(crate) fn build_index(
                 trait_parent: item.trait_parent_idx,
                 module_path,
                 exact_module_path,
-                deprecated: item.deprecation.is_some(),
+                deprecated: item.is_deprecated,
+                unstable: item.is_unstable,
                 associated_item_disambiguator: if let Some(impl_id) = item.impl_id
                     && let Some(parent_idx) = item.parent_idx
                     && associated_item_duplicates
@@ -1609,7 +1617,9 @@ pub(crate) fn build_index(
             let Cache { ref paths, ref external_paths, ref exact_paths, .. } = *cache;
             let search_unbox = match id {
                 RenderTypeId::Mut => false,
-                RenderTypeId::DefId(defid) => utils::has_doc_flag(tcx, defid, sym::search_unbox),
+                RenderTypeId::DefId(defid) => {
+                    utils::has_doc_flag(tcx, defid, |d| d.search_unbox.is_some())
+                }
                 RenderTypeId::Primitive(
                     PrimitiveType::Reference | PrimitiveType::RawPointer | PrimitiveType::Tuple,
                 ) => true,
@@ -1966,7 +1976,7 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::RequiredMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),

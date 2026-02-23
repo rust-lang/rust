@@ -1,4 +1,6 @@
 //@compile-flags: -Zmiri-permissive-provenance
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 
 use std::ptr;
 

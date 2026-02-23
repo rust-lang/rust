@@ -1,10 +1,8 @@
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
-#![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(trait_alias)]
@@ -26,7 +24,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::lint::LevelAndSource;
@@ -56,8 +54,6 @@ pub mod mono_item;
 pub mod size_of_val;
 pub mod target_features;
 pub mod traits;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
@@ -177,7 +173,12 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+// This is the same as `rustc_session::cstore::NativeLib`, except:
+// - (important) the `foreign_module` field is missing, because it contains a `DefId`, which can't
+//   be encoded with `FileEncoder`.
+// - (less important) the `verbatim` field is a `bool` rather than an `Option<bool>`, because here
+//   we can treat `false` and `absent` the same.
+#[derive(Clone, Debug, Encodable, Decodable)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
@@ -266,9 +267,9 @@ pub enum CodegenErrors {
 
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
-    crate::base::provide(providers);
-    crate::target_features::provide(providers);
-    crate::codegen_attrs::provide(providers);
+    crate::base::provide(&mut providers.queries);
+    crate::target_features::provide(&mut providers.queries);
+    crate::codegen_attrs::provide(&mut providers.queries);
     providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }
 

@@ -1,0 +1,32 @@
+warning: sharing memory with a native function called via FFI
+  --> tests/native-lib/fail/call_function_ptr.rs:LL:CC
+   |
+LL |         call_fn_ptr(Some(nop));
+   |         ^^^^^^^^^^^^^^^^^^^^^^ sharing memory with a native function
+   |
+   = help: when memory is shared with a native function call, Miri can only track initialisation and provenance on a best-effort basis
+   = help: in particular, Miri assumes that the native call initializes all memory it has written to
+   = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
+   = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
+   = help: tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here
+   = note: stack backtrace:
+           0: pass_fn_ptr
+               at tests/native-lib/fail/call_function_ptr.rs:LL:CC
+           1: main
+               at tests/native-lib/fail/call_function_ptr.rs:LL:CC
+
+error: unsupported operation: calling a function pointer through the FFI boundary
+  --> tests/native-lib/fail/call_function_ptr.rs:LL:CC
+   |
+LL |         call_fn_ptr(Some(nop));
+   |         ^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+   = note: stack backtrace:
+           0: pass_fn_ptr
+               at tests/native-lib/fail/call_function_ptr.rs:LL:CC
+           1: main
+               at tests/native-lib/fail/call_function_ptr.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+

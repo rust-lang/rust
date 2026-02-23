@@ -16,6 +16,18 @@ LL |             let _val = *ptr.0;
    |                        ^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+note: the current function got called indirectly due to this code
+  --> tests/fail/data_race/dealloc_read_race1.rs:LL:CC
+   |
+LL |           let j2 = spawn(move || {
+   |  __________________^
+LL | |             let ptr = ptr; // avoid field capturing
+LL | |             __rust_dealloc(
+...  |
+LL | |             );
+LL | |         });
+   | |__________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

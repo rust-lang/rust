@@ -4,10 +4,16 @@ error[E0425]: cannot find value `_y` in this scope
 LL |     let [_y..] = [Box::new(1), Box::new(2)];
    |          ^^ not found in this scope
    |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
 help: if you meant to collect the rest of the slice in `_y`, use the at operator
    |
 LL |     let [_y @ ..] = [Box::new(1), Box::new(2)];
    |             +
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let [_y..] = [Box::new(1), Box::new(2)];
+LL +     let [std::ops::RangeFrom { start: _y }] = [Box::new(1), Box::new(2)];
+   |
 
 error[E0658]: `X..` patterns in slices are experimental
   --> $DIR/issue-105946.rs:7:10

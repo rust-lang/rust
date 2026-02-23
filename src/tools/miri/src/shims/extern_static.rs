@@ -55,7 +55,7 @@ impl<'tcx> MiriMachine<'tcx> {
             Os::Linux => {
                 Self::null_ptr_extern_statics(
                     ecx,
-                    &["__cxa_thread_atexit_impl", "__clock_gettime64"],
+                    &["__cxa_thread_atexit_impl", "__clock_gettime64", "__clock_nanosleep_time64"],
                 )?;
                 Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx"])?;
             }

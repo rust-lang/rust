@@ -293,12 +293,18 @@ impl<'a> DeclValidator<'a> {
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
         let data = self.db.struct_signature(struct_id);
-        self.create_incorrect_case_diagnostic_for_item_name(
-            struct_id,
-            &data.name,
-            CaseType::UpperCamelCase,
-            IdentType::Structure,
-        );
+
+        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // use camel case.
+        let has_repr_c = data.repr(self.db, struct_id).is_some_and(|repr| repr.c());
+        if !has_repr_c {
+            self.create_incorrect_case_diagnostic_for_item_name(
+                struct_id,
+                &data.name,
+                CaseType::UpperCamelCase,
+                IdentType::Structure,
+            );
+        }
 
         // Check the field names.
         self.validate_struct_fields(struct_id);
@@ -378,15 +384,20 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_enum(&mut self, enum_id: EnumId) {
+        // Check the enum name.
         let data = self.db.enum_signature(enum_id);
 
-        // Check the enum name.
-        self.create_incorrect_case_diagnostic_for_item_name(
-            enum_id,
-            &data.name,
-            CaseType::UpperCamelCase,
-            IdentType::Enum,
-        );
+        // rustc implementation excuses repr(C) since C structs predominantly don't
+        // use camel case.
+        let has_repr_c = data.repr(self.db, enum_id).is_some_and(|repr| repr.c());
+        if !has_repr_c {
+            self.create_incorrect_case_diagnostic_for_item_name(
+                enum_id,
+                &data.name,
+                CaseType::UpperCamelCase,
+                IdentType::Enum,
+            );
+        }
 
         // Check the variant names.
         self.validate_enum_variants(enum_id)

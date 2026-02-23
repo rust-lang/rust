@@ -64,6 +64,7 @@ a type parameter).
 
 pub mod always_applicable;
 mod check;
+mod compare_eii;
 mod compare_impl_item;
 mod entry;
 pub mod intrinsic;
@@ -194,18 +195,6 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
                         extra levels of indirection such as references";
         tcx.dcx().span_err(tcx.def_span(id), msg);
     }
-}
-
-fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
-    let span = tcx.def_span(impl_item);
-    let ident = tcx.item_ident(impl_item);
-
-    let err = match tcx.span_of_impl(parent_impl) {
-        Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
-        Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
-    };
-
-    tcx.dcx().emit_err(err);
 }
 
 fn missing_items_err(

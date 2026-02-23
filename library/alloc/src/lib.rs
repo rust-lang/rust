@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![allow(unused_features)]
 #![allow(incomplete_features)]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
@@ -85,12 +86,9 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(not(no_global_oom_handling), feature(string_replace_in_place))]
-#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
-#![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(bstr)]
@@ -100,10 +98,15 @@
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
+#![feature(const_clone)]
+#![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_default)]
+#![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
+#![feature(const_option_ops)]
+#![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
@@ -118,6 +121,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
+#![feature(freeze)]
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
@@ -125,6 +129,7 @@
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
 #![feature(legacy_receiver_trait)]
+#![feature(likely_unlikely)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
@@ -142,7 +147,6 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(std_internals)]
-#![feature(str_internals)]
 #![feature(temporary_niche_types)]
 #![feature(transmutability)]
 #![feature(trivial_clone)]
@@ -152,7 +156,6 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_residual)]
-#![feature(try_with_capacity)]
 #![feature(tuple_trait)]
 #![feature(ub_checks)]
 #![feature(unicode_internals)]
@@ -172,7 +175,6 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]
-#![feature(hashmap_internals)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
@@ -180,7 +182,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(optimize_attribute)]
-#![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(slice_internals)]
 #![feature(staged_api)]
@@ -222,6 +223,7 @@ pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
 pub mod fmt;
+pub mod intrinsics;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

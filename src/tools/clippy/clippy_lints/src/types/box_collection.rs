@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::qpath_generic_tys;
+use clippy_utils::{qpath_generic_tys, sym};
 use clippy_utils::res::MaybeResPath;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use super::BOX_COLLECTION;
 

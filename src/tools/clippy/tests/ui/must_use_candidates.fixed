@@ -104,6 +104,7 @@ pub extern "C" fn unmangled(i: bool) -> bool {
     !i
 }
 
-fn main() {
+pub fn main() -> std::process::ExitCode {
     assert_eq!(1, pure(1));
+    std::process::ExitCode::SUCCESS
 }

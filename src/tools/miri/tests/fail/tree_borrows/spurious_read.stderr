@@ -31,13 +31,24 @@ help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to 
 LL |         }
    |          ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
-   = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside `retagx_retagy_retx_writey_rety::{closure#1}::as_mut` at tests/fail/tree_borrows/spurious_read.rs:LL:CC
-note: inside closure
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: retagx_retagy_retx_writey_rety::{closure#1}::as_mut
+               at tests/fail/tree_borrows/spurious_read.rs:LL:CC
+           1: retagx_retagy_retx_writey_rety::{closure#1}
+               at tests/fail/tree_borrows/spurious_read.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/fail/tree_borrows/spurious_read.rs:LL:CC
    |
-LL |         let _y = as_mut(unsafe { &mut *ptr.0 }, b.clone());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       let thread_y = thread::spawn(move || {
+   |  ____________________^
+LL | |         let b = (2, by);
+LL | |         synchronized!(b, "start");
+LL | |         let ptr = ptr;
+...  |
+LL | |         synchronized!(b, "end");
+LL | |     });
+   | |______^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

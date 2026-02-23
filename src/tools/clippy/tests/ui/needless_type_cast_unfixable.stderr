@@ -1,0 +1,17 @@
+error: this binding is defined as `isize` but is always cast to `*mut std::ffi::c_void`
+  --> tests/ui/needless_type_cast_unfixable.rs:13:21
+   |
+LL |     let underlying: isize = 123;
+   |                     ^^^^^ help: consider defining it as: `*mut std::ffi::c_void`
+   |
+   = note: `-D clippy::needless-type-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_type_cast)]`
+
+error: this binding is defined as `isize` but is always cast to `*mut std::ffi::c_void`
+  --> tests/ui/needless_type_cast_unfixable.rs:17:21
+   |
+LL |     let underlying: isize = 123;
+   |                     ^^^^^ help: consider defining it as: `*mut std::ffi::c_void`
+
+error: aborting due to 2 previous errors
+

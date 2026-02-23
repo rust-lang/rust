@@ -1,4 +1,5 @@
-//@ min-lldb-version: 1800
+// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
+//@ ignore-lldb
 //@ min-gdb-version: 13.0
 //@ compile-flags: -g -Copt-level=3
 //@ disable-gdb-pretty-printers

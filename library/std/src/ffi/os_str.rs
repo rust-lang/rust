@@ -13,7 +13,7 @@ use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{cmp, fmt, slice};
 
 /// A type that can represent owned, mutable platform-native strings, but is
@@ -1278,6 +1278,18 @@ impl OsStr {
     pub fn display(&self) -> Display<'_> {
         Display { os_str: self }
     }
+
+    /// Returns the same string as a string slice `&OsStr`.
+    ///
+    /// This method is redundant when used directly on `&OsStr`, but
+    /// it helps dereferencing other string-like types to string slices,
+    /// for example references to `Box<OsStr>` or `Arc<OsStr>`.
+    #[inline]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn as_os_str(&self) -> &OsStr {
+        self
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -1554,7 +1566,7 @@ impl Ord for OsStr {
 macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 <OsStr as PartialEq>::eq(self, other)
@@ -1562,7 +1574,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 <OsStr as PartialEq>::eq(self, other)
@@ -1570,7 +1582,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
                 <OsStr as PartialOrd>::partial_cmp(self, other)
@@ -1578,7 +1590,7 @@ macro_rules! impl_cmp {
         }
 
         #[stable(feature = "cmp_os_str", since = "1.8.0")]
-        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
                 <OsStr as PartialOrd>::partial_cmp(self, other)
@@ -1588,10 +1600,10 @@ macro_rules! impl_cmp {
 }
 
 impl_cmp!(OsString, OsStr);
-impl_cmp!(OsString, &'a OsStr);
-impl_cmp!(Cow<'a, OsStr>, OsStr);
-impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
-impl_cmp!(Cow<'a, OsStr>, OsString);
+impl_cmp!(OsString, &OsStr);
+impl_cmp!(Cow<'_, OsStr>, OsStr);
+impl_cmp!(Cow<'_, OsStr>, &OsStr);
+impl_cmp!(Cow<'_, OsStr>, OsString);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {

@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
@@ -33,8 +33,6 @@ pub mod points;
 pub mod rustc_peek;
 mod un_derefer;
 pub mod value_analysis;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct MoveDataTypingEnv<'tcx> {
     pub move_data: MoveData<'tcx>,

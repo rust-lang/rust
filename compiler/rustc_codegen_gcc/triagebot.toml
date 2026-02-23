@@ -2,6 +2,3 @@
 
 # Prevents un-canonicalized issue links (to avoid wrong issues being linked in r-l/rust)
 [issue-links]
-
-# Prevents mentions in commits to avoid users being spammed
-[no-mentions]

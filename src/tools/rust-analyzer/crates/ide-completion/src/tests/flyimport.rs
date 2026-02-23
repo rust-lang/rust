@@ -16,11 +16,11 @@ fn check_with_config(
     expect: Expect,
 ) {
     let (db, position) = crate::tests::position(ra_fixture);
-    let (ctx, analysis) =
-        crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
+    hir::attach_db(&db, || {
+        let (ctx, analysis) =
+            crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
 
-    let mut acc = crate::completions::Completions::default();
-    hir::attach_db(ctx.db, || {
+        let mut acc = crate::completions::Completions::default();
         if let CompletionAnalysis::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
             &analysis
         {
@@ -42,9 +42,9 @@ fn check_with_config(
                 _ => (),
             }
         }
-    });
 
-    expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
+        expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
+    });
 }
 
 #[test]
@@ -79,6 +79,7 @@ fn macro_fuzzy_completion() {
         r#"
 //- /lib.rs crate:dep
 /// Please call me as macro_with_curlies! {}
+#[rust_analyzer::macro_style(braces)]
 #[macro_export]
 macro_rules! macro_with_curlies {
     () => {}
@@ -780,8 +781,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
@@ -1973,5 +1974,53 @@ fn main() {
             fn _var() (use foo::env) fn()
             fn var() (use foo::env)  fn()
         "#]],
+    );
+}
+
+#[test]
+fn trait_method_import_across_multiple_crates() {
+    let fixture = r#"
+        //- /lib.rs crate:test-trait
+        pub trait TestTrait {
+            fn test_function(&self) -> u32;
+        }
+
+        //- /lib.rs crate:test-implementation deps:test-trait
+        pub struct TestStruct(pub usize);
+
+        impl test_trait::TestTrait for TestStruct {
+            fn test_function(&self) -> u32 {
+                1
+            }
+        }
+
+        //- /main.rs crate:main deps:test-implementation,test-trait
+        use test_implementation::TestStruct;
+
+        fn main() {
+            let test = TestStruct(42);
+            test.test_f$0
+        }
+    "#;
+
+    check(
+        fixture,
+        expect![[r#"
+            me test_function() (use test_trait::TestTrait) fn(&self) -> u32
+        "#]],
+    );
+
+    check_edit(
+        "test_function",
+        fixture,
+        r#"
+use test_implementation::TestStruct;
+use test_trait::TestTrait;
+
+fn main() {
+    let test = TestStruct(42);
+    test.test_function()$0
+}
+"#,
     );
 }

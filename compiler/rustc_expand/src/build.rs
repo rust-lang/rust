@@ -2,8 +2,8 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind,
-    UnOp, attr, token, tokenstream,
+    self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind,
+    MgcaDisambiguation, PatKind, UnOp, attr, token, tokenstream,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -101,6 +101,7 @@ impl<'a> ExtCtxt<'a> {
                 attrs: AttrVec::new(),
                 tokens: None,
             }),
+            mgca_disambiguation: MgcaDisambiguation::Direct,
         }
     }
 
@@ -726,9 +727,9 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         ident: Ident,
         ty: Box<ast::Ty>,
-        rhs: ast::ConstItemRhs,
+        rhs_kind: ast::ConstItemRhsKind,
     ) -> Box<ast::Item> {
-        let defaultness = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Implicit;
         self.item(
             span,
             AttrVec::new(),
@@ -739,7 +740,7 @@ impl<'a> ExtCtxt<'a> {
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
-                    rhs: Some(rhs),
+                    rhs_kind,
                     define_opaque: None,
                 }
                 .into(),

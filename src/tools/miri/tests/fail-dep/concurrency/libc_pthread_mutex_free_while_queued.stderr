@@ -6,15 +6,25 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside `<std::boxed::Box<Mutex> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<Mutex>> - shim(Some(std::boxed::Box<Mutex>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<Mutex>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: <std::boxed::Box<Mutex> as std::ops::Drop>::drop
+               at RUSTLIB/alloc/src/boxed.rs:LL:CC
+           1: std::ptr::drop_in_place))
+               at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+           2: std::mem::drop
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           3: main::{closure#0}::{closure#2}
+               at tests/fail-dep/concurrency/libc_pthread_mutex_free_while_queued.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
   --> tests/fail-dep/concurrency/libc_pthread_mutex_free_while_queued.rs:LL:CC
    |
-LL |             drop(unsafe { Box::from_raw(m.get().cast::<Mutex>()) });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /         s.spawn(|| {
+LL | |             // Ensure we happen-after the initialization write.
+LL | |             assert!(initialized.load(Ordering::Acquire));
+...  |
+LL | |         });
+   | |__________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'a> (): Unsize<(dyn Trait + 'a)>` is not sati
   --> $DIR/unsize-goal-escaping-bounds.rs:20:5
    |
 LL |     foo();
-   |     ^^^^^ the trait `for<'a> Unsize<(dyn Trait + 'a)>` is not implemented for `()`
+   |     ^^^^^ the nightly-only, unstable trait `for<'a> Unsize<(dyn Trait + 'a)>` is not implemented for `()`
    |
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 note: required by a bound in `foo`

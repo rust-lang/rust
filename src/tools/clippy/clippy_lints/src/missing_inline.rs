@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -72,7 +71,7 @@ fn check_missing_inline_attrs(
     desc: &'static str,
     hir_id: Option<hir::HirId>,
 ) {
-    if !find_attr!(attrs, AttributeKind::Inline(..)) {
+    if !find_attr!(attrs, Inline(..)) {
         let msg = format!("missing `#[inline]` for {desc}");
         if let Some(hir_id) = hir_id {
             span_lint_hir(cx, MISSING_INLINE_IN_PUBLIC_ITEMS, hir_id, sp, msg);

@@ -171,8 +171,7 @@ enum RemapPathPrefix {
     Unspecified,
 }
 
-/// `-Zremap-path-scope`. See
-/// <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/remap-path-scope.html#remap-path-scope>.
+/// `--remap-path-scope`
 #[derive(Debug, Clone)]
 enum RemapPathScope {
     /// Comma-separated list of remap scopes: `macro`, `diagnostics`, `debuginfo`, `object`, `all`.
@@ -921,7 +920,7 @@ mod shared_linux_other_tests {
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .remap_path_prefix(cwd(), remapped_prefix)
-                    .arg(format!("-Zremap-path-scope={scope}"))
+                    .arg(format!("--remap-path-scope={scope}"))
                     .run();
                 let found_files = cwd_filenames();
                 FileAssertions { expected_files: BTreeSet::from(["foo", "foo.dwp"]) }
@@ -950,7 +949,7 @@ mod shared_linux_other_tests {
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .remap_path_prefix(cwd(), remapped_prefix)
-                    .arg(format!("-Zremap-path-scope={scope}"))
+                    .arg(format!("--remap-path-scope={scope}"))
                     .run();
                 let found_files = cwd_filenames();
                 FileAssertions { expected_files: BTreeSet::from(["foo", "foo.dwp"]) }
@@ -1202,7 +1201,7 @@ mod shared_linux_other_tests {
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .remap_path_prefix(cwd(), remapped_prefix)
-                    .arg(format!("-Zremap-path-scope={scope}"))
+                    .arg(format!("--remap-path-scope={scope}"))
                     .run();
 
                 let found_files = cwd_filenames();
@@ -1242,7 +1241,7 @@ mod shared_linux_other_tests {
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .remap_path_prefix(cwd(), remapped_prefix)
-                    .arg(format!("-Zremap-path-scope={scope}"))
+                    .arg(format!("--remap-path-scope={scope}"))
                     .run();
 
                 let found_files = cwd_filenames();
@@ -1356,7 +1355,7 @@ fn main() {
     // NOTE: these combinations are not exhaustive, because while porting to rmake.rs initially I
     // tried to preserve the existing test behavior closely. Notably, no attempt was made to
     // exhaustively cover all cases in the 6-fold Cartesian product of `{,-Csplit=debuginfo=...}` x
-    // `{,-Cdebuginfo=...}` x `{,--remap-path-prefix}` x `{,-Zremap-path-scope=...}` x
+    // `{,-Cdebuginfo=...}` x `{,--remap-path-prefix}` x `{,--remap-path-scope=...}` x
     // `{,-Zsplit-dwarf-kind=...}` x `{,-Clinker-plugin-lto}`. If you really want to, you can
     // identify which combination isn't exercised with a 6-layers nested for loop iterating through
     // each of the cli flag enum variants.

@@ -8,11 +8,12 @@ LL | impl Copy for Foo { }
    |               ^^^
 
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/E0204.rs:7:10
+  --> $DIR/E0204.rs:8:8
    |
 LL | #[derive(Copy)]
-   |          ^^^^
+   |          ---- in this derive macro expansion
 LL | struct Foo2<'a> {
+   |        ^^^^
 LL |     ty: &'a mut bool,
    |     ---------------- this field does not implement `Copy`
 
@@ -26,11 +27,12 @@ LL | impl Copy for EFoo { }
    |               ^^^^
 
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/E0204.rs:19:10
+  --> $DIR/E0204.rs:20:6
    |
 LL | #[derive(Copy)]
-   |          ^^^^
+   |          ---- in this derive macro expansion
 LL | enum EFoo2<'a> {
+   |      ^^^^^
 LL |     Bar(&'a mut bool),
    |         ------------ this field does not implement `Copy`
 

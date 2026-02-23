@@ -9,6 +9,7 @@
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -51,7 +52,7 @@ pub use ascii::is_ascii_simple;
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::{range, try_range};
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 pub use iter::ArrayWindows;
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
@@ -842,8 +843,8 @@ impl<T> [T] {
     /// Gets a reference to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -861,8 +862,8 @@ impl<T> [T] {
     /// Gets a mutable reference to the slice's underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -1638,7 +1639,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`windows`]: slice::windows
-    #[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "array_windows", since = "1.94.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
@@ -2519,7 +2520,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
+    #[unstable(feature = "slice_split_once", issue = "112811")]
     #[inline]
     pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2547,7 +2548,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
+    #[unstable(feature = "slice_split_once", issue = "112811")]
     #[inline]
     pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -3244,6 +3245,219 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
+    /// Partially sorts the slice in ascending order **without** preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable(0..0);
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable(2..2);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable(2..3);
+    /// for i in 0..2 {
+    ///    assert!(v[i] <= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] <= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable(1..4);
+    /// assert_eq!(&v[1..4], [-3, 1, 2]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable(..);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [`sort_unstable`]: slice::sort_unstable
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable<R>(&mut self, range: R)
+    where
+        T: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, T::lt);
+    }
+
+    /// Partially sorts the slice in ascending order with a comparison function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the `compare` does not implement a total order, or if
+    /// the `compare` itself panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by(0..0, |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by(2..2, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by(2..3, |a, b| b.cmp(a));
+    /// for i in 0..2 {
+    ///    assert!(v[i] >= v[2]);
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2] >= v[i]);
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by(1..4, |a, b| b.cmp(a));
+    /// assert_eq!(&v[1..4], [2, 1, -3]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by(.., |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by`]: slice::sort_unstable_by
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by<F, R>(&mut self, range: R, mut compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| compare(a, b) == Less);
+    }
+
+    /// Partially sorts the slice in ascending order with a key extraction function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, for the specified range `start..end`, it's guaranteed that:
+    ///
+    /// 1. Every element in `self[..start]` is smaller than or equal to
+    /// 2. Every element in `self[start..end]`, which is sorted, and smaller than or equal to
+    /// 3. Every element in `self[end..]`.
+    ///
+    /// This partial sort is unstable, meaning it may reorder equal elements in the specified range.
+    /// It may reorder elements outside the specified range as well, but the guarantees above still hold.
+    ///
+    /// This partial sort is in-place (i.e., does not allocate), and *O*(*n* + *k* \* log(*k*)) worst-case,
+    /// where *n* is the length of the slice and *k* is the length of the specified range.
+    ///
+    /// See the documentation of [`sort_unstable_by_key`] for implementation notes.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a total order, or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4i32, -5, 1, -3, 2];
+    ///
+    /// // empty range at the beginning, nothing changed
+    /// v.partial_sort_unstable_by_key(0..0, |k| k.abs());
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // empty range in the middle, partitioning the slice
+    /// v.partial_sort_unstable_by_key(2..2, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by_key(2..3, |k| k.abs());
+    /// for i in 0..2 {
+    ///    assert!(v[i].abs() <= v[2].abs());
+    /// }
+    /// for i in 3..v.len() {
+    ///   assert!(v[2].abs() <= v[i].abs());
+    /// }
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by_key(1..4, |k| k.abs());
+    /// assert_eq!(&v[1..4], [2, -3, 4]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by_key(.., |k| k.abs());
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [`sort_unstable_by_key`]: slice::sort_unstable_by_key
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by_key<K, F, R>(&mut self, range: R, mut f: F)
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+        R: RangeBounds<usize>,
+    {
+        sort::unstable::partial_sort(self, range, |a, b| f(a).lt(&f(b)));
+    }
+
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
     /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
     /// it.
@@ -3725,6 +3939,219 @@ impl<T> [T] {
         }
     }
 
+    /// Moves the elements of this slice `N` places to the left, returning the ones
+    /// that "fall off" the front, and putting `inserted` at the end.
+    ///
+    /// Equivalently, you can think of concatenating `self` and `inserted` into one
+    /// long sequence, then returning the left-most `N` items and the rest into `self`:
+    ///
+    /// ```text
+    ///           self (before)    inserted
+    ///           vvvvvvvvvvvvvvv  vvv
+    ///           [1, 2, 3, 4, 5]  [9]
+    ///        ↙   ↙  ↙  ↙  ↙   ↙
+    ///      [1]  [2, 3, 4, 5, 9]
+    ///      ^^^  ^^^^^^^^^^^^^^^
+    /// returned  self (after)
+    /// ```
+    ///
+    /// See also [`Self::shift_right`] and compare [`Self::rotate_left`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_shift)]
+    ///
+    /// // Same as the diagram above
+    /// let mut a = [1, 2, 3, 4, 5];
+    /// let inserted = [9];
+    /// let returned = a.shift_left(inserted);
+    /// assert_eq!(returned, [1]);
+    /// assert_eq!(a, [2, 3, 4, 5, 9]);
+    ///
+    /// // You can shift multiple items at a time
+    /// let mut a = *b"Hello world";
+    /// assert_eq!(a.shift_left(*b" peace"), *b"Hello ");
+    /// assert_eq!(a, *b"world peace");
+    ///
+    /// // The name comes from this operation's similarity to bitshifts
+    /// let mut a: u8 = 0b10010110;
+    /// a <<= 3;
+    /// assert_eq!(a, 0b10110000_u8);
+    /// let mut a: [_; 8] = [1, 0, 0, 1, 0, 1, 1, 0];
+    /// a.shift_left([0; 3]);
+    /// assert_eq!(a, [1, 0, 1, 1, 0, 0, 0, 0]);
+    ///
+    /// // Remember you can sub-slice to affect less that the whole slice.
+    /// // For example, this is similar to `.remove(1)` + `.insert(4, 'Z')`
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// assert_eq!(a[1..=4].shift_left(['Z']), ['b']);
+    /// assert_eq!(a, ['a', 'c', 'd', 'e', 'Z', 'f']);
+    ///
+    /// // If the size matches it's equivalent to `mem::replace`
+    /// let mut a = [1, 2, 3];
+    /// assert_eq!(a.shift_left([7, 8, 9]), [1, 2, 3]);
+    /// assert_eq!(a, [7, 8, 9]);
+    ///
+    /// // Some of the "inserted" elements end up returned if the slice is too short
+    /// let mut a = [];
+    /// assert_eq!(a.shift_left([1, 2, 3]), [1, 2, 3]);
+    /// let mut a = [9];
+    /// assert_eq!(a.shift_left([1, 2, 3]), [9, 1, 2]);
+    /// assert_eq!(a, [3]);
+    /// ```
+    #[unstable(feature = "slice_shift", issue = "151772")]
+    pub const fn shift_left<const N: usize>(&mut self, inserted: [T; N]) -> [T; N] {
+        if let Some(shift) = self.len().checked_sub(N) {
+            // SAFETY: Having just checked that the inserted/returned arrays are
+            // shorter than (or the same length as) the slice:
+            // 1. The read for the items to return is in-bounds
+            // 2. We can `memmove` the slice over to cover the items we're returning
+            //    to ensure those aren't double-dropped
+            // 3. Then we write (in-bounds for the same reason as the read) the
+            //    inserted items atop the items of the slice that we just duplicated
+            //
+            // And none of this can panic, so there's no risk of intermediate unwinds.
+            unsafe {
+                let ptr = self.as_mut_ptr();
+                let returned = ptr.cast_array::<N>().read();
+                ptr.copy_from(ptr.add(N), shift);
+                ptr.add(shift).cast_array::<N>().write(inserted);
+                returned
+            }
+        } else {
+            // SAFETY: Having checked that the slice is strictly shorter than the
+            // inserted/returned arrays, it means we'll be copying the whole slice
+            // into the returned array, but that's not enough on its own.  We also
+            // need to copy some of the inserted array into the returned array,
+            // with the rest going into the slice.  Because `&mut` is exclusive
+            // and we own both `inserted` and `returned`, they're all disjoint
+            // allocations from each other as we can use `nonoverlapping` copies.
+            //
+            // We avoid double-frees by `ManuallyDrop`ing the inserted items,
+            // since we always copy them to other locations that will drop them
+            // instead.  Plus nothing in here can panic -- it's just memcpy three
+            // times -- so there's no intermediate unwinds to worry about.
+            unsafe {
+                let len = self.len();
+                let slice = self.as_mut_ptr();
+                let inserted = mem::ManuallyDrop::new(inserted);
+                let inserted = (&raw const inserted).cast::<T>();
+
+                let mut returned = MaybeUninit::<[T; N]>::uninit();
+                let ptr = returned.as_mut_ptr().cast::<T>();
+                ptr.copy_from_nonoverlapping(slice, len);
+                ptr.add(len).copy_from_nonoverlapping(inserted, N - len);
+                slice.copy_from_nonoverlapping(inserted.add(N - len), len);
+                returned.assume_init()
+            }
+        }
+    }
+
+    /// Moves the elements of this slice `N` places to the right, returning the ones
+    /// that "fall off" the back, and putting `inserted` at the beginning.
+    ///
+    /// Equivalently, you can think of concatenating `inserted` and `self` into one
+    /// long sequence, then returning the right-most `N` items and the rest into `self`:
+    ///
+    /// ```text
+    /// inserted  self (before)
+    ///      vvv  vvvvvvvvvvvvvvv
+    ///      [0]  [5, 6, 7, 8, 9]
+    ///        ↘   ↘  ↘  ↘  ↘   ↘
+    ///           [0, 5, 6, 7, 8]  [9]
+    ///           ^^^^^^^^^^^^^^^  ^^^
+    ///           self (after)     returned
+    /// ```
+    ///
+    /// See also [`Self::shift_left`] and compare [`Self::rotate_right`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_shift)]
+    ///
+    /// // Same as the diagram above
+    /// let mut a = [5, 6, 7, 8, 9];
+    /// let inserted = [0];
+    /// let returned = a.shift_right(inserted);
+    /// assert_eq!(returned, [9]);
+    /// assert_eq!(a, [0, 5, 6, 7, 8]);
+    ///
+    /// // The name comes from this operation's similarity to bitshifts
+    /// let mut a: u8 = 0b10010110;
+    /// a >>= 3;
+    /// assert_eq!(a, 0b00010010_u8);
+    /// let mut a: [_; 8] = [1, 0, 0, 1, 0, 1, 1, 0];
+    /// a.shift_right([0; 3]);
+    /// assert_eq!(a, [0, 0, 0, 1, 0, 0, 1, 0]);
+    ///
+    /// // Remember you can sub-slice to affect less that the whole slice.
+    /// // For example, this is similar to `.remove(4)` + `.insert(1, 'Z')`
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// assert_eq!(a[1..=4].shift_right(['Z']), ['e']);
+    /// assert_eq!(a, ['a', 'Z', 'b', 'c', 'd', 'f']);
+    ///
+    /// // If the size matches it's equivalent to `mem::replace`
+    /// let mut a = [1, 2, 3];
+    /// assert_eq!(a.shift_right([7, 8, 9]), [1, 2, 3]);
+    /// assert_eq!(a, [7, 8, 9]);
+    ///
+    /// // Some of the "inserted" elements end up returned if the slice is too short
+    /// let mut a = [];
+    /// assert_eq!(a.shift_right([1, 2, 3]), [1, 2, 3]);
+    /// let mut a = [9];
+    /// assert_eq!(a.shift_right([1, 2, 3]), [2, 3, 9]);
+    /// assert_eq!(a, [1]);
+    /// ```
+    #[unstable(feature = "slice_shift", issue = "151772")]
+    pub const fn shift_right<const N: usize>(&mut self, inserted: [T; N]) -> [T; N] {
+        if let Some(shift) = self.len().checked_sub(N) {
+            // SAFETY: Having just checked that the inserted/returned arrays are
+            // shorter than (or the same length as) the slice:
+            // 1. The read for the items to return is in-bounds
+            // 2. We can `memmove` the slice over to cover the items we're returning
+            //    to ensure those aren't double-dropped
+            // 3. Then we write (in-bounds for the same reason as the read) the
+            //    inserted items atop the items of the slice that we just duplicated
+            //
+            // And none of this can panic, so there's no risk of intermediate unwinds.
+            unsafe {
+                let ptr = self.as_mut_ptr();
+                let returned = ptr.add(shift).cast_array::<N>().read();
+                ptr.add(N).copy_from(ptr, shift);
+                ptr.cast_array::<N>().write(inserted);
+                returned
+            }
+        } else {
+            // SAFETY: Having checked that the slice is strictly shorter than the
+            // inserted/returned arrays, it means we'll be copying the whole slice
+            // into the returned array, but that's not enough on its own.  We also
+            // need to copy some of the inserted array into the returned array,
+            // with the rest going into the slice.  Because `&mut` is exclusive
+            // and we own both `inserted` and `returned`, they're all disjoint
+            // allocations from each other as we can use `nonoverlapping` copies.
+            //
+            // We avoid double-frees by `ManuallyDrop`ing the inserted items,
+            // since we always copy them to other locations that will drop them
+            // instead.  Plus nothing in here can panic -- it's just memcpy three
+            // times -- so there's no intermediate unwinds to worry about.
+            unsafe {
+                let len = self.len();
+                let slice = self.as_mut_ptr();
+                let inserted = mem::ManuallyDrop::new(inserted);
+                let inserted = (&raw const inserted).cast::<T>();
+
+                let mut returned = MaybeUninit::<[T; N]>::uninit();
+                let ptr = returned.as_mut_ptr().cast::<T>();
+                ptr.add(N - len).copy_from_nonoverlapping(slice, len);
+                ptr.copy_from_nonoverlapping(inserted.add(len), N - len);
+                slice.copy_from_nonoverlapping(inserted, len);
+                returned.assume_init()
+            }
+        }
+    }
+
     /// Fills `self` with elements by cloning `value`.
     ///
     /// # Examples
@@ -3823,9 +4250,10 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     #[track_caller]
-    pub fn clone_from_slice(&mut self, src: &[T])
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    pub const fn clone_from_slice(&mut self, src: &[T])
     where
-        T: Clone,
+        T: [const] Clone + [const] Destruct,
     {
         self.spec_clone_from(src);
     }
@@ -4228,7 +4656,6 @@ impl<T> [T] {
     where
         Simd<T, LANES>: AsRef<[T; LANES]>,
         T: simd::SimdElement,
-        simd::LaneCount<LANES>: simd::SupportedLaneCount,
     {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we
@@ -4264,7 +4691,6 @@ impl<T> [T] {
     where
         Simd<T, LANES>: AsMut<[T; LANES]>,
         T: simd::SimdElement,
-        simd::LaneCount<LANES>: simd::SupportedLaneCount,
     {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we
@@ -4809,8 +5235,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let nums: &[u32] = &[1, 7, 1, 1];
     /// let num = &nums[2];
     ///
@@ -4819,8 +5243,6 @@ impl<T> [T] {
     /// ```
     /// Returning `None` with an unaligned element:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let arr: &[[u32; 2]] = &[[0, 1], [2, 3]];
     /// let flat_arr: &[u32] = arr.as_flattened();
     ///
@@ -4834,7 +5256,7 @@ impl<T> [T] {
     /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "element_offset", since = "1.94.0")]
     pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
@@ -4907,6 +5329,30 @@ impl<T> [T] {
         let end = start.wrapping_add(subslice.len());
 
         if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
+    }
+
+    /// Returns the same slice `&[T]`.
+    ///
+    /// This method is redundant when used directly on `&[T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `Arc<[T]>`.
+    #[inline]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns the same slice `&mut [T]`.
+    ///
+    /// This method is redundant when used directly on `&mut [T]`, but
+    /// it helps dereferencing other "container" types to slices,
+    /// for example `Box<[T]>` or `MutexGuard<[T]>`.
+    #[inline]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        self
     }
 }
 
@@ -5136,13 +5582,17 @@ const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
     }
 }
 
-trait CloneFromSpec<T> {
-    fn spec_clone_from(&mut self, src: &[T]);
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+const trait CloneFromSpec<T> {
+    fn spec_clone_from(&mut self, src: &[T])
+    where
+        T: [const] Destruct;
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: Clone,
+    T: [const] Clone + [const] Destruct,
 {
     #[track_caller]
     default fn spec_clone_from(&mut self, src: &[T]) {
@@ -5152,15 +5602,19 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
+            self[idx].clone_from(&src[idx]);
+            idx += 1;
         }
     }
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: TrivialClone,
+    T: [const] TrivialClone + [const] Destruct,
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {

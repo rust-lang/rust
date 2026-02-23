@@ -96,7 +96,7 @@ For example:
 Not all important or beginner work has issue labels.
 See below for how to find work that isn't labelled.
 
-[help-wanted-search]: https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Arust-lang+no%3Aassignee+label%3AE-easy%2C%22good+first+issue%22%2Cgood-first-issue%2CE-medium%2CEasy%2CE-help-wanted%2CE-mentor+-label%3AS-blocked+-linked%3Apr+
+[help-wanted-search]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20org%3Arust-lang%20no%3Aassignee%20label%3AE-easy%2CE-medium%2CE-help-wanted%2CE-mentor%20-label%3AS-blocked%20-linked%3Apr
 [Triage]: ./contributing.md#issue-triage
 
 ### Recurring work
@@ -151,6 +151,9 @@ Issues that have been resolved but do not have a regression test are marked with
 Writing unit tests is a low-risk,
 lower-priority task that offers new contributors a great opportunity to familiarize themselves
 with the testing infrastructure and contribution workflow.
+You can see a list of needs test issues [here][needs-test-issues].
+
+[needs-test-issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue%20is%3Aopen%20label%3AE-needs-test%20no%3Aassignee
 
 ### Contributing to std (standard library)
 
@@ -176,7 +179,7 @@ The following tasks are doable without much background knowledge but are incredi
   to read a part of the code and write doc comments for it.
   This will help you to learn some part of the compiler while also producing a useful artifact!
 - [Triaging issues][triage]: categorizing, replicating, and minimizing issues is very helpful to the Rust maintainers.
-- [Working groups][wg]: there are a bunch of working groups on a wide variety
+- [Working areas][wa]: there are a bunch of working areas on a wide variety
   of rust-related things.
 - Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
 - Participate in the [RFC process](https://github.com/rust-lang/rfcs).
@@ -188,7 +191,7 @@ The following tasks are doable without much background knowledge but are incredi
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
 [wd]: ./contributing.md#writing-documentation
-[wg]: https://rust-lang.github.io/compiler-team/working-groups/
+[wa]: https://forge.rust-lang.org/compiler/working-areas.html
 [triage]: ./contributing.md#issue-triage
 
 ## Cloning and Building

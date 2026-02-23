@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 
-use super::{AllowUnused, Emit, LinkToAux, ProcRes, TargetLocation, TestCx};
+use crate::runtest::{AllowUnused, CompilerKind, Emit, LinkToAux, ProcRes, TargetLocation, TestCx};
 
 impl TestCx<'_> {
     pub(super) fn run_assembly_test(&self) {
@@ -35,6 +35,7 @@ impl TestCx<'_> {
         };
 
         let rustc = self.make_compile_args(
+            CompilerKind::Rustc,
             input_file,
             TargetLocation::ThisFile(output_path.clone()),
             emit,

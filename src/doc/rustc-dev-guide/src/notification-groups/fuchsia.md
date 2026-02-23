@@ -1,6 +1,6 @@
 # Fuchsia notification group
 
-**Github Label:** [O-fuchsia] <br>
+**GitHub Label:** [O-fuchsia] <br>
 **Ping command:** `@rustbot ping fuchsia`
 
 [O-fuchsia]: https://github.com/rust-lang/rust/labels/O-fuchsia

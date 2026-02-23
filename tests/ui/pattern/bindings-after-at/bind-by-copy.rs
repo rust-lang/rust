@@ -53,7 +53,6 @@ pub fn main() {
     }
     match (E::E { a: 10, e: C { c: 20 } }) {
         mut x @ E::E{ a, e: C { mut c } } => {
-            //~^ WARN value assigned to `a` is never read
             x = E::NotE;
             //~^ WARN value assigned to `x` is never read
             c += 30;

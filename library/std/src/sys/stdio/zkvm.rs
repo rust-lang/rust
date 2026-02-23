@@ -19,7 +19,7 @@ impl io::Read for Stdin {
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         unsafe {
             let n = abi::sys_read(fileno::STDIN, buf.as_mut().as_mut_ptr().cast(), buf.capacity());
-            buf.advance(n);
+            buf.advance_unchecked(n);
         }
         Ok(())
     }

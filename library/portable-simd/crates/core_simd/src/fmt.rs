@@ -1,9 +1,8 @@
-use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{Simd, SimdElement};
 use core::fmt;
 
 impl<T, const N: usize> fmt::Debug for Simd<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + fmt::Debug,
 {
     /// A `Simd<T, N>` has a debug format like the one for `[T]`:

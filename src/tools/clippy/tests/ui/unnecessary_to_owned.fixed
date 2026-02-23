@@ -681,3 +681,12 @@ fn issue14833() {
     let mut s = HashSet::<&String>::new();
     s.remove(&"hello".to_owned());
 }
+
+#[allow(clippy::redundant_clone)]
+fn issue16351() {
+    fn take(_: impl AsRef<str>) {}
+
+    let dot = ".";
+    take(&format!("ouch{dot}"));
+    //~^ unnecessary_to_owned
+}

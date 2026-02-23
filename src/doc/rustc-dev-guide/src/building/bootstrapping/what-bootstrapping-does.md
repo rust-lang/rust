@@ -243,7 +243,7 @@ This is also where `--keep-stage 1 library/std` comes into play. Since most
 changes to the compiler don't actually change the ABI, once you've produced a
 `std` in `stage1`, you can probably just reuse it with a different compiler. If
 the ABI hasn't changed, you're good to go, no need to spend time recompiling
-that `std`. The flag `--keep-stage` simply instructs the build script to assumes
+that `std`. The flag `--keep-stage` simply instructs the build script to assume
 the previous compile is fine and copies those artifacts into the appropriate
 place, skipping the `cargo` invocation.
 
@@ -342,7 +342,7 @@ This flag has the following effects:
 
 Code which does not use `-Z force-unstable-if-unmarked` should include the
 `#![feature(rustc_private)]` crate attribute to access these forced-unstable
-crates. This is needed for things which link `rustc` its self, such as `MIRI` or
+crates. This is needed for things which link `rustc` itself, such as `Miri` or
 `clippy`.
 
 You can find more discussion about sysroots in:

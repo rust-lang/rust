@@ -1,6 +1,5 @@
-use std::assert_matches::assert_matches;
-
 use rustc_abi::VariantIdx;
+use rustc_data_structures::assert_matches;
 use rustc_index::Idx;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;

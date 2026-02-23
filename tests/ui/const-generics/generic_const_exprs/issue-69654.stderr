@@ -5,6 +5,11 @@ LL | impl<T> Bar<T> for [u8; T] {}
    |      -                  ^ not a value
    |      |
    |      found this type parameter
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | impl<const T: /* Type */> Bar<T> for [u8; T] {}
+   |      +++++  ++++++++++++
 
 error[E0599]: the function or associated item `foo` exists for struct `Foo<_>`, but its trait bounds were not satisfied
   --> $DIR/issue-69654.rs:17:10

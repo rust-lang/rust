@@ -14,25 +14,22 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::iter;
-use std::ops::Bound;
+use std::ops::{Bound, ControlFlow};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
-};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::DefKind;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
@@ -48,9 +45,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use crate::errors;
-use crate::hir_ty_lowering::{
-    FeedConstTy, HirTyLowerer, InherentAssocCandidate, RegionInferReason,
-};
+use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -97,6 +92,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         const_param_default,
         anon_const_kind,
         const_of_item,
+        is_rhs_type_const,
         ..*providers
     };
 }
@@ -319,16 +315,24 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
-        if let RegionInferReason::ObjectLifetimeDefault = reason {
-            let e = struct_span_code_err!(
-                self.dcx(),
-                span,
-                E0228,
-                "the lifetime bound for this object type cannot be deduced \
-                from context; please supply an explicit bound"
-            )
-            .emit();
-            ty::Region::new_error(self.tcx(), e)
+        if let RegionInferReason::ObjectLifetimeDefault(sugg_sp) = reason {
+            // FIXME: Account for trailing plus `dyn Trait+`, the need of parens in
+            //        `*const dyn Trait` and `Fn() -> *const dyn Trait`.
+            let guar = self
+                .dcx()
+                .struct_span_err(
+                    span,
+                    "cannot deduce the lifetime bound for this trait object type from context",
+                )
+                .with_code(E0228)
+                .with_span_suggestion_verbose(
+                    sugg_sp,
+                    "please supply an explicit bound",
+                    " + /* 'a */",
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+            ty::Region::new_error(self.tcx(), guar)
         } else {
             // This indicates an illegal lifetime in a non-assoc-trait position
             ty::Region::new_error_with_message(self.tcx(), span, "unelided lifetime in signature")
@@ -811,11 +815,9 @@ fn lower_variant<'tcx>(
         fields,
         parent_did.to_def_id(),
         recovered,
-        adt_kind == AdtKind::Struct
-            && find_attr!(tcx.get_all_attrs(parent_did), AttributeKind::NonExhaustive(..))
-            || variant_did.is_some_and(|variant_did| {
-                find_attr!(tcx.get_all_attrs(variant_did), AttributeKind::NonExhaustive(..))
-            }),
+        adt_kind == AdtKind::Struct && find_attr!(tcx, parent_did, NonExhaustive(..))
+            || variant_did
+                .is_some_and(|variant_did| find_attr!(tcx, variant_did, NonExhaustive(..))),
     )
 }
 
@@ -890,113 +892,46 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
+    // we do a bunch of find_attr calls here, probably faster to get them from the tcx just once.
+    #[allow(deprecated)]
     let attrs = tcx.get_all_attrs(def_id);
 
-    let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
+    let paren_sugar = find_attr!(attrs, RustcParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
-    let is_marker = !is_alias && find_attr!(attrs, AttributeKind::Marker(_));
+    let is_marker = !is_alias && find_attr!(attrs, Marker(_));
 
-    let rustc_coinductive = find_attr!(attrs, AttributeKind::Coinductive(_));
-    let is_fundamental = find_attr!(attrs, AttributeKind::Fundamental);
+    let rustc_coinductive = find_attr!(attrs, RustcCoinductive(_));
+    let is_fundamental = find_attr!(attrs, Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
-        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
+        RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind = if find_attr!(attrs, AttributeKind::UnsafeSpecializationMarker(_)) {
+    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker(_)) {
         ty::trait_def::TraitSpecializationKind::Marker
-    } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
+    } else if find_attr!(attrs, RustcSpecializationTrait(_)) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable
     } else {
         ty::trait_def::TraitSpecializationKind::None
     };
-    let must_implement_one_of = attrs
-        .iter()
-        .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
-        // Check that there are at least 2 arguments of `#[rustc_must_implement_one_of]`
-        // and that they are all identifiers
-        .and_then(|attr| match attr.meta_item_list() {
-            Some(items) if items.len() < 2 => {
-                tcx.dcx().emit_err(errors::MustImplementOneOfAttribute { span: attr.span() });
 
-                None
-            }
-            Some(items) => items
-                .into_iter()
-                .map(|item| item.ident().ok_or(item.span()))
-                .collect::<Result<Box<[_]>, _>>()
-                .map_err(|span| {
-                    tcx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span });
-                })
-                .ok()
-                .zip(Some(attr.span())),
-            // Error is reported by `rustc_attr!`
-            None => None,
-        })
-        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
-        // functions in the trait with default implementations
-        .and_then(|(list, attr_span)| {
-            let errors = list.iter().filter_map(|ident| {
-                let item = tcx
-                    .associated_items(def_id)
-                    .filter_by_name_unhygienic(ident.name)
-                    .find(|item| item.ident(tcx) == *ident);
+    let must_implement_one_of = find_attr!(
+        attrs,
+        RustcMustImplementOneOf { fn_names, .. } =>
+            fn_names
+                .iter()
+                .cloned()
+                .collect::<Box<[_]>>()
+    );
 
-                match item {
-                    Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
-                        if !item.defaultness(tcx).has_value() {
-                            tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
-                                span: tcx.def_span(item.def_id),
-                                note_span: attr_span,
-                            });
-
-                            return Some(());
-                        }
-
-                        return None;
-                    }
-                    Some(item) => {
-                        tcx.dcx().emit_err(errors::MustImplementNotFunction {
-                            span: tcx.def_span(item.def_id),
-                            span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
-                            note: errors::MustImplementNotFunctionNote {},
-                        });
-                    }
-                    None => {
-                        tcx.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
-                    }
-                }
-
-                Some(())
-            });
-
-            (errors.count() == 0).then_some(list)
-        })
-        // Check for duplicates
-        .and_then(|list| {
-            let mut set: UnordMap<Symbol, Span> = Default::default();
-            let mut no_dups = true;
-
-            for ident in &*list {
-                if let Some(dup) = set.insert(ident.name, ident.span) {
-                    tcx.dcx()
-                        .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
-
-                    no_dups = false;
-                }
-            }
-
-            no_dups.then_some(list)
-        });
-
-    let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
-    let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
+    let deny_explicit_impl = find_attr!(attrs, RustcDenyExplicitImpl(_));
+    let force_dyn_incompatible = find_attr!(attrs, RustcDynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -1011,7 +946,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         skip_boxed_slice_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,
-        implement_via_object,
+        force_dyn_incompatible,
         deny_explicit_impl,
     }
 }
@@ -1125,6 +1060,70 @@ fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
     )
 }
 
+/// Convert `ReLateParam`s in `value` back into `ReBound`s and bind it with `bound_vars`.
+fn late_param_regions_to_bound<'tcx, T>(
+    tcx: TyCtxt<'tcx>,
+    scope: DefId,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
+    value: T,
+) -> ty::Binder<'tcx, T>
+where
+    T: ty::TypeFoldable<TyCtxt<'tcx>>,
+{
+    let value = fold_regions(tcx, value, |r, debruijn| match r.kind() {
+        ty::ReLateParam(lp) => {
+            // Should be in scope, otherwise inconsistency happens somewhere.
+            assert_eq!(lp.scope, scope);
+
+            let br = match lp.kind {
+                // These variants preserve the bound var index.
+                kind @ (ty::LateParamRegionKind::Anon(idx)
+                | ty::LateParamRegionKind::NamedAnon(idx, _)) => {
+                    let idx = idx as usize;
+                    let var = ty::BoundVar::from_usize(idx);
+
+                    let Some(ty::BoundVariableKind::Region(kind)) = bound_vars.get(idx).copied()
+                    else {
+                        bug!("unexpected late-bound region {kind:?} for bound vars {bound_vars:?}");
+                    };
+
+                    ty::BoundRegion { var, kind }
+                }
+
+                // For named regions, look up the corresponding bound var.
+                ty::LateParamRegionKind::Named(def_id) => bound_vars
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, bv)| match bv {
+                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::Named(did))
+                            if did == def_id =>
+                        {
+                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
+                        }
+                        _ => None,
+                    })
+                    .unwrap(),
+
+                ty::LateParamRegionKind::ClosureEnv => bound_vars
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, bv)| match bv {
+                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::ClosureEnv) => {
+                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
+                        }
+                        _ => None,
+                    })
+                    .unwrap(),
+            };
+
+            ty::Region::new_bound(tcx, debruijn, br)
+        }
+        _ => r,
+    });
+
+    ty::Binder::bind_with_vars(value, bound_vars)
+}
+
 fn recover_infer_ret_ty<'tcx>(
     icx: &ItemCtxt<'tcx>,
     infer_ret_ty: &'tcx hir::Ty<'tcx>,
@@ -1200,13 +1199,22 @@ fn recover_infer_ret_ty<'tcx>(
         );
     }
     let guar = diag.emit();
-    ty::Binder::dummy(tcx.mk_fn_sig(
+
+    // If we return a dummy binder here, we can ICE later in borrowck when it encounters
+    // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
+    // signature binder. See #135845.
+    let bound_vars = tcx.late_bound_vars(hir_id);
+    let scope = def_id.to_def_id();
+
+    let fn_sig = tcx.mk_fn_sig(
         fn_sig.inputs().iter().copied(),
         recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
         fn_sig.c_variadic,
         fn_sig.safety,
         fn_sig.abi,
-    ))
+    );
+
+    late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)
 }
 
 pub fn suggest_impl_trait<'tcx>(
@@ -1344,7 +1352,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity();
-    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
@@ -1549,23 +1557,27 @@ fn rendered_precise_capturing_args<'tcx>(
 
 fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    local_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-    let default_ct = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { default: Some(ct), .. },
-            ..
-        }) => ct,
-        _ => span_bug!(
-            tcx.def_span(def_id),
+    let hir::Node::GenericParam(hir::GenericParam {
+        kind: hir::GenericParamKind::Const { default: Some(default_ct), .. },
+        ..
+    }) = tcx.hir_node_by_def_id(local_def_id)
+    else {
+        span_bug!(
+            tcx.def_span(local_def_id),
             "`const_param_default` expected a generic parameter with a constant"
-        ),
+        )
     };
-    let icx = ItemCtxt::new(tcx, def_id);
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+
+    let icx = ItemCtxt::new(tcx, local_def_id);
+
+    let def_id = local_def_id.to_def_id();
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
+
     let ct = icx
         .lowerer()
-        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(default_ct, tcx.type_of(def_id).instantiate(tcx, identity_args));
     ty::EarlyBinder::bind(ct)
 }
 
@@ -1577,6 +1589,20 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
+            } else if tcx.features().opaque_generic_const_args() {
+                // Only anon consts that are the RHS of a const item can be OGCA.
+                // Note: We can't just check tcx.parent because it needs to be EXACTLY
+                // the RHS, not just part of the RHS.
+                if !is_anon_const_rhs_of_const_item(tcx, def) {
+                    return ty::AnonConstKind::MCG;
+                }
+
+                let body = tcx.hir_body_owned_by(def);
+                let mut visitor = OGCAParamVisitor(tcx);
+                match visitor.visit_body(body) {
+                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::OGCA,
+                    ControlFlow::Continue(()) => ty::AnonConstKind::MCG,
+                }
             } else if tcx.features().min_generic_const_args() {
                 ty::AnonConstKind::MCG
             } else if let hir::Node::Expr(hir::Expr {
@@ -1594,6 +1620,50 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     }
 }
 
+fn is_anon_const_rhs_of_const_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let Some((_, grandparent_node)) = tcx.hir_parent_iter(hir_id).nth(1) else { return false };
+    let (Node::Item(hir::Item { kind: hir::ItemKind::Const(_, _, _, ct_rhs), .. })
+    | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(_, ct_rhs), .. })
+    | Node::TraitItem(hir::TraitItem {
+        kind: hir::TraitItemKind::Const(_, Some(ct_rhs), _),
+        ..
+    })) = grandparent_node
+    else {
+        return false;
+    };
+    let hir::ConstItemRhs::TypeConst(hir::ConstArg {
+        kind: hir::ConstArgKind::Anon(rhs_anon), ..
+    }) = ct_rhs
+    else {
+        return false;
+    };
+    def_id == rhs_anon.def_id
+}
+
+struct OGCAParamVisitor<'tcx>(TyCtxt<'tcx>);
+
+struct UsesParam;
+
+impl<'tcx> Visitor<'tcx> for OGCAParamVisitor<'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+    type Result = ControlFlow<UsesParam>;
+
+    fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+        self.0
+    }
+
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: HirId) -> ControlFlow<UsesParam> {
+        if let Res::Def(DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam, _) =
+            path.res
+        {
+            return ControlFlow::Break(UsesParam);
+        }
+
+        intravisit::walk_path(self, path)
+    }
+}
+
 #[instrument(level = "debug", skip(tcx), ret)]
 fn const_of_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1602,7 +1672,7 @@ fn const_of_item<'tcx>(
     let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
         hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(.., ct), ..
+            kind: hir::TraitItemKind::Const(_, ct, _), ..
         }) => ct.expect("no default value for trait assoc const"),
         hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
         _ => {
@@ -1623,12 +1693,31 @@ fn const_of_item<'tcx>(
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let ct = icx
         .lowerer()
-        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+        .lower_const_arg(ct_arg, tcx.type_of(def_id.to_def_id()).instantiate(tcx, identity_args));
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {
         ty::EarlyBinder::bind(Const::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(ct)
+    }
+}
+
+/// Check if a Const or AssocConst is a type const (mgca)
+fn is_rhs_type_const<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> bool {
+    match tcx.hir_node_by_def_id(def) {
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Const(_, _, _, hir::ConstItemRhs::TypeConst(_)),
+            ..
+        })
+        | hir::Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Const(_, hir::ConstItemRhs::TypeConst(_)),
+            ..
+        })
+        | hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(_, _, hir::IsTypeConst::Yes),
+            ..
+        }) => return true,
+        _ => return false,
     }
 }

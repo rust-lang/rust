@@ -1,10 +1,9 @@
 #![deny(clippy::trait_duplication_in_bounds)]
 #![expect(incomplete_features)]
-#![feature(associated_const_equality, min_generic_const_args)]
+#![feature(min_generic_const_args)]
 
 trait AssocConstTrait {
-    #[type_const]
-    const ASSOC: usize;
+    type const ASSOC: usize;
 }
 fn assoc_const_args<T>()
 where

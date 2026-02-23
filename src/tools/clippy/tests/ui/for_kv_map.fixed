@@ -69,3 +69,20 @@ fn main() {
         let _v = v;
     }
 }
+
+fn wrongly_unmangled_macros() {
+    use std::collections::HashMap;
+
+    macro_rules! test_map {
+        ($val:expr) => {
+            &*$val
+        };
+    }
+
+    let m: HashMap<u64, u64> = HashMap::new();
+    let wrapped = Rc::new(m);
+    for v in test_map!(wrapped).values() {
+        //~^ for_kv_map
+        let _v = v;
+    }
+}

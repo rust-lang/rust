@@ -275,26 +275,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
 
-    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
+    #[allow(clippy::arithmetic_side_effects)]
     fn system_time_since_windows_epoch(&self, time: &SystemTime) -> InterpResult<'tcx, Duration> {
-        let this = self.eval_context_ref();
-
-        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
-        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
-        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
+        // The amount of seconds between 1601/1/1 and 1970/1/1.
+        // See https://learn.microsoft.com/en-us/windows/win32/sysinfo/converting-a-time-t-value-to-a-file-time
+        // (just divide by the number of 100 ns intervals per second).
+        const SECONDS_TO_UNIX_EPOCH: u64 = 11_644_473_600;
 
         interp_ok(system_time_to_duration(time)? + Duration::from_secs(SECONDS_TO_UNIX_EPOCH))
     }
 
     #[allow(non_snake_case, clippy::arithmetic_side_effects)]
     fn windows_ticks_for(&self, duration: Duration) -> InterpResult<'tcx, u64> {
-        let this = self.eval_context_ref();
+        // 1 interval = 100 ns.
+        // See https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+        const NANOS_PER_INTERVAL: u128 = 100;
 
-        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
-        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
-        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
-
-        let ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
+        let ticks = u64::try_from(duration.as_nanos() / NANOS_PER_INTERVAL)
             .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
         interp_ok(ticks)
     }
@@ -329,6 +326,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
+    fn mach_wait_until(&mut self, deadline_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os(Os::MacOs, "mach_wait_until");
+
+        let deadline = this.read_scalar(deadline_op)?.to_u64()?;
+        // Our mach_absolute_time "ticks" are plain nanoseconds.
+        let duration = Duration::from_nanos(deadline);
+
+        this.block_thread(
+            BlockReason::Sleep,
+            Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, duration)),
+            callback!(
+                @capture<'tcx> {}
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
+            ),
+        );
+
+        interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
+    }
+
     fn nanosleep(&mut self, duration: &OpTy<'tcx>, rem: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
@@ -337,11 +358,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let duration = this.deref_pointer_as(duration, this.libc_ty_layout("timespec"))?;
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
-        let duration = match this.read_timespec(&duration)? {
-            Some(duration) => duration,
-            None => {
-                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
-            }
+        let Some(duration) = this.read_timespec(&duration)? else {
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         this.block_thread(
@@ -378,19 +396,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("clock_nanosleep: only CLOCK_MONOTONIC is supported");
         }
 
-        let duration = match this.read_timespec(&timespec)? {
-            Some(duration) => duration,
-            None => {
-                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
-            }
+        let Some(duration) = this.read_timespec(&timespec)? else {
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
         let timeout_anchor = if flags == 0 {
-            // No flags set, the timespec should be interperted as a duration
+            // No flags set, the timespec should be interpreted as a duration
             // to sleep for
             TimeoutAnchor::Relative
         } else if flags == this.eval_libc_i32("TIMER_ABSTIME") {
-            // Only flag TIMER_ABSTIME set, the timespec should be interperted as
+            // Only flag TIMER_ABSTIME set, the timespec should be interpreted as
             // an absolute time.
             TimeoutAnchor::Absolute
         } else {

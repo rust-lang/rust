@@ -16,8 +16,10 @@
           debug residual => _6;
           scope 2 {
               scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
-                  let _14: i32;
-                  let mut _15: i32;
+                  let mut _14: isize;
+                  let _15: i32;
+                  let mut _16: i32;
+                  let mut _17: bool;
                   scope 9 {
                       scope 10 (inlined <i32 as From<i32>>::from) {
                       }
@@ -74,10 +76,17 @@
           StorageLive(_8);
           _8 = copy _6;
           StorageLive(_14);
-          _14 = move ((_8 as Err).0: i32);
           StorageLive(_15);
-          _15 = move _14;
-          _0 = Result::<i32, i32>::Err(move _15);
+          StorageLive(_17);
+          _14 = discriminant(_8);
+          _17 = Eq(copy _14, const 1_isize);
+          assume(move _17);
+          _15 = move ((_8 as Err).0: i32);
+          StorageLive(_16);
+          _16 = move _15;
+          _0 = Result::<i32, i32>::Err(move _16);
+          StorageDead(_16);
+          StorageDead(_17);
           StorageDead(_15);
           StorageDead(_14);
           StorageDead(_8);

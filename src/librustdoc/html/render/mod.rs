@@ -59,14 +59,14 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
-use crate::clean::{self, ItemId, RenderedLink};
+use crate::clean::{self, Defaultness, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
@@ -75,8 +75,8 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
     Ending, HrefError, HrefInfo, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_generics,
-    print_impl, print_path, print_type, print_where_clause, visibility_print_with_space,
+    print_constness_with_space, print_generic_bounds, print_generics, print_impl, print_path,
+    print_type, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -141,7 +141,8 @@ pub(crate) struct IndexItem {
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
-    pub(crate) deprecation: Option<Deprecation>,
+    pub(crate) is_deprecated: bool,
+    pub(crate) is_unstable: bool,
 }
 
 /// A type used for the search index.
@@ -877,7 +878,8 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
-            let html = MarkdownItemInfo(note, &mut id_map);
+            let links = item.links(cx);
+            let html = MarkdownItemInfo::new(note, &links, &mut id_map);
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
         }
@@ -1049,14 +1051,11 @@ fn assoc_const(
             ty = print_type(ty, cx),
         )?;
         if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
-            // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
-            //        hood which adds noisy underscores and a type suffix to number literals.
-            //        This hurts readability in this context especially when more complex expressions
-            //        are involved and it doesn't add much of value.
-            //        Find a way to print constants here without all that jazz.
-            let repr = konst.value(tcx).unwrap_or_else(|| konst.expr(tcx));
+            let repr = konst.expr(tcx);
             if match value {
                 AssocConstValue::TraitDefault(_) => true, // always show
+                // FIXME: Comparing against the special string "_" denoting overly complex const exprs
+                //        is rather hacky; `ConstKind::expr` should have a richer return type.
                 AssocConstValue::Impl(_) => repr != "_", // show if there is a meaningful value to show
                 AssocConstValue::None => unreachable!(),
             } {
@@ -1077,6 +1076,7 @@ fn assoc_type(
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
+        render_attributes_in_code(w, it, &" ".repeat(indent), cx)?;
         write!(
             w,
             "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
@@ -1110,7 +1110,11 @@ fn assoc_method(
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = print_default_space(meth.is_default());
+    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
+        Defaultness::Implicit => "",
+        Defaultness::Final => "final ",
+        Defaultness::Default => "default ",
+    };
     // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
@@ -1261,7 +1265,7 @@ fn render_assoc_item(
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         clean::StrippedItem(..) => Ok(()),
-        clean::RequiredMethodItem(m) | clean::MethodItem(m, _) => {
+        clean::RequiredMethodItem(m, _) | clean::MethodItem(m, _) => {
             assoc_method(item, &m.generics, &m.decl, link, parent, cx, render_mode).fmt(f)
         }
         clean::RequiredAssocConstItem(generics, ty) => assoc_const(
@@ -1586,7 +1590,7 @@ fn render_deref_methods(
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
-        clean::RequiredMethodItem(ref method) => method.decl.receiver_type(),
+        clean::RequiredMethodItem(ref method, _) => method.decl.receiver_type(),
         _ => None,
     };
 
@@ -1793,12 +1797,14 @@ fn render_impl(
             let mut info_buffer = String::new();
             let mut short_documented = true;
 
+            let mut trait_item_deprecated = false;
             if render_method_item {
                 if !is_default_item {
                     if let Some(t) = trait_ {
                         // The trait item may have been stripped so we might not
                         // find any documentation or stability for it.
                         if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
+                            trait_item_deprecated = it.is_deprecated(cx.tcx());
                             // We need the stability of the item from the trait
                             // because impls can't have a stability.
                             if !item.doc_value().is_empty() {
@@ -1838,13 +1844,23 @@ fn render_impl(
                 Either::Right(boring)
             };
 
+            let mut deprecation_class = if trait_item_deprecated || item.is_deprecated(cx.tcx()) {
+                " deprecated"
+            } else {
+                ""
+            };
+
             let toggled = !doc_buffer.is_empty();
             if toggled {
                 let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
-                write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>")?;
+                write!(
+                    w,
+                    "<details class=\"toggle{method_toggle_class}{deprecation_class}\" open><summary>"
+                )?;
+                deprecation_class = "";
             }
             match &item.kind {
-                clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
+                clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -1858,7 +1874,7 @@ fn render_impl(
                             .map(|item| format!("{}.{name}", item.type_()));
                         write!(
                             w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                                 {}",
                             render_rightside(cx, item, render_mode)
                         )?;
@@ -1884,7 +1900,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode)
                     )?;
@@ -1911,7 +1927,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1943,7 +1959,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -1970,7 +1986,7 @@ fn render_impl(
                     let id = cx.derive_id(&source_id);
                     write!(
                         w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">\
+                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
                             {}",
                         render_rightside(cx, item, render_mode),
                     )?;
@@ -2022,7 +2038,9 @@ fn render_impl(
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    clean::MethodItem(..) | clean::RequiredMethodItem(_) => methods.push(impl_item),
+                    clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
+                        methods.push(impl_item)
+                    }
                     clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                         assoc_types.push(impl_item)
                     }
@@ -2142,11 +2160,18 @@ fn render_impl(
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
+            let deprecation_attr = if impl_.is_deprecated
+                || trait_.is_some_and(|trait_| trait_.is_deprecated(cx.tcx()))
+            {
+                " deprecated"
+            } else {
+                ""
+            };
             if toggled {
                 close_tags.push("</details>");
                 write!(
                     w,
-                    "<details class=\"toggle implementors-toggle\"{}>\
+                    "<details class=\"toggle implementors-toggle{deprecation_attr}\"{}>\
                         <summary>",
                     if rendering_params.toggle_open_by_default { " open" } else { "" }
                 )?;
@@ -2760,46 +2785,12 @@ fn render_call_locations<W: fmt::Write>(
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        let source_map = tcx.sess.source_map();
-        let files = source_map.files();
-        let local = tcx.sess.local_crate_source_file().unwrap();
-
-        let get_file_start_pos = || {
-            let crate_src = local.clone().into_local_path()?;
-            let abs_crate_src = crate_src.canonicalize().ok()?;
-            let crate_root = abs_crate_src.parent()?.parent()?;
-            let rel_path = path.strip_prefix(crate_root).ok()?;
-            files
-                .iter()
-                .find(|file| match &file.name {
-                    FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
-                    _ => false,
-                })
-                .map(|file| file.start_pos)
-        };
-
-        // Look for the example file in the source map if it exists, otherwise
-        // return a span to the local crate's source file
-        let Some(file_span) = get_file_start_pos()
-            .or_else(|| {
-                files
-                    .iter()
-                    .find(|file| match &file.name {
-                        FileName::Real(file_name) => file_name == &local,
-                        _ => false,
-                    })
-                    .map(|file| file.start_pos)
-            })
-            .map(|start_pos| {
-                rustc_span::Span::with_root_ctxt(
-                    start_pos + BytePos(byte_min),
-                    start_pos + BytePos(byte_max),
-                )
-            })
-        else {
-            // if the fallback span can't be built, don't render the code for this example
-            return false;
-        };
+        // For scraped examples, we don't need a real span from the SourceMap.
+        // The URL is already provided in ScrapedInfo, and sources::print_src
+        // will use that directly. We use DUMMY_SP as a placeholder.
+        // Note: DUMMY_SP is safe here because href_from_span won't be called
+        // for scraped examples.
+        let file_span = rustc_span::DUMMY_SP;
 
         let mut decoration_info = FxIndexMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
@@ -2914,6 +2905,21 @@ fn render_attributes_in_code(
     prefix: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
+    render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
+}
+
+pub(super) fn render_attributes_in_code_with_options(
+    w: &mut impl fmt::Write,
+    item: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+    render_doc_hidden: bool,
+    open_tag: &str,
+) -> fmt::Result {
+    w.write_str(open_tag)?;
+    if render_doc_hidden && item.is_doc_hidden() {
+        render_code_attribute(prefix, "#[doc(hidden)]", w)?;
+    }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {

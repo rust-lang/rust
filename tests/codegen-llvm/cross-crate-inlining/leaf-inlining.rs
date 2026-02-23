@@ -25,3 +25,12 @@ pub fn leaf_with_intrinsic_outer(a: &[u64; 2], b: &[u64; 2]) -> bool {
     // CHECK-NOT: call {{.*}}leaf_with_intrinsic
     leaf::leaf_with_intrinsic(a, b)
 }
+
+// Check that we inline functions with assert terminators
+#[no_mangle]
+pub fn leaf_with_assert(a: i32, b: i32) -> i32 {
+    // CHECK-NOT: call {{.*}}leaf_with_assert
+    // CHECK: sdiv i32 %a, %b
+    // CHECK-NOT: call {{.*}}leaf_with_assert
+    leaf::leaf_with_assert(a, b)
+}

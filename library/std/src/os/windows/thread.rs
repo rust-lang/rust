@@ -5,7 +5,7 @@
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
 use crate::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys::{AsInner, IntoInner};
 use crate::thread;
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]

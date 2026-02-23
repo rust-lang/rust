@@ -1,6 +1,6 @@
 # Emscripten notification group
 
-**Github Label:** [O-emscripten] <br>
+**GitHub Label:** [O-emscripten] <br>
 **Ping command:** `@rustbot ping emscripten`
 
 [O-emscripten]: https://github.com/rust-lang/rust/labels/O-emscripten
