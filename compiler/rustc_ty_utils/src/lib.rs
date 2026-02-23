@@ -13,7 +13,7 @@
 #![feature(never_type)]
 // tidy-alphabetical-end
 
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 
 mod abi;
 mod assoc;
@@ -32,17 +32,17 @@ mod structural_match;
 mod ty;
 
 pub fn provide(providers: &mut Providers) {
-    abi::provide(providers);
-    assoc::provide(providers);
-    common_traits::provide(providers);
-    consts::provide(providers);
-    implied_bounds::provide(providers);
-    layout::provide(providers);
-    needs_drop::provide(providers);
-    opaque_types::provide(providers);
+    abi::provide(&mut providers.queries);
+    assoc::provide(&mut providers.queries);
+    common_traits::provide(&mut providers.queries);
+    consts::provide(&mut providers.queries);
+    implied_bounds::provide(&mut providers.queries);
+    layout::provide(&mut providers.queries);
+    needs_drop::provide(&mut providers.queries);
+    opaque_types::provide(&mut providers.queries);
     representability::provide(providers);
-    ty::provide(providers);
-    instance::provide(providers);
-    structural_match::provide(providers);
-    nested_bodies::provide(providers);
+    ty::provide(&mut providers.queries);
+    instance::provide(&mut providers.queries);
+    structural_match::provide(&mut providers.queries);
+    nested_bodies::provide(&mut providers.queries);
 }

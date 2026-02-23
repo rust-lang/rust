@@ -15,7 +15,7 @@ use std::marker::ConstParamTy;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::dep_graph::{self, DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::queries::{
-    self, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
+    self, CycleHandlers, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{
@@ -239,6 +239,7 @@ trait QueryDispatcherUnerased<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
 pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
+    cycle_decor_providers: CycleHandlers,
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
 ) -> QuerySystem<'tcx> {
@@ -252,6 +253,7 @@ pub fn query_system<'tcx>(
             engine: engine(incremental),
             local_providers,
             extern_providers,
+            cycle_handlers: cycle_decor_providers,
             encode_query_results: encode_all_query_results,
             try_mark_green,
         },

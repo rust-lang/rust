@@ -903,7 +903,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     solve::provide(&mut providers.queries);
     rustc_passes::provide(&mut providers.queries);
     rustc_traits::provide(&mut providers.queries);
-    rustc_ty_utils::provide(&mut providers.queries);
+    rustc_ty_utils::provide(providers);
     rustc_metadata::provide(providers);
     rustc_lint::provide(&mut providers.queries);
     rustc_symbol_mangling::provide(&mut providers.queries);
@@ -981,6 +981,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         rustc_query_impl::query_system(
             providers.queries,
             providers.extern_queries,
+            providers.query_cycle_handlers,
             query_result_on_disk_cache,
             incremental,
         ),

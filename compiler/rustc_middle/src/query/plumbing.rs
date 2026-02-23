@@ -15,7 +15,8 @@ use crate::dep_graph;
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{
-    ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
+    CycleHandlers, ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches,
+    QueryEngine, QueryStates,
 };
 use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
@@ -146,6 +147,7 @@ pub struct QuerySystemFns {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
+    pub cycle_handlers: CycleHandlers,
     pub encode_query_results: for<'tcx> fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,
@@ -562,6 +564,18 @@ macro_rules! define_callbacks {
 
         impl Copy for ExternProviders {}
         impl Clone for ExternProviders {
+            fn clone(&self) -> Self { *self }
+        }
+
+        #[derive(Default)]
+        pub struct CycleHandlers {
+            $(
+                pub $name: Option<fn(TyCtxt<'_>, &$crate::query::CycleError) -> Option<ErrorGuaranteed>>,
+            )*
+        }
+
+        impl Copy for CycleHandlers {}
+        impl Clone for CycleHandlers {
             fn clone(&self) -> Self { *self }
         }
 

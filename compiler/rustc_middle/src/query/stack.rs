@@ -5,10 +5,12 @@ use std::sync::Arc;
 
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_hir::def::DefKind;
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::dep_graph::DepKind;
+use crate::query::CycleError;
+use crate::ty::TyCtxt;
 
 /// Description of a frame in the query stack.
 ///
@@ -20,7 +22,7 @@ pub struct QueryStackFrame<I> {
     /// by calling `lift`. This is done so that collecting query does not need to invoke
     /// queries, instead `lift` will call queries in a more appropriate location.
     pub info: I,
-
+    pub cycle_handler: Option<fn(TyCtxt<'_>, &CycleError) -> Option<ErrorGuaranteed>>,
     pub dep_kind: DepKind,
     pub def_id: Option<DefId>,
     /// A def-id that is extracted from a `Ty` in a query key
@@ -28,19 +30,10 @@ pub struct QueryStackFrame<I> {
 }
 
 impl<'tcx> QueryStackFrame<QueryStackDeferred<'tcx>> {
-    #[inline]
-    pub fn new(
-        info: QueryStackDeferred<'tcx>,
-        dep_kind: DepKind,
-        def_id: Option<DefId>,
-        def_id_for_ty_in_cycle: Option<DefId>,
-    ) -> Self {
-        Self { info, def_id, dep_kind, def_id_for_ty_in_cycle }
-    }
-
     pub fn lift(&self) -> QueryStackFrame<QueryStackFrameExtra> {
         QueryStackFrame {
             info: self.info.extract(),
+            cycle_handler: self.cycle_handler,
             dep_kind: self.dep_kind,
             def_id: self.def_id,
             def_id_for_ty_in_cycle: self.def_id_for_ty_in_cycle,

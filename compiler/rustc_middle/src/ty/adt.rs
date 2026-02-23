@@ -672,9 +672,3 @@ impl<'tcx> AdtDef<'tcx> {
         if self.is_struct() { tcx.adt_sizedness_constraint((self.did(), sizedness)) } else { None }
     }
 }
-
-#[derive(Clone, Copy, Debug, HashStable)]
-pub enum Representability {
-    Representable,
-    Infinite(ErrorGuaranteed),
-}

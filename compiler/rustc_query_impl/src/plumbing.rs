@@ -18,13 +18,15 @@ use rustc_middle::query::on_disk_cache::{
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
+    CycleError, Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame,
+    QueryStackFrameExtra,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
@@ -309,19 +311,24 @@ where
 pub(crate) fn create_deferred_query_stack_frame<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     vtable: &'tcx QueryVTable<'tcx, Cache>,
+    cycle_handler: Option<fn(TyCtxt<'_>, &CycleError) -> Option<ErrorGuaranteed>>,
     key: Cache::Key,
 ) -> QueryStackFrame<QueryStackDeferred<'tcx>>
 where
     Cache: QueryCache,
     Cache::Key: Key + DynSend + DynSync,
 {
-    let kind = vtable.dep_kind;
-
     let def_id: Option<DefId> = key.key_as_def_id();
     let def_id_for_ty_in_cycle: Option<DefId> = key.def_id_for_ty_in_cycle();
 
     let info = QueryStackDeferred::new((tcx, vtable, key), mk_query_stack_frame_extra);
-    QueryStackFrame::new(info, kind, def_id, def_id_for_ty_in_cycle)
+    QueryStackFrame {
+        info,
+        cycle_handler,
+        dep_kind: vtable.dep_kind,
+        def_id,
+        def_id_for_ty_in_cycle,
+    }
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q, C: QueryCache, const FLAGS: QueryFlags>(
@@ -647,7 +654,8 @@ macro_rules! define_queries {
             ) -> Option<()> {
                 let make_frame = |tcx: TyCtxt<'tcx>, key| {
                     let vtable = &tcx.query_system.query_vtables.$name;
-                    $crate::plumbing::create_deferred_query_stack_frame(tcx, vtable, key)
+                    let cycle_decorator = tcx.query_system.fns.cycle_handlers.$name;
+                    $crate::plumbing::create_deferred_query_stack_frame(tcx, vtable, cycle_decorator, key)
                 };
 
                 // Call `gather_active_jobs_inner` to do the actual work.

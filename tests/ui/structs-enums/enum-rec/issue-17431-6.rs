@@ -1,9 +1,12 @@
 use std::cell::UnsafeCell;
 
-enum Foo { X(UnsafeCell<Option<Foo>>) }
-//~^ ERROR recursive type `Foo` has infinite size
-//~| ERROR cycle detected
+enum Foo {
+    //~^ ERROR recursive type `Foo` has infinite size
+    X(UnsafeCell<Option<Foo>>),
+}
 
-impl Foo { fn bar(self) {} }
+impl Foo {
+    fn bar(self) {}
+}
 
 fn main() {}

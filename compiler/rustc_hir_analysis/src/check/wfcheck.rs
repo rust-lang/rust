@@ -997,6 +997,7 @@ fn check_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     all_sized: bool,
 ) -> Result<(), ErrorGuaranteed> {
+    // Check for a cycle
     let _ = tcx.representability(item.owner_id.def_id);
     let adt_def = tcx.adt_def(item.owner_id);
 

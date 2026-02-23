@@ -107,6 +107,15 @@ fn mk_cycle<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     tcx: TyCtxt<'tcx>,
     cycle_error: CycleError,
 ) -> C::Value {
+    // Check if any queries in the cycle can handle this cycle error
+    for query in &cycle_error.cycle {
+        if let Some(cycle_handler) = query.frame.cycle_handler
+            && let Some(guard) = cycle_handler(tcx, &cycle_error)
+        {
+            guard.raise_fatal();
+        }
+    }
+
     let error = report_cycle(tcx.sess, &cycle_error);
     handle_cycle_error(query, tcx, &cycle_error, error)
 }
