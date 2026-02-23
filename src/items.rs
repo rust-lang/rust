@@ -1158,6 +1158,7 @@ pub(crate) fn format_trait(
         constness,
         is_auto,
         safety,
+        ref impl_restriction,
         ident,
         ref generics,
         ref bounds,
@@ -1166,11 +1167,12 @@ pub(crate) fn format_trait(
 
     let mut result = String::with_capacity(128);
     let header = format!(
-        "{}{}{}{}trait ",
+        "{}{}{}{}{}trait ",
         format_visibility(context, &item.vis),
         format_constness(constness),
         format_safety(safety),
         format_auto(is_auto),
+        format_impl_restriction(context, impl_restriction),
     );
     result.push_str(&header);
 
