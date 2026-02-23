@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 
 use crate::collect_active_jobs_from_all_queries;
 use crate::dep_graph::{DepNode, DepNodeIndex};
+use crate::from_cycle_error::representability_cycle_handler;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 
@@ -125,6 +126,11 @@ fn mk_cycle<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     cycle_error: CycleError,
 ) -> C::Value {
+    // Try to handle the cycle error with our custom handlers.
+    // They will unwind if they handle the cycle.
+    representability_cycle_handler(tcx, &cycle_error);
+
+    // Create the default cycle error
     let error = report_cycle(tcx.sess, &cycle_error);
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {

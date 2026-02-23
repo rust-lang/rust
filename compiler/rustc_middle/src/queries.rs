@@ -590,14 +590,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Checks whether a type is representable or infinitely sized
-    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    /// Checks whether a type is representable or infinitely sized,
+    /// causes a cycle error if it's infinitely sized.
+    query check_representability(key: LocalDefId) {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
-        // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
-        // `Representability` will print a custom error about the infinite size and then abort
-        // compilation. (In the past we recovered and continued, but in practice that leads to
+        // For infinitely sized types a cycle handler will print
+        // a custom error about the infinite size and then abort compilation.
+        // (In the past we recovered and continued, but in practice that leads to
         // confusing subsequent error messages about cycles that then abort.)
-        cycle_delay_bug
+
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
         // entire cycle to be in memory for diagnostics. This means we can't
@@ -607,15 +608,16 @@ rustc_queries! {
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
-    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
-        cycle_delay_bug
         anon
     }
 
     /// Set of param indexes for type params that are in the type's representation
+    ///
+    /// An implementation detail for the `representability` query
     query params_in_repr(key: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
-        desc { "finding type parameters in the representation" }
+        desc { "finding type parameters in the representation of `{}`", tcx.def_path_str(key) }
         arena_cache
         no_hash
         separate_provide_extern
