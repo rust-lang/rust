@@ -699,6 +699,11 @@ This test category revolves around trait objects with `Sized` having illegal ope
 
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
+## `tests/ui/impl-restriction/`
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
+](https://github.com/rust-lang/rust/issues/105077).
+
+
 ## `tests/ui/impl-trait/`
 
 Tests for trait impls.
