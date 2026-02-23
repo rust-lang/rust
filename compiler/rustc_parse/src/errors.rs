@@ -1269,6 +1269,26 @@ pub(crate) struct IncorrectVisibilityRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag("incorrect `impl` restriction")]
+#[help(
+    "some possible `impl` restrictions are:
+    `impl(crate)`: can only be implemented in the current crate
+    `impl(super)`: can only be implemented in the parent module
+    `impl(self)`: can only be implemented in current module
+    `impl(in path::to::module)`: can only be implemented in the specified path"
+)]
+pub(crate) struct IncorrectImplRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict implementations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("<assignment> ... else {\"{\"} ... {\"}\"} is not allowed")]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]

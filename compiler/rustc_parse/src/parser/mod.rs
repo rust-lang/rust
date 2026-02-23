@@ -35,8 +35,9 @@ use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
-    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation,
-    Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, ImplRestriction,
+    MgcaDisambiguation, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
+    VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::debug_assert_matches;
@@ -50,7 +51,10 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral, TokenDescription};
+use crate::errors::{
+    self, IncorrectImplRestriction, IncorrectVisibilityRestriction, NonStringAbiLiteral,
+    TokenDescription,
+};
 use crate::exp;
 
 #[cfg(test)]
@@ -1527,6 +1531,60 @@ impl<'a> Parser<'a> {
         self.dcx()
             .emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
 
+        Ok(())
+    }
+
+    /// Parses an optional `impl` restriction.
+    /// Enforces the `impl_restriction` feature gate whenever an explicit restriction is encountered.
+    fn parse_impl_restriction(&mut self) -> PResult<'a, ImplRestriction> {
+        if self.eat_keyword(exp!(Impl)) {
+            let lo = self.prev_token.span;
+            // No units or tuples are allowed to follow `impl` here, so we can safely bump `(`.
+            self.expect(exp!(OpenParen))?;
+            if self.eat_keyword(exp!(In)) {
+                let path = self.parse_path(PathStyle::Mod)?; // `in path`
+                self.expect(exp!(CloseParen))?; // `)`
+                let restriction = RestrictionKind::Restricted {
+                    path: Box::new(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: false,
+                };
+                let span = lo.to(self.prev_token.span);
+                self.psess.gated_spans.gate(sym::impl_restriction, span);
+                return Ok(ImplRestriction { kind: restriction, span, tokens: None });
+            } else if self.look_ahead(1, |t| t == &token::CloseParen)
+                && self.is_keyword_ahead(0, &[kw::Crate, kw::Super, kw::SelfLower])
+            {
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+                self.expect(exp!(CloseParen))?; // `)`
+                let restriction = RestrictionKind::Restricted {
+                    path: Box::new(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: true,
+                };
+                let span = lo.to(self.prev_token.span);
+                self.psess.gated_spans.gate(sym::impl_restriction, span);
+                return Ok(ImplRestriction { kind: restriction, span, tokens: None });
+            } else {
+                self.recover_incorrect_impl_restriction(lo)?;
+                // Emit diagnostic, but continue with no impl restriction.
+            }
+        }
+        Ok(ImplRestriction {
+            kind: RestrictionKind::Unrestricted,
+            span: self.token.span.shrink_to_lo(),
+            tokens: None,
+        })
+    }
+
+    /// Recovery for e.g. `impl(something) trait`
+    fn recover_incorrect_impl_restriction(&mut self, lo: Span) -> PResult<'a, ()> {
+        let path = self.parse_path(PathStyle::Mod)?;
+        self.expect(exp!(CloseParen))?; // `)`
+        let path_str = pprust::path_to_string(&path);
+        self.dcx().emit_err(IncorrectImplRestriction { span: path.span, inner_str: path_str });
+        let end = self.prev_token.span;
+        self.psess.gated_spans.gate(sym::impl_restriction, lo.to(end));
         Ok(())
     }
 
