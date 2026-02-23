@@ -1,3 +1,7 @@
+// FIXME: Should not be needed  Create specific issue!!
+//@ no-prefer-dynamic
+#![crate_type = "lib"]
+
 #![feature(rustc_private)]
 extern crate libc;
 

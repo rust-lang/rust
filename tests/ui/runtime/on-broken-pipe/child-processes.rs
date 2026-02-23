@@ -3,15 +3,37 @@
 //@ ignore-remote because aux-bin does not yet support it
 //@ only-unix because SIGPIPE is a unix thing
 //@ ignore-backends: gcc
+//@ ignore-backends: gcc
+// FIXME: linking on windows (speciifcally mingw) not yet supported, see tracking issue #125418
+//@ ignore-windows
 //@ run-pass
 //@ aux-bin:assert-sigpipe-disposition.rs
 //@ aux-crate:sigpipe_utils=sigpipe-utils.rs
-//@ [kill] compile-flags: -Zunstable-options -Zon-broken-pipe=kill
-//@ [error] compile-flags: -Zunstable-options -Zon-broken-pipe=error
-//@ [inherit] compile-flags: -Zunstable-options -Zon-broken-pipe=inherit
 
 // Checks the signal disposition of `SIGPIPE` in child processes, and in our own
 // process for robustness.
+
+// FIXME: Should not be needed  Create specific issue!!
+//@ no-prefer-dynamic
+
+#![feature(on_broken_pipe)]
+#![feature(rustc_private)]
+
+extern crate libc;
+
+#[cfg_attr(not(default), std::io::on_broken_pipe)]
+#[allow(unused)]
+fn on_broken_pipe() -> std::io::OnBrokenPipe {
+    if cfg!(kill) {
+        std::io::OnBrokenPipe::Kill
+    } else if cfg!(error) {
+        std::io::OnBrokenPipe::Error
+    } else if cfg!(inherit) {
+        std::io::OnBrokenPipe::Inherit
+    } else {
+        unreachable!()
+    }
+}
 
 extern crate sigpipe_utils;
 

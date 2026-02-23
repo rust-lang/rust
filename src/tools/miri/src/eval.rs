@@ -399,7 +399,7 @@ fn call_main<'tcx>(
 
     // Call start function.
     match entry_type {
-        MiriEntryFnType::Rustc(EntryFnType::Main { .. }) => {
+        MiriEntryFnType::Rustc(EntryFnType::Main) => {
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
                 tcx.dcx().fatal("could not find start lang item");
             });
@@ -416,10 +416,6 @@ fn call_main<'tcx>(
 
             let main_ptr = ecx.fn_ptr(FnVal::Instance(entry_instance));
 
-            // Always using DEFAULT is okay since we don't support signals in Miri anyway.
-            // (This means we are effectively ignoring `-Zon-broken-pipe`.)
-            let sigpipe = rustc_session::config::sigpipe::DEFAULT;
-
             ecx.call_function(
                 start_instance,
                 ExternAbi::Rust,
@@ -431,7 +427,6 @@ fn call_main<'tcx>(
                     ),
                     argc,
                     argv,
-                    ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
                 ReturnContinuation::Stop { cleanup: true },

@@ -1,11 +1,11 @@
 error[E0308]: lang item `start` function has wrong type
-  --> $DIR/start_lang_item_args.rs:100:80
+  --> $DIR/start_lang_item_args.rs:99:1
    |
 LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: i64) -> isize {
-   |                                                                                ^^^ expected `u8`, found `i64`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected signature `fn(fn() -> _, _, _, u8) -> _`
-              found signature `fn(fn() -> _, _, _, i64) -> _`
+   = note: expected signature `fn(fn() -> T, isize, *const *const u8) -> _`
+              found signature `fn(fn() -> T, isize, *const *const u8, i64) -> _`
 
 error: aborting due to 1 previous error
 

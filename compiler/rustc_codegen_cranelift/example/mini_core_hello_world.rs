@@ -98,12 +98,7 @@ enum Ordering {
 }
 
 #[lang = "start"]
-fn start<T: Termination + 'static>(
-    main: fn() -> T,
-    argc: isize,
-    argv: *const *const u8,
-    _sigpipe: u8,
-) -> isize {
+fn start<T: Termination + 'static>(main: fn() -> T, argc: isize, argv: *const *const u8) -> isize {
     if argc == 3 {
         unsafe {
             puts(*argv as *const i8);

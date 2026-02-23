@@ -840,14 +840,6 @@ crate::target_spec_enum! {
     parse_error_type = "panic strategy";
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, BlobDecodable, HashStable_Generic)]
-pub enum OnBrokenPipe {
-    Default,
-    Kill,
-    Error,
-    Inherit,
-}
-
 impl PanicStrategy {
     pub const fn desc_symbol(&self) -> Symbol {
         match *self {
