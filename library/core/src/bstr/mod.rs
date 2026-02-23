@@ -6,7 +6,7 @@ mod traits;
 pub use traits::{impl_partial_eq, impl_partial_eq_n, impl_partial_eq_ord};
 
 use crate::borrow::{Borrow, BorrowMut};
-use crate::fmt;
+use crate::fmt::{self, Alignment};
 use crate::ops::{Deref, DerefMut, DerefPure};
 
 /// A wrapper for `&[u8]` representing a human-readable string that's conventionally, but not
@@ -174,43 +174,40 @@ impl fmt::Debug for ByteStr {
 #[unstable(feature = "bstr", issue = "134915")]
 impl fmt::Display for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let nchars: usize = self
-            .utf8_chunks()
-            .map(|chunk| {
-                chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
-            })
-            .sum();
-
-        let padding = f.width().unwrap_or(0).saturating_sub(nchars);
-        let fill = f.fill();
-
-        let (lpad, rpad) = match f.align() {
-            Some(fmt::Alignment::Right) => (padding, 0),
-            Some(fmt::Alignment::Center) => {
-                let half = padding / 2;
-                (half, half + padding % 2)
+        fn fmt_nopad(this: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            for chunk in this.utf8_chunks() {
+                f.write_str(chunk.valid())?;
+                if !chunk.invalid().is_empty() {
+                    f.write_str("\u{FFFD}")?;
+                }
             }
-            // Either alignment is not specified or it's left aligned
-            // which behaves the same with padding
-            _ => (0, padding),
-        };
-
-        for _ in 0..lpad {
-            write!(f, "{fill}")?;
+            Ok(())
         }
 
-        for chunk in self.utf8_chunks() {
-            f.write_str(chunk.valid())?;
-            if !chunk.invalid().is_empty() {
-                f.write_str("\u{FFFD}")?;
+        if let Some(requested_width) = f.width()
+            && requested_width != 0
+        {
+            // Only compute the actual width when required.
+            let actual_width = self
+                .utf8_chunks()
+                .map(|chunk| {
+                    chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
+                })
+                .sum();
+
+            if requested_width <= actual_width {
+                fmt_nopad(self, f)
+            } else {
+                // `requested_width` is originally a `u16`, so this cannot fail.
+                let requested_width = u16::try_from(requested_width).unwrap();
+                let post_padding =
+                    f.padding(requested_width - actual_width as u16, Alignment::Left)?;
+                fmt_nopad(self, f)?;
+                post_padding.write(f)
             }
+        } else {
+            fmt_nopad(self, f)
         }
-
-        for _ in 0..rpad {
-            write!(f, "{fill}")?;
-        }
-
-        Ok(())
     }
 }
 
