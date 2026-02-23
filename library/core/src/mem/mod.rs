@@ -1296,6 +1296,7 @@ pub trait SizedTypeProperties: Sized {
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
+    #[lang = "mem_layout_const"]
     const LAYOUT: Layout = {
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a

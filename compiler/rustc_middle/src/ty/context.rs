@@ -1080,6 +1080,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
 
+    /// Gets a `Ty` representing the [`LangItem::AllocLayout`]
+    pub fn ty_alloc_layout(self, span: Span) -> Ty<'tcx> {
+        let layout_did = self.require_lang_item(hir::LangItem::AllocLayout, span);
+        self.type_of(layout_did).no_bound_vars().unwrap()
+    }
+
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {

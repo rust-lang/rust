@@ -53,6 +53,7 @@
     issue = "none"
 )]
 
+use crate::alloc::Layout;
 use crate::ffi::va_list::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::{mem, ptr};
@@ -2863,6 +2864,26 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+
+/// The size and alignment of the referenced value in bytes.
+///
+/// The stabilized version of this intrinsic is [`Layout::for_value_raw`].
+///
+/// # Safety
+///
+/// See [`Layout::for_value_raw`] for safety conditions.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+// This adds no semantics or UB atop just calling `size_of_val`+`align_of_val`.
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn layout_of_val<T: ?Sized>(ptr: *const T) -> Layout {
+    // SAFETY: we pass along the prerequisites of these functions to the caller
+    let (size, align) = unsafe { (size_of_val(ptr), align_of_val(ptr)) };
+    // SAFETY: The size and alignment of a valid allocation (or type)
+    // always meet the requirements of `Layout`.
+    unsafe { Layout::from_size_align_unchecked(size, align) }
+}
 
 /// Compute the type information of a concrete type.
 /// It can only be called at compile time, the backends do

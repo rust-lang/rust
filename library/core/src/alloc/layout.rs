@@ -5,7 +5,7 @@
 // Your performance intuition is useless. Run perf.
 
 use crate::error::Error;
-use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
+use crate::intrinsics::{self, unchecked_add, unchecked_mul, unchecked_sub};
 use crate::mem::SizedTypeProperties;
 use crate::ptr::{Alignment, NonNull};
 use crate::{assert_unsafe_precondition, fmt, mem};
@@ -26,6 +26,9 @@ use crate::{assert_unsafe_precondition, fmt, mem};
 /// requirements, or use the more lenient `Allocator` interface.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+// BEWARE! The implementation of the `layout_of_val` intrinsic is coupled to the
+// declared order of these fields.  As a reminder, you'll also get a (debug-only)
+// ICE if you change their names, though you can easily update that expectation.
 #[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
@@ -210,14 +213,23 @@ impl Layout {
     /// Produces layout describing a record that could be used to
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::Layout;
+    ///
+    /// let array = [1_u8, 2, 3];
+    /// assert_eq!(Layout::for_value::<[u8]>(&array), Layout::from_size_align(3, 1).unwrap());
+    /// ```
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[must_use]
     #[inline]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
-        let (size, alignment) = (size_of_val(t), Alignment::of_val(t));
-        // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
+        // SAFETY: val is a reference, so if it's to a DST it has valid metadata.
+        // (And if `T` is sized there's no requirements on the pointer.)
+        unsafe { Layout::for_value_raw(t) }
     }
 
     /// Produces layout describing a record that could be used to
@@ -247,14 +259,36 @@ impl Layout {
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(layout_for_ptr)]
+    ///
+    /// use std::alloc::Layout;
+    /// use std::ptr;
+    ///
+    /// let arbitrary = ptr::without_provenance::<[u16; 3]>(123456);
+    /// assert_eq!(
+    ///     // SAFETY: for a sized pointee, the function is always sound.
+    ///     unsafe { Layout::for_value_raw(arbitrary) },
+    ///     Layout::from_size_align(6, 2).unwrap(),
+    /// );
+    ///
+    /// let slice = ptr::slice_from_raw_parts(arbitrary, 789);
+    /// assert_eq!(
+    ///     // SAFETY: with a slice pointee, this is sound because the length
+    ///     // is short enough that size in bytes doesn't overflow isize::MAX.
+    ///     unsafe { Layout::for_value_raw(slice) },
+    ///     Layout::from_size_align(6 * 789, 2).unwrap(),
+    /// );
+    /// ```
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
     #[inline]
-    pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+    pub const unsafe fn for_value_raw<T: ?Sized>(ptr: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
-        let (size, alignment) = unsafe { (mem::size_of_val_raw(t), Alignment::of_val_raw(t)) };
-        // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
+        unsafe { intrinsics::layout_of_val(ptr) }
     }
 
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.

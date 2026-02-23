@@ -6,9 +6,9 @@
 // EMIT_MIR drop_box_of_sized.drop_generic.PreCodegen.after.mir
 pub unsafe fn drop_generic<T: Copy>(x: *mut Box<T>) {
     // CHECK-LABEL: fn drop_generic
-    // CHECK: [[SIZE:_.+]] = const <T as std::mem::SizedTypeProperties>::SIZE;
-    // CHECK: [[ALIGN:_.+]] = const <T as std::mem::SizedTypeProperties>::ALIGN;
-    // CHECK: [[ALIGNMENT:_.+]] = copy [[ALIGN]] as std::ptr::Alignment (Transmute)
+    // CHECK: [[LAYOUT:_.+]] = const <T as std::mem::SizedTypeProperties>::LAYOUT;
+    // CHECK: [[SIZE:_.+]] = move ([[LAYOUT]].0: usize);
+    // CHECK: [[ALIGNMENT:_.+]] = move ([[LAYOUT]].1: std::ptr::Alignment);
     // CHECK: alloc::alloc::__rust_dealloc({{.+}}, move [[SIZE]], move [[ALIGNMENT]])
     std::ptr::drop_in_place(x)
 }
