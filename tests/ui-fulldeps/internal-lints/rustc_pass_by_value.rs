@@ -2,7 +2,7 @@
 
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
-#![deny(rustc::pass_by_value)]
+#![deny(rustc::disallowed_pass_by_ref)]
 #![allow(unused)]
 
 extern crate rustc_middle;

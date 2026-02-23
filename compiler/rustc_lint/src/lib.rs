@@ -37,6 +37,7 @@ mod context;
 mod dangling;
 mod default_could_be_derived;
 mod deref_into_dyn_supertrait;
+mod disallowed_pass_by_ref;
 mod drop_forget_useless;
 mod early;
 mod enum_intrinsics_non_enums;
@@ -65,7 +66,6 @@ mod non_local_def;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
-mod pass_by_value;
 mod passes;
 mod precedence;
 mod ptr_nulls;
@@ -88,6 +88,7 @@ use builtin::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
+use disallowed_pass_by_ref::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
@@ -109,7 +110,6 @@ use non_local_def::*;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
-use pass_by_value::*;
 use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
@@ -657,8 +657,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(TypeIr));
     store.register_lints(&BadOptAccess::lint_vec());
     store.register_late_mod_pass(|_| Box::new(BadOptAccess));
-    store.register_lints(&PassByValue::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(PassByValue));
+    store.register_lints(&DisallowedPassByRef::lint_vec());
+    store.register_late_mod_pass(|_| Box::new(DisallowedPassByRef));
     store.register_lints(&SpanUseEqCtxt::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     store.register_lints(&SymbolInternStringLiteral::lint_vec());
@@ -676,7 +676,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(UNTRACKED_QUERY_INFORMATION),
             LintId::of(USAGE_OF_TY_TYKIND),
-            LintId::of(PASS_BY_VALUE),
+            LintId::of(DISALLOWED_PASS_BY_REF),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
