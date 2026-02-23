@@ -20,7 +20,8 @@ use hir_def::{
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, HygieneId, path::Path},
     hir::generics::{
-        GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
+        GenericParamDataRef, GenericParams, TypeOrConstParamData, TypeParamProvenance,
+        WherePredicate,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -36,27 +37,23 @@ use la_arena::{Arena, ArenaMap, Idx};
 use path::{PathDiagnosticCallback, PathLoweringContext};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
-use rustc_pattern_analysis::Captures;
 use rustc_type_ir::{
     AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind,
     TyKind::{self},
     TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
-    inherent::{
-        Clause as _, GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike,
-        Ty as _,
-    },
+    inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use tracing::debug;
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind, all_super_traits,
+    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
     consteval::intern_const_ref,
     db::{HirDatabase, InternedOpaqueTyId},
-    generics::{Generics, generics, trait_self_param_idx},
+    generics::{Generics, generics},
     next_solver::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const,
         DbInterner, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FxIndexMap, GenericArg,
@@ -618,33 +615,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         &'b mut self,
         where_predicate: &'b WherePredicate,
         ignore_bindings: bool,
-        generics: &Generics,
-        predicate_filter: PredicateFilter,
     ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
-                if let PredicateFilter::SelfTrait = predicate_filter {
-                    let target_type = &self.store[*target];
-                    let self_type = 'is_self: {
-                        if let TypeRef::Path(path) = target_type
-                            && path.is_self_type()
-                        {
-                            break 'is_self true;
-                        }
-                        if let TypeRef::TypeParam(param) = target_type
-                            && generics[param.local_id()].is_trait_self()
-                        {
-                            break 'is_self true;
-                        }
-                        false
-                    };
-                    if !self_type {
-                        return Either::Left(Either::Left(iter::empty()));
-                    }
-                }
                 let self_ty = self.lower_ty(*target);
-                Either::Left(Either::Right(self.lower_type_bound(bound, self_ty, ignore_bindings)))
+                Either::Left(self.lower_type_bound(bound, self_ty, ignore_bindings))
             }
             &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
                 Clause(Predicate::new(
@@ -1626,6 +1602,92 @@ pub(crate) fn field_types_with_diagnostics_query<'db>(
     (res, create_diagnostics(ctx.diagnostics))
 }
 
+#[derive(Debug, PartialEq, Eq, Default)]
+pub(crate) struct SupertraitsInfo {
+    /// This includes the trait itself.
+    pub(crate) all_supertraits: Box<[TraitId]>,
+    pub(crate) direct_supertraits: Box<[TraitId]>,
+    pub(crate) defined_assoc_types: Box<[(Name, TypeAliasId)]>,
+}
+
+impl SupertraitsInfo {
+    #[inline]
+    pub(crate) fn query(db: &dyn HirDatabase, trait_: TraitId) -> &Self {
+        return supertraits_info(db, trait_);
+
+        #[salsa::tracked(returns(ref), cycle_result = supertraits_info_cycle)]
+        fn supertraits_info(db: &dyn HirDatabase, trait_: TraitId) -> SupertraitsInfo {
+            let mut all_supertraits = FxHashSet::default();
+            let mut direct_supertraits = FxHashSet::default();
+            let mut defined_assoc_types = FxHashSet::default();
+
+            all_supertraits.insert(trait_);
+            defined_assoc_types.extend(trait_.trait_items(db).items.iter().filter_map(
+                |(name, id)| match *id {
+                    AssocItemId::TypeAliasId(id) => Some((name.clone(), id)),
+                    _ => None,
+                },
+            ));
+
+            let resolver = trait_.resolver(db);
+            let signature = db.trait_signature(trait_);
+            for pred in signature.generic_params.where_predicates() {
+                let (WherePredicate::TypeBound { target, bound }
+                | WherePredicate::ForLifetime { lifetimes: _, target, bound }) = pred
+                else {
+                    continue;
+                };
+                let (TypeBound::Path(bounded_trait, TraitBoundModifier::None)
+                | TypeBound::ForLifetime(_, bounded_trait)) = *bound
+                else {
+                    continue;
+                };
+                let target = &signature.store[*target];
+                match target {
+                    TypeRef::TypeParam(param)
+                        if param.local_id() == GenericParams::SELF_PARAM_ID_IN_SELF => {}
+                    TypeRef::Path(path) if path.is_self_type() => {}
+                    _ => continue,
+                }
+                let Some(TypeNs::TraitId(bounded_trait)) =
+                    resolver.resolve_path_in_type_ns_fully(db, &signature.store[bounded_trait])
+                else {
+                    continue;
+                };
+                let SupertraitsInfo {
+                    all_supertraits: bounded_trait_all_supertraits,
+                    direct_supertraits: _,
+                    defined_assoc_types: bounded_traits_defined_assoc_types,
+                } = SupertraitsInfo::query(db, bounded_trait);
+                all_supertraits.extend(bounded_trait_all_supertraits);
+                direct_supertraits.insert(bounded_trait);
+                defined_assoc_types.extend(bounded_traits_defined_assoc_types.iter().cloned());
+            }
+
+            SupertraitsInfo {
+                all_supertraits: Box::from_iter(all_supertraits),
+                direct_supertraits: Box::from_iter(direct_supertraits),
+                defined_assoc_types: Box::from_iter(defined_assoc_types),
+            }
+        }
+
+        fn supertraits_info_cycle(
+            _db: &dyn HirDatabase,
+            _: salsa::Id,
+            _trait_: TraitId,
+        ) -> SupertraitsInfo {
+            SupertraitsInfo::default()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum TypeParamAssocTypeShorthandError {
+    AssocTypeNotFound,
+    AmbiguousAssocType,
+    Cycle,
+}
+
 /// Predicates for `param_id` of the form `P: SomeTrait`. If
 /// `assoc_name` is provided, only return predicates referencing traits
 /// that have an associated type of that name.
@@ -1640,15 +1702,14 @@ pub(crate) fn field_types_with_diagnostics_query<'db>(
 /// following bounds are disallowed: `T: Foo<U::Item>, U: Foo<T::Item>`, but
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 #[tracing::instrument(skip(db), ret)]
-#[salsa::tracked(returns(ref), cycle_result = generic_predicates_for_param_cycle_result)]
-pub(crate) fn generic_predicates_for_param<'db>(
-    db: &'db dyn HirDatabase,
+#[salsa::tracked(returns(ref), cycle_result = resolve_type_param_assoc_type_shorthand_cycle_result)]
+fn resolve_type_param_assoc_type_shorthand(
+    db: &dyn HirDatabase,
     def: GenericDefId,
-    param_id: TypeOrConstParamId,
-    assoc_name: Option<Name>,
-) -> StoredEarlyBinder<StoredClauses> {
+    param: TypeParamId,
+    assoc_name: Name,
+) -> Result<StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>, TypeParamAssocTypeShorthandError> {
     let generics = generics(db, def);
-    let interner = DbInterner::new_no_crate(db);
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1657,128 +1718,109 @@ pub(crate) fn generic_predicates_for_param<'db>(
         def,
         LifetimeElisionKind::AnonymousReportError,
     );
+    let interner = ctx.interner;
+    let mut result = None;
+    let param_ty = Ty::new_param(
+        interner,
+        param,
+        generics.type_or_const_param_idx(param.into()).unwrap() as u32,
+    );
 
-    // we have to filter out all other predicates *first*, before attempting to lower them
-    let has_relevant_bound = |pred: &_, ctx: &mut TyLoweringContext<'_, '_>| match pred {
-        WherePredicate::ForLifetime { target, bound, .. }
-        | WherePredicate::TypeBound { target, bound, .. } => {
-            let invalid_target = { ctx.lower_ty_only_param(*target) != Some(param_id) };
-            if invalid_target {
-                // FIXME(sized-hierarchy): Revisit and adjust this properly once we have implemented
-                // sized-hierarchy correctly.
-                // If this is filtered out without lowering, `?Sized` or `PointeeSized` is not gathered into
-                // `ctx.unsized_types`
-                let lower = || -> bool {
-                    match bound {
-                        TypeBound::Path(_, TraitBoundModifier::Maybe) => true,
-                        TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
-                            let TypeRef::Path(path) = &ctx.store[path.type_ref()] else {
-                                return false;
-                            };
-                            let Some(pointee_sized) = ctx.lang_items.PointeeSized else {
-                                return false;
-                            };
-                            // Lower the path directly with `Resolver` instead of PathLoweringContext`
-                            // to prevent diagnostics duplications.
-                            ctx.resolver.resolve_path_in_type_ns_fully(ctx.db, path).is_some_and(
-                                |it| matches!(it, TypeNs::TraitId(tr) if tr == pointee_sized),
-                            )
-                        }
-                        _ => false,
-                    }
-                }();
-                if lower {
-                    ctx.lower_where_predicate(pred, true, &generics, PredicateFilter::All)
-                        .for_each(drop);
-                }
-                return false;
-            }
-
-            match bound {
-                &TypeBound::ForLifetime(_, path) | &TypeBound::Path(path, _) => {
-                    // Only lower the bound if the trait could possibly define the associated
-                    // type we're looking for.
-                    let path = &ctx.store[path];
-
-                    let Some(assoc_name) = &assoc_name else { return true };
-                    let Some(TypeNs::TraitId(tr)) =
-                        resolver.resolve_path_in_type_ns_fully(db, path)
-                    else {
-                        return false;
-                    };
-
-                    trait_or_supertrait_has_assoc_type(db, tr, assoc_name)
-                }
-                TypeBound::Use(_) | TypeBound::Lifetime(_) | TypeBound::Error => false,
-            }
+    if let GenericDefId::TraitId(containing_trait) = param.parent()
+        && param.local_id() == GenericParams::SELF_PARAM_ID_IN_SELF
+    {
+        // Add the trait's own associated types.
+        if let Some(assoc_type) =
+            containing_trait.trait_items(db).associated_type_by_name(&assoc_name)
+        {
+            let args = GenericArgs::identity_for_item(interner, containing_trait.into());
+            result = Some(StoredEarlyBinder::bind((assoc_type, args.store())));
         }
-        WherePredicate::Lifetime { .. } => false,
-    };
-    let mut predicates = Vec::new();
+    }
+
     for maybe_parent_generics in
         std::iter::successors(Some(&generics), |generics| generics.parent_generics())
     {
         ctx.store = maybe_parent_generics.store();
         for pred in maybe_parent_generics.where_predicates() {
-            if has_relevant_bound(pred, &mut ctx) {
-                predicates.extend(
-                    ctx.lower_where_predicate(
-                        pred,
-                        true,
-                        maybe_parent_generics,
-                        PredicateFilter::All,
-                    )
-                    .map(|(pred, _)| pred),
-                );
+            let (WherePredicate::TypeBound { target, bound }
+            | WherePredicate::ForLifetime { lifetimes: _, target, bound }) = pred
+            else {
+                continue;
+            };
+            let (TypeBound::Path(bounded_trait_path, TraitBoundModifier::None)
+            | TypeBound::ForLifetime(_, bounded_trait_path)) = *bound
+            else {
+                continue;
+            };
+            let Some(target) = ctx.lower_ty_only_param(*target) else { continue };
+            if target != param.into() {
+                continue;
             }
+            let Some(TypeNs::TraitId(bounded_trait)) =
+                resolver.resolve_path_in_type_ns_fully(db, &ctx.store[bounded_trait_path])
+            else {
+                continue;
+            };
+            if !SupertraitsInfo::query(db, bounded_trait)
+                .defined_assoc_types
+                .iter()
+                .any(|(name, _)| *name == assoc_name)
+            {
+                continue;
+            }
+
+            let Some((bounded_trait_ref, _)) =
+                ctx.lower_trait_ref_from_path(bounded_trait_path, param_ty)
+            else {
+                continue;
+            };
+            // Now, search from the start on the *bounded* trait like if we wrote `Self::Assoc`. Eventually, we'll get
+            // the correct trait ref (or a cycle).
+            let lookup_on_bounded_trait = resolve_type_param_assoc_type_shorthand(
+                db,
+                bounded_trait.into(),
+                TypeParamId::trait_self(bounded_trait),
+                assoc_name.clone(),
+            );
+            let lookup_on_bounded_trait = match lookup_on_bounded_trait {
+                Ok(it) => it,
+                Err(
+                    err @ (TypeParamAssocTypeShorthandError::AmbiguousAssocType
+                    | TypeParamAssocTypeShorthandError::Cycle),
+                ) => return Err(*err),
+                Err(TypeParamAssocTypeShorthandError::AssocTypeNotFound) => {
+                    never!("we checked that the trait defines this assoc type");
+                    continue;
+                }
+            };
+            let (assoc_type, args) = lookup_on_bounded_trait
+                .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
+                .skip_binder();
+            let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
+            let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
+            // If we already have a result, this is an ambiguity - unless this is the same result, then we are fine
+            // (e.g. rustc allows to write the same bound twice without ambiguity).
+            if let Some(existing_result) = result
+                && existing_result != current_result
+            {
+                return Err(TypeParamAssocTypeShorthandError::AmbiguousAssocType);
+            }
+            result = Some(current_result);
         }
     }
 
-    let args = GenericArgs::identity_for_item(interner, def.into());
-    if !args.is_empty() {
-        let explicitly_unsized_tys = ctx.unsized_types;
-        if let Some(implicitly_sized_predicates) = implicitly_sized_clauses(
-            db,
-            ctx.lang_items,
-            param_id.parent,
-            &explicitly_unsized_tys,
-            &args,
-        ) {
-            predicates.extend(implicitly_sized_predicates);
-        };
-    }
-    StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store())
+    result.ok_or(TypeParamAssocTypeShorthandError::AssocTypeNotFound)
 }
 
-pub(crate) fn generic_predicates_for_param_cycle_result(
-    db: &dyn HirDatabase,
+fn resolve_type_param_assoc_type_shorthand_cycle_result(
+    _db: &dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-    _param_id: TypeOrConstParamId,
-    _assoc_name: Option<Name>,
-) -> StoredEarlyBinder<StoredClauses> {
-    StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store())
-}
-
-/// Check if this trait or any of its supertraits define an associated
-/// type with the given name.
-fn trait_or_supertrait_has_assoc_type(
-    db: &dyn HirDatabase,
-    tr: TraitId,
-    assoc_name: &Name,
-) -> bool {
-    for trait_id in all_super_traits(db, tr) {
-        if trait_id
-            .trait_items(db)
-            .items
-            .iter()
-            .any(|(name, item)| matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name)
-        {
-            return true;
-        }
-    }
-
-    false
+    _param: TypeParamId,
+    _assoc_name: Name,
+) -> Result<StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>, TypeParamAssocTypeShorthandError> {
+    Err(TypeParamAssocTypeShorthandError::Cycle)
 }
 
 #[inline]
@@ -1904,7 +1946,7 @@ impl<'db> GenericPredicates {
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> (GenericPredicates, Diagnostics) {
-        generic_predicates_filtered_by(db, def, PredicateFilter::All, |_| true)
+        generic_predicates(db, def)
     }
 }
 
@@ -2042,24 +2084,10 @@ pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum PredicateFilter {
-    SelfTrait,
-    All,
-}
-
 /// Resolve the where clause(s) of an item with generics,
 /// with a given filter
-#[tracing::instrument(skip(db, filter), ret)]
-pub(crate) fn generic_predicates_filtered_by<F>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    predicate_filter: PredicateFilter,
-    filter: F,
-) -> (GenericPredicates, Diagnostics)
-where
-    F: Fn(GenericDefId) -> bool,
-{
+#[tracing::instrument(skip(db), ret)]
+fn generic_predicates(db: &dyn HirDatabase, def: GenericDefId) -> (GenericPredicates, Diagnostics) {
     let generics = generics(db, def);
     let resolver = def.resolver(db);
     let interner = DbInterner::new_no_crate(db);
@@ -2081,9 +2109,9 @@ where
     let all_generics =
         std::iter::successors(Some(&generics), |generics| generics.parent_generics())
             .collect::<ArrayVec<_, 2>>();
-    let own_implicit_trait_predicate = implicit_trait_predicate(interner, def, predicate_filter);
+    let own_implicit_trait_predicate = implicit_trait_predicate(interner, def);
     let parent_implicit_trait_predicate = if all_generics.len() > 1 {
-        implicit_trait_predicate(interner, all_generics.last().unwrap().def(), predicate_filter)
+        implicit_trait_predicate(interner, all_generics.last().unwrap().def())
     } else {
         None
     };
@@ -2091,97 +2119,85 @@ where
         // Collect only diagnostics from the child, not including parents.
         ctx.diagnostics.clear();
 
-        if filter(maybe_parent_generics.def()) {
-            ctx.store = maybe_parent_generics.store();
-            for pred in maybe_parent_generics.where_predicates() {
-                tracing::debug!(?pred);
-                for (pred, source) in
-                    ctx.lower_where_predicate(pred, false, maybe_parent_generics, predicate_filter)
-                {
-                    match source {
-                        GenericPredicateSource::SelfOnly => {
-                            if maybe_parent_generics.def() == def {
-                                own_predicates.push(pred);
-                            } else {
-                                parent_predicates.push(pred);
-                            }
+        ctx.store = maybe_parent_generics.store();
+        for pred in maybe_parent_generics.where_predicates() {
+            tracing::debug!(?pred);
+            for (pred, source) in ctx.lower_where_predicate(pred, false) {
+                match source {
+                    GenericPredicateSource::SelfOnly => {
+                        if maybe_parent_generics.def() == def {
+                            own_predicates.push(pred);
+                        } else {
+                            parent_predicates.push(pred);
                         }
-                        GenericPredicateSource::AssocTyBound => {
-                            if maybe_parent_generics.def() == def {
-                                own_assoc_ty_bounds.push(pred);
-                            } else {
-                                parent_assoc_ty_bounds.push(pred);
-                            }
+                    }
+                    GenericPredicateSource::AssocTyBound => {
+                        if maybe_parent_generics.def() == def {
+                            own_assoc_ty_bounds.push(pred);
+                        } else {
+                            parent_assoc_ty_bounds.push(pred);
                         }
                     }
                 }
             }
-
-            if maybe_parent_generics.def() == def {
-                push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
-            } else {
-                push_const_arg_has_type_predicates(
-                    db,
-                    &mut parent_predicates,
-                    maybe_parent_generics,
-                );
-            }
-
-            if let Some(sized_trait) = sized_trait {
-                let mut add_sized_clause = |param_idx, param_id, param_data| {
-                    let (
-                        GenericParamId::TypeParamId(param_id),
-                        GenericParamDataRef::TypeParamData(param_data),
-                    ) = (param_id, param_data)
-                    else {
-                        return;
-                    };
-
-                    if param_data.provenance == TypeParamProvenance::TraitSelf {
-                        return;
-                    }
-
-                    let param_ty = Ty::new_param(interner, param_id, param_idx);
-                    if ctx.unsized_types.contains(&param_ty) {
-                        return;
-                    }
-                    let trait_ref = TraitRef::new_from_args(
-                        interner,
-                        sized_trait.into(),
-                        GenericArgs::new_from_slice(&[param_ty.into()]),
-                    );
-                    let clause = Clause(Predicate::new(
-                        interner,
-                        Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                            rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                trait_ref,
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            }),
-                        )),
-                    ));
-                    if maybe_parent_generics.def() == def {
-                        own_predicates.push(clause);
-                    } else {
-                        parent_predicates.push(clause);
-                    }
-                };
-                let parent_params_len = maybe_parent_generics.len_parent();
-                maybe_parent_generics.iter_self().enumerate().for_each(
-                    |(param_idx, (param_id, param_data))| {
-                        add_sized_clause(
-                            (param_idx + parent_params_len) as u32,
-                            param_id,
-                            param_data,
-                        );
-                    },
-                );
-            }
-
-            // We do not clear `ctx.unsized_types`, as the `?Sized` clause of a child (e.g. an associated type) can
-            // be declared on the parent (e.g. the trait). It is nevertheless fine to register the implicit `Sized`
-            // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
-            // But we do have to lower the parent first.
         }
+
+        if maybe_parent_generics.def() == def {
+            push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
+        } else {
+            push_const_arg_has_type_predicates(db, &mut parent_predicates, maybe_parent_generics);
+        }
+
+        if let Some(sized_trait) = sized_trait {
+            let mut add_sized_clause = |param_idx, param_id, param_data| {
+                let (
+                    GenericParamId::TypeParamId(param_id),
+                    GenericParamDataRef::TypeParamData(param_data),
+                ) = (param_id, param_data)
+                else {
+                    return;
+                };
+
+                if param_data.provenance == TypeParamProvenance::TraitSelf {
+                    return;
+                }
+
+                let param_ty = Ty::new_param(interner, param_id, param_idx);
+                if ctx.unsized_types.contains(&param_ty) {
+                    return;
+                }
+                let trait_ref = TraitRef::new_from_args(
+                    interner,
+                    sized_trait.into(),
+                    GenericArgs::new_from_slice(&[param_ty.into()]),
+                );
+                let clause = Clause(Predicate::new(
+                    interner,
+                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                            trait_ref,
+                            polarity: rustc_type_ir::PredicatePolarity::Positive,
+                        }),
+                    )),
+                ));
+                if maybe_parent_generics.def() == def {
+                    own_predicates.push(clause);
+                } else {
+                    parent_predicates.push(clause);
+                }
+            };
+            let parent_params_len = maybe_parent_generics.len_parent();
+            maybe_parent_generics.iter_self().enumerate().for_each(
+                |(param_idx, (param_id, param_data))| {
+                    add_sized_clause((param_idx + parent_params_len) as u32, param_id, param_data);
+                },
+            );
+        }
+
+        // We do not clear `ctx.unsized_types`, as the `?Sized` clause of a child (e.g. an associated type) can
+        // be declared on the parent (e.g. the trait). It is nevertheless fine to register the implicit `Sized`
+        // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
+        // But we do have to lower the parent first.
     }
 
     let diagnostics = create_diagnostics(ctx.diagnostics);
@@ -2229,7 +2245,6 @@ where
     fn implicit_trait_predicate<'db>(
         interner: DbInterner<'db>,
         def: GenericDefId,
-        predicate_filter: PredicateFilter,
     ) -> Option<Clause<'db>> {
         // For traits, add `Self: Trait` predicate. This is
         // not part of the predicates that a user writes, but it
@@ -2243,9 +2258,7 @@ where
         // prove that the trait applies to the types that were
         // used, and adding the predicate into this list ensures
         // that this is done.
-        if let GenericDefId::TraitId(def_id) = def
-            && predicate_filter == PredicateFilter::All
-        {
+        if let GenericDefId::TraitId(def_id) = def {
             Some(TraitRef::identity(interner, def_id.into()).upcast(interner))
         } else {
             None
@@ -2280,49 +2293,6 @@ fn push_const_arg_has_type_predicates<'db>(
             .upcast(interner),
         ));
     }
-}
-
-/// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
-/// Exception is Self of a trait def.
-fn implicitly_sized_clauses<'a, 'subst, 'db>(
-    db: &'db dyn HirDatabase,
-    lang_items: &LangItems,
-    def: GenericDefId,
-    explicitly_unsized_tys: &'a FxHashSet<Ty<'db>>,
-    args: &'subst GenericArgs<'db>,
-) -> Option<impl Iterator<Item = Clause<'db>> + Captures<'a> + Captures<'subst>> {
-    let interner = DbInterner::new_no_crate(db);
-    let sized_trait = lang_items.Sized?;
-
-    let trait_self_idx = trait_self_param_idx(db, def);
-
-    Some(
-        args.iter()
-            .enumerate()
-            .filter_map(
-                move |(idx, generic_arg)| {
-                    if Some(idx) == trait_self_idx { None } else { Some(generic_arg) }
-                },
-            )
-            .filter_map(|generic_arg| generic_arg.as_type())
-            .filter(move |self_ty| !explicitly_unsized_tys.contains(self_ty))
-            .map(move |self_ty| {
-                let trait_ref = TraitRef::new_from_args(
-                    interner,
-                    sized_trait.into(),
-                    GenericArgs::new_from_slice(&[self_ty.into()]),
-                );
-                Clause(Predicate::new(
-                    interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                            trait_ref,
-                            polarity: rustc_type_ir::PredicatePolarity::Positive,
-                        }),
-                    )),
-                ))
-            }),
-    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2602,235 +2572,19 @@ pub(crate) fn associated_ty_item_bounds<'db>(
 pub(crate) fn associated_type_by_name_including_super_traits<'db>(
     db: &'db dyn HirDatabase,
     trait_ref: TraitRef<'db>,
-    name: &Name,
-) -> Option<(TraitRef<'db>, TypeAliasId)> {
-    let module = trait_ref.def_id.0.module(db);
-    let interner = DbInterner::new_with(db, module.krate(db));
-    all_supertraits_trait_refs(db, trait_ref.def_id.0)
-        .map(|t| t.instantiate(interner, trait_ref.args))
-        .find_map(|t| {
-            let trait_id = t.def_id.0;
-            let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
-            Some((t, assoc_type))
-        })
-}
-
-pub fn associated_type_shorthand_candidates(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    res: TypeNs,
-    mut cb: impl FnMut(&Name, TypeAliasId) -> bool,
-) -> Option<TypeAliasId> {
+    name: Name,
+) -> Option<(TypeAliasId, GenericArgs<'db>)> {
+    let assoc_type = resolve_type_param_assoc_type_shorthand(
+        db,
+        trait_ref.def_id.0.into(),
+        TypeParamId::trait_self(trait_ref.def_id.0),
+        name.clone(),
+    )
+    .as_ref()
+    .ok()?;
+    let (assoc_type, trait_args) = assoc_type
+        .get_with(|(assoc_type, trait_args)| (*assoc_type, trait_args.as_ref()))
+        .skip_binder();
     let interner = DbInterner::new_no_crate(db);
-    named_associated_type_shorthand_candidates(interner, def, res, None, |name, _, id| {
-        cb(name, id).then_some(id)
-    })
-}
-
-#[tracing::instrument(skip(interner, check_alias))]
-fn named_associated_type_shorthand_candidates<'db, R>(
-    interner: DbInterner<'db>,
-    // If the type parameter is defined in an impl and we're in a method, there
-    // might be additional where clauses to consider
-    def: GenericDefId,
-    res: TypeNs,
-    assoc_name: Option<Name>,
-    mut check_alias: impl FnMut(&Name, TraitRef<'db>, TypeAliasId) -> Option<R>,
-) -> Option<R> {
-    let db = interner.db;
-    let mut search = |t: TraitRef<'db>| -> Option<R> {
-        let mut checked_traits = FxHashSet::default();
-        let mut check_trait = |trait_ref: TraitRef<'db>| {
-            let trait_id = trait_ref.def_id.0;
-            let name = &db.trait_signature(trait_id).name;
-            tracing::debug!(?trait_id, ?name);
-            if !checked_traits.insert(trait_id) {
-                return None;
-            }
-            let data = trait_id.trait_items(db);
-
-            tracing::debug!(?data.items);
-            for (name, assoc_id) in &data.items {
-                if let &AssocItemId::TypeAliasId(alias) = assoc_id
-                    && let Some(ty) = check_alias(name, trait_ref, alias)
-                {
-                    return Some(ty);
-                }
-            }
-            None
-        };
-        let mut stack: SmallVec<[_; 4]> = smallvec![t];
-        while let Some(trait_ref) = stack.pop() {
-            if let Some(alias) = check_trait(trait_ref) {
-                return Some(alias);
-            }
-            let predicates = generic_predicates_filtered_by(
-                db,
-                GenericDefId::TraitId(trait_ref.def_id.0),
-                PredicateFilter::SelfTrait,
-                // We are likely in the midst of lowering generic predicates of `def`.
-                // So, if we allow `pred == def` we might fall into an infinite recursion.
-                // Actually, we have already checked for the case `pred == def` above as we started
-                // with a stack including `trait_id`
-                |pred| pred != def && pred == GenericDefId::TraitId(trait_ref.def_id.0),
-            )
-            .0
-            .predicates;
-            for pred in predicates.get().instantiate_identity() {
-                tracing::debug!(?pred);
-                let sup_trait_ref = match pred.kind().skip_binder() {
-                    rustc_type_ir::ClauseKind::Trait(pred) => pred.trait_ref,
-                    _ => continue,
-                };
-                let sup_trait_ref =
-                    EarlyBinder::bind(sup_trait_ref).instantiate(interner, trait_ref.args);
-                stack.push(sup_trait_ref);
-            }
-            tracing::debug!(?stack);
-        }
-
-        None
-    };
-
-    match res {
-        TypeNs::SelfType(impl_id) => {
-            let trait_ref = db.impl_trait(impl_id)?;
-
-            // FIXME(next-solver): same method in `lower` checks for impl or not
-            // Is that needed here?
-
-            // we're _in_ the impl -- the binders get added back later. Correct,
-            // but it would be nice to make this more explicit
-            search(trait_ref.skip_binder())
-        }
-        TypeNs::GenericParam(param_id) => {
-            // Handle `Self::Type` referring to own associated type in trait definitions
-            // This *must* be done first to avoid cycles with
-            // `generic_predicates_for_param`, but not sure that it's sufficient,
-            if let GenericDefId::TraitId(trait_id) = param_id.parent() {
-                let trait_name = &db.trait_signature(trait_id).name;
-                tracing::debug!(?trait_name);
-                let trait_generics = generics(db, trait_id.into());
-                tracing::debug!(?trait_generics);
-                if trait_generics[param_id.local_id()].is_trait_self() {
-                    let args = GenericArgs::identity_for_item(interner, trait_id.into());
-                    let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), args);
-                    tracing::debug!(?args, ?trait_ref);
-                    return search(trait_ref);
-                }
-            }
-
-            let predicates =
-                generic_predicates_for_param(db, def, param_id.into(), assoc_name.clone());
-            predicates
-                .get()
-                .iter_identity()
-                .find_map(|pred| match pred.kind().skip_binder() {
-                    rustc_type_ir::ClauseKind::Trait(trait_predicate) => Some(trait_predicate),
-                    _ => None,
-                })
-                .and_then(|trait_predicate| {
-                    let trait_ref = trait_predicate.trait_ref;
-                    assert!(
-                        !trait_ref.has_escaping_bound_vars(),
-                        "FIXME unexpected higher-ranked trait bound"
-                    );
-                    search(trait_ref)
-                })
-        }
-        _ => None,
-    }
-}
-
-/// During lowering, elaborating supertraits can cause cycles. To avoid that, we have a separate query
-/// to only collect supertraits.
-///
-/// Technically, it is possible to avoid even more cycles by only collecting the `TraitId` of supertraits
-/// without their args. However rustc doesn't do that, so we don't either.
-pub(crate) fn all_supertraits_trait_refs(
-    db: &dyn HirDatabase,
-    trait_: TraitId,
-) -> impl ExactSizeIterator<Item = EarlyBinder<'_, TraitRef<'_>>> {
-    let interner = DbInterner::new_no_crate(db);
-    return all_supertraits_trait_refs_query(db, trait_).iter().map(move |trait_ref| {
-        trait_ref.get_with(|(trait_, args)| {
-            TraitRef::new_from_args(interner, (*trait_).into(), args.as_ref())
-        })
-    });
-
-    #[salsa_macros::tracked(returns(deref), cycle_result = all_supertraits_trait_refs_cycle_result)]
-    pub(crate) fn all_supertraits_trait_refs_query(
-        db: &dyn HirDatabase,
-        trait_: TraitId,
-    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
-        let resolver = trait_.resolver(db);
-        let signature = db.trait_signature(trait_);
-        let mut ctx = TyLoweringContext::new(
-            db,
-            &resolver,
-            &signature.store,
-            trait_.into(),
-            LifetimeElisionKind::AnonymousReportError,
-        );
-        let interner = ctx.interner;
-
-        let self_param_ty = Ty::new_param(
-            interner,
-            TypeParamId::from_unchecked(TypeOrConstParamId {
-                parent: trait_.into(),
-                local_id: Idx::from_raw(la_arena::RawIdx::from_u32(0)),
-            }),
-            0,
-        );
-
-        let mut supertraits = FxHashSet::default();
-        supertraits.insert(StoredEarlyBinder::bind((
-            trait_,
-            GenericArgs::identity_for_item(interner, trait_.into()).store(),
-        )));
-
-        for pred in signature.generic_params.where_predicates() {
-            let WherePredicate::TypeBound { target, bound } = pred else {
-                continue;
-            };
-            let target = &signature.store[*target];
-            if let TypeRef::TypeParam(param_id) = target
-                && param_id.local_id().into_raw().into_u32() == 0
-            {
-                // This is `Self`.
-            } else if let TypeRef::Path(path) = target
-                && path.is_self_type()
-            {
-                // Also `Self`.
-            } else {
-                // Not `Self`!
-                continue;
-            }
-
-            ctx.lower_type_bound(bound, self_param_ty, true).for_each(|(clause, _)| {
-                if let ClauseKind::Trait(trait_ref) = clause.kind().skip_binder() {
-                    supertraits.extend(
-                        all_supertraits_trait_refs(db, trait_ref.trait_ref.def_id.0).map(|t| {
-                            let trait_ref = t.instantiate(interner, trait_ref.trait_ref.args);
-                            StoredEarlyBinder::bind((trait_ref.def_id.0, trait_ref.args.store()))
-                        }),
-                    );
-                }
-            });
-        }
-
-        Box::from_iter(supertraits)
-    }
-
-    pub(crate) fn all_supertraits_trait_refs_cycle_result(
-        db: &dyn HirDatabase,
-        _: salsa::Id,
-        trait_: TraitId,
-    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
-        let interner = DbInterner::new_no_crate(db);
-        Box::new([StoredEarlyBinder::bind((
-            trait_,
-            GenericArgs::identity_for_item(interner, trait_.into()).store(),
-        ))])
-    }
+    Some((assoc_type, EarlyBinder::bind(trait_args).instantiate(interner, trait_ref.args)))
 }

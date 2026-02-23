@@ -16,17 +16,9 @@ use toolchain::{NO_RUSTUP_AUTO_INSTALL_ENV, Tool};
 use triomphe::Arc;
 
 use crate::{
-    CfgOverrides, InvocationStrategy, ManifestPath, Sysroot, cargo_config_file::make_lockfile_copy,
+    CfgOverrides, InvocationStrategy, ManifestPath, Sysroot,
+    cargo_config_file::{LockfileCopy, LockfileUsage, make_lockfile_copy},
 };
-
-pub(crate) const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version =
-    semver::Version {
-        major: 1,
-        minor: 82,
-        patch: 0,
-        pre: semver::Prerelease::EMPTY,
-        build: semver::BuildMetadata::EMPTY,
-    };
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -628,7 +620,7 @@ pub(crate) struct FetchMetadata {
     command: cargo_metadata::MetadataCommand,
     #[expect(dead_code)]
     manifest_path: ManifestPath,
-    lockfile_path: Option<Utf8PathBuf>,
+    lockfile_copy: Option<LockfileCopy>,
     #[expect(dead_code)]
     kind: &'static str,
     no_deps: bool,
@@ -688,15 +680,14 @@ impl FetchMetadata {
             }
         }
 
-        let mut lockfile_path = None;
+        let mut lockfile_copy = None;
         if cargo_toml.is_rust_manifest() {
             other_options.push("-Zscript".to_owned());
-        } else if config
-            .toolchain_version
-            .as_ref()
-            .is_some_and(|v| *v >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH)
-        {
-            lockfile_path = Some(<_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock"));
+        } else if let Some(v) = config.toolchain_version.as_ref() {
+            lockfile_copy = make_lockfile_copy(
+                v,
+                &<_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock"),
+            );
         }
 
         if !config.targets.is_empty() {
@@ -729,7 +720,7 @@ impl FetchMetadata {
         Self {
             manifest_path: cargo_toml.clone(),
             command,
-            lockfile_path,
+            lockfile_copy,
             kind: config.kind,
             no_deps,
             no_deps_result,
@@ -749,7 +740,7 @@ impl FetchMetadata {
         let Self {
             mut command,
             manifest_path: _,
-            lockfile_path,
+            lockfile_copy,
             kind: _,
             no_deps,
             no_deps_result,
@@ -761,13 +752,17 @@ impl FetchMetadata {
         }
 
         let mut using_lockfile_copy = false;
-        let mut _temp_dir_guard;
-        if let Some(lockfile) = lockfile_path
-            && let Some((temp_dir, target_lockfile)) = make_lockfile_copy(&lockfile)
-        {
-            _temp_dir_guard = temp_dir;
-            other_options.push("--lockfile-path".to_owned());
-            other_options.push(target_lockfile.to_string());
+        if let Some(lockfile_copy) = &lockfile_copy {
+            match lockfile_copy.usage {
+                LockfileUsage::WithFlag => {
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(lockfile_copy.path.to_string());
+                }
+                LockfileUsage::WithEnvVar => {
+                    other_options.push("-Zlockfile-path".to_owned());
+                    command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());
+                }
+            }
             using_lockfile_copy = true;
         }
         if using_lockfile_copy || other_options.iter().any(|it| it.starts_with("-Z")) {

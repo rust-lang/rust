@@ -98,12 +98,12 @@ some directories, `/usr/bin` will always be mounted under
 system-wide installation of Rust, or any other libraries you might want
 to link to. Some compilers and libraries can be acquired as Flatpak
 SDKs, such as `org.freedesktop.Sdk.Extension.rust-stable` or
-`org.freedesktop.Sdk.Extension.llvm15`.
+`org.freedesktop.Sdk.Extension.llvm21`.
 
 If you use a Flatpak SDK for Rust, it must be in your `PATH`:
 
- * install the SDK extensions with `flatpak install org.freedesktop.Sdk.Extension.{llvm15,rust-stable}//23.08`
- * enable SDK extensions in the editor with the environment variable `FLATPAK_ENABLE_SDK_EXT=llvm15,rust-stable` (this can be done using flatseal or `flatpak override`)
+ * install the SDK extensions with `flatpak install org.freedesktop.Sdk.Extension.{llvm21,rust-stable}//25.08`
+ * enable SDK extensions in the editor with the environment variable `FLATPAK_ENABLE_SDK_EXT=llvm21,rust-stable` (this can be done using flatseal or `flatpak override`)
 
 If you want to use Flatpak in combination with `rustup`, the following
 steps might help:
