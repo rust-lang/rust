@@ -670,8 +670,13 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
-        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr) => "v",
-        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr) => "Sg",
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr32)
+        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr64)
+        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr128) => "Sg",
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr16)
+        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr32)
+        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr64)
+        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr128) => "v",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
