@@ -504,7 +504,7 @@ auto:
   - name: dist-aarch64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
@@ -513,6 +513,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
+        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
@@ -706,7 +707,7 @@ auto:
   # i686 has no dedicated job, build it here because this job is fast
   - name: dist-aarch64-llvm-mingw
     env:
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py dist bootstrap enzyme --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --build=aarch64-pc-windows-gnullvm
         --target=aarch64-pc-windows-gnullvm,i686-pc-windows-gnullvm
@@ -720,7 +721,7 @@ auto:
 
   - name: dist-x86_64-llvm-mingw
     env:
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py dist bootstrap enzyme --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnullvm
         --enable-full-tools
