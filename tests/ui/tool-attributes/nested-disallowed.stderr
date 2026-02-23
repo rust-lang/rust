@@ -1,8 +1,12 @@
-error: `register_tool` only accepts identifiers
-  --> $DIR/nested-disallowed.rs:2:18
+error[E0539]: malformed `register_tool` attribute input
+  --> $DIR/nested-disallowed.rs:2:1
    |
 LL | #![register_tool(foo::bar)]
-   |                  ^^^^^^^^ not an identifier
+   | ^^^^^^^^^^^^^^^^^--------^^
+   | |                |
+   | |                expected a valid identifier here
+   | help: must be of the form: `#![register_tool(tool1, tool2, ...)]`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.
