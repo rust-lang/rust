@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FIRST_VARIANT, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_errors::msg;
@@ -24,7 +24,7 @@ use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
     compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_dyn_trait,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -595,6 +595,22 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Self::panic_nounwind(ecx, &msg)?;
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
+                }
+            }
+
+            sym::type_id_vtable => {
+                let tp_ty = ecx.read_type_id(&args[0])?;
+                let result_ty = ecx.read_type_id(&args[1])?;
+
+                let (implements_trait, preds) = type_implements_dyn_trait(ecx, tp_ty, result_ty)?;
+
+                if implements_trait {
+                    let vtable_ptr = ecx.get_vtable_ptr(tp_ty, preds)?;
+                    // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
+                    ecx.write_pointer(vtable_ptr, dest)?;
+                } else {
+                    // Write `None`
+                    ecx.write_discriminant(FIRST_VARIANT, dest)?;
                 }
             }
 
