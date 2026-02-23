@@ -22,6 +22,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::traits::query::OutlivesBound;
 use rustc_macros::extension;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -441,6 +442,46 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     pub(crate) fn encountered_re_error(&self) -> Option<ErrorGuaranteed> {
         self.indices.encountered_re_error.get()
+    }
+
+    /// Whether the bound can be added as an implied bound to this function. If the defining type
+    /// cannot have external regions, i.e. non of {closures, coroutines, inline consts}, every
+    /// bounds returned from `type_op::ImpliedOutlivesBounds` are allowed.
+    /// But if the defining type can have them, the bound should contain at least one local region.
+    pub(crate) fn bound_can_be_implied(&self, bound: OutlivesBound<'tcx>) -> bool {
+        if !matches!(
+            self.defining_ty,
+            DefiningTy::Closure(..)
+                | DefiningTy::Coroutine(..)
+                | DefiningTy::CoroutineClosure(..)
+                | DefiningTy::InlineConst(..)
+        ) {
+            return true;
+        }
+
+        match bound {
+            OutlivesBound::RegionSubRegion(r1, r2) => {
+                self.is_local_free_region(self.to_region_vid(r1))
+                    || self.is_local_free_region(self.to_region_vid(r2))
+            }
+            OutlivesBound::RegionSubParam(r_a, _) => {
+                self.is_local_free_region(self.to_region_vid(r_a))
+            }
+            OutlivesBound::RegionSubAlias(..) => {
+                // FIXME: We might need to visit regions to check whether there exists
+                // any local free region here, but that would result in a false positive
+                // borrowck errors in some cases, such as:
+                // `fn foo<'a, 'b: 'b, T>(x: &'a T) -> impl Trait + 'a { /* nothing mentions 'b */ }`
+                // Suppose that we have a local bound to a return type of the above function
+                // and that local is captured into a closure. If the closure requires some
+                // outlives bounds on the captured opaque but we refuse the implied outlives bound
+                // for it, we might fail with the type test for it, which contains the opaque type
+                // and therefore `'b` as well. The problem is that if the normalized opaque type doesn't
+                // mentions `'b`, we have no local free region constrained by it, and end up
+                // emitting a borrowck error instead of propagating the closure requirements.
+                true
+            }
+        }
     }
 }
 

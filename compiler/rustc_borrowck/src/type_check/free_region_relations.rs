@@ -388,7 +388,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         debug!(?bounds, ?constraints);
         // Because of #109628, we may have unexpected placeholders. Ignore them!
         // FIXME(#109628): panic in this case once the issue is fixed.
-        let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
+        let bounds: Vec<_> = bounds
+            .into_iter()
+            .filter(|bound| {
+                !bound.has_placeholders() && self.universal_regions.bound_can_be_implied(*bound)
+            })
+            .collect();
         self.add_outlives_bounds(bounds);
         constraints
     }
