@@ -802,10 +802,10 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
     }
 }
 
-impl Debug for Statement<'_> {
+impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
-        match self.kind {
+        match *self {
             Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
             FakeRead(box (ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
@@ -842,6 +842,11 @@ impl Debug for Statement<'_> {
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
             }
         }
+    }
+}
+impl Debug for Statement<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(fmt)
     }
 }
 
@@ -913,6 +918,11 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
                 write!(fmt, "]")
             }
         }
+    }
+}
+impl Debug for Terminator<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(fmt)
     }
 }
 
