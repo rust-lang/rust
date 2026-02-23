@@ -62,6 +62,9 @@ fn should_not_lint() {
     // .map receiver is not an Option type.
     let _ = a.and_then(|a| NotOption(Some(1)).map(|b| (a, b)));
 
+    // .and_then receiver is not an Option type.
+    let _ = NotOption(Some(1)).and_then(|a| b.map(|b| (a, b)));
+
     // closure body is not a map call
     let a: Option<i32> = Some(1);
     let _ = a.and_then(|a| Some((a, 1)));
@@ -108,5 +111,8 @@ struct NotOption(Option<i32>);
 impl NotOption {
     fn map<U>(self, f: impl FnOnce(i32) -> U) -> Option<U> {
         self.0.map(f)
+    }
+    fn and_then<U>(self, f: impl FnOnce(i32) -> Option<U>) -> Option<U> {
+        self.0.and_then(f)
     }
 }
