@@ -1085,9 +1085,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value, || {
-            hir::Defaultness::Default { has_value }
-        });
+        let defaultness = match i.kind.defaultness() {
+            // We do not yet support `final` on trait associated items other than functions.
+            // Even though we reject `final` on non-functions during AST validation, we still
+            // need to stop propagating it here because later compiler passes do not expect
+            // and cannot handle such items.
+            Defaultness::Final(..) if !matches!(i.kind, AssocItemKind::Fn(..)) => {
+                Defaultness::Implicit
+            }
+            defaultness => defaultness,
+        };
+        let (defaultness, _) = self
+            .lower_defaultness(defaultness, has_value, || hir::Defaultness::Default { has_value });
 
         let item = hir::TraitItem {
             owner_id: trait_item_def_id,

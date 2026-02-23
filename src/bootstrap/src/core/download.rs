@@ -675,6 +675,7 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
         // the `.nix-deps` location.
         //
         // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+        // cc.lib: Needed similarly for `libstdc++.so.6`.
         // zlib: Needed as a system dependency of `libLLVM-*.so`.
         // patchelf: Needed for patching ELF binaries (see doc comment above).
         let nix_deps_dir = out.join(".nix-deps");
@@ -686,6 +687,7 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
                 zlib
                 patchelf
                 stdenv.cc.bintools
+                stdenv.cc.cc.lib
             ];
         }
         ";

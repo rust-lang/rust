@@ -110,6 +110,10 @@ pub fn run() {
     lit("3//\n4", NormalErr);
     lit("18.u8E", NormalErr);
     lit("/*a*/ //", NormalErr);
+    stream("1 ) 2", NormalErr);
+    stream("( x  [ ) ]", NormalErr);
+    lit("1 ) 2", NormalErr);
+    lit("( x  [ ) ]", NormalErr);
     // FIXME: all of the cases below should return an Err and emit no diagnostics, but don't yet.
 
     // emits diagnostics and returns LexError
@@ -122,8 +126,6 @@ pub fn run() {
 
     for parse in [stream as fn(&str, Mode), lit] {
         // emits diagnostic(s), then panics
-        parse("1 ) 2", OtherWithPanic);
-        parse("( x  [ ) ]", OtherWithPanic);
         parse("r#", OtherWithPanic);
 
         // emits diagnostic(s), then returns Ok(Literal { kind: ErrWithGuar, .. })

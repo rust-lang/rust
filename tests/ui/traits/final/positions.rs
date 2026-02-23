@@ -38,11 +38,9 @@ final impl Trait for Foo {
 
     final type Foo = ();
     //~^ ERROR `final` is only allowed on associated functions in traits
-    //~^^ ERROR cannot override `Foo` because it already has a `final` definition in the trait
 
     final const FOO: usize = 1;
     //~^ ERROR `final` is only allowed on associated functions in traits
-    //~^^ ERROR cannot override `FOO` because it already has a `final` definition in the trait
 }
 
 

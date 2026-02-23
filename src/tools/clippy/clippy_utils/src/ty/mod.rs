@@ -310,13 +310,13 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
+    match *ty.kind() {
         ty::Adt(adt, _) => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
-        ty::Foreign(did) => find_attr!(cx.tcx, *did, MustUse { .. }),
+        ty::Foreign(did) => find_attr!(cx.tcx, did, MustUse { .. }),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
+            is_must_use_ty(cx, ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
@@ -330,7 +330,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _) => {
-            for predicate in *binder {
+            for predicate in binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
                     && find_attr!(cx.tcx, trait_ref.def_id, MustUse { .. })
                 {

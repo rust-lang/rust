@@ -2448,7 +2448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .inherent_impls(def_id)
                 .into_iter()
-                .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+                .flat_map(|&i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
                 .filter(|item| item.is_fn() && !item.is_method())
                 .filter_map(|item| {
@@ -3183,7 +3183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check if there is an associated function with the same name.
         if let Some(def_id) = base_ty.peel_refs().ty_adt_def().map(|d| d.did()) {
-            for impl_def_id in self.tcx.inherent_impls(def_id) {
+            for &impl_def_id in self.tcx.inherent_impls(def_id) {
                 for item in self.tcx.associated_items(impl_def_id).in_definition_order() {
                     if let ExprKind::Field(base_expr, _) = expr.kind
                         && item.name() == field.name

@@ -150,16 +150,16 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
             let callee_ty_adjustments = typeck.expr_adjustments(callee);
             let callee_ty_adjusted = callee_ty_adjustments.last().map_or(callee_ty, |a| a.target);
 
-            let sig = match callee_ty_adjusted.kind() {
+            let sig = match *callee_ty_adjusted.kind() {
                 ty::FnDef(def, _) => {
                     // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
-                    if find_attr!(cx.tcx, *def, TrackCaller(..)) {
+                    if find_attr!(cx.tcx, def, TrackCaller(..)) {
                         return;
                     }
 
                     cx.tcx.fn_sig(def).skip_binder().skip_binder()
                 },
-                ty::FnPtr(sig_tys, hdr) => sig_tys.with(*hdr).skip_binder(),
+                ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr).skip_binder(),
                 ty::Closure(_, subs) => cx
                     .tcx
                     .signature_unclosure(subs.as_closure().sig(), Safety::Safe)

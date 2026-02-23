@@ -471,13 +471,12 @@ pub(crate) fn force_from_dep_node_inner<'tcx, C: QueryCache, const FLAGS: QueryF
     }
 }
 
-// NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
-// invoked by `rustc_with_all_queries`.
+// Note: `$K` and `$V` are unused but present so this can be called by `rustc_with_all_queries`.
 macro_rules! define_queries {
     (
         $(
             $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+            [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,
         )*
     ) => {
 

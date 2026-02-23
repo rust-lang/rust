@@ -214,7 +214,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if let [best_trait] = visible_traits
                 .iter()
                 .copied()
-                .filter(|trait_def_id| {
+                .filter(|&trait_def_id| {
                     tcx.associated_items(trait_def_id)
                         .filter_by_name_unhygienic(suggested_name)
                         .any(|item| item.tag() == assoc_tag)
@@ -1234,7 +1234,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && let name = Symbol::intern(&format!("{ident2}_{ident3}"))
             && let Some(item) = inherent_impls
                 .iter()
-                .flat_map(|inherent_impl| {
+                .flat_map(|&inherent_impl| {
                     tcx.associated_items(inherent_impl).filter_by_name_unhygienic(name)
                 })
                 .next()

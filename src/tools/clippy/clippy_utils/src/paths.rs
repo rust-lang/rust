@@ -335,7 +335,7 @@ fn non_local_item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, ns: PathNS, name
             .associated_item_def_ids(def_id)
             .iter()
             .copied()
-            .find(|assoc_def_id| tcx.item_name(*assoc_def_id) == name && ns.matches(tcx.def_kind(assoc_def_id).ns())),
+            .find(|&assoc_def_id| tcx.item_name(assoc_def_id) == name && ns.matches(tcx.def_kind(assoc_def_id).ns())),
         _ => None,
     }
 }

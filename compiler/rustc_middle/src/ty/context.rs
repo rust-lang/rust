@@ -1331,8 +1331,8 @@ impl<'tcx> TyCtxt<'tcx> {
         caller: DefId,
     ) -> Option<ty::Binder<'tcx, ty::FnSig<'tcx>>> {
         let fun_features = &self.codegen_fn_attrs(fun_def).target_features;
-        let callee_features = &self.codegen_fn_attrs(caller).target_features;
-        if self.is_target_feature_call_safe(&fun_features, &callee_features) {
+        let caller_features = &self.body_codegen_attrs(caller).target_features;
+        if self.is_target_feature_call_safe(&fun_features, &caller_features) {
             return Some(fun_sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Safe, ..sig }));
         }
         None
@@ -2086,7 +2086,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
+        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
