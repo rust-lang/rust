@@ -5374,7 +5374,7 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ["q_lane_f64", float64x2_t, float64x1_t, "q_f64", '[LANE as u32, LANE as u32]']
+      - ["q_lane_f64", float64x2_t, float64x1_t, "q_f64", '[LANE as u32; 2]']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
       - FnCall:
@@ -5443,11 +5443,11 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32', '[LANE as u32, LANE as u32]']
-      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32', '[LANE as u32, LANE as u32]']
-      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64', '[LANE as u32, LANE as u32]']
+      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32', '[LANE as u32; 2]']
+      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32', '[LANE as u32; 2]']
+      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32', '[LANE as u32; 4]']
+      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32', '[LANE as u32; 4]']
+      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64', '[LANE as u32; 2]']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
@@ -5473,10 +5473,10 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32; 4]']
+      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32; 4]']
+      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32; 8]']
+      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32; 8]']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
@@ -7755,14 +7755,14 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32; 4]']
+      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32; 4]']
+      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32; 2]']
+      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32; 2]']
+      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[4]}']]
       - Let: [c, "{type[1]}", {FnCall: [simd_shuffle!, [c, c, "{type[5]}"]]}]
@@ -7839,14 +7839,14 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32; 4]']
+      - [_laneq_s16, int16x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32; 4]']
+      - [q_lane_s16, int16x8_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [q_laneq_s16, int16x8_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [_lane_s32, int32x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32; 2]']
+      - [_laneq_s32, int32x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32; 2]']
+      - [q_lane_s32, int32x4_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [q_laneq_s32, int32x4_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[4]}']]
       - Let: [c, "{type[1]}", {FnCall: [simd_shuffle!, [c, c, "{type[5]}"]]}]
@@ -11138,7 +11138,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [b, b, '[LANE as u32, LANE as u32]']]
+            - FnCall: ["simd_shuffle!", [b, b, '[LANE as u32; 2]']]
 
   - name: "vmuld_lane_f64"
     doc: "Floating-point multiply"
@@ -11195,7 +11195,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: [simd_shuffle!, [b, b, '[LANE as u32, LANE as u32]']]
+            - FnCall: [simd_shuffle!, [b, b, '[LANE as u32; 2]']]
 
 
   # vmulq_laneq_f16
@@ -11212,8 +11212,8 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
-      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
+      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32; 4]"]
+      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32; 8]"]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
       - FnCall:
@@ -11335,10 +11335,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
@@ -11358,10 +11358,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32; 8]']
+      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32; 8]']
+      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32; 4]']
+      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
@@ -11660,10 +11660,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int16x8_t, int16x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int16x8_t, int16x8_t, int32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x2_t, int64x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x4_t, int64x2_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int16x8_t, int16x4_t, int32x4_t, '2', '[LANE as u32; 8]']
+      - [int16x8_t, int16x8_t, int32x4_t, '3', '[LANE as u32; 8]']
+      - [int32x4_t, int32x2_t, int64x2_t, '1', '[LANE as u32; 4]']
+      - [int32x4_t, int32x4_t, int64x2_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
@@ -11682,10 +11682,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint16x8_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x8_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint16x8_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32; 8]']
+      - [uint16x8_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32; 8]']
+      - [uint32x4_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32; 4]']
+      - [uint32x4_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
@@ -11973,10 +11973,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x8_t, int16x4_t, '2', '[LANE as u32; 8]']
+      - [int32x4_t, int16x8_t, int16x8_t, '3', '[LANE as u32; 8]']
+      - [int64x2_t, int32x4_t, int32x2_t, '1', '[LANE as u32; 4]']
+      - [int64x2_t, int32x4_t, int32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall: ['vmlal_high_{neon_type[2]}', [a, b, {FnCall: [simd_shuffle!, [c, c, '{type[4]}']]}]]
@@ -11992,10 +11992,10 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x8_t, uint16x4_t, '2', '[LANE as u32; 8]']
+      - [uint32x4_t, uint16x8_t, uint16x8_t, '3', '[LANE as u32; 8]']
+      - [uint64x2_t, uint32x4_t, uint32x2_t, '1', '[LANE as u32; 4]']
+      - [uint64x2_t, uint32x4_t, uint32x4_t, '2', '[LANE as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall: ['vmlal_high_{neon_type[2]}', [a, b, {FnCall: [simd_shuffle!, [c, c, '{type[4]}']]}]]
