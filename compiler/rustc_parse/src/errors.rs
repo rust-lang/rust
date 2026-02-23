@@ -2423,6 +2423,14 @@ pub(crate) struct TraitAliasCannotBeUnsafe {
 }
 
 #[derive(Diagnostic)]
+#[diag("trait aliases cannot be `impl`-restricted")]
+pub(crate) struct TraitAliasCannotBeImplRestricted {
+    #[primary_span]
+    #[label("trait aliases cannot be `impl`-restricted")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("associated `static` items are not allowed")]
 pub(crate) struct AssociatedStaticItemNotAllowed {
     #[primary_span]

@@ -1142,6 +1142,9 @@ impl<'a> Parser<'a> {
             if let Safety::Unsafe(_) = safety {
                 self.dcx().emit_err(errors::TraitAliasCannotBeUnsafe { span: whole_span });
             }
+            if let RestrictionKind::Restricted { .. } = impl_restriction.kind {
+                self.dcx().emit_err(errors::TraitAliasCannotBeImplRestricted { span: whole_span });
+            }
 
             self.psess.gated_spans.gate(sym::trait_alias, whole_span);
 
