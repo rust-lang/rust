@@ -6,6 +6,8 @@ incremental = true
 # Most commonly, tools contributors do not need to modify the compiler, so
 # downloading a CI rustc is a good default for tools profile.
 download-rustc = "if-unchanged"
+# Don't fail compilation when there are warnings.
+deny-warnings = false
 
 [build]
 # cargo and clippy tests don't pass on stage 1
