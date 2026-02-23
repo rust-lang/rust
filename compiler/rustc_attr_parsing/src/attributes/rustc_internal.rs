@@ -175,6 +175,20 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     }
 }
 
+pub(crate) struct RustcInheritOverflowChecksParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcInheritOverflowChecksParser {
+    const PATH: &[Symbol] = &[sym::rustc_inherit_overflow_checks];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Closure),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcInheritOverflowChecks;
+}
+
 pub(crate) struct RustcLintOptDenyFieldAccessParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {

@@ -326,6 +326,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::RustcHiddenTypeOfOpaques
                     | AttributeKind::RustcIfThisChanged(..)
+                    | AttributeKind::RustcInheritOverflowChecks
                     | AttributeKind::RustcInsignificantDtor
                     | AttributeKind::RustcIntrinsic
                     | AttributeKind::RustcIntrinsicConstStableIndirect
@@ -405,7 +406,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_on_unimplemented
                             | sym::rustc_layout
                             | sym::rustc_autodiff
-                            | sym::rustc_inherit_overflow_checks
                             // crate-level attrs, are checked below
                             | sym::feature,
                             ..

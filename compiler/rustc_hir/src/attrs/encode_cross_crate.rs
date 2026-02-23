@@ -131,6 +131,7 @@ impl AttributeKind {
             RustcHasIncoherentInherentImpls => Yes,
             RustcHiddenTypeOfOpaques => No,
             RustcIfThisChanged(..) => No,
+            RustcInheritOverflowChecks => No,
             RustcInsignificantDtor => Yes,
             RustcIntrinsic => Yes,
             RustcIntrinsicConstStableIndirect => No,

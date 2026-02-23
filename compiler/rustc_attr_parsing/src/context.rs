@@ -287,6 +287,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcEvaluateWhereClausesParser>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
         Single<WithoutArgs<RustcHiddenTypeOfOpaquesParser>>,
+        Single<WithoutArgs<RustcInheritOverflowChecksParser>>,
         Single<WithoutArgs<RustcInsignificantDtorParser>>,
         Single<WithoutArgs<RustcIntrinsicConstStableIndirectParser>>,
         Single<WithoutArgs<RustcIntrinsicParser>>,
