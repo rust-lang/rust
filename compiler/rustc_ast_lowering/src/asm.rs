@@ -19,9 +19,7 @@ use super::errors::{
     InvalidRegisterClass, RegisterClassOnlyClobber, RegisterClassOnlyClobberStable,
     RegisterConflict,
 };
-use crate::{
-    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt,
-};
+use crate::{AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn lower_inline_asm(

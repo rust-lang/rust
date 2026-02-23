@@ -295,7 +295,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
         self.check_for_lang(
             target,
-            self.resolver.node_id_to_def_id[&i.id],
+            self.resolver.owners[&i.id].node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
             i.opt_generics(),
@@ -309,7 +309,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_variant(&mut self, variant: &'ast ast::Variant) {
         self.check_for_lang(
             Target::Variant,
-            self.resolver.node_id_to_def_id[&variant.id],
+            self.resolver.owners[&self.parent_item.unwrap().id].node_id_to_def_id[&variant.id],
             &variant.attrs,
             variant.span,
             None,
@@ -348,7 +348,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
         self.check_for_lang(
             target,
-            self.resolver.node_id_to_def_id[&i.id],
+            self.resolver.owners[&i.id].node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
             generics,

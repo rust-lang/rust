@@ -9,11 +9,12 @@ use rustc_hir::Target;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
+use rustc_middle::ty::PerOwnerResolverData;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::{ConstArgContext, ImplTraitContext, InvocationParent, Resolver};
+use crate::{ConstArgContext, ImplTraitContext, InvocationParent, Owner, Resolver};
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,
@@ -22,8 +23,11 @@ pub(crate) fn collect_definitions(
 ) {
     let invocation_parent = resolver.invocation_parents[&expansion];
     debug!("new fragment to visit with invocation_parent: {invocation_parent:?}");
+    debug_assert_eq!(resolver.current_owner.id, DUMMY_NODE_ID);
+    let prev = resolver.replace_current_owner(invocation_parent.owner);
     let mut visitor = DefCollector { resolver, expansion, invocation_parent };
     fragment.visit_with(&mut visitor);
+    resolver.reinsert_prev_owner(prev);
 }
 
 /// Creates `DefId`s for nodes in the AST.
@@ -46,7 +50,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
         );
-        self.resolver
+        let def_id = self
+            .resolver
             .create_def(
                 parent_def,
                 node_id,
@@ -55,13 +60,46 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 self.expansion.to_expn_id(),
                 span.with_parent(None),
             )
-            .def_id()
+            .def_id();
+        assert!(self.resolver.node_id_to_def_id.insert(node_id, def_id).is_none());
+        def_id
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
         let orig_parent_def = mem::replace(&mut self.invocation_parent.parent_def, parent_def);
         f(self);
         self.invocation_parent.parent_def = orig_parent_def;
+    }
+
+    fn with_owner<F: FnOnce(&mut Self)>(&mut self, owner: NodeId, f: F) {
+        debug_assert_ne!(owner, DUMMY_NODE_ID);
+        if owner == CRATE_NODE_ID {
+            // Special case: we always have an invocation parent (set in `collect_definitions`)
+            // of at least the crate root, even for visiting the crate root,
+            // which would then remove the crate root from the tables
+            // list twice and try to insert it twice afterwards.
+            debug_assert_eq!(self.resolver.current_owner.id, CRATE_NODE_ID);
+            return f(self);
+        }
+        // We only get here if the owner didn't exist yet. After the owner has been created,
+        // future invocations of `collect_definitions` will get the owner out of the `owners`
+        // table.
+        debug_assert!(!self.resolver.owners.contains_key(&owner));
+        let tables = PerOwnerResolverData::new(owner);
+        let orig_owner = mem::replace(&mut self.resolver.current_owner, tables);
+        let orig_invoc_owner = mem::replace(&mut self.invocation_parent.owner, owner);
+        f(self);
+        let tables = mem::replace(&mut self.resolver.current_owner, orig_owner);
+        assert!(
+            self.resolver
+                .owners
+                .insert(
+                    owner,
+                    Owner { def_id: tables.node_id_to_def_id[&owner], resolver_data: Some(tables) }
+                )
+                .is_none()
+        );
+        assert_eq!(mem::replace(&mut self.invocation_parent.owner, orig_invoc_owner), owner);
     }
 
     fn with_impl_trait<F: FnOnce(&mut Self)>(
@@ -166,38 +204,43 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(use_tree) => {
-                self.create_def(i.id, None, DefKind::Use, use_tree.span);
-                return visit::walk_item(self, i);
+                return self.with_owner(i.id, |this| {
+                    this.create_def(i.id, None, DefKind::Use, use_tree.span);
+                    visit::walk_item(this, i)
+                });
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
         };
-        let def_id =
-            self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
+        self.with_owner(i.id, |this| {
+            let def_id =
+                this.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
-        if let Some(macro_data) = opt_macro_data {
-            self.resolver.new_local_macro(def_id, macro_data);
-        }
+            if let Some(macro_data) = opt_macro_data {
+                this.resolver.new_local_macro(def_id, macro_data);
+            }
 
-        self.with_parent(def_id, |this| {
-            this.with_impl_trait(ImplTraitContext::Existential, |this| {
-                match i.kind {
-                    ItemKind::Struct(_, _, ref struct_def)
-                    | ItemKind::Union(_, _, ref struct_def) => {
-                        // If this is a unit or tuple-like struct, register the constructor.
-                        if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def) {
-                            this.create_def(
-                                ctor_node_id,
-                                None,
-                                DefKind::Ctor(CtorOf::Struct, ctor_kind),
-                                i.span,
-                            );
+            this.with_parent(def_id, |this| {
+                this.with_impl_trait(ImplTraitContext::Existential, |this| {
+                    match i.kind {
+                        ItemKind::Struct(_, _, ref struct_def)
+                        | ItemKind::Union(_, _, ref struct_def) => {
+                            // If this is a unit or tuple-like struct, register the constructor.
+                            if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def)
+                            {
+                                this.create_def(
+                                    ctor_node_id,
+                                    None,
+                                    DefKind::Ctor(CtorOf::Struct, ctor_kind),
+                                    i.span,
+                                );
+                            }
                         }
+                        _ => {}
                     }
-                    _ => {}
-                }
-                visit::walk_item(this, i);
+                    visit::walk_item(this, i);
+                })
             })
         });
     }
@@ -254,8 +297,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
-        self.create_def(id, None, DefKind::Use, use_tree.span);
-        visit::walk_use_tree(self, use_tree);
+        self.with_owner(id, |this| {
+            this.create_def(id, None, DefKind::Use, use_tree.span);
+            visit::walk_use_tree(this, use_tree);
+        })
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
@@ -280,9 +325,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
         };
 
-        let def = self.create_def(fi.id, Some(ident.name), def_kind, fi.span);
+        self.with_owner(fi.id, |this| {
+            let def = this.create_def(fi.id, Some(ident.name), def_kind, fi.span);
 
-        self.with_parent(def, |this| visit::walk_item(this, fi));
+            this.with_parent(def, |this| visit::walk_item(this, fi));
+        })
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {
@@ -354,8 +401,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
         };
 
-        let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
-        self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
+        self.with_owner(i.id, |this| {
+            let def = this.create_def(i.id, Some(ident.name), def_kind, i.span);
+            this.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
+        })
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
@@ -525,7 +574,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         if krate.is_placeholder {
             self.visit_macro_invoc(krate.id)
         } else {
-            visit::walk_crate(self, krate)
+            self.with_owner(CRATE_NODE_ID, |this| visit::walk_crate(this, krate))
         }
     }
 

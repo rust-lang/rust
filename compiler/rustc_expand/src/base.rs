@@ -1178,6 +1178,13 @@ pub trait ResolverExpand {
     /// Mark the scope as having a compile error so that error for lookup in this scope
     /// should be suppressed
     fn mark_scope_with_compile_error(&mut self, parent_node: NodeId);
+
+    /// Set a new owner and return the old one. Use only in the implementation
+    /// of `with_owner` and always call [Self::reset_owner] afterwards
+    fn set_owner(&mut self, id: NodeId) -> NodeId;
+
+    /// Switch back to the original owner.
+    fn reset_owner(&mut self, id: NodeId);
 }
 
 pub trait LintStoreExpand {

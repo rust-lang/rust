@@ -22,7 +22,7 @@ use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, Un
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
+    RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
 };
 
 pub(super) struct ItemLowerer<'a, 'hir> {
@@ -77,7 +77,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             match node {
                 AstOwner::NonOwner => {}
                 AstOwner::Crate(c) => {
-                    assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
+                    assert_eq!(
+                        self.resolver.owners[&CRATE_NODE_ID].node_id_to_def_id[&CRATE_NODE_ID],
+                        CRATE_DEF_ID
+                    );
                     self.with_lctx(CRATE_NODE_ID, |lctx| {
                         let module = lctx.lower_mod(&c.items, &c.spans);
                         // FIXME(jdonszelman): is dummy span ever a problem here?

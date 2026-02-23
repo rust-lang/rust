@@ -227,7 +227,7 @@ impl<'ra> ImportData<'ra> {
     }
 
     pub(crate) fn simplify(&self, r: &Resolver<'_, '_>) -> Reexport {
-        let to_def_id = |id| r.local_def_id(id).to_def_id();
+        let to_def_id = |id| r.owners[&id].def_id.to_def_id();
         match self.kind {
             ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
             ImportKind::Glob { id, .. } => Reexport::Glob(to_def_id(id)),
@@ -737,7 +737,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && glob_decl.res() != Res::Err
                         && let DeclKind::Import { import: glob_import, .. } = glob_decl.kind
                         && let Some(glob_import_id) = glob_import.id()
-                        && let glob_import_def_id = self.local_def_id(glob_import_id)
+                        && let glob_import_def_id = self.owners[&glob_import_id].def_id
                         && self.effective_visibilities.is_exported(glob_import_def_id)
                         && glob_decl.vis().is_public()
                         && !binding.vis().is_public()
@@ -766,7 +766,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(binding_id) = import.id()
-                    && let import_def_id = self.local_def_id(binding_id)
+                    && let import_def_id = self.owners[&binding_id].def_id
                     && self.effective_visibilities.is_exported(import_def_id)
                     && let Res::Def(reexported_kind, reexported_def_id) = binding.res()
                     && !matches!(reexported_kind, DefKind::Ctor(..))
@@ -1149,7 +1149,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if let Some(max_vis) = max_vis.get()
                     && !max_vis.is_at_least(import.vis, self.tcx)
                 {
-                    let def_id = self.local_def_id(id);
+                    let def_id = self.owners[&id].def_id;
                     self.lint_buffer.buffer_lint(
                         UNUSED_IMPORTS,
                         id,
@@ -1397,7 +1397,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
             if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import, binding) {
-                let extern_crate_sp = self.tcx.source_span(self.local_def_id(extern_crate_id));
+                let extern_crate_sp = self.tcx.source_span(self.owners[&extern_crate_id].def_id);
                 self.lint_buffer.buffer_lint(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                     import_id,
@@ -1492,7 +1492,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Skip if the import is public or was used through non scope-based resolution,
         // e.g. through a module-relative path.
         if self.import_use_map.get(&import) == Some(&Used::Other)
-            || self.effective_visibilities.is_exported(self.local_def_id(id))
+            || self.effective_visibilities.is_exported(self.owners[&id].def_id)
         {
             return false;
         }

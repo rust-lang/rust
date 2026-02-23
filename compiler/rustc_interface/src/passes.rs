@@ -210,7 +210,7 @@ fn configure_and_expand(
         };
 
         let lint_store = LintStoreExpandImpl(lint_store);
-        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
+        let mut ecx: ExtCtxt<'_> = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));

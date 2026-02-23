@@ -4,7 +4,7 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, NodeId, attr};
+use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
@@ -20,7 +20,7 @@ use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_middle::ty::{PerOwnerResolverData, RegisteredTools, TyCtxt};
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
@@ -169,7 +169,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {
-        if let Some(id) = self.opt_local_def_id(id)
+        if let Some(id) = self.owners.get(&id).map(|o| o.def_id)
             && self.tcx.def_kind(id).is_module_like()
         {
             self.mods_with_parse_errors.insert(id.to_def_id());
@@ -221,7 +221,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
         let parent_module =
-            parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
+            parent_module_id.map(|module_id| self.owners[&module_id].def_id.to_def_id());
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -363,7 +363,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             if unused_arms.is_empty() {
                 continue;
             }
-            let def_id = self.local_def_id(node_id);
+            let def_id = self.owners[&node_id].def_id;
             let m = &self.local_macro_map[&def_id];
             let SyntaxExtensionKind::MacroRules(ref m) = m.ext.kind else {
                 continue;
@@ -495,7 +495,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
-        self.proc_macros.push(self.local_def_id(id))
+        self.proc_macros.push(self.owners[&id].def_id)
     }
 
     fn append_stripped_cfg_item(
@@ -557,6 +557,31 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol) {
         self.impl_trait_names.insert(id, name);
+    }
+
+    fn set_owner(&mut self, id: NodeId) -> NodeId {
+        assert_ne!(id, DUMMY_NODE_ID);
+        let old = self.replace_current_owner(id);
+        let old_id = old.id;
+        if old.id == DUMMY_NODE_ID {
+            if cfg!(debug_assertions) {
+                let PerOwnerResolverData { node_id_to_def_id, id: _ } = old;
+                assert!(node_id_to_def_id.is_empty());
+            }
+        } else {
+            assert!(self.owners.get_mut(&old.id).unwrap().resolver_data.replace(old).is_none());
+        }
+        old_id
+    }
+
+    fn reset_owner(&mut self, id: NodeId) {
+        let old = if id == DUMMY_NODE_ID {
+            std::mem::replace(&mut self.current_owner, PerOwnerResolverData::new(DUMMY_NODE_ID))
+        } else {
+            self.replace_current_owner(id)
+        };
+        assert_ne!(old.id, DUMMY_NODE_ID);
+        assert!(self.owners.get_mut(&old.id).unwrap().resolver_data.replace(old).is_none());
     }
 }
 

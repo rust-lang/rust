@@ -82,7 +82,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId) {
         let used = self.r.used_imports.contains(&id);
-        let def_id = self.r.local_def_id(id);
+        let def_id = self.r.owners[&id].def_id;
         if !used {
             if self.r.maybe_unused_trait_imports.contains(&def_id) {
                 // Check later.
@@ -101,7 +101,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     }
 
     fn check_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
-        if self.r.effective_visibilities.is_exported(self.r.local_def_id(id)) {
+        if self.r.effective_visibilities.is_exported(self.r.owners[&id].def_id) {
             self.check_import_as_underscore(use_tree, id);
             return;
         }
@@ -211,7 +211,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
 
             let module = self
                 .r
-                .get_nearest_non_block_module(self.r.local_def_id(extern_crate.id).to_def_id());
+                .get_nearest_non_block_module(self.r.owners[&extern_crate.id].def_id.to_def_id());
             if module.no_implicit_prelude {
                 // If the module has `no_implicit_prelude`, then we don't suggest
                 // replacing the extern crate with a use, as it would not be
@@ -416,7 +416,7 @@ impl Resolver<'_, '_> {
                     }
                 }
                 ImportKind::ExternCrate { id, .. } => {
-                    let def_id = self.local_def_id(id);
+                    let def_id = self.owners[&id].def_id;
                     if self.extern_crate_map.get(&def_id).is_none_or(|&cnum| {
                         !tcx.is_compiler_builtins(cnum)
                             && !tcx.is_panic_runtime(cnum)
@@ -479,7 +479,7 @@ impl Resolver<'_, '_> {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(
-                    visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
+                    visitor.r.owners[&unused.use_tree_id].def_id.to_def_id(),
                 );
                 match module_to_string(parent_module) {
                     Some(module)

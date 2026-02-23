@@ -24,9 +24,7 @@ use super::errors::{
     InclusiveRangeWithNoEnd, MatchArmWithNoBody, NeverPatternWithBody, NeverPatternWithGuard,
     UnderscoreExprLhsAssign,
 };
-use super::{
-    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
-};
+use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, TryBlockScope};
 

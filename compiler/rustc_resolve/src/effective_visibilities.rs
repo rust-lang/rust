@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_ast::visit::Visitor;
-use rustc_ast::{Crate, EnumDef, ast, visit};
+use rustc_ast::{Crate, EnumDef, NodeId, ast, visit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
@@ -47,7 +47,7 @@ impl Resolver<'_, '_> {
         Visibility::Restricted(
             import
                 .id()
-                .map(|id| self.nearest_normal_mod(self.local_def_id(id)))
+                .map(|id| self.nearest_normal_mod(self.owners[&id].def_id))
                 .unwrap_or(CRATE_DEF_ID),
         )
     }
@@ -97,7 +97,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
             if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+                r.effective_visibilities.update_eff_vis(r.owners[&node_id].def_id, eff_vis, r.tcx)
             }
             if decl.ambiguity.get().is_some() && eff_vis.is_public_at_level(Level::Reexported) {
                 exported_ambiguities.insert(*decl);
@@ -206,11 +206,16 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     fn update_field(&mut self, def_id: LocalDefId, parent_id: LocalDefId) {
         self.update_def(def_id, self.r.tcx.local_visibility(def_id), ParentId::Def(parent_id));
     }
+
+    fn child_def_id(&self, parent: NodeId, child: NodeId) -> LocalDefId {
+        let owner = &self.r.owners[&parent];
+        owner.resolver_data.as_ref().unwrap().node_id_to_def_id[&child]
+    }
 }
 
 impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        let def_id = self.r.local_def_id(item.id);
+        let def_id = self.r.owners[&item.id].def_id;
         // Update effective visibilities of nested items.
         // If it's a mod, also make the visitor walk all of its items
         match item.kind {
@@ -233,16 +238,16 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             ast::ItemKind::Enum(_, _, EnumDef { ref variants }) => {
                 self.set_bindings_effective_visibilities(def_id);
                 for variant in variants {
-                    let variant_def_id = self.r.local_def_id(variant.id);
+                    let variant_def_id = self.child_def_id(item.id, variant.id);
                     for field in variant.data.fields() {
-                        self.update_field(self.r.local_def_id(field.id), variant_def_id);
+                        self.update_field(self.child_def_id(item.id, field.id), variant_def_id);
                     }
                 }
             }
 
             ast::ItemKind::Struct(_, _, ref def) | ast::ItemKind::Union(_, _, ref def) => {
                 for field in def.fields() {
-                    self.update_field(self.r.local_def_id(field.id), def_id);
+                    self.update_field(self.child_def_id(item.id, field.id), def_id);
                 }
             }
 

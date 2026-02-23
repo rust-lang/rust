@@ -3070,7 +3070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .stripped_cfg_items
                 .iter()
                 .filter_map(|item| {
-                    let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
+                    let parent_module = self.owners[&item.parent_module].def_id.to_def_id();
                     Some(StrippedCfgItem {
                         parent_module,
                         ident: item.ident,

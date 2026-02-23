@@ -2794,7 +2794,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             if self
                                 .r
                                 .delegation_fn_sigs
-                                .get(&self.r.local_def_id(assoc_item.id))
+                                .get(&self.r.node_id_to_def_id[&assoc_item.id])
                                 .is_some_and(|sig| sig.has_self) =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
@@ -3401,7 +3401,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         for (param_index, param) in params.iter().enumerate() {
             let GenericParamKind::Lifetime = param.kind else { continue };
 
-            let def_id = self.r.local_def_id(param.id);
+            let def_id = self.r.node_id_to_def_id[&param.id];
 
             let use_set = self.lifetime_uses.remove(&def_id);
             debug!(
