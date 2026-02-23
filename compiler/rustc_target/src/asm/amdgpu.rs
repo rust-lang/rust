@@ -9,11 +9,25 @@ def_reg_class! {
     Amdgpu AmdgpuInlineAsmRegClass {
         sgpr32,
         sgpr64,
+        sgpr96,
         sgpr128,
+        sgpr256,
+        sgpr512,
         vgpr16,
         vgpr32,
         vgpr64,
+        vgpr96,
         vgpr128,
+        vgpr160,
+        vgpr192,
+        vgpr224,
+        vgpr256,
+        vgpr288,
+        vgpr320,
+        vgpr352,
+        vgpr384,
+        vgpr512,
+        vgpr1024,
     }
 }
 
@@ -40,11 +54,25 @@ impl AmdgpuInlineAsmRegClass {
         match self {
             Self::sgpr32
             | Self::sgpr64
-            | Self::sgpr128 => AmdgpuInlineAsmRegClassType::Sgpr,
+            | Self::sgpr96
+            | Self::sgpr128
+            | Self::sgpr256
+            | Self::sgpr512 => AmdgpuInlineAsmRegClassType::Sgpr,
             Self::vgpr16
             | Self::vgpr32
             | Self::vgpr64
-            | Self::vgpr128 => AmdgpuInlineAsmRegClassType::Vgpr,
+            | Self::vgpr96
+            | Self::vgpr128
+            | Self::vgpr160
+            | Self::vgpr192
+            | Self::vgpr224
+            | Self::vgpr256
+            | Self::vgpr288
+            | Self::vgpr320
+            | Self::vgpr352
+            | Self::vgpr384
+            | Self::vgpr512
+            | Self::vgpr1024 => AmdgpuInlineAsmRegClassType::Vgpr,
         }
     }
 
@@ -54,7 +82,18 @@ impl AmdgpuInlineAsmRegClass {
             Self::vgpr16 => 16 / 8,
             Self::sgpr32 | Self::vgpr32 => 32 / 8,
             Self::sgpr64 | Self::vgpr64 => 64 / 8,
+            Self::sgpr96 | Self::vgpr96 => 96 / 8,
             Self::sgpr128 | Self::vgpr128 => 128 / 8,
+            Self::vgpr160 => 160 / 8,
+            Self::vgpr192 => 192 / 8,
+            Self::vgpr224 => 224 / 8,
+            Self::sgpr256 | Self::vgpr256 => 256 / 8,
+            Self::vgpr288 => 288 / 8,
+            Self::vgpr320 => 320 / 8,
+            Self::vgpr352 => 352 / 8,
+            Self::vgpr384 => 384 / 8,
+            Self::sgpr512 | Self::vgpr512 => 512 / 8,
+            Self::vgpr1024 => 1024 / 8,
         }
     }
 
@@ -63,14 +102,28 @@ impl AmdgpuInlineAsmRegClass {
             AmdgpuInlineAsmRegClassType::Sgpr => match bytes * 8 {
                 32 => Self::sgpr32,
                 64 => Self::sgpr64,
+                96 => Self::sgpr96,
                 128 => Self::sgpr128,
+                256 => Self::sgpr256,
+                512 => Self::sgpr512,
                 _ => return None,
             },
             AmdgpuInlineAsmRegClassType::Vgpr => match bytes * 8 {
                 16 => Self::vgpr16,
                 32 => Self::vgpr32,
                 64 => Self::vgpr64,
+                96 => Self::vgpr96,
                 128 => Self::vgpr128,
+                160 => Self::vgpr160,
+                192 => Self::vgpr192,
+                224 => Self::vgpr224,
+                256 => Self::vgpr256,
+                288 => Self::vgpr288,
+                320 => Self::vgpr320,
+                352 => Self::vgpr352,
+                384 => Self::vgpr384,
+                512 => Self::vgpr512,
+                1024 => Self::vgpr1024,
                 _ => return None,
             },
         };
@@ -91,7 +144,19 @@ impl AmdgpuInlineAsmRegClass {
             InlineAsmType::F16 => Self::vgpr16,
             InlineAsmType::F32 => Self::vgpr32,
             InlineAsmType::F64 => Self::vgpr64,
-            _ => return None,
+            _ => {
+                let bytes = match ty {
+                    InlineAsmType::VecI16(n) => n * (16 / 8),
+                    InlineAsmType::VecI32(n) => n * (32 / 8),
+                    InlineAsmType::VecI64(n) => n * (64 / 8),
+                    InlineAsmType::VecI128(n) => n * (128 / 8),
+                    InlineAsmType::VecF16(n) => n * (16 / 8),
+                    InlineAsmType::VecF32(n) => n * (32 / 8),
+                    InlineAsmType::VecF64(n) => n * (64 / 8),
+                    _ => return None,
+                };
+                return Self::from_type(AmdgpuInlineAsmRegClassType::Vgpr, bytes as u32);
+            }
         })
     }
 
@@ -113,9 +178,46 @@ impl AmdgpuInlineAsmRegClass {
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::vgpr16 => types! { _: I16, F16; },
-            Self::sgpr32 | Self::vgpr32 => types! { _: I16, I32, F16, F32; },
-            Self::sgpr64 | Self::vgpr64 => types! { _: I64, F64; },
-            Self::sgpr128 | Self::vgpr128 => types! { _: I128; },
+            Self::sgpr32 | Self::vgpr32 => types! { _: I16, I32, F16, F32,
+                VecI16(32 / 16),
+                VecF16(32 / 16);
+            },
+            Self::sgpr64 | Self::vgpr64 => types! {
+                _: I64, F64, VecI16(64 / 16), VecI32(64 / 32),
+                VecF16(64 / 16), VecF32(64 / 32);
+            },
+            Self::sgpr96 | Self::vgpr96 => types! { _: VecI32(96 / 32), VecF32(96 / 32); },
+            Self::sgpr128 | Self::vgpr128 => types! { _: I128,
+                VecI16(128 / 16), VecI32(128 / 32), VecI64(128 / 64),
+                VecF16(128 / 16), VecF32(128 / 32), VecF64(128 / 64);
+            },
+            Self::vgpr160 => types! { _: VecI32(160 / 32), VecF32(160 / 32); },
+            Self::vgpr192 => types! { _:
+                VecI32(192 / 32), VecI64(192 / 64),
+                VecF32(192 / 32), VecF64(192 / 64);
+            },
+            Self::vgpr224 => types! { _: VecI32(224 / 32), VecF32(224 / 32); },
+            Self::sgpr256 => types! { _:
+                VecI16(256 / 16), VecI32(256 / 32), VecI64(256 / 64),
+                VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
+            },
+            Self::vgpr256 => types! { _:
+                VecI16(256 / 16), VecI32(256 / 32),
+                VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
+            },
+            Self::vgpr288 => types! { _: VecI32(288 / 32), VecF32(288 / 32); },
+            Self::vgpr320 => types! { _: VecI32(320 / 32), VecF32(320 / 32); },
+            Self::vgpr352 => types! { _: VecI32(352 / 32), VecF32(352 / 32); },
+            Self::vgpr384 => types! { _: VecI32(384 / 32), VecF32(384 / 32); },
+            Self::sgpr512 => types! { _:
+                VecI16(512 / 16), VecI32(512 / 32), VecI64(512 / 64),
+                VecF16(512 / 16), VecF32(512 / 32), VecF64(512 / 64);
+            },
+            Self::vgpr512 => types! { _:
+                VecI16(512 / 16), VecI32(512 / 32),
+                VecF16(512 / 16), VecF32(512 / 32);
+            },
+            Self::vgpr1024 => types! { _: VecF32(1024 / 32); },
         }
     }
 
