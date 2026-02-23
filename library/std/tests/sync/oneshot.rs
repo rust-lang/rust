@@ -243,7 +243,9 @@ fn recv_deadline_passed() {
     }
 
     assert!(start.elapsed() >= timeout);
-    assert!(start.elapsed() < timeout * 3);
+    // FIXME(#152878): An upper-bound assertion on the elapsed time was removed,
+    // because CI runners can starve individual threads for a surprisingly long
+    // time, leading to flaky failures.
 }
 
 #[test]
@@ -252,12 +254,16 @@ fn recv_time_passed() {
 
     let start = Instant::now();
     let timeout = Duration::from_millis(100);
+
     match receiver.recv_timeout(timeout) {
         Err(RecvTimeoutError::Timeout(_)) => {}
         _ => panic!("expected timeout error"),
     }
+
     assert!(start.elapsed() >= timeout);
-    assert!(start.elapsed() < timeout * 3);
+    // FIXME(#152878): An upper-bound assertion on the elapsed time was removed,
+    // because CI runners can starve individual threads for a surprisingly long
+    // time, leading to flaky failures.
 }
 
 #[test]

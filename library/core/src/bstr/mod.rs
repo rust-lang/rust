@@ -74,7 +74,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `Arc<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_byte_str(&self) -> &ByteStr {
         self
@@ -86,7 +85,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `MutexGuard<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_mut_byte_str(&mut self) -> &mut ByteStr {
         self
@@ -174,39 +172,38 @@ impl fmt::Debug for ByteStr {
 #[unstable(feature = "bstr", issue = "134915")]
 impl fmt::Display for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn fmt_nopad(this: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            for chunk in this.utf8_chunks() {
-                f.write_str(chunk.valid())?;
-                if !chunk.invalid().is_empty() {
-                    f.write_str("\u{FFFD}")?;
-                }
-            }
-            Ok(())
-        }
-
-        let Some(align) = f.align() else {
-            return fmt_nopad(self, f);
-        };
         let nchars: usize = self
             .utf8_chunks()
             .map(|chunk| {
                 chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
             })
             .sum();
+
         let padding = f.width().unwrap_or(0).saturating_sub(nchars);
         let fill = f.fill();
-        let (lpad, rpad) = match align {
-            fmt::Alignment::Left => (0, padding),
-            fmt::Alignment::Right => (padding, 0),
-            fmt::Alignment::Center => {
+
+        let (lpad, rpad) = match f.align() {
+            Some(fmt::Alignment::Right) => (padding, 0),
+            Some(fmt::Alignment::Center) => {
                 let half = padding / 2;
                 (half, half + padding % 2)
             }
+            // Either alignment is not specified or it's left aligned
+            // which behaves the same with padding
+            _ => (0, padding),
         };
+
         for _ in 0..lpad {
             write!(f, "{fill}")?;
         }
-        fmt_nopad(self, f)?;
+
+        for chunk in self.utf8_chunks() {
+            f.write_str(chunk.valid())?;
+            if !chunk.invalid().is_empty() {
+                f.write_str("\u{FFFD}")?;
+            }
+        }
+
         for _ in 0..rpad {
             write!(f, "{fill}")?;
         }

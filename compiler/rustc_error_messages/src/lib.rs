@@ -109,8 +109,16 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
+    pub fn push_primary_span(&mut self, primary_span: Span) {
+        self.primary_spans.push(primary_span);
+    }
+
     pub fn push_span_label(&mut self, span: Span, label: impl Into<DiagMessage>) {
         self.span_labels.push((span, label.into()));
+    }
+
+    pub fn push_span_diag(&mut self, span: Span, diag: DiagMessage) {
+        self.span_labels.push((span, diag));
     }
 
     /// Selects the first primary span (if any).
@@ -177,6 +185,11 @@ impl MultiSpan {
         }
 
         span_labels
+    }
+
+    /// Returns the span labels as contained by `MultiSpan`.
+    pub fn span_labels_raw(&self) -> &[(Span, DiagMessage)] {
+        &self.span_labels
     }
 
     /// Returns `true` if any of the span labels is displayable.

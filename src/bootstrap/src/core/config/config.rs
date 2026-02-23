@@ -298,6 +298,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
     pub initial_rustfmt: Option<PathBuf>,
@@ -456,6 +457,7 @@ impl Config {
             build_dir: build_build_dir,
             cargo: mut build_cargo,
             rustc: mut build_rustc,
+            rustdoc: build_rustdoc,
             rustfmt: build_rustfmt,
             cargo_clippy: build_cargo_clippy,
             docs: build_docs,
@@ -750,6 +752,9 @@ impl Config {
             download_beta_toolchain(&dwn_ctx, &out);
             default_stage0_rustc_path(&out)
         });
+
+        let initial_rustdoc = build_rustdoc
+            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", host_target)));
 
         let initial_sysroot = t!(PathBuf::from_str(
             command(&initial_rustc)
@@ -1348,6 +1353,7 @@ impl Config {
             initial_cargo,
             initial_cargo_clippy: build_cargo_clippy,
             initial_rustc,
+            initial_rustdoc,
             initial_rustfmt,
             initial_sysroot,
             jemalloc: rust_jemalloc.unwrap_or(false),

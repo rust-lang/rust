@@ -567,7 +567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
-            let suggest_boxing = match found.kind() {
+            let suggest_boxing = match *found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }

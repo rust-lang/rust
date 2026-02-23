@@ -87,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
 
-        match autoderef.final_ty().kind() {
+        match *autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
                 let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
                 self.check_call_abi(abi, call_expr.span);
@@ -96,6 +96,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_call_abi(header.abi, call_expr.span);
             }
             _ => { /* cannot have a non-rust abi */ }
+        }
+
+        if self.is_scalable_vector_ctor(autoderef.final_ty()) {
+            let mut err = self.dcx().create_err(errors::ScalableVectorCtor {
+                span: callee_expr.span,
+                ty: autoderef.final_ty(),
+            });
+            err.span_label(callee_expr.span, "you can create scalable vectors using intrinsics");
+            Ty::new_error(self.tcx, err.emit());
         }
 
         self.register_predicates(autoderef.into_obligations());
@@ -418,6 +427,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         None
+    }
+
+    fn is_scalable_vector_ctor(&self, callee_ty: Ty<'_>) -> bool {
+        if let ty::FnDef(def_id, _) = *callee_ty.kind()
+            && let def::DefKind::Ctor(def::CtorOf::Struct, _) = self.tcx.def_kind(def_id)
+        {
+            self.tcx
+                .opt_parent(def_id)
+                .and_then(|id| self.tcx.adt_def(id).repr().scalable)
+                .is_some()
+        } else {
+            false
+        }
     }
 
     /// Give appropriate suggestion when encountering `||{/* not callable */}()`, where the

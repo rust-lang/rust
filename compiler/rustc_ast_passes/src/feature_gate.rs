@@ -427,7 +427,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 false
             }
             ast::AssocItemKind::Const(box ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { .. },
+                rhs_kind: ast::ConstItemRhsKind::TypeConst { rhs },
                 ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
@@ -438,6 +438,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     i.span,
                     "associated `type const` are unstable"
                 );
+                // Make sure associated `type const` defaults in traits are only allowed
+                // if the feature gate is enabled.
+                // #![feature(associated_type_defaults)]
+                if ctxt == AssocCtxt::Trait && rhs.is_some() {
+                    gate!(
+                        &self,
+                        associated_type_defaults,
+                        i.span,
+                        "associated type defaults are unstable"
+                    );
+                }
                 false
             }
             _ => false,

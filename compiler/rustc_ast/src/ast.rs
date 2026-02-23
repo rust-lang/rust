@@ -4211,9 +4211,7 @@ impl ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(box static_foreign_item) => {
-                ItemKind::Static(Box::new(static_foreign_item))
-            }
+            ForeignItemKind::Static(static_foreign_item) => ItemKind::Static(static_foreign_item),
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -4226,7 +4224,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(box static_item) => ForeignItemKind::Static(Box::new(static_item)),
+            ItemKind::Static(static_item) => ForeignItemKind::Static(static_item),
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),

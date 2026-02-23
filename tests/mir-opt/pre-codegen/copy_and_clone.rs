@@ -1,4 +1,3 @@
-//@ [COPY] compile-flags: --cfg=copy
 //@ revisions: COPY CLONE
 
 // Test case from https://github.com/rust-lang/rust/issues/128081.

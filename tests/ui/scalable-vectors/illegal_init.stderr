@@ -1,0 +1,8 @@
+error: scalable vector types cannot be initialised using their constructor
+  --> $DIR/illegal_init.rs:8:15
+   |
+LL |     let foo = svint32_t(1);
+   |               ^^^^^^^^^ you can create scalable vectors using intrinsics
+
+error: aborting due to 1 previous error
+

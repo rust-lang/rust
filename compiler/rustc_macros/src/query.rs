@@ -103,13 +103,11 @@ impl<T: Parse> Parse for List<T> {
 
 struct Desc {
     modifier: Ident,
-    tcx_binding: Option<Ident>,
     expr_list: Punctuated<Expr, Token![,]>,
 }
 
 struct CacheOnDiskIf {
     modifier: Ident,
-    tcx_binding: Option<Pat>,
     block: Block,
 }
 
@@ -192,35 +190,16 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
 
         if modifier == "desc" {
             // Parse a description modifier like:
-            // `desc { |tcx| "foo {}", tcx.item_path(key) }`
+            // `desc { "foo {}", tcx.item_path(key) }`
             let attr_content;
             braced!(attr_content in input);
-            let tcx_binding = if attr_content.peek(Token![|]) {
-                attr_content.parse::<Token![|]>()?;
-                let tcx = attr_content.parse()?;
-                attr_content.parse::<Token![|]>()?;
-                Some(tcx)
-            } else {
-                None
-            };
             let expr_list = attr_content.parse_terminated(Expr::parse, Token![,])?;
-            try_insert!(desc = Desc { modifier, tcx_binding, expr_list });
+            try_insert!(desc = Desc { modifier, expr_list });
         } else if modifier == "cache_on_disk_if" {
             // Parse a cache-on-disk modifier like:
-            //
-            // `cache_on_disk_if { true }`
-            // `cache_on_disk_if { key.is_local() }`
-            // `cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }`
-            let tcx_binding = if input.peek(token::Paren) {
-                let args;
-                parenthesized!(args in input);
-                let tcx = Pat::parse_single(&args)?;
-                Some(tcx)
-            } else {
-                None
-            };
+            // `cache_on_disk_if { tcx.is_typeck_child(key.to_def_id()) }`
             let block = input.parse()?;
-            try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, tcx_binding, block });
+            try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
         } else if modifier == "cycle_fatal" {
@@ -313,24 +292,24 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
     erased_name.set_span(Span::call_site());
 
     // Generate a function to check whether we should cache the query to disk, for some key.
-    if let Some(CacheOnDiskIf { tcx_binding, block, .. }) = modifiers.cache_on_disk_if.as_ref() {
-        let tcx = tcx_binding.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
-        // we're taking `key` by reference, but some rustc types usually prefer being passed by value
+    if let Some(CacheOnDiskIf { block, .. }) = modifiers.cache_on_disk_if.as_ref() {
+        // `pass_by_value`: some keys are marked with `rustc_pass_by_value`, but we take keys by
+        // reference here.
+        // FIXME: `pass_by_value` is badly named; `allow(rustc::pass_by_value)` actually means
+        // "allow pass by reference of `rustc_pass_by_value` types".
         streams.cache_on_disk_if_fns_stream.extend(quote! {
             #[allow(unused_variables, rustc::pass_by_value)]
             #[inline]
-            pub fn #erased_name<'tcx>(#tcx: TyCtxt<'tcx>, #key_pat: &crate::queries::#name::Key<'tcx>) -> bool
+            pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: &#key_ty) -> bool
             #block
         });
     }
 
-    let Desc { tcx_binding, expr_list, .. } = &modifiers.desc;
-    let tcx = tcx_binding.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
+    let Desc { expr_list, .. } = &modifiers.desc;
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, key: #key_ty) -> String {
-            let (#tcx, #key_pat) = (tcx, key);
+        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: #key_ty) -> String {
             format!(#expr_list)
         }
     };
