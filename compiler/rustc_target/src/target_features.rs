@@ -756,8 +756,10 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
-    &[("alu32", Unstable(sym::bpf_target_feature), &[])];
+const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    ("alu32", Unstable(sym::bpf_target_feature), &[]),
+    ("allows-misaligned-mem-access", Unstable(sym::bpf_target_feature), &[]),
+];
 
 static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
