@@ -61,88 +61,88 @@ macro_rules! check_reg {
 // CHECK: #ASMSTART
 // CHECK: s_pack_ll_b32_b16 s{{[a-z0-9.]+}}, s{{[a-z0-9.]+}}, s{{[a-z0-9.]+}}
 // CHECK: #ASMEND
-check!(sgpr_i16 i32 sgpr x: i16 sgpr, y: i16 sgpr, "s_pack_ll_b32_b16");
+check!(sgpr_i16 i32 sgpr32 x: i16 sgpr32, y: i16 sgpr32, "s_pack_ll_b32_b16");
 
 // gfx11-LABEL: vgpr_i16:
 // gfx11: #ASMSTART
 // gfx11: v_mov_b16 v{{[a-z0-9.]+}}, v{{[a-z0-9.]+}}
 // gfx11: #ASMEND
 #[cfg(gfx11)]
-check!(vgpr_i16 i16 vgpr "v_mov_b16");
+check!(vgpr_i16 i16 vgpr32 "v_mov_b16");
 
 // gfx12-LABEL: sgpr_f16:
 // gfx12: #ASMSTART
 // gfx12: s_add_f16 s{{[a-z0-9.]+}}, s{{[a-z0-9.]+}}, s{{[a-z0-9.]+}}
 // gfx12: #ASMEND
 #[cfg(gfx12)]
-check!(sgpr_f16 f16 sgpr x: f16 sgpr, y: f16 sgpr, "s_add_f16");
+check!(sgpr_f16 f16 sgpr32 x: f16 sgpr32, y: f16 sgpr32, "s_add_f16");
 
 // gfx11-LABEL: vgpr_f16:
 // gfx11: #ASMSTART
 // gfx11: v_mov_b16 v{{[a-z0-9.]+}}, v{{[a-z0-9.]+}}
 // gfx11: #ASMEND
 #[cfg(gfx11)]
-check!(vgpr_f16 f16 vgpr "v_mov_b16");
+check!(vgpr_f16 f16 vgpr32 "v_mov_b16");
 
 // CHECK-LABEL: sgpr_i32:
 // CHECK: #ASMSTART
 // CHECK: s_mov_b32 s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: #ASMEND
-check!(sgpr_i32 i32 sgpr "s_mov_b32");
+check!(sgpr_i32 i32 sgpr32 "s_mov_b32");
 
 // CHECK-LABEL: vgpr_i32:
 // CHECK: #ASMSTART
 // CHECK: v_mov_b32 v{{[0-9]+}}, v{{[0-9]+}}
 // CHECK: #ASMEND
-check!(vgpr_i32 i32 vgpr "v_mov_b32");
+check!(vgpr_i32 i32 vgpr32 "v_mov_b32");
 
 // CHECK-LABEL: sgpr_f32:
 // CHECK: #ASMSTART
 // CHECK: s_mov_b32 s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: #ASMEND
-check!(sgpr_f32 f32 sgpr "s_mov_b32");
+check!(sgpr_f32 f32 sgpr32 "s_mov_b32");
 
 // CHECK-LABEL: vgpr_f32:
 // CHECK: #ASMSTART
 // CHECK: v_mov_b32 v{{[0-9]+}}, v{{[0-9]+}}
 // CHECK: #ASMEND
-check!(vgpr_f32 f32 vgpr "v_mov_b32");
+check!(vgpr_f32 f32 vgpr32 "v_mov_b32");
 
 // CHECK-LABEL: sgpr_i64:
 // CHECK: #ASMSTART
 // CHECK: s_mov_b64 s{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}
 // CHECK: #ASMEND
-check!(sgpr_i64 i64 sgpr "s_mov_b64");
+check!(sgpr_i64 i64 sgpr64 "s_mov_b64");
 
 // CHECK-LABEL: vgpr_i64:
 // CHECK: #ASMSTART
 // CHECK: v_lshlrev_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}
 // CHECK: #ASMEND
-check!(vgpr_i64 i64 vgpr x: i32 vgpr, y: i64 vgpr, "v_lshlrev_b64");
+check!(vgpr_i64 i64 vgpr64 x: i32 vgpr32, y: i64 vgpr64, "v_lshlrev_b64");
 
 // CHECK-LABEL: sgpr_f64:
 // CHECK: #ASMSTART
 // CHECK: s_mov_b64 s{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}
 // CHECK: #ASMEND
-check!(sgpr_f64 f64 sgpr "s_mov_b64");
+check!(sgpr_f64 f64 sgpr64 "s_mov_b64");
 
 // CHECK-LABEL: vgpr_f64:
 // CHECK: #ASMSTART
 // CHECK: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}
 // CHECK: #ASMEND
-check!(vgpr_f64 f64 vgpr x: f64 vgpr, y: f64 vgpr, "v_add_f64");
+check!(vgpr_f64 f64 vgpr64 x: f64 vgpr64, y: f64 vgpr64, "v_add_f64");
 
 // CHECK-LABEL: sgpr_i128:
 // CHECK: #ASMSTART
 // CHECK: s_load_b128 s{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}}
 // CHECK: #ASMEND
-check!(sgpr_i128 i128 sgpr x: ptr sgpr, y: i32 sgpr, "s_load_b128");
+check!(sgpr_i128 i128 sgpr128 x: ptr sgpr64, y: i32 sgpr32, "s_load_b128");
 
 // CHECK-LABEL: vgpr_i128:
 // CHECK: #ASMSTART
 // CHECK: global_load_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}
 // CHECK: #ASMEND
-check!(vgpr_i128 i128 vgpr x: i32 vgpr, y: ptr sgpr, "global_load_b128");
+check!(vgpr_i128 i128 vgpr128 x: i32 vgpr32, y: ptr sgpr64, "global_load_b128");
 
 // CHECK-LABEL: s0_i16:
 // CHECK: #ASMSTART
