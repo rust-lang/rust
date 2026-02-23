@@ -695,6 +695,17 @@ impl<T> MaybeUninit<T> {
     /// let x_init = unsafe { x.assume_init() };
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
+    ///
+    /// This also applies to simple types that can hold any bit pattern, like integers, boolean and so on.
+    /// See the [type-level documentation][inv] for more details.
+    ///
+    /// ```rust,no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<u8>::uninit();
+    /// let x_init = unsafe { x.assume_init() }; // undefined behavior! ⚠️
+    /// // Even though `u8` can represent any bit pattern, reading uninitialized memory is still undefined behaviour.
+    /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
     #[inline(always)]
