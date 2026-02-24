@@ -9,7 +9,6 @@ measureme = "12.0.1"
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }

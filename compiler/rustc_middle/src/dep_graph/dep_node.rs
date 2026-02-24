@@ -54,7 +54,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::Symbol;
 
 use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
@@ -290,7 +290,9 @@ pub struct DepKindVTable<'tcx> {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, HashStable
+)]
 pub struct WorkProductId {
     hash: Fingerprint,
 }
@@ -300,13 +302,6 @@ impl WorkProductId {
         let mut hasher = StableHasher::new();
         cgu_name.hash(&mut hasher);
         WorkProductId { hash: hasher.finish() }
-    }
-}
-
-impl<HCX> HashStable<HCX> for WorkProductId {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        self.hash.hash_stable(hcx, hasher)
     }
 }
 impl<HCX> ToStableHashKey<HCX> for WorkProductId {
