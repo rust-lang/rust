@@ -177,15 +177,15 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     }
 }
 
-pub(crate) struct ConstStabilityIndirectParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
+pub(crate) struct RustcConstStableIndirectParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcConstStableIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStabilityIndirect;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStableIndirect;
 }
 
 #[derive(Default)]

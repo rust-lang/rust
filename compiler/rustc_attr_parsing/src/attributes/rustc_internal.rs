@@ -71,9 +71,9 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcNeverReturnsNullPointerParser;
+pub(crate) struct RustcNeverReturnsNullPtrParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPointerParser {
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -83,7 +83,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPointerParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPointer;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
 }
 pub(crate) struct RustcNoImplicitAutorefsParser;
 
@@ -1215,9 +1215,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNonnullOptimizationGuaranteedPa
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
 }
 
-pub(crate) struct RustcSymbolName;
+pub(crate) struct RustcSymbolNameParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {
+impl<S: Stage> SingleAttributeParser<S> for RustcSymbolNameParser {
+    const PATH: &[Symbol] = &[sym::rustc_symbol_name];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::TraitImpl)),
@@ -1228,7 +1229,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {
         Allow(Target::Impl { of_trait: false }),
     ]);
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const PATH: &[Symbol] = &[sym::rustc_symbol_name];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -1240,9 +1240,10 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {
     }
 }
 
-pub(crate) struct RustcDefPath;
+pub(crate) struct RustcDefPathParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcDefPath {
+impl<S: Stage> SingleAttributeParser<S> for RustcDefPathParser {
+    const PATH: &[Symbol] = &[sym::rustc_def_path];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::TraitImpl)),
@@ -1253,7 +1254,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDefPath {
         Allow(Target::Impl { of_trait: false }),
     ]);
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const PATH: &[Symbol] = &[sym::rustc_def_path];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {

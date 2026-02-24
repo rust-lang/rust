@@ -269,9 +269,9 @@ fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
 
 /// Parse #[align(N)].
 #[derive(Default)]
-pub(crate) struct AlignParser(Option<(Align, Span)>);
+pub(crate) struct RustcAlignParser(Option<(Align, Span)>);
 
-impl AlignParser {
+impl RustcAlignParser {
     const PATH: &[Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
@@ -308,7 +308,7 @@ impl AlignParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for AlignParser {
+impl<S: Stage> AttributeParser<S> for RustcAlignParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -321,29 +321,29 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0?;
-        Some(AttributeKind::Align { align, span })
+        Some(AttributeKind::RustcAlign { align, span })
     }
 }
 
 #[derive(Default)]
-pub(crate) struct AlignStaticParser(AlignParser);
+pub(crate) struct RustcAlignStaticParser(RustcAlignParser);
 
-impl AlignStaticParser {
+impl RustcAlignStaticParser {
     const PATH: &[Symbol] = &[sym::rustc_align_static];
-    const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
+    const TEMPLATE: AttributeTemplate = RustcAlignParser::TEMPLATE;
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         self.0.parse(cx, args)
     }
 }
 
-impl<S: Stage> AttributeParser<S> for AlignStaticParser {
+impl<S: Stage> AttributeParser<S> for RustcAlignStaticParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0.0?;
-        Some(AttributeKind::Align { align, span })
+        Some(AttributeKind::RustcAlign { align, span })
     }
 }

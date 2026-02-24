@@ -980,7 +980,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
-                    let name = if find_attr!(tcx, def_id, EiiForeignItem) {
+                    let name = if find_attr!(tcx, def_id, RustcEiiForeignItem) {
                         "externally implementable items"
                     } else {
                         "foreign items"
