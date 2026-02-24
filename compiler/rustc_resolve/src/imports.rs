@@ -1682,6 +1682,35 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ImportResolutionKind::Glob(import_bindings)
     }
 
+    // "Same res different import" ambiguity hack for macros introduced in #145108.
+    fn same_res_different_import_hack(&self, module: Module<'ra>, decl: Decl<'ra>) -> bool {
+        // we are checking for a pattern like this:
+        // ```rust
+        // #[macro_use]
+        // extern crate macro_crate;
+        // pub use macro_crate::*;
+        //
+        // pub use MacroName as Name;
+        // ```
+        if let DeclKind::Import { source_decl, import } = decl.kind
+            && let ImportKind::Single { source, .. } = import.kind // this is "pub use MacroName as Name;"
+            && let DeclKind::Import { import, .. } = source_decl.kind // make sure that the import points to a macro_use import
+            && matches!(import.kind, ImportKind::MacroUse { .. })
+            && self.macro_use_prelude.contains_key(&source.name) // and that the macro actually exists in the macro_use_prelude
+            // then check that `MacroName` exists in the module MacroNamespace
+            && let Some(y_decl) = self
+                .resolution(module, BindingKey::new(IdentKey::new(source), MacroNS))
+                .and_then(|res| res.best_decl())
+            // which comes from a "pub use macro_crate::*"
+            && y_decl.is_glob_import()
+            && y_decl.vis().is_public()
+        {
+            return true;
+        }
+
+        false
+    }
+
     // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(
@@ -1698,13 +1727,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
 
-        module.for_each_child(self, |this, ident, orig_ident_span, _, binding| {
-            let res = binding.res().expect_non_local();
+        module.for_each_child(self, |this, ident, orig_ident_span, _, decl| {
+            let res = decl.res().expect_non_local();
             if res != def::Res::Err {
+                let vis = if this.same_res_different_import_hack(module, decl) {
+                    Visibility::Public
+                } else {
+                    decl.vis()
+                };
                 let ident = ident.orig(orig_ident_span);
-                let child =
-                    |reexport_chain| ModChild { ident, res, vis: binding.vis(), reexport_chain };
-                if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
+                let child = |reexport_chain| ModChild { ident, res, vis, reexport_chain };
+                if let Some((ambig_binding1, ambig_binding2)) = decl.descent_to_ambiguity() {
                     let main = child(ambig_binding1.reexport_chain(this));
                     let second = ModChild {
                         ident,
@@ -1714,7 +1747,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     };
                     ambig_children.push(AmbigModChild { main, second })
                 } else {
-                    children.push(child(binding.reexport_chain(this)));
+                    children.push(child(decl.reexport_chain(this)));
                 }
             }
         });
