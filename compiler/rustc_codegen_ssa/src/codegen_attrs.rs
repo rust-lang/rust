@@ -80,7 +80,7 @@ fn process_builtin_attrs(
                 interesting_spans.inline = Some(*span);
             }
             AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-            AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+            AttributeKind::RustcAlign { align, .. } => codegen_fn_attrs.alignment = Some(*align),
             AttributeKind::LinkName { name, .. } => {
                 // FIXME Remove check for foreign functions once #[link_name] on non-foreign
                 // functions is a hard error
@@ -223,7 +223,7 @@ fn process_builtin_attrs(
             AttributeKind::RustcObjcSelector { methname, .. } => {
                 codegen_fn_attrs.objc_selector = Some(*methname);
             }
-            AttributeKind::EiiForeignItem => {
+            AttributeKind::RustcEiiForeignItem => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
             }
             AttributeKind::EiiImpls(impls) => {

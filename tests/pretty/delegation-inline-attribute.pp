@@ -46,7 +46,7 @@ impl Trait for S {
                 // Check that #[inline(hint)] is added when other attributes present in inner reuse
                 #[attr = Cold]
                 #[attr = MustUse]
-                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
+                #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
                 #[attr = Inline(Hint)]
                 fn foo1(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
@@ -62,7 +62,7 @@ impl Trait for S {
                 #[attr = Cold]
                 #[attr = MustUse]
                 #[attr = Inline(Never)]
-                #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
+                #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
                 fn foo4(arg0: _) -> _ { to_reuse::foo(self / 2) }
             }.foo()
     }
@@ -70,7 +70,7 @@ impl Trait for S {
     // Check that #[inline(hint)] is added when there are other attributes present in trait reuse
     #[attr = Cold]
     #[attr = MustUse]
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
     #[attr = Inline(Hint)]
     fn foo1(self: _) -> _ { self.0.foo1() }
 
@@ -86,7 +86,7 @@ impl Trait for S {
     #[attr = Cold]
     #[attr = MustUse]
     #[attr = Inline(Never)]
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
     fn foo4(self: _) -> _ { self.0.foo4() }
 }
 
