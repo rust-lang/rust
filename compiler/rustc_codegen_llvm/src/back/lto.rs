@@ -297,7 +297,7 @@ fn fat_lto(
 
         // For all serialized bitcode files we parse them and link them in as we did
         // above, this is all mostly handled in C++.
-        let mut linker = Linker::new(llmod);
+        let linker = unsafe { llvm::LLVMRustLinkerNew(llmod) };
         for (bc_decoded, name) in serialized_modules {
             let _timer = prof
                 .generic_activity_with_arg_recorder("LLVM_fat_lto_link_module", |recorder| {
@@ -305,11 +305,19 @@ fn fat_lto(
                 });
             info!("linking {:?}", name);
             let data = bc_decoded.data();
-            linker
-                .add(data)
-                .unwrap_or_else(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }));
+
+            unsafe {
+                if !llvm::LLVMRustLinkerAdd(
+                    linker,
+                    data.as_ptr() as *const libc::c_char,
+                    data.len(),
+                ) {
+                    llvm::LLVMRustLinkerFree(linker);
+                    write::llvm_err(dcx, LlvmError::LoadBitcode { name })
+                }
+            }
         }
-        drop(linker);
+        unsafe { llvm::LLVMRustLinkerFree(linker) };
         save_temp_bitcode(cgcx, &module, "lto.input");
 
         // Internalize everything below threshold to help strip out more modules and such.
@@ -325,36 +333,6 @@ fn fat_lto(
     }
 
     module
-}
-
-pub(crate) struct Linker<'a>(&'a mut llvm::Linker<'a>);
-
-impl<'a> Linker<'a> {
-    pub(crate) fn new(llmod: &'a llvm::Module) -> Self {
-        unsafe { Linker(llvm::LLVMRustLinkerNew(llmod)) }
-    }
-
-    pub(crate) fn add(&mut self, bytecode: &[u8]) -> Result<(), ()> {
-        unsafe {
-            if llvm::LLVMRustLinkerAdd(
-                self.0,
-                bytecode.as_ptr() as *const libc::c_char,
-                bytecode.len(),
-            ) {
-                Ok(())
-            } else {
-                Err(())
-            }
-        }
-    }
-}
-
-impl Drop for Linker<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustLinkerFree(&mut *(self.0 as *mut _));
-        }
-    }
 }
 
 /// Prepare "thin" LTO to get run on these modules.
