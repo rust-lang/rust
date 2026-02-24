@@ -97,8 +97,20 @@ impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
 
 #[derive(Debug)]
 pub enum QueryMode {
+    /// This is a normal query call to `tcx.$query(..)` or `tcx.at(span).$query(..)`.
     Get,
-    Ensure { check_cache: bool },
+    /// This is a call to `tcx.ensure_ok().$query(..)` or `tcx.ensure_done().$query(..)`.
+    Ensure { ensure_mode: EnsureMode },
+}
+
+/// Distinguishes between `tcx.ensure_ok()` and `tcx.ensure_done()` in shared
+/// code paths that handle both modes.
+#[derive(Debug)]
+pub enum EnsureMode {
+    /// Corresponds to [`TyCtxt::ensure_ok`].
+    Ok,
+    /// Corresponds to [`TyCtxt::ensure_done`].
+    Done,
 }
 
 /// Stores function pointers and other metadata for a particular query.
@@ -537,7 +549,7 @@ macro_rules! define_callbacks {
                         self.tcx.query_system.fns.engine.$name,
                         &self.tcx.query_system.caches.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
-                        false,
+                        $crate::query::EnsureMode::Ok,
                     )
                 }
             )*
@@ -553,7 +565,7 @@ macro_rules! define_callbacks {
                         self.tcx.query_system.fns.engine.$name,
                         &self.tcx.query_system.caches.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
-                        true,
+                        $crate::query::EnsureMode::Done,
                     );
                 }
             )*

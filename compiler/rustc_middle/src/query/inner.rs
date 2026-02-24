@@ -1,13 +1,14 @@
 //! Helper functions that serve as the immediate implementation of
 //! `tcx.$query(..)` and its variations.
 
+use rustc_data_structures::assert_matches;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::dep_graph::{DepKind, DepNodeKey};
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::plumbing::QueryVTable;
-use crate::query::{QueryCache, QueryMode};
+use crate::query::{EnsureMode, QueryCache, QueryMode};
 use crate::ty::TyCtxt;
 
 /// Checks whether there is already a value for this key in the in-memory
@@ -56,12 +57,12 @@ pub(crate) fn query_ensure<'tcx, Cache>(
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
     key: Cache::Key,
-    check_cache: bool,
+    ensure_mode: EnsureMode,
 ) where
     Cache: QueryCache,
 {
     if try_get_cached(tcx, query_cache, &key).is_none() {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
     }
 }
 
@@ -73,16 +74,20 @@ pub(crate) fn query_ensure_error_guaranteed<'tcx, Cache, T>(
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
     key: Cache::Key,
-    check_cache: bool,
+    // This arg is needed to match the signature of `query_ensure`,
+    // but should always be `EnsureMode::Ok`.
+    ensure_mode: EnsureMode,
 ) -> Result<(), ErrorGuaranteed>
 where
     Cache: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
     Result<T, ErrorGuaranteed>: Erasable,
 {
+    assert_matches!(ensure_mode, EnsureMode::Ok);
+
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
         erase::restore_val(res).map(drop)
     } else {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode })
             .map(erase::restore_val)
             .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
