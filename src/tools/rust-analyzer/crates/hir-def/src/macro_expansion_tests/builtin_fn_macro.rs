@@ -568,6 +568,12 @@ cfg_select! {
     _ => { fn true_2() {} }
 }
 
+const _: ((),) = cfg_select! { _ => ((), ) };
+const _: i32 = cfg_select! { true => 2 + 3, _ => 3 + 4 };
+const _: i32 = cfg_select! { false => 2 + 3, _ => 3 + 4 };
+const _: bool = cfg_select! { _ => 2 < 3 };
+const _: bool = cfg_select! { true => foo::<(), fn() -> Foo<i32, i64>>(1,), _ => false };
+
 cfg_select! {
     false => { fn false_3() {} }
 }
@@ -588,6 +594,12 @@ pub macro cfg_select($($tt:tt)*) {}
 fn true_1() {}
 
 fn true_2() {}
+
+const _: ((),) = ((), );
+const _: i32 = 2+3;
+const _: i32 = 3+4;
+const _: bool = 2<3;
+const _: bool = foo::<(), fn() -> Foo<i32, i64>>(1, );
 
 /* error: none of the predicates in this `cfg_select` evaluated to true */
 
