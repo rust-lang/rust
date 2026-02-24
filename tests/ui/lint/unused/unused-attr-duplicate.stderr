@@ -165,29 +165,29 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:93:5
+   |
+LL |     #[link_name = "rust_dbg_extern_identity_u32"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
   --> $DIR/unused-attr-duplicate.rs:92:5
    |
 LL |     #[link_name = "this_does_not_exist"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:94:5
-   |
-LL |     #[link_name = "rust_dbg_extern_identity_u32"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:99:1
+   |
+LL | #[export_name = "exported_symbol_name2"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
   --> $DIR/unused-attr-duplicate.rs:98:1
    |
 LL | #[export_name = "exported_symbol_name"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:100:1
-   |
-LL | #[export_name = "exported_symbol_name2"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
@@ -215,16 +215,16 @@ LL | #[used]
    | ^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:112:1
+   |
+LL | #[link_section = ".bss"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
   --> $DIR/unused-attr-duplicate.rs:111:1
    |
 LL | #[link_section = ".text"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:114:1
-   |
-LL | #[link_section = ".bss"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute

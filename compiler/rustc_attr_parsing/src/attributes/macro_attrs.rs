@@ -130,7 +130,6 @@ pub(crate) struct MacroExportParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
     const PATH: &[Symbol] = &[sym::macro_export];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["local_inner_macros"]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
@@ -168,7 +167,6 @@ pub(crate) struct CollapseDebugInfoParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
     const PATH: &[Symbol] = &[sym::collapse_debuginfo];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["no", "external", "yes"],

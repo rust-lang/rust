@@ -25,7 +25,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
 pub(crate) struct ProcMacroDeriveParser;
 impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
@@ -46,7 +45,6 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
 pub(crate) struct RustcBuiltinMacroParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =

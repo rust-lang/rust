@@ -1,9 +1,7 @@
 use std::mem;
 
 use super::prelude::*;
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
+use crate::attributes::{NoArgsAttributeParser, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::target_checking::Policy::{Allow, Warn};
@@ -12,7 +10,6 @@ use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 pub(crate) struct RustcSkipDuringMethodDispatchParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
 

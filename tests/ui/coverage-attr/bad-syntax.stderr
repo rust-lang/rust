@@ -1,26 +1,26 @@
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:9:1
+  --> $DIR/bad-syntax.rs:10:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/bad-syntax.rs:10:1
+  --> $DIR/bad-syntax.rs:9:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:13:1
-   |
-LL | #[coverage(off)]
-   | ^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
   --> $DIR/bad-syntax.rs:14:1
    |
 LL | #[coverage(on)]
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:13:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/bad-syntax.rs:17:1

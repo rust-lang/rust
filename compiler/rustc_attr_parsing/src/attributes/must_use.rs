@@ -4,7 +4,6 @@ pub(crate) struct MustUseParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),

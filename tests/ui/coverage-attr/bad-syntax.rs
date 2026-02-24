@@ -6,12 +6,12 @@
 // Tests the error messages produced (or not produced) by various unusual
 // uses of the `#[coverage(..)]` attribute.
 
-#[coverage(off)] //~ ERROR multiple `coverage` attributes
 #[coverage(off)]
+#[coverage(off)] //~ ERROR multiple `coverage` attributes
 fn multiple_consistent() {}
 
-#[coverage(off)] //~ ERROR multiple `coverage` attributes
-#[coverage(on)]
+#[coverage(off)]
+#[coverage(on)] //~ ERROR multiple `coverage` attributes
 fn multiple_inconsistent() {}
 
 #[coverage] //~ ERROR malformed `coverage` attribute input

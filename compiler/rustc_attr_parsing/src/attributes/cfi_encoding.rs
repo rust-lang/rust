@@ -8,7 +8,6 @@ impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
 

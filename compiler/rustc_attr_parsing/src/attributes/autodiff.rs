@@ -9,7 +9,7 @@ use rustc_span::{Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::prelude::Allow;
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::attributes::{OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
@@ -18,7 +18,6 @@ pub(crate) struct RustcAutodiffParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
     const PATH: &[Symbol] = &[sym::rustc_autodiff];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),

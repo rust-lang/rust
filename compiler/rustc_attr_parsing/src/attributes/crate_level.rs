@@ -10,7 +10,6 @@ pub(crate) struct CrateNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
@@ -84,7 +83,6 @@ pub(crate) struct RecursionLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
@@ -107,7 +105,6 @@ pub(crate) struct MoveSizeLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
     const PATH: &[Symbol] = &[sym::move_size_limit];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
@@ -130,7 +127,6 @@ pub(crate) struct TypeLengthLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
@@ -153,7 +149,6 @@ pub(crate) struct PatternComplexityLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     const PATH: &[Symbol] = &[sym::pattern_complexity_limit];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
@@ -213,7 +208,6 @@ pub(crate) struct WindowsSubsystemParser;
 impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
 
