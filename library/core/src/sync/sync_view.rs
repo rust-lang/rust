@@ -17,11 +17,11 @@ use core::task::{Context, Poll};
 /// While this may seem not very useful, it allows `SyncView` to _unconditionally_
 /// implement `Sync`. Indeed, the safety requirements of `Sync` state that for `SyncView`
 /// to be `Sync`, it must be sound to _share_ across threads, that is, it must be sound
-/// for `&SyncView` to cross thread boundaries. By design, a `&SyncView<T>` for non-`Sync` T
-/// has no API whatsoever, making it useless, thus harmless, thus memory safe.
+/// for `&SyncView` to cross thread boundaries. By design, a `&SyncView<T>` for non-`Sync`
+/// `T` has no API whatsoever, making it useless, thus harmless, thus memory safe.
 ///
 /// Certain constructs like [`Future`]s can only be used with _exclusive_ access,
-/// and are often `Send` but not `Sync`, so `SyncView` can be used as hint to the
+/// and are often [`Send`] but not `Sync`, so `SyncView` can be used as hint to the
 /// Rust compiler that something is `Sync` in practice.
 ///
 /// ## Examples
