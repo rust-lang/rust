@@ -1,0 +1,12 @@
+//@ run-rustfix
+macro_rules! m {
+    (begin $ard:ident end) => {
+        [$ard] //~ ERROR: expected expression, found `$`
+        //~^ HELP: there is a macro metavariable with similar name
+    };
+}
+
+fn main() {
+    let x = 1;
+    let _ = m![begin x end];
+}
