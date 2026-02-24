@@ -3845,7 +3845,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.span_note(assoc_span, msg);
             }
             ObligationCauseCode::TrivialBound => {
-                err.help("see issue #48214");
                 tcx.disabled_nightly_features(err, [(String::new(), sym::trivial_bounds)]);
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {

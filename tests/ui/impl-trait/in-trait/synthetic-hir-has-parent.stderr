@@ -4,7 +4,6 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |         String: Copy;
    |         ^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -16,7 +15,6 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |     fn demo() -> impl Foo
    |                  ^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
