@@ -932,13 +932,14 @@ pub(crate) struct IrrefutableLetPatternsIfLetGuard {
 )]
 #[note(
     "{$count ->
-    [one] this pattern
-    *[other] these patterns
-} will always match, so the `else` clause is useless"
+    [one] this pattern always matches, so the else clause is unreachable
+    *[other] these patterns always match, so the else clause is unreachable
+}"
 )]
-#[help("consider removing the `else` clause")]
 pub(crate) struct IrrefutableLetPatternsLetElse {
     pub(crate) count: usize,
+    #[help("remove this `else` block")]
+    pub(crate) else_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
