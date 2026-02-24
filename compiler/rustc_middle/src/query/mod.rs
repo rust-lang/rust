@@ -6,8 +6,8 @@ pub use self::caches::{
 pub use self::job::{QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalKey, Key, LocalCrate};
 pub use self::plumbing::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, IntoQueryParam, QueryMode, QueryState,
-    TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
+    ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, IntoQueryParam, QueryMode,
+    QueryState, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
 };
 pub use self::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
 pub use crate::queries::Providers;

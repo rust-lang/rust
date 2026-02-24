@@ -8,8 +8,8 @@ use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryJob, QueryJobId, QueryLatch,
-    QueryMode, QueryStackDeferred, QueryStackFrame, QueryState,
+    ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, QueryCache, QueryJob, QueryJobId,
+    QueryLatch, QueryMode, QueryStackDeferred, QueryStackFrame, QueryState,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
@@ -276,6 +276,8 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
+    // If present, some previous step has already created a `DepNode` for this
+    // query+key, which we should reuse instead of creating a new one.
     dep_node: Option<DepNode>,
 ) -> (C::Value, Option<DepNodeIndex>) {
     let state = query.query_state(tcx);
@@ -582,23 +584,32 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
     Some((result, dep_node_index))
 }
 
-/// Ensure that either this query has all green inputs or been executed.
-/// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
-/// Returns true if the query should still run.
+/// Return value struct for [`check_if_ensure_can_skip_execution`].
+struct EnsureCanSkip {
+    /// If true, the current `tcx.ensure_ok()` or `tcx.ensure_done()` query
+    /// can return early without actually trying to execute.
+    skip_execution: bool,
+    /// A dep node that was prepared while checking whether execution can be
+    /// skipped, to be reused by execution itself if _not_ skipped.
+    dep_node: Option<DepNode>,
+}
+
+/// Checks whether a `tcx.ensure_ok()` or `tcx.ensure_done()` query call can
+/// return early without actually trying to execute.
 ///
-/// This function is particularly useful when executing passes for their
-/// side-effects -- e.g., in order to report errors for erroneous programs.
-///
-/// Note: The optimization is only available during incr. comp.
+/// This only makes sense during incremental compilation, because it relies
+/// on having the dependency graph (and in some cases a disk-cached value)
+/// from the previous incr-comp session.
 #[inline(never)]
-fn ensure_must_run<'tcx, C: QueryCache>(
+fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: &C::Key,
-    check_cache: bool,
-) -> (bool, Option<DepNode>) {
+    ensure_mode: EnsureMode,
+) -> EnsureCanSkip {
+    // Queries with `eval_always` should never skip execution.
     if query.eval_always {
-        return (true, None);
+        return EnsureCanSkip { skip_execution: false, dep_node: None };
     }
 
     // Ensuring an anonymous query makes no sense
@@ -615,7 +626,7 @@ fn ensure_must_run<'tcx, C: QueryCache>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            return (true, Some(dep_node));
+            return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
@@ -624,13 +635,21 @@ fn ensure_must_run<'tcx, C: QueryCache>(
         }
     };
 
-    // We do not need the value at all, so do not check the cache.
-    if !check_cache {
-        return (false, None);
+    match ensure_mode {
+        EnsureMode::Ok => {
+            // In ensure-ok mode, we can skip execution for this key if the node
+            // is green. It must have succeeded in the previous session, and
+            // therefore would succeed in the current session if executed.
+            EnsureCanSkip { skip_execution: true, dep_node: None }
+        }
+        EnsureMode::Done => {
+            // In ensure-done mode, we can only skip execution for this key if
+            // there's a disk-cached value available to load later if needed,
+            // which guarantees the query provider will never run for this key.
+            let is_loadable = query.is_loadable_from_disk(tcx, key, serialized_dep_node_index);
+            EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
+        }
     }
-
-    let loadable = query.is_loadable_from_disk(tcx, key, serialized_dep_node_index);
-    (!loadable, Some(dep_node))
 }
 
 #[inline(always)]
@@ -655,14 +674,20 @@ pub(super) fn get_query_incr<'tcx, C: QueryCache>(
 ) -> Option<C::Value> {
     debug_assert!(tcx.dep_graph.is_fully_enabled());
 
-    let dep_node = if let QueryMode::Ensure { check_cache } = mode {
-        let (must_run, dep_node) = ensure_must_run(query, tcx, &key, check_cache);
-        if !must_run {
-            return None;
+    // Check if query execution can be skipped, for `ensure_ok` or `ensure_done`.
+    // This might have the side-effect of creating a suitable DepNode, which
+    // we should reuse for execution instead of creating a new one.
+    let dep_node: Option<DepNode> = match mode {
+        QueryMode::Ensure { ensure_mode } => {
+            let EnsureCanSkip { skip_execution, dep_node } =
+                check_if_ensure_can_skip_execution(query, tcx, &key, ensure_mode);
+            if skip_execution {
+                // Return early to skip execution.
+                return None;
+            }
+            dep_node
         }
-        dep_node
-    } else {
-        None
+        QueryMode::Get => None,
     };
 
     let (result, dep_node_index) =
