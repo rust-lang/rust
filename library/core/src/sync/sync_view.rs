@@ -86,7 +86,6 @@ use core::task::{Context, Poll};
 // `SyncView` can't have derived `PartialOrd`, `Clone`, etc. impls as they would
 // use `&` access to the inner value, violating the `Sync` impl's safety
 // requirements.
-#[derive(Default)]
 #[repr(transparent)]
 pub struct SyncView<T: ?Sized> {
     inner: T,
@@ -95,6 +94,18 @@ pub struct SyncView<T: ?Sized> {
 // See `SyncView`'s docs for justification.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 unsafe impl<T: ?Sized> Sync for SyncView<T> {}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T> const Default for SyncView<T>
+where
+    T: [const] Default,
+{
+    #[inline]
+    fn default() -> Self {
+        Self { inner: Default::default() }
+    }
+}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: ?Sized> fmt::Debug for SyncView<T> {
@@ -106,6 +117,7 @@ impl<T: ?Sized> fmt::Debug for SyncView<T> {
 impl<T: Sized> SyncView<T> {
     /// Wrap a value in an `SyncView`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn new(t: T) -> Self {
@@ -130,6 +142,7 @@ impl<T: ?Sized> SyncView<T> {
     /// access to the underlying value, but _pinned_ `SyncView`s only
     /// produce _pinned_ access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
@@ -142,6 +155,7 @@ impl<T: ?Sized> SyncView<T> {
     /// a _mutable_ reference to a `T`. This allows you to skip
     /// building an `SyncView` with [`SyncView::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn from_mut(r: &'_ mut T) -> &'_ mut SyncView<T> {
@@ -153,6 +167,7 @@ impl<T: ?Sized> SyncView<T> {
     /// a _pinned mutable_ reference to a `T`. This allows you to skip
     /// building an `SyncView` with [`SyncView::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut SyncView<T>> {
@@ -172,9 +187,10 @@ impl<T> const From<T> for SyncView<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> FnOnce<Args> for SyncView<F>
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+impl<F, Args> const FnOnce<Args> for SyncView<F>
 where
-    F: FnOnce<Args>,
+    F: [const] FnOnce<Args>,
     Args: Tuple,
 {
     type Output = F::Output;
@@ -185,9 +201,10 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> FnMut<Args> for SyncView<F>
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+impl<F, Args> const FnMut<Args> for SyncView<F>
 where
-    F: FnMut<Args>,
+    F: [const] FnMut<Args>,
     Args: Tuple,
 {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
@@ -196,9 +213,10 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> Fn<Args> for SyncView<F>
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+impl<F, Args> const Fn<Args> for SyncView<F>
 where
-    F: Sync + Fn<Args>,
+    F: Sync + [const] Fn<Args>,
     Args: Tuple,
 {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
@@ -260,9 +278,10 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Clone for SyncView<T>
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const Clone for SyncView<T>
 where
-    T: Sync + Clone,
+    T: Sync + [const] Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -272,15 +291,17 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T> TrivialClone for SyncView<T> where T: Sync + TrivialClone {}
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+unsafe impl<T> const TrivialClone for SyncView<T> where T: Sync + [const] TrivialClone {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> Copy for SyncView<T> where T: Sync + Copy {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T, U> PartialEq<SyncView<U>> for SyncView<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T, U> const PartialEq<SyncView<U>> for SyncView<T>
 where
-    T: Sync + PartialEq<U> + ?Sized,
+    T: Sync + [const] PartialEq<U> + ?Sized,
     U: Sync + ?Sized,
 {
     #[inline]
@@ -293,7 +314,8 @@ where
 impl<T> StructuralPartialEq for SyncView<T> where T: Sync + StructuralPartialEq + ?Sized {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Eq for SyncView<T> where T: Sync + Eq + ?Sized {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const Eq for SyncView<T> where T: Sync + [const] Eq + ?Sized {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> Hash for SyncView<T>
@@ -307,9 +329,10 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T, U> PartialOrd<SyncView<U>> for SyncView<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T, U> const PartialOrd<SyncView<U>> for SyncView<T>
 where
-    T: Sync + PartialOrd<U> + ?Sized,
+    T: Sync + [const] PartialOrd<U> + ?Sized,
     U: Sync + ?Sized,
 {
     #[inline]
@@ -319,9 +342,10 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Ord for SyncView<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const Ord for SyncView<T>
 where
-    T: Sync + Ord + ?Sized,
+    T: Sync + [const] Ord + ?Sized,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
