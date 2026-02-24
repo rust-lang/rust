@@ -506,11 +506,12 @@ impl Iterator for LookupHost {
     }
 }
 
+pub fn lookup_host_string(addr: impl Into<String>) -> io::Result<LookupHost> {
+    Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host: addr.into() }))
+}
+
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
-    Err(io::Error::new(
-        io::ErrorKind::Uncategorized,
-        NonIpSockAddr { host: format!("{host}:{port}") },
-    ))
+    lookup_host_string(format!("{host}:{port}"))
 }
 
 #[cfg(test)]

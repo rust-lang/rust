@@ -345,6 +345,8 @@ impl Iterator for LookupHost {
     }
 }
 
+pub(crate) use crate::net::lookup_host_string;
+
 pub fn lookup_host(_host: &str, _port: u16) -> io::Result<LookupHost> {
     unsupported()
 }

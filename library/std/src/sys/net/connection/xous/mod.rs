@@ -46,3 +46,5 @@ pub struct GetAddress {
 }
 
 pub use dns::lookup_host;
+
+pub(crate) use crate::net::lookup_host_string;

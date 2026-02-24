@@ -340,6 +340,8 @@ impl Drop for LookupHost {
     }
 }
 
+pub(crate) use crate::net::lookup_host_string;
+
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
     init();
     run_with_cstr(host.as_bytes(), &|c_host| {

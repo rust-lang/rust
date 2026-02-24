@@ -70,3 +70,7 @@ pub enum Shutdown {
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
 }
+
+// allow(unused_imports): This function is only used on some targets
+#[allow(unused_imports)]
+pub(crate) use socket_addr::lookup_host_string;
