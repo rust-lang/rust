@@ -4,7 +4,6 @@ use std::mem::transmute;
 use std::sync::Arc;
 
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_hashes::Hash64;
 use rustc_hir::def::DefKind;
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -23,9 +22,6 @@ pub struct QueryStackFrame<I> {
     pub info: I,
 
     pub dep_kind: DepKind,
-    /// This hash is used to deterministically pick
-    /// a query to remove cycles in the parallel compiler.
-    pub hash: Hash64,
     pub def_id: Option<DefId>,
     /// A def-id that is extracted from a `Ty` in a query key
     pub def_id_for_ty_in_cycle: Option<DefId>,
@@ -36,18 +32,16 @@ impl<'tcx> QueryStackFrame<QueryStackDeferred<'tcx>> {
     pub fn new(
         info: QueryStackDeferred<'tcx>,
         dep_kind: DepKind,
-        hash: Hash64,
         def_id: Option<DefId>,
         def_id_for_ty_in_cycle: Option<DefId>,
     ) -> Self {
-        Self { info, def_id, dep_kind, hash, def_id_for_ty_in_cycle }
+        Self { info, def_id, dep_kind, def_id_for_ty_in_cycle }
     }
 
     pub fn lift(&self) -> QueryStackFrame<QueryStackFrameExtra> {
         QueryStackFrame {
             info: self.info.extract(),
             dep_kind: self.dep_kind,
-            hash: self.hash,
             def_id: self.def_id,
             def_id_for_ty_in_cycle: self.def_id_for_ty_in_cycle,
         }

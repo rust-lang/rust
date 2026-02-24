@@ -75,8 +75,6 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
-#[cfg(not(no_global_oom_handling))]
-use core::cmp;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
@@ -88,7 +86,7 @@ use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, Tr
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-use core::{fmt, hint, intrinsics, ub_checks};
+use core::{cmp, fmt, hint, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
@@ -1610,6 +1608,73 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn shrink_to(&mut self, min_capacity: usize) {
         if self.capacity() > min_capacity {
             self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
+        }
+    }
+
+    /// Tries to shrink the capacity of the vector as much as possible
+    ///
+    /// The behavior of this method depends on the allocator, which may either shrink the vector
+    /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
+    /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
+    ///
+    /// [`with_capacity`]: Vec::with_capacity
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if the allocator fails to shrink the allocation,
+    /// the vector thereafter is still safe to use, the capacity remains unchanged
+    /// however. See [`Allocator::shrink`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_fallible_shrink)]
+    ///
+    /// let mut vec = Vec::with_capacity(10);
+    /// vec.extend([1, 2, 3]);
+    /// assert!(vec.capacity() >= 10);
+    /// vec.try_shrink_to_fit().expect("why is the test harness failing to shrink to 12 bytes");
+    /// assert!(vec.capacity() >= 3);
+    /// ```
+    #[unstable(feature = "vec_fallible_shrink", issue = "152350")]
+    #[inline]
+    pub fn try_shrink_to_fit(&mut self) -> Result<(), TryReserveError> {
+        if self.capacity() > self.len { self.buf.try_shrink_to_fit(self.len) } else { Ok(()) }
+    }
+
+    /// Shrinks the capacity of the vector with a lower bound.
+    ///
+    /// The capacity will remain at least as large as both the length
+    /// and the supplied value.
+    ///
+    /// If the current capacity is less than the lower limit, this is a no-op.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if the allocator fails to shrink the allocation,
+    /// the vector thereafter is still safe to use, the capacity remains unchanged
+    /// however. See [`Allocator::shrink`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_fallible_shrink)]
+    ///
+    /// let mut vec = Vec::with_capacity(10);
+    /// vec.extend([1, 2, 3]);
+    /// assert!(vec.capacity() >= 10);
+    /// vec.try_shrink_to(4).expect("why is the test harness failing to shrink to 12 bytes");
+    /// assert!(vec.capacity() >= 4);
+    /// vec.try_shrink_to(0).expect("this is a no-op and thus the allocator isn't involved.");
+    /// assert!(vec.capacity() >= 3);
+    /// ```
+    #[unstable(feature = "vec_fallible_shrink", issue = "152350")]
+    #[inline]
+    pub fn try_shrink_to(&mut self, min_capacity: usize) -> Result<(), TryReserveError> {
+        if self.capacity() > min_capacity {
+            self.buf.try_shrink_to_fit(cmp::max(self.len, min_capacity))
+        } else {
+            Ok(())
         }
     }
 

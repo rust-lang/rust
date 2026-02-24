@@ -4492,7 +4492,6 @@ dependencies = [
  "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",

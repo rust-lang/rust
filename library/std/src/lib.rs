@@ -322,7 +322,6 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
-#![feature(cfg_select)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_convert)]
@@ -695,7 +694,7 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
 pub use core::cfg_select;
 #[unstable(
     feature = "concat_bytes",

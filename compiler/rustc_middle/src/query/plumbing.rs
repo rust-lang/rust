@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -12,7 +12,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph;
-use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{
     ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
@@ -104,7 +104,16 @@ pub enum QueryMode {
 /// Stores function pointers and other metadata for a particular query.
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
+
+    /// True if this query has the `anon` modifier.
+    pub anon: bool,
+    /// True if this query has the `eval_always` modifier.
     pub eval_always: bool,
+    /// True if this query has the `depth_limit` modifier.
+    pub depth_limit: bool,
+    /// True if this query has the `feedable` modifier.
+    pub feedable: bool,
+
     pub dep_kind: DepKind,
     /// How this query deals with query cycle errors.
     pub cycle_error_handling: CycleErrorHandling,
@@ -140,6 +149,85 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     ///
     /// Used when reporting query cycle errors and similar problems.
     pub description_fn: fn(TyCtxt<'tcx>, C::Key) -> String,
+}
+
+impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // When debug-printing a query vtable (e.g. for ICE or tracing),
+        // just print the query name to know what query we're dealing with.
+        // The other fields and flags are probably just unhelpful noise.
+        //
+        // If there is need for a more detailed dump of all flags and fields,
+        // consider writing a separate dump method and calling it explicitly.
+        f.write_str(self.name)
+    }
+}
+
+impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
+    #[inline(always)]
+    pub fn will_cache_on_disk_for_key(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> bool {
+        self.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
+    }
+
+    // Don't use this method to access query results, instead use the methods on TyCtxt.
+    #[inline(always)]
+    pub fn query_state(&self, tcx: TyCtxt<'tcx>) -> &'tcx QueryState<'tcx, C::Key> {
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&tcx.query_system.states as *const QueryStates<'tcx>)
+                .byte_add(self.query_state)
+                .cast::<QueryState<'tcx, C::Key>>()
+        }
+    }
+
+    // Don't use this method to access query results, instead use the methods on TyCtxt.
+    #[inline(always)]
+    pub fn query_cache(&self, tcx: TyCtxt<'tcx>) -> &'tcx C {
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&tcx.query_system.caches as *const QueryCaches<'tcx>)
+                .byte_add(self.query_cache)
+                .cast::<C>()
+        }
+    }
+
+    #[inline(always)]
+    pub fn try_load_from_disk(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        key: &C::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<C::Value> {
+        // `?` will return None immediately for queries that never cache to disk.
+        self.try_load_from_disk_fn?(tcx, key, prev_index, index)
+    }
+
+    #[inline]
+    pub fn is_loadable_from_disk(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        key: &C::Key,
+        index: SerializedDepNodeIndex,
+    ) -> bool {
+        self.is_loadable_from_disk_fn.map_or(false, |f| f(tcx, key, index))
+    }
+
+    /// Synthesize an error value to let compilation continue after a cycle.
+    pub fn value_from_cycle_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> C::Value {
+        (self.value_from_cycle_error)(tcx, cycle_error, guar)
+    }
+
+    pub fn construct_dep_node(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
+        DepNode::construct(tcx, self.dep_kind, key)
+    }
 }
 
 pub struct QuerySystemFns {

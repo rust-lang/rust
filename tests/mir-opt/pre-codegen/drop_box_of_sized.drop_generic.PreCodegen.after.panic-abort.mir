@@ -6,7 +6,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     scope 1 (inlined drop_in_place::<Box<T>> - shim(Some(Box<T>))) {
         scope 2 (inlined <Box<T> as Drop>::drop) {
             let _2: std::ptr::NonNull<T>;
-            let _7: ();
+            let _5: ();
             scope 3 {
                 scope 4 {
                     scope 17 (inlined Layout::size) {
@@ -24,7 +24,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _6: *mut u8;
+                                let mut _4: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
                                 scope 27 (inlined NonNull::<u8>::as_ptr) {
@@ -44,8 +44,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     }
                 }
                 scope 7 (inlined Layout::for_value_raw::<T>) {
-                    let mut _3: usize;
-                    let mut _5: std::ptr::Alignment;
+                    let mut _3: std::ptr::Alignment;
                     scope 8 {
                         scope 16 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
                         }
@@ -53,7 +52,6 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     scope 9 (inlined size_of_val_raw::<T>) {
                     }
                     scope 10 (inlined std::ptr::Alignment::of_val_raw::<T>) {
-                        let _4: usize;
                         scope 11 {
                             scope 13 (inlined #[track_caller] std::ptr::Alignment::new_unchecked) {
                                 scope 14 (inlined core::ub_checks::check_language_ub) {
@@ -72,26 +70,26 @@ fn drop_generic(_1: *mut Box<T>) -> () {
 
     bb0: {
         _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
-        _3 = const <T as std::mem::SizedTypeProperties>::SIZE;
-        StorageLive(_4);
-        _4 = const <T as std::mem::SizedTypeProperties>::ALIGN;
-        _5 = copy _4 as std::ptr::Alignment (Transmute);
-        StorageDead(_4);
-        switchInt(copy _3) -> [0: bb3, otherwise: bb1];
+        _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::ptr::Alignment (Transmute);
+        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb4, otherwise: bb1];
     }
 
     bb1: {
-        StorageLive(_6);
-        _6 = copy _2 as *mut u8 (Transmute);
-        _7 = alloc::alloc::__rust_dealloc(move _6, move _3, move _5) -> [return: bb2, unwind unreachable];
+        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb4, otherwise: bb2];
     }
 
     bb2: {
-        StorageDead(_6);
-        goto -> bb3;
+        StorageLive(_4);
+        _4 = copy _2 as *mut u8 (Transmute);
+        _5 = alloc::alloc::__rust_dealloc(move _4, const <T as std::mem::SizedTypeProperties>::SIZE, move _3) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
+        StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
         return;
     }
 }

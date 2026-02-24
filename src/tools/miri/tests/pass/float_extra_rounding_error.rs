@@ -2,7 +2,6 @@
 //@revisions: random max none
 //@[max]compile-flags: -Zmiri-max-extra-rounding-error
 //@[none]compile-flags: -Zmiri-no-extra-rounding-error
-#![feature(cfg_select)]
 
 use std::collections::HashSet;
 use std::hint::black_box;
