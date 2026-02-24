@@ -1,4 +1,4 @@
-//! Defines [`Exclusive`].
+//! Defines [`SyncView`].
 
 use core::clone::TrivialClone;
 use core::cmp::Ordering;
@@ -10,18 +10,18 @@ use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-/// `Exclusive` provides _mutable_ access, also referred to as _exclusive_
+/// `SyncView` provides _mutable_ access, also referred to as _exclusive_
 /// access to the underlying value. However, it only permits _immutable_, or _shared_
 /// access to the underlying value when that value is [`Sync`].
 ///
-/// While this may seem not very useful, it allows `Exclusive` to _unconditionally_
-/// implement `Sync`. Indeed, the safety requirements of `Sync` state that for `Exclusive`
+/// While this may seem not very useful, it allows `SyncView` to _unconditionally_
+/// implement `Sync`. Indeed, the safety requirements of `Sync` state that for `SyncView`
 /// to be `Sync`, it must be sound to _share_ across threads, that is, it must be sound
-/// for `&Exclusive` to cross thread boundaries. By design, a `&Exclusive<T>` for non-`Sync` T
+/// for `&SyncView` to cross thread boundaries. By design, a `&SyncView<T>` for non-`Sync` T
 /// has no API whatsoever, making it useless, thus harmless, thus memory safe.
 ///
 /// Certain constructs like [`Future`]s can only be used with _exclusive_ access,
-/// and are often `Send` but not `Sync`, so `Exclusive` can be used as hint to the
+/// and are often `Send` but not `Sync`, so `SyncView` can be used as hint to the
 /// Rust compiler that something is `Sync` in practice.
 ///
 /// ## Examples
@@ -47,22 +47,22 @@ use core::task::{Context, Poll};
 /// });
 /// ```
 ///
-/// `Exclusive` ensures the struct is `Sync` without stripping the future of its
+/// `SyncView` ensures the struct is `Sync` without stripping the future of its
 /// functionality:
 ///
 /// ```
 /// #![feature(exclusive_wrapper)]
 /// use core::cell::Cell;
-/// use core::sync::Exclusive;
+/// use core::sync::SyncView;
 ///
 /// async fn other() {}
 /// fn assert_sync<T: Sync>(t: T) {}
 /// struct State<F> {
-///     future: Exclusive<F>
+///     future: SyncView<F>
 /// }
 ///
 /// assert_sync(State {
-///     future: Exclusive::new(async {
+///     future: SyncView::new(async {
 ///         let cell = Cell::new(1);
 ///         let cell_ref = &cell;
 ///         other().await;
@@ -73,7 +73,7 @@ use core::task::{Context, Poll};
 ///
 /// ## Parallels with a mutex
 ///
-/// In some sense, `Exclusive` can be thought of as a _compile-time_ version of
+/// In some sense, `SyncView` can be thought of as a _compile-time_ version of
 /// a mutex, as the borrow-checker guarantees that only one `&mut` can exist
 /// for any value. This is a parallel with the fact that
 /// `&` and `&mut` references together can be thought of as a _compile-time_
@@ -82,28 +82,29 @@ use core::task::{Context, Poll};
 #[doc(alias = "SyncWrapper")]
 #[doc(alias = "SyncCell")]
 #[doc(alias = "Unique")]
-// `Exclusive` can't have derived `PartialOrd`, `Clone`, etc. impls as they would
+#[doc(alias = "Exclusive")]
+// `SyncView` can't have derived `PartialOrd`, `Clone`, etc. impls as they would
 // use `&` access to the inner value, violating the `Sync` impl's safety
 // requirements.
 #[derive(Default)]
 #[repr(transparent)]
-pub struct Exclusive<T: ?Sized> {
+pub struct SyncView<T: ?Sized> {
     inner: T,
 }
 
-// See `Exclusive`'s docs for justification.
+// See `SyncView`'s docs for justification.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-unsafe impl<T: ?Sized> Sync for Exclusive<T> {}
+unsafe impl<T: ?Sized> Sync for SyncView<T> {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T: ?Sized> fmt::Debug for Exclusive<T> {
+impl<T: ?Sized> fmt::Debug for SyncView<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("Exclusive").finish_non_exhaustive()
+        f.debug_struct("SyncView").finish_non_exhaustive()
     }
 }
 
-impl<T: Sized> Exclusive<T> {
-    /// Wrap a value in an `Exclusive`
+impl<T: Sized> SyncView<T> {
+    /// Wrap a value in an `SyncView`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
@@ -111,7 +112,7 @@ impl<T: Sized> Exclusive<T> {
         Self { inner: t }
     }
 
-    /// Unwrap the value contained in the `Exclusive`
+    /// Unwrap the value contained in the `SyncView`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
@@ -121,7 +122,7 @@ impl<T: Sized> Exclusive<T> {
     }
 }
 
-impl<T: ?Sized> Exclusive<T> {
+impl<T: ?Sized> SyncView<T> {
     /// Gets exclusive access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
@@ -132,38 +133,38 @@ impl<T: ?Sized> Exclusive<T> {
 
     /// Gets pinned exclusive access to the underlying value.
     ///
-    /// `Exclusive` is considered to _structurally pin_ the underlying
-    /// value, which means _unpinned_ `Exclusive`s can produce _unpinned_
-    /// access to the underlying value, but _pinned_ `Exclusive`s only
+    /// `SyncView` is considered to _structurally pin_ the underlying
+    /// value, which means _unpinned_ `SyncView`s can produce _unpinned_
+    /// access to the underlying value, but _pinned_ `SyncView`s only
     /// produce _pinned_ access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
-        // SAFETY: `Exclusive` can only produce `&mut T` if itself is unpinned
+        // SAFETY: `SyncView` can only produce `&mut T` if itself is unpinned
         // `Pin::map_unchecked_mut` is not const, so we do this conversion manually
         unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().inner) }
     }
 
-    /// Build a _mutable_ reference to an `Exclusive<T>` from
+    /// Build a _mutable_ reference to an `SyncView<T>` from
     /// a _mutable_ reference to a `T`. This allows you to skip
-    /// building an `Exclusive` with [`Exclusive::new`].
+    /// building an `SyncView` with [`SyncView::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn from_mut(r: &'_ mut T) -> &'_ mut Exclusive<T> {
-        // SAFETY: repr is ≥ C, so refs have the same layout; and `Exclusive` properties are `&mut`-agnostic
-        unsafe { &mut *(r as *mut T as *mut Exclusive<T>) }
+    pub const fn from_mut(r: &'_ mut T) -> &'_ mut SyncView<T> {
+        // SAFETY: repr is ≥ C, so refs have the same layout; and `SyncView` properties are `&mut`-agnostic
+        unsafe { &mut *(r as *mut T as *mut SyncView<T>) }
     }
 
-    /// Build a _pinned mutable_ reference to an `Exclusive<T>` from
+    /// Build a _pinned mutable_ reference to an `SyncView<T>` from
     /// a _pinned mutable_ reference to a `T`. This allows you to skip
-    /// building an `Exclusive` with [`Exclusive::new`].
+    /// building an `SyncView` with [`SyncView::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut Exclusive<T>> {
-        // SAFETY: `Exclusive` can only produce `&mut T` if itself is unpinned
+    pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut SyncView<T>> {
+        // SAFETY: `SyncView` can only produce `&mut T` if itself is unpinned
         // `Pin::map_unchecked_mut` is not const, so we do this conversion manually
         unsafe { Pin::new_unchecked(Self::from_mut(r.get_unchecked_mut())) }
     }
@@ -171,7 +172,7 @@ impl<T: ?Sized> Exclusive<T> {
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for Exclusive<T> {
+impl<T> const From<T> for SyncView<T> {
     #[inline]
     fn from(t: T) -> Self {
         Self::new(t)
@@ -179,7 +180,7 @@ impl<T> const From<T> for Exclusive<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> FnOnce<Args> for Exclusive<F>
+impl<F, Args> FnOnce<Args> for SyncView<F>
 where
     F: FnOnce<Args>,
     Args: Tuple,
@@ -192,7 +193,7 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> FnMut<Args> for Exclusive<F>
+impl<F, Args> FnMut<Args> for SyncView<F>
 where
     F: FnMut<Args>,
     Args: Tuple,
@@ -203,7 +204,7 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<F, Args> Fn<Args> for Exclusive<F>
+impl<F, Args> Fn<Args> for SyncView<F>
 where
     F: Sync + Fn<Args>,
     Args: Tuple,
@@ -214,7 +215,7 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Future for Exclusive<T>
+impl<T> Future for SyncView<T>
 where
     T: Future + ?Sized,
 {
@@ -227,7 +228,7 @@ where
 }
 
 #[unstable(feature = "coroutine_trait", issue = "43122")] // also #98407
-impl<R, G> Coroutine<R> for Exclusive<G>
+impl<R, G> Coroutine<R> for SyncView<G>
 where
     G: Coroutine<R> + ?Sized,
 {
@@ -241,7 +242,7 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> AsRef<T> for Exclusive<T>
+impl<T> AsRef<T> for SyncView<T>
 where
     T: Sync + ?Sized,
 {
@@ -252,7 +253,7 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Clone for Exclusive<T>
+impl<T> Clone for SyncView<T>
 where
     T: Sync + Clone,
 {
@@ -264,31 +265,31 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T> TrivialClone for Exclusive<T> where T: Sync + TrivialClone {}
+unsafe impl<T> TrivialClone for SyncView<T> where T: Sync + TrivialClone {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Copy for Exclusive<T> where T: Sync + Copy {}
+impl<T> Copy for SyncView<T> where T: Sync + Copy {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T, U> PartialEq<Exclusive<U>> for Exclusive<T>
+impl<T, U> PartialEq<SyncView<U>> for SyncView<T>
 where
     T: Sync + PartialEq<U> + ?Sized,
     U: Sync + ?Sized,
 {
     #[inline]
-    fn eq(&self, other: &Exclusive<U>) -> bool {
+    fn eq(&self, other: &SyncView<U>) -> bool {
         self.inner == other.inner
     }
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> StructuralPartialEq for Exclusive<T> where T: Sync + StructuralPartialEq + ?Sized {}
+impl<T> StructuralPartialEq for SyncView<T> where T: Sync + StructuralPartialEq + ?Sized {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Eq for Exclusive<T> where T: Sync + Eq + ?Sized {}
+impl<T> Eq for SyncView<T> where T: Sync + Eq + ?Sized {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Hash for Exclusive<T>
+impl<T> Hash for SyncView<T>
 where
     T: Sync + Hash + ?Sized,
 {
@@ -299,19 +300,19 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T, U> PartialOrd<Exclusive<U>> for Exclusive<T>
+impl<T, U> PartialOrd<SyncView<U>> for SyncView<T>
 where
     T: Sync + PartialOrd<U> + ?Sized,
     U: Sync + ?Sized,
 {
     #[inline]
-    fn partial_cmp(&self, other: &Exclusive<U>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &SyncView<U>) -> Option<Ordering> {
         self.inner.partial_cmp(&other.inner)
     }
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> Ord for Exclusive<T>
+impl<T> Ord for SyncView<T>
 where
     T: Sync + Ord + ?Sized,
 {
