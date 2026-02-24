@@ -1,13 +1,10 @@
-use r_efi::efi::Status;
 use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
 use super::{helpers, unsupported_err};
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
-use crate::os::uefi;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
-use crate::ptr::NonNull;
 use crate::{fmt, io};
 
 const PATHS_SEP: u16 = b';' as u16;
@@ -103,23 +100,6 @@ pub fn temp_dir() -> PathBuf {
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn exit(code: i32) -> ! {
-    if let (Some(boot_services), Some(handle)) =
-        (uefi::env::boot_services(), uefi::env::try_image_handle())
-    {
-        let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
-        let _ = unsafe {
-            ((*boot_services.as_ptr()).exit)(
-                handle.as_ptr(),
-                Status::from_usize(code as usize),
-                0,
-                crate::ptr::null_mut(),
-            )
-        };
-    }
-    crate::intrinsics::abort()
 }
 
 pub fn getpid() -> u32 {
