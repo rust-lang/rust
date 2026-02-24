@@ -37,22 +37,18 @@ mod job;
 mod profiling_support;
 mod values;
 
-/// Provides access to vtable-like operations for a query (by obtaining a
-/// `QueryVTable`), but also keeps track of the "unerased" value type of the
-/// query (i.e. the actual result type in the query declaration).
+/// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
 /// This trait allows some per-query code to be defined in generic functions
 /// with a trait bound, instead of having to be defined inline within a macro
 /// expansion.
 ///
 /// There is one macro-generated implementation of this trait for each query,
-/// on the type `rustc_query_impl::query_impl::$name::QueryType`.
-trait QueryDispatcherUnerased<'tcx, C: QueryCache> {
-    type UnerasedValue;
+/// on the type `rustc_query_impl::query_impl::$name::VTableGetter`.
+trait GetQueryVTable<'tcx> {
+    type Cache: QueryCache + 'tcx;
 
-    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, C>;
-
-    fn restore_val(value: C::Value) -> Self::UnerasedValue;
+    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache>;
 }
 
 pub fn query_system<'tcx>(
