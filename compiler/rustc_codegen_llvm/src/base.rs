@@ -210,10 +210,14 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
 }
 
 pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
-    if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS)
+        || attrs.sanitizers.disabled.contains(SanitizerSet::KERNELADDRESS)
+    {
         unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
     }
-    if attrs.sanitizers.disabled.contains(SanitizerSet::HWADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::HWADDRESS)
+        || attrs.sanitizers.disabled.contains(SanitizerSet::KERNELHWADDRESS)
+    {
         unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
     }
 }

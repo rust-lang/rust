@@ -21,7 +21,10 @@ pub(crate) fn target() -> Target {
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
-        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
+        supported_sanitizers: SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::HWADDRESS
+            | SanitizerSet::KERNELHWADDRESS,
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         default_uwtable: true,

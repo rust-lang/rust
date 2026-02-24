@@ -1175,9 +1175,10 @@ bitflags::bitflags! {
         const SHADOWCALLSTACK = 1 << 7;
         const KCFI    = 1 << 8;
         const KERNELADDRESS = 1 << 9;
-        const SAFESTACK = 1 << 10;
-        const DATAFLOW = 1 << 11;
-        const REALTIME = 1 << 12;
+        const KERNELHWADDRESS = 1 << 10;
+        const SAFESTACK = 1 << 11;
+        const DATAFLOW = 1 << 12;
+        const REALTIME = 1 << 13;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1191,24 +1192,32 @@ impl SanitizerSet {
         (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
         (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
         (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::ADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
         (SanitizerSet::LEAK, SanitizerSet::MEMORY),
         (SanitizerSet::LEAK, SanitizerSet::THREAD),
         (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::LEAK, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
         (SanitizerSet::MEMORY, SanitizerSet::THREAD),
         (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
         (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMORY, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
         (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
         (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::THREAD, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
         (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
         (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
         (SanitizerSet::CFI, SanitizerSet::KCFI),
         (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
+        (SanitizerSet::MEMTAG, SanitizerSet::KERNELHWADDRESS),
+        (SanitizerSet::KERNELADDRESS, SanitizerSet::KERNELHWADDRESS),
         (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
+        (SanitizerSet::KERNELHWADDRESS, SanitizerSet::SAFESTACK),
     ];
 
     /// Return sanitizer's name
@@ -1221,6 +1230,7 @@ impl SanitizerSet {
             SanitizerSet::DATAFLOW => "dataflow",
             SanitizerSet::KCFI => "kcfi",
             SanitizerSet::KERNELADDRESS => "kernel-address",
+            SanitizerSet::KERNELHWADDRESS => "kernel-hwaddress",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
@@ -1266,6 +1276,7 @@ impl FromStr for SanitizerSet {
             "dataflow" => SanitizerSet::DATAFLOW,
             "kcfi" => SanitizerSet::KCFI,
             "kernel-address" => SanitizerSet::KERNELADDRESS,
+            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
             "leak" => SanitizerSet::LEAK,
             "memory" => SanitizerSet::MEMORY,
             "memtag" => SanitizerSet::MEMTAG,

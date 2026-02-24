@@ -47,6 +47,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without kernel address sanitizer",
         },
         Need {
+            name: "needs-sanitizer-khwasan",
+            condition: cache.sanitizer_khwasan,
+            ignore_reason: "ignored on targets without kernel hardware-assisted address sanitizer",
+        },
+        Need {
             name: "needs-sanitizer-leak",
             condition: cache.sanitizer_leak,
             ignore_reason: "ignored on targets without leak sanitizer",
@@ -332,6 +337,7 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_dataflow: bool,
     sanitizer_kcfi: bool,
     sanitizer_kasan: bool,
+    sanitizer_khwasan: bool,
     sanitizer_leak: bool,
     sanitizer_memory: bool,
     sanitizer_thread: bool,
@@ -359,6 +365,7 @@ impl CachedNeedsConditions {
             sanitizer_dataflow: sanitizers.contains(&Sanitizer::Dataflow),
             sanitizer_kcfi: sanitizers.contains(&Sanitizer::Kcfi),
             sanitizer_kasan: sanitizers.contains(&Sanitizer::KernelAddress),
+            sanitizer_khwasan: sanitizers.contains(&Sanitizer::KernelHwaddress),
             sanitizer_leak: sanitizers.contains(&Sanitizer::Leak),
             sanitizer_memory: sanitizers.contains(&Sanitizer::Memory),
             sanitizer_thread: sanitizers.contains(&Sanitizer::Thread),
