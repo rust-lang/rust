@@ -426,10 +426,11 @@ pub const fn _mm_min_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(packusdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm_packus_epi32(a: __m128i, b: __m128i) -> __m128i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_packus_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
-        let max = simd_splat(i32::from(u16::MAX));
-        let min = simd_splat(i32::from(u16::MIN));
+        let max = simd_splat(u16::MAX as i32);
+        let min = simd_splat(u16::MIN as i32);
 
         let clamped_a = simd_imax(simd_imin(a.as_i32x4(), max), min)
             .as_m128i()
@@ -1470,7 +1471,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    fn test_mm_packus_epi32() {
+    const fn test_mm_packus_epi32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let b = _mm_setr_epi32(-1, -2, -3, -4);
         let r = _mm_packus_epi32(a, b);
