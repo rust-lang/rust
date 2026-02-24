@@ -238,7 +238,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let sugg = self.try_to_suggest_annotations(&[root_vid], coercion_graph);
 
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
-            self.tcx.emit_diag_node_span_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
                 span,
@@ -304,7 +304,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
-            self.tcx.emit_diag_node_span_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
                 self.tcx.def_span(self.body_id),

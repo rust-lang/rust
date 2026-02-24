@@ -718,7 +718,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     .level
                     .is_error();
                 let span = ecx.cur_span();
-                ecx.tcx.emit_diag_node_span_lint(
+                ecx.tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,

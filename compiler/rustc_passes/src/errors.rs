@@ -8,14 +8,14 @@ use rustc_errors::{
 };
 use rustc_hir::Target;
 use rustc_hir::attrs::{MirDialect, MirPhase};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 
 use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
@@ -45,7 +45,7 @@ pub(crate) struct ConstContinueAttr {
     pub node_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label("`{$no_mangle_attr}` is ignored")]
@@ -62,7 +62,7 @@ pub(crate) struct MixedExportNameAndNoMangle {
     pub export_name_attr: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("crate-level attribute should be an inner attribute")]
 pub(crate) struct OuterCrateLevelAttr {
     #[subdiagnostic]
@@ -76,7 +76,7 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
     pub bang_position: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("crate-level attribute should be in the root module")]
 pub(crate) struct InnerCrateLevelAttr;
 
@@ -152,7 +152,7 @@ pub(crate) struct DocInlineConflict {
     pub spans: MultiSpan,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this attribute can only be applied to a `use` item")]
 #[note(
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
@@ -164,7 +164,7 @@ pub(crate) struct DocInlineOnlyUse {
     pub item_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this attribute can only be applied to an `extern crate` item")]
 #[note(
     "read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information"
@@ -176,7 +176,7 @@ pub(crate) struct DocMaskedOnlyExternCrate {
     pub item_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this attribute cannot be applied to an `extern crate self` item")]
 pub(crate) struct DocMaskedNotExternCrateSelf {
     #[label("not applicable on `extern crate self` items")]
@@ -192,7 +192,7 @@ pub(crate) struct BothFfiConstAndPure {
     pub attr_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
@@ -253,7 +253,7 @@ pub(crate) struct InvalidReprAlignForTarget {
     pub size: u64,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("conflicting representation hints", code = E0566)]
 pub(crate) struct ReprConflictingLint;
 
@@ -302,7 +302,7 @@ pub(crate) struct RustcForceInlineCoro {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum MacroExport {
     #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
     #[note("declarative macros follow the same exporting rules as regular items")]
@@ -323,7 +323,7 @@ pub(crate) enum UnusedNote {
     LinkerMessagesBinaryCrateOnly,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct Unused {
     #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
@@ -347,7 +347,7 @@ pub(crate) struct InvalidMayDangle {
     pub attr_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
     #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
@@ -371,7 +371,7 @@ pub(crate) struct UnusedMultiple {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this `#[deprecated]` annotation has no effect")]
 pub(crate) struct DeprecatedAnnotationHasNoEffect {
     #[suggestion(
@@ -803,7 +803,7 @@ pub(crate) struct IncorrectCrateType {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "useless assignment of {$is_field_assign ->
         [true] field
@@ -815,12 +815,12 @@ pub(crate) struct UselessAssignment<'a> {
     pub ty: Ty<'a>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[inline]` is ignored on externally exported functions")]
 #[help(
     "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
 )]
-pub(crate) struct InlineIgnoredForExported {}
+pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
 #[diag("{$repr}")]
@@ -1041,7 +1041,7 @@ pub(crate) struct ConstStableNotStable {
     pub const_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum MultipleDeadCodes<'tcx> {
     #[diag(
         "{ $multiple ->
@@ -1169,7 +1169,7 @@ pub(crate) struct ProcMacroBadSig {
     pub kind: ProcMacroKind,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable"
 )]
@@ -1178,7 +1178,7 @@ pub(crate) struct UnnecessaryStableFeature {
     pub since: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "the feature `{$feature}` has been partially stabilized since {$since} and is succeeded by the feature `{$implies}`"
 )]
@@ -1200,7 +1200,7 @@ pub(crate) struct UnnecessaryPartialStableFeature {
     pub implies: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("an `#[unstable]` annotation here has no effect")]
 #[note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")]
 pub(crate) struct IneffectiveUnstableImpl;
@@ -1450,7 +1450,7 @@ pub(crate) struct FunctionNamesDuplicated {
     pub spans: Vec<Span>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
 pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,

@@ -75,7 +75,7 @@ pub(crate) fn from_target_feature_attr(
                         // For "neon" specifically, we emit an FCW instead of a hard error.
                         // See <https://github.com/rust-lang/rust/issues/134375>.
                         if tcx.sess.target.arch == Arch::AArch64 && name.as_str() == "neon" {
-                            tcx.emit_diag_node_span_lint(
+                            tcx.emit_node_span_lint(
                                 AARCH64_SOFTFLOAT_NEON,
                                 tcx.local_def_id_to_hir_id(did),
                                 feature_span,

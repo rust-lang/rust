@@ -497,13 +497,13 @@ fn lint_uncovered_ty_params<'tcx>(
         let name = tcx.item_ident(param_def_id);
 
         match local_ty {
-            Some(local_type) => tcx.emit_diag_node_span_lint(
+            Some(local_type) => tcx.emit_node_span_lint(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,
                 errors::TyParamFirstLocalLint { span, note: (), param: name, local_type },
             ),
-            None => tcx.emit_diag_node_span_lint(
+            None => tcx.emit_node_span_lint(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,

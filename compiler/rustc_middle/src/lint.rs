@@ -550,17 +550,6 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
             Level::Warn => rustc_errors::Level::Warning,
             Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
-        // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),
-        // so we need to make sure when we do call `decorate` that the diagnostic is eventually
-        // emitted or we'll get a `must_produce_diag` ICE.
-        //
-        // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
-        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
-        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
-        // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
-        //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
-        //    will be emitted if `can_emit_warnings` is true.
-        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
 
         let disable_suggestions = if let Some(ref span) = span
             // If this code originates in a foreign macro, aka something that this crate
@@ -580,12 +569,35 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
             // allow individual lints to opt-out from being reported.
             let incompatible = future_incompatible.is_some_and(|f| f.reason.edition().is_none());
 
-            if !incompatible && !lint.report_in_external_macro {
+            // In rustc, for the find_attr macro, we want to always emit this.
+            // This completely circumvents normal lint checking, which usually doesn't happen for macros from other crates.
+            // However, we kind of want that when using find_attr from another rustc crate. So we cheat a little.
+            let is_in_find_attr = sess.enable_internal_lints()
+                && span.as_ref().is_some_and(|span| {
+                    span.primary_spans().iter().any(|s| {
+                        s.source_callee().is_some_and(|i| {
+                            matches!(i.kind, ExpnKind::Macro(_, name) if name.as_str() == "find_attr")
+                        })
+                    })
+                });
+
+            if !incompatible && !lint.report_in_external_macro && !is_in_find_attr {
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;
             }
         }
+        // Finally, run `decorate`. `decorate` can call `trimmed_path_str` (directly or indirectly),
+        // so we need to make sure when we do call `decorate` that the diagnostic is eventually
+        // emitted or we'll get a `must_produce_diag` ICE.
+        //
+        // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
+        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
+        //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
+        // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
+        //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
+        //    will be emitted if `can_emit_warnings` is true.
+        let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
 
         let mut err: Diag<'_, ()> = if !skip {
             decorate(sess.dcx(), err_level)

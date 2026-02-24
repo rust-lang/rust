@@ -46,7 +46,7 @@ impl Uncovered {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("multiple patterns overlap on their endpoints")]
 #[note("you likely meant to write mutually exclusive ranges")]
 pub struct OverlappingRangeEndpoints {
@@ -64,7 +64,7 @@ pub struct Overlap {
     pub range: String, // a printed pattern
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("exclusive range missing `{$max}`")]
 pub struct ExclusiveRangeMissingMax {
     #[label("this range doesn't match `{$max}` because `..` is an exclusive range")]
@@ -80,7 +80,7 @@ pub struct ExclusiveRangeMissingMax {
     pub max: String, // a printed pattern
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("multiple ranges are one apart")]
 pub struct ExclusiveRangeMissingGap {
     #[label("this range doesn't match `{$gap}` because `..` is an exclusive range")]
@@ -119,7 +119,7 @@ impl Subdiagnostic for GappedRange {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("some variants are not matched explicitly")]
 #[help("ensure that all variants are matched explicitly by adding the suggested match arms")]
 #[note(

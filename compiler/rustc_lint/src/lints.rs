@@ -4,13 +4,14 @@ use std::num::NonZero;
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
+    ElidedLifetimeInPathSubdiag, EmissionGuarantee, Level, LintDiagnostic, MultiSpan,
+    Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
@@ -580,7 +581,7 @@ impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum BuiltinClashingExtern<'a> {
     #[diag("`{$this}` redeclared with a different signature")]
     SameName {
@@ -686,7 +687,7 @@ pub(crate) struct EnumIntrinsicsMemVariant<'a> {
 }
 
 // expect.rs
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this lint expectation is unfulfilled")]
 pub(crate) struct Expectation {
     #[subdiagnostic]
@@ -1341,7 +1342,7 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 }
 
 // dangling.rs
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this creates a dangling pointer because temporary `{$ty}` is dropped at end of statement")]
 #[help("bind the `{$ty}` to a variable such that it outlives the pointer returned by `{$callee}`")]
 #[note("a dangling pointer is safe, but dereferencing one is undefined behavior")]
@@ -1357,7 +1358,7 @@ pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
     pub temporary_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$fn_kind} returns a dangling pointer to dropped local variable `{$local_var_name}`")]
 #[note("a dangling pointer is safe, but dereferencing one is undefined behavior")]
 #[note("for more information, see <https://doc.rust-lang.org/reference/destructors.html>")]
@@ -1874,7 +1875,7 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
 }
 
 // transmute.rs
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("transmuting an integer to a pointer creates a pointer without provenance")]
 #[note("this is dangerous because dereferencing the resulting pointer is undefined behavior")]
 #[note(
@@ -2324,7 +2325,7 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("passing type `{$ty}` to a function with \"gpu-kernel\" ABI may have unexpected behavior")]
 #[help("use primitive types and raw pointers to get reliable behavior")]
 pub(crate) struct ImproperGpuKernelArg<'a> {
@@ -2564,13 +2565,18 @@ pub(crate) struct AsyncFnInTraitDiag {
     pub sugg: Option<Vec<(Span, String)>>,
 }
 
-impl<'a> LintDiagnostic<'a, ()> for AsyncFnInTraitDiag {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(msg!("use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified"));
-        diag.note(msg!("you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`"));
+impl<'a> Diagnostic<'a, ()> for AsyncFnInTraitDiag {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            "use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified",
+        );
+        diag.note("you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`");
         if let Some(sugg) = self.sugg {
-            diag.multipart_suggestion(msg!("you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change"), sugg, Applicability::MaybeIncorrect);
+            diag.multipart_suggestion("you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change", sugg, Applicability::MaybeIncorrect);
         }
+        diag
     }
 }
 
@@ -3404,7 +3410,7 @@ pub(crate) struct ReservedMultihash {
     pub suggestion: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("direct cast of function item into an integer")]
 pub(crate) struct FunctionCastsAsIntegerDiag<'tcx> {
     #[subdiagnostic]

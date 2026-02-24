@@ -1,6 +1,8 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic, msg};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic, msg,
+};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::Key;
 use rustc_middle::ty::TyCtxt;
@@ -48,7 +50,7 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
     );
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("function cannot return without recursing")]
 #[help("a `loop` may express intention better if this is on purpose")]
 pub(crate) struct UnconditionalRecursion {
@@ -70,7 +72,7 @@ pub(crate) struct InvalidForceInline {
     pub reason: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum ConstMutate {
     #[diag("attempting to modify a `const` item")]
     #[note(
@@ -129,21 +131,26 @@ pub(crate) enum AssertLintKind {
     UnconditionalPanic,
 }
 
-impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(match self.lint_kind {
-            AssertLintKind::ArithmeticOverflow => {
-                msg!("this arithmetic operation will overflow")
-            }
-            AssertLintKind::UnconditionalPanic => {
-                msg!("this operation will panic at runtime")
-            }
-        });
+impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.lint_kind {
+                AssertLintKind::ArithmeticOverflow => {
+                    msg!("this arithmetic operation will overflow")
+                }
+                AssertLintKind::UnconditionalPanic => {
+                    msg!("this operation will panic at runtime")
+                }
+            },
+        );
         let label = self.assert_kind.diagnostic_message();
         self.assert_kind.add_args(&mut |name, value| {
             diag.arg(name, value);
         });
         diag.span_label(self.span, label);
+        diag
     }
 }
 
@@ -156,14 +163,14 @@ impl AssertLintKind {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("call to inline assembly that may unwind")]
 pub(crate) struct AsmUnwindCall {
     #[label("call to inline assembly that may unwind")]
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "call to {$foreign ->
         [true] foreign function
@@ -181,7 +188,7 @@ pub(crate) struct FfiUnwindCall {
     pub foreign: bool,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("taking a reference to a function item does not give a function pointer")]
 pub(crate) struct FnItemRef {
     #[suggestion(
@@ -194,14 +201,14 @@ pub(crate) struct FnItemRef {
     pub ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("value captured by `{$name}` is never read")]
 #[help("did you mean to capture by reference instead?")]
 pub(crate) struct UnusedCaptureMaybeCaptureRef {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("variable `{$name}` is assigned to, but never used")]
 #[note("consider using `_{$name}` instead")]
 pub(crate) struct UnusedVarAssignedOnly {
@@ -210,7 +217,7 @@ pub(crate) struct UnusedVarAssignedOnly {
     pub typo: Option<PatternTypo>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("value assigned to `{$name}` is never read")]
 pub(crate) struct UnusedAssign {
     pub name: Symbol,
@@ -237,14 +244,14 @@ pub(crate) struct UnusedAssignSuggestion {
     pub rhs_borrow_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("value passed to `{$name}` is never read")]
 #[help("maybe it is overwritten before being read?")]
 pub(crate) struct UnusedAssignPassed {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused variable: `{$name}`")]
 pub(crate) struct UnusedVariable {
     pub name: Symbol,
@@ -331,11 +338,13 @@ pub(crate) struct MustNotSupend<'a, 'tcx> {
 }
 
 // Needed for def_path_str
-impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(msg!(
-            "{$pre}`{$def_path}`{$post} held across a suspend point, but should not be"
-        ));
+impl<'a> Diagnostic<'a, ()> for MustNotSupend<'_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            msg!("{$pre}`{$def_path}`{$post} held across a suspend point, but should not be"),
+        );
         diag.span_label(self.yield_sp, msg!("the value is held across this suspend point"));
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
@@ -344,6 +353,7 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
         diag.arg("pre", self.pre);
         diag.arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.arg("post", self.post);
+        diag
     }
 }
 

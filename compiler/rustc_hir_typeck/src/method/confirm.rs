@@ -717,7 +717,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
         };
 
-        self.tcx.emit_diag_node_span_lint(
+        self.tcx.emit_node_span_lint(
             RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
             segment.hir_id,
             segment.ident.span,

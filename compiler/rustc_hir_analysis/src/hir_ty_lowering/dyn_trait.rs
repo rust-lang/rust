@@ -291,7 +291,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // FIXME(mgca): Ideally we would generalize the name of this lint to sth. like
                 // `unused_associated_item_bindings` since this can now also trigger on *const*
                 // projections / assoc *const* bindings.
-                tcx.emit_diag_node_span_lint(
+                tcx.emit_node_span_lint(
                     UNUSED_ASSOCIATED_TYPE_BOUNDS,
                     hir_id,
                     span,

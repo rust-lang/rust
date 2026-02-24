@@ -345,7 +345,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         with_no_trimmed_paths!(with_types_for_signature!(format!("{return_ty}")));
 
     let span = unmatched_bound.unwrap_or(span);
-    tcx.emit_diag_node_span_lint(
+    tcx.emit_node_span_lint(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,
@@ -442,7 +442,7 @@ fn report_mismatched_rpitit_captures<'tcx>(
         .sort_by_cached_key(|arg| !matches!(arg.kind(), ty::GenericArgKind::Lifetime(_)));
     let suggestion = format!("use<{}>", trait_captured_args.iter().join(", "));
 
-    tcx.emit_diag_node_span_lint(
+    tcx.emit_node_span_lint(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_opaque_def_id),
         use_bound_span,

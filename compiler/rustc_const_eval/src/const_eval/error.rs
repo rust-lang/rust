@@ -256,5 +256,5 @@ pub(super) fn lint<'tcx, L>(
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 
-    tcx.emit_diag_node_span_lint(lint, machine.best_lint_scope(*tcx), span, decorator(frames));
+    tcx.emit_node_span_lint(lint, machine.best_lint_scope(*tcx), span, decorator(frames));
 }

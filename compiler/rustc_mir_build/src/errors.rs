@@ -3,13 +3,13 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
     MultiSpan, Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_span::{Ident, Span, Symbol};
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("call to deprecated safe function `{$function}` is unsafe and requires unsafe block")]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
     #[label("call to unsafe function")]
@@ -35,7 +35,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {
     pub(crate) right: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("call to unsafe function `{$function}` is unsafe and requires unsafe block", code = E0133)]
 #[note("consult the function's documentation for information on how to avoid undefined behavior")]
 pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
@@ -46,7 +46,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("call to unsafe function is unsafe and requires unsafe block", code = E0133)]
 #[note("consult the function's documentation for information on how to avoid undefined behavior")]
 pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
@@ -56,7 +56,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("use of inline assembly is unsafe and requires unsafe block", code = E0133)]
 #[note("inline assembly is entirely unchecked and can cause undefined behavior")]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
@@ -66,7 +66,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block", code = E0133)]
 #[note(
     "initializing a layout restricted type's field with a value outside the valid range is undefined behavior"
@@ -78,7 +78,7 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("initializing type with an unsafe field is unsafe and requires unsafe block", code = E0133)]
 #[note("unsafe fields may carry library invariants")]
 pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithUnsafeFieldRequiresUnsafe {
@@ -88,7 +88,7 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithUnsafeFieldRequiresUnsaf
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("use of mutable static is unsafe and requires unsafe block", code = E0133)]
 #[note(
     "mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior"
@@ -100,7 +100,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("use of extern static is unsafe and requires unsafe block", code = E0133)]
 #[note(
     "extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior"
@@ -112,7 +112,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("use of unsafe field is unsafe and requires unsafe block", code = E0133)]
 #[note("unsafe fields may carry library invariants")]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfUnsafeFieldRequiresUnsafe {
@@ -122,7 +122,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfUnsafeFieldRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("dereference of raw pointer is unsafe and requires unsafe block", code = E0133)]
 #[note(
     "raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior"
@@ -134,7 +134,7 @@ pub(crate) struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("access to union field is unsafe and requires unsafe block", code = E0133)]
 #[note(
     "the field may not be properly initialized: using uninitialized data will cause undefined behavior"
@@ -146,7 +146,7 @@ pub(crate) struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "mutation of layout constrained field is unsafe and requires unsafe block",
     code = E0133
@@ -159,7 +159,7 @@ pub(crate) struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsa
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "borrow of layout constrained field with interior mutability is unsafe and requires unsafe block",
     code = E0133,
@@ -171,7 +171,7 @@ pub(crate) struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "unsafe binder cast is unsafe and requires unsafe block information that may be required to uphold safety guarantees of a type",
     code = E0133,
@@ -183,7 +183,7 @@ pub(crate) struct UnsafeOpInUnsafeFnUnsafeBinderCastRequiresUnsafe {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block", code = E0133)]
 #[help(
     "in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
@@ -631,7 +631,7 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unnecessary `unsafe` block")]
 pub(crate) struct UnusedUnsafe {
     #[label("unnecessary `unsafe` block")]
@@ -755,7 +755,7 @@ pub(crate) struct NonConstPath {
     pub(crate) span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unreachable pattern")]
 pub(crate) struct UnreachablePattern<'tcx> {
     #[label("no value can reach this")]
@@ -809,7 +809,7 @@ pub(crate) struct WantedConstant {
     pub(crate) const_path: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unreachable {$descr}")]
 pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {
     pub descr: &'desc str,
@@ -874,7 +874,7 @@ pub(crate) struct UpperRangeBoundCannotBeMin {
     pub(crate) span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("pattern binding `{$name}` is named the same as one of the variants of the type `{$ty_path}`", code = E0170)]
 pub(crate) struct BindingsWithVariantName {
     #[suggestion(
@@ -887,7 +887,7 @@ pub(crate) struct BindingsWithVariantName {
     pub(crate) name: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "irrefutable `if let` {$count ->
     [one] pattern
@@ -905,7 +905,7 @@ pub(crate) struct IrrefutableLetPatternsIfLet {
     pub(crate) count: usize,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "irrefutable `if let` guard {$count ->
     [one] pattern
@@ -923,7 +923,7 @@ pub(crate) struct IrrefutableLetPatternsIfLetGuard {
     pub(crate) count: usize,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "irrefutable `let...else` {$count ->
     [one] pattern
@@ -941,7 +941,7 @@ pub(crate) struct IrrefutableLetPatternsLetElse {
     pub(crate) count: usize,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "irrefutable `while let` {$count ->
     [one] pattern

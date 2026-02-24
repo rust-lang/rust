@@ -33,7 +33,7 @@ use rustc_hir::{
     Item, ItemKind, MethodKind, Node, ParamName, PartialConstStability, Safety, Stability,
     StabilityLevel, Target, TraitItem, find_attr,
 };
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
@@ -57,18 +57,18 @@ use tracing::debug;
 
 use crate::errors;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
 struct DiagnosticOnUnimplementedOnlyForTraits;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to trait impls")]
 struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait impl")]
     item_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     #[label("this is a const trait impl")]
@@ -711,7 +711,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             UNUSED_ATTRIBUTES,
                             hir_id,
                             attr_span,
-                            errors::InlineIgnoredForExported {},
+                            errors::InlineIgnoredForExported,
                         );
                     }
                 }
