@@ -41,7 +41,4 @@ fn issue_11485() {
     }
 }
 
-fn main() {
-    one_liners();
-    transmute_const();
-}
+fn main() {}

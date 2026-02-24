@@ -1144,6 +1144,27 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     })
 }
 
+/// Returns the [`Closure`] enclosing `hir_id`, if any.
+pub fn get_enclosing_closure<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Closure<'tcx>> {
+    cx.tcx.hir_parent_iter(hir_id).find_map(|(_, node)| {
+        if let Node::Expr(expr) = node
+            && let ExprKind::Closure(closure) = expr.kind
+        {
+            Some(closure)
+        } else {
+            None
+        }
+    })
+}
+
+/// Checks whether a local identified by `local_id` is captured as an upvar by the given `closure`.
+pub fn is_upvar_in_closure(cx: &LateContext<'_>, closure: &Closure<'_>, local_id: HirId) -> bool {
+    cx.typeck_results()
+        .closure_min_captures
+        .get(&closure.def_id)
+        .is_some_and(|x| x.contains_key(&local_id))
+}
+
 /// Gets the loop or closure enclosing the given expression, if any.
 pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
     cx: &LateContext<'tcx>,
@@ -2341,12 +2362,11 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                     && let item = tcx.hir_item(id)
                     && let ItemKind::Const(ident, _generics, ty, _body) = item.kind
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
-                        // We could also check for the type name `test::TestDescAndFn`
-                        && let Res::Def(DefKind::Struct, _) = path.res
+                    // We could also check for the type name `test::TestDescAndFn`
+                    && let Res::Def(DefKind::Struct, _) = path.res
+                    && find_attr!(tcx.hir_attrs(item.hir_id()), RustcTestMarker(..))
                 {
-                    if find_attr!(tcx.hir_attrs(item.hir_id()), RustcTestMarker(..)) {
-                        names.push(ident.name);
-                    }
+                    names.push(ident.name);
                 }
             }
             names.sort_unstable();
@@ -3245,6 +3265,8 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 None
             }
         })))
+    } else if go_up_by == 0 && path.is_empty() {
+        String::from("Self")
     } else {
         join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }

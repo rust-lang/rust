@@ -133,4 +133,13 @@ struct InDerive<T: ?Sized> {
 struct Refined<T: ?Sized>(T);
 impl<T: Sized> Refined<T> {}
 
+// in proc-macros
+fn issue13360() {
+    #[derive(serde::Serialize)]
+    #[serde(bound = "T: A")]
+    struct Foo<T: ?Sized> {
+        t: std::marker::PhantomData<T>,
+    }
+}
+
 fn main() {}

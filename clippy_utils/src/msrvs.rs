@@ -142,12 +142,10 @@ impl Msrv {
 
         match (self.0, cargo_msrv) {
             (None, Some(cargo_msrv)) => self.0 = Some(cargo_msrv),
-            (Some(clippy_msrv), Some(cargo_msrv)) => {
-                if clippy_msrv != cargo_msrv {
-                    sess.dcx().warn(format!(
-                        "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
-                    ));
-                }
+            (Some(clippy_msrv), Some(cargo_msrv)) if clippy_msrv != cargo_msrv => {
+                sess.dcx().warn(format!(
+                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
+                ));
             },
             _ => {},
         }

@@ -154,18 +154,14 @@ impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
         match e.kind {
             // fix #10776
             ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
-                (stmts, Some(e)) => {
-                    if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) {
-                        self.visit_expr(e);
-                    }
+                (stmts, Some(e)) if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) => {
+                    self.visit_expr(e);
                 },
-                ([first @ .., stmt], None) => {
-                    if first.iter().all(|stmt| !stmt_might_diverge(stmt)) {
-                        match stmt.kind {
-                            StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
-                            _ => {},
-                        }
-                    }
+                ([first @ .., stmt], None)
+                    if first.iter().all(|stmt| !stmt_might_diverge(stmt))
+                        && let StmtKind::Expr(e) | StmtKind::Semi(e) = stmt.kind =>
+                {
+                    self.visit_expr(e);
                 },
                 _ => {},
             },

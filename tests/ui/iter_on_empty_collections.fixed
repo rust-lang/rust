@@ -84,8 +84,4 @@ mod custom_option {
     }
 }
 
-fn main() {
-    array();
-    custom_option::custom_option();
-    in_macros!();
-}
+fn main() {}

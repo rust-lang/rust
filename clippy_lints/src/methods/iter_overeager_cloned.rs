@@ -1,13 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_copy};
+use clippy_utils::visitors::for_each_expr_without_closures;
+use core::ops::ControlFlow;
 use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Expr, ExprKind, HirId, HirIdSet, PatKind};
+use rustc_hir::{Body, CaptureBy, Closure, Expr, ExprKind, HirId, HirIdSet, Param, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
-use rustc_middle::ty::{self, BorrowKind};
+use rustc_middle::ty::{self, BorrowKind, UpvarCapture};
 use rustc_span::{Symbol, sym};
 
 use super::{ITER_OVEREAGER_CLONED, REDUNDANT_ITER_CLONED};
@@ -64,6 +66,11 @@ pub(super) fn check<'tcx>(
             let body @ Body { params: [p], .. } = cx.tcx.hir_body(closure.body) else {
                 return;
             };
+
+            if param_captured_by_move_block(cx, body.value, p) {
+                return;
+            }
+
             let mut delegate = MoveDelegate {
                 used_move: HirIdSet::default(),
             };
@@ -138,6 +145,34 @@ pub(super) fn check<'tcx>(
 
 struct MoveDelegate {
     used_move: HirIdSet,
+}
+
+/// Checks if the expression contains a closure or coroutine with `move` capture semantics that
+/// captures the given parameter.
+fn param_captured_by_move_block(cx: &LateContext<'_>, expr: &Expr<'_>, param: &Param<'_>) -> bool {
+    let mut param_hir_ids = HirIdSet::default();
+    param.pat.walk(|pat| {
+        param_hir_ids.insert(pat.hir_id);
+        true
+    });
+
+    for_each_expr_without_closures(expr, |e| {
+        if let ExprKind::Closure(Closure {
+            capture_clause: CaptureBy::Value { .. },
+            def_id,
+            ..
+        }) = e.kind
+            && cx.tcx.closure_captures(*def_id).iter().any(|capture| {
+                matches!(capture.info.capture_kind, UpvarCapture::ByValue)
+                    && matches!(capture.place.base, PlaceBase::Upvar(upvar) if param_hir_ids.contains(&upvar.var_path.hir_id))
+            })
+        {
+            return ControlFlow::Break(());
+        }
+
+        ControlFlow::Continue(())
+    })
+    .is_some()
 }
 
 impl<'tcx> Delegate<'tcx> for MoveDelegate {

@@ -155,36 +155,32 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 },
                 left,
                 _,
-            ) => {
-                if is_string(cx, left) {
-                    if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
-                        let parent = get_parent_expr(cx, e);
-                        if let Some(p) = parent
+            ) if is_string(cx, left) => {
+                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
+                    let parent = get_parent_expr(cx, e);
+                    if let Some(p) = parent
                             && let ExprKind::Assign(target, _, _) = p.kind
                                 // avoid duplicate matches
                                 && SpanlessEq::new(cx).eq_expr(target, left)
-                        {
-                            return;
-                        }
+                    {
+                        return;
                     }
-                    span_lint(
-                        cx,
-                        STRING_ADD,
-                        e.span,
-                        "you added something to a string. Consider using `String::push_str()` instead",
-                    );
                 }
+                span_lint(
+                    cx,
+                    STRING_ADD,
+                    e.span,
+                    "you added something to a string. Consider using `String::push_str()` instead",
+                );
             },
-            ExprKind::Assign(target, src, _) => {
-                if is_string(cx, target) && is_add(cx, src, target) {
-                    span_lint(
-                        cx,
-                        STRING_ADD_ASSIGN,
-                        e.span,
-                        "you assigned the result of adding something to this string. Consider using \
+            ExprKind::Assign(target, src, _) if is_string(cx, target) && is_add(cx, src, target) => {
+                span_lint(
+                    cx,
+                    STRING_ADD_ASSIGN,
+                    e.span,
+                    "you assigned the result of adding something to this string. Consider using \
                          `String::push_str()` instead",
-                    );
-                }
+                );
             },
             ExprKind::Index(target, _idx, _) => {
                 let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
@@ -417,6 +413,8 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && args.iter().any(|a| a.hir_id == expr.hir_id)
             && let Res::Def(DefKind::AssocFn, def_id) = expr.res(cx)
             && cx.tcx.is_diagnostic_item(sym::to_string_method, def_id)
+            && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
+            && args.type_at(0).is_str()
         {
             // Detected `ToString::to_string` passed as an argument (generic: any call or method call)
             span_lint_and_sugg(
@@ -425,7 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
                 expr.span,
                 "`ToString::to_string` used as `&str` to `String` converter",
                 "try",
-                "ToOwned::to_owned".to_string(),
+                "str::to_owned".to_string(),
                 Applicability::MachineApplicable,
             );
         }

@@ -157,13 +157,7 @@ fn simply_true() -> bool {
     true
 }
 
-// This is placed last in order to be able to add new tests without changing line numbers
-fn main() {
-    should_warn_hashset();
-    should_warn_btreeset();
-    should_not_warn_hashset();
-    should_not_warn_btreeset();
-}
+fn main() {}
 
 fn issue15990(s: &mut HashSet<usize>, v: usize) {
     if !s.contains(&v) {
