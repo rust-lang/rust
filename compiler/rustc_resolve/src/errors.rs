@@ -1201,15 +1201,6 @@ pub(crate) struct ToolWasAlreadyRegistered {
     pub(crate) old_ident_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag("`{$tool}` only accepts identifiers")]
-pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[primary_span]
-    #[label("not an identifier")]
-    pub(crate) span: Span,
-    pub(crate) tool: Symbol,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum DefinedHere {
     #[label("similarly named {$candidate_descr} `{$candidate}` defined here")]

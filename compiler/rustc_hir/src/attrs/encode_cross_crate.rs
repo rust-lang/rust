@@ -94,6 +94,7 @@ impl AttributeKind {
             ProfilerRuntime => No,
             RecursionLimit { .. } => No,
             ReexportTestHarnessMain(..) => No,
+            RegisterTool(..) => No,
             Repr { .. } => No,
             RustcAbi { .. } => No,
             RustcAllocator => No,

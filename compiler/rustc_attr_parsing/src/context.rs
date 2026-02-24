@@ -164,6 +164,7 @@ attribute_parsers!(
         Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
+        Combine<RegisterToolParser>,
         Combine<ReprParser>,
         Combine<RustcCleanParser>,
         Combine<RustcLayoutParser>,
