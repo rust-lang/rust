@@ -4064,7 +4064,7 @@ declare_lint! {
     /// and actionable warning of similar quality to our other diagnostics. See this tracking
     /// issue for more details: <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_MESSAGES,
-    Warn,
+    Allow,
     "warnings emitted at runtime by the target-specific linker program"
 }
 
