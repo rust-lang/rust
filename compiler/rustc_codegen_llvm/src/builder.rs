@@ -197,7 +197,6 @@ pub(crate) const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
     type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
-    type Metadata = <GenericCx<'ll, CX> as BackendTypes>::Metadata;
     type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
     type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
     type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;

@@ -41,7 +41,7 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         &mut self,
         llvtable: Self::Value,
         vtable_byte_offset: u64,
-        typeid: Self::Metadata,
+        typeid: &[u8],
     ) -> Self::Value;
     /// Trait method used to inject `va_start` on the "spoofed" `VaList` in
     /// Rust defined C-variadic functions.

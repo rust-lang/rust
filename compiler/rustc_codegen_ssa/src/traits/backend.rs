@@ -22,7 +22,6 @@ use crate::{CodegenResults, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
     type Value: CodegenObject + PartialEq;
-    type Metadata: CodegenObject;
     type Function: CodegenObject;
 
     type BasicBlock: Copy;
