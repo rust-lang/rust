@@ -13,12 +13,13 @@ use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
+    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, erase,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
@@ -27,7 +28,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::QueryDispatcherUnerased;
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::{QueryJobMap, find_dep_kind_root};
@@ -324,14 +324,14 @@ where
     QueryStackFrame::new(info, kind, def_id, def_id_for_ty_in_cycle)
 }
 
-pub(crate) fn encode_query_results<'a, 'tcx, Q, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+pub(crate) fn encode_query_results_inner<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    Q: QueryDispatcherUnerased<'tcx, C>,
-    Q::UnerasedValue: Encodable<CacheEncoder<'a, 'tcx>>,
+    C: QueryCache<Value = Erased<V>>,
+    V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
@@ -346,7 +346,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q, C: QueryCache>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore_val(*value));
+            encoder.encode_tagged(dep_node, &erase::restore_val::<V>(*value));
         }
     });
 }
@@ -473,7 +473,6 @@ macro_rules! define_queries {
 
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
-            use std::marker::PhantomData;
             use ::rustc_middle::query::erase::{self, Erased};
 
             pub(crate) mod get_query_incr {
@@ -607,28 +606,15 @@ macro_rules! define_queries {
                 }
             }
 
-            #[derive(Copy, Clone, Default)]
-            pub(crate) struct QueryType<'tcx> {
-                data: PhantomData<&'tcx ()>
-            }
+            /// Marker type that implements [`GetQueryVTable`] for this query.
+            pub(crate) enum VTableGetter {}
 
-            impl<'tcx> QueryDispatcherUnerased<'tcx, queries::$name::Storage<'tcx>>
-                for QueryType<'tcx>
-            {
-                type UnerasedValue = queries::$name::Value<'tcx>;
+            impl<'tcx> GetQueryVTable<'tcx> for VTableGetter {
+                type Cache = rustc_middle::queries::$name::Storage<'tcx>;
 
                 #[inline(always)]
-                fn query_vtable(tcx: TyCtxt<'tcx>)
-                    -> &'tcx QueryVTable<'tcx, queries::$name::Storage<'tcx>>
-                {
+                fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache> {
                     &tcx.query_system.query_vtables.$name
-                }
-
-                #[inline(always)]
-                fn restore_val(value: <queries::$name::Storage<'tcx> as QueryCache>::Value)
-                    -> Self::UnerasedValue
-                {
-                    erase::restore_val::<queries::$name::Value<'tcx>>(value)
                 }
             }
 
@@ -683,12 +669,9 @@ macro_rules! define_queries {
                     encoder: &mut CacheEncoder<'_, 'tcx>,
                     query_result_index: &mut EncodedDepNodeIndex
                 ) {
-                    $crate::plumbing::encode_query_results::<
-                        query_impl::$name::QueryType<'tcx>,
-                        _
-                    > (
-                        &tcx.query_system.query_vtables.$name,
+                    $crate::plumbing::encode_query_results_inner(
                         tcx,
+                        &tcx.query_system.query_vtables.$name,
                         encoder,
                         query_result_index,
                     )
@@ -773,8 +756,8 @@ macro_rules! define_queries {
             $(
                 /// `DepKindVTable` constructor for this query.
                 pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
-                    use $crate::query_impl::$name::QueryType;
-                    make_dep_kind_vtable_for_query::<QueryType<'tcx>, _>(
+                    use $crate::query_impl::$name::VTableGetter;
+                    make_dep_kind_vtable_for_query::<VTableGetter>(
                         is_anon!([$($modifiers)*]),
                         is_eval_always!([$($modifiers)*]),
                     )
