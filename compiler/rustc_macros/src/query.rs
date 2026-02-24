@@ -399,7 +399,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut helpers = HelperTokenStreams::default();
-    let mut feedable_queries = quote! {};
     let mut analyzer_stream = quote! {};
     let mut errors = quote! {};
 
@@ -480,10 +479,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 feedable.span(),
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
-            feedable_queries.extend(quote! {
-                [#modifiers_stream]
-                fn #name(#key_ty) #return_ty,
-            });
         }
 
         add_to_analyzer_stream(&query, &mut analyzer_stream);
@@ -512,11 +507,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                     $( $($extra_fake_queries)* )?
                     #query_stream
                 }
-            }
-        }
-        macro_rules! rustc_feedable_queries {
-            ( $macro:ident! ) => {
-                $macro!(#feedable_queries);
             }
         }
 
