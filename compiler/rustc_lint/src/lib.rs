@@ -78,7 +78,7 @@ mod transmute;
 mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
-mod unused;
+pub mod unused;
 mod utils;
 
 use async_closures::AsyncClosureUsage;
@@ -125,6 +125,7 @@ use transmute::CheckTransmutes;
 use types::*;
 use unit_bindings::*;
 use unqualified_local_imports::*;
+use unused::must_use::*;
 use unused::*;
 
 #[rustfmt::skip]
