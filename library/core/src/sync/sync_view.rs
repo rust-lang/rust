@@ -225,6 +225,20 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<T> const Iterator for SyncView<T>
+where
+    T: [const] Iterator + ?Sized,
+{
+    type Item = T::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.as_mut().next()
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> Future for SyncView<T>
 where
     T: Future + ?Sized,
