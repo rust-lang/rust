@@ -1341,6 +1341,7 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::LEAK)
         && !sanitizer.contains(SanitizerSet::ADDRESS)
         && !sanitizer.contains(SanitizerSet::HWADDRESS)
+        && !sanitizer.contains(SanitizerSet::KERNELHWADDRESS)
     {
         link_sanitizer_runtime(sess, flavor, linker, "lsan");
     }

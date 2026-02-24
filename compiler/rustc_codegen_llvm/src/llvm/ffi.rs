@@ -464,6 +464,8 @@ pub(crate) struct SanitizerOptions {
     pub sanitize_hwaddress_recover: bool,
     pub sanitize_kernel_address: bool,
     pub sanitize_kernel_address_recover: bool,
+    pub sanitize_kernel_hwaddress: bool,
+    pub sanitize_kernel_hwaddress_recover: bool,
 }
 
 /// LLVMRustRelocModel

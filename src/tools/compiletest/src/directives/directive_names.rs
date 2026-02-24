@@ -179,6 +179,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-hwaddress",
     "needs-sanitizer-kasan",
     "needs-sanitizer-kcfi",
+    "needs-sanitizer-khwasan",
     "needs-sanitizer-leak",
     "needs-sanitizer-memory",
     "needs-sanitizer-memtag",

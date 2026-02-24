@@ -168,6 +168,7 @@ pub enum Sanitizer {
     Dataflow,
     Kcfi,
     KernelAddress,
+    KernelHwaddress,
     Leak,
     Memory,
     Memtag,
