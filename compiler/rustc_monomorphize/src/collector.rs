@@ -211,7 +211,6 @@ use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
@@ -227,6 +226,7 @@ use rustc_middle::mir::mono::{
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::sync::{MTLock, par_for_each_in};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{

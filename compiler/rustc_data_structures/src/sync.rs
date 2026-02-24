@@ -40,10 +40,7 @@ pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
 pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
-pub use self::parallel::{
-    broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
-    try_par_for_each_in,
-};
+pub use self::parallel::{ParallelGuard, broadcast, parallel_guard, spawn};
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;

@@ -1,18 +1,17 @@
+use std::collections::BTreeMap;
 use std::io::Write;
-use std::iter;
-use std::ops::ControlFlow;
-use std::sync::Arc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexmap::{self, IndexMap};
+use rustc_data_structures::tree_node_index::TreeNodeIndex;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_middle::query::{
-    CycleError, QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryStackDeferred, QueryStackFrame,
-    QueryWaiter,
+    CycleError, QueryInfo, QueryJob, QueryJobId, QueryStackDeferred, QueryStackFrame,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::Span;
 
 use crate::plumbing::collect_active_jobs_from_all_queries;
 
@@ -34,18 +33,6 @@ impl<'tcx> QueryJobMap<'tcx> {
     fn frame_of(&self, id: QueryJobId) -> &QueryStackFrame<QueryStackDeferred<'tcx>> {
         &self.map[&id].frame
     }
-
-    fn span_of(&self, id: QueryJobId) -> Span {
-        self.map[&id].job.span
-    }
-
-    fn parent_of(&self, id: QueryJobId) -> Option<QueryJobId> {
-        self.map[&id].job.parent
-    }
-
-    fn latch_of(&self, id: QueryJobId) -> Option<&QueryLatch<'tcx>> {
-        self.map[&id].job.latch.as_ref()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -57,12 +44,11 @@ pub(crate) struct QueryJobInfo<'tcx> {
 pub(crate) fn find_cycle_in_stack<'tcx>(
     id: QueryJobId,
     job_map: QueryJobMap<'tcx>,
-    current_job: &Option<QueryJobId>,
+    mut current_job: Option<QueryJobId>,
     span: Span,
 ) -> CycleError<QueryStackDeferred<'tcx>> {
     // Find the waitee amongst `current_job` parents
     let mut cycle = Vec::new();
-    let mut current_job = Option::clone(current_job);
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
@@ -79,12 +65,12 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
             // Find out why the cycle itself was used
             let usage = try {
                 let parent = info.job.parent?;
-                (info.job.span, job_map.frame_of(parent).clone())
+                (info.job.span, job_map.frame_of(parent.id).clone())
             };
             return CycleError { usage, cycle };
         }
 
-        current_job = info.job.parent;
+        current_job = info.job.parent.map(|i| i.id);
     }
 
     panic!("did not find a cycle")
@@ -99,276 +85,161 @@ pub(crate) fn find_dep_kind_root<'tcx>(
     let mut depth = 1;
     let info = &job_map.map[&id];
     let dep_kind = info.frame.dep_kind;
-    let mut current_id = info.job.parent;
+    let mut current = info.job.parent;
     let mut last_layout = (info.clone(), depth);
 
-    while let Some(id) = current_id {
-        let info = &job_map.map[&id];
+    while let Some(inclusion) = current {
+        let info = &job_map.map[&inclusion.id];
         if info.frame.dep_kind == dep_kind {
             depth += 1;
             last_layout = (info.clone(), depth);
         }
-        current_id = info.job.parent;
+        current = info.job.parent;
     }
     last_layout
 }
 
-/// A resumable waiter of a query. The usize is the index into waiters in the query's latch
-type Waiter = (QueryJobId, usize);
-
-/// Visits all the non-resumable and resumable waiters of a query.
-/// Only waiters in a query are visited.
-/// `visit` is called for every waiter and is passed a query waiting on `query`
-/// and a span indicating the reason the query waited on `query`.
-/// If `visit` returns `Break`, this function also returns `Break`,
-/// and if all `visit` calls returns `Continue` it also returns `Continue`.
-/// For visits of non-resumable waiters it returns the return value of `visit`.
-/// For visits of resumable waiters it returns information required to resume that waiter.
-fn visit_waiters<'tcx>(
-    job_map: &QueryJobMap<'tcx>,
-    query: QueryJobId,
-    mut visit: impl FnMut(Span, QueryJobId) -> ControlFlow<Option<Waiter>>,
-) -> ControlFlow<Option<Waiter>> {
-    // Visit the parent query which is a non-resumable waiter since it's on the same stack
-    if let Some(parent) = job_map.parent_of(query) {
-        visit(job_map.span_of(query), parent)?;
-    }
-
-    // Visit the explicit waiters which use condvars and are resumable
-    if let Some(latch) = job_map.latch_of(query) {
-        for (i, waiter) in latch.info.lock().waiters.iter().enumerate() {
-            if let Some(waiter_query) = waiter.query {
-                // Return a value which indicates that this waiter can be resumed
-                visit(waiter.span, waiter_query).map_break(|_| Some((query, i)))?;
-            }
-        }
-    }
-
-    ControlFlow::Continue(())
-}
-
-/// Look for query cycles by doing a depth first search starting at `query`.
-/// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
-/// If a cycle is detected, this initial value is replaced with the span causing
-/// the cycle.
-fn cycle_check<'tcx>(
-    job_map: &QueryJobMap<'tcx>,
-    query: QueryJobId,
-    span: Span,
-    stack: &mut Vec<(Span, QueryJobId)>,
-    visited: &mut FxHashSet<QueryJobId>,
-) -> ControlFlow<Option<Waiter>> {
-    if !visited.insert(query) {
-        return if let Some(p) = stack.iter().position(|q| q.1 == query) {
-            // We detected a query cycle, fix up the initial span and return Some
-
-            // Remove previous stack entries
-            stack.drain(0..p);
-            // Replace the span for the first query with the cycle cause
-            stack[0].0 = span;
-            ControlFlow::Break(None)
-        } else {
-            ControlFlow::Continue(())
-        };
-    }
-
-    // Query marked as visited is added it to the stack
-    stack.push((span, query));
-
-    // Visit all the waiters
-    let r = visit_waiters(job_map, query, |span, successor| {
-        cycle_check(job_map, successor, span, stack, visited)
-    });
-
-    // Remove the entry in our stack if we didn't find a cycle
-    if r.is_continue() {
-        stack.pop();
-    }
-
-    r
-}
-
-/// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
-/// from `query` without going through any of the queries in `visited`.
-/// This is achieved with a depth first search.
-fn connected_to_root<'tcx>(
-    job_map: &QueryJobMap<'tcx>,
-    query: QueryJobId,
-    visited: &mut FxHashSet<QueryJobId>,
-) -> ControlFlow<Option<Waiter>> {
-    // We already visited this or we're deliberately ignoring it
-    if !visited.insert(query) {
-        return ControlFlow::Continue(());
-    }
-
-    // This query is connected to the root (it has no query parent), return true
-    if job_map.parent_of(query).is_none() {
-        return ControlFlow::Break(None);
-    }
-
-    visit_waiters(job_map, query, |_, successor| connected_to_root(job_map, successor, visited))
-}
-
-/// Looks for query cycles starting from the last query in `jobs`.
-/// If a cycle is found, all queries in the cycle is removed from `jobs` and
-/// the function return true.
-/// If a cycle was not found, the starting query is removed from `jobs` and
-/// the function returns false.
-fn remove_cycle<'tcx>(
-    job_map: &QueryJobMap<'tcx>,
-    jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Arc<QueryWaiter<'tcx>>>,
-) -> bool {
-    let mut visited = FxHashSet::default();
-    let mut stack = Vec::new();
-    // Look for a cycle starting with the last query in `jobs`
-    if let ControlFlow::Break(waiter) =
-        cycle_check(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
-    {
-        // The stack is a vector of pairs of spans and queries; reverse it so that
-        // the earlier entries require later entries
-        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
-
-        // Shift the spans so that queries are matched with the span for their waitee
-        spans.rotate_right(1);
-
-        // Zip them back together
-        let mut stack: Vec<_> = iter::zip(spans, queries).collect();
-
-        // Remove the queries in our cycle from the list of jobs to look at
-        for r in &stack {
-            if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
-                jobs.remove(pos);
-            }
-        }
-
-        struct EntryPoint {
-            query_in_cycle: QueryJobId,
-            waiter: Option<(Span, QueryJobId)>,
-        }
-
-        // Find the queries in the cycle which are
-        // connected to queries outside the cycle
-        let entry_points = stack
-            .iter()
-            .filter_map(|&(_, query_in_cycle)| {
-                if job_map.parent_of(query_in_cycle).is_none() {
-                    // This query is connected to the root (it has no query parent)
-                    Some(EntryPoint { query_in_cycle, waiter: None })
-                } else {
-                    let mut waiter_on_cycle = None;
-                    // Find a direct waiter who leads to the root
-                    let _ = visit_waiters(job_map, query_in_cycle, |span, waiter| {
-                        // Mark all the other queries in the cycle as already visited
-                        let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
-
-                        if connected_to_root(job_map, waiter, &mut visited).is_break() {
-                            waiter_on_cycle = Some((span, waiter));
-                            ControlFlow::Break(None)
-                        } else {
-                            ControlFlow::Continue(())
-                        }
-                    });
-
-                    waiter_on_cycle.map(|waiter_on_cycle| EntryPoint {
-                        query_in_cycle,
-                        waiter: Some(waiter_on_cycle),
-                    })
-                }
-            })
-            .collect::<Vec<EntryPoint>>();
-
-        // Pick an entry point, preferring ones with waiters
-        let entry_point = entry_points
-            .iter()
-            .find(|entry_point| entry_point.waiter.is_some())
-            .unwrap_or(&entry_points[0]);
-
-        // Shift the stack so that our entry point is first
-        let entry_point_pos =
-            stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
-        if let Some(pos) = entry_point_pos {
-            stack.rotate_left(pos);
-        }
-
-        let usage = entry_point.waiter.map(|(span, job)| (span, job_map.frame_of(job).clone()));
-
-        // Create the cycle error
-        let error = CycleError {
-            usage,
-            cycle: stack
-                .iter()
-                .map(|&(span, job)| QueryInfo { span, frame: job_map.frame_of(job).clone() })
-                .collect(),
-        };
-
-        // We unwrap `waiter` here since there must always be one
-        // edge which is resumable / waited using a query latch
-        let (waitee_query, waiter_idx) = waiter.unwrap();
-
-        // Extract the waiter we want to resume
-        let waiter = job_map.latch_of(waitee_query).unwrap().extract_waiter(waiter_idx);
-
-        // Set the cycle error so it will be picked up when resumed
-        *waiter.cycle.lock() = Some(error);
-
-        // Put the waiter on the list of things to resume
-        wakelist.push(waiter);
-
-        true
-    } else {
-        false
-    }
-}
-
-/// Detects query cycles by using depth first search over all active query jobs.
-/// If a query cycle is found it will break the cycle by finding an edge which
-/// uses a query latch and then resuming that waiter.
-/// There may be multiple cycles involved in a deadlock, so this searches
-/// all active queries for cycles before finally resuming all the waiters at once.
+/// Breaks left-most cycle on a left-most query in order of a single-threaded execution.
+///
+/// Order of queries is tracked using [`TreeNodeIndex`] in [`rustc_middle::sync`].
+/// This function uses ordered depth-first search from a single root query down to the first
+/// duplicate query.
+/// It doesn't distinguish between a query wait and a query execution, so both are just query calls.
+/// As such some queries may have two or more parent query calls too.
+///
+/// But while it breaks on the same query as with a single thread,
+/// we are not guaranteed to break on the same query **call**.
+/// This is good enough, as the difference is irrelevant to query cycle recovery code.
+/// Every other difference AFAIK is tolerable.
+/// Potential different query result values are fine as either ill-defined due to cycles or
+/// as they preserve the same query result value between different query calls.
+///
+/// To illustrate how it work say we have a query cycle:
+///
+/// ```text
+/// a() -> b() -> a()
+/// ```
+///
+/// and a program `join(|| a(), || b())`.
+/// On a single-thread it triggers cycle recovery on a `a()` call within `b()` query.
+/// However consider a multi-threaded execution:
+///
+/// ```text
+/// thread 1: waits on a()
+/// thread 2: b() -> a() -> waits on b()
+/// ```
+///
+/// Similar to single-threaded execution, we have to resume wait on `a()`.
+/// However this time it could only be done to a *different query call*, the one inside of `join`.
+/// Then we resume until thread 1 blocks in join on a `b()` task.
+///
+/// ```text
+/// thread 1: indirectly waits on b()
+/// thread 2: b() -> a() -> waits on b()
+/// ```
+///
+/// Now the left-most query to break is `b()` so we resume thread 2.
+/// This difference in behavior is strictly more tolerable than the undeterministic cycle breaking.
+#[allow(rustc::potential_query_instability)]
 pub fn break_query_cycles<'tcx>(
-    job_map: QueryJobMap<'tcx>,
+    query_map: QueryJobMap<'tcx>,
     registry: &rustc_thread_pool::Registry,
 ) {
-    let mut wakelist = Vec::new();
-    // It is OK per the comments:
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
-    #[allow(rustc::potential_query_instability)]
-    let mut jobs: Vec<QueryJobId> = job_map.map.keys().copied().collect();
+    let mut root_query = None;
+    for (&query, info) in &query_map.map {
+        if info.job.parent.is_none() {
+            assert!(root_query.is_none(), "found multiple threads without start");
+            root_query = Some(query);
+        }
+    }
+    let root_query = root_query.expect("no root query was found");
 
-    let mut found_cycle = false;
+    let mut subqueries = FxHashMap::<_, BTreeMap<TreeNodeIndex, _>>::default();
+    for query in query_map.map.values() {
+        let Some(inclusion) = &query.job.parent else {
+            continue;
+        };
+        let old = subqueries
+            .entry(inclusion.id)
+            .or_default()
+            .insert(inclusion.branch, (query.job.id, usize::MAX));
+        assert!(old.is_none());
+    }
 
-    while jobs.len() > 0 {
-        if remove_cycle(&job_map, &mut jobs, &mut wakelist) {
-            found_cycle = true;
+    for query in query_map.map.values() {
+        let Some(latch) = &query.job.latch else {
+            continue;
+        };
+        // Latch mutexes should be at least about to unlock as we do not hold it anywhere too long
+        let lock = latch.info.lock();
+        assert!(!lock.complete);
+        for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
+            let inclusion = waiter.query.expect("cannot wait on a root query");
+            let old = subqueries
+                .entry(inclusion.id)
+                .or_default()
+                .insert(inclusion.branch, (query.job.id, waiter_idx));
+            assert!(old.is_none());
         }
     }
 
-    // Check that a cycle was found. It is possible for a deadlock to occur without
-    // a query cycle if a query which can be waited on uses Rayon to do multithreading
-    // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
-    // wait using Rayon on B. Rayon may then switch to executing another query (Y)
-    // which in turn will wait on X causing a deadlock. We have a false dependency from
-    // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
-    // only considers the true dependency and won't detect a cycle.
-    if !found_cycle {
-        panic!(
-            "deadlock detected as we're unable to find a query cycle to break\n\
-            current query map:\n{job_map:#?}",
-        );
+    let mut visited = IndexMap::new();
+    let mut last_usage = None;
+    let mut last_waiter_idx = usize::MAX;
+    let mut current = root_query;
+    while let indexmap::map::Entry::Vacant(entry) = visited.entry(current) {
+        entry.insert((last_usage, last_waiter_idx));
+        last_usage = Some(current);
+        (current, last_waiter_idx) = *subqueries
+            .get(&current)
+            .unwrap_or_else(|| {
+                panic!(
+                    "deadlock detected as we're unable to find a query cycle to break\n\
+                current query map:\n{:#?}",
+                    query_map
+                )
+            })
+            .first_key_value()
+            .unwrap()
+            .1;
+    }
+    let usage = visited[&current].0;
+    let mut iter = visited.keys().rev();
+    let mut cycle = Vec::new();
+    loop {
+        let query_id = *iter.next().unwrap();
+        let query = &query_map.map[&query_id];
+        cycle.push(QueryInfo { span: query.job.span, frame: query.frame.clone() });
+        if query_id == current {
+            break;
+        }
     }
 
-    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
-    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
-    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
-    for _ in 0..wakelist.len() {
-        rustc_thread_pool::mark_unblocked(registry);
-    }
+    cycle.reverse();
+    let cycle_error = CycleError {
+        usage: usage.map(|id| {
+            let query = &query_map.map[&id];
+            (query.job.span, query.frame.clone())
+        }),
+        cycle,
+    };
 
-    for waiter in wakelist.into_iter() {
-        waiter.condvar.notify_one();
-    }
+    let (waited_on, waiter_idx) = if last_waiter_idx != usize::MAX {
+        (current, last_waiter_idx)
+    } else {
+        let (&waited_on, &(_, waiter_idx)) =
+            visited.iter().rev().find(|(_, (_, waiter_idx))| *waiter_idx != usize::MAX).unwrap();
+        (waited_on, waiter_idx)
+    };
+    let waited_on = &query_map.map[&waited_on];
+    let latch = waited_on.job.latch.as_ref().unwrap();
+    let mut latch_info_lock = latch.info.try_lock().unwrap();
+    let waiter = latch_info_lock.waiters.remove(waiter_idx);
+    let mut cycle_lock = waiter.cycle.try_lock().unwrap();
+    assert!(cycle_lock.is_none());
+    *cycle_lock = Some(cycle_error);
+    rustc_thread_pool::mark_unblocked(registry);
+    waiter.condvar.notify_one();
 }
 
 pub fn print_query_stack<'tcx>(
@@ -415,7 +286,7 @@ pub fn print_query_stack<'tcx>(
             );
         }
 
-        current_query = query_info.job.parent;
+        current_query = query_info.job.parent.map(|i| i.id);
         count_total += 1;
     }
 

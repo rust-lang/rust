@@ -5,6 +5,7 @@
 use std::num::NonZero;
 
 use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_data_structures::tree_node_index::TreeNodeIndex;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
@@ -18,7 +19,8 @@ use rustc_middle::query::on_disk_cache::{
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
+    Key, QueryCache, QueryInclusion, QueryJobId, QueryStackDeferred, QueryStackFrame,
+    QueryStackFrameExtra,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
@@ -59,7 +61,7 @@ pub(crate) fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
 }
 
 #[inline]
-pub(crate) fn current_query_job<'tcx>(tcx: TyCtxt<'tcx>) -> Option<QueryJobId> {
+pub(crate) fn current_query_inclusion<'tcx>(tcx: TyCtxt<'tcx>) -> Option<QueryInclusion> {
     tls::with_related_context(tcx, |icx| icx.query)
 }
 
@@ -83,7 +85,7 @@ pub(crate) fn start_query<'tcx, R>(
         // Update the `ImplicitCtxt` to point to our new query job.
         let new_icx = ImplicitCtxt {
             tcx,
-            query: Some(token),
+            query: Some(QueryInclusion { id: token, branch: TreeNodeIndex::root() }),
             query_depth: current_icx.query_depth + depth_limit as usize,
             task_deps: current_icx.task_deps,
         };

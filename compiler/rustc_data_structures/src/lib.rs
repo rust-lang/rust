@@ -92,6 +92,7 @@ pub mod temp_dir;
 pub mod thinvec;
 pub mod thousands;
 pub mod transitive_relation;
+pub mod tree_node_index;
 pub mod unhash;
 pub mod union_find;
 pub mod unord;
