@@ -3,34 +3,34 @@ use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, f
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::lints::PassByValueDiag;
+use crate::lints::DisallowedPassByRefDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
-    /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to
-    /// always be passed by value. This is usually used for types that are thin wrappers around
-    /// references, so there is no benefit to an extra layer of indirection. (Example: `Ty` which
-    /// is a reference to an `Interned<TyKind>`)
-    pub rustc::PASS_BY_VALUE,
+    /// The `disallowed_pass_by_ref` lint detects if types marked with `#[rustc_pass_by_value]` are
+    /// passed by reference. Types with this marker are usually thin wrappers around references, so
+    /// there is no benefit to an extra layer of indirection. (Example: `Ty` which is a reference
+    /// to an `Interned<TyKind>`)
+    pub rustc::DISALLOWED_PASS_BY_REF,
     Warn,
     "pass by reference of a type flagged as `#[rustc_pass_by_value]`",
     report_in_external_macro: true
 }
 
-declare_lint_pass!(PassByValue => [PASS_BY_VALUE]);
+declare_lint_pass!(DisallowedPassByRef => [DISALLOWED_PASS_BY_REF]);
 
-impl<'tcx> LateLintPass<'tcx> for PassByValue {
+impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
                 if cx.tcx.trait_impl_of_assoc(ty.hir_id.owner.to_def_id()).is_some() {
                     return;
                 }
-                if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
+                if let Some(t) = path_for_rustc_pass_by_value(cx, inner_ty) {
                     cx.emit_span_lint(
-                        PASS_BY_VALUE,
+                        DISALLOWED_PASS_BY_REF,
                         ty.span,
-                        PassByValueDiag { ty: t, suggestion: ty.span },
+                        DisallowedPassByRefDiag { ty: t, suggestion: ty.span },
                     );
                 }
             }
@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
     }
 }
 
-fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
+fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
             Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue(_)) => {
