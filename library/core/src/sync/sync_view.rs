@@ -243,6 +243,48 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<F, Args> AsyncFnOnce<Args> for SyncView<F>
+where
+    F: AsyncFnOnce<Args>,
+    Args: Tuple,
+{
+    type CallOnceFuture = F::CallOnceFuture;
+
+    type Output = F::Output;
+
+    extern "rust-call" fn async_call_once(self, args: Args) -> Self::CallOnceFuture {
+        self.into_inner().async_call_once(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<F, Args> AsyncFnMut<Args> for SyncView<F>
+where
+    F: AsyncFnMut<Args>,
+    Args: Tuple,
+{
+    type CallRefFuture<'a>
+        = F::CallRefFuture<'a>
+    where
+        F: 'a;
+
+    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallRefFuture<'_> {
+        self.as_mut().async_call_mut(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<F, Args> AsyncFn<Args> for SyncView<F>
+where
+    F: Sync + AsyncFn<Args>,
+    Args: Tuple,
+{
+    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_> {
+        self.as_ref().async_call(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> Future for SyncView<T>
 where
     T: Future + ?Sized,
