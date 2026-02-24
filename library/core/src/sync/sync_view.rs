@@ -123,14 +123,6 @@ impl<T: Sized> SyncView<T> {
 }
 
 impl<T: ?Sized> SyncView<T> {
-    /// Gets exclusive access to the underlying value.
-    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-    #[must_use]
-    #[inline]
-    pub const fn get_mut(&mut self) -> &mut T {
-        &mut self.inner
-    }
-
     /// Gets pinned exclusive access to the underlying value.
     ///
     /// `SyncView` is considered to _structurally pin_ the underlying
@@ -140,7 +132,7 @@ impl<T: ?Sized> SyncView<T> {
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+    pub const fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         // SAFETY: `SyncView` can only produce `&mut T` if itself is unpinned
         // `Pin::map_unchecked_mut` is not const, so we do this conversion manually
         unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().inner) }
@@ -199,7 +191,7 @@ where
     Args: Tuple,
 {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
-        self.get_mut().call_mut(args)
+        self.as_mut().call_mut(args)
     }
 }
 
@@ -223,7 +215,7 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.get_pin_mut().poll(cx)
+        self.as_pin_mut().poll(cx)
     }
 }
 
@@ -237,18 +229,33 @@ where
 
     #[inline]
     fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume(self.get_pin_mut(), arg)
+        G::resume(self.as_pin_mut(), arg)
     }
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> AsRef<T> for SyncView<T>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const AsRef<T> for SyncView<T>
 where
     T: Sync + ?Sized,
 {
+    /// Gets shared access to the underlying value.
     #[inline]
     fn as_ref(&self) -> &T {
         &self.inner
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const AsMut<T> for SyncView<T>
+where
+    T: ?Sized,
+{
+    /// Gets exclusive access to the underlying value.
+    #[inline]
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 
