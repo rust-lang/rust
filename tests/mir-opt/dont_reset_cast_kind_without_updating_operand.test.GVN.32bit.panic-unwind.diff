@@ -54,7 +54,8 @@
 -         StorageLive(_5);
 +         nop;
           _10 = copy (*_1);
-          _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
+-         _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
++         _11 = copy _10 as *const () (Transmute);
           _5 = &raw const (*_11);
 -         StorageLive(_6);
 +         nop;
