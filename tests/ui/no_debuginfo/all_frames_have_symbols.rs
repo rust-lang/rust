@@ -29,6 +29,11 @@ fn main() {
     // system libraries, which means we miss the last few symbols.
     if cfg!(windows) && cfg!(target_env = "gnu") {
         assert!(missing_symbols < has_symbols && has_symbols > 4);
+    } else if cfg!(all(target_os = "linux", target_env = "gnu")) {
+        //NOTE: The reason we allow one missing symbol is because the frame for the
+        // `__libc_start_main` fn doesn't have a symbol. See the discussion in
+        // #152860 for more details.
+        assert!(missing_symbols < has_symbols && missing_symbols <= 1)
     } else {
         for i in missing_symbol_indices {
             eprintln!("missing symbol for frame {i}: {:#?}", frames[i]);
