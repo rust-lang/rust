@@ -177,6 +177,24 @@ impl<T: ?Sized> SyncView<T> {
     }
 }
 
+impl<T: ?Sized + Sync> SyncView<T> {
+    /// Gets pinned shared access to the underlying value.
+    ///
+    /// `SyncView` is considered to _structurally pin_ the underlying
+    /// value, which means _unpinned_ `SyncView`s can produce _unpinned_
+    /// access to the underlying value, but _pinned_ `SyncView`s only
+    /// produce _pinned_ access to the underlying value.
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[must_use]
+    #[inline]
+    pub const fn as_pin(self: Pin<&Self>) -> Pin<&T> {
+        // SAFETY: `SyncView` can only produce `&T` if itself is unpinned
+        // `Pin::map_unchecked` is not const, so we do this conversion manually
+        unsafe { Pin::new_unchecked(&self.get_ref().inner) }
+    }
+}
+
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for SyncView<T> {
