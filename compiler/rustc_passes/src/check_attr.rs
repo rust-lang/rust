@@ -20,6 +20,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
+use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     MirDialect, MirPhase, ReprAttr, SanitizerSet,
@@ -28,9 +29,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, HirId, Item, ItemKind,
-    MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target, TraitItem,
-    find_attr,
+    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
+    Item, ItemKind, MethodKind, Node, ParamName, PartialConstStability, Safety, Stability,
+    StabilityLevel, Target, TraitItem, find_attr,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -43,8 +44,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-    UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -231,6 +232,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -386,12 +389,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::on_unimplemented, ..] => {
-                            self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
-                        }
-                        [sym::diagnostic, sym::on_const, ..] => {
-                            self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -608,7 +605,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
-    fn check_diagnostic_on_unimplemented(&self, attr_span: Span, hir_id: HirId, target: Target) {
+    fn check_diagnostic_on_unimplemented(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        directive: Option<&Directive>,
+    ) {
         if !matches!(target, Target::Trait) {
             self.tcx.emit_node_span_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
@@ -616,6 +619,39 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 attr_span,
                 DiagnosticOnUnimplementedOnlyForTraits,
             );
+        }
+
+        if let Some(directive) = directive {
+            if let Node::Item(Item {
+                kind: ItemKind::Trait(_, _, _, trait_name, generics, _, _),
+                ..
+            }) = self.tcx.hir_node(hir_id)
+            {
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !has_generic {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            errors::UnknownFormatParameterForOnUnimplementedAttr {
+                                argument_name,
+                                trait_name: *trait_name,
+                                help: !directive.is_rustc_attr,
+                            },
+                        )
+                    }
+                })
+            }
         }
     }
 
@@ -652,6 +688,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             attr_span,
             DiagnosticOnConstOnlyForTraitImpls { item_span },
         );
+
+        // We don't check the validity of generic args here...whose generics would that be, anyway?
+        // The traits' or the impls'?
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.

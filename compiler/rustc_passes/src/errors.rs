@@ -10,7 +10,7 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 
 use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
@@ -1448,4 +1448,14 @@ pub(crate) struct FunctionNotFoundInTrait {
 pub(crate) struct FunctionNamesDuplicated {
     #[primary_span]
     pub spans: Vec<Span>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
+pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
+    pub argument_name: Symbol,
+    pub trait_name: Ident,
+    // `false` if we're in rustc_on_unimplemented, since its syntax is a lot more complex.
+    #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+    pub help: bool,
 }

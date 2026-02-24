@@ -3869,3 +3869,60 @@ pub(crate) struct UnreachableCfgSelectPredicateWildcard {
     #[label("always matches")]
     pub wildcard_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag("positional format arguments are not allowed here")]
+#[help(
+    "only named format arguments with the name of one of the generic types are allowed in this context"
+)]
+pub(crate) struct DisallowedPositionalArgument;
+
+#[derive(LintDiagnostic)]
+#[diag("invalid format specifier")]
+#[help("no format specifier are supported in this position")]
+pub(crate) struct InvalidFormatSpecifier;
+
+#[derive(LintDiagnostic)]
+#[diag("{$description}")]
+pub(crate) struct WrappedParserError<'a> {
+    pub description: &'a str,
+    #[label("{$label}")]
+    pub span: Span,
+    pub label: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
+pub(crate) struct IgnoredDiagnosticOption {
+    pub option_name: Symbol,
+    #[label("`{$option_name}` is first declared here")]
+    pub first_span: Span,
+    #[label("`{$option_name}` is later redundantly declared here")]
+    pub later_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag("missing options for `on_unimplemented` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnUnimplementedAttr;
+
+#[derive(LintDiagnostic)]
+#[diag("missing options for `on_const` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnConstAttr;
+
+#[derive(LintDiagnostic)]
+#[diag("malformed `on_unimplemented` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalformedOnUnimplementedAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag("malformed `on_const` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalformedOnConstAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
