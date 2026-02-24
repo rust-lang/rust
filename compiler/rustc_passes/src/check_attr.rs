@@ -289,6 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
+                    | AttributeKind::RegisterTool(..)
                     // handled below this loop and elsewhere
                     | AttributeKind::Repr { .. }
                     | AttributeKind::RustcAbi { .. }
@@ -407,8 +408,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_layout
                             | sym::rustc_autodiff
                             // crate-level attrs, are checked below
-                            | sym::feature
-                            | sym::register_tool,
+                            | sym::feature,
                             ..
                         ] => {}
                         [name, rest@..] => {
