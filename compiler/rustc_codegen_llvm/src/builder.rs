@@ -202,6 +202,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
 
     type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
     type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
+    type FunctionSignature = <GenericCx<'ll, CX> as BackendTypes>::FunctionSignature;
 
     type DIScope = <GenericCx<'ll, CX> as BackendTypes>::DIScope;
     type DILocation = <GenericCx<'ll, CX> as BackendTypes>::DILocation;

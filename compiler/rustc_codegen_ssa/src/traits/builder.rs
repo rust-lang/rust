@@ -53,6 +53,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             Function = Self::Function,
             BasicBlock = Self::BasicBlock,
             Type = Self::Type,
+            FunctionSignature = Self::FunctionSignature,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
             DILocation = Self::DILocation,
@@ -124,7 +125,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn invoke(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
@@ -621,7 +622,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// assuming the function does not explicitly pass the destination as a pointer in `args`.
     fn call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         fn_val: Self::Value,
@@ -632,7 +633,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn tail_call(
         &mut self,
-        llty: Self::Type,
+        llty: Self::FunctionSignature,
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,

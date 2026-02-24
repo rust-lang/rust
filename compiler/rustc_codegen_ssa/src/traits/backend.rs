@@ -27,6 +27,7 @@ pub trait BackendTypes {
 
     type Value: CodegenObject + PartialEq;
     type Type: CodegenObject + PartialEq;
+    type FunctionSignature: CodegenObject + PartialEq;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).

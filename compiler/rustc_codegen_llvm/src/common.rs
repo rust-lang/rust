@@ -89,6 +89,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
 
     type Value = &'ll Value;
     type Type = &'ll Type;
+    type FunctionSignature = &'ll Type;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
     type DILocation = &'ll llvm::debuginfo::DILocation;
