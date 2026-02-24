@@ -82,13 +82,13 @@ impl<'ll> Funclet<'ll> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
-    type Value = &'ll Value;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = &'ll Value;
-
     type BasicBlock = &'ll BasicBlock;
-    type Type = &'ll Type;
     type Funclet = Funclet<'ll>;
+
+    type Value = &'ll Value;
+    type Type = &'ll Type;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
     type DILocation = &'ll llvm::debuginfo::DILocation;

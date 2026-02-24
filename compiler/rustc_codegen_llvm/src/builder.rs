@@ -196,11 +196,12 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 pub(crate) const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
-    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
     type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
     type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
-    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
     type Funclet = <GenericCx<'ll, CX> as BackendTypes>::Funclet;
+
+    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
+    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
 
     type DIScope = <GenericCx<'ll, CX> as BackendTypes>::DIScope;
     type DILocation = <GenericCx<'ll, CX> as BackendTypes>::DILocation;

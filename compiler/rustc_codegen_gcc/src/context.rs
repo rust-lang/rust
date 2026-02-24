@@ -380,12 +380,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
-    type Value = RValue<'gcc>;
     type Function = Function<'gcc>;
-
     type BasicBlock = Block<'gcc>;
-    type Type = Type<'gcc>;
     type Funclet = (); // TODO(antoyo)
+
+    type Value = RValue<'gcc>;
+    type Type = Type<'gcc>;
 
     type DIScope = (); // TODO(antoyo)
     type DILocation = Location<'gcc>;
