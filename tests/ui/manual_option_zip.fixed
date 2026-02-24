@@ -53,6 +53,9 @@ fn should_not_lint() {
     // tuple has more than 2 elements
     let _ = a.and_then(|a| b.map(|b| (a, b, 1)));
 
+    // three-element tuple but with either `a` or `b` as the elements
+    let _ = a.and_then(|a| b.map(|b| (a, b, a)));
+
     // inner closure body is not a simple tuple of the params
     let _ = a.and_then(|a| b.map(|b| (a, b + 1)));
 
@@ -68,9 +71,6 @@ fn should_not_lint() {
     // closure body is not a map call
     let a: Option<i32> = Some(1);
     let _ = a.and_then(|a| Some((a, 1)));
-
-    // three-element tuple
-    let _ = a.and_then(|a| b.map(|b| (a, b, a)));
 
     // single-element tuple
     let _ = a.and_then(|a| b.map(|_b| (a,)));
