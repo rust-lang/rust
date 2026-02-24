@@ -137,7 +137,7 @@ pub trait CodegenBackend {
 }
 
 pub trait ExtraBackendMethods:
-    CodegenBackend + WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
+    WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
 {
     fn codegen_allocator<'tcx>(
         &self,
