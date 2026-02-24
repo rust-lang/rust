@@ -1400,7 +1400,6 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
-                        &attrs,
                         &items,
                         ident.name,
                     );
