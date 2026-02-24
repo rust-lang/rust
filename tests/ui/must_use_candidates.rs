@@ -99,11 +99,20 @@ pub fn main() -> std::process::ExitCode {
 }
 
 //~v must_use_candidate
-pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
+pub fn result_uninhabited_1() -> Result<i32, std::convert::Infallible> {
     todo!()
 }
 
-//~v must_use_candidate
-pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
+#[must_use]
+pub struct T;
+
+// Do not lint, `T` is `#[must_use]`, so the `Result<T, uninhabited>` also is.
+pub fn result_uninhabited_2() -> Result<T, std::convert::Infallible> {
+    todo!()
+}
+
+// Do not lint: even though `Box` itself is not `#[must_use]`, if the content is (which is
+// the case of `T`), the compiler will treat the box as a `#[must_use]` type already.
+pub fn with_box() -> Box<T> {
     todo!()
 }

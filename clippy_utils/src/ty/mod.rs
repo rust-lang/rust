@@ -9,10 +9,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
+use rustc_hir::{Expr, ExprKind, FnDecl, LangItem};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
+use rustc_lint::unused::must_use::{IsTyMustUse, is_ty_must_use};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
@@ -319,55 +320,22 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Returns whether the `ty` has `#[must_use]` attribute. If `ty` is a `Result`/`ControlFlow`
-// whose `Err`/`Break` payload is an uninhabited type, the `Ok`/`Continue` payload type
-// will be used instead. See <https://github.com/rust-lang/rust/pull/148214>.
+/// Returns whether the `ty` has `#[must_use]` attribute, or acts like it does according to the
+/// compiler determination. For example, if `ty` is a `Result`/`ControlFlow` whose `Err`/`Break`
+/// payload is an uninhabited type, the `Ok`/`Continue` payload type will be used instead.
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, args) => match cx.tcx.get_diagnostic_name(adt.did()) {
-            Some(sym::Result) if args.type_at(1).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
-                is_must_use_ty(cx, args.type_at(0))
-            },
-            Some(sym::ControlFlow) if args.type_at(0).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
-                is_must_use_ty(cx, args.type_at(1))
-            },
-            _ => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
-        },
-        ty::Foreign(did) => find_attr!(cx.tcx, *did, MustUse { .. }),
-        ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
-            // for the Array case we don't need to care for the len == 0 case
-            // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
-        },
-        ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(
-            _,
-            AliasTy {
-                kind: ty::Opaque { def_id },
-                ..
-            },
-        ) => {
-            for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                    && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
-                {
-                    return true;
-                }
-            }
-            false
-        },
-        ty::Dynamic(binder, _) => {
-            for predicate in *binder {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
-                    && find_attr!(cx.tcx, trait_ref.def_id, MustUse { .. })
-                {
-                    return true;
-                }
-            }
-            false
-        },
-        _ => false,
-    }
+    // `is_ty_must_use` requires an expression, whose `hir_id` will be used to determine whether
+    // certain types are visibly uninhabited from the module containing the expression.
+    // `cx.last_node_with_lint_attrs` is initialized to the crate/module `hir_id` when linting
+    // a new crate/module. If it is overriden, it is with an `hir_id` pertaining to the same
+    // create/module. We can use this in a dummy expression instead of asking all callers
+    // to provide a local `hir_id` which would not add more information.
+    let dummy_expr = Expr {
+        hir_id: cx.last_node_with_lint_attrs,
+        span: DUMMY_SP,
+        kind: ExprKind::Ret(None),
+    };
+    matches!(is_ty_must_use(cx, ty, &dummy_expr), IsTyMustUse::Yes(_))
 }
 
 /// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any
