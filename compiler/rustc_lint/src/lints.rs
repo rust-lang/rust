@@ -1807,10 +1807,10 @@ pub(crate) struct AmbiguousNegativeLiteralsCurrentBehaviorSuggestion {
     pub end_span: Span,
 }
 
-// pass_by_value.rs
+// disallowed_pass_by_ref.rs
 #[derive(LintDiagnostic)]
 #[diag("passing `{$ty}` by reference")]
-pub(crate) struct PassByValueDiag {
+pub(crate) struct DisallowedPassByRefDiag {
     pub ty: String,
     #[suggestion("try passing by value", code = "{ty}", applicability = "maybe-incorrect")]
     pub suggestion: Span,
