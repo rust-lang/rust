@@ -21,8 +21,9 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                        msg: &'static str,
                        range: Range<usize>,
                        without_brackets: Option<&str>| {
-        let maybe_sp = source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings)
-            .map(|(sp, _)| sp);
+        let maybe_sp =
+            source_span_for_markdown_range(cx.tcx, dox, &range, &item.attrs.doc_strings())
+                .map(|(sp, _)| sp);
         let sp = maybe_sp.unwrap_or_else(|| item.attr_span(cx.tcx));
         cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, |lint| {
             lint.primary_message(msg)

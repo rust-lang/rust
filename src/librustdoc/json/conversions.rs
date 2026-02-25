@@ -41,7 +41,7 @@ impl JsonRenderer<'_> {
                 (String::from(&**link), self.id_from_item_default(id.into()))
             })
             .collect();
-        let docs = item.opt_doc_value();
+        let docs = item.opt_doc_value().map(|s| s.to_owned());
         let attrs = item
             .attrs
             .other_attrs

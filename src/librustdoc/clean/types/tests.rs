@@ -20,7 +20,7 @@ fn run_test(input: &str, expected: &str) {
     create_default_session_globals_then(|| {
         let mut s = create_doc_fragment(input);
         unindent_doc_fragments(&mut s);
-        let attrs = Attributes { doc_strings: s, other_attrs: Default::default() };
+        let attrs = Attributes::new(s, Default::default());
         assert_eq!(attrs.doc_value(), expected);
     });
 }
