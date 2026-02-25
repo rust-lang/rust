@@ -43,9 +43,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{

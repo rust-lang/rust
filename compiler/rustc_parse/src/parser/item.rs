@@ -2,11 +2,11 @@ use std::fmt::Write;
 use std::mem;
 
 use ast::token::IdentIsRaw;
+use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
-use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};

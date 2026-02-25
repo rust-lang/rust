@@ -23,8 +23,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
+use rustc_session::lint;
 use rustc_session::lint::builtin::TAIL_EXPR_DROP_ORDER;
-use rustc_session::lint::{self};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::debug;
 

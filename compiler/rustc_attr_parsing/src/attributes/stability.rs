@@ -9,7 +9,7 @@ use rustc_hir::{
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{self};
+use crate::session_diagnostics;
 
 macro_rules! reject_outside_std {
     ($cx: ident) => {

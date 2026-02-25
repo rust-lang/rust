@@ -1,8 +1,8 @@
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir};
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};

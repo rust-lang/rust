@@ -25,7 +25,7 @@
 
 use std::cell::Ref;
 use std::collections::BTreeSet;
-use std::fmt::{self};
+use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 

@@ -1,5 +1,4 @@
-use core::ptr::{self};
-use core::slice::{self};
+use core::{ptr, slice};
 
 use super::{Drain, Vec};
 use crate::alloc::{Allocator, Global};
