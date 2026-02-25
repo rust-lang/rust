@@ -40,10 +40,13 @@ impl TreeNodeIndex {
     fn try_bits_branch(self, branch_idx: u64, bits: u32) -> Result<Self, BranchingError> {
         let trailing_zeros = self.0.trailing_zeros();
         let allocated_shift = trailing_zeros.checked_sub(bits).ok_or(BranchingError(()))?;
+        // Using wrapping operations for optimization, as edge cases are unreachable:
+        // - `trailing_zeros < 64` as we are guaranteed at least one bit is set
+        // - `allocated_shift == trailing_zeros - bits <= trailing_zeros < 64`
         Ok(TreeNodeIndex(
-            self.0 & !(1 << trailing_zeros)
-                | (1 << allocated_shift)
-                | branch_idx.unbounded_shl(allocated_shift + 1),
+            self.0 & !u64::wrapping_shl(1, trailing_zeros)
+                | u64::wrapping_shl(1, allocated_shift)
+                | branch_idx.unbounded_shl(allocated_shift.wrapping_add(1)),
         ))
     }
 
@@ -61,8 +64,9 @@ impl TreeNodeIndex {
 
 #[inline]
 fn ceil_ilog2(branch_num: u64) -> u32 {
-    // floor(log2(n - 1)) + 1 == ceil(log2(n))
-    (branch_num - 1).checked_ilog2().map_or(0, |b| b + 1)
+    // Using `wrapping_sub` for optimization, consider `log(0)` to be undefined
+    // `floor(log2(n - 1)) + 1 == ceil(log2(n))`
+    branch_num.wrapping_sub(1).checked_ilog2().map_or(0, |b| b.wrapping_add(1))
 }
 
 /// Error for exhausting free bits
