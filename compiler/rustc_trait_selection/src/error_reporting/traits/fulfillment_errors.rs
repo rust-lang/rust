@@ -2632,15 +2632,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_def_id != def_id
                 && trait_name == self.tcx.item_name(def_id)
                 && trait_has_same_params(def_id)
-                && self.predicate_must_hold_modulo_regions(&Obligation::new(
-                    self.tcx,
-                    obligation.cause.clone(),
-                    obligation.param_env,
-                    trait_pred.map_bound(|tr| ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::new(self.tcx, def_id, tr.trait_ref.args),
-                        ..tr
-                    }),
-                ))
+                // `PointeeSized` is special -- it's a very weak/top sizedness marker that's
+                // effectively implemented for all types, and most importantly isn't lowered
+                // to the trait solver, so we skip doing any semantic checking for it.
+                && (self.tcx.is_lang_item(def_id, LangItem::PointeeSized)
+                    || self.predicate_must_hold_modulo_regions(&Obligation::new(
+                        self.tcx,
+                        obligation.cause.clone(),
+                        obligation.param_env,
+                        trait_pred.map_bound(|tr| ty::TraitPredicate {
+                            trait_ref: ty::TraitRef::new(self.tcx, def_id, tr.trait_ref.args),
+                            ..tr
+                        }),
+                    )))
         }) {
             err.note(format!(
                 "`{}` implements similarly named trait `{}`, but not `{}`",
