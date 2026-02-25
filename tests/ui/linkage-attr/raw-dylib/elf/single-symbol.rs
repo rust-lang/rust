@@ -16,6 +16,8 @@
 
 #![feature(raw_dylib_elf)]
 #![allow(incomplete_features)]
+// FIXME: "type and size of dynamic symbol are not defined" with GNU LD
+#![allow(linker_messages)]
 
 #[cfg_attr(with, link(name = "rawdylibbutforcats", kind = "raw-dylib"))]
 #[cfg_attr(without, link(name = "rawdylibbutforcats"))]

@@ -318,7 +318,7 @@ pub(crate) enum UnusedNote {
     #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
     DefaultMethodBodyConst,
     #[note(
-        "the `linker_messages` lint can only be controlled at the root of a crate that needs to be linked"
+        "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
     LinkerMessagesBinaryCrateOnly,
 }
