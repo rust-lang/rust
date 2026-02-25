@@ -215,6 +215,7 @@ fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &
         "fixed",  // expected source file after applying fixes
         "md",     // test directory descriptions
         "ftl",    // translation tests
+        "ps1",    // powershell scripts, used for fake linkers on Windows
     ];
 
     const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
