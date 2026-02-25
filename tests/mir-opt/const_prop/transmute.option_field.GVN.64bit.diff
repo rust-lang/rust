@@ -17,16 +17,14 @@
       }
   
       bb1: {
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = copy ((_1 as Some).0: std::ptr::NonNull<()>);
           StorageLive(_4);
           _4 = copy _3;
 -         _0 = move _4 as *const () (Transmute);
-+         _0 = copy _3 as *const () (Transmute);
++         _0 = copy _1 as *const () (Transmute);
           StorageDead(_4);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           goto -> bb3;
       }
   

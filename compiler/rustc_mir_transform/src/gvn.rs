@@ -1590,10 +1590,22 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     self.get(value)
             {
                 if let Value::Projection(
-                    _downcast_value,
+                    downcast_value,
                     ProjectionElem::Downcast(_, _variant_idx),
                 ) = self.get(field_value)
                 {
+                    let downcast_ty = self.ty(downcast_value);
+                    if let Ok(downcast_layout) = self.ecx.layout_of(downcast_ty)
+                        && let Ok(projected_layout) = self.ecx.layout_of(from)
+                        && downcast_layout.size == projected_layout.size
+                    {
+                        from = downcast_ty;
+                        value = downcast_value;
+                        was_updated_this_iteration = true;
+                        if projected_layout.ty == to {
+                            return Some(value);
+                        }
+                    }
                 } else if let Some((f_idx, field_ty)) =
                     self.value_is_all_in_one_field(self.ty(field_value), FIRST_VARIANT)
                 {
