@@ -12,7 +12,7 @@ use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::dep_graph;
 use rustc_middle::queries::{self, ExternProviders, Providers};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
+use rustc_middle::query::plumbing::{QuerySystem, QueryVTable};
 use rustc_middle::query::{AsLocalKey, QueryCache, QueryMode};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -59,12 +59,8 @@ pub fn query_system<'tcx>(
         arenas: Default::default(),
         query_vtables: make_query_vtables(incremental),
         on_disk_cache,
-        fns: QuerySystemFns {
-            local_providers,
-            extern_providers,
-            encode_query_results: encode_all_query_results,
-            try_mark_green,
-        },
+        local_providers,
+        extern_providers,
         jobs: AtomicU64::new(1),
     }
 }
@@ -74,4 +70,6 @@ rustc_middle::rustc_with_all_queries! { define_queries! }
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
     providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
+    providers.hooks.encode_all_query_results = encode_all_query_results;
+    providers.hooks.try_mark_green = try_mark_green;
 }
