@@ -658,8 +658,7 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length =
-                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?;
+            let mut length = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?;
 
             if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works

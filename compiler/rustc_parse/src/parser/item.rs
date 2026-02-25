@@ -1587,9 +1587,7 @@ impl<'a> Parser<'a> {
 
         let rhs = match (self.eat(exp!(Eq)), const_arg) {
             (true, true) => ConstItemRhsKind::TypeConst {
-                rhs: Some(
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?,
-                ),
+                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
             },
             (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
