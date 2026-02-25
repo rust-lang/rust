@@ -1,6 +1,3 @@
-use std::error::Error;
-use std::fmt::Display;
-
 /// Ordered index for dynamic trees
 ///
 /// ## Encoding
@@ -37,13 +34,13 @@ impl TreeNodeIndex {
     }
 
     /// Append tree branch no. `branch_idx` reserving `bits` bits.
-    fn try_bits_branch(self, branch_idx: u64, bits: u32) -> Result<Self, BranchingError> {
+    fn try_bits_branch(self, branch_idx: u64, bits: u32) -> Option<Self> {
         let trailing_zeros = self.0.trailing_zeros();
-        let allocated_shift = trailing_zeros.checked_sub(bits).ok_or(BranchingError(()))?;
+        let allocated_shift = trailing_zeros.checked_sub(bits)?;
         // Using wrapping operations for optimization, as edge cases are unreachable:
         // - `trailing_zeros < 64` as we are guaranteed at least one bit is set
         // - `allocated_shift == trailing_zeros - bits <= trailing_zeros < 64`
-        Ok(TreeNodeIndex(
+        Some(TreeNodeIndex(
             self.0 & !u64::wrapping_shl(1, trailing_zeros)
                 | u64::wrapping_shl(1, allocated_shift)
                 | branch_idx.unbounded_shl(allocated_shift.wrapping_add(1)),
@@ -58,7 +55,9 @@ impl TreeNodeIndex {
         );
         // `branch_num != 0` per debug assertion above
         let bits = ceil_ilog2(branch_num);
-        self.try_bits_branch(branch_idx, bits).unwrap()
+        self.try_bits_branch(branch_idx, bits).expect(
+            "TreeNodeIndex's free bits have been exhausted, make sure recursion is used carefully",
+        )
     }
 }
 
@@ -67,25 +66,6 @@ fn ceil_ilog2(branch_num: u64) -> u32 {
     // Using `wrapping_sub` for optimization, consider `log(0)` to be undefined
     // `floor(log2(n - 1)) + 1 == ceil(log2(n))`
     branch_num.wrapping_sub(1).checked_ilog2().map_or(0, |b| b.wrapping_add(1))
-}
-
-/// Error for exhausting free bits
-#[derive(Debug)]
-pub struct BranchingError(());
-
-impl Error for BranchingError {}
-
-impl Display for BranchingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "TreeNodeIndex's free bits have been exhausted, make sure recursion is used carefully"
-            .fmt(f)
-    }
-}
-
-impl Default for TreeNodeIndex {
-    fn default() -> Self {
-        TreeNodeIndex::root()
-    }
 }
 
 #[cfg(test)]
