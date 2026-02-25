@@ -11,11 +11,10 @@ use rustc_macros::HashStable;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
-use crate::dep_graph;
 use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
+use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
 use crate::query::{QueryCache, QueryInfo, QueryJob};
 use crate::ty::TyCtxt;
@@ -216,17 +215,6 @@ impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
     }
 }
 
-pub struct QuerySystemFns {
-    pub local_providers: Providers,
-    pub extern_providers: ExternProviders,
-    pub encode_query_results: for<'tcx> fn(
-        tcx: TyCtxt<'tcx>,
-        encoder: &mut CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut EncodedDepNodeIndex,
-    ),
-    pub try_mark_green: for<'tcx> fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
-}
-
 pub struct QuerySystem<'tcx> {
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub query_vtables: QueryVTables<'tcx>,
@@ -237,7 +225,8 @@ pub struct QuerySystem<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub on_disk_cache: Option<OnDiskCache>,
 
-    pub fns: QuerySystemFns,
+    pub local_providers: Providers,
+    pub extern_providers: ExternProviders,
 
     pub jobs: AtomicU64,
 }
@@ -326,10 +315,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
-    }
-
-    pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
-        (self.query_system.fns.try_mark_green)(self, dep_node)
     }
 }
 
