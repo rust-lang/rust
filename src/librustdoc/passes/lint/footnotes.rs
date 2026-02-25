@@ -1,15 +1,3 @@
-//! Detects specific markdown syntax that's different between pulldown-cmark
-//! 0.9 and 0.11.
-//!
-//! This is a mitigation for old parser bugs that affected some
-//! real crates' docs. The old parser claimed to comply with CommonMark,
-//! but it did not. These warnings will eventually be removed,
-//! though some of them may become Clippy lints.
-//!
-//! <https://github.com/rust-lang/rust/pull/121659#issuecomment-1992752820>
-//!
-//! <https://rustc-dev-guide.rust-lang.org/bug-fix-procedure.html#add-the-lint-to-the-list-of-removed-lists>
-
 use std::ops::Range;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
