@@ -1,38 +1,8 @@
 use core::alloc::Allocator;
-use core::iter::FusedIterator;
 
-use super::merge_iter::MergeIterInner;
 use super::node::{self, Root};
 
 impl<K, V> Root<K, V> {
-    /// Appends all key-value pairs from the union of two ascending iterators,
-    /// incrementing a `length` variable along the way. The latter makes it
-    /// easier for the caller to avoid a leak when a drop handler panicks.
-    ///
-    /// If both iterators produce the same key, this method drops the pair from
-    /// the left iterator and appends the pair from the right iterator.
-    ///
-    /// If you want the tree to end up in a strictly ascending order, like for
-    /// a `BTreeMap`, both iterators should produce keys in strictly ascending
-    /// order, each greater than all keys in the tree, including any keys
-    /// already in the tree upon entry.
-    pub(super) fn append_from_sorted_iters<I, A: Allocator + Clone>(
-        &mut self,
-        left: I,
-        right: I,
-        length: &mut usize,
-        alloc: A,
-    ) where
-        K: Ord,
-        I: Iterator<Item = (K, V)> + FusedIterator,
-    {
-        // We prepare to merge `left` and `right` into a sorted sequence in linear time.
-        let iter = MergeIter(MergeIterInner::new(left, right));
-
-        // Meanwhile, we build a tree from the sorted sequence in linear time.
-        self.bulk_push(iter, length, alloc)
-    }
-
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
@@ -92,26 +62,5 @@ impl<K, V> Root<K, V> {
             *length += 1;
         }
         self.fix_right_border_of_plentiful();
-    }
-}
-
-// An iterator for merging two sorted sequences into one
-struct MergeIter<K, V, I: Iterator<Item = (K, V)>>(MergeIterInner<I>);
-
-impl<K: Ord, V, I> Iterator for MergeIter<K, V, I>
-where
-    I: Iterator<Item = (K, V)> + FusedIterator,
-{
-    type Item = (K, V);
-
-    /// If two keys are equal, returns the key from the left and the value from the right.
-    fn next(&mut self) -> Option<(K, V)> {
-        let (a_next, b_next) = self.0.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
-        match (a_next, b_next) {
-            (Some((a_k, _)), Some((_, b_v))) => Some((a_k, b_v)),
-            (Some(a), None) => Some(a),
-            (None, Some(b)) => Some(b),
-            (None, None) => None,
-        }
     }
 }

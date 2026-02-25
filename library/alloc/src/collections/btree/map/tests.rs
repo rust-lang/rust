@@ -2224,7 +2224,7 @@ fn test_append_drop_leak() {
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
     assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1); // should be 2 were it not for Rust issue #47949
+    assert_eq!(b.dropped(), 2);
     assert_eq!(c.dropped(), 2);
 }
 
