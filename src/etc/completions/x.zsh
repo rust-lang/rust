@@ -40,6 +40,8 @@ _x() {
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -93,6 +95,8 @@ _arguments "${_arguments_options[@]}" : \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -139,6 +143,8 @@ _arguments "${_arguments_options[@]}" : \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -190,6 +196,8 @@ _arguments "${_arguments_options[@]}" : \
 '--allow-staged[]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -234,6 +242,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -280,6 +290,8 @@ _arguments "${_arguments_options[@]}" : \
 '--all[apply to all appropriate files, not just those that have been modified]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -326,6 +338,8 @@ _arguments "${_arguments_options[@]}" : \
 '--json[render the documentation in JSON format in addition to the usual HTML format]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -388,6 +402,8 @@ _arguments "${_arguments_options[@]}" : \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -438,6 +454,8 @@ _arguments "${_arguments_options[@]}" : \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -483,6 +501,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -528,6 +548,8 @@ _arguments "${_arguments_options[@]}" : \
 '--all[Clean the entire build directory (not used by default)]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -572,6 +594,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -616,6 +640,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -661,6 +687,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -705,6 +733,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -752,6 +782,8 @@ _arguments "${_arguments_options[@]}" : \
 '--versioned-dirs[Always include version in subdir name]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -796,6 +828,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -852,6 +886,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -899,6 +935,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -946,6 +984,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -993,6 +1033,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \
@@ -1038,6 +1080,8 @@ _arguments "${_arguments_options[@]}" : \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
+'-q[use quiet output]' \
+'--quiet[use quiet output]' \
 '-i[use incremental compilation]' \
 '--incremental[use incremental compilation]' \
 '--include-default-paths[include default paths in addition to the provided ones]' \

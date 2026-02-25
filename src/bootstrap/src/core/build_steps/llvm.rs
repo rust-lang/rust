@@ -651,6 +651,17 @@ fn configure_cmake(
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
 
+    if builder.config.quiet {
+        // Only log errors and warnings from `cmake`.
+        cfg.define("CMAKE_MESSAGE_LOG_LEVEL", "WARNING");
+        // Don't log output from `ninja` or `make`.
+        if builder.ninja() {
+            cfg.build_arg("--quiet");
+        } else {
+            cfg.build_arg("-s");
+        }
+    }
+
     // Do not allow the user's value of DESTDIR to influence where
     // LLVM will install itself. LLVM must always be installed in our
     // own build directories.
