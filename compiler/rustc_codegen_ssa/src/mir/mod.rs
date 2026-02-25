@@ -90,8 +90,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
 
-    /// Cached terminate upon unwinding block and its reason
-    terminate_block: Option<(Bx::BasicBlock, UnwindTerminateReason)>,
+    /// Cached terminate upon unwinding block and its reason. For non-wasm
+    /// targets, there is at most one such block per function, stored at index
+    /// `START_BLOCK`. For wasm targets, each funclet needs its own terminate
+    /// block, indexed by the cleanup block that is the funclet's head.
+    terminate_blocks: IndexVec<mir::BasicBlock, Option<(Bx::BasicBlock, UnwindTerminateReason)>>,
 
     /// A bool flag for each basic block indicating whether it is a cold block.
     /// A cold block is a block that is unlikely to be executed at runtime.
@@ -227,7 +230,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,
-        terminate_block: None,
+        terminate_blocks: IndexVec::from_elem(None, &mir.basic_blocks),
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
