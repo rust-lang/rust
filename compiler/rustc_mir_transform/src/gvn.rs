@@ -302,7 +302,8 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
 
     /// Insert a `(Value, Ty)` pair to be deduplicated.
     /// Returns `true` as second tuple field if this value did not exist previously.
-    #[allow(rustc::pass_by_value)] // closures take `&VnIndex`
+    #[cfg_attr(not(bootstrap), allow(rustc::disallowed_pass_by_ref))] // closures take `&VnIndex`
+    #[cfg_attr(bootstrap, allow(rustc::pass_by_value))]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> (VnIndex, bool) {
         debug_assert!(match value {
             Value::Opaque(_) | Value::Address { .. } => false,
