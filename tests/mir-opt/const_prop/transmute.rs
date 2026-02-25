@@ -84,4 +84,12 @@ pub unsafe fn unreachable_box() -> ! {
     match *x {}
 }
 
+// EMIT_MIR transmute.option_field.GVN.diff
+pub unsafe fn option_field(x: Option<std::ptr::NonNull<()>>) -> *const () {
+    // CHECK-LABEL: fn option_field(
+    // CHECK: _3 = copy ((_1 as Some).0: std::ptr::NonNull<()>)
+    // CHECK: _0 = copy _3 as *const () (Transmute)
+    if let Some(x) = x { unsafe { transmute(x) } } else { 0 as *const () }
+}
+
 enum Never {}
