@@ -1029,7 +1029,7 @@ where
 
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => {
-                Some(PointeeInfo { safe: None, size: Size::ZERO, align: None })
+                Some(PointeeInfo { safe: None, size: Size::ZERO, align: Align::ONE })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
@@ -1059,7 +1059,7 @@ where
                             kind = PointerKind::MutableRef { unpin };
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size, align: Some(layout.align.abi) }
+                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
                 })
             }
 
@@ -1081,7 +1081,7 @@ where
                     // (if we had "dereferenceable on entry", we could support this)
                     size: Size::ZERO,
 
-                    align: Some(layout.align.abi),
+                    align: layout.align.abi,
                 })
             }
 

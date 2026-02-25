@@ -289,9 +289,9 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset)
-                    && let Some(align) = pointee.align
+                    && pointee.align > rustc_abi::Align::ONE
                 {
-                    cx.type_pointee_for_align(align)
+                    cx.type_pointee_for_align(pointee.align)
                 } else {
                     cx.type_i8()
                 };

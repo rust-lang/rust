@@ -714,9 +714,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     }
 
                     if let Some(pointee) = layout.pointee_info_at(bx, offset)
-                        && let Some(align) = pointee.align
+                        && pointee.align > Align::ONE
                     {
-                        bx.align_metadata(load, align);
+                        bx.align_metadata(load, pointee.align);
                     }
                 }
                 abi::Primitive::Float(_) => {}

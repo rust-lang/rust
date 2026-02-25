@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
+use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -321,8 +321,9 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 
     if let Some(pointee) = drop_target_pointee_info.or_else(|| layout.pointee_info_at(&cx, offset))
     {
-        if let Some(align) = pointee.align {
-            attrs.pointee_align = Some(align.min(cx.tcx().sess.target.max_reliable_alignment()));
+        if pointee.align > Align::ONE {
+            attrs.pointee_align =
+                Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
         }
 
         // LLVM dereferenceable attribute has unclear semantics on the return type,

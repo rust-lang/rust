@@ -2159,8 +2159,8 @@ pub struct PointeeInfo {
     /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
     /// while this function is still running.
     pub size: Size,
-    /// If `Some`, then the pointer is aligned as indicated.
-    pub align: Option<Align>,
+    /// Alignment of the pointer.
+    pub align: Align,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
