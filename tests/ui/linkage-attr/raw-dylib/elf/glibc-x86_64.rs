@@ -6,6 +6,8 @@
 //@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
+// FIXME: "type and size of dynamic symbol are not defined" with GNU LD
+#![allow(linker_messages)]
 #![feature(raw_dylib_elf)]
 #![no_std]
 #![no_main]
