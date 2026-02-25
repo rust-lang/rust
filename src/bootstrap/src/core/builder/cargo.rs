@@ -509,6 +509,11 @@ impl Builder<'_> {
             }
         };
 
+        // Optionally suppress cargo output.
+        if self.config.quiet {
+            cargo.arg("--quiet");
+        }
+
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
