@@ -3932,3 +3932,8 @@ pub(crate) struct MalformedOnConstAttrLint {
     #[label("invalid option found here")]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
+#[note("this method was used to add checks to the `Eq` derive macro")]
+pub(crate) struct EqInternalMethodImplemented;
