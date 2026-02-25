@@ -504,7 +504,7 @@ auto:
   - name: dist-aarch64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap enzyme
+        ./x.py dist bootstrap
         --include-default-paths
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
@@ -513,7 +513,6 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
-        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
