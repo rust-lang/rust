@@ -29,7 +29,7 @@ use std::fmt::Display;
 /// This is done in query cycle handling code to determine **intended** first task for a single-
 /// threaded compiler front-end to execute even while multi-threaded.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TreeNodeIndex(pub u64);
+pub struct TreeNodeIndex(u64);
 
 impl TreeNodeIndex {
     pub const fn root() -> Self {
@@ -43,7 +43,7 @@ impl TreeNodeIndex {
         Ok(TreeNodeIndex(
             self.0 & !(1 << trailing_zeros)
                 | (1 << allocated_shift)
-                | (branch_idx << (allocated_shift + 1)),
+                | branch_idx.unbounded_shl(allocated_shift + 1),
         ))
     }
 
@@ -53,17 +53,16 @@ impl TreeNodeIndex {
             branch_idx < branch_num,
             "branch_idx = {branch_idx} should be less than branch_num = {branch_num}"
         );
-        // floor(log2(n - 1)) + 1 == ceil(log2(n))
-        self.try_bits_branch(branch_idx, (branch_num - 1).checked_ilog2().map_or(0, |b| b + 1))
-            .unwrap()
+        // `branch_num != 0` per debug assertion above
+        let bits = ceil_ilog2(branch_num);
+        self.try_bits_branch(branch_idx, bits).unwrap()
     }
+}
 
-    pub fn try_concat(self, then: Self) -> Result<Self, BranchingError> {
-        let trailing_zeros = then.0.trailing_zeros();
-        let branch_num = then.0.wrapping_shr(trailing_zeros + 1);
-        let bits = u64::BITS - trailing_zeros;
-        self.try_bits_branch(branch_num, bits)
-    }
+#[inline]
+fn ceil_ilog2(branch_num: u64) -> u32 {
+    // floor(log2(n - 1)) + 1 == ceil(log2(n))
+    (branch_num - 1).checked_ilog2().map_or(0, |b| b + 1)
 }
 
 /// Error for exhausting free bits
@@ -84,3 +83,6 @@ impl Default for TreeNodeIndex {
         TreeNodeIndex::root()
     }
 }
+
+#[cfg(test)]
+mod tests;
