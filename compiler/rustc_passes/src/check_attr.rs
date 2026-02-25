@@ -1630,7 +1630,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 sym::expect,
             ]) && let Some(meta) = attr.meta_item_list()
                 && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
+                    meta.meta_item().map_or(false, |item| {
+                        item.path == sym::linker_messages || item.path == sym::linker_info
+                    })
                 })
             {
                 if hir_id != CRATE_HIR_ID {
