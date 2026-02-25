@@ -238,7 +238,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(dead_code))]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(unused_imports))]
-#![rustc_diagnostic_item = "atomic_mod"]
 // Clippy complains about the pattern of "safe function calling unsafe function taking pointers".
 // This happens with AtomicPtr intrinsics but is fine, as the pointers clippy is concerned about
 // are just normal values that get loaded/stored, but not dereferenced.
@@ -363,6 +362,7 @@ impl_atomic_primitive!([T] *mut T as Align8<*mut T>, size("ptr"));
 /// [module-level documentation]: crate::sync::atomic
 #[unstable(feature = "generic_atomic", issue = "130539")]
 #[repr(C)]
+#[rustc_diagnostic_item = "Atomic"]
 pub struct Atomic<T: AtomicPrimitive> {
     v: UnsafeCell<T::Storage>,
 }
@@ -395,7 +395,6 @@ const EMULATE_ATOMIC_BOOL: bool = cfg!(any(
 /// loads and stores of `u8`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "AtomicBool"]
 pub type AtomicBool = Atomic<bool>;
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -416,7 +415,6 @@ impl Default for AtomicBool {
 /// loads and stores of pointers. Its size depends on the target pointer's size.
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "AtomicPtr"]
 pub type AtomicPtr<T> = Atomic<*mut T>;
 
 #[cfg(target_has_atomic_load_store = "ptr")]
@@ -2552,7 +2550,6 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable_new:meta,
      $const_stable_into_inner:meta,
-     $diagnostic_item:meta,
      $s_int_type:literal,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
@@ -2589,7 +2586,6 @@ macro_rules! atomic_int {
         ///
         /// [module-level documentation]: crate::sync::atomic
         #[$stable]
-        #[$diagnostic_item]
         pub type $atomic_type = Atomic<$int_type>;
 
         #[$stable]
@@ -3634,7 +3630,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicI8",
     "i8",
     "",
     atomic_min, atomic_max,
@@ -3653,7 +3648,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicU8",
     "u8",
     "",
     atomic_umin, atomic_umax,
@@ -3672,7 +3666,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicI16",
     "i16",
     "",
     atomic_min, atomic_max,
@@ -3691,7 +3684,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicU16",
     "u16",
     "",
     atomic_umin, atomic_umax,
@@ -3710,7 +3702,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicI32",
     "i32",
     "",
     atomic_min, atomic_max,
@@ -3729,7 +3720,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicU32",
     "u32",
     "",
     atomic_umin, atomic_umax,
@@ -3748,7 +3738,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicI64",
     "i64",
     "",
     atomic_min, atomic_max,
@@ -3767,7 +3756,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-    rustc_diagnostic_item = "AtomicU64",
     "u64",
     "",
     atomic_umin, atomic_umax,
@@ -3786,7 +3774,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
-    rustc_diagnostic_item = "AtomicI128",
     "i128",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -3805,7 +3792,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
-    rustc_diagnostic_item = "AtomicU128",
     "u128",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -3828,7 +3814,6 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-            rustc_diagnostic_item = "AtomicIsize",
             "isize",
             "",
             atomic_min, atomic_max,
@@ -3847,7 +3832,6 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
-            rustc_diagnostic_item = "AtomicUsize",
             "usize",
             "",
             atomic_umin, atomic_umax,
