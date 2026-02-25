@@ -414,6 +414,8 @@ pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
     Skip, SkipWhile, Take, TakeWhile, Zip,
 };
+#[unstable(feature = "iter_dedup", issue = "83747")]
+pub use self::adapters::{Dedup, DedupEq, DedupKey};
 #[unstable(feature = "iter_intersperse", issue = "79524")]
 pub use self::adapters::{Intersperse, IntersperseWith};
 #[unstable(
