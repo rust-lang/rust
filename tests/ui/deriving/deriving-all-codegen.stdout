@@ -61,12 +61,13 @@ impl ::core::cmp::PartialEq for Empty {
     fn eq(&self, other: &Empty) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Empty {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Empty { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {}
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
     #[inline]
@@ -138,14 +139,15 @@ impl ::core::cmp::PartialEq for Point {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Point {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-    }
-}
+impl ::core::cmp::Eq for Point { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Point {
     #[inline]
@@ -226,14 +228,15 @@ impl ::core::cmp::PartialEq for PackedPoint {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for PackedPoint {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-    }
-}
+impl ::core::cmp::Eq for PackedPoint { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for PackedPoint {
     #[inline]
@@ -309,14 +312,15 @@ impl ::core::cmp::PartialEq for TupleSingleField {
     fn eq(&self, other: &TupleSingleField) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for TupleSingleField {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-    }
-}
+impl ::core::cmp::Eq for TupleSingleField { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for TupleSingleField {
     #[inline]
@@ -384,14 +388,15 @@ impl ::core::cmp::PartialEq for SingleField {
     fn eq(&self, other: &SingleField) -> bool { self.foo == other.foo }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for SingleField {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<bool>;
-    }
-}
+impl ::core::cmp::Eq for SingleField { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<bool>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for SingleField {
     #[inline]
@@ -489,14 +494,15 @@ impl ::core::cmp::PartialEq for Big {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Big {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-    }
-}
+impl ::core::cmp::Eq for Big { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Big {
     #[inline]
@@ -753,14 +759,15 @@ impl ::core::cmp::PartialEq for Unsized {
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Unsized {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<[u32]>;
-    }
-}
+impl ::core::cmp::Eq for Unsized { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<[u32]>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Unsized {
     #[inline]
@@ -849,15 +856,18 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     Generic<T, U> where T::A: ::core::cmp::Eq {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<T>;
-        let _: ::core::cmp::AssertParamIsEq<T::A>;
-        let _: ::core::cmp::AssertParamIsEq<U>;
-    }
 }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq<T: ::core::cmp::Eq + Trait,
+            U: ::core::cmp::Eq>() where T::A: ::core::cmp::Eq {
+            let _: ::core::cmp::AssertParamIsEq<T>;
+            let _: ::core::cmp::AssertParamIsEq<T::A>;
+            let _: ::core::cmp::AssertParamIsEq<U>;
+        }
+    };
 #[automatically_derived]
 impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for Generic<T, U> where
@@ -891,6 +901,85 @@ impl<T: ::core::cmp::Ord + Trait, U: ::core::cmp::Ord> ::core::cmp::Ord for
                 },
             cmp => cmp,
         }
+    }
+}
+
+// A generic struct involving a lifetime and an associated type.
+struct GenericLifetime<'a, T: Trait>(&'a T);
+#[automatically_derived]
+impl<'a, T: ::core::clone::Clone + Trait> ::core::clone::Clone for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn clone(&self) -> GenericLifetime<'a, T> {
+        GenericLifetime(::core::clone::Clone::clone(&self.0))
+    }
+}
+#[automatically_derived]
+impl<'a, T: ::core::marker::Copy + Trait> ::core::marker::Copy for
+    GenericLifetime<'a, T> {
+}
+#[automatically_derived]
+impl<'a, T: ::core::fmt::Debug + Trait> ::core::fmt::Debug for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f,
+            "GenericLifetime", &&self.0)
+    }
+}
+#[automatically_derived]
+impl<'a, T: ::core::default::Default + Trait> ::core::default::Default for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn default() -> GenericLifetime<'a, T> {
+        GenericLifetime(::core::default::Default::default())
+    }
+}
+#[automatically_derived]
+impl<'a, T: ::core::hash::Hash + Trait> ::core::hash::Hash for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+#[automatically_derived]
+impl<'a, T: Trait> ::core::marker::StructuralPartialEq for
+    GenericLifetime<'a, T> {
+}
+#[automatically_derived]
+impl<'a, T: ::core::cmp::PartialEq + Trait> ::core::cmp::PartialEq for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn eq(&self, other: &GenericLifetime<'a, T>) -> bool { self.0 == other.0 }
+}
+#[automatically_derived]
+impl<'a, T: ::core::cmp::Eq + Trait> ::core::cmp::Eq for
+    GenericLifetime<'a, T> {
+}
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq<'a, T: ::core::cmp::Eq + Trait>() {
+            let _: ::core::cmp::AssertParamIsEq<&'a T>;
+        }
+    };
+#[automatically_derived]
+impl<'a, T: ::core::cmp::PartialOrd + Trait> ::core::cmp::PartialOrd for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &GenericLifetime<'a, T>)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+impl<'a, T: ::core::cmp::Ord + Trait> ::core::cmp::Ord for
+    GenericLifetime<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &GenericLifetime<'a, T>) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
 
@@ -971,15 +1060,20 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
 impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     ::core::marker::Copy> ::core::cmp::Eq for PackedGeneric<T, U> where
     T::A: ::core::cmp::Eq + ::core::marker::Copy {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<T>;
-        let _: ::core::cmp::AssertParamIsEq<T::A>;
-        let _: ::core::cmp::AssertParamIsEq<U>;
-    }
 }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq<T: ::core::cmp::Eq +
+            ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
+            ::core::marker::Copy>() where T::A: ::core::cmp::Eq +
+            ::core::marker::Copy {
+            let _: ::core::cmp::AssertParamIsEq<T>;
+            let _: ::core::cmp::AssertParamIsEq<T::A>;
+            let _: ::core::cmp::AssertParamIsEq<U>;
+        }
+    };
 #[automatically_derived]
 impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
     U: ::core::cmp::PartialOrd + ::core::marker::Copy> ::core::cmp::PartialOrd
@@ -1055,12 +1149,13 @@ impl ::core::cmp::PartialEq for Enum0 {
     fn eq(&self, other: &Enum0) -> bool { match *self {} }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Enum0 {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Enum0 { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {}
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
     #[inline]
@@ -1125,14 +1220,15 @@ impl ::core::cmp::PartialEq for Enum1 {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Enum1 {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-    }
-}
+impl ::core::cmp::Eq for Enum1 { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum1 {
     #[inline]
@@ -1191,12 +1287,13 @@ impl ::core::cmp::PartialEq for Fieldless1 {
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Fieldless1 {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Fieldless1 { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {}
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
     #[inline]
@@ -1268,12 +1365,13 @@ impl ::core::cmp::PartialEq for Fieldless {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Fieldless {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Fieldless { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {}
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
@@ -1378,16 +1476,17 @@ impl ::core::cmp::PartialEq for Mixed {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Mixed {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
-        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
-    }
-}
+impl ::core::cmp::Eq for Mixed { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+            let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
+            let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
@@ -1576,16 +1675,17 @@ impl ::core::cmp::PartialEq for Fielded {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Fielded {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<bool>;
-        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
-    }
-}
+impl ::core::cmp::Eq for Fielded { }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq() {
+            let _: ::core::cmp::AssertParamIsEq<u32>;
+            let _: ::core::cmp::AssertParamIsEq<bool>;
+            let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
+        }
+    };
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
@@ -1699,14 +1799,17 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     EnumGeneric<T, U> {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {
-        let _: ::core::cmp::AssertParamIsEq<T>;
-        let _: ::core::cmp::AssertParamIsEq<U>;
-    }
 }
+const _: () =
+    {
+        #[doc(hidden)]
+        #[coverage(off)]
+        const fn assert_fields_are_eq<T: ::core::cmp::Eq,
+            U: ::core::cmp::Eq>() {
+            let _: ::core::cmp::AssertParamIsEq<T>;
+            let _: ::core::cmp::AssertParamIsEq<U>;
+        }
+    };
 #[automatically_derived]
 impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for EnumGeneric<T, U> {

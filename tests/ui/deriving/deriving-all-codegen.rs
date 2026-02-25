@@ -119,6 +119,10 @@ struct Generic<T: Trait, U> {
     u: U,
 }
 
+// A generic struct involving a lifetime and an associated type.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct GenericLifetime<'a, T: Trait>(&'a T);
+
 // A packed, generic tuple struct involving an associated type. Because it is
 // packed, a `T: Copy` bound is added to all impls (and where clauses within
 // them) except for `Default`. This is because we must access fields using
