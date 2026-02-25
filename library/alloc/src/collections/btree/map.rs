@@ -1218,26 +1218,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         K: Ord,
         A: Clone,
     {
-        // Do we have to append anything at all?
-        if other.is_empty() {
-            return;
-        }
-
-        // We can just swap `self` and `other` if `self` is empty.
-        if self.is_empty() {
-            mem::swap(self, other);
-            return;
-        }
-
-        let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
-        let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
-        let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
-        root.append_from_sorted_iters(
-            self_iter,
-            other_iter,
-            &mut self.length,
-            (*self.alloc).clone(),
-        )
+        let other = mem::replace(other, Self::new_in((*self.alloc).clone()));
+        self.merge(other, |_key, _self_val, other_val| other_val);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
