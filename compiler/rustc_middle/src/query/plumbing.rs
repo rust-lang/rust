@@ -383,7 +383,7 @@ macro_rules! define_callbacks {
 
                 pub type LocalKey<'tcx> = if_separate_provide_extern!(
                     [$($modifiers)*]
-                    (<Key<'tcx> as $crate::query::AsLocalKey>::LocalKey)
+                    (<Key<'tcx> as $crate::query::AsLocalQueryKey>::LocalQueryKey)
                     (Key<'tcx>)
                 );
 
@@ -427,8 +427,8 @@ macro_rules! define_callbacks {
                     erase::erase_val(value)
                 }
 
-                pub type Storage<'tcx> =
-                    <Key<'tcx> as $crate::query::Key>::Cache<Erased<Value<'tcx>>>;
+                pub type Cache<'tcx> =
+                    <Key<'tcx> as $crate::query::QueryKey>::Cache<Erased<Value<'tcx>>>;
 
                 // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
@@ -575,7 +575,7 @@ macro_rules! define_callbacks {
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
             $(
-                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, $name::Storage<'tcx>>,
+                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, $name::Cache<'tcx>>,
             )*
         }
 
