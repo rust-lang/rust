@@ -313,15 +313,15 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        return wait_for_query(query, tcx, span, key, latch, current_job_id);
+                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                    } else {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        cycle_error(query, tcx, id, span)
                     }
-
-                    let id = job.id;
-                    drop(state_lock);
-
-                    // If we are single-threaded we know that we have cycle error,
-                    // so we just return the error.
-                    cycle_error(query, tcx, id, span)
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
