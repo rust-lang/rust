@@ -7,3 +7,4 @@ fn _foo<'a>(_x: &'a u32) {}
 //~^ ERROR only used once
 //~| NOTE this lifetime
 //~| NOTE is used only here
+//~| NOTE `#[deny(single_use_lifetimes)]` implied by `#[deny(single_use_lifetime)]`

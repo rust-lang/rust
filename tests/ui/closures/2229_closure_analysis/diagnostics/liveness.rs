@@ -9,6 +9,7 @@
 struct Point {
     x: i32,
     y: i32,
+    //~^ WARN field `y` is never read [dead_code]
 }
 
 pub fn f() {
@@ -54,6 +55,7 @@ pub fn f() {
 struct MyStruct<'a> {
     x: Option<&'a str>,
     y: i32,
+    //~^ WARN field `y` is never read [dead_code]
 }
 
 pub fn nested() {

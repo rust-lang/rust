@@ -21,6 +21,51 @@ fn check_specific_lint() {
 
 #[expect(unused)]
 //~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 fn check_multiple_lints_with_lint_group() {
     let fox_name = "Sir Nibbles";
 
@@ -33,6 +78,51 @@ fn check_multiple_lints_with_lint_group() {
 
 #[expect(unused)]
 //~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+//~| WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 fn check_overridden_expectation_lint_level() {
     #[allow(unused_variables)]
     let this_should_not_fulfill_the_expectation = "maybe";

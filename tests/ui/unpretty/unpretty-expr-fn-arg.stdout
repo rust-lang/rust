@@ -1,3 +1,9 @@
+#![attr = LintAttribute {kind: Allow,
+sub_attrs: [LintAttribute {lint_instances: [dead_code], attr_style: Inner,
+attr_index: 0}]}]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 // Regression test for the ICE described in #82328. The pretty-printer for
 // `-Zunpretty=hir,typed` would previously retrieve type-checking results
 // when entering a body, which means that type information was not available
@@ -7,10 +13,6 @@
 //@ check-pass
 //@ compile-flags: -Zunpretty=hir,typed
 //@ edition: 2015
-#![allow(dead_code)]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 fn main() ({ } as ())
 

@@ -436,12 +436,7 @@ fn check_ast_node_inner<'a, T: EarlyLintPass>(
 ) {
     let mut cx = EarlyContextAndPass { context, tcx, pass };
 
-    cx.with_lint_attrs(
-        check_node.id(),
-        check_node.attrs(),
-        |cx| check_node.check(cx),
-        DUMMY_SP
-    );
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx), DUMMY_SP);
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id

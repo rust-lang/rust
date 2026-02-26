@@ -1,8 +1,14 @@
 
-running 13 tests
+running 2 tests
+test $DIR/dead-code-items.rs - A::field (line 41) - compile ... ok
+test $DIR/dead-code-items.rs - U::field (line 57) - compile ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 11 tests
 test $DIR/dead-code-items.rs - A (line 34) - compile ... ok
 test $DIR/dead-code-items.rs - A (line 90) - compile ... ok
-test $DIR/dead-code-items.rs - A::field (line 41) - compile ... FAILED
 test $DIR/dead-code-items.rs - A::method (line 96) - compile ... ok
 test $DIR/dead-code-items.rs - C (line 24) - compile ... FAILED
 test $DIR/dead-code-items.rs - Enum (line 72) - compile ... FAILED
@@ -11,27 +17,10 @@ test $DIR/dead-code-items.rs - MyTrait (line 105) - compile ... FAILED
 test $DIR/dead-code-items.rs - MyTrait::my_trait_fn (line 112) - compile ... FAILED
 test $DIR/dead-code-items.rs - S (line 16) - compile ... ok
 test $DIR/dead-code-items.rs - U (line 50) - compile ... ok
-test $DIR/dead-code-items.rs - U::field (line 57) - compile ... FAILED
 test $DIR/dead-code-items.rs - U::field2 (line 63) - compile ... ok
 
 failures:
 
----- $DIR/dead-code-items.rs - A::field (line 41) stdout ----
-error: trait `DeadCodeInField` is never used
-  --> $DIR/dead-code-items.rs:42:7
-   |
-LL | trait DeadCodeInField {}
-   |       ^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:40:9
-   |
-LL | #![deny(dead_code)]
-   |         ^^^^^^^^^
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
 ---- $DIR/dead-code-items.rs - C (line 24) stdout ----
 error: unused variable: `unused_error`
   --> $DIR/dead-code-items.rs:25:5
@@ -116,32 +105,14 @@ LL | #![deny(warnings)]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/dead-code-items.rs - U::field (line 57) stdout ----
-error: trait `DeadCodeInUnionField` is never used
-  --> $DIR/dead-code-items.rs:58:7
-   |
-LL | trait DeadCodeInUnionField {}
-   |       ^^^^^^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/dead-code-items.rs:56:9
-   |
-LL | #![deny(dead_code)]
-   |         ^^^^^^^^^
-
-error: aborting due to 1 previous error
-
-Couldn't compile the test.
 
 failures:
-    $DIR/dead-code-items.rs - A::field (line 41)
     $DIR/dead-code-items.rs - C (line 24)
     $DIR/dead-code-items.rs - Enum (line 72)
     $DIR/dead-code-items.rs - Enum::Variant1 (line 79)
     $DIR/dead-code-items.rs - MyTrait (line 105)
     $DIR/dead-code-items.rs - MyTrait::my_trait_fn (line 112)
-    $DIR/dead-code-items.rs - U::field (line 57)
 
-test result: FAILED. 6 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+test result: FAILED. 6 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
 all doctests ran in $TIME; merged doctests compilation took $TIME

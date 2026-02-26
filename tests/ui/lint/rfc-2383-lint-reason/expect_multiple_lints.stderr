@@ -48,5 +48,181 @@ warning: this lint expectation is unfulfilled
 LL | #[expect(unused, while_true)]
    |          ^^^^^^
 
-warning: 8 warnings emitted
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 30 warnings emitted
 

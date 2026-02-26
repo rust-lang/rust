@@ -133,7 +133,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         )
     }
 
-    /// This method provides the same functionality as [`parse_limited_all`](Self::parse_limited_all) except filtered, 
+    /// This method provides the same functionality as [`parse_limited_all`](Self::parse_limited_all) except filtered,
     /// making sure that only allow-listed symbols are parsed
     pub fn parse_limited_all_filtered<'a>(
         sess: &'sess Session,

@@ -23,6 +23,7 @@ note: the lint level is defined here
    |
 LL | #![deny(temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dangling_pointers_from_temporaries)]` implied by `#[deny(temporary_cstring_as_ptr)]`
 
 error: this creates a dangling pointer because temporary `CString` is dropped at end of statement
   --> $DIR/cstring-as-ptr.rs:9:52
