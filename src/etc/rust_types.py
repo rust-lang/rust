@@ -37,12 +37,14 @@ class RustType(Enum):
     StdNonZeroNumber = 29
     StdPath = 30
     StdPathBuf = 31
+    StdBoxStr = 32
 
 
 STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String$")
 STD_STR_REGEX = re.compile(r"^&(mut )?str$")
 STD_SLICE_REGEX = re.compile(r"^&(mut )?\[.+\]$")
 STD_OS_STRING_REGEX = re.compile(r"^(std::ffi::([a-z_]+::)+)OsString$")
+STD_BOX_STR_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)Box<str,.+>$")
 STD_VEC_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)Vec<.+>$")
 STD_VEC_DEQUE_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)VecDeque<.+>$")
 STD_BTREE_SET_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)BTreeSet<.+>$")
@@ -67,6 +69,7 @@ STD_TYPE_TO_REGEX = {
     RustType.StdString: STD_STRING_REGEX,
     RustType.StdOsString: STD_OS_STRING_REGEX,
     RustType.StdStr: STD_STR_REGEX,
+    RustType.StdBoxStr: STD_BOX_STR_REGEX,
     RustType.StdSlice: STD_SLICE_REGEX,
     RustType.StdVec: STD_VEC_REGEX,
     RustType.StdVecDeque: STD_VEC_DEQUE_REGEX,
