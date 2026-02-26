@@ -14,9 +14,10 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
+use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem, Node};
+use rustc_hir::{self as hir, LangItem, Node, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
@@ -37,14 +38,12 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -392,7 +391,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
-                            err.span_label(span, s);
+                            err.span_label(span, s.as_str().to_owned());
                             if !matches!(leaf_trait_predicate.skip_binder().self_ty().kind(), ty::Param(_))
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
@@ -912,11 +911,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         diag.long_ty_path(),
                     );
 
-                    if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, impl_did)
-                    {
-                        let note = command.evaluate(
-                            self.tcx,
-                            predicate.skip_binder().trait_ref,
+                    if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
+                        let note = command.evaluate_directive(
+                             predicate.skip_binder().trait_ref,
                             &condition_options,
                             &format_args,
                         );

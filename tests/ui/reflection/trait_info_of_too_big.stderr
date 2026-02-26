@@ -1,0 +1,27 @@
+error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
+  --> $DIR/trait_info_of_too_big.rs:14:5
+   |
+LL |     TypeId::of::<[u8; usize::MAX]>().trait_info_of_trait_type_id(TypeId::of::<dyn Trait>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_::{constant#0}` failed inside this call
+   |
+note: inside `TypeId::trait_info_of_trait_type_id`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+note: inside `type_info::<impl TypeId>::info`
+  --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
+
+error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
+  --> $DIR/trait_info_of_too_big.rs:18:5
+   |
+LL |     TypeId::of::<[u8; usize::MAX]>().trait_info_of::<dyn Trait>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_::{constant#0}` failed inside this call
+   |
+note: inside `TypeId::trait_info_of::<dyn Trait>`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+note: inside `TypeId::trait_info_of_trait_type_id`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+note: inside `type_info::<impl TypeId>::info`
+  --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

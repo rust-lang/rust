@@ -66,25 +66,19 @@ impl RedundantStaticLifetimes {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
                     match borrow_type.ty.kind {
-                        TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..) => {
-                            if lifetime.ident.name == kw::StaticLifetime {
-                                let snip = snippet(cx, borrow_type.ty.span, "<type>");
-                                let sugg = format!("&{}{snip}", borrow_type.mutbl.prefix_str());
-                                span_lint_and_then(
-                                    cx,
-                                    REDUNDANT_STATIC_LIFETIMES,
-                                    lifetime.ident.span,
-                                    reason,
-                                    |diag| {
-                                        diag.span_suggestion(
-                                            ty.span,
-                                            "consider removing `'static`",
-                                            sugg,
-                                            Applicability::MachineApplicable, //snippet
-                                        );
-                                    },
+                        TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..)
+                            if lifetime.ident.name == kw::StaticLifetime =>
+                        {
+                            let snip = snippet(cx, borrow_type.ty.span, "<type>");
+                            let sugg = format!("&{}{snip}", borrow_type.mutbl.prefix_str());
+                            span_lint_and_then(cx, REDUNDANT_STATIC_LIFETIMES, lifetime.ident.span, reason, |diag| {
+                                diag.span_suggestion(
+                                    ty.span,
+                                    "consider removing `'static`",
+                                    sugg,
+                                    Applicability::MachineApplicable, //snippet
                                 );
-                            }
+                            });
                         },
                         _ => {},
                     }

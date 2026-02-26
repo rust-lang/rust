@@ -273,6 +273,42 @@ impl proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_> {
             other => handle_failure(other),
         }
     }
+
+    fn span_source(
+        &mut self,
+        proc_macro_srv::span::Span { range, anchor, ctx }: proc_macro_srv::span::Span,
+    ) -> proc_macro_srv::span::Span {
+        match self.roundtrip(bidirectional::SubRequest::SpanSource {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            start: range.start().into(),
+            end: range.end().into(),
+            ctx: ctx.into_u32(),
+        }) {
+            Ok(bidirectional::SubResponse::SpanSourceResult {
+                file_id,
+                ast_id,
+                start,
+                end,
+                ctx,
+            }) => {
+                proc_macro_srv::span::Span {
+                    range: proc_macro_srv::span::TextRange::new(
+                        proc_macro_srv::span::TextSize::new(start),
+                        proc_macro_srv::span::TextSize::new(end),
+                    ),
+                    anchor: proc_macro_srv::span::SpanAnchor {
+                        file_id: proc_macro_srv::span::EditionedFileId::from_raw(file_id),
+                        ast_id: proc_macro_srv::span::ErasedFileAstId::from_raw(ast_id),
+                    },
+                    // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                    // but that will be their problem.
+                    ctx: unsafe { proc_macro_srv::span::SyntaxContext::from_u32(ctx) },
+                }
+            }
+            other => handle_failure(other),
+        }
+    }
 }
 
 fn handle_expand_ra(

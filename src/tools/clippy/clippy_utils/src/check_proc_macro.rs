@@ -21,10 +21,10 @@ use rustc_ast::ast::{
 use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path,
-    QPath, Safety, TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
-    YieldSource,
+    Block, BlockCheckMode, Body, BoundConstness, BoundPolarity, Closure, Destination, Expr, ExprKind, FieldDef,
+    FnHeader, FnRetTy, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource,
+    MatchSource, MutTy, Node, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers, TraitImplHeader, TraitItem,
+    TraitItemKind, TraitRef, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -541,6 +541,44 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
     }
 }
 
+// NOTE: can't `impl WithSearchPat for TraitRef`, because `TraitRef` doesn't have a `span` field
+// (nor a method)
+fn trait_ref_search_pat(trait_ref: &TraitRef<'_>) -> (Pat, Pat) {
+    path_search_pat(trait_ref.path)
+}
+
+fn poly_trait_ref_search_pat(poly_trait_ref: &PolyTraitRef<'_>) -> (Pat, Pat) {
+    // NOTE: unfortunately we can't use `bound_generic_params` to see whether the pattern starts with
+    // `for<..>`, because if it's empty, we could have either `for<>` (nothing bound), or
+    // no `for` at all
+    let PolyTraitRef {
+        modifiers: TraitBoundModifiers { constness, polarity },
+        trait_ref,
+        ..
+    } = poly_trait_ref;
+
+    let trait_ref_search_pat = trait_ref_search_pat(trait_ref);
+
+    #[expect(
+        clippy::unnecessary_lazy_evaluations,
+        reason = "the closure in `or_else` has `match polarity`, which isn't free"
+    )]
+    let start = match constness {
+        BoundConstness::Never => None,
+        BoundConstness::Maybe(_) => Some(Pat::Str("[const]")),
+        BoundConstness::Always(_) => Some(Pat::Str("const")),
+    }
+    .or_else(|| match polarity {
+        BoundPolarity::Negative(_) => Some(Pat::Str("!")),
+        BoundPolarity::Maybe(_) => Some(Pat::Str("?")),
+        BoundPolarity::Positive => None,
+    })
+    .unwrap_or(trait_ref_search_pat.0);
+    let end = trait_ref_search_pat.1;
+
+    (start, end)
+}
+
 fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
     (Pat::Sym(ident.name), Pat::Sym(ident.name))
 }
@@ -573,6 +611,7 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(se
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+impl_with_search_pat!((_cx: LateContext<'tcx>, self: PolyTraitRef<'_>) => poly_trait_ref_search_pat(self));
 
 impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: ast::Ty) => ast_ty_search_pat(self));

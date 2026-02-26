@@ -2,12 +2,16 @@
 
 > **Note:** The configuration file is unstable and may be deprecated in the future.
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`, which is searched for in:
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`, which is searched for starting in the
+first defined directory according to the following priority order:
 
 1. The directory specified by the `CLIPPY_CONF_DIR` environment variable, or
 2. The directory specified by the
 [CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html) environment variable, or
 3. The current directory.
+
+If the chosen directory does not contain a configuration file, Clippy will walk up the directory tree, searching each
+parent directory until it finds one or reaches the filesystem root.
 
 It contains a basic `variable = value` mapping e.g.
 

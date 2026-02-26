@@ -2,11 +2,15 @@ error: expected expression, found `$`
   --> $DIR/issue-6596-1.rs:3:9
    |
 LL |         $nonexistent
-   |         ^^^^^^^^^^^^ expected expression
+   |         ^-----------
+   |         ||
+   |         |macro metavariable not found
+   |         expected expression
 ...
 LL |     e!(foo);
    |     ------- in this macro invocation
    |
+   = note: available metavariable names are: $inp
    = note: this error originates in the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

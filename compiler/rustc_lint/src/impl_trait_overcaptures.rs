@@ -3,13 +3,13 @@ use std::cell::LazyCell;
 use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{LintDiagnostic, Subdiagnostic, msg};
+use rustc_errors::{Diagnostic, Subdiagnostic, msg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_with_variances, structurally_relate_consts,
@@ -433,11 +433,17 @@ struct ImplTraitOvercapturesLint<'tcx> {
     suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
-impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(msg!(
-            "`{$self_ty}` will capture more lifetimes than possibly intended in edition 2024"
-        ));
+impl<'a> Diagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let mut diag = rustc_errors::Diag::new(
+            dcx,
+            level,
+            msg!("`{$self_ty}` will capture more lifetimes than possibly intended in edition 2024"),
+        );
         diag.arg("self_ty", self.self_ty.to_string())
             .arg("num_captured", self.num_captured)
             .span_note(
@@ -451,12 +457,13 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
             )
             .note(msg!("all lifetimes in scope will be captured by `impl Trait`s in edition 2024"));
         if let Some(suggestion) = self.suggestion {
-            suggestion.add_to_diag(diag);
+            suggestion.add_to_diag(&mut diag);
         }
+        diag
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("all possible in-scope parameters are already captured, so `use<...>` syntax is redundant")]
 struct ImplTraitRedundantCapturesLint {
     #[suggestion("remove the `use<...>` syntax", code = "", applicability = "machine-applicable")]

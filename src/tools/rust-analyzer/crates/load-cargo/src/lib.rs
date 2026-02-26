@@ -612,6 +612,53 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::ByteRangeResult { range: range.range.into() })
             }
+            SubRequest::SpanSource { file_id, ast_id, start, end, ctx } => {
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(file_id),
+                        ast_id: span::ErasedFileAstId::from_raw(ast_id),
+                    },
+                    // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                    // but that will be their problem.
+                    ctx: unsafe { SyntaxContext::from_u32(ctx) },
+                };
+
+                let mut current_span = span;
+                let mut current_ctx = span.ctx;
+
+                while let Some(macro_call_id) = current_ctx.outer_expn(db) {
+                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+
+                    let call_site_file = macro_call_loc.kind.file_id();
+
+                    let resolved = db.resolve_span(current_span);
+
+                    current_ctx = macro_call_loc.ctxt;
+                    current_span = Span {
+                        range: resolved.range,
+                        anchor: SpanAnchor {
+                            file_id: resolved.file_id.editioned_file_id(db),
+                            ast_id: span::ROOT_ERASED_FILE_AST_ID,
+                        },
+                        ctx: current_ctx,
+                    };
+
+                    if call_site_file.file_id().is_some() {
+                        break;
+                    }
+                }
+
+                let resolved = db.resolve_span(current_span);
+
+                Ok(SubResponse::SpanSourceResult {
+                    file_id: resolved.file_id.editioned_file_id(db).as_u32(),
+                    ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
+                    start: u32::from(resolved.range.start()),
+                    end: u32::from(resolved.range.end()),
+                    ctx: current_span.ctx.into_u32(),
+                })
+            }
         };
         match self.0.expand(
             subtree.view(),

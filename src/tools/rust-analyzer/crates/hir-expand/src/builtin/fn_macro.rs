@@ -7,7 +7,7 @@ use cfg::CfgExpr;
 use either::Either;
 use intern::{
     Symbol,
-    sym::{self},
+    sym,
 };
 use itertools::Itertools;
 use mbe::{DelimiterKind, expect_fragment};

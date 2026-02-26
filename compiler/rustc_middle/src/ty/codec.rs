@@ -21,9 +21,8 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mir::mono::MonoItem;
-use crate::mir::{self};
-use crate::traits;
 use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
+use crate::{mir, traits};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.

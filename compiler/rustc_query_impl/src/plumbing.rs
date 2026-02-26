@@ -13,12 +13,14 @@ use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
+    QueryCache, QueryJobId, QueryKey, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
+    erase,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
@@ -27,7 +29,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::QueryDispatcherUnerased;
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::{QueryJobMap, find_dep_kind_root};
@@ -226,13 +227,13 @@ macro_rules! hash_result {
 
 macro_rules! call_provider {
     ([][$tcx:expr, $name:ident, $key:expr]) => {{
-        ($tcx.query_system.fns.local_providers.$name)($tcx, $key)
+        ($tcx.query_system.local_providers.$name)($tcx, $key)
     }};
     ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
         if let Some(key) = $key.as_local_key() {
-            ($tcx.query_system.fns.local_providers.$name)($tcx, key)
+            ($tcx.query_system.local_providers.$name)($tcx, key)
         } else {
-            ($tcx.query_system.fns.extern_providers.$name)($tcx, $key)
+            ($tcx.query_system.extern_providers.$name)($tcx, $key)
         }
     }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
@@ -274,7 +275,7 @@ fn mk_query_stack_frame_extra<'tcx, Cache>(
 ) -> QueryStackFrameExtra
 where
     Cache: QueryCache,
-    Cache::Key: Key,
+    Cache::Key: QueryKey,
 {
     let def_id = key.key_as_def_id();
 
@@ -306,14 +307,15 @@ where
     QueryStackFrameExtra::new(description, span, def_kind)
 }
 
-pub(crate) fn create_deferred_query_stack_frame<'tcx, Cache>(
+pub(crate) fn create_deferred_query_stack_frame<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    vtable: &'tcx QueryVTable<'tcx, Cache>,
-    key: Cache::Key,
+    vtable: &'tcx QueryVTable<'tcx, C>,
+    key: C::Key,
 ) -> QueryStackFrame<QueryStackDeferred<'tcx>>
 where
-    Cache: QueryCache,
-    Cache::Key: Key + DynSend + DynSync,
+    C: QueryCache,
+    C::Key: QueryKey + DynSend + DynSync,
+    QueryVTable<'tcx, C>: DynSync,
 {
     let kind = vtable.dep_kind;
 
@@ -324,20 +326,19 @@ where
     QueryStackFrame::new(info, kind, def_id, def_id_for_ty_in_cycle)
 }
 
-pub(crate) fn encode_query_results<'a, 'tcx, Q, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+pub(crate) fn encode_query_results_inner<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
-    Q: QueryDispatcherUnerased<'tcx, C>,
-    Q::UnerasedValue: Encodable<CacheEncoder<'a, 'tcx>>,
+    C: QueryCache<Value = Erased<V>>,
+    V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
-    assert!(all_inactive(query.query_state(tcx)));
-    let cache = query.query_cache(tcx);
-    cache.iter(&mut |key, value, dep_node| {
+    assert!(all_inactive(&query.state));
+    query.cache.iter(&mut |key, value, dep_node| {
         if query.will_cache_on_disk_for_key(tcx, key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
@@ -346,7 +347,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q, C: QueryCache>(
 
             // Encode the type check tables with the `SerializedDepNodeIndex`
             // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore_val(*value));
+            encoder.encode_tagged(dep_node, &erase::restore_val::<V>(*value));
         }
     });
 }
@@ -357,7 +358,7 @@ pub(crate) fn query_key_hash_verify<'tcx, C: QueryCache>(
 ) {
     let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name);
 
-    let cache = query.query_cache(tcx);
+    let cache = &query.cache;
     let mut map = UnordMap::with_capacity(cache.len());
     cache.iter(&mut |key, _, _| {
         let node = DepNode::construct(tcx, query.dep_kind, key);
@@ -473,10 +474,14 @@ macro_rules! define_queries {
 
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
-            use std::marker::PhantomData;
             use ::rustc_middle::query::erase::{self, Erased};
 
-            pub(crate) mod get_query_incr {
+            // It seems to be important that every query has its own monomorphic
+            // copy of `execute_query_incr` and `execute_query_non_incr`.
+            // Trying to inline these wrapper functions into their generic
+            // "inner" helpers tends to break `tests/run-make/short-ice`.
+
+            pub(crate) mod execute_query_incr {
                 use super::*;
 
                 // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
@@ -490,7 +495,7 @@ macro_rules! define_queries {
                 ) -> Option<Erased<queries::$name::Value<'tcx>>> {
                     #[cfg(debug_assertions)]
                     let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                    execution::get_query_incr(
+                    execution::execute_query_incr_inner(
                         &tcx.query_system.query_vtables.$name,
                         tcx,
                         span,
@@ -500,7 +505,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) mod get_query_non_incr {
+            pub(crate) mod execute_query_non_incr {
                 use super::*;
 
                 #[inline(never)]
@@ -510,7 +515,7 @@ macro_rules! define_queries {
                     key: queries::$name::Key<'tcx>,
                     __mode: QueryMode,
                 ) -> Option<Erased<queries::$name::Value<'tcx>>> {
-                    Some(execution::get_query_non_incr(
+                    Some(execution::execute_query_non_incr_inner(
                         &tcx.query_system.query_vtables.$name,
                         tcx,
                         span,
@@ -549,8 +554,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn make_query_vtable<'tcx>()
-                -> QueryVTable<'tcx, queries::$name::Storage<'tcx>>
+            pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
+                -> QueryVTable<'tcx, queries::$name::Cache<'tcx>>
             {
                 QueryVTable {
                     name: stringify!($name),
@@ -560,8 +565,8 @@ macro_rules! define_queries {
                     feedable: is_feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
-                    query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
-                    query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
+                    state: Default::default(),
+                    cache: Default::default(),
                     will_cache_on_disk_for_key_fn: if_cache_on_disk!([$($modifiers)*] {
                         Some(::rustc_middle::queries::_cache_on_disk_if_fns::$name)
                     } {
@@ -604,31 +609,23 @@ macro_rules! define_queries {
                     hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
                     format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
                     description_fn: $crate::queries::_description_fns::$name,
+                    execute_query_fn: if incremental {
+                        query_impl::$name::execute_query_incr::__rust_end_short_backtrace
+                    } else {
+                        query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
+                    },
                 }
             }
 
-            #[derive(Copy, Clone, Default)]
-            pub(crate) struct QueryType<'tcx> {
-                data: PhantomData<&'tcx ()>
-            }
+            /// Marker type that implements [`GetQueryVTable`] for this query.
+            pub(crate) enum VTableGetter {}
 
-            impl<'tcx> QueryDispatcherUnerased<'tcx, queries::$name::Storage<'tcx>>
-                for QueryType<'tcx>
-            {
-                type UnerasedValue = queries::$name::Value<'tcx>;
+            impl<'tcx> GetQueryVTable<'tcx> for VTableGetter {
+                type Cache = rustc_middle::queries::$name::Cache<'tcx>;
 
                 #[inline(always)]
-                fn query_vtable(tcx: TyCtxt<'tcx>)
-                    -> &'tcx QueryVTable<'tcx, queries::$name::Storage<'tcx>>
-                {
+                fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache> {
                     &tcx.query_system.query_vtables.$name
-                }
-
-                #[inline(always)]
-                fn restore_val(value: <queries::$name::Storage<'tcx> as QueryCache>::Value)
-                    -> Self::UnerasedValue
-                {
-                    erase::restore_val::<queries::$name::Value<'tcx>>(value)
                 }
             }
 
@@ -646,7 +643,8 @@ macro_rules! define_queries {
                 };
 
                 // Call `gather_active_jobs_inner` to do the actual work.
-                let res = crate::execution::gather_active_jobs_inner(&tcx.query_system.states.$name,
+                let res = crate::execution::gather_active_jobs_inner(
+                    &tcx.query_system.query_vtables.$name.state,
                     tcx,
                     make_frame,
                     require_complete,
@@ -672,7 +670,7 @@ macro_rules! define_queries {
                 $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
                     tcx,
                     stringify!($name),
-                    &tcx.query_system.caches.$name,
+                    &tcx.query_system.query_vtables.$name.cache,
                     string_cache,
                 )
             }
@@ -683,12 +681,9 @@ macro_rules! define_queries {
                     encoder: &mut CacheEncoder<'_, 'tcx>,
                     query_result_index: &mut EncodedDepNodeIndex
                 ) {
-                    $crate::plumbing::encode_query_results::<
-                        query_impl::$name::QueryType<'tcx>,
-                        _
-                    > (
-                        &tcx.query_system.query_vtables.$name,
+                    $crate::plumbing::encode_query_results_inner(
                         tcx,
+                        &tcx.query_system.query_vtables.$name,
                         encoder,
                         query_result_index,
                     )
@@ -703,22 +698,10 @@ macro_rules! define_queries {
             }
         })*}
 
-        pub(crate) fn engine(incremental: bool) -> QueryEngine {
-            if incremental {
-                QueryEngine {
-                    $($name: query_impl::$name::get_query_incr::__rust_end_short_backtrace,)*
-                }
-            } else {
-                QueryEngine {
-                    $($name: query_impl::$name::get_query_non_incr::__rust_end_short_backtrace,)*
-                }
-            }
-        }
-
-        pub fn make_query_vtables<'tcx>() -> queries::PerQueryVTables<'tcx> {
-            queries::PerQueryVTables {
+        pub fn make_query_vtables<'tcx>(incremental: bool) -> queries::QueryVTables<'tcx> {
+            queries::QueryVTables {
                 $(
-                    $name: query_impl::$name::make_query_vtable(),
+                    $name: query_impl::$name::make_query_vtable(incremental),
                 )*
             }
         }
@@ -773,8 +756,8 @@ macro_rules! define_queries {
             $(
                 /// `DepKindVTable` constructor for this query.
                 pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
-                    use $crate::query_impl::$name::QueryType;
-                    make_dep_kind_vtable_for_query::<QueryType<'tcx>, _>(
+                    use $crate::query_impl::$name::VTableGetter;
+                    make_dep_kind_vtable_for_query::<VTableGetter>(
                         is_anon!([$($modifiers)*]),
                         is_eval_always!([$($modifiers)*]),
                     )

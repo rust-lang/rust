@@ -3416,6 +3416,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
     command("./configure")
         .arg("--set")
         .arg("rust.omit-git-hash=false")
+        .arg("--set")
+        .arg("rust.remap-debuginfo=false")
         .args(&configure_args)
         .arg("--enable-vendor")
         .current_dir(plain_src_dir)

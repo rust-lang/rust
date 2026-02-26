@@ -42,7 +42,7 @@ impl<B: WriteBackendMethods> ThinModule<B> {
 
 pub struct ThinShared<B: WriteBackendMethods> {
     pub data: B::ThinData,
-    pub thin_buffers: Vec<B::ThinBuffer>,
+    pub thin_buffers: Vec<B::ModuleBuffer>,
     pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }

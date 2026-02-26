@@ -59,12 +59,11 @@ impl LateLintPass<'_> for ManualOptionAsSlice {
             return;
         }
         match expr.kind {
-            ExprKind::Match(scrutinee, [arm1, arm2], _) => {
+            ExprKind::Match(scrutinee, [arm1, arm2], _)
                 if is_none_pattern(cx, arm2.pat) && check_arms(cx, arm2, arm1)
-                    || is_none_pattern(cx, arm1.pat) && check_arms(cx, arm1, arm2)
-                {
-                    check_as_ref(cx, scrutinee, span, self.msrv);
-                }
+                    || is_none_pattern(cx, arm1.pat) && check_arms(cx, arm1, arm2) =>
+            {
+                check_as_ref(cx, scrutinee, span, self.msrv);
             },
             ExprKind::If(cond, then, Some(other)) => {
                 if let ExprKind::Let(let_expr) = cond.kind
@@ -75,34 +74,24 @@ impl LateLintPass<'_> for ManualOptionAsSlice {
                     check_as_ref(cx, let_expr.init, span, self.msrv);
                 }
             },
-            ExprKind::MethodCall(seg, callee, [], _) => {
-                if seg.ident.name == sym::unwrap_or_default {
-                    check_map(cx, callee, span, self.msrv);
-                }
+            ExprKind::MethodCall(seg, callee, [], _) if seg.ident.name == sym::unwrap_or_default => {
+                check_map(cx, callee, span, self.msrv);
             },
             ExprKind::MethodCall(seg, callee, [or], _) => match seg.ident.name {
-                sym::unwrap_or => {
-                    if is_empty_slice(cx, or) {
-                        check_map(cx, callee, span, self.msrv);
-                    }
+                sym::unwrap_or if is_empty_slice(cx, or) => {
+                    check_map(cx, callee, span, self.msrv);
                 },
-                sym::unwrap_or_else => {
-                    if returns_empty_slice(cx, or) {
-                        check_map(cx, callee, span, self.msrv);
-                    }
+                sym::unwrap_or_else if returns_empty_slice(cx, or) => {
+                    check_map(cx, callee, span, self.msrv);
                 },
                 _ => {},
             },
             ExprKind::MethodCall(seg, callee, [or_else, map], _) => match seg.ident.name {
-                sym::map_or => {
-                    if is_empty_slice(cx, or_else) && is_slice_from_ref(cx, map) {
-                        check_as_ref(cx, callee, span, self.msrv);
-                    }
+                sym::map_or if is_empty_slice(cx, or_else) && is_slice_from_ref(cx, map) => {
+                    check_as_ref(cx, callee, span, self.msrv);
                 },
-                sym::map_or_else => {
-                    if returns_empty_slice(cx, or_else) && is_slice_from_ref(cx, map) {
-                        check_as_ref(cx, callee, span, self.msrv);
-                    }
+                sym::map_or_else if returns_empty_slice(cx, or_else) && is_slice_from_ref(cx, map) => {
+                    check_as_ref(cx, callee, span, self.msrv);
                 },
                 _ => {},
             },

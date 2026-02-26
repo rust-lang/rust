@@ -4,8 +4,8 @@ error: creating a shared reference to mutable static
 LL |         let _y = &X;
    |                  ^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: `#[deny(static_mut_refs)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `&raw const` instead to create a raw pointer
    |
@@ -18,8 +18,8 @@ error: creating a mutable reference to mutable static
 LL |         let _y = &mut X;
    |                  ^^^^^^ mutable reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw mut` instead to create a raw pointer
    |
 LL |         let _y = &raw mut X;
@@ -31,8 +31,8 @@ error: creating a shared reference to mutable static
 LL |         let ref _a = X;
    |                      ^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 
 error: creating a shared reference to mutable static
   --> $DIR/static-mut-refs.rs:54:25
@@ -40,8 +40,8 @@ error: creating a shared reference to mutable static
 LL |         let (_b, _c) = (&X, &Y);
    |                         ^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw const` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (&raw const X, &Y);
@@ -53,8 +53,8 @@ error: creating a shared reference to mutable static
 LL |         let (_b, _c) = (&X, &Y);
    |                             ^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw const` instead to create a raw pointer
    |
 LL |         let (_b, _c) = (&X, &raw const Y);
@@ -66,8 +66,8 @@ error: creating a shared reference to mutable static
 LL |         foo(&X);
    |             ^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw const` instead to create a raw pointer
    |
 LL |         foo(&raw const X);
@@ -79,8 +79,8 @@ error: creating a shared reference to mutable static
 LL |         let _ = Z.len();
    |                 ^^^^^^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 
 error: creating a shared reference to mutable static
   --> $DIR/static-mut-refs.rs:72:33
@@ -88,8 +88,8 @@ error: creating a shared reference to mutable static
 LL |         let _ = format!("{:?}", Z);
    |                                 ^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 
 error: creating a shared reference to mutable static
   --> $DIR/static-mut-refs.rs:76:18
@@ -97,8 +97,8 @@ error: creating a shared reference to mutable static
 LL |         let _v = &A.value;
    |                  ^^^^^^^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw const` instead to create a raw pointer
    |
 LL |         let _v = &raw const A.value;
@@ -110,8 +110,8 @@ error: creating a shared reference to mutable static
 LL |         let _s = &A.s.value;
    |                  ^^^^^^^^^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 help: use `&raw const` instead to create a raw pointer
    |
 LL |         let _s = &raw const A.s.value;
@@ -123,8 +123,8 @@ error: creating a shared reference to mutable static
 LL |         let ref _v = A.value;
    |                      ^^^^^^^ shared reference to mutable static
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
 
 error: creating a mutable reference to mutable static
   --> $DIR/static-mut-refs.rs:14:14
@@ -135,8 +135,8 @@ LL |         &mut ($x.0)
 LL |         let _x = bar!(FOO);
    |                  --------- in this macro invocation
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors

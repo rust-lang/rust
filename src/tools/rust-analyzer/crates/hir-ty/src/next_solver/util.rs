@@ -13,13 +13,16 @@ use rustc_type_ir::{
     solve::SizedTraitKind,
 };
 
-use crate::next_solver::{
-    BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
-    PolyTraitRef,
-    infer::{
-        InferCtxt,
-        traits::{Obligation, ObligationCause, PredicateObligation},
+use crate::{
+    next_solver::{
+        BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
+        PolyTraitRef,
+        infer::{
+            InferCtxt,
+            traits::{Obligation, ObligationCause, PredicateObligation},
+        },
     },
+    representability::Representability,
 };
 
 use super::{
@@ -419,10 +422,18 @@ pub fn sizedness_constraint_for_ty<'db>(
             .next_back()
             .and_then(|ty| sizedness_constraint_for_ty(interner, sizedness, ty)),
 
-        Adt(adt, args) => adt.struct_tail_ty(interner).and_then(|tail_ty| {
-            let tail_ty = tail_ty.instantiate(interner, args);
-            sizedness_constraint_for_ty(interner, sizedness, tail_ty)
-        }),
+        Adt(adt, args) => {
+            if crate::representability::representability(interner.db, adt.def_id().0)
+                == Representability::Infinite
+            {
+                return None;
+            }
+
+            adt.struct_tail_ty(interner).and_then(|tail_ty| {
+                let tail_ty = tail_ty.instantiate(interner, args);
+                sizedness_constraint_for_ty(interner, sizedness, tail_ty)
+            })
+        }
 
         Placeholder(..) | Bound(..) | Infer(..) => {
             panic!("unexpected type `{ty:?}` in sizedness_constraint_for_ty")

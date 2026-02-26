@@ -94,7 +94,7 @@ impl ImportScope {
                     .item_list()
                     .map(ImportScopeKind::Module)
                     .map(|kind| ImportScope { kind, required_cfgs });
-            } else if let Some(has_attrs) = ast::AnyHasAttrs::cast(syntax) {
+            } else if let Some(has_attrs) = ast::AnyHasAttrs::cast(syntax.clone()) {
                 if block.is_none()
                     && let Some(b) = ast::BlockExpr::cast(has_attrs.syntax().clone())
                     && let Some(b) = sema.original_ast_node(b)
@@ -105,11 +105,34 @@ impl ImportScope {
                     .attrs()
                     .any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
                 {
-                    if let Some(b) = block {
-                        return Some(ImportScope {
-                            kind: ImportScopeKind::Block(b),
-                            required_cfgs,
+                    if let Some(b) = block.clone() {
+                        let current_cfgs = has_attrs.attrs().filter(|attr| {
+                            attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
                         });
+
+                        let total_cfgs: Vec<_> =
+                            required_cfgs.iter().cloned().chain(current_cfgs).collect();
+
+                        let parent = syntax.parent();
+                        let mut can_merge = false;
+                        if let Some(parent) = parent {
+                            can_merge = parent.children().filter_map(ast::Use::cast).any(|u| {
+                                let u_attrs = u.attrs().filter(|attr| {
+                                    attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
+                                });
+                                crate::imports::merge_imports::eq_attrs(
+                                    u_attrs,
+                                    total_cfgs.iter().cloned(),
+                                )
+                            });
+                        }
+
+                        if !can_merge {
+                            return Some(ImportScope {
+                                kind: ImportScopeKind::Block(b),
+                                required_cfgs,
+                            });
+                        }
                     }
                     required_cfgs.extend(has_attrs.attrs().filter(|attr| {
                         attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
@@ -546,7 +569,9 @@ fn insert_use_(scope: &ImportScope, use_item: ast::Use, group_imports: bool) {
         // skip the curly brace
         .skip(l_curly.is_some() as usize)
         .take_while(|child| match child {
-            NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+            NodeOrToken::Node(node) => {
+                is_inner_attribute(node.clone()) && ast::Item::cast(node.clone()).is_none()
+            }
             NodeOrToken::Token(token) => {
                 [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT, SyntaxKind::SHEBANG]
                     .contains(&token.kind())
@@ -667,7 +692,9 @@ fn insert_use_with_editor_(
         // skip the curly brace
         .skip(l_curly.is_some() as usize)
         .take_while(|child| match child {
-            NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+            NodeOrToken::Node(node) => {
+                is_inner_attribute(node.clone()) && ast::Item::cast(node.clone()).is_none()
+            }
             NodeOrToken::Token(token) => {
                 [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT, SyntaxKind::SHEBANG]
                     .contains(&token.kind())

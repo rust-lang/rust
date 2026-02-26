@@ -15,7 +15,6 @@ pub trait WriteBackendMethods: Clone + 'static {
     type TargetMachine;
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;
-    type ThinBuffer: ThinBufferMethods;
 
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations
@@ -37,7 +36,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ThinBuffer)>,
+        modules: Vec<(String, Self::ModuleBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
     fn print_pass_timings(&self);
@@ -63,12 +62,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule;
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
-    fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
-}
-
-pub trait ThinBufferMethods: Send + Sync {
-    fn data(&self) -> &[u8];
+    fn serialize_module(module: Self::Module, is_thin: bool) -> Self::ModuleBuffer;
 }
 
 pub trait ModuleBufferMethods: Send + Sync {

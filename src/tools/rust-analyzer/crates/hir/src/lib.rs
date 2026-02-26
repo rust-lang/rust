@@ -6167,6 +6167,7 @@ impl<'db> Type<'db> {
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db, dyn_trait_id))
+            .copied()
             .map(Trait::from)
     }
 
@@ -6184,6 +6185,7 @@ impl<'db> Type<'db> {
                         _ => None,
                     })
                     .flat_map(|t| hir_ty::all_super_traits(db, t))
+                    .copied()
             })
             .map(Trait::from)
     }

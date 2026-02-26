@@ -147,10 +147,7 @@ fn proc_macro() {
     with_span!(span taking_multiple_units(unsafe { (); }, 'x: loop { break 'x (); }));
 }
 
-fn main() {
-    bad();
-    ok();
-}
+fn main() {}
 
 fn issue14857() {
     let fn_take_unit = |_: ()| {};

@@ -1,3 +1,4 @@
+use clippy_utils::res::MaybeDef as _;
 use hir::FnSig;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -219,6 +220,13 @@ fn check_must_use_candidate<'tcx>(
             format!("#[must_use] \n{indent}"),
             Applicability::MachineApplicable,
         );
+        if let Some(msg) = match return_ty(cx, item_id).opt_diag_name(cx) {
+            Some(sym::ControlFlow) => Some("`ControlFlow<B, C>` as `C` when `B` is uninhabited"),
+            Some(sym::Result) => Some("`Result<T, E>` as `T` when `E` is uninhabited"),
+            _ => None,
+        } {
+            diag.note(format!("a future version of Rust will treat {msg} wrt `#[must_use]`"));
+        }
     });
 }
 

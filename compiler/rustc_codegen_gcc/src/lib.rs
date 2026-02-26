@@ -19,6 +19,7 @@
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
 #![expect(clippy::uninlined_format_args)]
+#![allow(clippy::collapsible_match)]
 
 // The rustc crates we need
 extern crate rustc_abi;
@@ -86,9 +87,7 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
-use rustc_codegen_ssa::traits::{
-    CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
-};
+use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -423,20 +422,11 @@ unsafe impl Send for SyncContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "CodegenBackend::supports_parallel()".
 unsafe impl Sync for SyncContext {}
 
-pub struct ThinBuffer;
-
-impl ThinBufferMethods for ThinBuffer {
-    fn data(&self) -> &[u8] {
-        &[]
-    }
-}
-
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
     type ThinData = ();
-    type ThinBuffer = ThinBuffer;
 
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext,
@@ -458,7 +448,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],
-        _modules: Vec<(String, Self::ThinBuffer)>,
+        _modules: Vec<(String, Self::ModuleBuffer)>,
         _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
         unreachable!()
@@ -502,11 +492,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
 
-    fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        unreachable!()
-    }
-
-    fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
+    fn serialize_module(_module: Self::Module, _is_thin: bool) -> Self::ModuleBuffer {
         unimplemented!();
     }
 }

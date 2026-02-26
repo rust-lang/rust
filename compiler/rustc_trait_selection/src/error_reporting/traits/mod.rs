@@ -2,8 +2,6 @@ pub mod ambiguity;
 pub mod call_kind;
 pub mod fulfillment_errors;
 pub mod on_unimplemented;
-pub mod on_unimplemented_condition;
-pub mod on_unimplemented_format;
 mod overflow;
 pub mod suggestions;
 

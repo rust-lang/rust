@@ -72,14 +72,14 @@ fn useless_check<'a, 'tcx: 'a>(
         e = e.peel_blocks();
         if let ExprKind::MethodCall(_, _expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPointer)
+            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPtr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         } else if let ExprKind::Call(path, _args) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPointer)
+            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPtr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_node};
+use clippy_utils::macros::{find_assert_args, root_macro_call_first_node};
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
         if let Some(macro_call) = root_macro_call_first_node(cx, e)
             && matches!(cx.tcx.get_diagnostic_name(macro_call.def_id), Some(sym::assert_macro))
             && let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn)
-            && matches!(panic_expn, PanicExpn::Empty)
+            && panic_expn.is_default_message()
             && let ExprKind::MethodCall(method_segment, recv, [], _) = condition.kind
             && let result_type_with_refs = cx.typeck_results().expr_ty(recv)
             && let result_type = result_type_with_refs.peel_refs()

@@ -69,11 +69,6 @@ fn allow_works() -> i32 {
 }
 
 fn main() {
-    early_return();
-    issue975();
-    issue985();
-    issue985_alt();
-
     let mut foo = 0;
     //~^ useless_let_if_seq
 

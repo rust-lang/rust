@@ -334,7 +334,7 @@ macro_rules! error_codes {
 0551,
 0552,
 0554,
-0556,
+0556, // REMOVED: merged with other attribute error codes
 0557,
 0559,
 0560,

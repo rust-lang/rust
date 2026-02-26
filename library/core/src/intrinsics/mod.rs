@@ -2751,18 +2751,6 @@ pub unsafe fn vtable_size(ptr: *const ()) -> usize;
 #[rustc_intrinsic]
 pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 
-/// The intrinsic returns the `U` vtable for `T` if `T` can be coerced to the trait object type `U`.
-///
-/// # Compile-time failures
-/// Determining whether `T` can be coerced to the trait object type `U` requires trait resolution by the compiler.
-/// In some cases, that resolution can exceed the recursion limit,
-/// and compilation will fail instead of this function returning `None`.
-#[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_intrinsic]
-pub const fn vtable_for<T, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>()
--> Option<ptr::DynMetadata<U>>;
-
 /// The size of a type in bytes.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -2863,6 +2851,20 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+/// Check if a type represented by a `TypeId` implements a trait represented by a `TypeId`.
+/// It can only be called at compile time, the backends do
+/// not implement it. If it implements the trait the dyn metadata gets returned for vtable access.
+pub const fn type_id_vtable(
+    _id: crate::any::TypeId,
+    _trait: crate::any::TypeId,
+) -> Option<ptr::DynMetadata<*const ()>> {
+    panic!(
+        "`TypeId::trait_info_of` and `trait_info_of_trait_type_id` can only be called at compile-time"
+    )
+}
 
 /// Compute the type information of a concrete type.
 /// It can only be called at compile time, the backends do

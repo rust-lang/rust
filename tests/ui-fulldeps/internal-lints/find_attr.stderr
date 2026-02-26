@@ -15,7 +15,7 @@ LL | #![deny(rustc::bad_use_of_find_attr)]
 error: use of `AttributeKind` in `find_attr!(...)` invocation
   --> $DIR/find_attr.rs:16:23
    |
-LL |     find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecation {..});
+LL |     find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecated {..});
    |                       ^^^^^^^^^^^^^
    |
    = note: `find_attr!(...)` already imports `AttributeKind::*`
@@ -24,7 +24,7 @@ LL |     find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecatio
 error: use of `AttributeKind` in `find_attr!(...)` invocation
   --> $DIR/find_attr.rs:16:51
    |
-LL |     find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecation {..});
+LL |     find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecated {..});
    |                                                   ^^^^^^^^^^^^^
    |
    = note: `find_attr!(...)` already imports `AttributeKind::*`

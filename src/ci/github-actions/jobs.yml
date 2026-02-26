@@ -706,7 +706,7 @@ auto:
   # i686 has no dedicated job, build it here because this job is fast
   - name: dist-aarch64-llvm-mingw
     env:
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py dist bootstrap enzyme --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --build=aarch64-pc-windows-gnullvm
         --target=aarch64-pc-windows-gnullvm,i686-pc-windows-gnullvm
@@ -720,7 +720,7 @@ auto:
 
   - name: dist-x86_64-llvm-mingw
     env:
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: python x.py dist bootstrap enzyme --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnullvm
         --enable-full-tools

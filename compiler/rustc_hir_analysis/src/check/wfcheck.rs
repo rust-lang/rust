@@ -14,7 +14,7 @@ use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -2469,7 +2469,7 @@ fn lint_redundant_lifetimes<'tcx>(
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unnecessary lifetime parameter `{$victim}`")]
 #[note("you can use the `{$candidate}` lifetime directly, in place of `{$victim}`")]
 struct RedundantLifetimeArgsLint<'tcx> {

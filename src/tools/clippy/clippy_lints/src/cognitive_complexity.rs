@@ -81,10 +81,8 @@ impl CognitiveComplexity {
                     }
                     cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
                 },
-                ExprKind::Ret(_) => {
-                    if !matches!(prev_expr, Some(ExprKind::Ret(_))) {
-                        returns += 1;
-                    }
+                ExprKind::Ret(_) if !matches!(prev_expr, Some(ExprKind::Ret(_))) => {
+                    returns += 1;
                 },
                 _ => {},
             }

@@ -405,7 +405,12 @@ pub(crate) struct SelfInConstGenericTy {
 }
 
 #[derive(Diagnostic)]
-#[diag("generic parameters may not be used in const operations")]
+#[diag(
+    "{$is_ogca ->
+    [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
+    *[false] generic parameters may not be used in const operations
+}"
+)]
 pub(crate) struct ParamInNonTrivialAnonConst {
     #[primary_span]
     #[label("cannot perform const operation using `{$name}`")]
@@ -415,6 +420,11 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
+    pub(crate) is_ogca: bool,
+    #[help(
+        "consider factoring the expression into a `type const` item and use it as the const argument instead"
+    )]
+    pub(crate) help_ogca: bool,
 }
 
 #[derive(Debug)]
@@ -1199,15 +1209,6 @@ pub(crate) struct ToolWasAlreadyRegistered {
     pub(crate) tool: Ident,
     #[label("already registered here")]
     pub(crate) old_ident_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$tool}` only accepts identifiers")]
-pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[primary_span]
-    #[label("not an identifier")]
-    pub(crate) span: Span,
-    pub(crate) tool: Symbol,
 }
 
 #[derive(Subdiagnostic)]
