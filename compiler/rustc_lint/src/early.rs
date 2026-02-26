@@ -34,17 +34,18 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
 }
 
 pub trait EmitDiag {
-    fn emit(&self, lint: &'static Lint, diag: impl for<'a> Diagnostic<'a, ()>);
+    fn emit(&self, diag: impl for<'a> Diagnostic<'a, ()>);
 }
 
 struct DiagEmitter<'a, 'b> {
     ctx: &'a EarlyContext<'b>,
     span: Option<MultiSpan>,
+    lint: &'static Lint,
 }
 
 impl EmitDiag for DiagEmitter<'_, '_> {
-    fn emit(&self, lint: &'static Lint, diag: impl for<'a> Diagnostic<'a, ()>) {
-        self.ctx.opt_span_diag_lint(lint, self.span.clone(), diag);
+    fn emit(&self, diag: impl for<'a> Diagnostic<'a, ()>) {
+        self.ctx.opt_span_diag_lint(self.lint, self.span.clone(), diag);
     }
 }
 
@@ -55,11 +56,10 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
             match diagnostic {
                 DecorateDiagCompat::Builtin(b) => {
                     diagnostics::decorate_builtin_lint(
-                        &DiagEmitter { ctx: &self.context, span },
+                        &DiagEmitter { ctx: &self.context, span, lint: lint_id.lint },
                         self.context.sess(),
                         self.tcx,
                         b,
-                        lint_id.lint,
                     );
                 }
                 DecorateDiagCompat::Dynamic(d) => {
