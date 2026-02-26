@@ -74,7 +74,6 @@ use std::process::ExitCode;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::lints::DelayedLint;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -772,19 +771,6 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     Ok(())
 }
 
-struct DiagEmitter<'tcx> {
-    hir_id: rustc_hir::HirId,
-    tcx: TyCtxt<'tcx>,
-    span: rustc_span::Span,
-    lint: &'static rustc_lint::Lint,
-}
-
-impl rustc_lint::EmitDiag for DiagEmitter<'_> {
-    fn emit(&self, diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>) {
-        self.tcx.emit_node_span_lint(self.lint, self.hir_id, self.span, diag);
-    }
-}
-
 fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -923,21 +909,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
                 if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
                     for lint in &delayed_lints.lints {
-                        match lint {
-                            DelayedLint::AttributeParsing(attribute_lint) => {
-                                rustc_lint::decorate_attribute_lint(
-                                    &DiagEmitter {
-                                        hir_id: attribute_lint.id,
-                                        tcx,
-                                        span: attribute_lint.span,
-                                        lint: attribute_lint.lint_id.lint,
-                                    },
-                                    tcx.sess,
-                                    Some(tcx),
-                                    &attribute_lint.kind,
-                                );
-                            }
-                        }
+                        rustc_hir_analysis::emit_delayed_lint(lint, tcx);
                     }
                 }
             }
