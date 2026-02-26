@@ -229,6 +229,21 @@ impl fmt::Debug for Options {
     }
 }
 
+// Use type-defs rather than just bools to aid with readability
+struct EnableIndexPage(bool);
+struct DocumentPrivate(bool);
+struct HtmlNoSource(bool);
+struct MarkdownNoToc(bool);
+struct DocumentHidden(bool);
+struct GenerateRedirectMap(bool);
+struct ShowTypeLayout(bool);
+struct ExternHTMLRootTakesPrecedence(bool);
+struct GenerateLinkToDefinition(bool);
+struct NoEmitShared(bool);
+struct OutputToStdout(bool);
+struct DisableMinification(bool);
+struct GenerateMacroExpansion(bool);
+
 /// Configuration options for the HTML page-creation process.
 #[derive(Clone, Debug)]
 pub(crate) struct RenderOptions {
@@ -254,7 +269,7 @@ pub(crate) struct RenderOptions {
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub(crate) extern_html_root_urls: BTreeMap<String, String>,
     /// Whether to give precedence to `html_root_url` or `--extern-html-root-url`.
-    pub(crate) extern_html_root_takes_precedence: bool,
+    pub(crate) extern_html_root_takes_precedence: ExternHTMLRootTakesPrecedence,
     /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.
     pub(crate) default_settings: FxIndexMap<String, String>,
@@ -262,7 +277,7 @@ pub(crate) struct RenderOptions {
     pub(crate) resource_suffix: String,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
-    pub(crate) enable_index_page: bool,
+    pub(crate) enable_index_page: EnableIndexPage,
     /// A file to use as the index page at the root of the output directory. Overrides
     /// `enable_index_page` to be true if set.
     pub(crate) index_page: Option<PathBuf>,
@@ -273,35 +288,35 @@ pub(crate) struct RenderOptions {
     // Options specific to reading standalone Markdown files
     /// Whether to generate a table of contents on the output file when reading a standalone
     /// Markdown file.
-    pub(crate) markdown_no_toc: bool,
+    pub(crate) markdown_no_toc: MarkdownNoToc,
     /// Additional CSS files to link in pages generated from standalone Markdown files.
     pub(crate) markdown_css: Vec<String>,
     /// If present, playground URL to use in the "Run" button added to code samples generated from
     /// standalone Markdown files. If not present, `playground_url` is used.
     pub(crate) markdown_playground_url: Option<String>,
     /// Document items that have lower than `pub` visibility.
-    pub(crate) document_private: bool,
+    pub(crate) document_private: DocumentPrivate,
     /// Document items that have `doc(hidden)`.
-    pub(crate) document_hidden: bool,
+    pub(crate) document_hidden: DocumentHidden,
     /// If `true`, generate a JSON file in the crate folder instead of HTML redirection files.
-    pub(crate) generate_redirect_map: bool,
+    pub(crate) generate_redirect_map: GenerateRedirectMap,
     /// Show the memory layout of types in the docs.
-    pub(crate) show_type_layout: bool,
+    pub(crate) show_type_layout: ShowTypeLayout,
     /// Note: this field is duplicated in `Options` because it's useful to have
     /// it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
     pub(crate) emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
-    pub(crate) generate_link_to_definition: bool,
+    pub(crate) generate_link_to_definition: GenerateLinkToDefinition,
     /// Set of function-call locations to include as examples
     pub(crate) call_locations: AllCallLocations,
     /// If `true`, Context::init will not emit shared files.
-    pub(crate) no_emit_shared: bool,
+    pub(crate) no_emit_shared: NoEmitShared,
     /// If `true`, HTML source code pages won't be generated.
-    pub(crate) html_no_source: bool,
+    pub(crate) html_no_source: HtmlNoSource,
     /// This field is only used for the JSON output. If it's set to true, no file will be created
     /// and content will be displayed in stdout directly.
-    pub(crate) output_to_stdout: bool,
+    pub(crate) output_to_stdout: OutputToStdout,
     /// Whether we should read or write rendered cross-crate info in the doc root.
     pub(crate) should_merge: ShouldMerge,
     /// Path to crate-info for external crates.
@@ -309,9 +324,9 @@ pub(crate) struct RenderOptions {
     /// Where to write crate-info
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
-    pub(crate) disable_minification: bool,
+    pub(crate) disable_minification: DisableMinification,
     /// If `true`, HTML source pages will generate the possibility to expand macros.
-    pub(crate) generate_macro_expansion: bool,
+    pub(crate) generate_macro_expansion: GenerateMacroExpansion,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
