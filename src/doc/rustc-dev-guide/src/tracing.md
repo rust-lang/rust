@@ -12,6 +12,25 @@ To see the logs, you need to set the `RUSTC_LOG` environment variable to your lo
 The full syntax of the log filters can be found in the [rustdoc
 of `tracing-subscriber`](https://docs.rs/tracing-subscriber/0.2.24/tracing_subscriber/filter/struct.EnvFilter.html#directives).
 
+## Environment variables
+
+This is an overview of the environment variables rustc accepts to customize
+its tracing output. The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
+
+|  Name                     | Usage                                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `RUSTC_LOG`               | Tracing filters (see the rest of this page)                                                                             |
+| `RUSTC_LOG_COLOR`         | `always`, `never` or `auto`.                                                                                            |
+| `RUSTC_LOG_ENTRY_EXIT`    | if set and not '0', log span entry/exit.                                                                                |
+| `RUSTC_LOG_THREAD_IDS`    | if set and equal to '1', also log thread ids.                                                                           |
+| `RUSTC_LOG_BACKTRACE`     | Capture and print a backtrace if a trace is emitted with a target that matches the provided string value.               |
+| `RUSTC_LOG_LINES`         | If `1`, indents log lines based on depth.                                                                               |
+| `RUSTC_LOG_FORMAT_JSON`   | If `1`, outputs logs as JSON. The exact parameters can be found in `rustc_log/src/lib.rs` but the format is *UNSTABLE*. |
+| `RUSTC_LOG_OUTPUT_TARGET` | If provided, logs go to the provided file name instead of stderr.                                                       |
+
+
+
+
 ## Function level filters
 
 Lots of functions in rustc are annotated with

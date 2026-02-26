@@ -1,5 +1,5 @@
 error: argument to `Path::join` starts with a path separator
-  --> tests/ui/join_absolute_paths.rs:10:15
+  --> tests/ui/join_absolute_paths.rs:8:15
    |
 LL |     path.join("/sh");
    |               ^^^^^
@@ -19,25 +19,7 @@ LL +     PathBuf::from("/sh");
    |
 
 error: argument to `Path::join` starts with a path separator
-  --> tests/ui/join_absolute_paths.rs:14:15
-   |
-LL |     path.join("\\user");
-   |               ^^^^^^^^
-   |
-   = note: joining a path starting with separator will replace the path instead
-help: if this is unintentional, try removing the starting separator
-   |
-LL -     path.join("\\user");
-LL +     path.join("\user");
-   |
-help: if this is intentional, consider using `Path::new`
-   |
-LL -     path.join("\\user");
-LL +     PathBuf::from("\\user");
-   |
-
-error: argument to `Path::join` starts with a path separator
-  --> tests/ui/join_absolute_paths.rs:18:15
+  --> tests/ui/join_absolute_paths.rs:12:15
    |
 LL |     path.join("/sh");
    |               ^^^^^
@@ -55,7 +37,7 @@ LL +     PathBuf::from("/sh");
    |
 
 error: argument to `Path::join` starts with a path separator
-  --> tests/ui/join_absolute_paths.rs:22:15
+  --> tests/ui/join_absolute_paths.rs:16:15
    |
 LL |     path.join(r#"/sh"#);
    |               ^^^^^^^^
@@ -72,5 +54,59 @@ LL -     path.join(r#"/sh"#);
 LL +     PathBuf::from(r#"/sh"#);
    |
 
-error: aborting due to 4 previous errors
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:20:15
+   |
+LL |     path.join("\\user");
+   |               ^^^^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join("\\user");
+LL +     path.join("user");
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join("\\user");
+LL +     PathBuf::from("\\user");
+   |
+
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:24:15
+   |
+LL |     path.join("\\user");
+   |               ^^^^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join("\\user");
+LL +     path.join("user");
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join("\\user");
+LL +     PathBuf::from("\\user");
+   |
+
+error: argument to `Path::join` starts with a path separator
+  --> tests/ui/join_absolute_paths.rs:28:15
+   |
+LL |     path.join(r#"\user"#);
+   |               ^^^^^^^^^^
+   |
+   = note: joining a path starting with separator will replace the path instead
+help: if this is unintentional, try removing the starting separator
+   |
+LL -     path.join(r#"\user"#);
+LL +     path.join(r#"user"#);
+   |
+help: if this is intentional, consider using `Path::new`
+   |
+LL -     path.join(r#"\user"#);
+LL +     PathBuf::from(r#"\user"#);
+   |
+
+error: aborting due to 6 previous errors
 

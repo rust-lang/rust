@@ -60,7 +60,4 @@ mod non_ascii_literal {
     }
 }
 
-fn main() {
-    zero();
-    canon();
-}
+fn main() {}

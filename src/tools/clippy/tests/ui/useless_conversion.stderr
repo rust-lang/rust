@@ -53,13 +53,13 @@ LL |     let mut n = NUMBERS.into_iter();
    |                 ^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `NUMBERS`
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:141:17
+  --> tests/ui/useless_conversion.rs:126:17
    |
 LL |         consume(items.into_iter());
    |                 ^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:137:28
+  --> tests/ui/useless_conversion.rs:122:28
    |
 LL |         fn consume(_: impl IntoIterator) {}
    |                            ^^^^^^^^^^^^
@@ -70,79 +70,79 @@ LL +         consume(*items);
    |
 
 error: useless conversion to the same type: `std::string::String`
-  --> tests/ui/useless_conversion.rs:154:21
+  --> tests/ui/useless_conversion.rs:139:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> tests/ui/useless_conversion.rs:156:21
+  --> tests/ui/useless_conversion.rs:141:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> tests/ui/useless_conversion.rs:158:13
+  --> tests/ui/useless_conversion.rs:143:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> tests/ui/useless_conversion.rs:160:13
+  --> tests/ui/useless_conversion.rs:145:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: useless conversion to the same type: `std::str::Lines<'_>`
-  --> tests/ui/useless_conversion.rs:162:13
+  --> tests/ui/useless_conversion.rs:147:13
    |
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: useless conversion to the same type: `std::vec::IntoIter<i32>`
-  --> tests/ui/useless_conversion.rs:164:13
+  --> tests/ui/useless_conversion.rs:149:13
    |
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> tests/ui/useless_conversion.rs:166:21
+  --> tests/ui/useless_conversion.rs:151:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
 
 error: useless conversion to the same type: `i32`
-  --> tests/ui/useless_conversion.rs:172:13
+  --> tests/ui/useless_conversion.rs:157:13
    |
 LL |     let _ = i32::from(a + b) * 3;
    |             ^^^^^^^^^^^^^^^^ help: consider removing `i32::from()`: `(a + b)`
 
 error: useless conversion to the same type: `Foo<'a'>`
-  --> tests/ui/useless_conversion.rs:179:23
+  --> tests/ui/useless_conversion.rs:164:23
    |
 LL |     let _: Foo<'a'> = s2.into();
    |                       ^^^^^^^^^ help: consider removing `.into()`: `s2`
 
 error: useless conversion to the same type: `Foo<'a'>`
-  --> tests/ui/useless_conversion.rs:182:13
+  --> tests/ui/useless_conversion.rs:167:13
    |
 LL |     let _ = Foo::<'a'>::from(s3);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider removing `Foo::<'a'>::from()`: `s3`
 
 error: useless conversion to the same type: `std::vec::IntoIter<Foo<'a'>>`
-  --> tests/ui/useless_conversion.rs:185:13
+  --> tests/ui/useless_conversion.rs:170:13
    |
 LL |     let _ = vec![s4, s4, s4].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![s4, s4, s4].into_iter()`
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:218:7
+  --> tests/ui/useless_conversion.rs:203:7
    |
 LL |     b(vec![1, 2].into_iter());
    |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:208:13
+  --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -153,13 +153,13 @@ LL +     b(vec![1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:220:7
+  --> tests/ui/useless_conversion.rs:205:7
    |
 LL |     c(vec![1, 2].into_iter());
    |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:209:18
+  --> tests/ui/useless_conversion.rs:194:18
    |
 LL |     fn c(_: impl IntoIterator<Item = i32>) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,13 +170,13 @@ LL +     c(vec![1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:222:7
+  --> tests/ui/useless_conversion.rs:207:7
    |
 LL |     d(vec![1, 2].into_iter());
    |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:212:12
+  --> tests/ui/useless_conversion.rs:197:12
    |
 LL |         T: IntoIterator<Item = i32>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -187,13 +187,13 @@ LL +     d(vec![1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:226:7
+  --> tests/ui/useless_conversion.rs:211:7
    |
 LL |     b(vec![1, 2].into_iter().into_iter());
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:208:13
+  --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -204,13 +204,13 @@ LL +     b(vec![1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:228:7
+  --> tests/ui/useless_conversion.rs:213:7
    |
 LL |     b(vec![1, 2].into_iter().into_iter().into_iter());
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:208:13
+  --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -221,13 +221,13 @@ LL +     b(vec![1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:275:24
+  --> tests/ui/useless_conversion.rs:260:24
    |
 LL |         foo2::<i32, _>([1, 2, 3].into_iter());
    |                        ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:254:12
+  --> tests/ui/useless_conversion.rs:239:12
    |
 LL |         I: IntoIterator<Item = i32> + Helper<X>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -238,13 +238,13 @@ LL +         foo2::<i32, _>([1, 2, 3]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:284:14
+  --> tests/ui/useless_conversion.rs:269:14
    |
 LL |         foo3([1, 2, 3].into_iter());
    |              ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:263:12
+  --> tests/ui/useless_conversion.rs:248:12
    |
 LL |         I: IntoIterator<Item = i32>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -255,13 +255,13 @@ LL +         foo3([1, 2, 3]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:294:16
+  --> tests/ui/useless_conversion.rs:279:16
    |
 LL |         S1.foo([1, 2].into_iter());
    |                ^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:291:27
+  --> tests/ui/useless_conversion.rs:276:27
    |
 LL |             pub fn foo<I: IntoIterator>(&self, _: I) {}
    |                           ^^^^^^^^^^^^
@@ -272,13 +272,13 @@ LL +         S1.foo([1, 2]);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:314:44
+  --> tests/ui/useless_conversion.rs:299:44
    |
 LL |         v0.into_iter().interleave_shortest(v1.into_iter());
    |                                            ^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:301:20
+  --> tests/ui/useless_conversion.rs:286:20
    |
 LL |                 J: IntoIterator,
    |                    ^^^^^^^^^^^^
@@ -289,61 +289,61 @@ LL +         v0.into_iter().interleave_shortest(v1);
    |
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:342:58
+  --> tests/ui/useless_conversion.rs:327:58
    |
 LL |     let _: Result<(), std::io::Error> = test_issue_3913().map(Into::into);
    |                                                          ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `std::io::Error`
-  --> tests/ui/useless_conversion.rs:345:58
+  --> tests/ui/useless_conversion.rs:330:58
    |
 LL |     let _: Result<(), std::io::Error> = test_issue_3913().map_err(Into::into);
    |                                                          ^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:348:58
+  --> tests/ui/useless_conversion.rs:333:58
    |
 LL |     let _: Result<(), std::io::Error> = test_issue_3913().map(From::from);
    |                                                          ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `std::io::Error`
-  --> tests/ui/useless_conversion.rs:351:58
+  --> tests/ui/useless_conversion.rs:336:58
    |
 LL |     let _: Result<(), std::io::Error> = test_issue_3913().map_err(From::from);
    |                                                          ^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:355:31
+  --> tests/ui/useless_conversion.rs:340:31
    |
 LL |     let _: ControlFlow<()> = c.map_break(Into::into);
    |                               ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:359:31
+  --> tests/ui/useless_conversion.rs:344:31
    |
 LL |     let _: ControlFlow<()> = c.map_continue(Into::into);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `u32`
-  --> tests/ui/useless_conversion.rs:373:41
+  --> tests/ui/useless_conversion.rs:358:41
    |
 LL |     let _: Vec<u32> = [1u32].into_iter().map(Into::into).collect();
    |                                         ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `T`
-  --> tests/ui/useless_conversion.rs:384:18
+  --> tests/ui/useless_conversion.rs:369:18
    |
 LL |     x.into_iter().map(Into::into).collect()
    |                  ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:400:29
+  --> tests/ui/useless_conversion.rs:385:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:389:32
+  --> tests/ui/useless_conversion.rs:374:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -354,13 +354,13 @@ LL +             takes_into_iter(&self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:408:29
+  --> tests/ui/useless_conversion.rs:393:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:389:32
+  --> tests/ui/useless_conversion.rs:374:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -371,13 +371,13 @@ LL +             takes_into_iter(&mut self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:417:29
+  --> tests/ui/useless_conversion.rs:402:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:389:32
+  --> tests/ui/useless_conversion.rs:374:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -388,13 +388,13 @@ LL +             takes_into_iter(*self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:426:29
+  --> tests/ui/useless_conversion.rs:411:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:389:32
+  --> tests/ui/useless_conversion.rs:374:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -405,13 +405,13 @@ LL +             takes_into_iter(&*self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:435:29
+  --> tests/ui/useless_conversion.rs:420:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:389:32
+  --> tests/ui/useless_conversion.rs:374:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -422,22 +422,73 @@ LL +             takes_into_iter(&mut *self.my_field);
    |
 
 error: useless conversion to the same type: `std::ops::Range<u32>`
-  --> tests/ui/useless_conversion.rs:450:5
+  --> tests/ui/useless_conversion.rs:435:5
    |
 LL |     R.into_iter().for_each(|_x| {});
    |     ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
 
 error: useless conversion to the same type: `std::ops::Range<u32>`
-  --> tests/ui/useless_conversion.rs:452:13
+  --> tests/ui/useless_conversion.rs:437:13
    |
 LL |     let _ = R.into_iter().map(|_x| 0);
    |             ^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `R`
 
 error: useless conversion to the same type: `std::slice::Iter<'_, i32>`
-  --> tests/ui/useless_conversion.rs:463:14
+  --> tests/ui/useless_conversion.rs:448:14
    |
 LL |     for _ in mac!(iter [1, 2]).into_iter() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `mac!(iter [1, 2])`
 
-error: aborting due to 45 previous errors
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:461:27
+   |
+LL |     takes_into_iter_usize(b.into_iter());
+   |                           ^^^^^^^^^^^^^
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:452:34
+   |
+LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     takes_into_iter_usize(b.into_iter());
+LL +     takes_into_iter_usize(b);
+   |
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:470:31
+   |
+LL |         takes_into_iter_usize(b.clone().into_iter());
+   |                               ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:452:34
+   |
+LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         takes_into_iter_usize(b.clone().into_iter());
+LL +         takes_into_iter_usize(b.clone());
+   |
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> tests/ui/useless_conversion.rs:478:34
+   |
+LL |     takes_into_iter_usize_result(b.clone().into_iter())?;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> tests/ui/useless_conversion.rs:453:41
+   |
+LL | fn takes_into_iter_usize_result(_: impl IntoIterator<Item = usize>) -> Result<(), ()> {
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     takes_into_iter_usize_result(b.clone().into_iter())?;
+LL +     takes_into_iter_usize_result(b.clone())?;
+   |
+
+error: aborting due to 48 previous errors
 

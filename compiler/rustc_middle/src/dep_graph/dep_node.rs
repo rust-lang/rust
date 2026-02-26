@@ -51,14 +51,14 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::Symbol;
 
 use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::dep_graph::DepNodeKey;
 use crate::mir::mono::MonoItem;
 use crate::ty::{TyCtxt, tls};
 
@@ -165,58 +165,6 @@ impl fmt::Debug for DepNode {
         })?;
 
         write!(f, ")")
-    }
-}
-
-/// Trait for query keys as seen by dependency-node tracking.
-pub trait DepNodeKey<'tcx>: fmt::Debug + Sized {
-    fn key_fingerprint_style() -> KeyFingerprintStyle;
-
-    /// This method turns a query key into an opaque `Fingerprint` to be used
-    /// in `DepNode`.
-    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint;
-
-    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String;
-
-    /// This method tries to recover the query key from the given `DepNode`,
-    /// something which is needed when forcing `DepNode`s during red-green
-    /// evaluation. The query system will only call this method if
-    /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
-    /// It is always valid to return `None` here, in which case incremental
-    /// compilation will treat the query as having changed instead of forcing it.
-    fn try_recover_key(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
-}
-
-// Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
-impl<'tcx, T> DepNodeKey<'tcx> for T
-where
-    T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
-{
-    #[inline(always)]
-    default fn key_fingerprint_style() -> KeyFingerprintStyle {
-        KeyFingerprintStyle::Opaque
-    }
-
-    #[inline(always)]
-    default fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-        tcx.with_stable_hashing_context(|mut hcx| {
-            let mut hasher = StableHasher::new();
-            self.hash_stable(&mut hcx, &mut hasher);
-            hasher.finish()
-        })
-    }
-
-    #[inline(always)]
-    default fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
-        // Make sure to print dep node params with reduced queries since printing
-        // may themselves call queries, which may lead to (possibly untracked!)
-        // query cycles.
-        tcx.with_reduced_queries(|| format!("{self:?}"))
-    }
-
-    #[inline(always)]
-    default fn try_recover_key(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
-        None
     }
 }
 

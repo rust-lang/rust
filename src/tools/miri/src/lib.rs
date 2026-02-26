@@ -40,6 +40,7 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
+    clippy::collapsible_match,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]

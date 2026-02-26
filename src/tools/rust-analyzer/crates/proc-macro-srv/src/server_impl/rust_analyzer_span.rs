@@ -169,7 +169,9 @@ impl server::Server for RaSpanServer<'_> {
         None
     }
     fn span_source(&mut self, span: Self::Span) -> Self::Span {
-        // FIXME requires db, returns the top level call site
+        if let Some(ref mut callback) = self.callback {
+            return callback.span_source(span);
+        }
         span
     }
     fn span_byte_range(&mut self, span: Self::Span) -> Range<usize> {

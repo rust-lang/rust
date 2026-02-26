@@ -1655,6 +1655,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
+    fn get_funclet_cleanuppad(&self, _funclet: &Funclet) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
     // Atomic Operations
     fn atomic_cmpxchg(
         &mut self,

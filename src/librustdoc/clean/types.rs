@@ -203,7 +203,14 @@ impl ExternalCrate {
             if !url.ends_with('/') {
                 url.push('/');
             }
-            Remote(url)
+            let is_absolute = url.starts_with('/')
+                || url.split_once(':').is_some_and(|(scheme, _)| {
+                    scheme.bytes().next().is_some_and(|b| b.is_ascii_alphabetic())
+                        && scheme
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'))
+                });
+            Remote { url, is_absolute }
         }
 
         // See if there's documentation generated into the local directory
@@ -316,7 +323,7 @@ impl ExternalCrate {
 #[derive(Debug)]
 pub(crate) enum ExternalLocation {
     /// Remote URL root of the external crate
-    Remote(String),
+    Remote { url: String, is_absolute: bool },
     /// This external crate can be found in the local doc/ folder
     Local,
     /// The external crate could not be found.

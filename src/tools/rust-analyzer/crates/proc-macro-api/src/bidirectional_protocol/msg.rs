@@ -21,6 +21,7 @@ pub enum SubRequest {
     LocalFilePath { file_id: u32 },
     LineColumn { file_id: u32, ast_id: u32, offset: u32 },
     ByteRange { file_id: u32, ast_id: u32, start: u32, end: u32 },
+    SpanSource { file_id: u32, ast_id: u32, start: u32, end: u32, ctx: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,6 +42,13 @@ pub enum SubResponse {
     },
     ByteRangeResult {
         range: Range<usize>,
+    },
+    SpanSourceResult {
+        file_id: u32,
+        ast_id: u32,
+        start: u32,
+        end: u32,
+        ctx: u32,
     },
     Cancel {
         reason: String,

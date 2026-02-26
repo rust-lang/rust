@@ -132,25 +132,65 @@ impl<'a> CargoConfigFileReader<'a> {
     }
 }
 
+pub(crate) struct LockfileCopy {
+    pub(crate) path: Utf8PathBuf,
+    pub(crate) usage: LockfileUsage,
+    _temp_dir: temp_dir::TempDir,
+}
+
+pub(crate) enum LockfileUsage {
+    /// Rust [1.82.0, 1.95.0). `cargo <subcmd> --lockfile-path <lockfile path>`
+    WithFlag,
+    /// Rust >= 1.95.0. `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo <subcmd>`
+    WithEnvVar,
+}
+
 pub(crate) fn make_lockfile_copy(
+    toolchain_version: &semver::Version,
     lockfile_path: &Utf8Path,
-) -> Option<(temp_dir::TempDir, Utf8PathBuf)> {
+) -> Option<LockfileCopy> {
+    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_FLAG: semver::Version =
+        semver::Version {
+            major: 1,
+            minor: 82,
+            patch: 0,
+            pre: semver::Prerelease::EMPTY,
+            build: semver::BuildMetadata::EMPTY,
+        };
+
+    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV: semver::Version =
+        semver::Version {
+            major: 1,
+            minor: 95,
+            patch: 0,
+            pre: semver::Prerelease::EMPTY,
+            build: semver::BuildMetadata::EMPTY,
+        };
+
+    let usage = if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV {
+        LockfileUsage::WithEnvVar
+    } else if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_FLAG {
+        LockfileUsage::WithFlag
+    } else {
+        return None;
+    };
+
     let temp_dir = temp_dir::TempDir::with_prefix("rust-analyzer").ok()?;
-    let target_lockfile = temp_dir.path().join("Cargo.lock").try_into().ok()?;
-    match std::fs::copy(lockfile_path, &target_lockfile) {
+    let path: Utf8PathBuf = temp_dir.path().join("Cargo.lock").try_into().ok()?;
+    let path = match std::fs::copy(lockfile_path, &path) {
         Ok(_) => {
-            tracing::debug!("Copied lock file from `{}` to `{}`", lockfile_path, target_lockfile);
-            Some((temp_dir, target_lockfile))
+            tracing::debug!("Copied lock file from `{}` to `{}`", lockfile_path, path);
+            path
         }
         // lockfile does not yet exist, so we can just create a new one in the temp dir
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some((temp_dir, target_lockfile)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => path,
         Err(e) => {
-            tracing::warn!(
-                "Failed to copy lock file from `{lockfile_path}` to `{target_lockfile}`: {e}",
-            );
-            None
+            tracing::warn!("Failed to copy lock file from `{lockfile_path}` to `{path}`: {e}",);
+            return None;
         }
-    }
+    };
+
+    Some(LockfileCopy { path, usage, _temp_dir: temp_dir })
 }
 
 #[test]

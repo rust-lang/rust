@@ -635,7 +635,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[must_use]
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
-        Frame::generate_stacktrace_from_stack(self.stack())
+        Frame::generate_stacktrace_from_stack(self.stack(), *self.tcx)
     }
 
     pub fn adjust_nan<F1, F2>(&self, f: F2, inputs: &[F1]) -> F2

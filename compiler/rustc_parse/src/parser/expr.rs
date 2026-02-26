@@ -1628,8 +1628,7 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count =
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?;
+                let count = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?;
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {

@@ -165,10 +165,8 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 return self.visit_expr(inner);
             },
 
-            ExprKind::Field(e, _) => {
-                if self.typeck_results.expr_ty(e).is_union() {
-                    self.insert_span(expr.span, "union field access occurs here");
-                }
+            ExprKind::Field(e, _) if self.typeck_results.expr_ty(e).is_union() => {
+                self.insert_span(expr.span, "union field access occurs here");
             },
 
             ExprKind::Path(QPath::Resolved(

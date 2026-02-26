@@ -96,5 +96,13 @@ LL |     let _ = a;
    |
    = help: consider explicitly using expression value
 
-error: aborting due to 12 previous errors
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:120:5
+   |
+LL |     let _ = Result::<_, std::convert::Infallible>::Ok(T);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+
+error: aborting due to 13 previous errors
 

@@ -850,6 +850,31 @@ fn foo(x: Option<i32>) {
     }
 
     #[test]
+    fn special_case_option_ref() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: option
+fn foo(x: &Option<i32>) {
+    $0if let Some(x) = x {
+        println!("{}", x)
+    } else {
+        println!("none")
+    }
+}
+"#,
+            r#"
+fn foo(x: &Option<i32>) {
+    match x {
+        Some(x) => println!("{}", x),
+        None => println!("none"),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn special_case_inverted_option() {
         check_assist(
             replace_if_let_with_match,

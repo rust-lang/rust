@@ -290,3 +290,43 @@ pub(super) fn check_or<'tcx>(
         },
     );
 }
+
+pub(super) fn check_is_some_is_none<'tcx>(
+    cx: &LateContext<'tcx>,
+    call_span: Span,
+    recv: &'tcx Expr<'tcx>,
+    arg: &'tcx Expr<'tcx>,
+    is_some: bool,
+    msrv: Msrv,
+) {
+    if cx
+        .typeck_results()
+        .expr_ty_adjusted(recv)
+        .peel_refs()
+        .is_diag_item(cx, sym::Option)
+        && (is_some || msrv.meets(cx, msrvs::IS_NONE_OR))
+        && let Ok(map_func) = MapFunc::try_from(arg)
+    {
+        let method = if is_some { "is_some_and" } else { "is_none_or" };
+        let lint_span = recv.span.to(call_span);
+        span_lint_and_then(
+            cx,
+            MANUAL_IS_VARIANT_AND,
+            lint_span,
+            format!("manual implementation of `Option::{method}`"),
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let (recv_snip, _) = snippet_with_context(cx, recv.span, lint_span.ctxt(), "_", &mut app);
+                let map_func_snip = map_func.sugg(cx, !is_some, &mut app);
+
+                // We need to use `as_ref()` because `filter` takes a reference
+                diag.span_suggestion(
+                    lint_span,
+                    "use",
+                    format!("{recv_snip}.as_ref().{method}({map_func_snip})"),
+                    app,
+                );
+            },
+        );
+    }
+}

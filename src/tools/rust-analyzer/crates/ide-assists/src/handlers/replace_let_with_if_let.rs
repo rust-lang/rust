@@ -102,6 +102,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn replace_let_try_enum_ref() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+//- minicore: option
+fn main(action: Action) {
+    $0let x = compute();
+}
+
+fn compute() -> &'static Option<i32> { &None }
+            ",
+            r"
+fn main(action: Action) {
+    if let Some(x) = compute() {
+    }
+}
+
+fn compute() -> &'static Option<i32> { &None }
+            ",
+        )
+    }
+
+    #[test]
     fn replace_let_unknown_enum() {
         check_assist(
             replace_let_with_if_let,

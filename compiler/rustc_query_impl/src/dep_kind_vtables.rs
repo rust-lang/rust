@@ -2,7 +2,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
-use crate::QueryDispatcherUnerased;
+use crate::GetQueryVTable;
 use crate::plumbing::{force_from_dep_node_inner, try_load_from_on_disk_cache_inner};
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
@@ -102,18 +102,17 @@ mod non_query {
 
 /// Shared implementation of the [`DepKindVTable`] constructor for queries.
 /// Called from macro-generated code for each query.
-pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q, Cache>(
+pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
     is_anon: bool,
     is_eval_always: bool,
 ) -> DepKindVTable<'tcx>
 where
-    Q: QueryDispatcherUnerased<'tcx, Cache>,
-    Cache: QueryCache + 'tcx,
+    Q: GetQueryVTable<'tcx>,
 {
     let key_fingerprint_style = if is_anon {
         KeyFingerprintStyle::Opaque
     } else {
-        <Cache::Key as DepNodeKey<'tcx>>::key_fingerprint_style()
+        <Q::Cache as QueryCache>::Key::key_fingerprint_style()
     };
 
     if is_anon || !key_fingerprint_style.reconstructible() {

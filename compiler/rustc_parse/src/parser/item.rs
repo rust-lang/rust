@@ -2,11 +2,11 @@ use std::fmt::Write;
 use std::mem;
 
 use ast::token::IdentIsRaw;
+use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
-use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
@@ -1587,9 +1587,7 @@ impl<'a> Parser<'a> {
 
         let rhs = match (self.eat(exp!(Eq)), const_arg) {
             (true, true) => ConstItemRhsKind::TypeConst {
-                rhs: Some(
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?,
-                ),
+                rhs: Some(self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?),
             },
             (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
             (false, true) => ConstItemRhsKind::TypeConst { rhs: None },

@@ -22,14 +22,13 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic, msg};
+use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
-use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
@@ -44,9 +43,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
@@ -59,7 +58,7 @@ use crate::lints::{
     BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
     BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 declare_lint! {
@@ -236,7 +235,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> LintDiagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
@@ -1120,12 +1119,10 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
-        if attr.has_name(sym::feature)
-            && let Some(items) = attr.meta_item_list()
-        {
-            for item in items {
-                cx.emit_span_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
+    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[hir::Attribute]) {
+        if let Some(features) = find_attr!(attrs, Feature(features, _) => features) {
+            for feature in features {
+                cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
             }
         }
     }
@@ -3183,6 +3180,65 @@ impl EarlyLintPass for SpecialModuleName {
                     _ => continue,
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `internal_eq_trait_method_impls` lint detects manual
+    /// implementations of `Eq::assert_receiver_is_total_eq`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[derive(PartialEq)]
+    /// pub struct Foo;
+    ///
+    /// impl Eq for Foo {
+    ///     fn assert_receiver_is_total_eq(&self) {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This method existed so that `#[derive(Eq)]` could check that all
+    /// fields of a type implement `Eq`. Other users were never supposed
+    /// to implement it and it was hidden from documentation.
+    ///
+    /// Unfortunately, it was not explicitly marked as unstable and some
+    /// people have now mistakenly assumed they had to implement this method.
+    ///
+    /// As the method is never called by the standard library, you can safely
+    /// remove any implementations of the method and just write `impl Eq for Foo {}`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #152336] for more details.
+    ///
+    /// [issue #152336]: https://github.com/rust-lang/rust/issues/152336
+    pub INTERNAL_EQ_TRAIT_METHOD_IMPLS,
+    Warn,
+    "manual implementation of the internal `Eq::assert_receiver_is_total_eq` method",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #152336),
+        report_in_deps: false,
+    };
+}
+
+declare_lint_pass!(InternalEqTraitMethodImpls => [INTERNAL_EQ_TRAIT_METHOD_IMPLS]);
+
+impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::ImplItem<'tcx>) {
+        if let ImplItemImplKind::Trait { defaultness: _, trait_item_def_id: Ok(trait_item_def_id) } =
+            item.impl_kind
+            && cx.tcx.is_diagnostic_item(sym::assert_receiver_is_total_eq, trait_item_def_id)
+        {
+            cx.emit_span_lint(
+                INTERNAL_EQ_TRAIT_METHOD_IMPLS,
+                item.span,
+                EqInternalMethodImplemented,
+            );
         }
     }
 }

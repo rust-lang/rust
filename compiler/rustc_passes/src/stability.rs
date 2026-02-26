@@ -97,7 +97,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
     let depr = find_attr!(tcx, def_id,
-        Deprecation { deprecation, span: _ } => *deprecation
+        Deprecated { deprecation, span: _ } => *deprecation
     );
 
     let Some(depr) = depr else {
@@ -209,22 +209,22 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
                 && let Some(fn_sig) = tcx.hir_node_by_def_id(def_id).fn_sig()
                 && fn_sig.header.is_const()
             {
-                let const_stability_indirect = find_attr!(tcx, def_id, RustcConstStabilityIndirect);
-                return Some(ConstStability::unmarked(const_stability_indirect, parent_stab));
+                let const_stable_indirect = find_attr!(tcx, def_id, RustcConstStableIndirect);
+                return Some(ConstStability::unmarked(const_stable_indirect, parent_stab));
             }
         }
 
         return None;
     }
 
-    let const_stability_indirect = find_attr!(tcx, def_id, RustcConstStabilityIndirect);
+    let const_stable_indirect = find_attr!(tcx, def_id, RustcConstStableIndirect);
     let const_stab =
         find_attr!(tcx, def_id, RustcConstStability { stability, span: _ } => *stability);
 
     // After checking the immediate attributes, get rid of the span and compute implied
     // const stability: inherit feature gate from regular stability.
     let mut const_stab = const_stab
-        .map(|const_stab| ConstStability::from_partial(const_stab, const_stability_indirect));
+        .map(|const_stab| ConstStability::from_partial(const_stab, const_stable_indirect));
 
     // If this is a const fn but not annotated with stability markers, see if we can inherit
     // regular stability.
@@ -335,7 +335,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         if stab.is_none()
             && depr.map_or(false, |d| d.attr.is_since_rustc_version())
-            && let Some(span) = find_attr_span!(Deprecation)
+            && let Some(span) = find_attr_span!(Deprecated)
         {
             self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span });
         }

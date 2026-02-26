@@ -820,8 +820,8 @@ pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
     matches!(
         (l, r),
         (Defaultness::Implicit, Defaultness::Implicit)
-        | (Defaultness::Default(_), Defaultness::Default(_))
-        | (Defaultness::Final(_), Defaultness::Final(_))
+            | (Defaultness::Default(_), Defaultness::Default(_))
+            | (Defaultness::Final(_), Defaultness::Final(_))
     )
 }
 

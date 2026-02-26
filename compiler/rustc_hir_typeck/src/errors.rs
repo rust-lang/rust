@@ -11,7 +11,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::Spanned;
@@ -215,7 +215,7 @@ pub(crate) struct MissingParenthesesInRange<'tcx> {
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help("specify the type explicitly")]
     #[diag("never type fallback affects this call to an `unsafe` function")]
@@ -249,7 +249,7 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[help("specify the types explicitly")]
 #[diag("this function depends on never type fallback being `()`")]
 pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
@@ -372,7 +372,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
 #[help(
     "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
@@ -411,7 +411,7 @@ pub(crate) struct LossyProvenanceInt2PtrSuggestion {
     pub hi: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`"
 )]
@@ -769,7 +769,7 @@ pub(crate) struct SuggestPtrNullMut {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "trivial {$numeric ->
         [true] numeric cast
@@ -1109,7 +1109,7 @@ pub(crate) struct InnerItem {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("can't reference `Self` constructor from outer item")]
 pub(crate) struct SelfCtorFromOuterItemLint {
     #[label(
@@ -1214,7 +1214,7 @@ pub(crate) struct ReplaceCommaWithSemicolon {
     pub descr: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
 pub(crate) struct SupertraitItemShadowing {
     pub item: Symbol,

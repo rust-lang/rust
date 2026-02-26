@@ -370,6 +370,20 @@ impl<'a> Sugg<'a> {
         }
     }
 
+    /// Strip enclosing parentheses if present. This method must be called when
+    /// it is known that removing those will not change the meaning. For example,
+    /// if `self` is known to represent a reference and the suggestion will be
+    /// used as the argument of a function call, it is safe to remove the enclosing
+    /// parentheses. It would not be safe to do so for an expression that might
+    /// represent a tuple.
+    #[must_use]
+    pub fn strip_paren(self) -> Self {
+        match self {
+            Sugg::NonParen(s) | Sugg::MaybeParen(s) => Sugg::NonParen(strip_enclosing_paren(s)),
+            sugg => sugg,
+        }
+    }
+
     pub fn into_string(self) -> String {
         match self {
             Sugg::NonParen(p) | Sugg::MaybeParen(p) => p.into_owned(),
@@ -427,6 +441,22 @@ pub fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
         chars.next().is_none()
     } else {
         false
+    }
+}
+
+/// Strip enclosing parentheses from a snippet if present.
+fn strip_enclosing_paren(snippet: Cow<'_, str>) -> Cow<'_, str> {
+    if has_enclosing_paren(&snippet) {
+        match snippet {
+            Cow::Borrowed(s) => Cow::Borrowed(&s[1..s.len() - 1]),
+            Cow::Owned(mut s) => {
+                s.pop();
+                s.remove(0);
+                Cow::Owned(s)
+            },
+        }
+    } else {
+        snippet
     }
 }
 

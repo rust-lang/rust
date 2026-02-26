@@ -1,5 +1,5 @@
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:77:5
+  --> tests/ui/let_if_seq.rs:72:5
    |
 LL | /     let mut foo = 0;
 LL | |
@@ -14,7 +14,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::useless_let_if_seq)]`
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:84:5
+  --> tests/ui/let_if_seq.rs:79:5
    |
 LL | /     let mut bar = 0;
 LL | |
@@ -28,7 +28,7 @@ LL | |     }
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:94:5
+  --> tests/ui/let_if_seq.rs:89:5
    |
 LL | /     let quz;
 LL | |
@@ -40,7 +40,7 @@ LL | |     }
    | |_____^ help: it is more idiomatic to write: `let quz = if f() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:125:5
+  --> tests/ui/let_if_seq.rs:120:5
    |
 LL | /     let mut baz = 0;
 LL | |
@@ -53,7 +53,7 @@ LL | |     }
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:144:5
+  --> tests/ui/let_if_seq.rs:139:5
    |
 LL | /     let foo;
 LL | |
@@ -65,7 +65,7 @@ LL | |     }
    | |_____^ help: it is more idiomatic to write: `let foo = if bar() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:163:5
+  --> tests/ui/let_if_seq.rs:158:5
    |
 LL | /     let foo;
 LL | |

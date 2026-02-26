@@ -2770,3 +2770,28 @@ unsafe extern "C"  {
     "#,
     );
 }
+
+#[test]
+fn infinitely_sized_type() {
+    check_infer(
+        r#"
+//- minicore: sized
+
+pub struct Recursive {
+    pub content: Recursive,
+}
+
+fn is_sized<T: Sized>() {}
+
+fn foo() {
+    is_sized::<Recursive>();
+}
+    "#,
+        expect![[r#"
+            79..81 '{}': ()
+            92..124 '{     ...>(); }': ()
+            98..119 'is_siz...rsive>': fn is_sized<Recursive>()
+            98..121 'is_siz...ive>()': ()
+        "#]],
+    );
+}

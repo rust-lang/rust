@@ -763,19 +763,11 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     self.check_private_items,
                 );
                 match item.kind {
-                    ItemKind::Fn { sig, body, .. } => {
+                    ItemKind::Fn { sig, body, .. }
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
-                            || item.span.in_external_macro(cx.tcx.sess.source_map()))
-                        {
-                            missing_headers::check(
-                                cx,
-                                item.owner_id,
-                                sig,
-                                headers,
-                                Some(body),
-                                self.check_private_items,
-                            );
-                        }
+                            || item.span.in_external_macro(cx.tcx.sess.source_map())) =>
+                    {
+                        missing_headers::check(cx, item.owner_id, sig, headers, Some(body), self.check_private_items);
                     },
                     ItemKind::Trait(_, _, unsafety, ..) => match (headers.safety, unsafety) {
                         (false, Safety::Unsafe) => span_lint(

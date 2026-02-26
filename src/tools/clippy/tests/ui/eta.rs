@@ -643,3 +643,12 @@ where
 {
     maybe.map(|x| visitor(x));
 }
+
+trait Issue16360: Sized {
+    fn method(&self);
+
+    fn ice_machine(array: [Self; 1]) {
+        array.iter().for_each(|item| item.method());
+        //~^ redundant_closure_for_method_calls
+    }
+}

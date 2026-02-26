@@ -26,6 +26,4 @@ fn skip_while_next() {
     let _ = foo.skip_while().next();
 }
 
-fn main() {
-    skip_while_next();
-}
+fn main() {}

@@ -120,6 +120,7 @@ pub trait ProcMacroClientInterface {
     fn line_column(&mut self, span: Span) -> Option<(u32, u32)>;
 
     fn byte_range(&mut self, span: Span) -> Range<usize>;
+    fn span_source(&mut self, span: Span) -> Span;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

@@ -1,0 +1,46 @@
+error: expected expression, found `$`
+  --> $DIR/typo-in-norepeat-expr-2.rs:6:10
+   |
+LL |         [$follow]
+   |          ^------
+   |          ||
+   |          |there is an macro metavariable with this name in another macro matcher
+   |          expected expression
+...
+LL |     let _ = err![begin1 x  end ig];
+   |             ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `err` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/typo-in-norepeat-expr-2.rs:17:10
+   |
+LL |         [$follo]
+   |          ^^^^^^ expected expression
+...
+LL |     let _ = err1![begin1 x  end];
+   |             -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `err1` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a macro metavariable with a similar name in another macro matcher
+   |
+LL |         [$follow]
+   |                +
+
+error: expected expression, found `$`
+  --> $DIR/typo-in-norepeat-expr-2.rs:28:10
+   |
+LL |         [$xyz]
+   |          ^---
+   |          ||
+   |          |macro metavariable not found
+   |          expected expression
+...
+LL |     let _ = err2![begin1 x  end];
+   |             -------------------- in this macro invocation
+   |
+   = note: available metavariable names are: $arg1
+   = note: this error originates in the macro `err2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

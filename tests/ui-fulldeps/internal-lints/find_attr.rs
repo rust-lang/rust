@@ -13,7 +13,7 @@ fn main() {
 
     find_attr!(attrs, AttributeKind::Inline(..));
     //~^ ERROR use of `AttributeKind` in `find_attr!(...)` invocation
-    find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecation {..});
+    find_attr!(attrs, AttributeKind::Inline{..} | AttributeKind::Deprecated {..});
     //~^ ERROR use of `AttributeKind` in `find_attr!(...)` invocation
     //~| ERROR use of `AttributeKind` in `find_attr!(...)` invocation
 

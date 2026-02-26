@@ -307,7 +307,7 @@ fn expr_block<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
 }
 
 /// If the expression is a `||`, suggest parentheses around it.
-fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
+pub(super) fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
     if let ExprKind::Binary(op, _, _) = expr.peel_drop_temps().kind
         && op.node == BinOpKind::Or
     {
@@ -334,7 +334,7 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
 }
 
 /// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
-fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
+pub(super) fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
     use crate::rustc_span::Pos;
 
     let start = span.shrink_to_lo();

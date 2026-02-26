@@ -3,6 +3,8 @@
 
 use crate::any::TypeId;
 use crate::intrinsics::{type_id, type_of};
+use crate::marker::PointeeSized;
+use crate::ptr::DynMetadata;
 
 /// Compile-time type information.
 #[derive(Debug)]
@@ -14,6 +16,21 @@ pub struct Type {
     pub kind: TypeKind,
     /// Size of the type. `None` if it is unsized
     pub size: Option<usize>,
+}
+
+/// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
+#[derive(Debug, PartialEq, Eq)]
+#[unstable(feature = "type_info", issue = "146922")]
+#[non_exhaustive]
+pub struct TraitImpl<T: PointeeSized> {
+    pub(crate) vtable: DynMetadata<T>,
+}
+
+impl<T: PointeeSized> TraitImpl<T> {
+    /// Gets the raw vtable for type reflection mapping
+    pub const fn get_vtable(&self) -> DynMetadata<T> {
+        self.vtable
+    }
 }
 
 impl TypeId {

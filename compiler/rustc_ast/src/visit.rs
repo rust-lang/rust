@@ -757,9 +757,11 @@ macro_rules! common_visitor_and_walkers {
             ) -> V::Result;
         }
 
-        // this is only used by the MutVisitor. We include this symmetry here to make writing other functions easier
+        // This is only used by the MutVisitor. We include this symmetry here to make writing other
+        // functions easier.
         $(${ignore($lt)}
-            #[expect(unused, rustc::pass_by_value)]
+            #[cfg_attr(not(bootstrap), expect(unused, rustc::disallowed_pass_by_ref))]
+            #[cfg_attr(bootstrap, expect(unused, rustc::pass_by_value))]
             #[inline]
         )?
         fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, span: &$($lt)? $($mut)? Span) -> V::Result {

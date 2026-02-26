@@ -3,8 +3,9 @@ use std::panic;
 use tracing::instrument;
 
 pub use self::dep_node::{
-    DepKind, DepKindVTable, DepNode, DepNodeKey, WorkProductId, dep_kind_from_label, label_strs,
+    DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label, label_strs,
 };
+pub use self::dep_node_key::DepNodeKey;
 pub use self::graph::{
     DepGraph, DepGraphData, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
     WorkProductMap, hash_result,

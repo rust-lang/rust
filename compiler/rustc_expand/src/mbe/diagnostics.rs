@@ -222,11 +222,13 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
 
 pub(super) fn emit_frag_parse_err(
     mut e: Diag<'_>,
-    parser: &Parser<'_>,
+    parser: &mut Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
     arm_span: Span,
     kind: AstFragmentKind,
+    bindings: Vec<Ident>,
+    matched_rule_bindings: Vec<Ident>,
 ) -> ErrorGuaranteed {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
@@ -285,6 +287,54 @@ pub(super) fn emit_frag_parse_err(
         },
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
+
+    let matched_rule_bindings_names: Vec<_> =
+        matched_rule_bindings.iter().map(|bind| bind.name).collect();
+    let bindings_name: Vec<_> = bindings.iter().map(|bind| bind.name).collect();
+    if parser.token.kind == token::Dollar {
+        parser.bump();
+        if let token::Ident(name, _) = parser.token.kind {
+            if let Some(matched_name) = rustc_span::edit_distance::find_best_match_for_name(
+                &matched_rule_bindings_names[..],
+                name,
+                None,
+            ) {
+                e.span_suggestion_verbose(
+                    parser.token.span,
+                    "there is a macro metavariable with similar name",
+                    format!("{matched_name}"),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if bindings_name.contains(&name) {
+                e.span_label(
+                    parser.token.span,
+                    format!(
+                        "there is an macro metavariable with this name in another macro matcher"
+                    ),
+                );
+            } else if let Some(matched_name) =
+                rustc_span::edit_distance::find_best_match_for_name(&bindings_name[..], name, None)
+            {
+                e.span_suggestion_verbose(
+                    parser.token.span,
+                    "there is a macro metavariable with a similar name in another macro matcher",
+                    format!("{matched_name}"),
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                let msg = matched_rule_bindings_names
+                    .iter()
+                    .map(|sym| format!("${}", sym))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                e.span_label(parser.token.span, format!("macro metavariable not found"));
+                if !matched_rule_bindings_names.is_empty() {
+                    e.note(format!("available metavariable names are: {msg}"));
+                }
+            }
+        }
+    }
     e.emit()
 }
 

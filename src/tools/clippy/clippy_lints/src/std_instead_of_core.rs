@@ -138,14 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                         return;
                     },
                 },
-                sym::alloc => {
-                    if cx.tcx.crate_name(def_id.krate) == sym::core {
-                        (ALLOC_INSTEAD_OF_CORE, "alloc", "core")
-                    } else {
-                        self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
-                        return;
-                    }
-                },
+                sym::alloc if cx.tcx.crate_name(def_id.krate) == sym::core => (ALLOC_INSTEAD_OF_CORE, "alloc", "core"),
                 _ => {
                     self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
                     return;

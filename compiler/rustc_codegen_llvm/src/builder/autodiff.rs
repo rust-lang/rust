@@ -1,9 +1,11 @@
 use std::ptr;
 
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir::attrs::RustcAutodiff;
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt, TypingEnv};
 use rustc_middle::{bug, ty};
 use rustc_target::callconv::PassMode;
@@ -18,7 +20,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     typing_env: TypingEnv<'tcx>,
-    da: &mut Vec<DiffActivity>,
+    da: &mut ThinVec<DiffActivity>,
 ) {
     let fn_ty = instance.ty(tcx, typing_env);
 
@@ -295,7 +297,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     outer_name: &str,
     ret_ty: &'ll Type,
     fn_args: &[&'ll Value],
-    attrs: AutoDiffAttrs,
+    attrs: &RustcAutodiff,
     dest: PlaceRef<'tcx, &'ll Value>,
     fnc_tree: FncTree,
 ) {

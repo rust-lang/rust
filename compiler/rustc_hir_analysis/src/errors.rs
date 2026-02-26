@@ -7,7 +7,7 @@ use rustc_errors::{
     MultiSpan, listify, msg,
 };
 use rustc_hir::limit::Limit;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Ident, Span, Symbol};
 pub(crate) mod wrong_number_of_generic_args;
@@ -888,7 +888,7 @@ pub(crate) enum ImplNotMarkedDefault {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this item cannot be used as its where bounds are not satisfied for the `Self` type")]
 pub(crate) struct UselessImplItem;
 
@@ -1114,7 +1114,7 @@ pub(crate) enum LateBoundInApit {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unnecessary associated type bound for dyn-incompatible associated type")]
 #[note(
     "this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`"
@@ -1124,7 +1124,7 @@ pub(crate) struct UnusedAssociatedTypeBounds {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("impl trait in impl method signature does not match trait method signature")]
 #[note(
     "add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate"
@@ -1149,7 +1149,7 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefined {
     pub return_ty: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("impl trait in impl method captures fewer lifetimes than in trait")]
 #[note(
     "add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate"
@@ -1467,7 +1467,7 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
     pub local_type: Ty<'tcx>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)", code = E0210)]
 #[note(
     "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type"
@@ -1499,7 +1499,7 @@ pub(crate) struct TyParamSome {
     pub param: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("type parameter `{$param}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param}>`)", code = E0210)]
 #[note(
     "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local"
@@ -1805,7 +1805,7 @@ pub(crate) struct BadReturnTypeNotation {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
 pub(crate) struct SupertraitItemShadowing {
     pub item: Symbol,

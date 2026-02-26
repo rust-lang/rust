@@ -1,6 +1,6 @@
 //! Attributes injected into the crate root from command line using `-Z crate-attr`.
 
-use rustc_ast::{self as ast};
+use rustc_ast as ast;
 use rustc_errors::Diag;
 use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_parse::{parse_in, source_str_to_stream};

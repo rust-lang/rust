@@ -862,17 +862,11 @@ pub struct Discr {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct VariantDef {
     /// The variant index.
-    ///
-    /// ## Warning
-    /// Do not access this field directly!
-    pub idx: VariantIdx,
+    pub(crate) idx: VariantIdx,
     /// The data type where this variant comes from.
     /// For now, we use this to retrieve information about the variant itself so we don't need to
     /// cache more information.
-    ///
-    /// ## Warning
-    /// Do not access this field directly!
-    pub adt_def: AdtDef,
+    pub(crate) adt_def: AdtDef,
 }
 
 impl VariantDef {
@@ -894,10 +888,7 @@ impl VariantDef {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FieldDef {
     /// The field definition.
-    ///
-    /// ## Warning
-    /// Do not access this field directly! This is public for the compiler to have access to it.
-    pub def: DefId,
+    pub(crate) def: DefId,
 
     /// The field name.
     pub name: Symbol,

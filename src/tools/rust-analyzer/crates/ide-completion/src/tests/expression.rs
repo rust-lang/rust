@@ -3268,6 +3268,8 @@ fn foo() {
             sn dbg        dbg!(expr)
             sn dbgr      dbg!(&expr)
             sn deref           *expr
+            sn let               let
+            sn letm          let mut
             sn match   match expr {}
             sn ref             &expr
             sn refm        &mut expr
