@@ -3276,6 +3276,21 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
+    const fn test_mm_store_ps() {
+        let mut vals = Memory { data: [0.0f32; 4] };
+        let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+
+        // guaranteed to be aligned to 16 bytes
+        let p = vals.data.as_mut_ptr();
+
+        unsafe {
+            _mm_store_ps(p, *black_box(&a));
+        }
+
+        assert_eq!(vals.data, [1.0, 2.0, 3.0, 4.0]);
+    }
+
+    #[simd_test(enable = "sse")]
     fn test_mm_store_ps1() {
         test_mm_store1_ps_impl(_mm_store_ps1);
     }
