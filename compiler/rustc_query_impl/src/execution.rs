@@ -4,7 +4,7 @@ use std::mem;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{Diag, FatalError, StashKey};
+use rustc_errors::{FatalError, StashKey};
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -108,19 +108,10 @@ fn mk_cycle<'tcx, C: QueryCache>(
     cycle_error: CycleError,
 ) -> C::Value {
     let error = report_cycle(tcx.sess, &cycle_error);
-    handle_cycle_error(query, tcx, &cycle_error, error)
-}
-
-fn handle_cycle_error<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    cycle_error: &CycleError,
-    error: Diag<'_>,
-) -> C::Value {
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            query.value_from_cycle_error(tcx, &cycle_error, guar)
         }
         CycleErrorHandling::Fatal => {
             error.emit();
@@ -129,7 +120,7 @@ fn handle_cycle_error<'tcx, C: QueryCache>(
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            query.value_from_cycle_error(tcx, &cycle_error, guar)
         }
         CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -139,7 +130,7 @@ fn handle_cycle_error<'tcx, C: QueryCache>(
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            query.value_from_cycle_error(tcx, &cycle_error, guar)
         }
     }
 }
