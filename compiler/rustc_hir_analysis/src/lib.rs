@@ -148,7 +148,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     struct DiagEmitter<'tcx> {
         hir_id: rustc_hir::HirId,
         tcx: TyCtxt<'tcx>,
