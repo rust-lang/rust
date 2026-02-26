@@ -376,8 +376,9 @@ _arguments "${_arguments_options[@]}" : \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--no-fail-fast[run all tests regardless of failure]' \
-'--no-doc[do not run doc tests]' \
-'--doc[only run doc tests]' \
+'--all-targets[Run all test targets (no doc tests)]' \
+'--doc[Only run doc tests]' \
+'--tests[Only run unit and integration tests]' \
 '--bless[whether to automatically update stderr/stdout files]' \
 '--force-rerun[rerun tests even if the inputs are unchanged]' \
 '--only-modified[only run tests that result has been changed]' \
@@ -430,8 +431,9 @@ _arguments "${_arguments_options[@]}" : \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--no-fail-fast[run all tests regardless of failure]' \
-'--no-doc[do not run doc tests]' \
-'--doc[only run doc tests]' \
+'--all-targets[Run all test targets (no doc tests)]' \
+'--doc[Only run doc tests]' \
+'--tests[Only run unit and integration tests]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

@@ -329,8 +329,9 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'do not run doc tests'
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l doc -d 'only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l doc -d 'Only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l tests -d 'Only run unit and integration tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bless -d 'whether to automatically update stderr/stdout files'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l force-rerun -d 'rerun tests even if the inputs are unchanged'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l only-modified -d 'only run tests that result has been changed'
@@ -374,8 +375,9 @@ complete -c x.py -n "__fish_x.py_using_subcommand miri" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-doc -d 'do not run doc tests'
-complete -c x.py -n "__fish_x.py_using_subcommand miri" -l doc -d 'only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l doc -d 'Only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l tests -d 'Only run unit and integration tests'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l include-default-paths -d 'include default paths in addition to the provided ones'

@@ -64,7 +64,7 @@ check-aux:
 		library/core \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
-		--no-doc
+		--all-targets
 	# Some doctests use file system operations to demonstrate dealing with `Result`,
 	# so we have to run them with isolation disabled.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
