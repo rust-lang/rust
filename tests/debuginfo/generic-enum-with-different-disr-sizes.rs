@@ -1,5 +1,3 @@
-//@ ignore-lldb: FIXME(#27089)
-
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
@@ -38,22 +36,22 @@
 //@ lldb-command:run
 
 //@ lldb-command:v eight_bytes1
-//@ lldb-check:[...] Variant1(100)
+//@ lldb-check:[...] Variant1(100) { 0 = 100 }
 //@ lldb-command:v four_bytes1
-//@ lldb-check:[...] Variant1(101)
+//@ lldb-check:[...] Variant1(101) { 0 = 101 }
 //@ lldb-command:v two_bytes1
-//@ lldb-check:[...] Variant1(102)
+//@ lldb-check:[...] Variant1(102) { 0 = 102 }
 //@ lldb-command:v one_byte1
-//@ lldb-check:[...] Variant1('A')
+//@ lldb-check:[...] Variant1('A') { 0 = 'A' }
 
 //@ lldb-command:v eight_bytes2
-//@ lldb-check:[...] Variant2(100)
+//@ lldb-check:[...] Variant2(100) { 0 = 100 }
 //@ lldb-command:v four_bytes2
-//@ lldb-check:[...] Variant2(101)
+//@ lldb-check:[...] Variant2(101) { 0 = 101 }
 //@ lldb-command:v two_bytes2
-//@ lldb-check:[...] Variant2(102)
+//@ lldb-check:[...] Variant2(102) { 0 = 102 }
 //@ lldb-command:v one_byte2
-//@ lldb-check:[...] Variant2('A')
+//@ lldb-check:[...] Variant2('A') { 0 = 'A' }
 
 //@ lldb-command:continue
 
