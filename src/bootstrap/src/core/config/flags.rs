@@ -15,7 +15,7 @@ use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
-use crate::{Build, CodegenBackendKind, DocTests};
+use crate::{Build, CodegenBackendKind, TestTarget};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -357,7 +357,7 @@ pub enum Subcommand {
         should be compiled and run. For example:
             ./x.py test tests/ui
             ./x.py test library/std --test-args hash_map
-            ./x.py test library/std --stage 0 --no-doc
+            ./x.py test library/std --stage 0 --all-targets
             ./x.py test tests/ui --bless
             ./x.py test tests/ui --compare-mode next-solver
         Note that `test tests/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
@@ -382,11 +382,14 @@ pub enum Subcommand {
         #[arg(long, value_name = "ARGS", allow_hyphen_values(true))]
         compiletest_rustc_args: Vec<String>,
         #[arg(long)]
-        /// do not run doc tests
-        no_doc: bool,
+        /// Run all test targets (no doc tests)
+        all_targets: bool,
         #[arg(long)]
-        /// only run doc tests
+        /// Only run doc tests
         doc: bool,
+        /// Only run unit and integration tests
+        #[arg(long)]
+        tests: bool,
         #[arg(long)]
         /// whether to automatically update stderr/stdout files
         bless: bool,
@@ -436,11 +439,14 @@ pub enum Subcommand {
         /// (e.g. libtest, compiletest or rustdoc)
         test_args: Vec<String>,
         #[arg(long)]
-        /// do not run doc tests
-        no_doc: bool,
+        /// Run all test targets (no doc tests)
+        all_targets: bool,
         #[arg(long)]
-        /// only run doc tests
+        /// Only run doc tests
         doc: bool,
+        /// Only run unit and integration tests
+        #[arg(long)]
+        tests: bool,
     },
     /// Build and run some benchmarks
     Bench {
@@ -552,18 +558,19 @@ impl Subcommand {
         }
     }
 
-    pub fn doc_tests(&self) -> DocTests {
+    pub fn test_target(&self) -> TestTarget {
         match *self {
-            Subcommand::Test { doc, no_doc, .. } | Subcommand::Miri { no_doc, doc, .. } => {
-                if doc {
-                    DocTests::Only
-                } else if no_doc {
-                    DocTests::No
-                } else {
-                    DocTests::Yes
+            Subcommand::Test { all_targets, doc, tests, .. }
+            | Subcommand::Miri { all_targets, doc, tests, .. } => match (all_targets, doc, tests) {
+                (true, true, _) | (true, _, true) | (_, true, true) => {
+                    panic!("You can only set one of `--all-targets`, `--doc` and `--tests`.")
                 }
-            }
-            _ => DocTests::Yes,
+                (true, false, false) => TestTarget::AllTargets,
+                (false, true, false) => TestTarget::DocOnly,
+                (false, false, true) => TestTarget::Tests,
+                (false, false, false) => TestTarget::Default,
+            },
+            _ => TestTarget::Default,
         }
     }
 
