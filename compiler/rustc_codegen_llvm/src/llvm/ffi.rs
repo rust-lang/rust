@@ -2303,6 +2303,23 @@ unsafe extern "C" {
         Params: Option<&'a DIArray>,
     );
 
+    pub(crate) fn LLVMRustDIGetOrCreateSubrange<'a>(
+        Builder: &DIBuilder<'a>,
+        CountNode: Option<&'a Metadata>,
+        LB: &'a Metadata,
+        UB: &'a Metadata,
+        Stride: Option<&'a Metadata>,
+    ) -> &'a Metadata;
+
+    pub(crate) fn LLVMRustDICreateVectorType<'a>(
+        Builder: &DIBuilder<'a>,
+        Size: u64,
+        AlignInBits: u32,
+        Type: &'a DIType,
+        Subscripts: &'a DIArray,
+        BitStride: Option<&'a Metadata>,
+    ) -> &'a Metadata;
+
     pub(crate) fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
         Location: &'a DILocation,
         BD: c_uint,

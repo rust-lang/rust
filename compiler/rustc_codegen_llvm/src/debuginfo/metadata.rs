@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::{iter, ptr};
 
 use libc::{c_longlong, c_uint};
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, Layout, NumScalableVectors, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -16,12 +16,12 @@ use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
+    self, AdtDef, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::spec::DebuginfoKind;
+use rustc_target::spec::{Arch, DebuginfoKind};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -33,7 +33,7 @@ use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_na
 use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
+use crate::debuginfo::utils::{WidePtrKind, create_DIArray, wide_pointer_kind};
 use crate::debuginfo::{DIBuilderExt, dwarf_const};
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
@@ -1039,6 +1039,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     span: Span,
 ) -> DINodeCreationResult<'ll> {
     let struct_type = unique_type_id.expect_ty();
+
     let ty::Adt(adt_def, _) = struct_type.kind() else {
         bug!("build_struct_type_di_node() called with non-struct-type: {:?}", struct_type);
     };
@@ -1051,6 +1052,21 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     } else {
         None
     };
+    let name = compute_debuginfo_type_name(cx.tcx, struct_type, false);
+
+    if struct_type.is_scalable_vector() {
+        let parts = struct_type.scalable_vector_parts(cx.tcx).unwrap();
+        return build_scalable_vector_di_node(
+            cx,
+            unique_type_id,
+            name,
+            *adt_def,
+            parts,
+            struct_type_and_layout.layout,
+            def_location,
+            containing_scope,
+        );
+    }
 
     type_map::build_type_with_children(
         cx,
@@ -1058,7 +1074,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             cx,
             Stub::Struct,
             unique_type_id,
-            &compute_debuginfo_type_name(cx.tcx, struct_type, false),
+            &name,
             def_location,
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
@@ -1099,6 +1115,100 @@ fn build_struct_type_di_node<'ll, 'tcx>(
         },
         |cx| build_generic_type_param_di_nodes(cx, struct_type),
     )
+}
+
+/// Generate debuginfo for a `#[rustc_scalable_vector]` type.
+///
+/// Debuginfo for a scalable vector uses a derived type based on a composite type. The composite
+/// type has the  `DIFlagVector` flag set and is based on the element type of the scalable vector.
+/// The composite type has a subrange from 0 to an expression that calculates the number of
+/// elements in the vector.
+///
+/// ```text,ignore
+/// !1 = !DIDerivedType(tag: DW_TAG_typedef, name: "svint16_t", ..., baseType: !2, ...)
+/// !2 = !DICompositeType(tag: DW_TAG_array_type, baseType: !3, ..., flags: DIFlagVector, elements: !4)
+/// !3 = !DIBasicType(name: "i16", size: 16, encoding: DW_ATE_signed)
+/// !4 = !{!5}
+/// !5 = !DISubrange(lowerBound: 0, upperBound: !DIExpression(DW_OP_constu, 4, DW_OP_bregx, 46, 0, DW_OP_mul, DW_OP_constu, 1, DW_OP_minus))
+/// ```
+///
+/// See the `CodegenType::CreateType(const BuiltinType *BT)` implementation in Clang for how this
+/// is generated for C and C++.
+fn build_scalable_vector_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    unique_type_id: UniqueTypeId<'tcx>,
+    name: String,
+    adt_def: AdtDef<'tcx>,
+    (element_count, element_ty, number_of_vectors): (u16, Ty<'tcx>, NumScalableVectors),
+    layout: Layout<'tcx>,
+    def_location: Option<DefinitionLocation<'ll>>,
+    containing_scope: &'ll DIScope,
+) -> DINodeCreationResult<'ll> {
+    use dwarf_const::{DW_OP_bregx, DW_OP_constu, DW_OP_minus, DW_OP_mul};
+    assert!(adt_def.repr().scalable());
+    // This logic is specific to AArch64 for the moment, but can be extended for other architectures
+    // later.
+    assert_matches!(cx.tcx.sess.target.arch, Arch::AArch64);
+
+    let (file_metadata, line_number) = if let Some(def_location) = def_location {
+        (def_location.0, def_location.1)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
+
+    let (bitstride, element_di_node) = if element_ty.is_bool() {
+        (Some(llvm::LLVMValueAsMetadata(cx.const_i64(1))), type_di_node(cx, cx.tcx.types.u8))
+    } else {
+        (None, type_di_node(cx, element_ty))
+    };
+
+    let number_of_elements: u64 = (element_count as u64) * (number_of_vectors.0 as u64);
+    let number_of_elements_per_vg = number_of_elements / 2;
+    let mut expr = smallvec::SmallVec::<[u64; 9]>::new();
+    // `($number_of_elements_per_vector_granule * (value_of_register(AArch64::VG) + 0)) - 1`
+    expr.push(DW_OP_constu); // Push a constant onto the stack
+    expr.push(number_of_elements_per_vg);
+    expr.push(DW_OP_bregx); // Push the value of a register + offset on to the stack
+    expr.push(/* AArch64::VG */ 46u64);
+    expr.push(0u64);
+    expr.push(DW_OP_mul); // Multiply top two values on stack
+    expr.push(DW_OP_constu); // Push a constant onto the stack
+    expr.push(1u64);
+    expr.push(DW_OP_minus); // Subtract top two values on stack
+
+    let di_builder = DIB(cx);
+    let metadata = unsafe {
+        let upper = llvm::LLVMDIBuilderCreateExpression(di_builder, expr.as_ptr(), expr.len());
+        let subrange = llvm::LLVMRustDIGetOrCreateSubrange(
+            di_builder,
+            /* CountNode */ None,
+            llvm::LLVMValueAsMetadata(cx.const_i64(0)),
+            upper,
+            /* Stride */ None,
+        );
+        let subscripts = create_DIArray(di_builder, &[Some(subrange)]);
+        let vector_ty = llvm::LLVMRustDICreateVectorType(
+            di_builder,
+            /* Size */ 0,
+            layout.align.bits() as u32,
+            element_di_node,
+            subscripts,
+            bitstride,
+        );
+        llvm::LLVMDIBuilderCreateTypedef(
+            di_builder,
+            vector_ty,
+            name.as_ptr(),
+            name.len(),
+            file_metadata,
+            line_number,
+            Some(containing_scope),
+            layout.align.bits() as u32,
+        )
+    };
+
+    debug_context(cx).type_map.insert(unique_type_id, metadata);
+    DINodeCreationResult { di_node: metadata, already_stored_in_typemap: true }
 }
 
 //=-----------------------------------------------------------------------------
