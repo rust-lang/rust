@@ -609,6 +609,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
+            Rvalue::Reborrow(..) => {
+                // FIXME(@aapoalas): figure out if this is relevant at all.
+            }
+
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
                 // These are only inserted for slice length, so the place must already be indirect.
                 // This implies we do not have to worry about whether the borrow escapes.

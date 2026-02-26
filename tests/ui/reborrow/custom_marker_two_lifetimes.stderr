@@ -1,0 +1,8 @@
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/custom_marker_two_lifetimes.rs:5:1
+   |
+LL | impl<'a, 'b> Reborrow for CustomMarker<'a, 'b> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
