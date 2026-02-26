@@ -776,15 +776,12 @@ struct DiagEmitter<'tcx> {
     hir_id: rustc_hir::HirId,
     tcx: TyCtxt<'tcx>,
     span: rustc_span::Span,
+    lint: &'static rustc_lint::Lint,
 }
 
 impl rustc_lint::EmitDiag for DiagEmitter<'_> {
-    fn emit(
-        &self,
-        lint: &'static rustc_lint::Lint,
-        diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>,
-    ) {
-        self.tcx.emit_node_span_lint(lint, self.hir_id, self.span, diag);
+    fn emit(&self, diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>) {
+        self.tcx.emit_node_span_lint(self.lint, self.hir_id, self.span, diag);
     }
 }
 
@@ -933,11 +930,11 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                                         hir_id: attribute_lint.id,
                                         tcx,
                                         span: attribute_lint.span,
+                                        lint: attribute_lint.lint_id.lint,
                                     },
                                     tcx.sess,
                                     Some(tcx),
                                     &attribute_lint.kind,
-                                    attribute_lint.lint_id.lint,
                                 );
                             }
                         }
