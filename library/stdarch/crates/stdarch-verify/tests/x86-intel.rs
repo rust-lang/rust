@@ -246,7 +246,6 @@ fn verify_all_signatures() {
                 "_xend",
                 "_xabort_code",
                 // Aliases
-                "_mm_comige_ss",
                 "_mm_cvt_ss2si",
                 "_mm_cvtt_ss2si",
                 "_mm_cvt_si2ss",
