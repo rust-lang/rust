@@ -35,17 +35,16 @@ where
 #[inline(always)]
 pub(crate) fn query_get_at<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
-    query_cache: &C,
     span: Span,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
 ) -> C::Value
 where
     C: QueryCache,
 {
-    match try_get_cached(tcx, query_cache, &key) {
+    match try_get_cached(tcx, &query.cache, &key) {
         Some(value) => value,
-        None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
+        None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
     }
 }
 
@@ -54,15 +53,14 @@ where
 #[inline]
 pub(crate) fn query_ensure<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
-    query_cache: &C,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     ensure_mode: EnsureMode,
 ) where
     C: QueryCache,
 {
-    if try_get_cached(tcx, query_cache, &key).is_none() {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+    if try_get_cached(tcx, &query.cache, &key).is_none() {
+        (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
     }
 }
 
@@ -71,8 +69,7 @@ pub(crate) fn query_ensure<'tcx, C>(
 #[inline]
 pub(crate) fn query_ensure_error_guaranteed<'tcx, C, T>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
-    query_cache: &C,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     // This arg is needed to match the signature of `query_ensure`,
     // but should always be `EnsureMode::Ok`.
@@ -84,10 +81,10 @@ where
 {
     assert_matches!(ensure_mode, EnsureMode::Ok);
 
-    if let Some(res) = try_get_cached(tcx, query_cache, &key) {
+    if let Some(res) = try_get_cached(tcx, &query.cache, &key) {
         erase::restore_val(res).map(drop)
     } else {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode })
+        (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode })
             .map(erase::restore_val)
             .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,

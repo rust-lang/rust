@@ -270,6 +270,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     }
 }
 
+/// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     query: &'tcx QueryVTable<'tcx, C>,
@@ -650,8 +651,10 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     }
 }
 
+/// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
+/// in non-incremental mode.
 #[inline(always)]
-pub(super) fn get_query_non_incr<'tcx, C: QueryCache>(
+pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -662,8 +665,10 @@ pub(super) fn get_query_non_incr<'tcx, C: QueryCache>(
     ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
 }
 
+/// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
+/// in incremental mode.
 #[inline(always)]
-pub(super) fn get_query_incr<'tcx, C: QueryCache>(
+pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
