@@ -159,6 +159,10 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         self.const_int(self.type_i32(), i as i64)
     }
 
+    fn const_i64(&self, i: i64) -> &'ll Value {
+        self.const_int(self.type_i64(), i as i64)
+    }
+
     fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
