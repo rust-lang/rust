@@ -103,6 +103,14 @@ pub enum Adjust {
     Borrow(AutoBorrow),
 
     Pointer(PointerCoercion),
+
+    /// Take a user-type T implementing the Reborrow trait (for Mut) or the CoerceShared trait (for
+    /// Not) and reborrow as `T` or `CoreceShared<U>`.
+    ///
+    /// This produces an [`ExprKind::Reborrow`].
+    ///
+    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
+    GenericReborrow(hir::Mutability),
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]

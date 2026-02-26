@@ -1218,6 +1218,13 @@ rustc_queries! {
         desc { "checking that types are well-formed" }
     }
 
+    /// Caches `CoerceShared` kinds for impls on custom types.
+    query coerce_shared_info(key: DefId) -> Result<(), ErrorGuaranteed> {
+        desc { "computing CoerceShared info for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// Caches `CoerceUnsized` kinds for impls on custom types.
     query coerce_unsized_info(key: DefId) -> Result<ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed> {
         desc { "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
