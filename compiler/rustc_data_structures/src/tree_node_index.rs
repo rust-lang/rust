@@ -71,13 +71,18 @@ impl TreeNodeIndex {
     /// bitstring.
     pub fn branch(self, i: u64, n: u64) -> TreeNodeIndex {
         debug_assert!(i < n, "i = {i} should be less than n = {n}");
-        // `branch_num != 0` per debug assertion above
+        // `n != 0` per debug assertion above
         let bits = ceil_ilog2(n);
-
         let trailing_zeros = self.0.trailing_zeros();
+
+        // For this panic to happen there has to be a recursive function that isn't a query and
+        // uses par_join or par_slice recursively.
+        // Each query starts with a fresh binary tree, so we can expect this to never happen.
+        // That is unless someone writes 64 nested par_join calls or something equivalent.
         let allocated_shift = trailing_zeros.checked_sub(bits).expect(
             "TreeNodeIndex's free bits have been exhausted, make sure recursion is used carefully",
         );
+
         // Using wrapping operations for optimization, as edge cases are unreachable:
         // - `trailing_zeros < 64` as we are guaranteed at least one bit is set
         // - `allocated_shift == trailing_zeros - bits <= trailing_zeros < 64`
