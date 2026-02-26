@@ -66,9 +66,11 @@ where
         let oper_a = FromDyn::from(oper_a);
         let oper_b = FromDyn::from(oper_b);
         let (a, b) = parallel_guard(|guard| {
-            raw_branched_join(
-                move || guard.run(move || FromDyn::from(oper_a.into_inner()())),
-                move || guard.run(move || FromDyn::from(oper_b.into_inner()())),
+            let task_a = move || guard.run(move || FromDyn::from(oper_a.into_inner()()));
+            let task_b = move || guard.run(move || FromDyn::from(oper_b.into_inner()()));
+            rustc_thread_pool::join(
+                || branch_context(0, 2, task_a),
+                || branch_context(1, 2, task_b),
             )
         });
         (a.unwrap().into_inner(), b.unwrap().into_inner())
@@ -197,15 +199,11 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
     })
 }
 
-fn raw_branched_join<A, B, RA: Send, RB: Send>(oper_a: A, oper_b: B) -> (RA, RB)
-where
-    A: FnOnce() -> RA + Send,
-    B: FnOnce() -> RB + Send,
-{
-    rustc_thread_pool::join(|| branch_context(0, 2, oper_a), || branch_context(1, 2, oper_b))
-}
-
-fn branch_context<F, R>(branch_num: u64, branch_space: u64, f: F) -> R
+/// Append `i`-th branch out of `n` branches to `icx.query.branch` to track inside of
+/// which parallel task every query call is performed.
+///
+/// See [`rustc_data_structures::tree_node_index::TreeNodeIndex`].
+fn branch_context<F, R>(i: u64, n: u64, f: F) -> R
 where
     F: FnOnce() -> R,
 {
@@ -214,7 +212,7 @@ where
             && let Some(QueryInclusion { id, branch }) = icx.query
         {
             let icx = tls::ImplicitCtxt {
-                query: Some(QueryInclusion { id, branch: branch.branch(branch_num, branch_space) }),
+                query: Some(QueryInclusion { id, branch: branch.branch(i, n) }),
                 ..*icx
             };
             tls::enter_context(&icx, f)
