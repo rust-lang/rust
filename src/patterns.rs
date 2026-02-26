@@ -346,10 +346,7 @@ impl Rewrite for Pat {
             PatKind::Paren(ref pat) => pat
                 .rewrite_result(
                     context,
-                    shape
-                        .offset_left(1)
-                        .and_then(|s| s.sub_width(1))
-                        .max_width_error(shape.width, self.span)?,
+                    shape.offset_left(1, self.span)?.sub_width(1, self.span)?,
                 )
                 .map(|inner_pat| format!("({})", inner_pat)),
             PatKind::Guard(..) => Ok(context.snippet(self.span).to_string()),
@@ -359,7 +356,7 @@ impl Rewrite for Pat {
     }
 }
 
-pub fn rewrite_range_pat<T: Rewrite>(
+pub(crate) fn rewrite_range_pat<T: Rewrite>(
     context: &RewriteContext<'_>,
     shape: Shape,
     lhs: &Option<Box<T>>,
@@ -413,7 +410,7 @@ fn rewrite_struct_pat(
     shape: Shape,
 ) -> RewriteResult {
     // 2 =  ` {`
-    let path_shape = shape.sub_width(2).max_width_error(shape.width, span)?;
+    let path_shape = shape.sub_width(2, span)?;
     let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
@@ -423,9 +420,13 @@ fn rewrite_struct_pat(
     let (ellipsis_str, terminator) = if ellipsis { (", ..", "..") } else { ("", "}") };
 
     // 3 = ` { `, 2 = ` }`.
-    let (h_shape, v_shape) =
-        struct_lit_shape(shape, context, path_str.len() + 3, ellipsis_str.len() + 2)
-            .max_width_error(shape.width, span)?;
+    let (h_shape, v_shape) = struct_lit_shape(
+        shape,
+        context,
+        path_str.len() + 3,
+        ellipsis_str.len() + 2,
+        span,
+    )?;
 
     let items = itemize_list(
         context.snippet_provider,

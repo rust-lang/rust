@@ -206,7 +206,8 @@ impl<'a> FmtVisitor<'a> {
                 // 2: blank lines.
                 self.push_vertical_spaces(newline_count);
                 status.cur_line += newline_count;
-                status.line_start = offset + lf_count + crlf_count * 2;
+                // To avoid any issues with whitespace unicode chars just add the len of the slice
+                status.line_start = offset + subslice.len()
             } else {
                 // 3: code which we failed to format or which is not within file-lines range.
                 self.process_missing_code(&mut status, snippet, subslice, offset, file_name);

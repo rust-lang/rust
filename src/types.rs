@@ -66,7 +66,7 @@ pub(crate) fn rewrite_path(
             }
 
             // 3 = ">::".len()
-            let shape = shape.sub_width(3).max_width_error(shape.width, path.span)?;
+            let shape = shape.sub_width(3, path.span)?;
 
             result = rewrite_path_segments(
                 PathContext::Type,
@@ -121,9 +121,7 @@ where
         }
 
         let extra_offset = extra_offset(&buffer, shape);
-        let new_shape = shape
-            .shrink_left(extra_offset)
-            .max_width_error(shape.width, mk_sp(span_lo, span_hi))?;
+        let new_shape = shape.shrink_left(extra_offset, mk_sp(span_lo, span_hi))?;
         let segment_string = rewrite_segment(
             path_context,
             segment,
@@ -276,12 +274,12 @@ fn rewrite_segment(
     result.push_str(rewrite_ident(context, segment.ident));
 
     let ident_len = result.len();
+    let span = mk_sp(*span_lo, span_hi);
     let shape = if context.use_block_indent() {
-        shape.offset_left(ident_len)
+        shape.offset_left(ident_len, span)?
     } else {
-        shape.shrink_left(ident_len)
-    }
-    .max_width_error(shape.width, mk_sp(*span_lo, span_hi))?;
+        shape.shrink_left(ident_len, span)?
+    };
 
     if let Some(ref args) = segment.args {
         let generics_str = rewrite_generic_args(args, context, shape, mk_sp(*span_lo, span_hi))?;
@@ -332,8 +330,8 @@ where
 
     let ty_shape = match context.config.indent_style() {
         // 4 = " -> "
-        IndentStyle::Block => shape.offset_left(4).max_width_error(shape.width, span)?,
-        IndentStyle::Visual => shape.block_left(4).max_width_error(shape.width, span)?,
+        IndentStyle::Block => shape.offset_left(4, span)?,
+        IndentStyle::Visual => shape.block_left(4, span)?,
     };
     let output = match *output {
         FnRetTy::Ty(ref ty) => {
@@ -601,9 +599,7 @@ fn rewrite_bounded_lifetime(
     } else {
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
-        let shape = shape
-            .sub_width(overhead)
-            .max_width_error(shape.width, span)?;
+        let shape = shape.sub_width(overhead, span)?;
         let result = format!(
             "{}{}{}",
             result,
@@ -774,9 +770,7 @@ impl Rewrite for ast::PolyTraitRef {
         {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let shape = shape
-                .offset_left(extra_offset)
-                .max_width_error(shape.width, self.span)?;
+            let shape = shape.offset_left(extra_offset, self.span)?;
             (format!("for<{lifetime_str}> "), shape)
         } else {
             (String::new(), shape)
@@ -796,9 +790,7 @@ impl Rewrite for ast::PolyTraitRef {
             asyncness.push(' ');
         }
         let polarity = polarity.as_str();
-        let shape = shape
-            .offset_left(constness.len() + polarity.len())
-            .max_width_error(shape.width, self.span)?;
+        let shape = shape.offset_left(constness.len() + polarity.len(), self.span)?;
 
         let path_str = self.trait_ref.rewrite_result(context, shape)?;
         Ok(format!(
@@ -828,9 +820,7 @@ impl Rewrite for ast::Ty {
                 // we have to consider 'dyn' keyword is used or not!!!
                 let (shape, prefix) = match tobj_syntax {
                     ast::TraitObjectSyntax::Dyn => {
-                        let shape = shape
-                            .offset_left(4)
-                            .max_width_error(shape.width, self.span())?;
+                        let shape = shape.offset_left(4, self.span())?;
                         (shape, "dyn ")
                     }
                     ast::TraitObjectSyntax::None => (shape, ""),
@@ -955,7 +945,7 @@ impl Rewrite for ast::Ty {
                 }
 
                 // 2 = ()
-                if let Some(sh) = shape.sub_width(2) {
+                if let Some(sh) = shape.sub_width_opt(2) {
                     if let Ok(ref s) = ty.rewrite_result(context, sh) {
                         if !s.contains('\n') {
                             return Ok(format!("({s})"));
@@ -1020,9 +1010,14 @@ impl Rewrite for ast::Ty {
                 }
                 let rw = if context.config.style_edition() <= StyleEdition::Edition2021 {
                     it.rewrite_result(context, shape)
+                } else if context.config.style_edition() == StyleEdition::Edition2024 {
+                    join_bounds(context, shape, it, false)
                 } else {
+                    let offset = "impl ".len();
+                    let shape = shape.offset_left(offset, self.span())?;
                     join_bounds(context, shape, it, false)
                 };
+
                 rw.map(|it_str| {
                     let space = if it_str.is_empty() { "" } else { " " };
                     format!("impl{}{}", space, it_str)
@@ -1050,14 +1045,11 @@ impl Rewrite for ast::Ty {
                 }
 
                 let inner_ty_shape = if context.use_block_indent() {
-                    shape
-                        .offset_left(result.len())
-                        .max_width_error(shape.width, self.span())?
+                    shape.offset_left(result.len(), self.span())?
                 } else {
                     shape
                         .visual_indent(result.len())
-                        .sub_width(result.len())
-                        .max_width_error(shape.width, self.span())?
+                        .sub_width(result.len(), self.span())?
                 };
 
                 let rewrite = binder.inner_ty.rewrite_result(context, inner_ty_shape)?;
@@ -1125,14 +1117,11 @@ fn rewrite_fn_ptr(
     result.push_str("fn");
 
     let func_ty_shape = if context.use_block_indent() {
-        shape
-            .offset_left(result.len())
-            .max_width_error(shape.width, span)?
+        shape.offset_left(result.len(), span)?
     } else {
         shape
             .visual_indent(result.len())
-            .sub_width(result.len())
-            .max_width_error(shape.width, span)?
+            .sub_width(result.len(), span)?
     };
 
     let rewrite = format_function_type(

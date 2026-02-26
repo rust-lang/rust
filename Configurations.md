@@ -22,7 +22,7 @@ Below you find a detailed visual guide on all the supported configuration option
 Maximum width of an array literal before falling back to vertical formatting.
 
 - **Default value**: `60`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `array_width` will take precedence.
@@ -34,7 +34,7 @@ See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuri
 Maximum width of the args of a function-like attributes before falling back to vertical formatting.
 
 - **Default value**: `70`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `attr_fn_like_width` will take precedence.
@@ -300,7 +300,7 @@ where
 Maximum width of a chain to fit on one line.
 
 - **Default value**: `60`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `chain_width` will take precedence.
@@ -428,7 +428,7 @@ fn example() {
 Maximum length of comments. No effect unless `wrap_comments = true`.
 
 - **Default value**: `80`
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: No (tracking issue: [#3349](https://github.com/rust-lang/rustfmt/issues/3349))
 
 **Note:** A value of `0` results in [`wrap_comments`](#wrap_comments) being applied regardless of a line's width.
@@ -537,13 +537,16 @@ Specifies which edition is used by the parser.
 - **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"`
 - **Stable**: Yes
 
-Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if executed
-through the Cargo's formatting tool `cargo fmt`. Otherwise, the edition needs to be specified
-in your config file:
+The `edition` option determines the Rust language edition used for parsing the code. This is important for syntax compatibility but does not directly control formatting behavior (see [style_edition](#style_edition)).
+
+When running `cargo fmt`, the `edition` is automatically read from the `Cargo.toml` file. However, when running `rustfmt` directly the `edition` defaults to 2015 if not explicitly configured. For consistent parsing between rustfmt and `cargo fmt` you should configure the `edition`.
+For example in your `rustfmt.toml` file:
 
 ```toml
 edition = "2018"
 ```
+
+Alternatively, you can use the `--edition` flag when running `rustfmt` directly.
 
 ## `empty_item_single_line`
 
@@ -583,7 +586,7 @@ Note that this is not how much whitespace is inserted, but instead the longest v
 doesn't get ignored when aligning.
 
 - **Default value** : 0
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: No (tracking issue: [#3372](https://github.com/rust-lang/rustfmt/issues/3372))
 
 #### `0` (default):
@@ -761,7 +764,7 @@ See also [`fn_params_layout`](#fn_params_layout)
 Maximum width of the args of a function call before falling back to vertical formatting.
 
 - **Default value**: `60`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `fn_call_width` will take precedence.
@@ -1045,7 +1048,7 @@ fn add_one(x: i32) -> i32 {
 Max width for code snippets included in doc comments. Only used if [`format_code_in_doc_comments`](#format_code_in_doc_comments) is true.
 
 - **Default value**: `100`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: No (tracking issue: [#5359](https://github.com/rust-lang/rustfmt/issues/5359))
 
 ## `format_generated_files`
@@ -1064,7 +1067,7 @@ This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 Number of lines to check for a `@generated` pragma header, starting from the top of the file. Setting this value to `0` will treat all files as non-generated. When`format_generated_files` is `true`, this option has no effect.
 
 - **Default value**: `5`
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: No (tracking issue: [#5080](https://github.com/rust-lang/rustfmt/issues/5080))
 
 See also [format_generated_files](#format_generated_files) link here.
@@ -1255,6 +1258,56 @@ Control the case of the letters in hexadecimal literal values
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Upper`, `Lower`
 - **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
+
+## `float_literal_trailing_zero`
+
+Control the presence of trailing zero in floating-point literal values
+
+- **Default value**: `Preserve`
+- **Possible values**: `Preserve`, `Always`, `IfNoPostfix`, `Never`
+- **Stable**: No (tracking issue: [#6471](https://github.com/rust-lang/rustfmt/issues/6471))
+
+#### `Preserve` (default):
+
+Leave the literal as-is.
+
+```rust
+fn main() {
+    let values = [1.0, 2., 3.0e10, 4f32];
+}
+```
+
+#### `Always`:
+
+Add a trailing zero to the literal:
+
+```rust
+fn main() {
+    let values = [1.0, 2.0, 3.0e10, 4.0f32];
+}
+```
+
+#### `IfNoPostfix`:
+
+Add a trailing zero by default. If the literal contains an exponent or a suffix, the zero
+and the preceding period are removed:
+
+```rust
+fn main() {
+    let values = [1.0, 2.0, 3e10, 4f32];
+}
+```
+
+#### `Never`:
+
+Remove the trailing zero. If the literal contains an exponent or a suffix, the preceding
+period is also removed:
+
+```rust
+fn main() {
+    let values = [1., 2., 3e10, 4f32];
+}
+```
 
 ## `hide_parse_errors`
 
@@ -1662,7 +1715,7 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 Write an item and its attribute on the same line if their combined width is below a threshold
 
 - **Default value**: 0
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: No (tracking issue: [#3343](https://github.com/rust-lang/rustfmt/issues/3343))
 
 ### Example
@@ -1731,8 +1784,8 @@ See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
 Controls whether to include a leading pipe on match arms
 
-- **Default value**: `Never`
-- **Possible values**: `Always`, `Never`, `Preserve`
+- **Default value**: `"Never"`
+- **Possible values**: `"Always"`, `"Never"`, `"Preserve"`
 - **Stable**: Yes
 
 #### `Never` (default):
@@ -1809,6 +1862,42 @@ fn foo() {
 }
 ```
 
+## `match_arm_indent`
+
+Controls whether match arms are indented.  If disabled, match arms will be formatted at the same indentation level as the outer `match` statement.  Meaning that match blocks will only be indented once, not twice.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+- **Stable**: No (tracking issue: [#6533](https://github.com/rust-lang/rustfmt/issues/6533))
+
+#### `true` (default):
+
+```rust
+fn main() {
+    match value {
+        Enum::A => {
+            let mut work = first();
+            work += second();
+        }
+        Enum::B => short_work(),
+    }
+}
+```
+
+#### `false`:
+
+```rust
+fn main() {
+    match value {
+    Enum::A => {
+        let mut work = first();
+        work += second();
+    }
+    Enum::B => short_work(),
+    }
+}
+```
+
 ## `match_block_trailing_comma`
 
 Put a trailing comma after a block based match arm (non-block arms are not affected)
@@ -1850,7 +1939,7 @@ See also: [`trailing_comma`](#trailing_comma), [`match_arm_blocks`](#match_arm_b
 Maximum width of each line
 
 - **Default value**: `100`
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: Yes
 
 See also [`error_on_line_overflow`](#error_on_line_overflow).
@@ -1923,6 +2012,7 @@ use qux::{h, i};
 #### `Module`:
 
 Merge imports from the same module into a single `use` statement. Conversely, imports from different modules are split into separate statements.
+Does not merge top-level modules.
 
 ```rust
 use foo::b::{f, g};
@@ -2156,7 +2246,7 @@ fn example() {
 
 Remove nested parens.
 
-- **Default value**: `true`,
+- **Default value**: `true`
 - **Possible values**: `true`, `false`
 - **Stable**: Yes
 
@@ -2362,8 +2452,61 @@ Require a specific version of rustfmt. If you want to make sure that the
 specific version of rustfmt is used in your CI, use this option.
 
 - **Default value**: `CARGO_PKG_VERSION`
-- **Possible values**: any published version (e.g. `"0.3.8"`)
+- **Possible values**: `semver` compliant values, such as defined on [semver.org](https://semver.org/).
 - **Stable**: No (tracking issue: [#3386](https://github.com/rust-lang/rustfmt/issues/3386))
+
+#### Match on exact version:
+
+```toml
+required_version="1.0.0"
+```
+
+#### Higher or equal to:
+
+```toml
+required_version=">=1.0.0"
+```
+
+#### Lower or equal to:
+
+```toml
+required_version="<=1.0.0"
+```
+
+#### New minor or patch versions:
+
+```toml
+required_version="^1.0.0"
+```
+
+#### New patch versions:
+
+```toml
+required_version="~1.0.0"
+```
+
+#### Wildcard:
+
+```toml
+required_version="*" # matches any version.
+required_version="1.*" # matches any version with the same major version
+required_version="1.0.*" # matches any version with the same major and minor version
+```
+
+#### Multiple versions to match:
+
+A comma separated list of version requirements.
+The match succeeds when the current rustfmt version matches all version requirements.
+
+The one notable exception is that a wildcard matching any version cannot be used in the list.
+For example, `*, <1.0.0` will always fail.
+
+Additionally, the version match will always fail if any of the version requirements contradict themselves.
+Some examples of contradictory requirements are `1.*, >2.0.0`, `1.0.*, >2.0.0` and `<1.5.0, >1.10.*`.
+
+```toml
+required_version=">=1.0.0, <2.0.0"
+```
 
 ## `short_array_element_width_threshold`
 
@@ -2373,7 +2516,7 @@ The layout of an array is dependent on the length of each of its elements.
 If the length of every element in an array is below this threshold (all elements are "short") then the array can be formatted in the mixed/compressed style, but if any one element has a length that exceeds this threshold then the array elements will have to be formatted vertically.
 
 - **Default value**: `10`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 #### `10` (default):
@@ -2412,7 +2555,7 @@ Don't reformat out of line modules
 Maximum line length for single line if-else expressions. A value of `0` (zero) results in if-else expressions always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
 - **Default value**: `50`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_if_else_max_width` will take precedence.
@@ -2429,7 +2572,7 @@ Note this occurs when `use_small_heuristics` is set to `Off`.
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_let_else_max_width` will take precedence.
 
 - **Default value**: `50`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 #### `50` (default):
@@ -2673,7 +2816,7 @@ See also: [`indent_style`](#indent_style).
 Maximum width in the body of a struct literal before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
 - **Default value**: `18`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_lit_width` will take precedence.
@@ -2685,7 +2828,7 @@ See also [`max_width`](#max_width), [`use_small_heuristics`](#use_small_heuristi
 Maximum width in the body of a struct variant before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
 - **Default value**: `35`
-- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
 By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_variant_width` will take precedence.
@@ -2700,6 +2843,20 @@ Controls the edition of the [Rust Style Guide] to use for formatting ([RFC 3338]
 - **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"` (unstable variant)
 - **Stable**: No
 
+This option is inferred from the [`edition`](#edition) if not specified.
+
+See [Rust Style Editions] for details on formatting differences between style editions.
+rustfmt has a default style edition of `2015` while `cargo fmt` infers the style edition from the `edition` set in `Cargo.toml`. This can lead to inconsistencies between `rustfmt` and `cargo fmt` if the style edition is not explicitly configured.
+
+To ensure consistent formatting, it is recommended to specify the `style_edition` in a `rustfmt.toml` configuration file. For example:
+
+```toml
+style_edition = "2024"
+```
+
+Alternatively, you can use the `--style-edition` flag when running `rustfmt` directly.
+
+[Rust Style Editions]: https://doc.rust-lang.org/nightly/style-guide/editions.html?highlight=editions#rust-style-editions
 [Rust Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
 [RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
 
@@ -2708,7 +2865,7 @@ Controls the edition of the [Rust Style Guide] to use for formatting ([RFC 3338]
 Number of spaces per tab
 
 - **Default value**: `4`
-- **Possible values**: any positive integer
+- **Possible values**: any nonnegative integer
 - **Stable**: Yes
 
 #### `4` (default):
@@ -2890,6 +3047,7 @@ fn main() {
     let y = 2;
     let z = 3;
     let a = Foo { x, y, z };
+    let b = Foo { x, y, z };
 }
 ```
 
@@ -3062,7 +3220,9 @@ fn main() {
 
 ## `version`
 
-This option is deprecated and has been replaced by [`style_edition`](#style_edition)
+This option is deprecated and has been replaced by [`style_edition`](#style_edition).
+`version = "One"` is equivalent to `style_edition = "(2015|2018|2021)"` and
+`version = "Two"` is equivalent to `style_edition = "2024"`
 
 - **Default value**: `One`
 - **Possible values**: `One`, `Two`
@@ -3112,7 +3272,7 @@ Break comments to fit on the line
 
 Note that no wrapping will happen if:
 1. The comment is the start of a markdown header doc comment
-2. An URL was found in the comment
+2. A URL was found in the comment
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`

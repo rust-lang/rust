@@ -1,3 +1,5 @@
+#![feature(unsafe_fields)]
+
 struct Foo {
     unsafe field: (),
 }

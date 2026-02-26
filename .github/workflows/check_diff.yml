@@ -3,11 +3,29 @@ on:
   workflow_dispatch:
     inputs:
       clone_url:
-        description: 'Git url of a rustfmt fork to compare against the latest master rustfmt'
+        description: 'Git url of a rustfmt fork to compare against the latest rustfmt'
         required: true
       branch_name:
         description: 'Name of the feature branch on the forked repo'
         required: true
+      language_edition:
+        description: 'Rust language `edition` used to parse code'
+        required: true
+        default: 2015
+        type: choice
+        options:
+          - 2015
+          - 2018
+          - 2021
+          - 2024
+      style_edition:
+        description: 'rustfmt `style_edition` used when formatting code.'
+        required: true
+        default: 2021
+        type: choice
+        options:
+          - 2021 # 2015, 2018, and 2021 are all formatted the same since `style_edition` was added between 2021 and 2024
+          - 2024
       commit_hash:
         description: 'Optional commit hash from the feature branch'
         required: false
@@ -23,11 +41,27 @@ jobs:
     - name: checkout
       uses: actions/checkout@v4
 
-    - name: install rustup
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
-        sh rustup-init.sh -y --default-toolchain none
-        rustup target add x86_64-unknown-linux-gnu
+    - name: Build check_diff binary
+      working-directory: ./check_diff
+      run: cargo build --release
 
-    - name: check diff
-      run: bash ${GITHUB_WORKSPACE}/ci/check_diff.sh ${{ github.event.inputs.clone_url }} ${{ github.event.inputs.branch_name }} ${{ github.event.inputs.commit_hash || github.event.inputs.branch_name }} ${{ github.event.inputs.rustfmt_configs }}
+    - name: Run Diff Check
+      working-directory: ./check_diff
+      env:
+        CHECK_DIFF_LOG: info
+      shell: bash
+      run: |
+        OPTIONS=""
+
+        if [[ -n "${{ github.event.inputs.commit_hash }}" ]]; then
+          OPTIONS+="--commit-hash ${{ github.event.inputs.commit_hash }} "
+        fi
+
+        if [[ -n "${{ github.event.inputs.rustfmt_configs }}" ]]; then
+          OPTIONS+="--rustfmt-config ${{ github.event.inputs.rustfmt_configs }} "
+        fi
+
+        target/release/check_diff ${{ github.event.inputs.clone_url }} ${{ github.event.inputs.branch_name }} \
+          --edition ${{ github.event.inputs.language_edition }} \
+          --style-edition ${{ github.event.inputs.style_edition }} \
+          $OPTIONS

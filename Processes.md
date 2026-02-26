@@ -36,7 +36,7 @@ For example, 1.0.0 -> 1.0.1:
 +version = "1.0.1"
 ```
 
-## 2. Push the commit to the master branch
+## 2. Push the commit to the main branch
 
 E.g., https://github.com/rust-lang/rustfmt/commit/5274b49caa1a7db6ac10c76bf1a3d5710ccef569
 

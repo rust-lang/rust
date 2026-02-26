@@ -213,7 +213,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     force_trailing_separator: bool,
 ) -> Option<String> {
     // 1 = ","
-    let item_shape = Shape::indented(offset, context.config).sub_width(1)?;
+    let item_shape = Shape::indented(offset, context.config).sub_width_opt(1)?;
     let (mut field_prefix_max_width, field_prefix_min_width) =
         struct_field_prefix_max_min_width(context, fields, item_shape);
     let max_diff = field_prefix_max_width.saturating_sub(field_prefix_min_width);

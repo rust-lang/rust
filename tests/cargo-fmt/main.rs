@@ -95,7 +95,7 @@ fn cargo_fmt_out_of_line_test_modules() {
     let (stdout, _) = cargo_fmt(&args);
     for file in expected_modified_files {
         let path = Path::new(file).canonicalize().unwrap();
-        assert!(stdout.contains(&format!("Diff in {}", path.display())))
+        assert!(stdout.contains(&format!("Diff in {}", path.display())));
     }
 }
 

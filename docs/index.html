@@ -78,7 +78,7 @@
           <article class="markdown-body">
             <div class="searchCondition">
               <div>
-                <form style="display:flex;">
+                <form v-on:submit.prevent style="display:flex;">
                   <label for="search" style="margin-right: 3px;" >search:</label>
                   <div style="position: relative;">
                     <input id="search" placeholder="Search all options" v-model="searchCondition">
@@ -108,18 +108,18 @@
         </div>
         <script>
             const RustfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
-            const RustfmtLatestUrl = 'https://api.github.com/repos/rust-lang/rustfmt/releases/latest';
             const UrlHash = window.location.hash.replace(/^#/, '');
             const queryParams = new URLSearchParams(window.location.search);
             const searchParam = queryParams.get('search');
             const searchTerm = null !== searchParam ? searchParam : '';
             const versionParam = queryParams.get('version');
             const parseVersionParam = (version) => {
-              if (version === 'master') return 'master';
+              // master is kept for backwards compatibility with old branch name
+              if (version === 'master' || version === 'main') return 'main';
               if (version.startsWith('v')) return version;
               return `v${version}`;
             };
-            const versionNumber = null !== versionParam ? parseVersionParam(versionParam) : 'master';
+            const versionNumber = null !== versionParam ? parseVersionParam(versionParam) : 'main';
             new Vue({
               el: '#app',
               data: {
@@ -130,22 +130,29 @@
                 shouldStable: false,
                 viewVersion: versionNumber,
                 oldViewVersion: undefined,
-                versionOptions: ['master'],
+                versionOptions: ['main'],
                 scrolledOnce: false,
               },
               asyncComputed: {
-                async updateVersion() {
-                  let latest;
-                  try {
-                    latest = (await axios.get(RustfmtLatestUrl)).data;
-                  } catch(err) {
-                      console.log(err);
-                    return;
-                  }
-                  if (versionParam == null) {
-                    this.viewVersion = latest.name;
-                  }
-                },
+              async pullTags() {
+                let tags;
+                try {
+                  tags = (await axios.get(RustfmtTagsUrl)).data;
+                } catch(e) {
+                  this.handleReqFailure(e);
+                  return;
+                }
+
+                const excludedTagVersions = new Set(['v0.7', 'v0.8.1']);
+
+                const tagOptions = tags
+                  .map(tag => tag.name)
+                  .filter(tag => tag.startsWith('v') && !excludedTagVersions.has(tag));
+
+                const latestRelease = tagOptions.find(tag => !tag.includes('rc'));
+                this.viewVersion = latestRelease;
+                this.versionOptions = this.versionOptions.concat(tagOptions);
+              },
                 async outputHtml() {
                   if (this.viewVersion !== this.oldViewVersion) {
                     const ConfigurationMdUrl =
@@ -206,22 +213,6 @@
                     renderer,
                   });
                 }
-              },
-              created: async function() {
-                let tags;
-                try {
-                  tags = (await axios.get(RustfmtTagsUrl)).data;
-                } catch(e) {
-                  this.handleReqFailure(e);
-                  return;
-                }
-
-                const excludedTagVersions = new Set(['v0.7', 'v0.8.1']);
-
-                const tagOptions = tags
-                  .map(tag => tag.name)
-                  .filter(tag => tag.startsWith('v') && !excludedTagVersions.has(tag));
-                this.versionOptions = this.versionOptions.concat(tagOptions);
               },
               updated() {
                 if (UrlHash === '') return;

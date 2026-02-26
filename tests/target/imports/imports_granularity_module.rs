@@ -53,3 +53,10 @@ use b::{
     /* Before b::l group */ l::{self, m, n::o, p::*},
     q,
 };
+
+use c;
+use d;
+
+use library1;
+use library2 as lib2;
+use library3;

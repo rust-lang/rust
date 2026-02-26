@@ -170,11 +170,34 @@ See [GitHub page](https://rust-lang.github.io/rustfmt/) for details.
 
 ### Rust's Editions
 
-Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if
-executed through the Cargo's formatting tool `cargo fmt`. Otherwise, the edition
-needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
+The `edition` option determines the Rust language edition used for parsing the code. This is important for syntax compatibility but does not directly control formatting behavior (see [Style Editions](#style-editions)).
+
+When running `cargo fmt`, the `edition` is automatically read from the `Cargo.toml` file. However, when running `rustfmt` directly, the `edition` defaults to 2015. For consistent parsing between rustfmt and `cargo fmt`, you should configure the `edition` in your `rustfmt.toml` file:
+
+```toml
+edition = "2018"
+```
+
+### Style Editions
+
+This option is inferred from the [`edition`](#rusts-editions) if not specified.
+
+See [Rust Style Editions] for details on formatting differences between style editions.
+rustfmt has a default style edition of `2015` while `cargo fmt` infers the style edition from the `edition` set in `Cargo.toml`. This can lead to inconsistencies between `rustfmt` and `cargo fmt` if the style edition is not explicitly configured.
+
+To ensure consistent formatting, it is recommended to specify the `style_edition` in a `rustfmt.toml` configuration file. For example:
+
+```toml
+style_edition = "2024"
+```
+[Rust Style Editions]: https://doc.rust-lang.org/nightly/style-guide/editions.html?highlight=editions#rust-style-editions
+[Rust Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
+[RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
 
 ## Tips
+
+* To ensure consistent parsing between `cargo fmt` and `rustfmt`, you should configure the [`edition`](#rusts-editions) in your `rustfmt.toml` file.
+* To ensure consistent formatting between `cargo fmt` and `rustfmt`, you should configure the [`style_edition`](#style-editions) in your `rustfmt.toml` file.
 
 * For things you do not want rustfmt to mangle, use `#[rustfmt::skip]`
 * To prevent rustfmt from formatting a macro or an attribute,

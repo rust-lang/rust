@@ -65,7 +65,7 @@ impl<'a> VersionChunkIter<'a> {
                 break;
             }
 
-            if !c.is_numeric() {
+            if !c.is_ascii_digit() {
                 continue;
             }
 
@@ -283,6 +283,10 @@ mod test {
                 source: "009"
             })
         );
+
+        // '๙' = U+0E59 THAI DIGIT NINE, General Category Nd
+        let mut iter = VersionChunkIter::new("x๙v");
+        assert_eq!(iter.next(), Some(VersionChunk::Str("x๙v")));
     }
 
     #[test]
@@ -294,6 +298,11 @@ mod test {
 
         let mut input = vec!["x7x", "xxx"];
         let expected = vec!["x7x", "xxx"];
+        input.sort_by(|a, b| version_sort(a, b));
+        assert_eq!(input, expected);
+
+        let mut input = vec!["x๙x", "xéx", "x0x"];
+        let expected = vec!["x0x", "xéx", "x๙x"];
         input.sort_by(|a, b| version_sort(a, b));
         assert_eq!(input, expected);
 
