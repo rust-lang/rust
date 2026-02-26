@@ -95,6 +95,7 @@ pub struct Command {
     gid: Option<gid_t>,
     saw_nul: bool,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
+    dup2_file_actions: Vec<(c_int, c_int)>,
     groups: Option<Box<[gid_t]>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -175,6 +176,7 @@ impl Command {
             gid: None,
             saw_nul,
             closures: Vec::new(),
+            dup2_file_actions: Vec::new(),
             groups: None,
             stdin: None,
             stdout: None,
@@ -314,6 +316,14 @@ impl Command {
 
     pub unsafe fn pre_exec(&mut self, f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
+    }
+
+    pub fn add_dup2_file_action(&mut self, oldfd: c_int, newfd: c_int) {
+        self.dup2_file_actions.push((oldfd, newfd));
+    }
+
+    pub fn get_dup2_file_actions(&self) -> &[(c_int, c_int)] {
+        &self.dup2_file_actions
     }
 
     pub fn stdin(&mut self, stdin: Stdio) {

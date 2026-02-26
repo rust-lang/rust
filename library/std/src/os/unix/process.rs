@@ -219,6 +219,35 @@ pub trait CommandExt: Sealed {
 
     #[unstable(feature = "process_setsid", issue = "105376")]
     fn setsid(&mut self, setsid: bool) -> &mut process::Command;
+
+    /// Registers a `dup2` file action to be performed when spawning the child
+    /// process.
+    ///
+    /// This adds a `posix_spawn_file_actions_adddup2(oldfd, newfd)` action when
+    /// using the `posix_spawn` path, or a `dup2(oldfd, newfd)` call in the
+    /// `fork`+`exec` fallback path.
+    ///
+    /// A common use case is passing `dup2(fd, fd)` which, on glibc >= 2.29,
+    /// clears the `CLOEXEC` flag on `fd` — allowing the child to inherit file
+    /// descriptors (such as jobserver pipes) without requiring a [`pre_exec`]
+    /// closure. This is important because `pre_exec` closures prevent the use of
+    /// the fast `posix_spawn` path.
+    ///
+    /// The actions are executed in order, after stdio setup but before any
+    /// [`pre_exec`] closures.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `oldfd` is a valid, open file descriptor at
+    /// the time the child process is spawned. If `oldfd != newfd`, any
+    /// previously open `newfd` in the child will be silently closed and
+    /// replaced. The caller is responsible for ensuring this does not
+    /// conflict with stdio file descriptors or other file action
+    /// registrations.
+    ///
+    /// [`pre_exec`]: CommandExt::pre_exec
+    #[unstable(feature = "process_file_actions", issue = "none")]
+    unsafe fn dup2_file_action(&mut self, oldfd: RawFd, newfd: RawFd) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -272,6 +301,11 @@ impl CommandExt for process::Command {
 
     fn setsid(&mut self, setsid: bool) -> &mut process::Command {
         self.as_inner_mut().setsid(setsid);
+        self
+    }
+
+    unsafe fn dup2_file_action(&mut self, oldfd: RawFd, newfd: RawFd) -> &mut process::Command {
+        self.as_inner_mut().add_dup2_file_action(oldfd, newfd);
         self
     }
 }
