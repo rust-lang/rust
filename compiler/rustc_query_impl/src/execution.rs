@@ -111,7 +111,7 @@ fn mk_cycle<'tcx, C: QueryCache>(
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(tcx, &cycle_error, guar)
+            query.value_from_cycle_error(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Fatal => {
             error.emit();
@@ -120,7 +120,7 @@ fn mk_cycle<'tcx, C: QueryCache>(
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(tcx, &cycle_error, guar)
+            query.value_from_cycle_error(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -130,7 +130,7 @@ fn mk_cycle<'tcx, C: QueryCache>(
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(tcx, &cycle_error, guar)
+            query.value_from_cycle_error(tcx, cycle_error, guar)
         }
     }
 }

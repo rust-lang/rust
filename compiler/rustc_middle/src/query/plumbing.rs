@@ -148,7 +148,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 
     /// Formats a human-readable description of this query and its key, as
@@ -213,7 +213,7 @@ impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
     pub fn value_from_cycle_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
+        cycle_error: CycleError,
         guar: ErrorGuaranteed,
     ) -> C::Value {
         (self.value_from_cycle_error)(tcx, cycle_error, guar)
