@@ -73,6 +73,7 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::RawDefId,
     crate::rmeta::TraitImpls,
     crate::rmeta::VariantData,
+    crate::rmeta::exported_symbol_hash_map::ExportedSymbolHashTableRef,
     rustc_abi::ReprOptions,
     rustc_ast::DelimArgs,
     rustc_hir::Attribute,

@@ -2,7 +2,9 @@ use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -473,6 +475,30 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
     !tcx.reachable_set(()).contains(&def_id)
 }
 
+fn upstream_monomorphization_hashes_provider(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> FxIndexMap<Hash128, smallvec::SmallVec<[CrateNum; 1]>> {
+    let mut map: FxIndexMap<Hash128, smallvec::SmallVec<[CrateNum; 1]>> = Default::default();
+    for &cnum in tcx.crates(()) {
+        for &hash in tcx.exported_generic_symbol_hashes(cnum) {
+            map.entry(hash).or_default().push(cnum);
+        }
+    }
+    // Sort each candidate list by StableCrateId for determinism.
+    for candidates in map.values_mut() {
+        candidates.sort_by_key(|&cnum| tcx.stable_crate_id(cnum));
+    }
+    map
+}
+
+fn upstream_monomorphization_for_hash_provider(
+    tcx: TyCtxt<'_>,
+    hash: Hash128,
+) -> Option<&smallvec::SmallVec<[CrateNum; 1]>> {
+    tcx.upstream_monomorphization_hashes(()).get(&hash)
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
     providers.queries.reachable_non_generics = reachable_non_generics_provider;
     providers.queries.is_reachable_non_generic = is_reachable_non_generic_provider_local;
@@ -482,6 +508,9 @@ pub(crate) fn provide(providers: &mut Providers) {
     providers.queries.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.queries.upstream_drop_glue_for = upstream_drop_glue_for_provider;
     providers.queries.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
+    providers.queries.upstream_monomorphization_hashes = upstream_monomorphization_hashes_provider;
+    providers.queries.upstream_monomorphization_for_hash =
+        upstream_monomorphization_for_hash_provider;
     providers.queries.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.extern_queries.upstream_monomorphizations_for =

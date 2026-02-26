@@ -2,7 +2,9 @@ use std::fmt;
 
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hashes::Hash128;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -225,15 +227,27 @@ impl<'tcx> Instance<'tcx> {
         }
 
         match self.def {
-            InstanceKind::Item(def) => tcx
-                .upstream_monomorphizations_for(def)
-                .and_then(|monos| monos.get(&self.args).cloned()),
-            InstanceKind::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.args),
+            InstanceKind::Item(_)
+            | InstanceKind::DropGlue(_, Some(_))
+            | InstanceKind::AsyncDropGlueCtorShim(_, _) => {
+                let hash: Hash128 = tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    self.hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish()
+                });
+                let candidates = tcx.upstream_monomorphization_for_hash(hash)?;
+                // Candidates are sorted by StableCrateId. First verified match wins.
+                for &cnum in candidates.iter() {
+                    for (sym, _) in tcx.exported_generic_symbols(cnum).iter() {
+                        if sym.to_instance(tcx).as_ref() == Some(self) {
+                            return Some(cnum);
+                        }
+                    }
+                }
+                None
+            }
             InstanceKind::AsyncDropGlue(_, _) => None,
             InstanceKind::FutureDropPollShim(_, _, _) => None,
-            InstanceKind::AsyncDropGlueCtorShim(_, _) => {
-                tcx.upstream_async_drop_glue_for(self.args)
-            }
             _ => None,
         }
     }
