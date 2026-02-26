@@ -56,6 +56,8 @@ where
             search_graph: outer.search_graph,
             nested_goals: outer.nested_goals.clone(),
             origin_span: outer.origin_span,
+            coroutine_hidden_type_leaked_universe_jank: outer
+                .coroutine_hidden_type_leaked_universe_jank,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),
         };

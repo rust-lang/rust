@@ -1275,14 +1275,18 @@ where
         ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
-            let goals =
-                ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
+            let goal_self = goal.predicate.self_ty();
+            let goals = ecx.enter_forall_maybe_leaked_universe_jank(
+                goal_self,
+                constituent_tys(ecx, goal_self)?,
+                |ecx, tys| {
                     tys.into_iter()
                         .map(|ty| {
                             goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
                         })
                         .collect::<Vec<_>>()
-                });
+                },
+            );
             ecx.add_goals(GoalSource::ImplWhereBound, goals);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

@@ -125,6 +125,11 @@ where
 
     pub(super) origin_span: I::Span,
 
+    // Weakens the leak check due to leaking coroutine hidden types.
+    // See the comments on the [`EvalCtxt::enter_forall_make_leaked_universe_jank`]
+    // for more details.
+    coroutine_hidden_type_leaked_universe_jank: Option<ty::UniverseIndex>,
+
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
     // If so, then it can no longer be used to make a canonical query response,
@@ -329,6 +334,7 @@ where
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
+            coroutine_hidden_type_leaked_universe_jank: None,
             tainted: Ok(()),
         };
         let result = f(&mut ecx);
@@ -384,6 +390,7 @@ where
             search_graph,
             nested_goals: Default::default(),
             origin_span: I::Span::dummy(),
+            coroutine_hidden_type_leaked_universe_jank: None,
             tainted: Ok(()),
             inspect: proof_tree_builder.new_evaluation_step(var_values),
         };
@@ -1065,6 +1072,56 @@ where
         self.delegate.enter_forall(value, |value| f(self, value))
     }
 
+    // FIXME: This is an ugly hack introduced to fix a regression in the
+    // next-solver.
+    //
+    // If a coroutine hidden type is non–well-formed and leaks a universe,
+    // its structural trait impls may still be confirmed as candidates in
+    // `TypingMode::Analysis`. This happens because we stall coroutines and
+    // avoid evaluating their hidden types in their defining scope.
+    //
+    // However, in later passes (e.g. MIR validation), the same candidate
+    // may be rejected due to a failing leak check, which can lead to an ICE.
+    //
+    // The root cause appears to be coroutine hidden types that leak
+    // universes, possibly related to implied bounds. For now, we apply a
+    // (potentially unsound) workaround by weakening the leak check for
+    // coroutine hidden types that leak universes. This should be removed once
+    // underlying issue is fixed.
+    //
+    // This must not be used outside
+    // `EvalCtxt::probe_and_evaluate_goal_for_constituent_tys`.
+    //
+    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/251.
+    pub(in crate::solve) fn enter_forall_maybe_leaked_universe_jank<T: TypeFoldable<I>, U>(
+        &mut self,
+        maybe_coroutine_witness: I::Ty,
+        value: ty::Binder<I, T>,
+        f: impl FnOnce(&mut Self, T) -> U,
+    ) -> U {
+        if self.typing_mode() == TypingMode::PostAnalysis
+            && let ty::CoroutineWitness(def_id, args) = maybe_coroutine_witness.kind()
+            && let hidden_types =
+                self.cx().coroutine_hidden_types(def_id).instantiate(self.cx(), args)
+            && let leaked_universe = self
+                .delegate
+                .probe(|| self.delegate.enter_forall(hidden_types, |_| self.delegate.universe()))
+            && self
+                .coroutine_hidden_type_leaked_universe_jank
+                .unwrap_or_else(|| self.delegate.universe())
+                .cannot_name(leaked_universe)
+        {
+            self.enter_forall(value, |ecx, value| {
+                if ecx.delegate.universe().can_name(leaked_universe) {
+                    ecx.coroutine_hidden_type_leaked_universe_jank = Some(leaked_universe);
+                }
+                f(ecx, value)
+            })
+        } else {
+            self.enter_forall(value, f)
+        }
+    }
+
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<I>,
@@ -1234,10 +1291,30 @@ where
 
         // We only check for leaks from universes which were entered inside
         // of the query.
-        self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
+        let leak_check = self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
             trace!("failed the leak check");
             NoSolution
-        })?;
+        });
+
+        let weakened_leak_check =
+            if let Some(leaked_universe) = self.coroutine_hidden_type_leaked_universe_jank {
+                // If the coroutine hidden type leaks its universe, re-run the check
+                // in the leaked universe. See the comments on
+                // `EvalCtxt::enter_forall_maybe_leaked_universe_jank` for details.
+                if leak_check.is_err() {
+                    self.delegate.leak_check(leaked_universe).map_err(|NoSolution| {
+                        trace!("failed the leak check with the coroutine's leaked universe");
+                        NoSolution
+                    })?;
+                    trace!("passed the leak check with the coroutine's leaked universe");
+                    true
+                } else {
+                    false
+                }
+            } else {
+                leak_check?;
+                false
+            };
 
         let (certainty, normalization_nested_goals) =
             match (self.current_goal_kind, shallow_certainty) {
@@ -1297,6 +1374,37 @@ where
         external_constraints.region_constraints.retain(|outlives| {
             outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
         });
+
+        // If we have weakened the leak check due to non–well-formed coroutine
+        // hidden types, we must also discard the resulting leaking region
+        // constraints. Otherwise, canonicalizing the response with those
+        // constraints would simply propagate the evaluation failure to the
+        // parent goal, potentially causing an ICE during MIR validation or
+        // similar later passes.
+        if weakened_leak_check {
+            struct LeakingPlaceholderVisitor {
+                max_universe: ty::UniverseIndex,
+            }
+
+            impl<I: Interner> TypeVisitor<I> for LeakingPlaceholderVisitor {
+                type Result = ControlFlow<()>;
+
+                fn visit_region(&mut self, r: I::Region) -> Self::Result {
+                    if let ty::RePlaceholder(p) = r.kind()
+                        && self.max_universe.cannot_name(p.universe())
+                    {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                }
+            }
+
+            let mut visitor = LeakingPlaceholderVisitor { max_universe: self.max_input_universe };
+            external_constraints
+                .region_constraints
+                .retain(|p| p.visit_with(&mut visitor).is_continue());
+        }
 
         let canonical = canonicalize_response(
             self.delegate,
