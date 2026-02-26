@@ -7,7 +7,7 @@
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
+use rustc_errors::{BufferedEarlyLint, DecorateDiagCompat, Diagnostic, LintBuffer, MultiSpan};
 use rustc_feature::Features;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
@@ -15,6 +15,7 @@ use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
+use crate::Lint;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
@@ -32,16 +33,40 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
     pass: T,
 }
 
+pub trait EmitDiag {
+    fn emit(&self, lint: &'static Lint, diag: impl for<'a> Diagnostic<'a, ()>);
+}
+
+struct DiagEmitter<'a, 'b> {
+    ctx: &'a EarlyContext<'b>,
+    span: Option<MultiSpan>,
+}
+
+impl EmitDiag for DiagEmitter<'_, '_> {
+    fn emit(&self, lint: &'static Lint, diag: impl for<'a> Diagnostic<'a, ()>) {
+        self.ctx.opt_span_diag_lint(lint, self.span.clone(), diag);
+    }
+}
+
 impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.opt_span_diag_lint(lint_id.lint, span, |diag| match diagnostic {
+            match diagnostic {
                 DecorateDiagCompat::Builtin(b) => {
-                    diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, b, diag);
+                    diagnostics::decorate_builtin_lint(
+                        &DiagEmitter { ctx: &self.context, span },
+                        self.context.sess(),
+                        self.tcx,
+                        b,
+                        lint_id.lint,
+                    );
                 }
-                DecorateDiagCompat::Dynamic(d) => d.decorate_lint_box(diag),
-            });
+                DecorateDiagCompat::Dynamic(d) => {
+                    self.context
+                        .opt_span_lint(lint_id.lint, span, |diag| d.decorate_lint_box(diag));
+                }
+            }
         }
     }
 

@@ -772,6 +772,22 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     Ok(())
 }
 
+struct DiagEmitter<'tcx> {
+    hir_id: rustc_hir::HirId,
+    tcx: TyCtxt<'tcx>,
+    span: rustc_span::Span,
+}
+
+impl rustc_lint::EmitDiag for DiagEmitter<'_> {
+    fn emit(
+        &self,
+        lint: &'static rustc_lint::Lint,
+        diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>,
+    ) {
+        self.tcx.emit_node_span_lint(lint, self.hir_id, self.span, diag);
+    }
+}
+
 fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -912,18 +928,16 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     for lint in &delayed_lints.lints {
                         match lint {
                             DelayedLint::AttributeParsing(attribute_lint) => {
-                                tcx.node_span_lint(
-                                    attribute_lint.lint_id.lint,
-                                    attribute_lint.id,
-                                    attribute_lint.span,
-                                    |diag| {
-                                        rustc_lint::decorate_attribute_lint(
-                                            tcx.sess,
-                                            Some(tcx),
-                                            &attribute_lint.kind,
-                                            diag,
-                                        );
+                                rustc_lint::decorate_attribute_lint(
+                                    &DiagEmitter {
+                                        hir_id: attribute_lint.id,
+                                        tcx,
+                                        span: attribute_lint.span,
                                     },
+                                    tcx.sess,
+                                    Some(tcx),
+                                    &attribute_lint.kind,
+                                    attribute_lint.lint_id.lint,
                                 );
                             }
                         }
