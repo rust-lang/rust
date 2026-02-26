@@ -421,12 +421,6 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 ) -> (C::Value, DepNodeIndex) {
     debug_assert!(!tcx.dep_graph.is_fully_enabled());
 
-    // Fingerprint the key, just to assert that it doesn't
-    // have anything we don't consider hashable
-    if cfg!(debug_assertions) {
-        let _ = key.to_fingerprint(tcx);
-    }
-
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
     let value =
@@ -434,14 +428,14 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
     let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    // Similarly, fingerprint the result to assert that
-    // it doesn't have anything not considered hashable.
-    if cfg!(debug_assertions)
-        && let Some(hash_value_fn) = query.hash_value_fn
-    {
-        tcx.with_stable_hashing_context(|mut hcx| {
-            hash_value_fn(&mut hcx, &value);
-        });
+    // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
+    if cfg!(debug_assertions) {
+        let _ = key.to_fingerprint(tcx);
+        if let Some(hash_value_fn) = query.hash_value_fn {
+            tcx.with_stable_hashing_context(|mut hcx| {
+                hash_value_fn(&mut hcx, &value);
+            });
+        }
     }
 
     (value, dep_node_index)
