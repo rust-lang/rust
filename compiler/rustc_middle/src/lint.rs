@@ -299,7 +299,6 @@ fn explain_lint_level_source(
 /// for example:
 /// - [`TyCtxt::emit_node_span_lint`]
 /// - [`TyCtxt::node_span_lint`]
-/// - [`TyCtxt::emit_node_lint`]
 /// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 ///
@@ -490,7 +489,6 @@ pub fn lint_level(
 ///
 /// - [`TyCtxt::emit_node_span_lint`]
 /// - [`TyCtxt::node_span_lint`]
-/// - [`TyCtxt::emit_node_lint`]
 /// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 ///

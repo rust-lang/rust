@@ -28,9 +28,9 @@ error: `Eq::assert_receiver_is_total_eq` should never be implemented by hand
 LL |     fn assert_receiver_is_total_eq(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: this method was used to add checks to the `Eq` derive macro
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #152336 <https://github.com/rust-lang/rust/issues/152336>
-   = note: this method was used to add checks to the `Eq` derive macro
 note: the lint level is defined here
   --> $DIR/internal_eq_trait_method_impls.rs:1:21
    |

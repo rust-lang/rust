@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic, msg};
+use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
@@ -235,7 +235,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> LintDiagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
