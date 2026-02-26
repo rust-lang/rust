@@ -209,12 +209,9 @@ fn verify_all_signatures() {
                 "_rdseed16_step",
                 "_rdseed32_step",
                 "_rdseed64_step",
-                // Prefetch
-                "_mm_prefetch",
                 // CMPXCHG
                 "cmpxchg16b",
-                // Undefined
-                "_mm_undefined_ps",
+                // Undefined,
                 "_mm_undefined_pd",
                 "_mm_undefined_si128",
                 "_mm_undefined_ph",
@@ -250,8 +247,6 @@ fn verify_all_signatures() {
                 "_mm_cvtt_ss2si",
                 "_mm_cvt_si2ss",
                 "_mm_set_ps1",
-                "_mm_load_ps1",
-                "_mm_store_ps1",
                 "_mm_bslli_si128",
                 "_mm_bsrli_si128",
                 "_bextr2_u32",
