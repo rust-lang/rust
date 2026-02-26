@@ -3014,6 +3014,22 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
+    fn test_mm_cvt_ss2si() {
+        let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
+        let result = &[42i32, -3, i32::MIN, 0, i32::MIN, 2147483520];
+        for i in 0..inputs.len() {
+            let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
+            let e = result[i];
+            let r = _mm_cvt_ss2si(x);
+            assert_eq!(
+                e, r,
+                "TestCase #{} _mm_cvt_ss2si({:?}) = {}, expected: {}",
+                i, x, r, e
+            );
+        }
+    }
+
+    #[simd_test(enable = "sse")]
     fn test_mm_cvttss_si32() {
         let inputs = &[
             (42.0f32, 42i32),
@@ -3039,6 +3055,31 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
+    fn test_mm_cvtt_ss2si() {
+        let inputs = &[
+            (42.0f32, 42i32),
+            (-31.4, -31),
+            (-33.5, -33),
+            (-34.5, -34),
+            (10.999, 10),
+            (-5.99, -5),
+            (4.0e10, i32::MIN),
+            (4.0e-10, 0),
+            (NAN, i32::MIN),
+            (2147483500.1, 2147483520),
+        ];
+        for (i, &(xi, e)) in inputs.iter().enumerate() {
+            let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
+            let r = _mm_cvtt_ss2si(x);
+            assert_eq!(
+                e, r,
+                "TestCase #{} _mm_cvtt_ss2si({:?}) = {}, expected: {}",
+                i, x, r, e
+            );
+        }
+    }
+
+    #[simd_test(enable = "sse")]
     const fn test_mm_cvtsi32_ss() {
         let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
 
@@ -3055,6 +3096,27 @@ mod tests {
         assert_eq_m128(e, r);
 
         let r = _mm_cvtsi32_ss(a, -322223333);
+        let e = _mm_setr_ps(-322223333.0, 6.0, 7.0, 8.0);
+        assert_eq_m128(e, r);
+    }
+
+    #[simd_test(enable = "sse")]
+    fn test_mm_cvt_si2ss() {
+        let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
+
+        let r = _mm_cvt_si2ss(a, 4555);
+        let e = _mm_setr_ps(4555.0, 6.0, 7.0, 8.0);
+        assert_eq_m128(e, r);
+
+        let r = _mm_cvt_si2ss(a, 322223333);
+        let e = _mm_setr_ps(322223333.0, 6.0, 7.0, 8.0);
+        assert_eq_m128(e, r);
+
+        let r = _mm_cvt_si2ss(a, -432);
+        let e = _mm_setr_ps(-432.0, 6.0, 7.0, 8.0);
+        assert_eq_m128(e, r);
+
+        let r = _mm_cvt_si2ss(a, -322223333);
         let e = _mm_setr_ps(-322223333.0, 6.0, 7.0, 8.0);
         assert_eq_m128(e, r);
     }
@@ -3083,6 +3145,15 @@ mod tests {
         assert_eq!(get_m128(r2, 1), 4.25);
         assert_eq!(get_m128(r2, 2), 4.25);
         assert_eq!(get_m128(r2, 3), 4.25);
+    }
+
+    #[simd_test(enable = "sse")]
+    const fn test_mm_set_ps1() {
+        let r = _mm_set_ps1(black_box(4.25));
+        assert_eq!(get_m128(r, 0), 4.25);
+        assert_eq!(get_m128(r, 1), 4.25);
+        assert_eq!(get_m128(r, 2), 4.25);
+        assert_eq!(get_m128(r, 3), 4.25);
     }
 
     #[simd_test(enable = "sse")]
