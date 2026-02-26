@@ -1266,6 +1266,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
+        debug!(?borrows_in_scope, ?location);
 
         each_borrow_involving_path(
             self,
@@ -1499,6 +1500,36 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 } else {
                     InitializationRequiringAction::Borrow
                 };
+
+                self.check_if_path_or_subpath_is_moved(
+                    location,
+                    action,
+                    (place.as_ref(), span),
+                    state,
+                );
+            }
+
+            &Rvalue::Reborrow(mutability, place) => {
+                let access_kind = (
+                    Deep,
+                    if mutability == Mutability::Mut {
+                        Write(WriteKind::MutableBorrow(BorrowKind::Mut {
+                            kind: MutBorrowKind::Default,
+                        }))
+                    } else {
+                        Read(ReadKind::Borrow(BorrowKind::Shared))
+                    },
+                );
+
+                self.access_place(
+                    location,
+                    (place, span),
+                    access_kind,
+                    LocalMutationIsAllowed::Yes,
+                    state,
+                );
+
+                let action = InitializationRequiringAction::Borrow;
 
                 self.check_if_path_or_subpath_is_moved(
                     location,

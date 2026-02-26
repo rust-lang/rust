@@ -1331,6 +1331,24 @@ pub(crate) struct CoerceMulti {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires that a single lifetime parameter is passed between source and target"
+)]
+pub(crate) struct CoerceSharedNotSingleLifetimeParam {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("implementing `{$trait_name}` does not allow multiple lifetimes or fields to be coerced")]
+pub(crate) struct CoerceSharedMulti {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("the trait `{$trait_name}` may only be implemented for a coercion between structures", code = E0377)]
 pub(crate) struct CoerceUnsizedNonStruct {
     #[primary_span]

@@ -629,6 +629,11 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
                 }
+                Rvalue::Reborrow(_, place) => {
+                    let cplace = codegen_place(fx, place);
+                    let val = cplace.to_cvalue(fx);
+                    lval.write_cvalue(fx, val)
+                }
                 Rvalue::ThreadLocalRef(def_id) => {
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
                     lval.write_cvalue(fx, val);

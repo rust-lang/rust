@@ -550,6 +550,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        // check rvalue is Reborrow
+        if let Rvalue::Reborrow(mutability, rvalue) = rvalue {
+            self.add_generic_reborrow_constraint(*mutability, location, place, rvalue);
+        } else {
+            // rest of the cases
+            self.super_assign(place, rvalue, location);
+        }
+    }
+
     fn visit_span(&mut self, span: Span) {
         if !span.is_dummy() {
             debug!(?span);
@@ -627,8 +637,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
-                if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, location.to_locations(), category)
+                // Note: we've checked Reborrow/CoerceShared type matches
+                // separately in fn visit_assign.
+                if !matches!(rv, Rvalue::Reborrow(_, _))
+                    && let Err(terr) =
+                        self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
                     span_mirbug!(
                         self,
@@ -1581,6 +1594,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.add_reborrow_constraint(location, *region, borrowed_place);
             }
 
+            Rvalue::Reborrow(..) => {
+                // Reborrow needs to produce a relation between the source and destination fields,
+                // which means that we have had to already handle this in visit_assign.
+                unreachable!()
+            }
+
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
                 box (left, right),
@@ -2217,6 +2236,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
+            | Rvalue::Reborrow(..)
             | Rvalue::RawPtr(..)
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
@@ -2418,6 +2438,121 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // other field access
                 }
             }
+        }
+    }
+
+    fn add_generic_reborrow_constraint(
+        &mut self,
+        mutability: Mutability,
+        location: Location,
+        dest: &Place<'tcx>,
+        borrowed_place: &Place<'tcx>,
+    ) {
+        // These constraints are only meaningful during borrowck:
+        let Self { borrow_set, location_table, polonius_facts, constraints, infcx, body, .. } =
+            self;
+
+        // If we are reborrowing the referent of another reference, we
+        // need to add outlives relationships. In a case like `&mut
+        // *p`, where the `p` has type `&'b mut Foo`, for example, we
+        // need to ensure that `'b: 'a`.
+
+        debug!(
+            "add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})",
+            mutability, location, dest, borrowed_place
+        );
+
+        let tcx = infcx.tcx;
+        let def = body.source.def_id().expect_local();
+        let upvars = tcx.closure_captures(def);
+        let field =
+            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
+        let category = if let Some(field) = field {
+            ConstraintCategory::ClosureUpvar(field)
+        } else {
+            ConstraintCategory::Boring
+        };
+
+        let dest_ty = dest.ty(self.body, tcx).ty;
+        let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
+        let ty::Adt(_, args) = dest_ty.kind() else { bug!() };
+        let [arg, ..] = ***args else { bug!() };
+        let ty::GenericArgKind::Lifetime(reborrow_region) = arg.kind() else { bug!() };
+        constraints.liveness_constraints.add_location(reborrow_region.as_var(), location);
+
+        // In Polonius mode, we also push a `loan_issued_at` fact
+        // linking the loan to the region.
+        if let Some(polonius_facts) = polonius_facts {
+            let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
+            if let Some(borrow_index) = borrow_set.get_index_of(&location) {
+                let region_vid = reborrow_region.as_var();
+                polonius_facts.loan_issued_at.push((
+                    region_vid.into(),
+                    borrow_index,
+                    location_table.mid_index(location),
+                ));
+            }
+        }
+
+        if mutability.is_not() {
+            // FIXME: for shared reborrow we need to relate the types manually,
+            // field by field with CoerceShared drilling down and down and down.
+            // We cannot just attempt to relate T and <T as CoerceShared>::Target
+            // by calling relate_types.
+            let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { unreachable!() };
+            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
+            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
+            for dest_field in dest_adt.all_fields() {
+                let Some(borrowed_field) =
+                    borrowed_fields.iter().find(|f| f.name == dest_field.name)
+                else {
+                    continue;
+                };
+                let dest_ty = dest_field.ty(tcx, dest_args);
+                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args);
+                if let (
+                    ty::Ref(borrow_region, _, Mutability::Mut),
+                    ty::Ref(ref_region, _, Mutability::Not),
+                ) = (borrowed_ty.kind(), dest_ty.kind())
+                {
+                    self.relate_types(
+                        borrowed_ty.peel_refs(),
+                        ty::Variance::Covariant,
+                        dest_ty.peel_refs(),
+                        location.to_locations(),
+                        category,
+                    )
+                    .unwrap();
+                    self.constraints.outlives_constraints.push(OutlivesConstraint {
+                        sup: ref_region.as_var(),
+                        sub: borrow_region.as_var(),
+                        locations: location.to_locations(),
+                        span: location.to_locations().span(self.body),
+                        category,
+                        variance_info: ty::VarianceDiagInfo::default(),
+                        from_closure: false,
+                    });
+                } else {
+                    self.relate_types(
+                        borrowed_ty,
+                        ty::Variance::Covariant,
+                        dest_ty,
+                        location.to_locations(),
+                        category,
+                    )
+                    .unwrap();
+                }
+            }
+        } else {
+            // Exclusive reborrow
+            self.relate_types(
+                borrowed_ty,
+                ty::Variance::Covariant,
+                dest_ty,
+                location.to_locations(),
+                category,
+            )
+            .unwrap();
         }
     }
 

@@ -1471,6 +1471,21 @@ pub enum Rvalue<'tcx> {
 
     /// Wraps a value in an unsafe binder.
     WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
+
+    /// Creates a bitwise copy of the indicated place with the same type (if Mut) or its
+    /// CoerceShared target type (if Not), and disables the place for writes (and reads, if Mut) for
+    /// the copy's lifetime. The type is known to be an ADT with exactly one lifetime parameter, and
+    /// it is known to implement the Reborrow trait (for Mut), and the CoerceShared trait (only if
+    /// Not). The CoerceShared target type is known to implement Copy and have the same memory
+    /// layout as the source type.
+    ///
+    /// Future work may add support for multiple lifetimes and changing memory layout as part of
+    /// CoerceShared. These may be end up implemented as multiple MIR operations.
+    ///
+    /// This is produced by the [`ExprKind::Reborrow`].
+    ///
+    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
+    Reborrow(Mutability, Place<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

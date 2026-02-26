@@ -882,6 +882,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
+            ExprKind::Reborrow { source, mutability } => {
+                let place = unpack!(block = this.as_place(block, source));
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Reborrow(mutability, place.into()),
+                );
+                block.unit()
+            }
         };
 
         if !expr_is_block_or_scope {

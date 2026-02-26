@@ -589,6 +589,8 @@ pub enum Rvalue {
 
     /// Yields the operand unchanged
     Use(Operand),
+
+    Reborrow(Mutability, Place),
 }
 
 impl Rvalue {
@@ -602,6 +604,10 @@ impl Rvalue {
             Rvalue::Ref(reg, bk, place) => {
                 let place_ty = place.ty(locals)?;
                 Ok(Ty::new_ref(reg.clone(), place_ty, bk.to_mutable_lossy()))
+            }
+            Rvalue::Reborrow(_mutability, place) => {
+                // FIXME(@aapoalas): when mutability is Not, the type should change.
+                place.ty(locals)
             }
             Rvalue::AddressOf(mutability, place) => {
                 let place_ty = place.ty(locals)?;

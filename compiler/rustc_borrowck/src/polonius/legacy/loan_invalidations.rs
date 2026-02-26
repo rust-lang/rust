@@ -275,6 +275,21 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
+            &Rvalue::Reborrow(mutability, place) => {
+                let access_kind = (
+                    Deep,
+                    if mutability == Mutability::Mut {
+                        Reservation(WriteKind::MutableBorrow(BorrowKind::Mut {
+                            kind: MutBorrowKind::TwoPhaseBorrow,
+                        }))
+                    } else {
+                        Read(ReadKind::Borrow(BorrowKind::Shared))
+                    },
+                );
+
+                self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
+            }
+
             &Rvalue::RawPtr(kind, place) => {
                 let access_kind = match kind {
                     RawPtrKind::Mut => (

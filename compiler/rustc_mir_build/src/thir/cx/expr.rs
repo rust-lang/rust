@@ -283,6 +283,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
+            Adjust::GenericReborrow(mutability) => {
+                let expr = self.thir.exprs.push(expr);
+                let kind = ExprKind::Reborrow { source: expr, mutability };
+
+                kind
+            }
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }

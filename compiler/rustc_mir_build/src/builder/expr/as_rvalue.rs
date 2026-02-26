@@ -431,6 +431,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.and(Rvalue::Use(operand))
             }
+            ExprKind::Reborrow { source, mutability } => {
+                let temp = unpack!(block = this.as_temp(block, scope, source, mutability));
+                block.and(Rvalue::Reborrow(mutability, temp.into()))
+            }
         }
     }
 

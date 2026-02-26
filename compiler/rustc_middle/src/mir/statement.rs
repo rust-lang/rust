@@ -761,6 +761,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
+            | Rvalue::Reborrow(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
             | Rvalue::Cast(
@@ -785,6 +786,12 @@ impl<'tcx> Rvalue<'tcx> {
         }
     }
 
+    /// Returns true if rvalue is a generic Reborrow coercion (usage of Reborrow or CoerceShared
+    /// trait).
+    pub fn is_generic_reborrow(&self) -> bool {
+        matches!(self, Self::Reborrow(..))
+    }
+
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: ?Sized + HasLocalDecls<'tcx>,
@@ -798,6 +805,10 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
+            }
+            Rvalue::Reborrow(_mutability, ref place) => {
+                // FIXME(@aapoalas): when mutability is Not, type changes.
+                place.ty(local_decls, tcx).ty
             }
             Rvalue::RawPtr(kind, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;

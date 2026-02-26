@@ -107,6 +107,14 @@ pub enum Adjust {
     /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
     // FIXME(pin_ergonomics): This can be replaced with a `Deref(Pin)` followed by a `Borrow(Pin)`
     ReborrowPin(hir::Mutability),
+
+    /// Take a user-type T implementing the Reborrow trait (for Mut) or the CoerceShared trait (for
+    /// Not) and reborrow as `T` or `CoreceShared<U>`.
+    ///
+    /// This produces an [`ExprKind::Reborrow`].
+    ///
+    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
+    GenericReborrow(hir::Mutability),
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
@@ -202,6 +210,15 @@ pub enum AutoBorrow {
     /// Converts from T to Pin<&T>.
     Pin(hir::Mutability),
 }
+
+/// Information for `CoerceShared` impls, storing information we
+/// have computed about the coercion.
+///
+/// This struct can be obtained via the `coerce_shared_impl` query.
+/// Demanding this struct also has the side-effect of reporting errors
+/// for inappropriate impls.
+#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct CoerceSharedInfo {}
 
 /// Information for `CoerceUnsized` impls, storing information we
 /// have computed about the coercion.
