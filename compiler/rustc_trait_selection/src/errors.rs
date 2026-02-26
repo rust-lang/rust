@@ -422,7 +422,7 @@ pub enum RegionOriginNote<'a> {
 
 impl Subdiagnostic for RegionOriginNote<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let mut label_or_note = |span, msg: DiagMessage| {
+        let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -436,22 +436,26 @@ impl Subdiagnostic for RegionOriginNote<'_> {
         };
         match self {
             RegionOriginNote::Plain { span, msg } => {
-                label_or_note(span, msg);
+                label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
-                label_or_note(span, msg);
                 diag.arg("name", name);
                 diag.arg("continues", continues);
+                label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithRequirement {
                 span,
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
-                label_or_note(
-                    span,
-                    msg!(
-                        "...so that the {$requirement ->
+                // `RegionOriginNote` can appear multiple times on one diagnostic with different
+                // `requirement` values. Scope args per-note and eagerly translate to avoid
+                // cross-note arg collisions.
+                // See https://github.com/rust-lang/rust/issues/143872 for details.
+                diag.store_args();
+                diag.arg("requirement", requirement);
+                let msg = diag.eagerly_translate(msg!(
+                    "...so that the {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
                             [const_compat] const is compatible with trait
@@ -464,9 +468,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                    ),
-                );
-                diag.arg("requirement", requirement);
+                ));
+                diag.restore_args();
+                label_or_note(diag, span, msg);
 
                 diag.note_expected_found("", expected, "", found);
             }
@@ -474,10 +478,10 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
-                label_or_note(
-                    span,
-                    msg!(
-                        "...so that {$requirement ->
+                diag.store_args();
+                diag.arg("requirement", requirement);
+                let msg = diag.eagerly_translate(msg!(
+                    "...so that {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
                             [const_compat] const is compatible with trait
@@ -490,9 +494,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                    ),
-                );
-                diag.arg("requirement", requirement);
+                ));
+                diag.restore_args();
+                label_or_note(diag, span, msg);
             }
         };
     }
