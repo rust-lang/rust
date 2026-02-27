@@ -8,7 +8,7 @@ use std::{env, fs, iter};
 use rustc_ast::{self as ast, CRATE_NODE_ID};
 use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_codegen_ssa::{CodegenResults, CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
@@ -1228,8 +1228,7 @@ pub(crate) fn start_codegen<'tcx>(
 
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
             Box::new(CodegenResults {
-                modules: vec![],
-                allocator_module: None,
+                compiled_modules: CompiledModules { modules: vec![], allocator_module: None },
                 crate_info: CrateInfo::new(tcx, "<dummy cpu>".to_owned()),
             })
         } else {

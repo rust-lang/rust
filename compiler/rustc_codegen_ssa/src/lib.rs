@@ -252,9 +252,14 @@ pub struct TargetConfig {
 
 #[derive(Encodable, Decodable)]
 pub struct CodegenResults {
+    pub compiled_modules: CompiledModules,
+    pub crate_info: CrateInfo,
+}
+
+#[derive(Encodable, Decodable)]
+pub struct CompiledModules {
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
-    pub crate_info: CrateInfo,
 }
 
 pub enum CodegenErrors {

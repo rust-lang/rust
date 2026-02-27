@@ -60,7 +60,7 @@ use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
-    CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
+    CompiledModule, CompiledModules, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -76,7 +76,8 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
 pub fn link_binary(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: CodegenResults,
+    compiled_modules: CompiledModules,
+    crate_info: CrateInfo,
     metadata: EncodedMetadata,
     outputs: &OutputFilenames,
     codegen_backend: &'static str,
@@ -84,7 +85,7 @@ pub fn link_binary(
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
-    for &crate_type in &codegen_results.crate_info.crate_types {
+    for &crate_type in &crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
             && !output_metadata
@@ -98,25 +99,20 @@ pub fn link_binary(
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
-            for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+            for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
                 check_file_is_writeable(obj, sess);
             }
         });
 
         if outputs.outputs.should_link() {
-            let output = out_filename(
-                sess,
-                crate_type,
-                outputs,
-                codegen_results.crate_info.local_crate_name,
-            );
+            let output = out_filename(sess, crate_type, outputs, crate_info.local_crate_name);
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")
                 .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
                 .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
 
-            let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
+            let crate_name = format!("{}", crate_info.local_crate_name);
             let out_filename = output.file_for_writing(
                 outputs,
                 OutputType::Exe,
@@ -130,7 +126,8 @@ pub fn link_binary(
                     link_rlib(
                         sess,
                         archive_builder_builder,
-                        &codegen_results,
+                        &compiled_modules,
+                        &crate_info,
                         &metadata,
                         RlibFlavor::Normal,
                         &path,
@@ -141,7 +138,8 @@ pub fn link_binary(
                     link_staticlib(
                         sess,
                         archive_builder_builder,
-                        &codegen_results,
+                        &compiled_modules,
+                        &crate_info,
                         &metadata,
                         &out_filename,
                         &path,
@@ -153,7 +151,8 @@ pub fn link_binary(
                         archive_builder_builder,
                         crate_type,
                         &out_filename,
-                        &codegen_results,
+                        &compiled_modules,
+                        &crate_info,
                         &metadata,
                         path.as_ref(),
                         codegen_backend,
@@ -218,7 +217,7 @@ pub fn link_binary(
             |module: &CompiledModule| maybe_remove_temps_from_module(false, false, module);
 
         // Otherwise, always remove the allocator module temporaries.
-        if let Some(ref allocator_module) = codegen_results.allocator_module {
+        if let Some(ref allocator_module) = compiled_modules.allocator_module {
             remove_temps_from_module(allocator_module);
         }
 
@@ -237,7 +236,7 @@ pub fn link_binary(
         let (preserve_objects, preserve_dwarf_objects) = preserve_objects_for_their_debuginfo(sess);
         debug!(?preserve_objects, ?preserve_dwarf_objects);
 
-        for module in &codegen_results.modules {
+        for module in &compiled_modules.modules {
             maybe_remove_temps_from_module(preserve_objects, preserve_dwarf_objects, module);
         }
     });
@@ -298,7 +297,8 @@ pub fn each_linked_rlib(
 fn link_rlib<'a>(
     sess: &'a Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
@@ -327,7 +327,7 @@ fn link_rlib<'a>(
         RlibFlavor::StaticlibBase => None,
     };
 
-    for m in &codegen_results.modules {
+    for m in &compiled_modules.modules {
         if let Some(obj) = m.object.as_ref() {
             ab.add_file(obj);
         }
@@ -340,7 +340,7 @@ fn link_rlib<'a>(
     match flavor {
         RlibFlavor::Normal => {}
         RlibFlavor::StaticlibBase => {
-            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+            let obj = compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref());
             if let Some(obj) = obj {
                 ab.add_file(obj);
             }
@@ -366,7 +366,7 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    for lib in codegen_results.crate_info.used_libraries.iter() {
+    for lib in crate_info.used_libraries.iter() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
@@ -394,7 +394,7 @@ fn link_rlib<'a>(
         for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
             sess,
             archive_builder_builder,
-            codegen_results.crate_info.used_libraries.iter(),
+            crate_info.used_libraries.iter(),
             tmpdir.as_ref(),
             true,
         ) {
@@ -457,7 +457,8 @@ fn link_rlib<'a>(
 fn link_staticlib(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
@@ -466,72 +467,67 @@ fn link_staticlib(
     let mut ab = link_rlib(
         sess,
         archive_builder_builder,
-        codegen_results,
+        compiled_modules,
+        crate_info,
         metadata,
         RlibFlavor::StaticlibBase,
         tempdir,
     );
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(
-        &codegen_results.crate_info,
-        Some(CrateType::StaticLib),
-        &mut |cnum, path| {
-            let lto = are_upstream_rust_objects_already_included(sess)
-                && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
+    let res = each_linked_rlib(crate_info, Some(CrateType::StaticLib), &mut |cnum, path| {
+        let lto = are_upstream_rust_objects_already_included(sess)
+            && !ignored_for_lto(sess, crate_info, cnum);
 
-            let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
-            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-            let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+        let native_libs = crate_info.native_libraries[&cnum].iter();
+        let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
+        let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
-            let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
-            ab.add_archive(
-                path,
-                Box::new(move |fname: &str| {
-                    // Ignore metadata files, no matter the name.
-                    if fname == METADATA_FILENAME {
-                        return true;
-                    }
+        let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+        ab.add_archive(
+            path,
+            Box::new(move |fname: &str| {
+                // Ignore metadata files, no matter the name.
+                if fname == METADATA_FILENAME {
+                    return true;
+                }
 
-                    // Don't include Rust objects if LTO is enabled
-                    if lto && looks_like_rust_object_file(fname) {
-                        return true;
-                    }
+                // Don't include Rust objects if LTO is enabled
+                if lto && looks_like_rust_object_file(fname) {
+                    return true;
+                }
 
-                    // Skip objects for bundled libs.
-                    if bundled_libs.contains(&Symbol::intern(fname)) {
-                        return true;
-                    }
+                // Skip objects for bundled libs.
+                if bundled_libs.contains(&Symbol::intern(fname)) {
+                    return true;
+                }
 
-                    false
-                }),
-            )
-            .unwrap();
+                false
+            }),
+        )
+        .unwrap();
 
-            archive_builder_builder
-                .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
-                .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
+        archive_builder_builder
+            .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
+            .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
 
-            for filename in relevant_libs.iter() {
-                let joined = tempdir.as_ref().join(filename.as_str());
-                let path = joined.as_path();
-                ab.add_archive(path, Box::new(|_| false)).unwrap();
-            }
+        for filename in relevant_libs.iter() {
+            let joined = tempdir.as_ref().join(filename.as_str());
+            let path = joined.as_path();
+            ab.add_archive(path, Box::new(|_| false)).unwrap();
+        }
 
-            all_native_libs
-                .extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
-        },
-    );
+        all_native_libs.extend(crate_info.native_libraries[&cnum].iter().cloned());
+    });
     if let Err(e) = res {
         sess.dcx().emit_fatal(e);
     }
 
     ab.build(out_filename);
 
-    let crates = codegen_results.crate_info.used_crates.iter();
+    let crates = crate_info.used_crates.iter();
 
-    let fmts = codegen_results
-        .crate_info
+    let fmts = crate_info
         .dependency_formats
         .get(&CrateType::StaticLib)
         .expect("no dependency formats for staticlib");
@@ -541,8 +537,8 @@ fn link_staticlib(
         let Some(Linkage::Dynamic) = fmts.get(cnum) else {
             continue;
         };
-        let crate_name = codegen_results.crate_info.crate_name[&cnum];
-        let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
+        let crate_name = crate_info.crate_name[&cnum];
+        let used_crate_source = &crate_info.used_crate_source[&cnum];
         if let Some(path) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
         } else if used_crate_source.rmeta.is_some() {
@@ -552,7 +548,7 @@ fn link_staticlib(
         }
     }
 
-    all_native_libs.extend_from_slice(&codegen_results.crate_info.used_libraries);
+    all_native_libs.extend_from_slice(&crate_info.used_libraries);
 
     for print in &sess.opts.prints {
         if print.kind == PrintKind::NativeStaticLibs {
@@ -563,7 +559,12 @@ fn link_staticlib(
 
 /// Use `thorin` (rust implementation of a dwarf packaging utility) to link DWARF objects into a
 /// DWARF package.
-fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out_filename: &Path) {
+fn link_dwarf_object(
+    sess: &Session,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
+    executable_out_filename: &Path,
+) {
     let mut dwp_out_filename = executable_out_filename.to_path_buf().into_os_string();
     dwp_out_filename.push(".dwp");
     debug!(?dwp_out_filename, ?executable_out_filename);
@@ -604,20 +605,21 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
         // Input objs contain .o/.dwo files from the current crate.
         match sess.opts.unstable_opts.split_dwarf_kind {
             SplitDwarfKind::Single => {
-                for input_obj in cg_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                for input_obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
                     package.add_input_object(input_obj)?;
                 }
             }
             SplitDwarfKind::Split => {
-                for input_obj in cg_results.modules.iter().filter_map(|m| m.dwarf_object.as_ref()) {
+                for input_obj in
+                    compiled_modules.modules.iter().filter_map(|m| m.dwarf_object.as_ref())
+                {
                     package.add_input_object(input_obj)?;
                 }
             }
         }
 
         // Input rlibs contain .o/.dwo files from dependencies.
-        let input_rlibs = cg_results
-            .crate_info
+        let input_rlibs = crate_info
             .used_crate_source
             .items()
             .filter_map(|(_, csource)| csource.rlib.as_ref())
@@ -679,7 +681,8 @@ fn link_natively(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
     out_filename: &Path,
-    codegen_results: &CodegenResults,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
     tmpdir: &Path,
     codegen_backend: &'static str,
@@ -705,7 +708,8 @@ fn link_natively(
         crate_type,
         tmpdir,
         temp_filename,
-        codegen_results,
+        compiled_modules,
+        crate_info,
         metadata,
         self_contained_components,
         codegen_backend,
@@ -936,7 +940,7 @@ fn link_natively(
                 }
             }
 
-            let level = codegen_results.crate_info.lint_levels.linker_messages;
+            let level = crate_info.lint_levels.linker_messages;
             let lint = |msg| {
                 diag_lint_level(sess, LINKER_MESSAGES, level, None, LinkerOutput { inner: msg });
             };
@@ -1013,7 +1017,9 @@ fn link_natively(
         // We cannot rely on the .o paths in the executable because they may have been
         // remapped by --remap-path-prefix and therefore invalid, so we need to provide
         // the .o/.dwo paths explicitly.
-        SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
+        SplitDebuginfo::Packed => {
+            link_dwarf_object(sess, compiled_modules, crate_info, out_filename)
+        }
     }
 
     let strip = sess.opts.cg.strip;
@@ -1908,11 +1914,11 @@ fn add_late_link_args(
     sess: &Session,
     flavor: LinkerFlavor,
     crate_type: CrateType,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
 ) {
     let any_dynamic_crate = crate_type == CrateType::Dylib
         || crate_type == CrateType::Sdylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
+        || crate_info.dependency_formats.iter().any(|(ty, list)| {
             *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
     if any_dynamic_crate {
@@ -2074,8 +2080,8 @@ fn add_linked_symbol_object(
 }
 
 /// Add object files containing code from the current crate.
-fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
-    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+fn add_local_crate_regular_objects(cmd: &mut dyn Linker, compiled_modules: &CompiledModules) {
+    for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
         cmd.add_object(obj);
     }
 }
@@ -2083,12 +2089,13 @@ fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &Codeg
 /// Add object files for allocator code linked once for the whole crate tree.
 fn add_local_crate_allocator_objects(
     cmd: &mut dyn Linker,
-    codegen_results: &CodegenResults,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
     crate_type: CrateType,
 ) {
-    if needs_allocator_shim_for_linking(&codegen_results.crate_info.dependency_formats, crate_type)
-    {
-        if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref())
+    if needs_allocator_shim_for_linking(&crate_info.dependency_formats, crate_type) {
+        if let Some(obj) =
+            compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref())
         {
             cmd.add_object(obj);
         }
@@ -2102,7 +2109,7 @@ fn add_local_crate_metadata_objects(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
     tmpdir: &Path,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
 ) {
     // When linking a dynamic library, we put the metadata into a section of the
@@ -2112,7 +2119,7 @@ fn add_local_crate_metadata_objects(
         let data = archive_builder_builder.create_dylib_metadata_wrapper(
             sess,
             &metadata,
-            &codegen_results.crate_info.metadata_symbol,
+            &crate_info.metadata_symbol,
         );
         let obj = emit_wrapper_file(sess, &data, tmpdir, "rmeta.o");
 
@@ -2157,7 +2164,7 @@ fn add_relro_args(cmd: &mut dyn Linker, sess: &Session) {
 fn add_rpath_args(
     cmd: &mut dyn Linker,
     sess: &Session,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     out_filename: &Path,
 ) {
     if !sess.target.has_rpath {
@@ -2168,11 +2175,10 @@ fn add_rpath_args(
     // where extern libraries might live, based on the
     // add_lib_search_paths
     if sess.opts.cg.rpath {
-        let libs = codegen_results
-            .crate_info
+        let libs = crate_info
             .used_crates
             .iter()
-            .filter_map(|cnum| codegen_results.crate_info.used_crate_source[cnum].dylib.as_deref())
+            .filter_map(|cnum| crate_info.used_crate_source[cnum].dylib.as_deref())
             .collect::<Vec<_>>();
         let rpath_config = RPathConfig {
             libs: &*libs,
@@ -2265,7 +2271,8 @@ fn linker_with_args(
     crate_type: CrateType,
     tmpdir: &Path,
     out_filename: &Path,
-    codegen_results: &CodegenResults,
+    compiled_modules: &CompiledModules,
+    crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
     codegen_backend: &'static str,
@@ -2276,17 +2283,17 @@ fn linker_with_args(
         path,
         flavor,
         self_contained_components.are_any_components_enabled(),
-        &codegen_results.crate_info.target_cpu,
+        &crate_info.target_cpu,
         codegen_backend,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 
-    let mut export_symbols = codegen_results.crate_info.exported_symbols[&crate_type].clone();
+    let mut export_symbols = crate_info.exported_symbols[&crate_type].clone();
 
     if crate_type == CrateType::Cdylib {
         let mut seen = FxHashSet::default();
 
-        for lib in &codegen_results.crate_info.used_libraries {
+        for lib in &crate_info.used_libraries {
             if let NativeLibKind::Static { export_symbols: Some(true), .. } = lib.kind
                 && seen.insert((lib.name, lib.verbatim))
             {
@@ -2320,12 +2327,7 @@ fn linker_with_args(
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
 
-    add_linked_symbol_object(
-        cmd,
-        sess,
-        tmpdir,
-        &codegen_results.crate_info.linked_symbols[&crate_type],
-    );
+    add_linked_symbol_object(cmd, sess, tmpdir, &crate_info.linked_symbols[&crate_type]);
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, flavor, crate_type, cmd);
@@ -2357,17 +2359,17 @@ fn linker_with_args(
     // link line. And finally upstream native libraries can't depend on anything
     // in this DAG so far because they can only depend on other native libraries
     // and such dependencies are also required to be specified.
-    add_local_crate_regular_objects(cmd, codegen_results);
+    add_local_crate_regular_objects(cmd, compiled_modules);
     add_local_crate_metadata_objects(
         cmd,
         sess,
         archive_builder_builder,
         crate_type,
         tmpdir,
-        codegen_results,
+        crate_info,
         metadata,
     );
-    add_local_crate_allocator_objects(cmd, codegen_results, crate_type);
+    add_local_crate_allocator_objects(cmd, compiled_modules, crate_info, crate_type);
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -2384,7 +2386,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
-        codegen_results,
+        crate_info,
         tmpdir,
         link_output_kind,
     );
@@ -2394,7 +2396,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
-        codegen_results,
+        crate_info,
         crate_type,
         tmpdir,
         link_output_kind,
@@ -2405,7 +2407,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
-        codegen_results,
+        crate_info,
         tmpdir,
         link_output_kind,
     );
@@ -2428,7 +2430,7 @@ fn linker_with_args(
         for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
             sess,
             archive_builder_builder,
-            codegen_results.crate_info.used_libraries.iter(),
+            crate_info.used_libraries.iter(),
             tmpdir,
             true,
         ) {
@@ -2437,7 +2439,7 @@ fn linker_with_args(
     } else {
         for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
-            codegen_results.crate_info.used_libraries.iter(),
+            crate_info.used_libraries.iter(),
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
@@ -2448,16 +2450,14 @@ fn linker_with_args(
     // they are used within inlined functions or instantiated generic functions. We do this *after*
     // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
     // by the linker.
-    let dependency_linkage = codegen_results
-        .crate_info
+    let dependency_linkage = crate_info
         .dependency_formats
         .get(&crate_type)
         .expect("failed to find crate type in dependency format list");
 
     // We sort the libraries below
     #[allow(rustc::potential_query_instability)]
-    let mut native_libraries_from_nonstatics = codegen_results
-        .crate_info
+    let mut native_libraries_from_nonstatics = crate_info
         .native_libraries
         .iter()
         .filter_map(|(&cnum, libraries)| {
@@ -2499,7 +2499,7 @@ fn linker_with_args(
     // FIXME: Built-in target specs occasionally use this for linking system libraries,
     // eliminate all such uses by migrating them to `#[link]` attributes in `lib(std,c,unwind)`
     // and remove the option.
-    add_late_link_args(cmd, sess, flavor, crate_type, codegen_results);
+    add_late_link_args(cmd, sess, flavor, crate_type, crate_info);
 
     // ------------ Arbitrary order-independent options ------------
 
@@ -2512,7 +2512,7 @@ fn linker_with_args(
         self_contained_components,
         flavor,
         crate_type,
-        codegen_results,
+        crate_info,
         out_filename,
         tmpdir,
     );
@@ -2552,7 +2552,7 @@ fn add_order_independent_options(
     self_contained_components: LinkSelfContainedComponents,
     flavor: LinkerFlavor,
     crate_type: CrateType,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     out_filename: &Path,
     tmpdir: &Path,
 ) {
@@ -2597,18 +2597,15 @@ fn add_order_independent_options(
             "--target",
             &versioned_llvm_target(sess),
             "--target-cpu",
-            &codegen_results.crate_info.target_cpu,
+            &crate_info.target_cpu,
         ]);
-        if codegen_results.crate_info.target_features.len() > 0 {
-            cmd.link_arg(&format!(
-                "--target-feature={}",
-                &codegen_results.crate_info.target_features.join(",")
-            ));
+        if crate_info.target_features.len() > 0 {
+            cmd.link_arg(&format!("--target-feature={}", &crate_info.target_features.join(",")));
         }
     } else if flavor == LinkerFlavor::Ptx {
-        cmd.link_args(&["--fallback-arch", &codegen_results.crate_info.target_cpu]);
+        cmd.link_args(&["--fallback-arch", &crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {
-        cmd.link_args(&["--cpu", &codegen_results.crate_info.target_cpu]);
+        cmd.link_args(&["--cpu", &crate_info.target_cpu]);
         if let Some(feat) = [sess.opts.cg.target_feature.as_str(), &sess.target.options.features]
             .into_iter()
             .find(|feat| !feat.is_empty())
@@ -2625,7 +2622,7 @@ fn add_order_independent_options(
 
     if crate_type == CrateType::Executable
         && sess.target.is_like_windows
-        && let Some(s) = &codegen_results.crate_info.windows_subsystem
+        && let Some(s) = &crate_info.windows_subsystem
     {
         cmd.windows_subsystem(*s);
     }
@@ -2653,8 +2650,8 @@ fn add_order_independent_options(
     let natvis_visualizers = collect_natvis_visualizers(
         tmpdir,
         sess,
-        &codegen_results.crate_info.local_crate_name,
-        &codegen_results.crate_info.natvis_debugger_visualizers,
+        &crate_info.local_crate_name,
+        &crate_info.natvis_debugger_visualizers,
     );
 
     // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
@@ -2679,7 +2676,7 @@ fn add_order_independent_options(
         cmd.ehcont_guard();
     }
 
-    add_rpath_args(cmd, sess, codegen_results, out_filename);
+    add_rpath_args(cmd, sess, crate_info, out_filename);
 }
 
 // Write the NatVis debugger visualizer files for each crate to the temp directory and gather the file paths.
@@ -2713,7 +2710,7 @@ fn add_native_libs_from_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     tmpdir: &Path,
     bundled_libs: &FxIndexSet<Symbol>,
     cnum: CrateNum,
@@ -2730,15 +2727,15 @@ fn add_native_libs_from_crate(
 
     if link_static && cnum != LOCAL_CRATE && !bundled_libs.is_empty() {
         // If rlib contains native libs as archives, unpack them to tmpdir.
-        let rlib = codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap();
+        let rlib = crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap();
         archive_builder_builder
             .extract_bundled_libs(rlib, tmpdir, bundled_libs)
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
     }
 
     let native_libs = match cnum {
-        LOCAL_CRATE => &codegen_results.crate_info.used_libraries,
-        _ => &codegen_results.crate_info.native_libraries[&cnum],
+        LOCAL_CRATE => &crate_info.used_libraries,
+        _ => &crate_info.native_libraries[&cnum],
     };
 
     let mut last = (None, NativeLibKind::Unspecified, false);
@@ -2814,7 +2811,7 @@ fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
@@ -2825,7 +2822,7 @@ fn add_local_native_libraries(
         cmd,
         sess,
         archive_builder_builder,
-        codegen_results,
+        crate_info,
         tmpdir,
         &Default::default(),
         LOCAL_CRATE,
@@ -2839,7 +2836,7 @@ fn add_upstream_rust_crates(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     crate_type: CrateType,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
@@ -2851,8 +2848,7 @@ fn add_upstream_rust_crates(
     // Linking to a rlib involves just passing it to the linker (the linker
     // will slurp up the object files inside), and linking to a dynamic library
     // involves just passing the right -l flag.
-    let data = codegen_results
-        .crate_info
+    let data = crate_info
         .dependency_formats
         .get(&crate_type)
         .expect("failed to find crate type in dependency format list");
@@ -2866,7 +2862,7 @@ fn add_upstream_rust_crates(
         cmd.link_or_cc_arg("-bnoipath");
     }
 
-    for &cnum in &codegen_results.crate_info.used_crates {
+    for &cnum in &crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in
         // an existing dylib, meaning we'll pick up all the symbols from the dylib.
         // We must always link crates `compiler_builtins` and `profiler_builtins` statically.
@@ -2875,14 +2871,14 @@ fn add_upstream_rust_crates(
         let linkage = data[cnum];
         let link_static_crate = linkage == Linkage::Static
             || linkage == Linkage::IncludedFromDylib
-                && (codegen_results.crate_info.compiler_builtins == Some(cnum)
-                    || codegen_results.crate_info.profiler_runtime == Some(cnum));
+                && (crate_info.compiler_builtins == Some(cnum)
+                    || crate_info.profiler_runtime == Some(cnum));
 
         let mut bundled_libs = Default::default();
         match linkage {
             Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
-                    bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
+                    bundled_libs = crate_info.native_libraries[&cnum]
                         .iter()
                         .filter_map(|lib| lib.filename)
                         .collect();
@@ -2890,7 +2886,7 @@ fn add_upstream_rust_crates(
                         cmd,
                         sess,
                         archive_builder_builder,
-                        codegen_results,
+                        crate_info,
                         tmpdir,
                         cnum,
                         &bundled_libs,
@@ -2898,7 +2894,7 @@ fn add_upstream_rust_crates(
                 }
             }
             Linkage::Dynamic => {
-                let src = &codegen_results.crate_info.used_crate_source[&cnum];
+                let src = &crate_info.used_crate_source[&cnum];
                 add_dynamic_crate(cmd, sess, src.dylib.as_ref().unwrap());
             }
         }
@@ -2918,7 +2914,7 @@ fn add_upstream_rust_crates(
             cmd,
             sess,
             archive_builder_builder,
-            codegen_results,
+            crate_info,
             tmpdir,
             &bundled_libs,
             cnum,
@@ -2933,11 +2929,11 @@ fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
-    for &cnum in &codegen_results.crate_info.used_crates {
+    for &cnum in &crate_info.used_crates {
         // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
         // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
         // are linked together with their respective upstream crates, and in their originally
@@ -2956,7 +2952,7 @@ fn add_upstream_native_libraries(
             cmd,
             sess,
             archive_builder_builder,
-            codegen_results,
+            crate_info,
             tmpdir,
             &Default::default(),
             cnum,
@@ -3021,19 +3017,18 @@ fn add_static_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    crate_info: &CrateInfo,
     tmpdir: &Path,
     cnum: CrateNum,
     bundled_lib_file_names: &FxIndexSet<Symbol>,
 ) {
-    let src = &codegen_results.crate_info.used_crate_source[&cnum];
+    let src = &crate_info.used_crate_source[&cnum];
     let cratepath = src.rlib.as_ref().unwrap();
 
     let mut link_upstream =
         |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
 
-    if !are_upstream_rust_objects_already_included(sess)
-        || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
+    if !are_upstream_rust_objects_already_included(sess) || ignored_for_lto(sess, crate_info, cnum)
     {
         link_upstream(cratepath);
         return;
@@ -3048,8 +3043,7 @@ fn add_static_crate(
         let canonical_name = name.replace('-', "_");
         let upstream_rust_objects_already_included =
             are_upstream_rust_objects_already_included(sess);
-        let is_builtins =
-            sess.target.no_builtins || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
+        let is_builtins = sess.target.no_builtins || !crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(

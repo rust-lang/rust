@@ -11,7 +11,7 @@ use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBu
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo, TargetConfig};
+use rustc_codegen_ssa::{CodegenResults, CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
@@ -403,8 +403,7 @@ impl CodegenBackend for DummyCodegenBackend {
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         Box::new(CodegenResults {
-            modules: vec![],
-            allocator_module: None,
+            compiled_modules: CompiledModules { modules: vec![], allocator_module: None },
             crate_info: CrateInfo::new(tcx, String::new()),
         })
     }
@@ -421,17 +420,15 @@ impl CodegenBackend for DummyCodegenBackend {
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
         // JUSTIFICATION: TyCtxt no longer available here
         #[allow(rustc::bad_opt_access)]
-        if let Some(&crate_type) = codegen_results
-            .crate_info
-            .crate_types
-            .iter()
-            .find(|&&crate_type| crate_type != CrateType::Rlib)
+        if let Some(&crate_type) =
+            crate_info.crate_types.iter().find(|&&crate_type| crate_type != CrateType::Rlib)
             && outputs.outputs.should_link()
         {
             sess.dcx().fatal(format!(
@@ -442,7 +439,8 @@ impl CodegenBackend for DummyCodegenBackend {
         link_binary(
             sess,
             &DummyArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),

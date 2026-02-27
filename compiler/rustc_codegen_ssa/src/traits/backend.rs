@@ -18,7 +18,7 @@ use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
 use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen, TargetConfig};
+use crate::{CodegenResults, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
     type Function: CodegenObject;
@@ -121,14 +121,16 @@ pub trait CodegenBackend {
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
         link_binary(
             sess,
             &ArArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),

@@ -112,6 +112,12 @@ impl Linker {
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
         let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
-        codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
+        codegen_backend.link(
+            sess,
+            codegen_results.compiled_modules,
+            codegen_results.crate_info,
+            self.metadata,
+            &self.output_filenames,
+        )
     }
 }

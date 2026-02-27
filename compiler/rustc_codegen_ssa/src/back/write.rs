@@ -42,8 +42,8 @@ use crate::back::lto::check_lto_allowed;
 use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    errors,
+    CachedModuleCodegen, CodegenResults, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen,
+    ModuleKind, errors,
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
@@ -394,16 +394,8 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
         .collect()
 }
 
-pub struct CompiledModules {
-    pub modules: Vec<CompiledModule>,
-    pub allocator_module: Option<CompiledModule>,
-}
-
 enum MaybeLtoModules<B: WriteBackendMethods> {
-    NoLto {
-        modules: Vec<CompiledModule>,
-        allocator_module: Option<CompiledModule>,
-    },
+    NoLto(CompiledModules),
     FatLto {
         cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
@@ -1818,12 +1810,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
         }
 
-        Ok(MaybeLtoModules::NoLto {
+        Ok(MaybeLtoModules::NoLto(CompiledModules {
             modules: compiled_modules,
             allocator_module: allocator_module.map(|allocator_module| {
                 B::codegen(&cgcx, &prof, &shared_emitter, allocator_module, &allocator_config)
             }),
-        })
+        }))
     })
     .expect("failed to spawn coordinator thread");
 
@@ -2170,9 +2162,9 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
         let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
-            MaybeLtoModules::NoLto { modules, allocator_module } => {
+            MaybeLtoModules::NoLto(compiled_modules) => {
                 drop(shared_emitter);
-                CompiledModules { modules, allocator_module }
+                compiled_modules
             }
             MaybeLtoModules::FatLto {
                 cgcx,
@@ -2256,15 +2248,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             self.backend.print_statistics()
         }
 
-        (
-            CodegenResults {
-                crate_info: self.crate_info,
-
-                modules: compiled_modules.modules,
-                allocator_module: compiled_modules.allocator_module,
-            },
-            work_products,
-        )
+        (CodegenResults { compiled_modules, crate_info: self.crate_info }, work_products)
     }
 
     pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {

@@ -583,7 +583,13 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                     };
                 }
             };
-        compiler.codegen_backend.link(sess, codegen_results, metadata, &outputs);
+        compiler.codegen_backend.link(
+            sess,
+            codegen_results.compiled_modules,
+            codegen_results.crate_info,
+            metadata,
+            &outputs,
+        );
     } else {
         dcx.emit_fatal(RlinkNotAFile {});
     }

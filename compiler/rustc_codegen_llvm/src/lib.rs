@@ -33,7 +33,9 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
+use rustc_codegen_ssa::{
+    CodegenResults, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig,
+};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
@@ -392,7 +394,8 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
@@ -405,7 +408,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         link_binary(
             sess,
             &LlvmArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),
