@@ -1,7 +1,7 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
@@ -146,7 +146,7 @@ fn lint_unreachable(
     lint_node_id: NodeId,
 ) {
     // Symbols that have a known value.
-    let mut known = FxHashMap::<Symbol, bool>::default();
+    let mut known = UnordMap::<Symbol, bool>::default();
     let mut wildcard_span = None;
     let mut it = predicates;
 
