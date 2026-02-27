@@ -3712,6 +3712,14 @@ impl<'a, K, V, S, A: Allocator> Entry<'a, K, V, S, A> {
             Entry::Vacant(_) => self,
         }
     }
+
+    /// Converts the `Entry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        match self {
+            Entry::Occupied(entry) => entry.table,
+            Entry::Vacant(entry) => entry.table,
+        }
+    }
 }
 
 impl<'a, K, V: Default, S, A: Allocator> Entry<'a, K, V, S, A> {
@@ -4136,6 +4144,11 @@ impl<'a, K, V, S, A: Allocator> OccupiedEntry<'a, K, V, S, A> {
             }
         }
     }
+
+    /// Converts the `OccupiedEntry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        self.table
+    }
 }
 
 impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
@@ -4237,6 +4250,11 @@ impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
             elem,
             table: self.table,
         }
+    }
+
+    /// Converts the `VacantEntry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        self.table
     }
 }
 
@@ -4422,6 +4440,14 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
                 EntryRef::Occupied(entry)
             }
             EntryRef::Vacant(entry) => EntryRef::Vacant(entry),
+        }
+    }
+
+    /// Converts the `EntryRef` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        match self {
+            EntryRef::Occupied(entry) => entry.table,
+            EntryRef::Vacant(entry) => entry.table,
         }
     }
 }
@@ -4760,6 +4786,11 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
             elem,
             table: self.table,
         }
+    }
+
+    /// Converts the `VacantEntryRef` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'map mut HashMap<K, V, S, A> {
+        self.table
     }
 }
 
@@ -6487,7 +6518,7 @@ mod test_map {
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             unsafe {
                 let g = Global;
-                g.deallocate(ptr, layout)
+                g.deallocate(ptr, layout);
             }
         }
     }
@@ -6580,7 +6611,7 @@ mod test_map {
         {
             let mut guard = guard(&mut map, |map| {
                 for (_, value) in map.iter_mut() {
-                    value.panic_in_drop = false
+                    value.panic_in_drop = false;
                 }
             });
 
@@ -6720,6 +6751,7 @@ mod test_map {
     /// We check that we have a working table if the clone operation from another
     /// thread ended in a panic (when buckets of maps are equal to each other).
     #[test]
+    #[cfg(panic = "unwind")]
     fn test_catch_panic_clone_from_when_len_is_equal() {
         use std::thread;
 
@@ -6785,6 +6817,7 @@ mod test_map {
     /// We check that we have a working table if the clone operation from another
     /// thread ended in a panic (when buckets of maps are not equal to each other).
     #[test]
+    #[cfg(panic = "unwind")]
     fn test_catch_panic_clone_from_when_len_is_not_equal() {
         use std::thread;
 
@@ -6950,7 +6983,7 @@ mod test_map_with_mmap_allocations {
                 // If they allocated it with this layout, it must round correctly.
                 let size = self.fit_to_page_size(layout.size()).unwrap();
                 let _result = libc::munmap(ptr.as_ptr().cast(), size);
-                debug_assert_eq!(0, _result)
+                debug_assert_eq!(0, _result);
             }
         }
     }
