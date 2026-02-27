@@ -6487,7 +6487,7 @@ mod test_map {
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             unsafe {
                 let g = Global;
-                g.deallocate(ptr, layout)
+                g.deallocate(ptr, layout);
             }
         }
     }
@@ -6580,7 +6580,7 @@ mod test_map {
         {
             let mut guard = guard(&mut map, |map| {
                 for (_, value) in map.iter_mut() {
-                    value.panic_in_drop = false
+                    value.panic_in_drop = false;
                 }
             });
 
@@ -6952,7 +6952,7 @@ mod test_map_with_mmap_allocations {
                 // If they allocated it with this layout, it must round correctly.
                 let size = self.fit_to_page_size(layout.size()).unwrap();
                 let _result = libc::munmap(ptr.as_ptr().cast(), size);
-                debug_assert_eq!(0, _result)
+                debug_assert_eq!(0, _result);
             }
         }
     }

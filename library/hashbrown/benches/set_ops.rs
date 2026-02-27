@@ -34,7 +34,7 @@ fn set_ops_bit_or(b: &mut Bencher) {
         LARGE_SET_SIZE - OVERLAP,
         LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAP,
     );
-    b.iter(|| &large_set | &small_set)
+    b.iter(|| &large_set | &small_set);
 }
 
 #[bench]
@@ -44,7 +44,7 @@ fn set_ops_bit_and(b: &mut Bencher) {
         LARGE_SET_SIZE - OVERLAP,
         LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAP,
     );
-    b.iter(|| &large_set & &small_set)
+    b.iter(|| &large_set & &small_set);
 }
 
 #[bench]
@@ -54,7 +54,7 @@ fn set_ops_bit_xor(b: &mut Bencher) {
         LARGE_SET_SIZE - OVERLAP,
         LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAP,
     );
-    b.iter(|| &large_set ^ &small_set)
+    b.iter(|| &large_set ^ &small_set);
 }
 
 #[bench]
@@ -64,7 +64,7 @@ fn set_ops_sub_large_small(b: &mut Bencher) {
         LARGE_SET_SIZE - OVERLAP,
         LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAP,
     );
-    b.iter(|| &large_set - &small_set)
+    b.iter(|| &large_set - &small_set);
 }
 
 #[bench]
@@ -74,7 +74,7 @@ fn set_ops_sub_small_large(b: &mut Bencher) {
         LARGE_SET_SIZE - OVERLAP,
         LARGE_SET_SIZE + SMALL_SET_SIZE - OVERLAP,
     );
-    b.iter(|| &small_set - &large_set)
+    b.iter(|| &small_set - &large_set);
 }
 
 #[bench]

@@ -763,7 +763,7 @@ where
     /// # }
     /// ```
     pub fn shrink_to_fit(&mut self, hasher: impl Fn(&T) -> u64) {
-        self.raw.shrink_to(self.len(), hasher)
+        self.raw.shrink_to(self.len(), hasher);
     }
 
     /// Shrinks the capacity of the table with a lower limit. It will drop
@@ -839,7 +839,7 @@ where
     /// # }
     /// ```
     pub fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
-        self.raw.reserve(additional, hasher)
+        self.raw.reserve(additional, hasher);
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
