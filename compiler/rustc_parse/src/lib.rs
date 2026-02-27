@@ -132,7 +132,7 @@ pub fn new_parser_from_file<'a>(
         if let Some(sp) = sp {
             err.span(sp);
         }
-        err.emit();
+        err.emit()
     });
     new_parser_from_source_file(psess, source_file, strip_tokens)
 }

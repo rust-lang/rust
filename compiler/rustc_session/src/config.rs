@@ -1615,7 +1615,7 @@ pub fn build_target_config(
             let mut err =
                 early_dcx.early_struct_fatal(format!("error loading target specification: {e}"));
             err.help("run `rustc --print target-list` for a list of built-in targets");
-            err.emit();
+            err.emit()
         }
     }
 }
