@@ -27,12 +27,14 @@ impl<'tcx, T> Value<'tcx> for T {
         cycle_error: CycleError,
         _guar: ErrorGuaranteed,
     ) -> T {
-        tcx.sess.dcx().abort_if_errors();
-        bug!(
-            "<{} as Value>::from_cycle_error called without errors: {:#?}",
-            std::any::type_name::<T>(),
-            cycle_error.cycle,
-        );
+        let Some(guar) = tcx.sess.dcx().has_errors() else {
+            bug!(
+                "<{} as Value>::from_cycle_error called without errors: {:#?}",
+                std::any::type_name::<T>(),
+                cycle_error.cycle,
+            );
+        };
+        guar.raise_fatal();
     }
 }
 

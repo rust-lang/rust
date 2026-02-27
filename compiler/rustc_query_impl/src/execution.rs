@@ -114,9 +114,8 @@ fn mk_cycle<'tcx, C: QueryCache>(
             query.value_from_cycle_error(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Fatal => {
-            error.emit();
-            tcx.dcx().abort_if_errors();
-            unreachable!()
+            let guar = error.emit();
+            guar.raise_fatal();
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
