@@ -607,6 +607,25 @@ impl<T> Sender<T> {
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         self.inner.send(t)
     }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_is_disconnected)]
+    ///
+    /// use std::sync::mpsc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!tx.is_disconnected());
+    /// drop(rx);
+    /// assert!(tx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpsc_is_disconnected", issue = "none")]
+    pub fn is_disconnected(&self) -> bool {
+        self.inner.is_disconnected()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1037,6 +1056,25 @@ impl<T> Receiver<T> {
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<'_, T> {
         TryIter { rx: self }
+    }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_is_disconnected)]
+    ///
+    /// use std::sync::mpsc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!rx.is_disconnected());
+    /// drop(tx);
+    /// assert!(rx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpsc_is_disconnected", issue = "none")]
+    pub fn is_disconnected(&self) -> bool {
+        self.inner.is_disconnected()
     }
 }
 

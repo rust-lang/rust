@@ -623,6 +623,29 @@ impl<T> Sender<T> {
             _ => false,
         }
     }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpmc_channel)]
+    ///
+    /// use std::sync::mpmc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!tx.is_disconnected());
+    /// drop(rx);
+    /// assert!(tx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    pub fn is_disconnected(&self) -> bool {
+        match &self.flavor {
+            SenderFlavor::Array(chan) => chan.is_disconnected(),
+            SenderFlavor::List(chan) => chan.is_disconnected(),
+            SenderFlavor::Zero(chan) => chan.is_disconnected(),
+        }
+    }
 }
 
 #[unstable(feature = "mpmc_channel", issue = "126840")]
@@ -1348,6 +1371,29 @@ impl<T> Receiver<T> {
     #[unstable(feature = "mpmc_channel", issue = "126840")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { rx: self }
+    }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpmc_channel)]
+    ///
+    /// use std::sync::mpmc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!rx.is_disconnected());
+    /// drop(tx);
+    /// assert!(rx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    pub fn is_disconnected(&self) -> bool {
+        match &self.flavor {
+            ReceiverFlavor::Array(chan) => chan.is_disconnected(),
+            ReceiverFlavor::List(chan) => chan.is_disconnected(),
+            ReceiverFlavor::Zero(chan) => chan.is_disconnected(),
+        }
     }
 }
 
