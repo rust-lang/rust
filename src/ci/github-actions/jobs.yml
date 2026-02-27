@@ -27,7 +27,7 @@ runners:
     <<: *base-job
 
   - &job-macos-x86_64
-    os: macos-15-intel
+    os: macos-26-intel
     <<: *base-job
 
   - &job-windows
