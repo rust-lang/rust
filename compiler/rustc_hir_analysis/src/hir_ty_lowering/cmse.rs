@@ -194,8 +194,7 @@ fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<
         | SizeOverflow(..)
         | InvalidSimd { .. }
         | NormalizationFailure(..)
-        | ReferencesError(..)
-        | Cycle(..) => {
+        | ReferencesError(..) => {
             false // not our job to report these
         }
     }
