@@ -15,8 +15,8 @@ fn main() {
 macro_rules! Trait {
     () => {
         ::std::iter::Iterator
-        //~^ ERROR expected value, found trait `std::iter::Iterator`
-        //~| ERROR expected value, found trait `std::iter::Iterator`
+        //~^ ERROR expected value, found trait `::std::iter::Iterator`
+        //~| ERROR expected value, found trait `::std::iter::Iterator`
     };
 }
 
