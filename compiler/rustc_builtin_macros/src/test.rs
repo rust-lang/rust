@@ -9,8 +9,8 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
-use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Attribute, Target};
 use rustc_span::{ErrorGuaranteed, Ident, RemapPathScopeComponents, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
@@ -485,6 +485,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
             cx.sess,
             &i.attrs,
             sym::should_panic,
+            Target::from_ast_item(i),
             i.span,
             i.node_id(),
             None,

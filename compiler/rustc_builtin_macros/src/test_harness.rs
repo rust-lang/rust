@@ -12,6 +12,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
@@ -392,6 +393,7 @@ fn get_test_runner(sess: &Session, features: &Features, krate: &ast::Crate) -> O
         sess,
         &krate.attrs,
         sym::test_runner,
+        Target::Crate,
         krate.spans.inner_span,
         krate.id,
         Some(features),

@@ -3,17 +3,18 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, StashKey};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, LintId};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
+use crate::errors::{InvalidAttrAtCrateLevel, ItemFollowingInnerAttr};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
@@ -51,6 +52,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         sess: &'sess Session,
         attrs: &[ast::Attribute],
         sym: Symbol,
+        target: Target,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -59,6 +61,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             attrs,
             sym,
+            target,
             target_span,
             target_node_id,
             features,
@@ -72,6 +75,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         sess: &'sess Session,
         attrs: &[ast::Attribute],
         sym: Symbol,
+        target: Target,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -81,7 +85,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             attrs,
             Some(sym),
-            Target::Crate, // Does not matter, we're not going to emit errors anyways
+            target,
             target_span,
             target_node_id,
             features,
@@ -302,7 +306,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         kind: DocFragmentKind::Sugared(*comment_kind),
                         span: attr_span,
                         comment: *symbol,
-                    }))
+                    }));
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -405,15 +409,23 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         //     "attribute {path} wasn't parsed and isn't a know tool attribute",
                         // );
 
-                        attributes.push(Attribute::Unparsed(Box::new(AttrItem {
+                        let attr = AttrItem {
                             path: attr_path.clone(),
                             args: self
                                 .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
-                        })));
-                    }
+                        };
+
+                        if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
+                            && target == Target::Crate
+                        {
+                            self.check_invalid_crate_level_attr_item(&attr);
+                        }
+
+                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                    };
                 }
             }
         }
@@ -476,5 +488,96 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 AttrArgs::Eq { eq_span: lower_span(*eq_span), expr: lit }
             }
         }
+    }
+
+    // FIXME: Fix "Cannot determine resolution" error and remove built-in macros
+    // from this check.
+    fn check_invalid_crate_level_attr_item(&self, attr: &AttrItem) {
+        // Check for builtin attributes at the crate level
+        // which were unsuccessfully resolved due to cannot determine
+        // resolution for the attribute macro error.
+        const ATTRS_TO_CHECK: &[Symbol] =
+            &[sym::derive, sym::test, sym::test_case, sym::global_allocator, sym::bench];
+
+        // FIXME(jdonszelmann): all attrs should be combined here cleaning this up some day.
+        if let Some(name) = ATTRS_TO_CHECK.iter().find(|attr_to_check| matches!(attr.path.segments.as_ref(), [segment] if segment == *attr_to_check)) {
+            let span = attr.span;
+            let name = *name;
+
+            let item = self.first_line_of_next_item(span).map(|span| ItemFollowingInnerAttr { span });
+
+            let err = self.dcx().create_err(InvalidAttrAtCrateLevel {
+                span,
+                sugg_span: self
+                    .sess
+                    .source_map()
+                    .span_to_snippet(attr.span)
+                    .ok()
+                    .filter(|src| src.starts_with("#!["))
+                    .map(|_| {
+                        span
+                            .with_lo(span.lo() + BytePos(1))
+                            .with_hi(span.lo() + BytePos(2))
+                    }),
+                name,
+                item,
+            });
+
+            self.dcx().try_steal_replace_and_emit_err(
+                attr.path.span,
+                StashKey::UndeterminedMacroResolution,
+                err,
+            );
+        }
+    }
+
+    pub(crate) fn first_line_of_next_item(&self, span: Span) -> Option<Span> {
+        // We can't exactly call `tcx.hir_free_items()` here because it's too early and querying
+        // this would create a circular dependency. Instead, we resort to getting the original
+        // source code that follows `span` and find the next item from here.
+
+        self.sess()
+            .source_map()
+            .span_to_source(span, |content, _, span_end| {
+                let mut source = &content[span_end..];
+                let initial_source_len = source.len();
+                let span = try {
+                    loop {
+                        let first = source.chars().next()?;
+
+                        if first.is_whitespace() {
+                            let split_idx = source.find(|c: char| !c.is_whitespace())?;
+                            source = &source[split_idx..];
+                        } else if source.starts_with("//") {
+                            let line_idx = source.find('\n')?;
+                            source = &source[line_idx + '\n'.len_utf8()..];
+                        } else if source.starts_with("/*") {
+                            // FIXME: support nested comments.
+                            let close_idx = source.find("*/")?;
+                            source = &source[close_idx + "*/".len()..];
+                        } else if first == '#' {
+                            // FIXME: properly find the end of the attributes in order to accurately
+                            // skip them. This version just consumes the source code until the next
+                            // `]`.
+                            let close_idx = source.find(']')?;
+                            source = &source[close_idx + ']'.len_utf8()..];
+                        } else {
+                            let lo = span_end + initial_source_len - source.len();
+                            let last_line = source.split('\n').next().map(|s| s.trim_end())?;
+
+                            let hi = lo + last_line.len();
+                            let lo = BytePos(lo as u32);
+                            let hi = BytePos(hi as u32);
+                            let next_item_span = Span::new(lo, hi, span.ctxt(), None);
+
+                            break next_item_span;
+                        }
+                    }
+                };
+
+                Ok(span)
+            })
+            .ok()
+            .flatten()
     }
 }

@@ -5,7 +5,7 @@ LL | #![test                    = "4200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |

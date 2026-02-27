@@ -5,7 +5,7 @@ use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
-use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
+use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, Target, find_attr};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
@@ -144,7 +144,7 @@ impl NonCamelCaseTypes {
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = matches!(
-            AttributeParser::parse_limited(cx.sess(), &it.attrs, sym::repr, it.span, it.id, None),
+            AttributeParser::parse_limited(cx.sess(), &it.attrs, sym::repr, Target::from_ast_item(it), it.span, it.id, None),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, ..})) if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprC)
         );
 

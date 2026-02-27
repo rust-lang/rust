@@ -5,7 +5,7 @@ use rustc_errors::DiagArgValue;
 use rustc_feature::Features;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{MethodKind, Target};
-use rustc_span::sym;
+use rustc_span::{BytePos, sym};
 
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
@@ -94,6 +94,34 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
             Self::check_crate_level(target, cx);
             return;
+        }
+
+        if matches!(cx.attr_path.segments.as_ref(), [sym::repr]) && target == Target::Crate {
+            // The allowed targets of `repr` depend on its arguments. They can't be checked using
+            // the `AttributeParser` code.
+            let span = cx.attr_span;
+            let item = cx
+                .cx
+                .first_line_of_next_item(span)
+                .map(|span| crate::errors::ItemFollowingInnerAttr { span });
+
+            let sugg_span = cx
+                .cx
+                .sess
+                .source_map()
+                .span_to_snippet(span)
+                .ok()
+                .filter(|src| src.starts_with("#!["))
+                .map(|_| span.with_lo(span.lo() + BytePos(1)).with_hi(span.lo() + BytePos(2)));
+
+            cx.dcx()
+                .create_err(crate::errors::InvalidAttrAtCrateLevel {
+                    span,
+                    sugg_span,
+                    name: sym::repr,
+                    item,
+                })
+                .emit();
         }
 
         match allowed_targets.is_allowed(target) {

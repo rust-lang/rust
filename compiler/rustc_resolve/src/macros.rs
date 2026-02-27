@@ -20,7 +20,7 @@ use rustc_feature::Features;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::{Attribute, StabilityLevel};
+use rustc_hir::{Attribute, StabilityLevel, Target};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
@@ -141,6 +141,7 @@ pub fn registered_tools_ast(
             sess,
             pre_configured_attrs,
             sym::register_tool,
+            Target::Crate,
             DUMMY_SP,
             DUMMY_NODE_ID,
             Some(features),

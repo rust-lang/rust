@@ -21,7 +21,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::{Attribute, find_attr};
+use rustc_hir::{Attribute, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -1315,6 +1315,7 @@ pub(crate) fn parse_crate_name(
             sess,
             attrs,
             sym::crate_name,
+            Target::Crate,
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,
             None,
@@ -1364,6 +1365,7 @@ pub fn collect_crate_types(
                 session,
                 attrs,
                 sym::crate_type,
+                Target::Crate,
                 crate_span,
                 CRATE_NODE_ID,
                 None,
@@ -1420,6 +1422,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         sess,
         &krate_attrs,
         sym::recursion_limit,
+        Target::Crate,
         DUMMY_SP,
         rustc_ast::node_id::CRATE_NODE_ID,
         None,

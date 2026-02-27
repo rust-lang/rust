@@ -188,8 +188,8 @@ use rustc_ast::{
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, ReprPacked};
+use rustc_hir::{Attribute, Target};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -493,7 +493,7 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
-                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, item.id, None),
+                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, Target::from_ast_item(item), item.span, item.id, None),
                     Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 

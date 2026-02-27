@@ -54,6 +54,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             sess,
             krate_attrs,
             sym::feature,
+            Target::Crate,
             DUMMY_SP,
             DUMMY_NODE_ID,
             Some(&features),
