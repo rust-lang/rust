@@ -271,6 +271,11 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         mut emit_lint: impl FnMut(LintId, Span, AttributeLintKind),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
+        // We store the attributes we intend to discard at the end of this function in order to
+        // check they are applied to the right target and error out if necessary. In practice, we
+        // end up dropping only derive attributes and derive helpers, both being fully processed
+        // at macro expansion.
+        let mut dropped_attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
@@ -394,21 +399,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             Self::check_target(&accept.allowed_targets, target, &mut cx);
                         }
                     } else {
-                        // If we're here, we must be compiling a tool attribute... Or someone
-                        // forgot to parse their fancy new attribute. Let's warn them in any case.
-                        // If you are that person, and you really think your attribute should
-                        // remain unparsed, carefully read the documentation in this module and if
-                        // you still think so you can add an exception to this assertion.
-
-                        // FIXME(jdonszelmann): convert other attributes, and check with this that
-                        // we caught em all
-                        // const FIXME_TEMPORARY_ATTR_ALLOWLIST: &[Symbol] = &[sym::cfg];
-                        // assert!(
-                        //     self.tools.contains(&parts[0]) || true,
-                        //     // || FIXME_TEMPORARY_ATTR_ALLOWLIST.contains(&parts[0]),
-                        //     "attribute {path} wasn't parsed and isn't a know tool attribute",
-                        // );
-
                         let attr = AttrItem {
                             path: attr_path.clone(),
                             args: self
@@ -424,8 +414,19 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             self.check_invalid_crate_level_attr_item(&attr);
                         }
 
-                        attributes.push(Attribute::Unparsed(Box::new(attr)));
-                    };
+                        let attr = Attribute::Unparsed(Box::new(attr));
+
+                        if self.tools.contains(&parts[0])
+                            // FIXME: this can be removed once #152369 has been merged.
+                            // https://github.com/rust-lang/rust/pull/152369
+                            || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
+                                .contains(&parts[0])
+                        {
+                            attributes.push(attr);
+                        } else {
+                            dropped_attributes.push(attr);
+                        }
+                    }
                 }
             }
         }
@@ -443,7 +444,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
             && target == Target::WherePredicate
         {
-            self.check_invalid_where_predicate_attrs(attributes.iter());
+            self.check_invalid_where_predicate_attrs(attributes.iter().chain(&dropped_attributes));
         }
 
         attributes
