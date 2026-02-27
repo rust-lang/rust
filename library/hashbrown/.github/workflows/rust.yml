@@ -21,7 +21,7 @@ jobs:
       run: curl -fsSL https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
     - env:
         TARGET: i586-unknown-linux-gnu
-      run: sh ci/tools.sh
+      run: bash ci/tools.sh
 
   basics:
     runs-on: ubuntu-latest
