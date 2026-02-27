@@ -30,7 +30,7 @@ pub mod rustc_internal;
 use serde::Serialize;
 
 use crate::compiler_interface::with;
-pub use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
+pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};

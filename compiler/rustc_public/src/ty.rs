@@ -7,11 +7,11 @@ use super::abi::ReprOptions;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
-use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
+use crate::crate_def::{CrateDef, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{Filename, IndexedVal, Opaque, ThreadLocalIndex};
+use crate::{AssocItems, Filename, IndexedVal, Opaque, ThreadLocalIndex};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(usize, ThreadLocalIndex);
@@ -943,13 +943,13 @@ crate_def! {
     pub TraitDef;
 }
 
-impl_crate_def_items! {
-    TraitDef;
-}
-
 impl TraitDef {
     pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
         with(|cx| cx.trait_decl(trait_def))
+    }
+
+    pub fn associated_items(&self) -> AssocItems {
+        with(|cx| cx.associated_items(self.def_id()))
     }
 }
 
@@ -969,14 +969,14 @@ crate_def! {
     pub ImplDef;
 }
 
-impl_crate_def_items! {
-    ImplDef;
-}
-
 impl ImplDef {
     /// Retrieve information about this implementation.
     pub fn trait_impl(&self) -> ImplTrait {
         with(|cx| cx.trait_impl(self))
+    }
+
+    pub fn associated_items(&self) -> AssocItems {
+        with(|cx| cx.associated_items(self.def_id()))
     }
 }
 
