@@ -414,15 +414,20 @@ pub(crate) fn force_from_dep_node_inner<'tcx, Q: GetQueryVTable<'tcx>>(
     }
 }
 
-// Note: `$K` and `$V` are unused but present so this can be called by `rustc_with_all_queries`.
 macro_rules! define_queries {
     (
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,
-        )*
+        // Note: `$K` and `$V` are unused but present so this can be called by
+        // `rustc_with_all_queries`.
+        queries {
+            $(
+                $(#[$attr:meta])*
+                [$($modifiers:tt)*]
+                fn $name:ident($K:ty) -> $V:ty,
+            )*
+        }
+        // Non-queries are unused here.
+        non_queries { $($_:tt)* }
     ) => {
-
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
             use ::rustc_middle::query::erase::{self, Erased};

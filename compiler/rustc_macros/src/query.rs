@@ -10,6 +10,7 @@ use syn::{
 };
 
 mod kw {
+    syn::custom_keyword!(non_query);
     syn::custom_keyword!(query);
 }
 
@@ -54,12 +55,37 @@ struct Query {
     modifiers: QueryModifiers,
 }
 
-impl Parse for Query {
+/// Declaration of a non-query dep kind.
+/// ```ignore (illustrative)
+/// /// Doc comment for `MyNonQuery`.
+/// //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  doc_comments
+/// non_query MyNonQuery
+/// //        ^^^^^^^^^^               name
+/// ```
+struct NonQuery {
+    doc_comments: Vec<Attribute>,
+    name: Ident,
+}
+
+enum QueryEntry {
+    Query(Query),
+    NonQuery(NonQuery),
+}
+
+impl Parse for QueryEntry {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut doc_comments = check_attributes(input.call(Attribute::parse_outer)?)?;
 
+        // Try the non-query case first.
+        if input.parse::<kw::non_query>().is_ok() {
+            let name: Ident = input.parse()?;
+            return Ok(QueryEntry::NonQuery(NonQuery { doc_comments, name }));
+        }
+
         // Parse the query declaration. Like `query type_of(key: DefId) -> Ty<'tcx>`
-        input.parse::<kw::query>()?;
+        if input.parse::<kw::query>().is_err() {
+            return Err(input.error("expected `query` or `non_query`"));
+        }
         let name: Ident = input.parse()?;
 
         // `(key: DefId)`
@@ -84,7 +110,7 @@ impl Parse for Query {
             doc_comments.push(doc_comment_from_desc(&modifiers.desc.expr_list)?);
         }
 
-        Ok(Query { doc_comments, modifiers, name, key_pat, key_ty, return_ty })
+        Ok(QueryEntry::Query(Query { doc_comments, modifiers, name, key_pat, key_ty, return_ty }))
     }
 }
 
@@ -375,9 +401,9 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     // macro producing a higher order macro that has all its token in the macro declaration we lose
     // any meaningful spans, resulting in rust-analyzer being unable to make the connection between
     // the query name and the corresponding providers field. The trick to fix this is to have
-    // `rustc_queries` emit a field access with the given name's span which allows it to successfully
-    // show references / go to definition to the corresponding provider assignment which is usually
-    // the more interesting place.
+    // `rustc_queries` emit a field access with the given name's span which allows it to
+    // successfully show references / go to definition to the corresponding provider assignment
+    // which is usually the more interesting place.
     let ra_hint = quote! {
         let crate::query::Providers { #name: _, .. };
     };
@@ -393,9 +419,10 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 }
 
 pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
-    let queries = parse_macro_input!(input as List<Query>);
+    let queries = parse_macro_input!(input as List<QueryEntry>);
 
     let mut query_stream = quote! {};
+    let mut non_query_stream = quote! {};
     let mut helpers = HelperTokenStreams::default();
     let mut analyzer_stream = quote! {};
     let mut errors = quote! {};
@@ -411,6 +438,18 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     for query in queries.0 {
+        let query = match query {
+            QueryEntry::Query(query) => query,
+            QueryEntry::NonQuery(NonQuery { doc_comments, name }) => {
+                // Get the exceptional non-query case out of the way first.
+                non_query_stream.extend(quote! {
+                    #(#doc_comments)*
+                    #name,
+                });
+                continue;
+            }
+        };
+
         let Query { doc_comments, name, key_ty, return_ty, modifiers, .. } = &query;
 
         // Normalize an absent return type into `-> ()` to make macro-rules parsing easier.
@@ -486,24 +525,18 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     let HelperTokenStreams { description_fns_stream, cache_on_disk_if_fns_stream } = helpers;
 
     TokenStream::from(quote! {
-        /// Higher-order macro that invokes the specified macro with a prepared
-        /// list of all query signatures (including modifiers).
-        ///
-        /// This allows multiple simpler macros to each have access to the list
-        /// of queries.
+        /// Higher-order macro that invokes the specified macro with (a) a list of all query
+        /// signatures (including modifiers), and (b) a list of non-query names. This allows
+        /// multiple simpler macros to each have access to these lists.
         #[macro_export]
         macro_rules! rustc_with_all_queries {
             (
-                // The macro to invoke once, on all queries (plus extras).
+                // The macro to invoke once, on all queries and non-queries.
                 $macro:ident!
-
-                // Within [], an optional list of extra "query" signatures to
-                // pass to the given macro, in addition to the actual queries.
-                $( [$($extra_fake_queries:tt)*] )?
             ) => {
                 $macro! {
-                    $( $($extra_fake_queries)* )?
-                    #query_stream
+                    queries { #query_stream }
+                    non_queries { #non_query_stream }
                 }
             }
         }
