@@ -14,6 +14,7 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
+#![cfg_attr(all(target_os = "emscripten", not(emscripten_wasm_eh)), lang_items)]
 #![feature(cfg_emscripten_wasm_eh)]
 #![feature(core_intrinsics)]
 #![feature(panic_unwind)]
