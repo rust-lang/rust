@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
-use rustc_middle::dep_graph::{DepGraphData, DepNodeKey};
+use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, QueryCache, QueryJob, QueryJobId,
@@ -455,8 +455,18 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = start_query(tcx, job_id, false, || {
-            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, tcx, &key, dep_node)
+        if let Some(ret) = start_query(tcx, job_id, false, || try {
+            let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, dep_node)?;
+            let value = load_from_disk_or_invoke_provider_green(
+                tcx,
+                dep_graph_data,
+                query,
+                &key,
+                dep_node,
+                prev_index,
+                dep_node_index,
+            );
+            (value, dep_node_index)
         }) {
             return ret;
         }
@@ -490,29 +500,32 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     (result, dep_node_index)
 }
 
+/// Given that the dep node for this query+key is green, obtain a value for it
+/// by loading one from disk if possible, or by invoking its query provider if
+/// necessary.
 #[inline(always)]
-fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    dep_graph_data: &DepGraphData,
+fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    dep_graph_data: &DepGraphData,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: &C::Key,
     dep_node: &DepNode,
-) -> Option<(C::Value, DepNodeIndex)> {
+    prev_index: SerializedDepNodeIndex,
+    dep_node_index: DepNodeIndex,
+) -> C::Value {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, dep_node)?;
-
-    debug_assert!(dep_graph_data.is_index_green(prev_dep_node_index));
+    debug_assert!(dep_graph_data.is_index_green(prev_index));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(result) = query.try_load_from_disk(tcx, key, prev_dep_node_index, dep_node_index) {
+    if let Some(value) = query.try_load_from_disk(tcx, key, prev_index, dep_node_index) {
         if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
             dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
 
-        let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_dep_node_index);
+        let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
         // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         //
@@ -527,14 +540,14 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
             incremental_verify_ich(
                 tcx,
                 dep_graph_data,
-                &result,
-                prev_dep_node_index,
+                &value,
+                prev_index,
                 query.hash_result,
                 query.format_value,
             );
         }
 
-        return Some((result, dep_node_index));
+        return value;
     }
 
     // We always expect to find a cached result for things that
@@ -548,7 +561,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.is_loadable_from_disk(tcx, key, prev_dep_node_index),
+        !query.is_loadable_from_disk(tcx, key, prev_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -558,7 +571,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
 
     // The dep-graph for this computation is already in-place.
     // Call the query provider.
-    let result = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, *key));
+    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -574,13 +587,13 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache>(
     incremental_verify_ich(
         tcx,
         dep_graph_data,
-        &result,
-        prev_dep_node_index,
+        &value,
+        prev_index,
         query.hash_result,
         query.format_value,
     );
 
-    Some((result, dep_node_index))
+    value
 }
 
 /// Return value struct for [`check_if_ensure_can_skip_execution`].
