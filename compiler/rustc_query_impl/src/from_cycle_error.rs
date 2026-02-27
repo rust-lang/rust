@@ -95,7 +95,7 @@ impl<'tcx> FromCycleError<'tcx> for Representability {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
         for info in &cycle_error.cycle {
-            if info.frame.dep_kind == DepKind::representability
+            if info.frame.dep_kind == DepKind::check_representability
                 && let Some(field_id) = info.frame.def_id
                 && let Some(field_id) = field_id.as_local()
                 && let Some(DefKind::Field) = info.frame.info.def_kind
@@ -109,7 +109,7 @@ impl<'tcx> FromCycleError<'tcx> for Representability {
             }
         }
         for info in &cycle_error.cycle {
-            if info.frame.dep_kind == DepKind::representability_adt_ty
+            if info.frame.dep_kind == DepKind::check_representability_adt_ty
                 && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
