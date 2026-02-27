@@ -56,18 +56,6 @@ impl<'tcx> FromCycleError<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePla
     }
 }
 
-impl<'tcx> FromCycleError<'tcx> for ty::SymbolName<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: CycleError, _guar: ErrorGuaranteed) -> Self {
-        // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
-        // FIXME: Represent the above fact in the trait system somehow.
-        unsafe {
-            std::mem::transmute::<ty::SymbolName<'tcx>, ty::SymbolName<'_>>(ty::SymbolName::new(
-                tcx, "<error>",
-            ))
-        }
-    }
-}
-
 impl<'tcx> FromCycleError<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
         let err = Ty::new_error(tcx, guar);
