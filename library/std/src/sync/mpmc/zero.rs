@@ -316,4 +316,10 @@ impl<T> Channel<T> {
     pub(crate) fn is_full(&self) -> bool {
         true
     }
+
+    /// Returns `true` if the channel is disconnected.
+    pub(crate) fn is_disconnected(&self) -> bool {
+        let inner = self.inner.lock().unwrap();
+        inner.is_disconnected
+    }
 }
