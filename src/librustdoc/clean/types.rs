@@ -1005,14 +1005,14 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     /// IMPORTANT! This should not be mutated since then `doc_value_cache` will be invalid.
-    doc_strings: Vec<DocFragment>,
+    doc_strings: ThinVec<DocFragment>,
     pub(crate) other_attrs: ThinVec<hir::Attribute>,
-    doc_value_cache: OnceLock<Option<String>>,
+    doc_value_cache: Box<OnceLock<Option<Box<str>>>>,
 }
 
 impl Attributes {
-    fn new(doc_strings: Vec<DocFragment>, other_attrs: ThinVec<hir::Attribute>) -> Self {
-        Self { doc_strings, other_attrs, doc_value_cache: OnceLock::new() }
+    fn new(doc_strings: ThinVec<DocFragment>, other_attrs: ThinVec<hir::Attribute>) -> Self {
+        Self { doc_strings, other_attrs, doc_value_cache: Box::new(OnceLock::new()) }
     }
 
     pub(crate) fn doc_strings(&self) -> &[DocFragment] {
@@ -1066,7 +1066,7 @@ impl Attributes {
                         add_doc_fragment(&mut res, frag);
                     }
                     res.pop();
-                    res
+                    res.into_boxed_str()
                 })
             })
             .as_deref()
@@ -2432,7 +2432,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 176);
+    static_assert_size!(ItemInner, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

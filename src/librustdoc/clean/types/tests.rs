@@ -4,15 +4,15 @@ use rustc_span::create_default_session_globals_then;
 
 use super::*;
 
-fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
-    vec![DocFragment {
+fn create_doc_fragment(s: &str) -> ThinVec<DocFragment> {
+    ThinVec::from([DocFragment {
         span: DUMMY_SP,
         item_id: None,
         doc: Symbol::intern(s),
         kind: DocFragmentKind::Sugared(CommentKind::Line),
         indent: 0,
         from_expansion: false,
-    }]
+    }])
 }
 
 #[track_caller]
