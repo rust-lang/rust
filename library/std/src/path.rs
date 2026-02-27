@@ -93,7 +93,7 @@ use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-use crate::sys::path::{HAS_PREFIXES, MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
+use crate::sys::path::{HAS_PREFIXES, is_sep_byte, is_verbatim_sep, parse_prefix};
 use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +562,7 @@ impl<'a> Component<'a> {
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
             Component::Prefix(p) => p.as_os_str(),
-            Component::RootDir => OsStr::new(MAIN_SEP_STR),
+            Component::RootDir => OsStr::new(MAIN_SEPARATOR_STR),
             Component::CurDir => OsStr::new("."),
             Component::ParentDir => OsStr::new(".."),
             Component::Normal(path) => path,
@@ -1379,7 +1379,7 @@ impl PathBuf {
 
             for c in buf {
                 if need_sep && c != Component::RootDir {
-                    res.push(MAIN_SEP_STR);
+                    res.push(MAIN_SEPARATOR_STR);
                 }
                 res.push(c.as_os_str());
 
@@ -1402,7 +1402,7 @@ impl PathBuf {
 
         // `path` is a pure relative path
         } else if need_sep {
-            self.inner.push(MAIN_SEP_STR);
+            self.inner.push(MAIN_SEPARATOR_STR);
         }
 
         self.inner.push(path);
