@@ -1,11 +1,11 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
+use std::collections::hash_map::Entry;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, Diagnostic, Level};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
@@ -65,7 +65,7 @@ use crate::target_checking::AllowedTargets;
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
-    pub(super) accepters: BTreeMap<&'static [Symbol], GroupTypeInnerAccept<S>>,
+    pub(super) accepters: UnordMap<&'static [Symbol], GroupTypeInnerAccept<S>>,
 }
 
 pub(super) struct GroupTypeInnerAccept<S: Stage> {
@@ -105,7 +105,7 @@ macro_rules! attribute_parsers {
         @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepters = BTreeMap::<_, GroupTypeInnerAccept<$stage>>::new();
+            let mut accepters = UnordMap::<_, GroupTypeInnerAccept<$stage>>::default();
             $(
                 {
                     thread_local! {
