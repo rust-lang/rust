@@ -6,6 +6,6 @@ use crate::builder::Builder;
 
 impl<'a, 'gcc, 'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn add_coverage(&mut self, _instance: Instance<'tcx>, _kind: &CoverageKind) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 }

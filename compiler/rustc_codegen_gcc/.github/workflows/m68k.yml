@@ -1,4 +1,4 @@
-# TODO: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
+# FIXME: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
 
 name: m68k CI
 
@@ -24,7 +24,7 @@ jobs:
       matrix:
         commands: [
           "--std-tests",
-          # TODO(antoyo): fix those on m68k.
+          # FIXME(antoyo): fix those on m68k.
           #"--test-libcore",
           #"--extended-rand-tests",
           #"--extended-regex-example-tests",

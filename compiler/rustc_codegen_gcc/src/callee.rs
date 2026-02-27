@@ -60,7 +60,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         // reference. It also occurs when testing libcore and in some
         // other weird situations. Annoying.
         if cx.val_ty(func) != ptrtype {
-            // TODO(antoyo): cast the pointer.
+            // FIXME(antoyo): cast the pointer.
             func
         }
         else {
@@ -76,7 +76,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         {
             let instance_def_id = instance.def_id();
 
-            // TODO(antoyo): set linkage and attributes.
+            // FIXME(antoyo): set linkage and attributes.
 
             // Apply an appropriate linkage/visibility value to our item that we
             // just declared.

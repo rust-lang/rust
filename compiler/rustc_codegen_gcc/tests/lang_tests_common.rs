@@ -73,14 +73,14 @@ pub fn main_inner(profile: Profile) {
                 path.to_str().expect("to_str"),
             ]);
 
-            // TODO(antoyo): find a way to send this via a cli argument.
+            // FIXME(antoyo): find a way to send this via a cli argument.
             let test_target = std::env::var("CG_GCC_TEST_TARGET");
             if let Ok(ref target) = test_target {
                 compiler.args(["--target", target]);
                 let linker = format!("{}-gcc", target);
                 compiler.args(&[format!("-Clinker={}", linker)]);
                 let mut env_path = std::env::var("PATH").unwrap_or_default();
-                // TODO(antoyo): find a better way to add the PATH necessary locally.
+                // FIXME(antoyo): find a better way to add the PATH necessary locally.
                 env_path = format!("/opt/m68k-unknown-linux-gnu/bin:{}", env_path);
                 compiler.env("PATH", env_path);
             }

@@ -275,7 +275,7 @@ fn main() {
         }
     }
 
-    // TODO(antoyo): to make this work, support weak linkage.
+    // FIXME(antoyo): to make this work, support weak linkage.
     //unsafe { assert_eq!(ABC as usize, 0); }
 
     &mut (|| Some(0 as *const ())) as &mut dyn FnMut() -> Option<*const ()>;

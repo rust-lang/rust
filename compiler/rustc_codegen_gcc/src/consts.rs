@@ -166,7 +166,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
                 unimplemented!();
             }
         } else {
-            // TODO(antoyo): set link section.
+            // FIXME(antoyo): set link section.
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
@@ -180,7 +180,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
     pub fn add_used_global(&mut self, _global: RValue<'gcc>) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     #[cfg_attr(not(feature = "master"), expect(unused_variables))]
@@ -198,7 +198,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let global = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
-                // TODO(antoyo): check if it's okay that no link_section is set.
+                // FIXME(antoyo): check if it's okay that no link_section is set.
 
                 let typ = self.val_ty(cv).get_aligned(align.bytes());
                 self.declare_private_global(&name[..], typ)
@@ -209,7 +209,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         };
         global.global_set_initializer_rvalue(cv);
-        // TODO(antoyo): set unnamed address.
+        // FIXME(antoyo): set unnamed address.
         let rvalue = global.get_address(None);
         self.global_lvalues.borrow_mut().insert(rvalue, global);
         rvalue
@@ -276,7 +276,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         };
 
         if !def_id.is_local() {
-            let needs_dll_storage_attr = false; // TODO(antoyo)
+            let needs_dll_storage_attr = false; // FIXME(antoyo)
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -303,7 +303,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         }
 
-        // TODO(antoyo): set dll storage class.
+        // FIXME(antoyo): set dll storage class.
 
         self.instances.borrow_mut().insert(instance, global);
         global
@@ -412,7 +412,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         let real_name =
             format!("_rust_extern_with_linkage_{:016x}_{sym}", cx.tcx.stable_crate_id(LOCAL_CRATE));
         let global2 = cx.define_global(&real_name, gcc_type, is_tls, attrs.link_section);
-        // TODO(antoyo): set linkage.
+        // FIXME(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
         global2.global_set_initializer_rvalue(value);
         global2

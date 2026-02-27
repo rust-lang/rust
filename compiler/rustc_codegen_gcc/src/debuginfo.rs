@@ -48,7 +48,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
-        // TODO(antoyo): insert reference to gdb debug scripts section global.
+        // FIXME(antoyo): insert reference to gdb debug scripts section global.
     }
 
     /// FIXME(tempdragon): Currently, this function is not yet implemented. It seems that the
@@ -153,7 +153,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
 
-        // TODO(tempdragon): Add scope support and then revert to cg_llvm version of this closure
+        // FIXME(tempdragon): Add scope support and then revert to cg_llvm version of this closure
         // NOTE: These variables passed () here.
         // Changed to comply to clippy.
 
@@ -162,7 +162,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         cx.dbg_loc(/* callsite_scope */ (), parent_scope.inlined_at, callsite_span)
     });
     let p_inlined_at = parent_scope.inlined_at;
-    // TODO(tempdragon): dbg_scope: Add support for scope extension here.
+    // FIXME(tempdragon): dbg_scope: Add support for scope extension here.
     inlined_at.or(p_inlined_at);
 
     debug_context.scopes[scope] = DebugScope {
@@ -225,7 +225,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _trait_ref: Option<ExistentialTraitRef<'tcx>>,
         _vtable: Self::Value,
     ) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn create_function_debug_context(
@@ -262,7 +262,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _scope_metadata: Self::DIScope,
         _file: &SourceFile,
     ) -> Self::DIScope {
-        // TODO(antoyo): implement.
+        // FIXME(antoyo): implement.
     }
 
     fn debuginfo_finalize(&self) {
@@ -285,7 +285,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _maybe_definition_llfn: Option<Function<'gcc>>,
     ) -> Self::DIScope {
-        // TODO(antoyo): implement.
+        // FIXME(antoyo): implement.
     }
 
     fn dbg_loc(

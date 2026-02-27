@@ -105,7 +105,7 @@ pub struct FnAbiGcc<'gcc> {
 }
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
-    // TODO(antoyo): return a function pointer type instead?
+    // FIXME(antoyo): return a function pointer type instead?
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc>;
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     #[cfg(feature = "master")]
@@ -260,7 +260,7 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttri
             &Arch::Nvptx64 => FnAttribute::NvptxKernel,
             arch => panic!("Arch {arch} does not support GpuKernel calling convention"),
         },
-        // TODO(antoyo): check if those AVR attributes are mapped correctly.
+        // FIXME(antoyo): check if those AVR attributes are mapped correctly.
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
             InterruptKind::Avr => FnAttribute::AvrSignal,
             InterruptKind::AvrNonBlocking => FnAttribute::AvrInterrupt,

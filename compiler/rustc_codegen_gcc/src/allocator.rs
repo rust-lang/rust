@@ -98,7 +98,7 @@ fn create_wrapper_function(
     )));
 
     if tcx.sess.must_emit_unwind_tables() {
-        // TODO(antoyo): emit unwind tables.
+        // FIXME(antoyo): emit unwind tables.
     }
 
     let block = func.new_block("entry");
@@ -138,6 +138,6 @@ fn create_wrapper_function(
         block.end_with_void_return(None);
     }
 
-    // TODO(@Commeownist): Check if we need to emit some extra debugging info in certain circumstances
+    // FIXME(@Commeownist): Check if we need to emit some extra debugging info in certain circumstances
     // as described in https://github.com/rust-lang/rust/commit/77a96ed5646f7c3ee8897693decc4626fe380643
 }

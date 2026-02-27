@@ -148,7 +148,7 @@ fn prepare_libcore(
     Ok(())
 }
 
-// TODO: remove when we can ignore warnings in rustdoc tests.
+// FIXME: remove when we can ignore warnings in rustdoc tests.
 fn prepare_rand() -> Result<(), String> {
     // Apply patch for the rand crate.
     let file_path = "patches/crates/0001-Remove-deny-warnings.patch";

@@ -71,4 +71,4 @@ Maybe by calling the following at the beginning of gdb:
 set substitute-path /usr/src/debug/gcc /path/to/gcc-repo/gcc
 ```
 
-TODO(antoyo): but that's not what I remember I was doing.
+FIXME(antoyo): but that's not what I remember I was doing.
