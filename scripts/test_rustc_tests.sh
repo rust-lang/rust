@@ -175,7 +175,7 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 
 # bugs in the test suite
 # ======================
-rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm tests/ui/process/nofile-limit.rs # FIXME some AArch64 linking issue
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 rm -r tests/incremental/extern_static/issue-49153.rs # assumes reference to undefined static gets optimized away
 
