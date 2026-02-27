@@ -44,11 +44,12 @@ fn main() {
     let _ = foo::<MustUse>();
     let _ = foo::<MustUseMsg>();
 
+    // "trivial" types
     ();
-    ((), ()); //~ ERROR: unused result of type
+    ((), ());
     Ok::<(), Nothing>(());
     ControlFlow::<Nothing>::Continue(());
-    ((), Ok::<(), Nothing>(()), ((((), ())), ((),))); //~ ERROR: unused result of type
+    ((), Ok::<(), Nothing>(()), ((((), ())), ((),)));
     foo::<Nothing>();
 
     ((), 1); //~ ERROR: unused result of type `((), i32)`

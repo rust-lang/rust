@@ -61,29 +61,17 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = foo::<MustUseMsg>();
    |     +++++++
 
-error: unused result of type `((), ())`
-  --> $DIR/unused-result.rs:48:5
-   |
-LL |     ((), ());
-   |     ^^^^^^^^^
-
-error: unused result of type `((), Result<(), Nothing>, (((), ()), ((),)))`
-  --> $DIR/unused-result.rs:51:5
-   |
-LL |     ((), Ok::<(), Nothing>(()), ((((), ())), ((),)));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: unused result of type `((), i32)`
-  --> $DIR/unused-result.rs:54:5
+  --> $DIR/unused-result.rs:55:5
    |
 LL |     ((), 1);
    |     ^^^^^^^^
 
 error: unused result of type `(i32, ())`
-  --> $DIR/unused-result.rs:55:5
+  --> $DIR/unused-result.rs:56:5
    |
 LL |     (1, ());
    |     ^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
