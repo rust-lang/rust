@@ -5,7 +5,7 @@ LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct DerivedOn;
-   |        --------- the inner attribute doesn't annotate this struct
+   | ----------------- the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |

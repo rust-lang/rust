@@ -304,7 +304,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         kind: DocFragmentKind::Sugared(*comment_kind),
                         span: attr_span,
                         comment: *symbol,
-                    }))
+                    }));
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -408,15 +408,23 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         //     "attribute {path} wasn't parsed and isn't a know tool attribute",
                         // );
 
-                        attributes.push(Attribute::Unparsed(Box::new(AttrItem {
+                        let attr = AttrItem {
                             path: attr_path.clone(),
                             args: self
                                 .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
-                        })));
-                    }
+                        };
+
+                        if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
+                            && target == Target::Crate
+                        {
+                            self.check_invalid_crate_level_attr_item(&attr, n.item.span());
+                        }
+
+                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                    };
                 }
             }
         }

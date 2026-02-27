@@ -3,8 +3,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, msg,
+    Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
 };
 use rustc_hir::Target;
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -445,44 +444,6 @@ pub(crate) struct LangItemOnIncorrectTarget {
     pub name: Symbol,
     pub expected_target: Target,
     pub actual_target: Target,
-}
-
-pub(crate) struct InvalidAttrAtCrateLevel {
-    pub span: Span,
-    pub sugg_span: Option<Span>,
-    pub name: Symbol,
-    pub item: Option<ItemFollowingInnerAttr>,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) struct ItemFollowingInnerAttr {
-    pub span: Span,
-    pub kind: &'static str,
-}
-
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidAttrAtCrateLevel {
-    #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag =
-            Diag::new(dcx, level, msg!("`{$name}` attribute cannot be used at crate level"));
-        diag.span(self.span);
-        diag.arg("name", self.name);
-        // Only emit an error with a suggestion if we can create a string out
-        // of the attribute span
-        if let Some(span) = self.sugg_span {
-            diag.span_suggestion_verbose(
-                span,
-                msg!("perhaps you meant to use an outer attribute"),
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-        }
-        if let Some(item) = self.item {
-            diag.arg("kind", item.kind);
-            diag.span_label(item.span, msg!("the inner attribute doesn't annotate this {$kind}"));
-        }
-        diag
-    }
 }
 
 #[derive(Diagnostic)]
