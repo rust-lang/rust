@@ -17,11 +17,15 @@ use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::job::report_cycle;
 
-pub(crate) trait Value<'tcx>: Sized {
+pub(crate) trait FromCycleError<'tcx>: Sized {
+    /// Try to produce a `Self` value that represents an error form (e.g. `TyKind::Error`).
+    ///
+    /// Note: the default impl calls `raise_fatal`, ending compilation immediately! Only a few
+    /// types override this with a non-fatal impl.
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self;
 }
 
-impl<'tcx, T> Value<'tcx> for T {
+impl<'tcx, T> FromCycleError<'tcx> for T {
     default fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
@@ -29,7 +33,7 @@ impl<'tcx, T> Value<'tcx> for T {
     ) -> T {
         let Some(guar) = tcx.sess.dcx().has_errors() else {
             bug!(
-                "<{} as Value>::from_cycle_error called without errors: {:#?}",
+                "<{} as FromCycleError>::from_cycle_error called without errors: {:#?}",
                 std::any::type_name::<T>(),
                 cycle_error.cycle,
             );
@@ -38,7 +42,7 @@ impl<'tcx, T> Value<'tcx> for T {
     }
 }
 
-impl<'tcx> Value<'tcx> for Ty<'_> {
+impl<'tcx> FromCycleError<'tcx> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: CycleError, guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
@@ -46,13 +50,13 @@ impl<'tcx> Value<'tcx> for Ty<'_> {
     }
 }
 
-impl<'tcx> Value<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+impl<'tcx> FromCycleError<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: CycleError, guar: ErrorGuaranteed) -> Self {
         Err(CyclePlaceholder(guar))
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::SymbolName<'_> {
+impl<'tcx> FromCycleError<'tcx> for ty::SymbolName<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: CycleError, _guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
@@ -64,7 +68,7 @@ impl<'tcx> Value<'tcx> for ty::SymbolName<'_> {
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
+impl<'tcx> FromCycleError<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
         let err = Ty::new_error(tcx, guar);
 
@@ -94,7 +98,7 @@ impl<'tcx> Value<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
     }
 }
 
-impl<'tcx> Value<'tcx> for Representability {
+impl<'tcx> FromCycleError<'tcx> for Representability {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
@@ -130,19 +134,19 @@ impl<'tcx> Value<'tcx> for Representability {
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
+impl<'tcx> FromCycleError<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
         ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
+impl<'tcx> FromCycleError<'tcx> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
         ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
-impl<'tcx> Value<'tcx> for &[ty::Variance] {
+impl<'tcx> FromCycleError<'tcx> for &[ty::Variance] {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
@@ -190,7 +194,7 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-impl<'tcx, T> Value<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
+impl<'tcx, T> FromCycleError<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
