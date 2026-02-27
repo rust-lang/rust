@@ -386,33 +386,32 @@ fn generate_macro_def_id_path(
     } else {
         ItemType::Macro
     };
-    let mut path = clean::inline::get_item_path(tcx, def_id, item_type);
-    if path.len() < 2 {
-        // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that `relative` was empty, which is an error.
-        debug!("macro path cannot be empty!");
+    let path = clean::inline::get_item_path(tcx, def_id, item_type);
+    // The minimum we can have is the crate name followed by the macro name. If shorter, then
+    // it means that `relative` was empty, which is an error.
+    let [module_path @ .., last] = path.as_slice() else {
+        debug!("macro path is empty!");
         return Err(HrefError::NotInExternalCache);
-    }
-
-    // FIXME: Try to use `iter().chain().once()` instead.
-    let mut prev = None;
-    if let Some(last) = path.pop() {
-        path.push(Symbol::intern(&format!("{}.{last}.html", item_type.as_str())));
-        prev = Some(last);
+    };
+    if module_path.is_empty() {
+        debug!("macro path too short: missing crate prefix (got 1 element, need at least 2)");
+        return Err(HrefError::NotInExternalCache);
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote { ref url, is_absolute } => {
             let mut prefix = remote_url_prefix(url, is_absolute, cx.current.len());
-            prefix.extend(path.iter().copied());
+            prefix.extend(module_path.iter().copied());
+            prefix.push_fmt(format_args!("{}.{last}.html", item_type.as_str()));
             prefix.finish()
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
-                "{root_path}{path}",
+                "{root_path}{path}/{item_type}.{last}.html",
                 root_path = root_path.unwrap_or(""),
-                path = fmt::from_fn(|f| path.iter().joined("/", f))
+                path = fmt::from_fn(|f| module_path.iter().joined("/", f)),
+                item_type = item_type.as_str(),
             )
         }
         ExternalLocation::Unknown => {
@@ -420,10 +419,6 @@ fn generate_macro_def_id_path(
             return Err(HrefError::NotInExternalCache);
         }
     };
-    if let Some(prev) = prev {
-        path.pop();
-        path.push(prev);
-    }
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
