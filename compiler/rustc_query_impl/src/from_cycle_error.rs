@@ -117,8 +117,10 @@ impl<'tcx> FromCycleError<'tcx> for Representability {
                 representable_ids.insert(def_id);
             }
         }
+        // We used to continue here, but the cycle error printed next is actually less useful than
+        // the error produced by `recursive_type_error`.
         let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        Representability::Infinite(guar)
+        guar.raise_fatal();
     }
 }
 
