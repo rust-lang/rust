@@ -39,6 +39,7 @@ ptr_as_ptr = "warn"
 ptr_cast_constness = "warn"
 ref_as_ptr = "warn"
 semicolon_if_nothing_returned = "warn"
+str_to_string = "warn"
 
 [dependencies]
 # For the default hasher
