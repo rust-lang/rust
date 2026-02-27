@@ -266,22 +266,33 @@ impl<'a> Prefix<'a> {
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn is_separator(c: char) -> bool {
+#[rustc_const_unstable(feature = "const_path_separators", issue = "153106")]
+pub const fn is_separator(c: char) -> bool {
     c.is_ascii() && is_sep_byte(c as u8)
 }
 
-/// The primary separator of path components for the current platform.
-///
-/// For example, `/` on Unix and `\` on Windows.
+/// All path separators recognized on the current platform, represented as [`char`]s; for example,
+/// this is `&['/'][..]` on Unix and `&['\\', '/'][..]` on Windows. The [primary
+/// separator](MAIN_SEPARATOR) is always element 0 of the slice.
+#[unstable(feature = "const_path_separators", issue = "153106")]
+pub const SEPARATORS: &[char] = crate::sys::path::SEPARATORS;
+
+/// All path separators recognized on the current platform, represented as [`&str`]s; for example,
+/// this is `&["/"][..]` on Unix and `&["\\", "/"][..]` on Windows. The [primary
+/// separator](MAIN_SEPARATOR_STR) is always element 0 of the slice.
+#[unstable(feature = "const_path_separators", issue = "153106")]
+pub const SEPARATORS_STR: &[&str] = crate::sys::path::SEPARATORS_STR;
+
+/// The primary separator of path components for the current platform, represented as a [`char`];
+/// for example, this is `'/'` on Unix and `'\\'` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "path_main_separator")]
-pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
+pub const MAIN_SEPARATOR: char = SEPARATORS[0];
 
-/// The primary separator of path components for the current platform.
-///
-/// For example, `/` on Unix and `\` on Windows.
+/// The primary separator of path components for the current platform, represented as a [`&str`];
+/// for example, this is `"/"` on Unix and `"\\"` on Windows.
 #[stable(feature = "main_separator_str", since = "1.68.0")]
-pub const MAIN_SEPARATOR_STR: &str = crate::sys::path::MAIN_SEP_STR;
+pub const MAIN_SEPARATOR_STR: &str = SEPARATORS_STR[0];
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
