@@ -72,9 +72,6 @@ pub(crate) fn add_configuration(
 
 /// Ensures that all target features required by the ABI are present.
 /// Must be called after `unstable_target_features` has been populated!
-/// Also enforces other, target-specific constraints on how target features can be combined.
-/// (Those checks can only be done once the `Session` is mostly constructed, so there's
-/// no earlier place we can put them.)
 pub(crate) fn check_abi_required_features(sess: &Session) {
     let abi_feature_constraints = sess.target.abi_required_features();
     // We check this against `unstable_target_features` as that is conveniently already

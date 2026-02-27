@@ -310,6 +310,9 @@ fn packed_stack_attr<'ll>(
     if sess.target.arch != Arch::S390x {
         return None;
     }
+    if !sess.opts.unstable_opts.packed_stack {
+        return None;
+    }
 
     // The backchain and softfloat flags can be set via -Ctarget-features=...
     // or via #[target_features(enable = ...)] so we have to check both possibilities
@@ -323,13 +326,10 @@ fn packed_stack_attr<'ll>(
     // ABI, where this works.
     if sess.opts.unstable_opts.packed_stack && have_backchain && !have_softfloat {
         sess.dcx().emit_err(PackedStackBackchainNeedsSoftfloat);
+        return None;
     }
 
-    if sess.opts.unstable_opts.packed_stack {
-        Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
-    } else {
-        None
-    }
+    Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
 }
 
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
