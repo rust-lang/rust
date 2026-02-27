@@ -157,3 +157,51 @@ pub mod epoll {
         check_epoll_wait::<N>(epfd, expected, 0);
     }
 }
+
+pub mod net {
+    /// IPv4 localhost address bytes
+    pub const IPV4_LOCALHOST: [u8; 4] = [127, 0, 0, 1];
+    /// IPv6 localhost address bytes
+    pub const IPV6_LOCALHOST: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
+    /// Create a libc representation of an IPv4 address given the address bytes and a port.
+    pub fn ipv4_sock_addr(addr_bytes: [u8; 4], port: u16) -> libc::sockaddr_in {
+        libc::sockaddr_in {
+            sin_family: libc::AF_INET as libc::sa_family_t,
+            sin_port: port.to_be(),
+            // `addr_bytes` is already in big-endian and that's the format `sin_addr` expects.
+            #[expect(unnecessary_transmutes)]
+            sin_addr: libc::in_addr {
+                s_addr: unsafe { std::mem::transmute::<[u8; 4], u32>(addr_bytes) },
+            },
+            ..unsafe { core::mem::zeroed() }
+        }
+    }
+
+    /// Create a libc representation of an IPv6 address given the address bytes and a port.
+    ///
+    /// This method sets `flowinfo` and `scope_id` to 0.
+    pub fn ipv6_sock_addr(addr_bytes: [u8; 16], port: u16) -> libc::sockaddr_in6 {
+        ipv6_sock_addr_full(addr_bytes, port, 0, 0)
+    }
+
+    /// Create a libc representation of a full IPv6 address given the address bytes, a port
+    /// as well as a flowinfo and scope id.
+    pub fn ipv6_sock_addr_full(
+        addr_bytes: [u8; 16],
+        port: u16,
+        flowinfo: u32,
+        scope_id: u32,
+    ) -> libc::sockaddr_in6 {
+        #[allow(clippy::needless_update)]
+        libc::sockaddr_in6 {
+            sin6_family: libc::AF_INET6 as libc::sa_family_t,
+            sin6_port: port.to_be(),
+            sin6_addr: libc::in6_addr { s6_addr: addr_bytes },
+            sin6_flowinfo: flowinfo,
+            sin6_scope_id: scope_id,
+            // This is only needed on some targets where an additional `sin6_len` field exists.
+            ..unsafe { core::mem::zeroed() }
+        }
+    }
+}
