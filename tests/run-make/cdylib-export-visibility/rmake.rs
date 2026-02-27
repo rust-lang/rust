@@ -17,6 +17,10 @@
 // for why this test skips `nvptx64-nvidia-cuda` and similar targets.
 //@ ignore-nvptx64
 
+// See https://github.com/rust-lang/rust/pull/151431#issuecomment-3975560321
+// for why this test skips the `aarch64-apple` target.
+//@ ignore-aarch64-apple
+
 use std::collections::HashSet;
 
 use run_make_support::symbols::exported_dynamic_symbol_names;
