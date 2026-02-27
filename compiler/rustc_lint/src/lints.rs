@@ -3974,6 +3974,6 @@ pub(crate) struct MalformedOnConstAttrLint {
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this function could have the attribute #[rustc_panic_entrypoint]")]
 pub(crate) struct MissingPanicEntrypoint;
