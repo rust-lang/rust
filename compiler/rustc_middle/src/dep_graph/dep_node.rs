@@ -284,15 +284,6 @@ macro_rules! define_dep_nodes {
             )*
         }
     ) => {
-        #[macro_export]
-        macro_rules! make_dep_kind_array {
-            ($mod:ident) => {[
-                $( $mod::$nq_name(), )*
-                $( $mod::$q_name(), )*
-            ]};
-        }
-
-        /// This enum serves as an index into arrays built by `make_dep_kind_array`.
         // This enum has more than u8::MAX variants so we need some kind of multi-byte
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
         // dense when only considering this enum. But DepKind is encoded in a larger

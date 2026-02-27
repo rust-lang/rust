@@ -693,23 +693,5 @@ macro_rules! define_queries {
                 })
             }
         }
-
-        /// Declares a dep-kind vtable constructor for each query.
-        mod _dep_kind_vtable_ctors_for_queries {
-            use ::rustc_middle::dep_graph::DepKindVTable;
-            use $crate::dep_kind_vtables::make_dep_kind_vtable_for_query;
-
-            $(
-                /// `DepKindVTable` constructor for this query.
-                pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
-                    use $crate::query_impl::$name::VTableGetter;
-                    make_dep_kind_vtable_for_query::<VTableGetter>(
-                        is_anon!([$($modifiers)*]),
-                        if_cache_on_disk!([$($modifiers)*] true false),
-                        is_eval_always!([$($modifiers)*]),
-                    )
-                }
-            )*
-        }
     }
 }
