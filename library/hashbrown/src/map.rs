@@ -3712,6 +3712,14 @@ impl<'a, K, V, S, A: Allocator> Entry<'a, K, V, S, A> {
             Entry::Vacant(_) => self,
         }
     }
+
+    /// Converts the `Entry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        match self {
+            Entry::Occupied(entry) => entry.table,
+            Entry::Vacant(entry) => entry.table,
+        }
+    }
 }
 
 impl<'a, K, V: Default, S, A: Allocator> Entry<'a, K, V, S, A> {
@@ -4136,6 +4144,11 @@ impl<'a, K, V, S, A: Allocator> OccupiedEntry<'a, K, V, S, A> {
             }
         }
     }
+
+    /// Converts the `OccupiedEntry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        self.table
+    }
 }
 
 impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
@@ -4237,6 +4250,11 @@ impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
             elem,
             table: self.table,
         }
+    }
+
+    /// Converts the `VacantEntry` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        self.table
     }
 }
 
@@ -4422,6 +4440,14 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
                 EntryRef::Occupied(entry)
             }
             EntryRef::Vacant(entry) => EntryRef::Vacant(entry),
+        }
+    }
+
+    /// Converts the `EntryRef` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'a mut HashMap<K, V, S, A> {
+        match self {
+            EntryRef::Occupied(entry) => entry.table,
+            EntryRef::Vacant(entry) => entry.table,
         }
     }
 }
@@ -4760,6 +4786,11 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
             elem,
             table: self.table,
         }
+    }
+
+    /// Converts the `VacantEntryRef` into a mutable reference to the underlying map.
+    pub fn into_map(self) -> &'map mut HashMap<K, V, S, A> {
+        self.table
     }
 }
 
