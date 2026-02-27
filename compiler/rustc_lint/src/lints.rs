@@ -1596,7 +1596,7 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(rustc_macros::LintDiagnostic)]
 #[diag("{$sort} `{$name}` should have an upper case name")]
 pub(crate) struct NonUpperCaseGlobal<'a> {
     pub sort: &'a str,
