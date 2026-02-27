@@ -10,9 +10,9 @@ use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
-use rustc_codegen_ssa::back::write::{CompiledModules, produce_final_output_artifacts};
+use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_codegen_ssa::{CodegenResults, CompiledModule, CompiledModules, CrateInfo, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
@@ -126,15 +126,7 @@ impl OngoingCodegen {
 
         produce_final_output_artifacts(sess, &compiled_modules, outputs);
 
-        (
-            CodegenResults {
-                crate_info: self.crate_info,
-
-                modules: compiled_modules.modules,
-                allocator_module: compiled_modules.allocator_module,
-            },
-            work_products,
-        )
+        (CodegenResults { compiled_modules, crate_info: self.crate_info }, work_products)
     }
 }
 
