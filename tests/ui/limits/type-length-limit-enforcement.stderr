@@ -14,5 +14,7 @@ error: reached the type-length limit while instantiating `<{closure@...} as FnMu
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/type-length-limit-enforcement.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
+note: the above error was encountered while instantiating `fn std::rt::lang_start::<()>`
+
 error: aborting due to 2 previous errors
 

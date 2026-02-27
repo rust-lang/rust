@@ -10,5 +10,11 @@ note: `convert2` defined here
 LL | fn convert2<S: Converter>() -> S::Out {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+note: the above error was encountered while instantiating `fn convert2::<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<Ser>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
+  --> $DIR/recursion-issue-137823.rs:8:5
+   |
+LL |     convert2::<ConvertWrap<S>>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 

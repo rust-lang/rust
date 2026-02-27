@@ -7,5 +7,11 @@ LL |         packets: decode_packets(&mut itr.take(0).peekable()),
 note: `peekable` defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
+note: the above error was encountered while instantiating `fn <std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::iter::Take<&mut Peekable<std::vec::IntoIter<u64>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Iterator>::peekable`
+  --> $DIR/recursion-issue-122823.rs:43:38
+   |
+LL |         packets: decode_packets(&mut itr.take(0).peekable()),
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 

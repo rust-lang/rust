@@ -22,5 +22,11 @@ note: `encode` defined here
 LL | fn encode<E: Encoder>(mut encoder: E) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+note: the above error was encountered while instantiating `fn encode::<&mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut EncoderImpl>`
+  --> $DIR/recursion-issue-92470.rs:15:5
+   |
+LL |     encode(&mut encoder);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error; 1 warning emitted
 

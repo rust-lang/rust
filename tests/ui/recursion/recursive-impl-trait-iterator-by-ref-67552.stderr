@@ -14,5 +14,14 @@ LL | |     T: Iterator,
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/recursive-impl-trait-iterator-by-ref-67552.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
+note: the above error was encountered while instantiating `fn rec::<&mut &mut &mut &mut &mut &mut &mut &mut ...>`
+  --> $DIR/recursive-impl-trait-iterator-by-ref-67552.rs:28:9
+   |
+LL |         rec(identity(&mut it))
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/recursive-impl-trait-iterator-by-ref-67552.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
 error: aborting due to 1 previous error
 

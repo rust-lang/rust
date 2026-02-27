@@ -17,5 +17,14 @@ LL | |         yield_chain: &'l mut impl AsyncFnMut(&SymPerm<'db>),
 LL | |     ) -> Pin<Box<dyn std::future::Future<Output = ()> + 'l>> {
    | |____________________________________________________________^
 
+note: the above error was encountered while instantiating `fn ToChain::<'_, '_>::perm_pairs::<{async closure@$DIR/post-mono-higher-ranked-hang.rs:47:45: 47:67}>`
+  --> $DIR/post-mono-higher-ranked-hang.rs:47:21
+   |
+LL | /                     self.perm_pairs(l, &mut async move |left_pair| {
+LL | |
+LL | |                         self.perm_pairs(r, yield_chain).await
+LL | |                     })
+   | |______________________^
+
 error: aborting due to 1 previous error
 
