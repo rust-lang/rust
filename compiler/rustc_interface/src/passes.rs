@@ -1429,5 +1429,5 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         // So, no lints here to avoid duplicates.
         ShouldEmit::EarlyFatal { also_emit_lints: false },
     );
-    crate::limits::get_recursion_limit(attr.as_slice())
+    crate::limits::get_recursion_limit(attr.as_slice(), sess)
 }

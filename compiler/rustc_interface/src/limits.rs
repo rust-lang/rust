@@ -11,13 +11,13 @@
 use rustc_hir::limit::Limit;
 use rustc_hir::{Attribute, find_attr};
 use rustc_middle::query::Providers;
-use rustc_session::Limits;
+use rustc_session::{Limits, Session};
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| {
         let attrs = tcx.hir_krate_attrs();
         Limits {
-            recursion_limit: get_recursion_limit(tcx.hir_krate_attrs()),
+            recursion_limit: get_recursion_limit(tcx.hir_krate_attrs(), tcx.sess),
             move_size_limit: find_attr!(attrs, MoveSizeLimit { limit, .. } => *limit)
                 .unwrap_or(Limit::new(tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0))),
             type_length_limit: find_attr!(attrs, TypeLengthLimit { limit, .. } => *limit)
@@ -30,6 +30,13 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 // This one is separate because it must be read prior to macro expansion.
-pub(crate) fn get_recursion_limit(attrs: &[Attribute]) -> Limit {
-    find_attr!(attrs, RecursionLimit { limit, .. } => *limit).unwrap_or(Limit::new(128))
+pub(crate) fn get_recursion_limit(attrs: &[Attribute], sess: &Session) -> Limit {
+    let limit_from_crate =
+        find_attr!(attrs, RecursionLimit { limit, .. } => limit.0).unwrap_or(128);
+    Limit::new(
+        sess.opts
+            .unstable_opts
+            .min_recursion_limit
+            .map_or(limit_from_crate, |min| min.max(limit_from_crate)),
+    )
 }
