@@ -66,6 +66,7 @@ impl<T> HashTable<T, Global> {
     /// assert_eq!(table.len(), 0);
     /// assert_eq!(table.capacity(), 0);
     /// ```
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             raw: RawTable::new(),
@@ -85,6 +86,7 @@ impl<T> HashTable<T, Global> {
     /// assert_eq!(table.len(), 0);
     /// assert!(table.capacity() >= 10);
     /// ```
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             raw: RawTable::with_capacity(capacity),
@@ -133,6 +135,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[must_use]
     pub const fn new_in(alloc: A) -> Self {
         Self {
             raw: RawTable::new_in(alloc),
@@ -181,6 +184,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[must_use]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self {
             raw: RawTable::with_capacity_in(capacity, alloc),
