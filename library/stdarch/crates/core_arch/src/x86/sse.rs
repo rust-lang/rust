@@ -3332,24 +3332,6 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    fn test_mm_undefined_ps() {
-        // _mm_undefined_ps returns a vector with indeterminate elements,
-        // so we can only verify it doesn't crash.
-        let _r = _mm_undefined_ps();
-    }
-
-    #[simd_test(enable = "sse")]
-    fn test_mm_prefetch() {
-        // Prefetch only affects cache behavior, not program correctness,
-        // so we can only verify it doesn't crash for each hint strategy.
-        let data = 42.0f32;
-        _mm_prefetch::<_MM_HINT_T0>(ptr::addr_of!(data) as *const i8);
-        _mm_prefetch::<_MM_HINT_T1>(ptr::addr_of!(data) as *const i8);
-        _mm_prefetch::<_MM_HINT_T2>(ptr::addr_of!(data) as *const i8);
-        _mm_prefetch::<_MM_HINT_NTA>(ptr::addr_of!(data) as *const i8);
-    }
-
-    #[simd_test(enable = "sse")]
     const fn test_mm_move_ss() {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         let b = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);

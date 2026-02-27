@@ -211,7 +211,10 @@ fn verify_all_signatures() {
                 "_rdseed64_step",
                 // CMPXCHG
                 "cmpxchg16b",
+                //PREFETCH
+                "_mm_prefetch",
                 // Undefined,
+                "_mm_undefined_ps",
                 "_mm_undefined_pd",
                 "_mm_undefined_si128",
                 "_mm_undefined_ph",
