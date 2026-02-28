@@ -383,6 +383,11 @@ Both the upside and downside of this is that it simplifies the history.
 On the one hand, you lose track of the steps in which changes were made, but
 the history becomes easier to work with.
 
+The easiest way to squash your commits in a PR on the `rust-lang/rust` repository is to use the `@bors squash` command in a comment on the PR. By default, [bors] combines all commit messages of the PR into the squashed commit message. To customize the commit message, use `@bors squash msg=<commit message>`.
+
+
+If you want to squash commits using local git operations, read on below.
+
 If there are no conflicts and you are just squashing to clean up the history,
 use `git rebase --interactive --keep-base main`.
 This keeps the fork point of your PR the same, making it easier to review the diff of what happened
@@ -409,11 +414,6 @@ You also may want to squash just the last few commits together, possibly
 because they only represent "fixups" and not real changes.
 For example,
 `git rebase --interactive HEAD~2` will allow you to edit the two commits only.
-
-For pull requests in `rust-lang/rust`, you can ask [bors] to squash by commenting
-`@bors squash` on the PR.
-By default, [bors] combines all commit messages in the PR.
-To customize the commit message, use `@bors squash [msg|message=<commit-message>]`.
 
 [bors]: https://github.com/rust-lang/bors
 
