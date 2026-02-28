@@ -1,14 +1,20 @@
-//@ known-bug: #120811
+//@ check-pass
+
+// Regression test for #120811.
+// Used to ICE during closure capture analysis.
 
 trait Container {
     type Item<'a>;
 }
+
 impl Container for () {
     type Item<'a> = ();
 }
+
 struct Exchange<C, F> {
     _marker: std::marker::PhantomData<(C, F)>,
 }
+
 fn exchange<C, F>(_: F) -> Exchange<C, F>
 where
     C: Container,
@@ -16,9 +22,13 @@ where
 {
     unimplemented!()
 }
+
 trait Parallelization<C> {}
+
 impl<C, F> Parallelization<C> for Exchange<C, F> {}
+
 fn unary_frontier<P: Parallelization<()>>(_: P) {}
+
 fn main() {
     let exchange = exchange(|_| ());
     let _ = || {
