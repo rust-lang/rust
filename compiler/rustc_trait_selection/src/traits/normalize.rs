@@ -228,7 +228,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             .unwrap_or_else(|| proj.to_term(infcx.tcx));
 
             PlaceholderReplacer::replace_placeholders(
-                infcx,
+                infcx.tcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
@@ -275,7 +275,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             );
 
             PlaceholderReplacer::replace_placeholders(
-                infcx,
+                infcx.tcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,

@@ -201,7 +201,7 @@ where
             let result =
                 ensure_sufficient_stack(|| self.normalize_alias_term(ty.into()))?.expect_type();
             Ok(PlaceholderReplacer::replace_placeholders(
-                infcx,
+                infcx.tcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
@@ -229,7 +229,7 @@ where
             let result =
                 ensure_sufficient_stack(|| self.normalize_alias_term(ct.into()))?.expect_const();
             Ok(PlaceholderReplacer::replace_placeholders(
-                infcx,
+                infcx.tcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
