@@ -1496,6 +1496,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Pat(ty, pat) => {
                 hir::TyKind::Pat(self.lower_ty_alloc(ty, itctx), self.lower_ty_pat(pat, ty.span))
             }
+            TyKind::FieldOf(ty, variant, field) => hir::TyKind::FieldOf(
+                self.lower_ty_alloc(ty, itctx),
+                self.arena.alloc(hir::TyFieldPath {
+                    variant: variant.map(|variant| self.lower_ident(variant)),
+                    field: self.lower_ident(*field),
+                }),
+            ),
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
             }

@@ -26,8 +26,8 @@ use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region, Ty,
-    TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
+    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -485,6 +485,35 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_pat(tcx: TyCtxt<'tcx>, base: Ty<'tcx>, pat: ty::Pattern<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Pat(base, pat))
+    }
+
+    #[inline]
+    pub fn new_field_representing_type(
+        tcx: TyCtxt<'tcx>,
+        base: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> Ty<'tcx> {
+        let Some(did) = tcx.lang_items().field_representing_type() else {
+            bug!("could not locate the `FieldRepresentingType` lang item")
+        };
+        let def = tcx.adt_def(did);
+        let args = tcx.mk_args(&[
+            base.into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, variant.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, field.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+        ]);
+        Ty::new_adt(tcx, def, args)
     }
 
     #[inline]

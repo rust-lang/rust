@@ -221,6 +221,8 @@ declare_features! (
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items
     (internal, eii_internals, "1.94.0", None),
+    /// Implementation details of field representing types.
+    (internal, field_representing_type_raw, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the #[rustc_intrinsic] attribute.
@@ -486,6 +488,8 @@ declare_features! (
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
+    /// Experimental field projections.
+    (incomplete, field_projections, "CURRENT_RUSTC_VERSION", Some(145383)),
     /// Allows marking trait functions as `final` to prevent overriding impls
     (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(131179)),
     /// Controlling the behavior of fmt::Debug

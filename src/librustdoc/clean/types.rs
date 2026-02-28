@@ -1349,6 +1349,7 @@ pub(crate) enum Type {
     /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, Box<str>),
     Pat(Box<Type>, Box<str>),
+    FieldOf(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
@@ -1562,6 +1563,7 @@ impl Type {
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
             Type::Pat(..) => PrimitiveType::Pat,
+            Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
@@ -1609,6 +1611,7 @@ pub(crate) enum PrimitiveType {
     Slice,
     Array,
     Pat,
+    FieldOf,
     Tuple,
     Unit,
     RawPointer,
@@ -1764,6 +1767,7 @@ impl PrimitiveType {
             Char => sym::char,
             Array => sym::array,
             Pat => sym::pat,
+            FieldOf => sym::field_of,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,
