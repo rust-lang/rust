@@ -556,6 +556,7 @@ class FakeArgs:
         self.json_output = False
         self.color = "auto"
         self.warnings = "default"
+        self.quiet = False
 
 
 class RustBuild(object):
@@ -576,6 +577,11 @@ class RustBuild(object):
         self.verbose = args.verbose
         self.color = args.color
         self.warnings = args.warnings
+        self.quiet = getattr(args, "quiet", False)
+        if self.quiet:
+            # `-q/--quiet` is a convenience flag. It is intentionally *not* forwarded to the
+            # Rust bootstrap binary, which would otherwise error on an unknown option.
+            self.verbose = 0
 
         config_verbose_count = self.get_toml("verbose", "build")
         if config_verbose_count is not None:
@@ -801,7 +807,8 @@ class RustBuild(object):
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:
-            eprint("INFO: You seem to be using Nix.")
+            if not self.quiet:
+                eprint("INFO: You seem to be using Nix.")
         return answer
 
     def fix_bin_or_dylib(self, fname):
@@ -1217,9 +1224,10 @@ class RustBuild(object):
         if "SUDO_USER" in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
-                eprint("INFO: looks like you're trying to run this command as root")
-                eprint("      and so in order to preserve your $HOME this will now")
-                eprint("      use vendored sources by default.")
+                if not self.quiet:
+                    eprint("INFO: looks like you're trying to run this command as root")
+                    eprint("      and so in order to preserve your $HOME this will now")
+                    eprint("      use vendored sources by default.")
 
         cargo_dir = os.path.join(self.rust_root, ".cargo")
         commit = self.get_latest_commit()
@@ -1271,6 +1279,7 @@ def parse_args(args):
         "--warnings", choices=["deny", "warn", "default"], default="default"
     )
     parser.add_argument("-v", "--verbose", action="count", default=0)
+    parser.add_argument("-q", "--quiet", action="store_true")
 
     return parser.parse_known_args(args)[0]
 
@@ -1365,7 +1374,8 @@ def bootstrap(args):
 
     # Run the bootstrap
     args = [build.bootstrap_binary()]
-    args.extend(sys.argv[1:])
+    filtered_argv = [a for a in sys.argv[1:] if a not in ("-q", "--quiet")]
+    args.extend(filtered_argv)
     env = os.environ.copy()
     env["BOOTSTRAP_PYTHON"] = sys.executable
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)
@@ -1401,7 +1411,7 @@ def main():
 
     # If the user is asking for other helps, let them know that the whole download-and-build
     # process has to happen before anything is printed out.
-    if args.help:
+    if args.help and not getattr(args, "quiet", False):
         eprint(
             "INFO: Downloading and building bootstrap before processing --help command.\n"
             "      See src/bootstrap/README.md for help with common commands."
@@ -1419,7 +1429,7 @@ def main():
             eprint(error)
         success_word = "unsuccessfully"
 
-    if not args.help:
+    if not args.help and not getattr(args, "quiet", False):
         eprint(
             "Build completed",
             success_word,
