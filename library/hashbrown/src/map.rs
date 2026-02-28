@@ -267,6 +267,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// assert_eq!(map.len(), 0);
     /// assert_eq!(map.capacity(), 0);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new() -> Self {
         Self::default()
@@ -296,6 +297,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// assert_eq!(map.len(), 0);
     /// assert!(map.capacity() >= 10);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
@@ -342,6 +344,7 @@ impl<K, V, A: Allocator> HashMap<K, V, DefaultHashBuilder, A> {
     /// // And it also allocates some capacity
     /// assert!(map.capacity() > 1);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
         Self::with_hasher_in(DefaultHashBuilder::default(), alloc)
@@ -390,6 +393,7 @@ impl<K, V, A: Allocator> HashMap<K, V, DefaultHashBuilder, A> {
     /// // But its capacity isn't changed
     /// assert_eq!(map.capacity(), empty_map_capacity)
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self::with_capacity_and_hasher_in(capacity, DefaultHashBuilder::default(), alloc)
@@ -429,6 +433,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher(hash_builder: S) -> Self {
@@ -470,6 +475,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
@@ -512,6 +518,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
@@ -547,6 +554,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         Self {
