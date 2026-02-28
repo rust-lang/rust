@@ -26,8 +26,6 @@ Arguments:
 Options:
   -v, --verbose...
           use verbose output (-vv for very verbose)
-  -q, --quiet
-          reduce bootstrap output (suppresses some INFO messages; not forwarded to the bootstrap binary)
   -i, --incremental
           use incremental compilation
       --config <FILE>

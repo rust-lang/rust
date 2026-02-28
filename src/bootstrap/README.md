@@ -182,8 +182,13 @@ bootstrap binary.
 
 Because there are two separate codebases behind `x.py`, they need to
 be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
-parse `bootstrap.toml` and read the same command line arguments. `bootstrap.py`
-keeps these in sync by setting various environment variables, and the
+parse `bootstrap.toml` and read the same command line arguments.
+
+A small exception is `-q/--quiet`: it is handled by `bootstrap.py` only (to reduce
+wrapper-level informational output) and is stripped before invoking the bootstrap
+binary.
+
+`bootstrap.py` keeps these in sync by setting various environment variables, and the
 programs sometimes have to add arguments that are explicitly ignored, to be
 read by the other.
 
