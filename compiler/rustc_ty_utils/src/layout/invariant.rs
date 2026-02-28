@@ -256,10 +256,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     check_layout_abi(cx, layout);
 
     match &layout.variants {
-        Variants::Empty => {
+        Variants::Empty { .. } => {
             assert!(layout.is_uninhabited());
         }
-        Variants::Single { index } => {
+        Variants::Single { index, .. } => {
             if let Some(variants) = layout.ty.variant_range(tcx) {
                 assert!(variants.contains(index));
             } else {

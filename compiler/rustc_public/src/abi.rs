@@ -173,10 +173,27 @@ impl FieldsShape {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum VariantsShape {
     /// A type with no valid variants. Must be uninhabited.
-    Empty,
+    ///
+    /// We still need to hold variant layout information for `offset_of!`
+    /// on uninhabited enum variants with non-zero-sized fields.
+    Empty {
+        /// Always `None` for non-enums.
+        /// For enums, this is `None` if all variants are "absent"
+        /// (have no non-1-ZST fields), and is `Some` otherwise.
+        variants: Option<Vec<LayoutShape>>,
+    },
 
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: VariantIdx },
+    ///
+    /// We still need to hold variant layout information for `offset_of!`
+    /// on uninhabited enum variants with non-zero-sized fields.
+    Single {
+        index: VariantIdx,
+        /// Always `None` for non-enums.
+        /// For enums, this is `None` if all uninhabited variants are "absent"
+        /// (have no non-1-ZST fields), and is `Some` otherwise.
+        variants: Option<Vec<LayoutShape>>,
+    },
 
     /// Enum-likes with more than one inhabited variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can

@@ -21,7 +21,7 @@ LL |     #[rustc_layout(debug)]
    = help: `#[rustc_layout]` can be applied to data types and type aliases
 
 error: layout_of(E) = Layout {
-           size: Size(12 bytes),
+           size: Size(8 bytes),
            align: AbiAlign {
                abi: Align(4 bytes),
            },
@@ -74,35 +74,50 @@ error: layout_of(E) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
                        randomization_seed: $SEED,
                    },
                    Layout {
-                       size: Size(12 bytes),
+                       size: Size(8 bytes),
                        align: AbiAlign {
                            abi: Align(4 bytes),
                        },
-                       backend_repr: Memory {
-                           sized: true,
-                       },
+                       backend_repr: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   true,
+                               ),
+                               valid_range: 0..=4294967295,
+                           },
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   true,
+                               ),
+                               valid_range: 0..=4294967295,
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
-                               Size(4 bytes),
-                               Size(4 bytes),
                                Size(8 bytes),
+                               Size(0 bytes),
+                               Size(4 bytes),
                            ],
                            in_memory_order: [
-                               0,
                                1,
                                2,
+                               0,
                            ],
                        },
                        largest_niche: None,
                        uninhabited: true,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -156,6 +171,7 @@ error: layout_of(S) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -181,6 +197,7 @@ error: layout_of(U) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -275,6 +292,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -313,6 +331,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -348,6 +367,7 @@ error: layout_of(i32) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -373,6 +393,7 @@ error: layout_of(V) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -398,6 +419,7 @@ error: layout_of(W) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -423,6 +445,7 @@ error: layout_of(Y) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -448,6 +471,7 @@ error: layout_of(P1) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -473,6 +497,7 @@ error: layout_of(P2) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -498,6 +523,7 @@ error: layout_of(P3) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -509,7 +535,7 @@ LL | union P3 { x: F32x4 }
    | ^^^^^^^^
 
 error: layout_of(P4) = Layout {
-           size: Size(12 bytes),
+           size: Size(8 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),
            },
@@ -523,6 +549,7 @@ error: layout_of(P4) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -553,6 +580,7 @@ error: layout_of(P5) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -583,6 +611,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
            uninhabited: false,
            variants: Single {
                index: 0,
+               variants: None,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),

@@ -56,6 +56,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -90,6 +91,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -164,6 +166,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -189,6 +192,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -223,6 +227,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 2,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -297,6 +302,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -331,6 +337,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -409,6 +416,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -443,6 +451,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),

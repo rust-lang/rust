@@ -213,11 +213,11 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
         ),
         |cx, enum_type_di_node| {
             match enum_type_and_layout.variants {
-                Variants::Empty => {
+                Variants::Empty { .. } => {
                     // We don't generate any members for uninhabited types.
                     return smallvec![];
                 }
-                Variants::Single { index: variant_index } => build_single_variant_union_fields(
+                Variants::Single { index: variant_index, .. } => build_single_variant_union_fields(
                     cx,
                     enum_adt_def,
                     enum_type_and_layout,
@@ -300,7 +300,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                 )
             }
             Variants::Single { .. }
-            | Variants::Empty
+            | Variants::Empty { .. }
             | Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => {
                 bug!(
                     "Encountered coroutine with non-direct-tag layout: {:?}",

@@ -445,8 +445,8 @@ pub(crate) mod rustc {
             };
 
             match layout.variants() {
-                Variants::Empty => Ok(Self::uninhabited()),
-                Variants::Single { index } => {
+                Variants::Empty { .. } => Ok(Self::uninhabited()),
+                Variants::Single { index, .. } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
                     layout_of_variant(*index, None)
@@ -607,11 +607,11 @@ pub(crate) mod rustc {
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
-                    Variants::Single { index } => {
+                    Variants::Single { index, .. } => {
                         let field = &def.variant(index).fields[i];
                         field.ty(cx.tcx(), args)
                     }
-                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
+                    Variants::Empty { .. } => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { tag, .. } => {
                         assert_eq!(i.as_usize(), 0);
