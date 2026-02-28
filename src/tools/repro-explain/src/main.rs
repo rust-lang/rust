@@ -797,9 +797,8 @@ fn replay_cache_key(class: &DiffClass, package_id: Option<&String>) -> String {
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use crate::model::{BuildScriptExecutedMessage, CargoTarget, CompilerArtifactMessage};
-
     use super::{build_script_signal, build_script_stdout_signal, non_fresh_packages};
+    use crate::model::{BuildScriptExecutedMessage, CargoTarget, CompilerArtifactMessage};
 
     fn build_script_msg(
         package_id: &str,

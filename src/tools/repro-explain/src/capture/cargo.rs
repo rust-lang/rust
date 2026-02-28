@@ -7,6 +7,8 @@ use camino::Utf8PathBuf;
 use serde::Serialize;
 use serde_json::Value;
 
+use super::hash::{parse_dep_info, sha256_file, sha256_files_parallel, walk_files};
+use super::wrapper::load_invocations;
 use crate::cli::CaptureFlags;
 use crate::model::{
     ArtifactRecord, BuildScriptExecutedMessage, BuildScriptStdoutRecord, CommandKind,
@@ -14,9 +16,6 @@ use crate::model::{
 };
 use crate::util::path_norm::{artifact_kind, normalize_abs, relativize};
 use crate::util::process::{run_command, shell_escape_single, utc_now_rfc3339};
-
-use super::hash::{parse_dep_info, sha256_file, sha256_files_parallel, walk_files};
-use super::wrapper::load_invocations;
 
 #[derive(Debug, Clone)]
 pub struct CaptureOptions {
@@ -717,11 +716,10 @@ mod tests {
     use camino::Utf8PathBuf;
     use tempfile::tempdir;
 
-    use crate::model::BuildScriptExecutedMessage;
-
     use super::{
         collect_build_script_stdout_records, copy_cargo_timings, normalize_cargo_instruction,
     };
+    use crate::model::BuildScriptExecutedMessage;
 
     #[test]
     fn normalizes_both_cargo_instruction_prefixes() {

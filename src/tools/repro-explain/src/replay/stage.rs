@@ -347,9 +347,8 @@ mod tests {
     use camino::Utf8PathBuf;
     use tempfile::tempdir;
 
-    use crate::model::{BuildScriptExecutedMessage, InvocationRecord, StageName};
-
     use super::{localize_first_divergent_stage, map_proc_macro_stage};
+    use crate::model::{BuildScriptExecutedMessage, InvocationRecord, StageName};
 
     fn inv(id: &str, tool: &str) -> InvocationRecord {
         InvocationRecord {

@@ -544,9 +544,8 @@ fn count_changed(entries: &[crate::model::DiffEntry]) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::BuildScriptStdoutRecord;
-
     use super::{build_script_instruction_diff, with_focused_package, with_jobs, with_jobs_one};
+    use crate::model::BuildScriptStdoutRecord;
 
     #[test]
     fn injects_jobs_when_missing() {
