@@ -20,22 +20,21 @@ use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
+use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
 };
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
-};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
@@ -130,6 +129,7 @@ pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
+    suppress_placeholder_errors: Cell<bool>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -240,7 +240,12 @@ fn bad_placeholder<'cx, 'tcx>(
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
+        ItemCtxt {
+            tcx,
+            item_def_id,
+            tainted_by_errors: Cell::new(None),
+            suppress_placeholder_errors: Cell::new(false),
+        }
     }
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -266,7 +271,10 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         placeholder_types: Vec<Span>,
         infer_replacements: Vec<(Span, String)>,
-    ) -> ErrorGuaranteed {
+    ) {
+        if self.suppress_placeholder_errors.get() {
+            return;
+        }
         let node = self.tcx.hir_node_by_def_id(self.item_def_id);
         let generics = node.generics();
         let kind_id = match node {
@@ -297,7 +305,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        diag.emit()
+        diag.emit();
     }
 }
 
@@ -525,6 +533,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         _generics: Option<&hir::Generics<'_>>,
         hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
+        suppress_ret_ty_placeholder_errors: bool,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
         let tcx = self.tcx();
 
@@ -549,7 +558,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                if let hir::TyKind::Infer(()) = output.kind
+                let old_suppress_placeholder_errors = self.suppress_placeholder_errors.get();
+                let _restore =
+                    defer(|| self.suppress_placeholder_errors.set(old_suppress_placeholder_errors));
+
+                if suppress_ret_ty_placeholder_errors {
+                    self.suppress_placeholder_errors.set(true);
+                }
+                if !suppress_ret_ty_placeholder_errors
+                    && let hir::TyKind::Infer(()) = output.kind
                     && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
@@ -960,6 +977,37 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     }
 }
 
+/// We'll emit an error about the suggestable infer ty in `typeck` query if this is `Some`.
+/// In that case we suppress errors about it in the `fn_sig` query.
+pub fn suggest_ret_ty_in_typeck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    node: &Node<'tcx>,
+    hir_id: HirId,
+) -> Option<&'tcx hir::Ty<'tcx>> {
+    use rustc_hir::Node::*;
+    use rustc_hir::*;
+    let sig = match node {
+        TraitItem(hir::TraitItem {
+            kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)), ..
+        })
+        | Item(hir::Item { kind: ItemKind::Fn { sig, .. }, .. }) => Some(sig),
+
+        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => {
+            // Do not try to infer the return type for a impl method coming from a trait
+            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
+                && i.of_trait.is_some()
+            {
+                None
+            } else {
+                Some(sig)
+            }
+        }
+
+        _ => None,
+    };
+    sig.and_then(|sig| sig.decl.output.is_suggestable_infer_ty())
+}
+
 #[instrument(level = "debug", skip(tcx), ret)]
 fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
@@ -969,46 +1017,29 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let output = match tcx.hir_node(hir_id) {
+    let node = &tcx.hir_node(hir_id);
+
+    let suggest_ret_ty_in_typeck = suggest_ret_ty_in_typeck(tcx, node, hir_id).is_some();
+
+    let output = match *node {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
             ..
         })
-        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. }) => {
-            lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
+        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. })
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. })
+        | TraitItem(hir::TraitItem { kind: TraitItemKind::Fn(sig, _), generics, .. }) => {
+            icx.lowerer().lower_fn_ty(
+                hir_id,
+                sig.header.safety(),
+                sig.header.abi,
+                sig.decl,
+                Some(generics),
+                None,
+                suggest_ret_ty_in_typeck,
+            )
         }
-
-        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
-            // Do not try to infer the return type for a impl method coming from a trait
-            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
-                && i.of_trait.is_some()
-            {
-                icx.lowerer().lower_fn_ty(
-                    hir_id,
-                    sig.header.safety(),
-                    sig.header.abi,
-                    sig.decl,
-                    Some(generics),
-                    None,
-                )
-            } else {
-                lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
-            }
-        }
-
-        TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
-            generics,
-            ..
-        }) => icx.lowerer().lower_fn_ty(
-            hir_id,
-            header.safety(),
-            header.abi,
-            decl,
-            Some(generics),
-            None,
-        ),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
             let abi = tcx.hir_get_foreign_abi(hir_id);
@@ -1047,183 +1078,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         }
     };
     ty::EarlyBinder::bind(output)
-}
-
-fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
-    icx: &ItemCtxt<'tcx>,
-    sig: &'tcx hir::FnSig<'tcx>,
-    generics: &'tcx hir::Generics<'tcx>,
-    def_id: LocalDefId,
-) -> ty::PolyFnSig<'tcx> {
-    if let Some(infer_ret_ty) = sig.decl.output.is_suggestable_infer_ty() {
-        return recover_infer_ret_ty(icx, infer_ret_ty, generics, def_id);
-    }
-
-    icx.lowerer().lower_fn_ty(
-        icx.tcx().local_def_id_to_hir_id(def_id),
-        sig.header.safety(),
-        sig.header.abi,
-        sig.decl,
-        Some(generics),
-        None,
-    )
-}
-
-/// Convert `ReLateParam`s in `value` back into `ReBound`s and bind it with `bound_vars`.
-fn late_param_regions_to_bound<'tcx, T>(
-    tcx: TyCtxt<'tcx>,
-    scope: DefId,
-    bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
-    value: T,
-) -> ty::Binder<'tcx, T>
-where
-    T: ty::TypeFoldable<TyCtxt<'tcx>>,
-{
-    let value = fold_regions(tcx, value, |r, debruijn| match r.kind() {
-        ty::ReLateParam(lp) => {
-            // Should be in scope, otherwise inconsistency happens somewhere.
-            assert_eq!(lp.scope, scope);
-
-            let br = match lp.kind {
-                // These variants preserve the bound var index.
-                kind @ (ty::LateParamRegionKind::Anon(idx)
-                | ty::LateParamRegionKind::NamedAnon(idx, _)) => {
-                    let idx = idx as usize;
-                    let var = ty::BoundVar::from_usize(idx);
-
-                    let Some(ty::BoundVariableKind::Region(kind)) = bound_vars.get(idx).copied()
-                    else {
-                        bug!("unexpected late-bound region {kind:?} for bound vars {bound_vars:?}");
-                    };
-
-                    ty::BoundRegion { var, kind }
-                }
-
-                // For named regions, look up the corresponding bound var.
-                ty::LateParamRegionKind::Named(def_id) => bound_vars
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, bv)| match bv {
-                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::Named(did))
-                            if did == def_id =>
-                        {
-                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
-                        }
-                        _ => None,
-                    })
-                    .unwrap(),
-
-                ty::LateParamRegionKind::ClosureEnv => bound_vars
-                    .iter()
-                    .enumerate()
-                    .find_map(|(idx, bv)| match bv {
-                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::ClosureEnv) => {
-                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
-                        }
-                        _ => None,
-                    })
-                    .unwrap(),
-            };
-
-            ty::Region::new_bound(tcx, debruijn, br)
-        }
-        _ => r,
-    });
-
-    ty::Binder::bind_with_vars(value, bound_vars)
-}
-
-fn recover_infer_ret_ty<'tcx>(
-    icx: &ItemCtxt<'tcx>,
-    infer_ret_ty: &'tcx hir::Ty<'tcx>,
-    generics: &'tcx hir::Generics<'tcx>,
-    def_id: LocalDefId,
-) -> ty::PolyFnSig<'tcx> {
-    let tcx = icx.tcx;
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
-    let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
-
-    // Typeck doesn't expect erased regions to be returned from `type_of`.
-    // This is a heuristic approach. If the scope has region parameters,
-    // we should change fn_sig's lifetime from `ReErased` to `ReError`,
-    // otherwise to `ReStatic`.
-    let has_region_params = generics.params.iter().any(|param| match param.kind {
-        GenericParamKind::Lifetime { .. } => true,
-        _ => false,
-    });
-    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match r.kind() {
-        ty::ReErased => {
-            if has_region_params {
-                ty::Region::new_error_with_message(
-                    tcx,
-                    DUMMY_SP,
-                    "erased region is not allowed here in return type",
-                )
-            } else {
-                tcx.lifetimes.re_static
-            }
-        }
-        _ => r,
-    });
-
-    let mut visitor = HirPlaceholderCollector::default();
-    visitor.visit_ty_unambig(infer_ret_ty);
-
-    let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
-    let ret_ty = fn_sig.output();
-
-    // Don't leak types into signatures unless they're nameable!
-    // For example, if a function returns itself, we don't want that
-    // recursive function definition to leak out into the fn sig.
-    let mut recovered_ret_ty = None;
-    if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion_verbose(
-            infer_ret_ty.span,
-            "replace with the correct return type",
-            suggestable_ret_ty,
-            Applicability::MachineApplicable,
-        );
-        recovered_ret_ty = Some(suggestable_ret_ty);
-    } else if let Some(sugg) = suggest_impl_trait(
-        &tcx.infer_ctxt().build(TypingMode::non_body_analysis()),
-        tcx.param_env(def_id),
-        ret_ty,
-    ) {
-        diag.span_suggestion_verbose(
-            infer_ret_ty.span,
-            "replace with an appropriate return type",
-            sugg,
-            Applicability::MachineApplicable,
-        );
-    } else if ret_ty.is_closure() {
-        diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-    }
-
-    // Also note how `Fn` traits work just in case!
-    if ret_ty.is_closure() {
-        diag.note(
-            "for more information on `Fn` traits and closure types, see \
-                     https://doc.rust-lang.org/book/ch13-01-closures.html",
-        );
-    }
-    let guar = diag.emit();
-
-    // If we return a dummy binder here, we can ICE later in borrowck when it encounters
-    // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
-    // signature binder. See #135845.
-    let bound_vars = tcx.late_bound_vars(hir_id);
-    let scope = def_id.to_def_id();
-
-    let fn_sig = tcx.mk_fn_sig(
-        fn_sig.inputs().iter().copied(),
-        recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
-        fn_sig.c_variadic,
-        fn_sig.safety,
-        fn_sig.abi,
-    );
-
-    late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)
 }
 
 pub fn suggest_impl_trait<'tcx>(
@@ -1463,8 +1317,9 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let fty =
-        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
+    let fty = ItemCtxt::new(tcx, def_id)
+        .lowerer()
+        .lower_fn_ty(hir_id, safety, abi, decl, None, None, false);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

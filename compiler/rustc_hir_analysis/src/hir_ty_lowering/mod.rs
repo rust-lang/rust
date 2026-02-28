@@ -201,6 +201,7 @@ pub trait HirTyLowerer<'tcx> {
         generics: Option<&hir::Generics<'_>>,
         hir_id: HirId,
         hir_ty: Option<&hir::Ty<'_>>,
+        suppress_ret_ty_placeholder_errors: bool,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>);
 
     /// Returns `AdtDef` if `ty` is an ADT.
@@ -2985,7 +2986,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 Ty::new_fn_ptr(
                     tcx,
-                    self.lower_fn_ty(hir_ty.hir_id, bf.safety, bf.abi, bf.decl, None, Some(hir_ty)),
+                    self.lower_fn_ty(
+                        hir_ty.hir_id,
+                        bf.safety,
+                        bf.abi,
+                        bf.decl,
+                        None,
+                        Some(hir_ty),
+                        false,
+                    ),
                 )
             }
             hir::TyKind::UnsafeBinder(binder) => Ty::new_unsafe_binder(
@@ -3376,12 +3385,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         decl: &hir::FnDecl<'tcx>,
         generics: Option<&hir::Generics<'_>>,
         hir_ty: Option<&hir::Ty<'_>>,
+        suppress_ret_ty_placeholder_errors: bool,
     ) -> ty::PolyFnSig<'tcx> {
         let tcx = self.tcx();
         let bound_vars = tcx.late_bound_vars(hir_id);
         debug!(?bound_vars);
 
-        let (input_tys, output_ty) = self.lower_fn_sig(decl, generics, hir_id, hir_ty);
+        let (input_tys, output_ty) =
+            self.lower_fn_sig(decl, generics, hir_id, hir_ty, suppress_ret_ty_placeholder_errors);
 
         debug!(?output_ty);
 

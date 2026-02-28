@@ -42,15 +42,18 @@ use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{self as hir, HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
+use rustc_hir_analysis::errors::PlaceholderNotAllowedItemSignatures;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::suggest_ret_ty_in_typeck;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -140,7 +143,7 @@ fn typeck_with_inspect<'tcx>(
             // type that has an infer in it, lower the type directly so that it'll
             // be correctly filled with infer. We'll use this inference to provide
             // a suggestion later on.
-            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None, false)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
@@ -267,6 +270,8 @@ fn typeck_with_inspect<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
+    check_placeholder_infer_ret_ty(tcx, typeck_results, id, def_id, node);
+
     fcx.detect_opaque_types_added_during_writeback();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
@@ -274,6 +279,78 @@ fn typeck_with_inspect<'tcx>(
     assert_eq!(typeck_results.hir_owner, id.owner);
 
     typeck_results
+}
+
+/// After typeck has inferred the return type for a function with `-> _`,
+/// emit the error diagnostic with suggestions for the correct return type.
+fn check_placeholder_infer_ret_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck_results: &ty::TypeckResults<'tcx>,
+    hir_id: HirId,
+    def_id: LocalDefId,
+    node: Node<'tcx>,
+) {
+    let Some(infer_ret_ty) = suggest_ret_ty_in_typeck(tcx, &node, hir_id) else { return };
+
+    struct PlaceholderSpanCollector<'a>(&'a mut Vec<Span>);
+
+    impl<'v> hir::intravisit::Visitor<'v> for PlaceholderSpanCollector<'_> {
+        fn visit_infer(
+            &mut self,
+            _inf_id: HirId,
+            inf_span: Span,
+            _kind: hir::intravisit::InferKind<'v>,
+        ) -> Self::Result {
+            self.0.push(inf_span);
+        }
+    }
+
+    // Collect all `_` placeholder spans from the return type.
+    let mut spans = Vec::new();
+    let mut collector = PlaceholderSpanCollector(&mut spans);
+    collector.visit_ty_unambig(infer_ret_ty);
+
+    let mut diag = tcx.dcx().create_err(PlaceholderNotAllowedItemSignatures {
+        spans,
+        kind: "return types".to_string(),
+    });
+
+    let ret_ty = typeck_results.liberated_fn_sigs()[hir_id].output();
+
+    // Don't leak types into signatures unless they're nameable!
+    // For example, if a function returns itself, we don't want that
+    // recursive function definition to leak out into the fn sig.
+    if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
+        diag.span_suggestion_verbose(
+            infer_ret_ty.span,
+            "replace with the correct return type",
+            suggestable_ret_ty,
+            Applicability::MachineApplicable,
+        );
+    } else if let Some(sugg) = rustc_hir_analysis::suggest_impl_trait(
+        &tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis()),
+        tcx.param_env(def_id),
+        ret_ty,
+    ) {
+        diag.span_suggestion_verbose(
+            infer_ret_ty.span,
+            "replace with an appropriate return type",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+    } else if ret_ty.is_closure() {
+        diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+    }
+
+    // Also note how `Fn` traits work just in case!
+    if ret_ty.is_closure() {
+        diag.note(
+            "for more information on `Fn` traits and closure types, see \
+                     https://doc.rust-lang.org/book/ch13-01-closures.html",
+        );
+    }
+
+    diag.emit();
 }
 
 fn extend_err_with_const_context(
