@@ -16,7 +16,9 @@ error: extra characters after frontmatter close are not allowed
   --> $DIR/fence-mismatch-2.rs:3:1
    |
 LL | ---cargo
-   | ^^^^^^^^
+   | ^^^-----
+   |    |
+   |    help: remove the extra characters
 
 error: aborting due to 2 previous errors
 

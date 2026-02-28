@@ -2,7 +2,9 @@ error: extra characters after frontmatter close are not allowed
   --> $DIR/fence-close-extra-after.rs:2:1
    |
 LL | ---cargo
-   | ^^^^^^^^
+   | ^^^-----
+   |    |
+   |    help: remove the extra characters
 
 error: aborting due to 1 previous error
 
