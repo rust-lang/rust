@@ -610,6 +610,10 @@ impl<T> Sender<T> {
 
     /// Returns `true` if the channel is disconnected.
     ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Sender::send`] may still fail with [`SendError`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -1059,6 +1063,10 @@ impl<T> Receiver<T> {
     }
 
     /// Returns `true` if the channel is disconnected.
+    ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Receiver::recv`] may still fail with [`RecvError`].
     ///
     /// # Examples
     ///
