@@ -670,6 +670,17 @@ pub fn home_dir() -> Option<PathBuf> {
 ///
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
 /// [`GetTempPath`][GetTempPath], which this function uses internally.
+/// Specifically, for non-SYSTEM processes, the function checks for the
+/// following environment variables in order and returns the first path found:
+///
+/// 1. The path specified by the `TMP` environment variable.
+/// 2. The path specified by the `TEMP` environment variable.
+/// 3. The path specified by the `USERPROFILE` environment variable.
+/// 4. The Windows directory.
+///
+/// When called from a process running as SYSTEM,
+/// [`GetTempPath2`][GetTempPath2] returns `C:\Windows\SystemTemp`
+/// regardless of environment variables.
 ///
 /// Note that, this [may change in the future][changes].
 ///
