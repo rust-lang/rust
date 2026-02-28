@@ -15,7 +15,6 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
     #[label("call to unsafe function")]
     pub(crate) span: Span,
     pub(crate) function: String,
-    pub(crate) guarantee: String,
     #[subdiagnostic]
     pub(crate) sub: CallToDeprecatedSafeFnRequiresUnsafeSub,
 }
@@ -33,6 +32,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {
     pub(crate) left: Span,
     #[suggestion_part(code = " }}")]
     pub(crate) right: Span,
+    pub(crate) guarantee: String,
 }
 
 #[derive(Diagnostic)]

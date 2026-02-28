@@ -157,6 +157,7 @@ pub struct ClosureFnOnceLabel {
     #[primary_span]
     pub span: Span,
     pub place: String,
+    pub trait_prefix: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -165,6 +166,7 @@ pub struct ClosureFnMutLabel {
     #[primary_span]
     pub span: Span,
     pub place: String,
+    pub trait_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]

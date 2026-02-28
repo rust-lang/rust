@@ -1309,12 +1309,13 @@ impl<'a> Parser<'a> {
                             self.dcx()
                                 .create_err(errors::ParenthesesWithStructFields {
                                     span,
-                                    r#type: path,
                                     braces_for_struct: errors::BracesForStructLiteral {
                                         first: open_paren,
                                         second: close_paren,
+                                        r#type: path.clone(),
                                     },
                                     no_fields_for_fn: errors::NoFieldsForFnCall {
+                                        r#type: path,
                                         fields: fields
                                             .into_iter()
                                             .map(|field| field.span.until(field.expr.span))
