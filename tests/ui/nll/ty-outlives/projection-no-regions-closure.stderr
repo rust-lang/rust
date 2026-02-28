@@ -49,6 +49,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
            ]
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '?2
+   = note: where T: '?1
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:30:1
@@ -73,6 +74,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '?3
+   = note: where T: '?2
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:38:1
@@ -111,6 +113,8 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '?3
+   = note: where T: '?2
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:47:1

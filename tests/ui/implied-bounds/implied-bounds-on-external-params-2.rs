@@ -45,9 +45,9 @@ fn call<F: MyFnOnce<MyOutput: ToStatic>>(f: F) -> &'static Payload {
 
 fn extend<T: StaticToStatic>(x: T) -> &'static Payload {
     let c = move || {
+        //~^ ERROR: the parameter type `T` may not live long enough
         // Probably should be illegal, since Wrap requires T: 'static
         Wrap(x)
-        //~^ ERROR: the parameter type `T` may not live long enough
     };
     call(c)
 }

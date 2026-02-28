@@ -10,18 +10,20 @@ LL |         force_send(async_load(&not_static));
 error[E0597]: `not_static` does not live long enough
   --> $DIR/implementation-not-general-enough-ice-133252.rs:9:31
    |
+LL |     async {
+   |         - return type of async block is &(dyn Owned + '1)
 LL |         let not_static = 0;
    |             ---------- binding `not_static` declared here
 LL |         force_send(async_load(&not_static));
    |         ----------------------^^^^^^^^^^^--
    |         |                     |
    |         |                     borrowed value does not live long enough
-   |         argument requires that `not_static` is borrowed for `'static`
+   |         argument requires that `not_static` is borrowed for `'1`
 ...
 LL |     }
    |     - `not_static` dropped here while still borrowed
    |
-note: requirement that the value outlives `'static` introduced here
+note: requirement that the value outlives `'1` introduced here
   --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18
    |
 LL | fn force_send<T: Send>(_: T) {}

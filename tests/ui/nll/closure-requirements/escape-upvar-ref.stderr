@@ -11,6 +11,7 @@ LL |         let mut closure = || p = &y;
            ]
    = note: number of external vids: 4
    = note: where '?3: '?2
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/escape-upvar-ref.rs:17:1

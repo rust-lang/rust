@@ -13,13 +13,13 @@ LL | fn error1<T: 'static>(x: T) {
    |            +++++++++
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/implied-bounds-on-external-params-1.rs:17:8
+  --> $DIR/implied-bounds-on-external-params-1.rs:17:5
    |
 LL |     || Wrap(x);
-   |        ^^^^^^^
-   |        |
-   |        the parameter type `T` must be valid for the static lifetime...
-   |        ...so that the type `T` will meet its required lifetime bounds
+   |     ^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound
    |

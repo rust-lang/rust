@@ -50,6 +50,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where <T as Anything<'?2, '?3>>::AssocType: '?4
+   = note: where '?1: '?1
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:43:1
@@ -89,6 +90,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where <T as Anything<'?2, '?3>>::AssocType: '?4
+   = note: where <T as Anything<'?2, '?3>>::AssocType: '?1
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:53:1
@@ -114,6 +116,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where <T as Anything<'?2, '?3>>::AssocType: '?4
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
@@ -139,6 +142,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where <T as Anything<'?2, '?3>>::AssocType: '?4
+   = note: where '?3: '?1
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:74:1
@@ -205,6 +209,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 4
    = note: where <T as Anything<'?2, '?2>>::AssocType: '?3
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:92:1

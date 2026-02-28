@@ -448,7 +448,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// cannot have external regions, i.e. non of {closures, coroutines, inline consts}, every
     /// bounds returned from `type_op::ImpliedOutlivesBounds` are allowed.
     /// But if the defining type can have them, the bound should contain at least one local region.
-    pub(crate) fn bound_can_be_implied(&self, bound: OutlivesBound<'tcx>) -> bool {
+    pub(crate) fn bound_has_late_bound_region(&self, bound: OutlivesBound<'tcx>) -> bool {
         if !matches!(
             self.defining_ty,
             DefiningTy::Closure(..)
@@ -467,19 +467,12 @@ impl<'tcx> UniversalRegions<'tcx> {
             OutlivesBound::RegionSubParam(r_a, _) => {
                 self.is_local_free_region(self.to_region_vid(r_a))
             }
-            OutlivesBound::RegionSubAlias(..) => {
-                // FIXME: We might need to visit regions to check whether there exists
-                // any local free region here, but that would result in a false positive
-                // borrowck errors in some cases, such as:
-                // `fn foo<'a, 'b: 'b, T>(x: &'a T) -> impl Trait + 'a { /* nothing mentions 'b */ }`
-                // Suppose that we have a local bound to a return type of the above function
-                // and that local is captured into a closure. If the closure requires some
-                // outlives bounds on the captured opaque but we refuse the implied outlives bound
-                // for it, we might fail with the type test for it, which contains the opaque type
-                // and therefore `'b` as well. The problem is that if the normalized opaque type doesn't
-                // mentions `'b`, we have no local free region constrained by it, and end up
-                // emitting a borrowck error instead of propagating the closure requirements.
-                true
+            OutlivesBound::RegionSubAlias(r_a, alias_b) => {
+                self.is_local_free_region(self.to_region_vid(r_a))
+                    || alias_b.args.iter().flat_map(|arg| arg.walk()).any(|arg| {
+                        arg.as_region()
+                            .is_some_and(|r| self.is_local_free_region(self.to_region_vid(r)))
+                    })
             }
         }
     }

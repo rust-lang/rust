@@ -49,7 +49,10 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, DeferredClosureRequirements, path_utils};
+use crate::{
+    BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesRequirement,
+    DeferredClosureRequirements, path_utils,
+};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -121,6 +124,7 @@ pub(crate) fn type_check<'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
+        closure_non_late_bound_implied_bounds,
     } = free_region_relations::create(infcx, universal_regions, &mut constraints);
 
     {
@@ -191,6 +195,7 @@ pub(crate) fn type_check<'tcx>(
         known_type_outlives_obligations,
         deferred_closure_requirements,
         polonius_context,
+        closure_non_late_bound_implied_bounds,
     }
 }
 
@@ -243,6 +248,7 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
     pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     pub(crate) polonius_context: Option<PoloniusContext>,
+    pub(crate) closure_non_late_bound_implied_bounds: Frozen<Vec<ClosureOutlivesRequirement<'tcx>>>,
 }
 
 /// A collection of region constraints that must be satisfied for the

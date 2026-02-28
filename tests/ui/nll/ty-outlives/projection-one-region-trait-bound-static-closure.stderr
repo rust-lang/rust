@@ -21,7 +21,7 @@ LL | |     T: Anything<'b>,
    |
    = note: defining type: no_relationships_late::<'?1, T>
 
-note: no external requirements
+note: external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:45:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -32,6 +32,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
+   = note: number of external vids: 4
+   = note: where '?1: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:40:1
@@ -44,7 +46,7 @@ LL | |     'a: 'a,
    |
    = note: defining type: no_relationships_early::<'?1, '?2, T>
 
-note: no external requirements
+note: external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:64:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -55,6 +57,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
+   = note: number of external vids: 4
+   = note: where <T as Anything<'?2>>::AssocType: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:49:1
@@ -67,7 +71,7 @@ LL | |     T::AssocType: 'a,
    |
    = note: defining type: projection_outlives::<'?1, '?2, T>
 
-note: no external requirements
+note: external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:73:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -78,6 +82,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
            ]
+   = note: number of external vids: 4
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:68:1

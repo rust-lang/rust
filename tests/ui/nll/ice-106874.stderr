@@ -89,5 +89,20 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 10 previous errors
+error[E0310]: the parameter type `V` may not live long enough
+  --> $DIR/ice-106874.rs:8:23
+   |
+LL |     A(B(C::new(D::new(move |st| f(st)))))
+   |                       ^^^^^^^^^
+   |                       |
+   |                       the parameter type `V` must be valid for the static lifetime...
+   |                       ...so that the type `V` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | pub fn func<V: 'static, F: Fn(&mut V)>(f: F) -> A<impl X> {
+   |              +++++++++
 
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
