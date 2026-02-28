@@ -826,8 +826,7 @@ fn binop_lhs_never_place_diverges() {
 fn foo() {
     unsafe {
         let p: *mut ! = 0 as _;
-        *p + 1;
-//      ^^ adjustments: NeverToAny
+        *p += 1;
     }
 }
 "#,
