@@ -2495,10 +2495,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if mutability.is_not() {
-            // FIXME: for shared reborrow we need to relate the types manually,
-            // field by field with CoerceShared drilling down and down and down.
-            // We cannot just attempt to relate T and <T as CoerceShared>::Target
-            // by calling relate_types.
+            // FIXME(@aapoalas): for CoerceShared we need to relate the types manually, field by
+            // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
+            // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
+            // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
+            // Field-by-field relate_types is expected to work based on the wf-checks that the
+            // CoerceShared trait performs.
             let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { unreachable!() };
             let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
             let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();

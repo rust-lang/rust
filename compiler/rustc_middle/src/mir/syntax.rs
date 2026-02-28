@@ -1473,11 +1473,15 @@ pub enum Rvalue<'tcx> {
     WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
 
     /// Creates a bitwise copy of the indicated place with the same type (if Mut) or its
-    /// CoerceShared target type (if Not), and disables the place for writes (and reads, if Mut) for
-    /// the copy's lifetime. The type is known to be an ADT with exactly one lifetime parameter, and
-    /// it is known to implement the Reborrow trait (for Mut), and the CoerceShared trait (only if
-    /// Not). The CoerceShared target type is known to implement Copy and have the same memory
-    /// layout as the source type.
+    /// CoerceShared target type (if Not). The type is known to be an ADT with exactly one lifetime
+    /// parameter, and it is known to implement the Reborrow trait (for Mut), and the CoerceShared
+    /// trait (only if Not). The CoerceShared target type is known to also have exactly one lifetime
+    /// parameter, implement Copy and (currently) have the same memory layout as the source type.
+    ///
+    /// The borrow checker uses the single lifetime in the source and target types to create a
+    /// Covariant outlives-bound between the source and target with the Mutability of the Reborrow.
+    /// This makes accessing the source value for writes (and reads if Mut) for the lifetime of the
+    /// target value a borrow check error, imitating `&mut T` and `&T`'s reborrowing on user ADTs.
     ///
     /// Future work may add support for multiple lifetimes and changing memory layout as part of
     /// CoerceShared. These may be end up implemented as multiple MIR operations.
