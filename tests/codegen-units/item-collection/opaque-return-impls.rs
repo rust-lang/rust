@@ -86,3 +86,4 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 //~ MONO_ITEM fn std::boxed::Box::<Counter>::new
 //~ MONO_ITEM fn Counter::new
 //~ MONO_ITEM fn std::fmt::Arguments::<'_>::from_str
+//~ MONO_ITEM fn std::boxed::box_new_uninit

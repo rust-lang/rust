@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
-            let (ident, generics, ty, rhs_kind) = self.parse_const_item(false)?;
+            let (ident, generics, ty, rhs_kind) = self.parse_const_item(false, const_span)?;
             ItemKind::Const(Box::new(ConstItem {
                 defaultness: def_(),
                 ident,
@@ -317,7 +317,7 @@ impl<'a> Parser<'a> {
                 // TYPE CONST (mgca)
                 self.recover_const_mut(const_span);
                 self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, rhs_kind) = self.parse_const_item(true)?;
+                let (ident, generics, ty, rhs_kind) = self.parse_const_item(true, const_span)?;
                 // Make sure this is only allowed if the feature gate is enabled.
                 // #![feature(mgca_type_const_syntax)]
                 self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
@@ -1558,6 +1558,7 @@ impl<'a> Parser<'a> {
     fn parse_const_item(
         &mut self,
         const_arg: bool,
+        const_span: Span,
     ) -> PResult<'a, (Ident, Generics, Box<Ty>, ConstItemRhsKind)> {
         let ident = self.parse_ident_or_underscore()?;
 
@@ -1647,6 +1648,9 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = where_clause;
 
+        if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
+            return Ok((ident, generics, ty, ConstItemRhsKind::Body { rhs: Some(rhs) }));
+        }
         self.expect_semi()?;
 
         Ok((ident, generics, ty, rhs))
@@ -2744,8 +2748,21 @@ impl<'a> Parser<'a> {
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
         } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
-            self.parse_block_common(self.token.span, BlockCheckMode::Default, None)
-                .map(|(attrs, body)| (attrs, Some(body)))?
+            let prev_in_fn_body = self.in_fn_body;
+            self.in_fn_body = true;
+            let res = self.parse_block_common(self.token.span, BlockCheckMode::Default, None).map(
+                |(attrs, mut body)| {
+                    if let Some(guar) = self.fn_body_missing_semi_guar.take() {
+                        body.stmts.push(self.mk_stmt(
+                            body.span,
+                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                        ));
+                    }
+                    (attrs, Some(body))
+                },
+            );
+            self.in_fn_body = prev_in_fn_body;
+            res?
         } else if self.token == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
@@ -3500,6 +3517,37 @@ impl<'a> Parser<'a> {
                 .map_err(|e| e.cancel()),
             Ok(Some(_))
         )
+    }
+
+    /// Try to recover from over-parsing in const item when a semicolon is missing.
+    ///
+    /// This detects cases where we parsed too much because a semicolon was missing
+    /// and the next line started an expression that the parser treated as a continuation
+    /// (e.g., `foo() \n &bar` was parsed as `foo() & bar`).
+    ///
+    /// Returns a corrected expression if recovery is successful.
+    fn try_recover_const_missing_semi(
+        &mut self,
+        rhs: &ConstItemRhsKind,
+        const_span: Span,
+    ) -> Option<Box<Expr>> {
+        if self.token == TokenKind::Semi {
+            return None;
+        }
+        let ConstItemRhsKind::Body { rhs: Some(rhs) } = rhs else {
+            return None;
+        };
+        if !self.in_fn_body || !self.may_recover() || rhs.span.from_expansion() {
+            return None;
+        }
+        if let Some((span, guar)) =
+            self.missing_semi_from_binop("const", rhs, Some(const_span.shrink_to_lo()))
+        {
+            self.fn_body_missing_semi_guar = Some(guar);
+            Some(self.mk_expr(span, ExprKind::Err(guar)))
+        } else {
+            None
+        }
     }
 }
 

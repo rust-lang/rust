@@ -105,9 +105,10 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
                     Some(ConstItemInteriorMutationsSuggestionStatic::Spanful {
                         const_: const_item.vis_span.between(ident.span),
                         before: if !vis_span.is_empty() { " " } else { "" },
+                        const_name,
                     })
                 } else {
-                    Some(ConstItemInteriorMutationsSuggestionStatic::Spanless)
+                    Some(ConstItemInteriorMutationsSuggestionStatic::Spanless { const_name })
                 }
             } else {
                 None

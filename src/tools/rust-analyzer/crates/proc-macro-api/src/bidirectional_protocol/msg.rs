@@ -22,6 +22,7 @@ pub enum SubRequest {
     LineColumn { file_id: u32, ast_id: u32, offset: u32 },
     ByteRange { file_id: u32, ast_id: u32, start: u32, end: u32 },
     SpanSource { file_id: u32, ast_id: u32, start: u32, end: u32, ctx: u32 },
+    SpanParent { file_id: u32, ast_id: u32, start: u32, end: u32, ctx: u32 },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,9 +51,21 @@ pub enum SubResponse {
         end: u32,
         ctx: u32,
     },
+    SpanParentResult {
+        parent_span: Option<ParentSpan>,
+    },
     Cancel {
         reason: String,
     },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ParentSpan {
+    pub file_id: u32,
+    pub ast_id: u32,
+    pub start: u32,
+    pub end: u32,
+    pub ctx: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

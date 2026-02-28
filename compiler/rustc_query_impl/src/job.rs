@@ -438,7 +438,12 @@ pub(crate) fn report_cycle<'a>(
     let mut cycle_stack = Vec::new();
 
     use crate::error::StackCount;
-    let stack_count = if stack.len() == 1 { StackCount::Single } else { StackCount::Multiple };
+    let stack_bottom = stack[0].frame.info.description.to_owned();
+    let stack_count = if stack.len() == 1 {
+        StackCount::Single { stack_bottom: stack_bottom.clone() }
+    } else {
+        StackCount::Multiple { stack_bottom: stack_bottom.clone() }
+    };
 
     for i in 1..stack.len() {
         let frame = &stack[i].frame;
@@ -467,7 +472,7 @@ pub(crate) fn report_cycle<'a>(
     let cycle_diag = crate::error::Cycle {
         span,
         cycle_stack,
-        stack_bottom: stack[0].frame.info.description.to_owned(),
+        stack_bottom,
         alias,
         cycle_usage,
         stack_count,

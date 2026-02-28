@@ -328,11 +328,7 @@ impl<'db> CastCheck<'db> {
                     //
                     // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
                     // and is unaffected by this check.
-                    (Some(src_principal), Some(dst_principal)) => {
-                        if src_principal == dst_principal {
-                            return Ok(());
-                        }
-
+                    (Some(src_principal), Some(_)) => {
                         // We need to reconstruct trait object types.
                         // `m_src` and `m_dst` won't work for us here because they will potentially
                         // contain wrappers, which we do not care about.

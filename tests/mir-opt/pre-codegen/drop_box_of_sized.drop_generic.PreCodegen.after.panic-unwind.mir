@@ -13,6 +13,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     }
                     scope 18 (inlined std::ptr::Unique::<T>::cast::<u8>) {
                         scope 19 (inlined NonNull::<T>::cast::<u8>) {
+                            let mut _4: *mut u8;
                             scope 20 (inlined NonNull::<T>::as_ptr) {
                             }
                         }
@@ -24,7 +25,6 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _4: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
                                 scope 27 (inlined NonNull::<u8>::as_ptr) {
@@ -71,25 +71,19 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     bb0: {
         _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
         _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::ptr::Alignment (Transmute);
-        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb4, otherwise: bb1];
+        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
     }
 
     bb1: {
-        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb4, otherwise: bb2];
+        _4 = copy _2 as *mut u8 (Transmute);
+        switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb2];
     }
 
     bb2: {
-        StorageLive(_4);
-        _4 = copy _2 as *mut u8 (Transmute);
         _5 = alloc::alloc::__rust_dealloc(move _4, const <T as std::mem::SizedTypeProperties>::SIZE, move _3) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_4);
-        goto -> bb4;
-    }
-
-    bb4: {
         return;
     }
 }

@@ -62,6 +62,20 @@ pub(crate) enum RewriteError {
     Unknown,
 }
 
+pub(crate) struct ExceedsMaxWidthError {
+    pub configured_width: usize,
+    pub span: Span,
+}
+
+impl From<ExceedsMaxWidthError> for RewriteError {
+    fn from(error: ExceedsMaxWidthError) -> Self {
+        RewriteError::ExceedsMaxWidth {
+            configured_width: error.configured_width,
+            span: error.span,
+        }
+    }
+}
+
 /// Extension trait used to conveniently convert to RewriteError
 pub(crate) trait RewriteErrorExt<T> {
     fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError>;
@@ -99,6 +113,9 @@ pub(crate) struct RewriteContext<'a> {
     // When `is_if_else_block` is true, unindent the comment on top
     // of the `else` or `else if`.
     pub(crate) is_if_else_block: Cell<bool>,
+    // When `is_loop_block` is true, we can more aggressively end the
+    // last statement of the block with a semicolon.
+    pub(crate) is_loop_block: Cell<bool>,
     // When rewriting chain, veto going multi line except the last element
     pub(crate) force_one_line_chain: Cell<bool>,
     pub(crate) snippet_provider: &'a SnippetProvider,
@@ -159,5 +176,9 @@ impl<'a> RewriteContext<'a> {
 
     pub(crate) fn is_if_else_block(&self) -> bool {
         self.is_if_else_block.get()
+    }
+
+    pub(crate) fn is_loop_block(&self) -> bool {
+        self.is_loop_block.get()
     }
 }

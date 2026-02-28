@@ -48,10 +48,10 @@ pub struct CrateDepMultiple {
 }
 
 #[derive(Subdiagnostic)]
-#[note("`{$crate_name}` was unavailable as a static crate, preventing fully static linking")]
+#[note("`{$sub_crate_name}` was unavailable as a static crate, preventing fully static linking")]
 pub struct NonStaticCrateDep {
     /// It's different from `crate_name` in main Diagnostic.
-    pub crate_name_: Symbol,
+    pub sub_crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

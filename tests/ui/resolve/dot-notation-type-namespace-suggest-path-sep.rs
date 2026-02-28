@@ -35,9 +35,9 @@ fn main() {
 macro_rules! Type {
     () => {
         ::std::cell::Cell
-        //~^ ERROR expected value, found struct `std::cell::Cell`
-        //~| ERROR expected value, found struct `std::cell::Cell`
-        //~| ERROR expected value, found struct `std::cell::Cell`
+        //~^ ERROR expected value, found struct `::std::cell::Cell`
+        //~| ERROR expected value, found struct `::std::cell::Cell`
+        //~| ERROR expected value, found struct `::std::cell::Cell`
     };
     (alias) => {
         Alias

@@ -157,8 +157,21 @@ fn report_bin_hex_error(
             (t.name_str(), actually.to_string())
         }
     };
-    let sign =
-        if negative { OverflowingBinHexSign::Negative } else { OverflowingBinHexSign::Positive };
+    let sign = if negative {
+        OverflowingBinHexSign::Negative {
+            lit: repr_str.clone(),
+            dec: val,
+            actually: actually.clone(),
+            ty: t,
+        }
+    } else {
+        OverflowingBinHexSign::Positive {
+            lit: repr_str.clone(),
+            dec: val,
+            actually: actually.clone(),
+            ty: t,
+        }
+    };
     let sub = get_type_suggestion(cx.typeck_results().node_type(hir_id), val, negative).map(
         |suggestion_ty| {
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
@@ -194,7 +207,7 @@ fn report_bin_hex_error(
             Some(OverflowingBinHexSignBitSub {
                 span,
                 lit_no_suffix,
-                negative_val: actually.clone(),
+                negative_val: actually,
                 int_ty: int_ty.name_str(),
                 uint_ty: Integer::fit_unsigned(val).uint_ty_str(),
             })
@@ -204,15 +217,7 @@ fn report_bin_hex_error(
     cx.emit_span_lint(
         OVERFLOWING_LITERALS,
         span,
-        OverflowingBinHex {
-            ty: t,
-            lit: repr_str.clone(),
-            dec: val,
-            actually,
-            sign,
-            sub,
-            sign_bit_sub,
-        },
+        OverflowingBinHex { ty: t, sign, sub, sign_bit_sub },
     )
 }
 

@@ -1,6 +1,11 @@
-//@revisions: edition2015 edition2024
-//@[edition2015] edition:2015
-//@[edition2024] edition:2024
+//@ revisions: edition2015 edition2024 polonius_alpha
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ [edition2015] edition: 2015
+//@ [edition2024] edition: 2024
+//@ [polonius_alpha] known-bug: #153215
+//@ [polonius_alpha] check-pass
+//@ [polonius_alpha] edition: 2024
+//@ [polonius_alpha] compile-flags: -Zpolonius=next
 
 // Test to show what happens if we were not careful and allowed invariant
 // lifetimes to escape though an impl trait.

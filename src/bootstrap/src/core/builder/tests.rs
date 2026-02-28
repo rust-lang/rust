@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use std::env::VarError;
 use std::{panic, thread};
 
@@ -3076,6 +3077,45 @@ mod snapshot {
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
         [dist] rustc 1 <x86_64-unknown-linux-gnu> -> rustc_codegen_cranelift 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> LlvmBitcodeLinker 2 <x86_64-unknown-linux-gnu>
+        ");
+    }
+
+    #[test]
+    fn cargo_miri_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["cargo-miri"])
+                .stage(1)
+                .get_steps()
+                .render(), @"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [build] rustdoc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    fn cargo_miri_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["cargo-miri"])
+                .stage(2)
+                .get_steps()
+                .render(), @"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> miri 2 <host>
+        [build] rustc 1 <host> -> cargo-miri 2 <host>
+        [build] rustdoc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
         ");
     }
 

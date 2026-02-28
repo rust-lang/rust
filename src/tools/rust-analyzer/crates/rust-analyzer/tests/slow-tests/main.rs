@@ -22,6 +22,7 @@ mod testdir;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
+use ide_db::FxHashMap;
 use lsp_types::{
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
@@ -670,6 +671,17 @@ fn main() {}
 #[test]
 fn test_format_document_range() {
     if skip_slow_tests() {
+        return;
+    }
+
+    // This test requires a nightly toolchain, so skip if it's not available.
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let has_nightly_rustfmt = toolchain::command("rustfmt", cwd, &FxHashMap::default())
+        .args(["+nightly", "--version"])
+        .output()
+        .is_ok_and(|out| out.status.success());
+    if !has_nightly_rustfmt {
+        tracing::warn!("skipping test_format_document_range: nightly rustfmt not available");
         return;
     }
 

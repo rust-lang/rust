@@ -15,22 +15,19 @@
 //! The precise rules for validity are not determined yet. The guarantees that are
 //! provided at this point are very minimal:
 //!
-//! * For memory accesses of [size zero][zst], *every* pointer is valid, including the [null]
-//!   pointer. The following points are only concerned with non-zero-sized accesses.
-//! * A [null] pointer is *never* valid.
-//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
-//!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocation]
-//!   it is derived from; a pointer is dereferenceable if the memory range of the given size
-//!   starting at the pointer is entirely contained within the bounds of that allocation. Note
+//! * A [null] pointer is *never* valid for reads/writes.
+//! * For memory accesses of [size zero][zst], *every* non-null pointer is valid for reads/writes.
+//!   The following points are only concerned with non-zero-sized accesses.
+//! * For a pointer to be valid for reads/writes, it is necessary, but not always sufficient, that
+//!   the pointer be *dereferenceable*. The [provenance] of the pointer is used to determine which
+//!   [allocation] it is derived from; a pointer is dereferenceable if the memory range of the given
+//!   size starting at the pointer is entirely contained within the bounds of that allocation. Note
 //!   that in Rust, every (stack-allocated) variable is considered a separate allocation.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
-//!   threads unless both accesses only read from memory. Notice that this explicitly
-//!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
-//!   be used for inter-thread synchronization, regardless of whether they are acting on
-//!   Rust memory or not.
-//! * The result of casting a reference to a pointer is valid for as long as the
+//!   threads unless both accesses only read from memory.
+//! * The result of casting a reference to a pointer is valid for reads/writes for as long as the
 //!   underlying allocation is live and no reference (just raw pointers) is used to
 //!   access the same memory. That is, reference and pointer accesses cannot be
 //!   interleaved.
@@ -40,6 +37,13 @@
 //! will be provided eventually, as the [aliasing] rules are being determined. For more
 //! information, see the [book] as well as the section in the reference devoted
 //! to [undefined behavior][ub].
+//!
+//! Note that some operations such as [`read`] and [`write`][`write()`] do allow null pointers if
+//! the total size of the access is zero. However, other operations internally convert pointers into
+//! references. Therefore, the general notion of "valid for reads/writes" excludes null pointers,
+//! and the specific operations that permit null pointers mention that as an exception. Furthermore,
+//! [`read_volatile`] and [`write_volatile`] can be used in even more situations; see their
+//! documentation for details.
 //!
 //! We say that a pointer is "dangling" if it is not valid for any non-zero-sized accesses. This
 //! means out-of-bounds pointers, pointers to freed memory, null pointers, and pointers created with
@@ -450,9 +454,9 @@ mod mut_ptr;
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes or that number must be 0.
 ///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes or that number must be 0.
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///
@@ -568,11 +572,11 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes or that number must be 0.
 ///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
-///   when `src` is read for `count * size_of::<T>()` bytes. (This means if the memory ranges
-///   overlap, the `dst` pointer must not be invalidated by `src` reads.)
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes or that number must be 0,
+///   and `dst` must remain valid even when `src` is read for `count * size_of::<T>()` bytes. (This
+///   means if the memory ranges overlap, the `dst` pointer must not be invalidated by `src` reads.)
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///
@@ -1508,7 +1512,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for both reads and writes.
+/// * `dst` must be [valid] for both reads and writes or `T` must be a ZST.
 ///
 /// * `dst` must be properly aligned.
 ///
@@ -1555,10 +1559,9 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
             ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         if T::IS_ZST {
-            // `dst` may be valid for read and writes while also being null, in which case we cannot
-            // call `mem::replace`. However, we also don't have to actually do anything since there
-            // isn't actually any data to be copied anyway. All values of type `T` are
-            // bit-identical, so we can just return `src` here.
+            // If `T` is a ZST, `dst` is allowed to be null. However, we also don't have to actually
+            // do anything since there isn't actually any data to be copied anyway. All values of
+            // type `T` are bit-identical, so we can just return `src` here.
             return src;
         }
         mem::replace(&mut *dst, src)
@@ -1572,7 +1575,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads.
+/// * `src` must be [valid] for reads or `T` must be a ZST.
 ///
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
@@ -1824,7 +1827,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for writes.
+/// * `dst` must be [valid] for writes or `T` must be a ZST.
 ///
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
@@ -2047,8 +2050,8 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be either [valid] for reads, or it must point to memory outside of all Rust
-///   allocations and reading from that memory must:
+/// * `src` must be either [valid] for reads, or `T` must be a ZST, or `src` must point to memory
+///   outside of all Rust allocations and reading from that memory must:
 ///   - not trap, and
 ///   - not cause any memory inside a Rust allocation to be modified.
 ///
@@ -2135,8 +2138,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be either [valid] for writes, or it must point to memory outside of all Rust
-///   allocations and writing to that memory must:
+/// * `dst` must be either [valid] for writes, or `T` must be a ZST, or `dst` must point to memory
+///   outside of all Rust allocations and writing to that memory must:
 ///   - not trap, and
 ///   - not cause any memory inside a Rust allocation to be modified.
 ///

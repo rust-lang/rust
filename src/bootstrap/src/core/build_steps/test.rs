@@ -805,6 +805,20 @@ impl Step for CargoMiri {
             &[],
         );
 
+        // If we are testing stage 2+ cargo miri, make sure that it works with the in-tree cargo.
+        // We want to do this *somewhere* to ensure that Miri + nightly cargo actually works.
+        if stage >= 2 {
+            let built_cargo = builder
+                .ensure(tool::Cargo::from_build_compiler(
+                    // Build stage 1 cargo here, we don't need it to be built in any special way,
+                    // just that it is built from in-tree sources.
+                    builder.compiler(0, builder.host_target),
+                    builder.host_target,
+                ))
+                .tool_path;
+            cargo.env("CARGO", built_cargo);
+        }
+
         // We're not using `prepare_cargo_test` so we have to do this ourselves.
         // (We're not using that as the test-cargo-miri crate is not known to bootstrap.)
         match builder.doc_tests {
