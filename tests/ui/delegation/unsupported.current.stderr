@@ -29,18 +29,13 @@ note: ...which requires comparing an impl and trait method signature, inferring 
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
-   = note: cycle used when checking effective visibilities
+note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret` is compatible with trait definition
+  --> $DIR/unsupported.rs:33:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0283]: type annotations needed
-  --> $DIR/unsupported.rs:54:18
-   |
-LL |     reuse Trait::foo;
-   |                  ^^^ cannot infer type
-   |
-   = note: cannot satisfy `_: effects::Trait`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0283, E0391.
-For more information about an error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0391`.

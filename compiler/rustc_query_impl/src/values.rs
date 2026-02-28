@@ -45,12 +45,6 @@ impl<'tcx> Value<'tcx> for Ty<'_> {
     }
 }
 
-impl<'tcx> Value<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
-        Err(CyclePlaceholder(guar))
-    }
-}
-
 impl<'tcx> Value<'tcx> for ty::SymbolName<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, _guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
@@ -130,16 +124,6 @@ impl<'tcx> Value<'tcx> for Representability {
         }
         let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
         Representability::Infinite(guar)
-    }
-}
-
-impl<'tcx> Value<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
-    fn from_cycle_error(
-        tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
-        guar: ErrorGuaranteed,
-    ) -> Self {
-        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
