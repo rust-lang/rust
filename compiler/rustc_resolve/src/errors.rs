@@ -1126,11 +1126,13 @@ pub(crate) enum NameDefinedMultipleTimeLabel {
     Reimported {
         #[primary_span]
         span: Span,
+        name: Symbol,
     },
     #[label("`{$name}` redefined here")]
     Redefined {
         #[primary_span]
         span: Span,
+        name: Symbol,
     },
 }
 
@@ -1141,12 +1143,14 @@ pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
         #[primary_span]
         span: Span,
         old_kind: &'static str,
+        name: Symbol,
     },
     #[label("previous definition of the {$old_kind} `{$name}` here")]
     Definition {
         #[primary_span]
         span: Span,
         old_kind: &'static str,
+        name: Symbol,
     },
 }
 

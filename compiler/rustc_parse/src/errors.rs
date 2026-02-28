@@ -1016,7 +1016,6 @@ pub(crate) struct LeadingPlusNotSupported {
 pub(crate) struct ParenthesesWithStructFields {
     #[primary_span]
     pub span: Span,
-    pub r#type: Path,
     #[subdiagnostic]
     pub braces_for_struct: BracesForStructLiteral,
     #[subdiagnostic]
@@ -1029,6 +1028,7 @@ pub(crate) struct ParenthesesWithStructFields {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct BracesForStructLiteral {
+    pub r#type: Path,
     #[suggestion_part(code = " {{ ")]
     pub first: Span,
     #[suggestion_part(code = " }}")]
@@ -1041,6 +1041,7 @@ pub(crate) struct BracesForStructLiteral {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct NoFieldsForFnCall {
+    pub r#type: Path,
     #[suggestion_part(code = "")]
     pub fields: Vec<Span>,
 }
@@ -3176,6 +3177,7 @@ pub(crate) struct UnexpectedVertVertInPattern {
 pub(crate) struct TrailingVertSuggestion {
     #[primary_span]
     pub span: Span,
+    pub token: Token,
 }
 
 #[derive(Diagnostic)]

@@ -532,7 +532,9 @@ pub(crate) struct BuiltinInternalFeatures {
 
 #[derive(Subdiagnostic)]
 #[help("consider using `min_{$name}` instead, which is more stable and complete")]
-pub(crate) struct BuiltinIncompleteFeaturesHelp;
+pub(crate) struct BuiltinIncompleteFeaturesHelp {
+    pub name: Symbol,
+}
 
 #[derive(Subdiagnostic)]
 #[note("see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information")]
@@ -663,14 +665,15 @@ pub(crate) struct SupertraitAsDerefTarget<'a> {
     )]
     pub label: Span,
     #[subdiagnostic]
-    pub label2: Option<SupertraitAsDerefTargetLabel>,
+    pub label2: Option<SupertraitAsDerefTargetLabel<'a>>,
 }
 
 #[derive(Subdiagnostic)]
 #[label("target type is a supertrait of `{$self_ty}`")]
-pub(crate) struct SupertraitAsDerefTargetLabel {
+pub(crate) struct SupertraitAsDerefTargetLabel<'a> {
     #[primary_span]
     pub label: Span,
+    pub self_ty: Ty<'a>,
 }
 
 // enum_intrinsics_non_enums.rs
@@ -958,9 +961,10 @@ pub(crate) enum ConstItemInteriorMutationsSuggestionStatic {
         #[primary_span]
         const_: Span,
         before: &'static str,
+        const_name: Ident,
     },
     #[help("for a shared instance of `{$const_name}`, consider making it a `static` item instead")]
-    Spanless,
+    Spanless { const_name: Ident },
 }
 
 // reference_casting.rs
@@ -1972,11 +1976,8 @@ pub(crate) enum UseInclusiveRange<'a> {
 #[diag("literal out of range for `{$ty}`")]
 pub(crate) struct OverflowingBinHex<'a> {
     pub ty: &'a str,
-    pub lit: String,
-    pub dec: u128,
-    pub actually: String,
     #[subdiagnostic]
-    pub sign: OverflowingBinHexSign,
+    pub sign: OverflowingBinHexSign<'a>,
     #[subdiagnostic]
     pub sub: Option<OverflowingBinHexSub<'a>>,
     #[subdiagnostic]
@@ -1984,14 +1985,14 @@ pub(crate) struct OverflowingBinHex<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum OverflowingBinHexSign {
+pub(crate) enum OverflowingBinHexSign<'a> {
     #[note(
         "the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}` and will become `{$actually}{$ty}`"
     )]
-    Positive,
+    Positive { lit: String, ty: &'a str, actually: String, dec: u128 },
     #[note("the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`")]
     #[note("and the value `-{$lit}` will become `{$actually}{$ty}`")]
-    Negative,
+    Negative { lit: String, ty: &'a str, actually: String, dec: u128 },
 }
 
 #[derive(Subdiagnostic)]
@@ -2562,6 +2563,7 @@ pub(crate) struct UnusedDelimSuggestion {
     #[suggestion_part(code = "{end_replace}")]
     pub end_span: Span,
     pub end_replace: &'static str,
+    pub delim: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -3131,20 +3133,35 @@ pub(crate) enum UnusedImportsSugg {
 pub(crate) struct RedundantImport {
     #[subdiagnostic]
     pub subs: Vec<RedundantImportSub>,
-
     pub ident: Ident,
 }
 
 #[derive(Subdiagnostic)]
 pub(crate) enum RedundantImportSub {
     #[label("the item `{$ident}` is already imported here")]
-    ImportedHere(#[primary_span] Span),
+    ImportedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
     #[label("the item `{$ident}` is already defined here")]
-    DefinedHere(#[primary_span] Span),
+    DefinedHere {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
     #[label("the item `{$ident}` is already imported by the extern prelude")]
-    ImportedPrelude(#[primary_span] Span),
+    ImportedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
     #[label("the item `{$ident}` is already defined by the extern prelude")]
-    DefinedPrelude(#[primary_span] Span),
+    DefinedPrelude {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
 }
 
 #[derive(LintDiagnostic)]

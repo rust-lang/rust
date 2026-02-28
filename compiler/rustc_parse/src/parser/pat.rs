@@ -364,6 +364,7 @@ impl<'a> Parser<'a> {
                     start: lo,
                     suggestion: TrailingVertSuggestion {
                         span: self.prev_token.span.shrink_to_hi().with_hi(self.token.span.hi()),
+                        token: self.token,
                     },
                     token: self.token,
                     note_double_vert: self.token.kind == token::OrOr,

@@ -88,6 +88,8 @@ pub(crate) enum AssocItemNotFoundLabel<'a> {
     NotFound {
         #[primary_span]
         span: Span,
+        assoc_ident: Ident,
+        assoc_kind: &'static str,
     },
     #[label(
         "there is {$identically_named ->
@@ -149,6 +151,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
         trait_ref: String,
         suggested_name: Symbol,
         identically_named: bool,
+        assoc_kind: &'static str,
         #[applicability]
         applicability: Applicability,
     },

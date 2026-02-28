@@ -3288,12 +3288,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.fn_once_label = Some(ClosureFnOnceLabel {
                         span: *span,
                         place: ty::place_to_string_for_capture(self.tcx, place),
+                        trait_prefix,
                     })
                 }
                 (ty::ClosureKind::FnMut, Some((span, place))) => {
                     err.fn_mut_label = Some(ClosureFnMutLabel {
                         span: *span,
                         place: ty::place_to_string_for_capture(self.tcx, place),
+                        trait_prefix,
                     })
                 }
                 _ => {}

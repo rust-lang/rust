@@ -389,4 +389,5 @@ pub(crate) struct ForceInlineFailure {
 #[note("`{$callee}` is required to be inlined to: {$sym}")]
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
+    pub callee: String,
 }

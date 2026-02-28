@@ -350,6 +350,7 @@ trait UnusedDelimLint {
                 start_replace: lo_replace,
                 end_span: hi,
                 end_replace: hi_replace,
+                delim: Self::DELIM_STR,
             }
         });
         cx.emit_span_lint(
