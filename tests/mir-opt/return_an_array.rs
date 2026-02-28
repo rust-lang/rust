@@ -10,6 +10,6 @@ fn main() {}
 // File checks to confirm that the array is assigned and returned
 // In the mir output
 
-// CHECK: let mut _0: [u8; 1024]; 
+// CHECK: let mut _0: [u8; 1024];
 // CHECK: _0 = [const 0_u8; 1024];
 // CHECK: return;
