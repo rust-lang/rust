@@ -5,7 +5,6 @@
 //@ aux-build:helper.rs
 //@ no-prefer-dynamic
 
-#![feature(allocator_api)]
 
 extern crate custom;
 extern crate custom_as_global;
