@@ -459,6 +459,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher(hasher: S) -> Self {
@@ -496,6 +497,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
@@ -543,6 +545,7 @@ where
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher_in(hasher: S, alloc: A) -> Self {
@@ -580,6 +583,7 @@ where
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> Self {
         Self {

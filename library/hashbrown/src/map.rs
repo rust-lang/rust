@@ -433,6 +433,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher(hash_builder: S) -> Self {
@@ -474,6 +475,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
@@ -516,6 +518,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
@@ -551,6 +554,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
+    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         Self {
