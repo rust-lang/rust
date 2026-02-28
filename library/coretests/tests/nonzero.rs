@@ -282,11 +282,11 @@ fn test_nonzero_from_int_on_success() {
 
 #[test]
 fn test_nonzero_from_int_on_err() {
-    assert!(NonZero::<u8>::try_from(0).is_err());
-    assert!(NonZero::<u32>::try_from(0).is_err());
+    assert_eq!(NonZero::<u8>::try_from(0).unwrap_err().kind(), &IntErrorKind::Zero);
+    assert_eq!(NonZero::<u32>::try_from(0).unwrap_err().kind(), &IntErrorKind::Zero);
 
-    assert!(NonZero::<i8>::try_from(0).is_err());
-    assert!(NonZero::<i32>::try_from(0).is_err());
+    assert_eq!(NonZero::<i8>::try_from(0).unwrap_err().kind(), &IntErrorKind::Zero);
+    assert_eq!(NonZero::<i32>::try_from(0).unwrap_err().kind(), &IntErrorKind::Zero);
 }
 
 #[test]
