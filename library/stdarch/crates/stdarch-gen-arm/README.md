@@ -205,9 +205,6 @@ MatchKind:
 - `Array`
     - An array of expressions
     - Usage: `Array: [<expression>, ...]`
-- `SvUndef`
-    - Returns the LLVM `undef` symbol
-    - Usage: `SvUndef`
 - `Multiply`
     - Simply `*`
     - Usage: `Multiply: [<expression>, <expression>]`
