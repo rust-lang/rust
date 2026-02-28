@@ -157,7 +157,7 @@ pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     }
 
     impl rustc_lint::EmitDiag for DiagEmitter<'_> {
-        fn emit(&self, diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>) {
+        fn emit(self, diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>) {
             self.tcx.emit_node_span_lint(self.lint, self.hir_id, self.span, diag);
         }
     }
@@ -165,7 +165,7 @@ pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
             rustc_lint::decorate_attribute_lint(
-                &DiagEmitter {
+                DiagEmitter {
                     hir_id: attribute_lint.id,
                     tcx,
                     span: attribute_lint.span,

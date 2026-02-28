@@ -14,8 +14,8 @@ use crate::{EmitDiag, lints};
 
 mod check_cfg;
 
-pub fn decorate_builtin_lint<D: EmitDiag>(
-    ctx: &D,
+pub fn decorate_builtin_lint(
+    ctx: impl EmitDiag,
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     diagnostic: BuiltinLintDiag,
@@ -296,8 +296,8 @@ pub fn decorate_builtin_lint<D: EmitDiag>(
     }
 }
 
-pub fn decorate_attribute_lint<D: EmitDiag>(
-    ctx: &D,
+pub fn decorate_attribute_lint(
+    ctx: impl EmitDiag,
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     kind: &AttributeLintKind,
