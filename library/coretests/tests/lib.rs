@@ -119,6 +119,7 @@
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]
 #![feature(try_find)]
+#![feature(try_from_int_error_kind)]
 #![feature(try_trait_v2)]
 #![feature(type_info)]
 #![feature(uint_bit_width)]

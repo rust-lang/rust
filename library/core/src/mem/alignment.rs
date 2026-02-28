@@ -281,7 +281,7 @@ impl const TryFrom<usize> for Alignment {
 
     #[inline]
     fn try_from(align: usize) -> Result<Alignment, Self::Error> {
-        Self::new(align).ok_or(num::TryFromIntError(()))
+        Self::new(align).ok_or(num::TryFromIntError(num::IntErrorKind::NotAPowerOfTwo))
     }
 }
 
