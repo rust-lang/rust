@@ -50,7 +50,7 @@ impl Mutex {
 
         loop {
             // Put the lock in contended state.
-            // We avoid an unnecessary write if it as already set to CONTENDED,
+            // We avoid an unnecessary write if it is already set to CONTENDED,
             // to be friendlier for the caches.
             if state != CONTENDED && self.futex.swap(CONTENDED, Acquire) == UNLOCKED {
                 // We changed it from UNLOCKED to CONTENDED, so we just successfully locked it.
