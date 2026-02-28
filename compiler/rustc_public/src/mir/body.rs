@@ -590,6 +590,11 @@ pub enum Rvalue {
     /// Yields the operand unchanged
     Use(Operand),
 
+    /// Creates a bitwise copy of the source type, producing either a value of the same type (when
+    /// Mutability::Mut) or a different type with a guaranteed equal memory layout defined by the
+    /// CoerceShared trait. See [`Rvalue::Reborrow`] for a more detailed explanation.
+    ///
+    /// [`Rvalue::Reborrow`]: rustc_middle::mir::Rvalue::Reborrow
     Reborrow(Mutability, Place),
 }
 
