@@ -18,8 +18,8 @@
 //@ ignore-nvptx64
 
 // See https://github.com/rust-lang/rust/pull/151431#issuecomment-3975560321
-// for why this test skips the `aarch64-apple` target.
-//@ ignore-aarch64-apple
+// for why this test skips the `aarch64-apple-darwin` target.
+//@ ignore-aarch64-apple-darwin
 
 use std::collections::HashSet;
 
