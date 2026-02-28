@@ -319,7 +319,8 @@ impl Socket {
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = netc::linger {
             l_onoff: linger.is_some() as netc::c_int,
-            l_linger: linger.unwrap_or_default().as_secs() as netc::c_int,
+            l_linger: cmp::min(linger.unwrap_or_default().as_secs(), netc::c_int::MAX as u64)
+                as netc::c_int,
         };
 
         unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER, linger) }
