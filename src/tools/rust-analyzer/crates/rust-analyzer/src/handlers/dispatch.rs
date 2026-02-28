@@ -414,7 +414,8 @@ impl NotificationDispatcher<'_> {
         let params = match not.extract::<N::Params>(N::METHOD) {
             Ok(it) => it,
             Err(ExtractError::JsonError { method, error }) => {
-                panic!("Invalid request\nMethod: {method}\n error: {error}",)
+                tracing::error!(method = %method, error = %error, "invalid notification");
+                return self;
             }
             Err(ExtractError::MethodMismatch(not)) => {
                 self.not = Some(not);

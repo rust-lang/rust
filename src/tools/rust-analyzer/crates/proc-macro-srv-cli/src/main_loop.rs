@@ -309,6 +309,40 @@ impl proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_> {
             other => handle_failure(other),
         }
     }
+
+    fn span_parent(
+        &mut self,
+        proc_macro_srv::span::Span { range, anchor, ctx }: proc_macro_srv::span::Span,
+    ) -> Option<proc_macro_srv::span::Span> {
+        let response = self.roundtrip(bidirectional::SubRequest::SpanParent {
+            file_id: anchor.file_id.as_u32(),
+            ast_id: anchor.ast_id.into_raw(),
+            start: range.start().into(),
+            end: range.end().into(),
+            ctx: ctx.into_u32(),
+        });
+
+        match response {
+            Ok(bidirectional::SubResponse::SpanParentResult { parent_span }) => {
+                parent_span.map(|bidirectional::ParentSpan { file_id, ast_id, start, end, ctx }| {
+                    proc_macro_srv::span::Span {
+                        range: proc_macro_srv::span::TextRange::new(
+                            proc_macro_srv::span::TextSize::new(start),
+                            proc_macro_srv::span::TextSize::new(end),
+                        ),
+                        anchor: proc_macro_srv::span::SpanAnchor {
+                            file_id: proc_macro_srv::span::EditionedFileId::from_raw(file_id),
+                            ast_id: proc_macro_srv::span::ErasedFileAstId::from_raw(ast_id),
+                        },
+                        // SAFETY: spans originate from the server. If the protocol is violated,
+                        // undefined behavior is the caller’s responsibility.
+                        ctx: unsafe { proc_macro_srv::span::SyntaxContext::from_u32(ctx) },
+                    }
+                })
+            }
+            other => handle_failure(other),
+        }
+    }
 }
 
 fn handle_expand_ra(
