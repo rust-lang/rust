@@ -826,7 +826,13 @@ impl DepGraph {
     where
         F: FnOnce() -> String,
     {
-        let dep_node_debug = &self.data.as_ref().unwrap().dep_node_debug;
+        // Early queries (e.g., `-Z query-dep-graph` on empty crates) can reach here
+        // before the graph is initialized. Return early to prevent an ICE.
+        let data = match &self.data {
+            Some(d) => d,
+            None => return,
+        };
+        let dep_node_debug = &data.dep_node_debug;
 
         if dep_node_debug.borrow().contains_key(&dep_node) {
             return;
