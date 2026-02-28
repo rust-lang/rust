@@ -2,7 +2,7 @@
 //@ compile-flags: -Znext-solver -Zvalidate-mir
 //@ edition: 2021
 
-// Regression test for https://github.com/rust-lang/trait-system-refactor-initiative/issues/251.
+// Regression test for <https://github.com/rust-lang/trait-system-refactor-initiative/issues/251>.
 //
 // This previously caused an ICE due to a non–well-formed coroutine
 // hidden type failing the leak check in the next-solver.
