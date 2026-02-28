@@ -73,7 +73,7 @@ pub(crate) trait TagSliceExt {
         self.fill_tag(Tag::EMPTY);
     }
 }
-impl TagSliceExt for [Tag] {
+impl TagSliceExt for [mem::MaybeUninit<Tag>] {
     #[inline]
     fn fill_tag(&mut self, tag: Tag) {
         // SAFETY: We have access to the entire slice, so, we can write to the entire slice.
