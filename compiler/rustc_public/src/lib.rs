@@ -30,7 +30,7 @@ pub mod rustc_internal;
 use serde::Serialize;
 
 use crate::compiler_interface::with;
-pub use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
+pub use crate::crate_def::{CrateDef, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
@@ -238,35 +238,40 @@ pub fn opaque<T: Debug>(value: &T) -> Opaque {
 }
 
 macro_rules! bridge_impl {
-    ($name: ident, $ty: ty) => {
-        impl rustc_public_bridge::bridge::$name<compiler_interface::BridgeTys> for $ty {
-            fn new(def: crate::DefId) -> Self {
-                Self(def)
+    ( $( $name:ident, $ty:ty ),* $(,)? ) => {
+        $(
+            impl rustc_public_bridge::bridge::$name<compiler_interface::BridgeTys> for $ty {
+                fn new(def: crate::DefId) -> Self {
+                    Self(def)
+                }
             }
-        }
+        )*
     };
 }
 
-bridge_impl!(CrateItem, crate::CrateItem);
-bridge_impl!(AdtDef, crate::ty::AdtDef);
-bridge_impl!(ForeignModuleDef, crate::ty::ForeignModuleDef);
-bridge_impl!(ForeignDef, crate::ty::ForeignDef);
-bridge_impl!(FnDef, crate::ty::FnDef);
-bridge_impl!(ClosureDef, crate::ty::ClosureDef);
-bridge_impl!(CoroutineDef, crate::ty::CoroutineDef);
-bridge_impl!(CoroutineClosureDef, crate::ty::CoroutineClosureDef);
-bridge_impl!(AliasDef, crate::ty::AliasDef);
-bridge_impl!(ParamDef, crate::ty::ParamDef);
-bridge_impl!(BrNamedDef, crate::ty::BrNamedDef);
-bridge_impl!(TraitDef, crate::ty::TraitDef);
-bridge_impl!(GenericDef, crate::ty::GenericDef);
-bridge_impl!(ConstDef, crate::ty::ConstDef);
-bridge_impl!(ImplDef, crate::ty::ImplDef);
-bridge_impl!(RegionDef, crate::ty::RegionDef);
-bridge_impl!(CoroutineWitnessDef, crate::ty::CoroutineWitnessDef);
-bridge_impl!(AssocDef, crate::ty::AssocDef);
-bridge_impl!(OpaqueDef, crate::ty::OpaqueDef);
-bridge_impl!(StaticDef, crate::mir::mono::StaticDef);
+#[rustfmt::skip]
+bridge_impl!(
+    CrateItem,           crate::CrateItem,
+    AdtDef,              crate::ty::AdtDef,
+    ForeignModuleDef,    crate::ty::ForeignModuleDef,
+    ForeignDef,          crate::ty::ForeignDef,
+    FnDef,               crate::ty::FnDef,
+    ClosureDef,          crate::ty::ClosureDef,
+    CoroutineDef,        crate::ty::CoroutineDef,
+    CoroutineClosureDef, crate::ty::CoroutineClosureDef,
+    AliasDef,            crate::ty::AliasDef,
+    ParamDef,            crate::ty::ParamDef,
+    BrNamedDef,          crate::ty::BrNamedDef,
+    TraitDef,            crate::ty::TraitDef,
+    GenericDef,          crate::ty::GenericDef,
+    ConstDef,            crate::ty::ConstDef,
+    ImplDef,             crate::ty::ImplDef,
+    RegionDef,           crate::ty::RegionDef,
+    CoroutineWitnessDef, crate::ty::CoroutineWitnessDef,
+    AssocDef,            crate::ty::AssocDef,
+    OpaqueDef,           crate::ty::OpaqueDef,
+    StaticDef,           crate::mir::mono::StaticDef
+);
 
 impl rustc_public_bridge::bridge::Prov<compiler_interface::BridgeTys> for crate::ty::Prov {
     fn new(aid: crate::mir::alloc::AllocId) -> Self {

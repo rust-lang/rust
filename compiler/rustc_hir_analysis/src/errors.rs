@@ -88,6 +88,8 @@ pub(crate) enum AssocItemNotFoundLabel<'a> {
     NotFound {
         #[primary_span]
         span: Span,
+        assoc_ident: Ident,
+        assoc_kind: &'static str,
     },
     #[label(
         "there is {$identically_named ->
@@ -149,6 +151,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
         trait_ref: String,
         suggested_name: Symbol,
         identically_named: bool,
+        assoc_kind: &'static str,
         #[applicability]
         applicability: Applicability,
     },
@@ -1444,6 +1447,15 @@ pub struct NoVariantNamed<'tcx> {
     pub span: Span,
     pub ident: Ident,
     pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
+pub struct NoFieldOnType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub field: Ident,
 }
 
 // FIXME(fmease): Deduplicate:

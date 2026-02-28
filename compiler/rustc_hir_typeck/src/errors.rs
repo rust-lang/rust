@@ -491,15 +491,6 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
-pub(crate) struct NoFieldOnType<'tcx> {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) field: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag("no field named `{$field}` on enum variant `{$container}::{$ident}`", code = E0609)]
 pub(crate) struct NoFieldOnVariant<'tcx> {
     #[primary_span]

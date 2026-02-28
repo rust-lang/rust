@@ -755,6 +755,8 @@ bidirectional_lang_item_map! {
     CoroutineReturn,
     CoroutineYield,
     DynMetadata,
+    FieldBase,
+    FieldType,
     FutureOutput,
     Metadata,
 // tidy-alphabetical-end
@@ -786,6 +788,7 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     Drop,
+    Field,
     Fn,
     FnMut,
     FnOnce,

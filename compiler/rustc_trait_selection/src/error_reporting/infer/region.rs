@@ -14,7 +14,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 use super::ObligationCauseAsDiagArg;
@@ -1431,9 +1431,9 @@ fn suggest_precise_capturing<'tcx>(
             });
         } else {
             let mut next_fresh_param = || {
-                ["T", "U", "V", "W", "X", "Y", "A", "B", "C"]
+                ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
                     .into_iter()
-                    .map(Symbol::intern)
+                    .map(sym::character)
                     .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
                     .find(|s| captured_non_lifetimes.insert(*s))
                     .unwrap()

@@ -141,7 +141,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        let assoc_kind_str = assoc_tag_str(assoc_tag);
+        let assoc_kind = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
@@ -151,7 +151,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut err = errors::AssocItemNotFound {
             span: if is_dummy { span } else { assoc_ident.span },
             assoc_ident,
-            assoc_kind: assoc_kind_str,
+            assoc_kind,
             qself: &qself_str,
             label: None,
             sugg: None,
@@ -161,7 +161,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if is_dummy {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
+            err.label =
+                Some(errors::AssocItemNotFoundLabel::NotFound { span, assoc_ident, assoc_kind });
             return self.dcx().emit_err(err);
         }
 
@@ -181,7 +182,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
                 span: assoc_ident.span,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name,
             });
             return self.dcx().emit_err(err);
@@ -224,7 +225,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let trait_name = tcx.def_path_str(best_trait);
                 err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
                     span: assoc_ident.span,
-                    assoc_kind: assoc_kind_str,
+                    assoc_kind,
                     trait_name: &trait_name,
                     suggested_name,
                     identically_named: suggested_name == assoc_ident.name,
@@ -256,7 +257,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
                             trait_name: &trait_name,
-                            assoc_kind: assoc_kind_str,
+                            assoc_kind,
                             suggested_name,
                         });
                         return self.dcx().emit_err(err);
@@ -286,6 +287,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             trait_ref,
                             identically_named,
                             suggested_name,
+                            assoc_kind,
                             applicability,
                         });
                     } else {
@@ -322,11 +324,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_ident.span,
                 qself: &qself_str,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_ident.span });
+            err.label = Some(errors::AssocItemNotFoundLabel::NotFound {
+                span: assoc_ident.span,
+                assoc_ident,
+                assoc_kind,
+            });
         }
 
         self.dcx().emit_err(err)

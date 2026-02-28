@@ -8,13 +8,15 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _8: ();
+            let _10: ();
             scope 3 {
                 scope 4 {
                     scope 17 (inlined Layout::size) {
                     }
                     scope 18 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
+                        let mut _8: std::ptr::NonNull<u8>;
                         scope 19 (inlined NonNull::<[T]>::cast::<u8>) {
+                            let mut _7: *mut u8;
                             scope 20 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
@@ -26,7 +28,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _7: *mut u8;
+                                let mut _9: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
                                 scope 27 (inlined NonNull::<u8>::as_ptr) {
@@ -72,6 +74,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_8);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
         StorageLive(_4);
@@ -89,16 +93,22 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     bb2: {
         StorageLive(_7);
         _7 = copy _3 as *mut u8 (PtrToPtr);
-        _8 = alloc::alloc::__rust_dealloc(move _7, move _5, move _6) -> [return: bb3, unwind unreachable];
+        _8 = copy _7 as std::ptr::NonNull<u8> (Transmute);
+        StorageDead(_7);
+        StorageLive(_9);
+        _9 = copy _8 as *mut u8 (Transmute);
+        _10 = alloc::alloc::__rust_dealloc(move _9, move _5, move _6) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_7);
+        StorageDead(_9);
         goto -> bb4;
     }
 
     bb4: {
         StorageDead(_2);
+        StorageDead(_8);
+        StorageDead(_3);
         return;
     }
 }

@@ -2320,8 +2320,9 @@ impl EarlyLintPass for IncompleteInternalFeatures {
                 if features.incomplete(name) {
                     let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
                         .map(|n| BuiltinFeatureIssueNote { n });
-                    let help =
-                        HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
+                    let help = HAS_MIN_FEATURES
+                        .contains(&name)
+                        .then_some(BuiltinIncompleteFeaturesHelp { name });
 
                     cx.emit_span_lint(
                         INCOMPLETE_FEATURES,

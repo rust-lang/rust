@@ -262,6 +262,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(
                 LangItem::Destruct
                 | LangItem::DiscriminantKind
+                | LangItem::Field
                 | LangItem::FnPtrTrait
                 | LangItem::PointeeTrait
                 | LangItem::Tuple

@@ -115,12 +115,12 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
-                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
                             start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
+                            guarantee,
                         },
                     },
                 );

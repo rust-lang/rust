@@ -75,7 +75,7 @@ fn is_same_generic() {
     use crate::formats::cache::Cache;
     create_default_session_globals_then(|| {
         let cache = Cache::new(false, false);
-        let generic = Type::Generic(Symbol::intern("T"));
+        let generic = Type::Generic(sym::character('T'));
         let unit = Type::Primitive(PrimitiveType::Unit);
         assert!(!generic.is_doc_subtype_of(&unit, &cache));
         assert!(unit.is_doc_subtype_of(&generic, &cache));

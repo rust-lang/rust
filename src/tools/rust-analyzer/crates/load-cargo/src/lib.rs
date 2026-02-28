@@ -26,7 +26,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{
     MacroDylib, ProcMacroClient,
-    bidirectional_protocol::msg::{SubRequest, SubResponse},
+    bidirectional_protocol::msg::{ParentSpan, SubRequest, SubResponse},
 };
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::{Span, SpanAnchor, SyntaxContext};
@@ -658,6 +658,44 @@ impl ProcMacroExpander for Expander {
                     end: u32::from(resolved.range.end()),
                     ctx: current_span.ctx.into_u32(),
                 })
+            }
+            SubRequest::SpanParent { file_id, ast_id, start, end, ctx } => {
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor {
+                        file_id: span::EditionedFileId::from_raw(file_id),
+                        ast_id: span::ErasedFileAstId::from_raw(ast_id),
+                    },
+                    // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                    // but that will be their problem.
+                    ctx: unsafe { SyntaxContext::from_u32(ctx) },
+                };
+
+                if let Some(macro_call_id) = span.ctx.outer_expn(db) {
+                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+
+                    let call_site_file = macro_call_loc.kind.file_id();
+                    let call_site_ast_id = macro_call_loc.kind.erased_ast_id();
+
+                    if let Some(editioned_file_id) = call_site_file.file_id() {
+                        let range = db
+                            .ast_id_map(editioned_file_id.into())
+                            .get_erased(call_site_ast_id)
+                            .text_range();
+
+                        let parent_span = Some(ParentSpan {
+                            file_id: editioned_file_id.editioned_file_id(db).as_u32(),
+                            ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
+                            start: u32::from(range.start()),
+                            end: u32::from(range.end()),
+                            ctx: macro_call_loc.ctxt.into_u32(),
+                        });
+
+                        return Ok(SubResponse::SpanParentResult { parent_span });
+                    }
+                }
+
+                Ok(SubResponse::SpanParentResult { parent_span: None })
             }
         };
         match self.0.expand(

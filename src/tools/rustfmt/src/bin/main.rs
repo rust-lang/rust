@@ -137,6 +137,12 @@ fn make_opts() -> Options {
     );
     opts.optopt(
         "",
+        "style-edition",
+        "The edition of the Style Guide (unstable).",
+        "[2015|2018|2021|2024]",
+    );
+    opts.optopt(
+        "",
         "color",
         "Use colored output (if supported)",
         "[always|never|auto]",
@@ -628,6 +634,10 @@ impl GetOptsOptions {
             options.edition = Some(edition_from_edition_str(edition_str)?);
         }
 
+        if let Some(ref edition_str) = matches.opt_str("style-edition") {
+            options.style_edition = Some(style_edition_from_style_edition_str(edition_str)?);
+        }
+
         if matches.opt_present("backup") {
             options.backup = true;
         }
@@ -767,6 +777,7 @@ fn style_edition_from_style_edition_str(edition_str: &str) -> Result<StyleEditio
         "2018" => Ok(StyleEdition::Edition2018),
         "2021" => Ok(StyleEdition::Edition2021),
         "2024" => Ok(StyleEdition::Edition2024),
+        "2027" => Ok(StyleEdition::Edition2027),
         _ => Err(format_err!("Invalid value for `--style-edition`")),
     }
 }
@@ -955,10 +966,10 @@ mod test {
         let mut options = GetOptsOptions::default();
         let config_file = Some(Path::new("tests/config/style-edition/just-style-edition"));
         options.inline_config =
-            HashMap::from([("overflow_delimited_expr".to_owned(), "false".to_owned())]);
+            HashMap::from([("overflow_delimited_expr".to_owned(), "true".to_owned())]);
         let config = get_config(config_file, Some(options));
         // FIXME: this test doesn't really exercise anything, since
         // `overflow_delimited_expr` is disabled by default in edition 2024.
-        assert_eq!(config.overflow_delimited_expr(), false);
+        assert_eq!(config.overflow_delimited_expr(), true);
     }
 }

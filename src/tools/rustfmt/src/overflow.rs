@@ -385,8 +385,8 @@ impl<'a> Context<'a> {
 
         // 1 = "(" or ")"
         let one_line_shape = shape
-            .offset_left(last_line_width(ident) + 1)
-            .and_then(|shape| shape.sub_width(1))
+            .offset_left_opt(last_line_width(ident) + 1)
+            .and_then(|shape| shape.sub_width_opt(1))
             .unwrap_or(Shape { width: 0, ..shape });
         let nested_shape = shape_from_indent_style(context, shape, used_width + 2, used_width + 1);
         Context {
@@ -772,7 +772,7 @@ fn last_item_shape(
         width: min(args_max_width, shape.width),
         ..shape
     }
-    .offset_left(offset)
+    .offset_left_opt(offset)
 }
 
 fn shape_from_indent_style(

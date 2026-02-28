@@ -105,13 +105,11 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             let subs = spans
                 .into_iter()
-                .map(|(span, is_imported)| {
-                    (match (span.is_dummy(), is_imported) {
-                        (false, true) => lints::RedundantImportSub::ImportedHere,
-                        (false, false) => lints::RedundantImportSub::DefinedHere,
-                        (true, true) => lints::RedundantImportSub::ImportedPrelude,
-                        (true, false) => lints::RedundantImportSub::DefinedPrelude,
-                    })(span)
+                .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                    (false, true) => lints::RedundantImportSub::ImportedHere { span, ident },
+                    (false, false) => lints::RedundantImportSub::DefinedHere { span, ident },
+                    (true, true) => lints::RedundantImportSub::ImportedPrelude { span, ident },
+                    (true, false) => lints::RedundantImportSub::DefinedPrelude { span, ident },
                 })
                 .collect();
             lints::RedundantImport { subs, ident }.decorate_lint(diag);

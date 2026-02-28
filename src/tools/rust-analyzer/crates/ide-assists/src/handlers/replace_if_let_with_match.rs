@@ -57,7 +57,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
     let if_exprs = successors(Some(if_expr.clone()), |expr| match expr.else_branch()? {
         ast::ElseBranch::IfExpr(expr) => Some(expr),
         ast::ElseBranch::Block(block) => {
-            let block = unwrap_trivial_block(block).clone_for_update();
+            let block = unwrap_trivial_block(block);
             else_block = Some(block.reset_indent().indent(IndentLevel(1)));
             None
         }
@@ -91,7 +91,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
             guard
         };
 
-        let body = if_expr.then_branch()?.clone_for_update().indent(IndentLevel(1));
+        let body = if_expr.then_branch()?.indent(IndentLevel(1));
         cond_bodies.push((cond, guard, body));
     }
 
@@ -114,7 +114,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                 let make_match_arm =
                     |(pat, guard, body): (_, Option<ast::Expr>, ast::BlockExpr)| {
                         // Dedent from original position, then indent for match arm
-                        let body = body.dedent(indent).indent(IndentLevel::single());
+                        let body = body.dedent(indent);
                         let body = unwrap_trivial_block(body);
                         match (pat, guard.map(|it| make.match_guard(it))) {
                             (Some(pat), guard) => make.match_arm(pat, guard, body),
@@ -127,8 +127,8 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                         }
                     };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
-                let match_expr =
-                    make.expr_match(scrutinee_to_be_expr, make.match_arm_list(arms)).indent(indent);
+                let expr = scrutinee_to_be_expr.reset_indent();
+                let match_expr = make.expr_match(expr, make.match_arm_list(arms)).indent(indent);
                 match_expr.into()
             };
 
@@ -246,7 +246,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         first_arm.guard(),
         second_arm.guard(),
     )?;
-    let scrutinee = match_expr.expr()?;
+    let scrutinee = match_expr.expr()?.reset_indent();
     let guard = guard.and_then(|it| it.condition());
 
     let let_ = match &if_let_pat {
@@ -293,10 +293,8 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             } else {
                 condition
             };
-            let then_expr =
-                then_expr.clone_for_update().reset_indent().indent(IndentLevel::single());
-            let else_expr =
-                else_expr.clone_for_update().reset_indent().indent(IndentLevel::single());
+            let then_expr = then_expr.reset_indent();
+            let else_expr = else_expr.reset_indent();
             let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make
@@ -956,7 +954,9 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        $0if let Ok(rel_path) = path.strip_prefix(root_path) {
+        $0if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             let rel_path = RelativePathBuf::from_path(rel_path)
                 .ok()?;
             Some((*id, rel_path))
@@ -971,7 +971,8 @@ fn main() {
             r#"
 fn main() {
     if true {
-        match path.strip_prefix(root_path) {
+        match path.strip_prefix(root_path)
+            .and(x) {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path)
                     .ok()?;
@@ -993,7 +994,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        $0if let Ok(rel_path) = path.strip_prefix(root_path) {
+        $0if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             Foo {
                 x: 1
             }
@@ -1008,7 +1011,8 @@ fn main() {
             r#"
 fn main() {
     if true {
-        match path.strip_prefix(root_path) {
+        match path.strip_prefix(root_path)
+            .and(x) {
             Ok(rel_path) => {
                 Foo {
                     x: 1
@@ -1023,7 +1027,33 @@ fn main() {
     }
 }
 "#,
-        )
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+fn main() {
+    if true {
+        $0if true
+            && false
+        {
+            foo()
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    if true {
+        match true
+            && false {
+            true => foo(),
+            false => (),
+        }
+    }
+}
+"#,
+        );
     }
 
     #[test]
@@ -1878,7 +1908,9 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        $0match path.strip_prefix(root_path) {
+        $0match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => Foo {
                 x: 2
             }
@@ -1892,7 +1924,8 @@ fn main() {
             r#"
 fn main() {
     if true {
-        if let Ok(rel_path) = path.strip_prefix(root_path) {
+        if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x) {
             Foo {
                 x: 2
             }
@@ -1911,7 +1944,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        $0match path.strip_prefix(root_path) {
+        $0match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path)
                     .ok()?;
@@ -1929,7 +1964,8 @@ fn main() {
             r#"
 fn main() {
     if true {
-        if let Ok(rel_path) = path.strip_prefix(root_path) {
+        if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x) {
             let rel_path = RelativePathBuf::from_path(rel_path)
                 .ok()?;
             Some((*id, rel_path))
