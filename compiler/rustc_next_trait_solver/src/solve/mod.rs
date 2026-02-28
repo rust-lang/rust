@@ -337,13 +337,7 @@ where
         ty: I::Ty,
     ) -> Result<I::Ty, Result<MaybeCause, NoSolution>> {
         let ty = self.shallow_resolve(ty);
-        if !ty.has_aliases() {
-            return Ok(ty);
-        }
-        if ty.has_non_region_infer() {
-            return Err(Ok(MaybeCause::Ambiguity));
-        }
-        if ty.has_opaque_types() || ty.has_non_region_param() || ty.has_non_region_placeholders() {
+        if !ty.has_aliases() && !ty.has_non_region_infer() {
             return Ok(ty);
         }
 
@@ -436,48 +430,36 @@ where
             #[instrument(level = "trace", skip(self), ret)]
             fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
                 let ty = self.ecx.shallow_resolve(ty);
-                if !ty.has_aliases() {
+                if !ty.has_aliases() && !ty.has_non_region_infer() {
                     return Ok(ty);
                 }
-                if ty.has_non_region_infer()
-                    || ty.has_opaque_types()
-                    || ty.has_non_region_param()
-                    || ty.has_non_region_placeholders()
-                {
-                    return Err(Ok(MaybeCause::Ambiguity));
-                }
-
-                if let ty::Alias(..) = ty.kind() {
-                    let term = ensure_sufficient_stack(|| {
-                        self.normalize_alias_term(ty.into(), ty.has_escaping_bound_vars())
-                    })?;
-                    Ok(term.expect_ty())
-                } else {
-                    ty.try_super_fold_with(self)
+                match ty.kind() {
+                    ty::Infer(_) => Err(Ok(MaybeCause::Ambiguity)),
+                    ty::Alias(..) => {
+                        let term = ensure_sufficient_stack(|| {
+                            self.normalize_alias_term(ty.into(), ty.has_escaping_bound_vars())
+                        })?;
+                        Ok(term.expect_ty())
+                    }
+                    _ => ty.try_super_fold_with(self),
                 }
             }
 
             #[instrument(level = "trace", skip(self), ret)]
             fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
                 let ct = self.ecx.shallow_resolve_const(ct);
-                if !ct.has_aliases() {
+                if !ct.has_aliases() && !ct.has_non_region_infer() {
                     return Ok(ct);
                 }
-                if ct.has_non_region_infer()
-                    || ct.has_opaque_types()
-                    || ct.has_non_region_param()
-                    || ct.has_non_region_placeholders()
-                {
-                    return Err(Ok(MaybeCause::Ambiguity));
-                }
-
-                if let ty::ConstKind::Unevaluated(..) = ct.kind() {
-                    let term = ensure_sufficient_stack(|| {
-                        self.normalize_alias_term(ct.into(), ct.has_escaping_bound_vars())
-                    })?;
-                    Ok(term.expect_const())
-                } else {
-                    ct.try_super_fold_with(self)
+                match ct.kind() {
+                    ty::ConstKind::Infer(_) => Err(Ok(MaybeCause::Ambiguity)),
+                    ty::ConstKind::Unevaluated(..) => {
+                        let term = ensure_sufficient_stack(|| {
+                            self.normalize_alias_term(ct.into(), ct.has_escaping_bound_vars())
+                        })?;
+                        Ok(term.expect_const())
+                    }
+                    _ => ct.try_super_fold_with(self),
                 }
             }
         }

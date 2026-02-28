@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+//@ dont-require-annotations: ERROR
 
 // A regression test for #125269. We previously ended up
 // recursively proving `&<_ as SpeciesPackedElem>::Assoc: Typed`
@@ -85,5 +86,4 @@ fn foo<T: Typed>() {}
 
 fn main() {
     foo::<&_>();
-    //~^ ERROR overflow evaluating the requirement `&_: Typed`
 }
