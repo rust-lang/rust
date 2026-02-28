@@ -3,7 +3,6 @@
 #![allow(unused_mut)]
 #![allow(unused_variables)]
 #![deny(non_snake_case)]
-#![feature(stmt_expr_attributes)]
 
 fn main() {
     let a = 413;
