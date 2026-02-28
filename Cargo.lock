@@ -4706,6 +4706,7 @@ dependencies = [
  "ena",
  "indexmap",
  "rustc-hash 2.1.1",
+ "rustc_abi",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_error_messages",

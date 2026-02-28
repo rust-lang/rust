@@ -137,6 +137,7 @@
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
+#![feature(field_projections)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
@@ -274,6 +275,8 @@ pub mod cmp;
 pub mod convert;
 pub mod default;
 pub mod error;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod field;
 pub mod index;
 pub mod marker;
 pub mod ops;

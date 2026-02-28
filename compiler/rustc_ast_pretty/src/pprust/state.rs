@@ -1377,6 +1377,23 @@ impl<'a> State<'a> {
                 self.word(" is ");
                 self.print_ty_pat(pat);
             }
+            ast::TyKind::FieldOf(ty, variant, field) => {
+                self.word("builtin # field_of");
+                self.popen();
+                let ib = self.ibox(0);
+                self.print_type(ty);
+                self.word(",");
+                self.space();
+
+                if let Some(variant) = variant {
+                    self.print_ident(*variant);
+                    self.word(".");
+                }
+                self.print_ident(*field);
+
+                self.end(ib);
+                self.pclose();
+            }
         }
         self.end(ib);
     }
