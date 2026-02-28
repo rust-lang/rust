@@ -1,6 +1,6 @@
 # repro-explain
 
-`repro-explain` is an in-tree tool for investigating Rust build reproducibility diffs.  
+`repro-explain` is an in-tree tool for investigating Rust build reproducibility diffs.
 It compares two build runs, classifies differing artifacts, collects evidence, runs confirmation experiments, and generates reports.
 
 ## What It Does
@@ -141,7 +141,7 @@ For each artifact, `findings.json` and the HTML report provide:
 
 ## Environment Variable Capture
 
-By default, environment capture uses an allowlist.  
+By default, environment capture uses an allowlist.
 Use `--capture-all-env` only when full environment capture is needed.
 
 ## Notes and Limitations
