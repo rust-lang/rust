@@ -3284,6 +3284,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "repro-explain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "cargo_metadata 0.21.0",
+ "clap",
+ "proc-macro2",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "syn 2.0.110",
+ "tempfile",
+ "walkdir",
+]
+
+[[package]]
 name = "run_make_support"
 version = "0.0.0"
 dependencies = [

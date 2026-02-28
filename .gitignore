@@ -103,4 +103,7 @@ test-dashboard/
 flake.lock
 /default.nix
 
+## repro-explain
+**/.repro/
+
 # Before adding new lines, see the comment at the top.

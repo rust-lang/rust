@@ -508,6 +508,7 @@ lint_any!(
     OptDist, "src/tools/opt-dist", "opt-dist", Mode::ToolTarget;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolTarget;
     RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::ToolTarget;
+    ReproExplain, "src/tools/repro-explain", "repro-explain", Mode::ToolTarget;
     RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustcPrivate;
     Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustcPrivate;
     Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustcPrivate;

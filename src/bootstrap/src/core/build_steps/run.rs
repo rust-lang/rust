@@ -466,6 +466,28 @@ impl Step for CoverageDump {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ReproExplain;
+
+impl Step for ReproExplain {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/repro-explain")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self {});
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mut cmd = builder.tool_cmd(Tool::ReproExplain);
+        cmd.args(builder.config.args());
+        cmd.run(builder);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt;
 

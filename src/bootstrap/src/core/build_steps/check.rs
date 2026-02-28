@@ -869,6 +869,12 @@ tool_check_step!(CoverageDump {
     default: false
 });
 
+tool_check_step!(ReproExplain {
+    path: "src/tools/repro-explain",
+    mode: Mode::ToolBootstrap,
+    default: false
+});
+
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest {

@@ -485,6 +485,7 @@ bootstrap_tool!(
     CargoTest, "src/tools/cargotest", "cargotest";
     Compiletest, "src/tools/compiletest", "compiletest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
+    ReproExplain, "src/tools/repro-explain", "repro-explain";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     LintDocs, "src/tools/lint-docs", "lint-docs";
