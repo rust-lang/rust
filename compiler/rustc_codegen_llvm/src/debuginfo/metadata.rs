@@ -3,7 +3,7 @@ use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{iter, ptr};
+use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Layout, NumScalableVectors, Size};

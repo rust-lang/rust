@@ -1977,6 +1977,7 @@ symbols! {
         suggestion,
         super_let,
         supertrait_item_shadowing,
+        sve_cast,
         sve_tuple_create2,
         sve_tuple_create3,
         sve_tuple_create4,
