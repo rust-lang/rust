@@ -38,7 +38,7 @@ use crate::panic::const_assert;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod alignment;
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+#[stable(feature = "alignment_type", since = "CURRENT_RUSTC_VERSION")]
 pub use alignment::Alignment;
 
 mod manually_drop;
@@ -1384,7 +1384,7 @@ pub trait SizedTypeProperties: Sized {
     const ALIGN: usize = intrinsics::align_of::<Self>();
 
     #[doc(hidden)]
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
     const ALIGNMENT: Alignment = {
         // This can't panic since type alignment is always a power of two.
         Alignment::new(Self::ALIGN).unwrap()

@@ -3,7 +3,6 @@
     const_clone,
     const_default,
     const_trait_impl,
-    ptr_alignment_type,
     ascii_char,
     f16,
     f128,

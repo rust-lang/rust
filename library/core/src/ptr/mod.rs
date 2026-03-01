@@ -411,11 +411,6 @@ use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
 
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[deprecated(since = "1.96.0", note = "moved from `ptr` to `mem`")]
-/// Deprecated re-export of [mem::Alignment].
-pub type Alignment = mem::Alignment;
-
 mod metadata;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{DynMetadata, Pointee, Thin, from_raw_parts, from_raw_parts_mut, metadata};
