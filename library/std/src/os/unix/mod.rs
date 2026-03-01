@@ -75,6 +75,8 @@ mod platform {
     pub use crate::os::nuttx::*;
     #[cfg(target_os = "openbsd")]
     pub use crate::os::openbsd::*;
+    #[cfg(target_os = "qurt")]
+    pub use crate::os::qurt::*;
     #[cfg(target_os = "redox")]
     pub use crate::os::redox::*;
     #[cfg(target_os = "rtems")]
@@ -91,6 +93,7 @@ pub mod ffi;
 pub mod fs;
 pub mod io;
 pub mod net;
+#[cfg(not(target_os = "qurt"))]
 pub mod process;
 pub mod raw;
 pub mod thread;
@@ -115,9 +118,11 @@ pub mod prelude {
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+    #[cfg(not(target_os = "qurt"))]
     #[doc(no_inline)]
     #[unstable(feature = "unix_send_signal", issue = "141975")]
     pub use super::process::ChildExt;
+    #[cfg(not(target_os = "qurt"))]
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::process::{CommandExt, ExitStatusExt};
