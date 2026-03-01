@@ -9,3 +9,9 @@ EXPORT void call_fn_ptr(void f(void)) {
         f();
     }
 }
+
+EXPORT void call_fn_ptr_with_arg(int32_t f(int32_t)) {
+    if (f != NULL) {
+        f(42);
+    }
+}
