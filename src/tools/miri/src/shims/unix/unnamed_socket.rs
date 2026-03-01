@@ -170,8 +170,6 @@ impl FileDescription for AnonSocket {
         mut flag: i32,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        // FIXME: File creation flags should be ignored.
-
         let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
 
         // O_NONBLOCK flag can be set / unset by user.

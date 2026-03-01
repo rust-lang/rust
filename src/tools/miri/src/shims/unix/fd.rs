@@ -194,34 +194,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
-                let mut flag = this.read_scalar(flag)?.to_i32()?;
+                let flag = this.read_scalar(flag)?.to_i32()?;
 
-                let allowed_flags = match this.tcx.sess.target.os {
-                    Os::MacOs =>
-                        this.eval_libc_i32("O_NONBLOCK")
-                            | this.eval_libc_i32("O_APPEND")
-                            | this.eval_libc_i32("O_ASYNC"),
-                    Os::FreeBsd =>
-                        this.eval_libc_i32("O_NONBLOCK")
-                            | this.eval_libc_i32("O_APPEND")
-                            | this.eval_libc_i32("O_DIRECT")
-                            | this.eval_libc_i32("O_ASYNC"),
-                    Os::Solaris | Os::Illumos =>
-                        this.eval_libc_i32("O_NONBLOCK")
-                            | this.eval_libc_i32("O_APPEND")
-                            | this.eval_libc_i32("O_DIRECT"),
-                    // Linux + Android match case
-                    _ =>
-                        this.eval_libc_i32("O_NONBLOCK")
-                            | this.eval_libc_i32("O_APPEND")
-                            | this.eval_libc_i32("O_DIRECT")
-                            | this.eval_libc_i32("O_NOATIME")
-                            | this.eval_libc_i32("O_ASYNC"),
-                };
+                // Ignore flags that never get stored by SETFL.
+                // "File access mode (O_RDONLY, O_WRONLY, O_RDWR) and file
+                // creation flags (i.e., O_CREAT, O_EXCL, O_NOCTTY, O_TRUNC)
+                // in arg are ignored."
+                let ignored_flags = this.eval_libc_i32("O_RDONLY")
+                    | this.eval_libc_i32("O_WRONLY")
+                    | this.eval_libc_i32("O_RDWR")
+                    | this.eval_libc_i32("O_CREAT")
+                    | this.eval_libc_i32("O_EXCL")
+                    | this.eval_libc_i32("O_NOCTTY")
+                    | this.eval_libc_i32("O_TRUNC");
 
-                flag &= allowed_flags;
-
-                fd.set_flags(flag, this)
+                fd.set_flags(flag & !ignored_flags, this)
             }
             cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
