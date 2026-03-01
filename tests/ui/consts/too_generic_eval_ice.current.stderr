@@ -38,7 +38,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
              `&[u8]` implements `PartialEq<ByteString>`
              `&mut [T]` implements `PartialEq<Vec<U, A>>`
              `&mut [T]` implements `PartialEq<[U; N]>`
-           and 11 others
+           and 12 others
 
 error: aborting due to 4 previous errors
 
