@@ -9,7 +9,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock};
+use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
 use rustc_data_structures::unord::UnordMap;
 use rustc_data_structures::{assert_matches, outline};
 use rustc_errors::DiagInner;
@@ -1302,7 +1302,9 @@ impl CurrentDepGraph {
         prev_graph: &SerializedDepGraph,
         prev_index: SerializedDepNodeIndex,
     ) {
-        if let Some(ref nodes_in_current_session) = self.nodes_in_current_session {
+        if !is_dyn_thread_safe()
+            && let Some(ref nodes_in_current_session) = self.nodes_in_current_session
+        {
             debug_assert!(
                 !nodes_in_current_session
                     .lock()
