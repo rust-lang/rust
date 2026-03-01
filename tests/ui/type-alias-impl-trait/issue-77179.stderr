@@ -1,3 +1,9 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-77179.rs:19:25
+   |
+LL |     fn bar() -> Pointer<_>;
+   |                         ^ not allowed in type signatures
+
 error[E0792]: expected generic type parameter, found `i32`
   --> $DIR/issue-77179.rs:8:14
    |
@@ -18,12 +24,6 @@ help: replace with the correct return type
 LL - fn test() -> Pointer<_> {
 LL + fn test() -> Pointer<i32> {
    |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/issue-77179.rs:19:25
-   |
-LL |     fn bar() -> Pointer<_>;
-   |                         ^ not allowed in type signatures
 
 error: aborting due to 3 previous errors
 

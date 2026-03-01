@@ -1,41 +1,3 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/in-signature.rs:6:21
-   |
-LL | fn arr_fn() -> [u8; _] {
-   |                     ^ not allowed in type signatures
-   |
-help: replace with the correct return type
-   |
-LL - fn arr_fn() -> [u8; _] {
-LL + fn arr_fn() -> [u8; 3] {
-   |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/in-signature.rs:11:24
-   |
-LL | fn ty_fn() -> Bar<i32, _> {
-   |                        ^ not allowed in type signatures
-   |
-help: replace with the correct return type
-   |
-LL - fn ty_fn() -> Bar<i32, _> {
-LL + fn ty_fn() -> Bar<i32, 3> {
-   |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/in-signature.rs:16:25
-   |
-LL | fn ty_fn_mixed() -> Bar<_, _> {
-   |                         ^  ^ not allowed in type signatures
-   |                         |
-   |                         not allowed in type signatures
-   |
-help: replace with the correct return type
-   |
-LL - fn ty_fn_mixed() -> Bar<_, _> {
-LL + fn ty_fn_mixed() -> Bar<i32, 3> {
-   |
-
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:21:20
    |
@@ -159,6 +121,44 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     const ARR: Bar<_, _>;
    |                       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:6:21
+   |
+LL | fn arr_fn() -> [u8; _] {
+   |                     ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn arr_fn() -> [u8; _] {
+LL + fn arr_fn() -> [u8; 3] {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:11:24
+   |
+LL | fn ty_fn() -> Bar<i32, _> {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn ty_fn() -> Bar<i32, _> {
+LL + fn ty_fn() -> Bar<i32, 3> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:16:25
+   |
+LL | fn ty_fn_mixed() -> Bar<_, _> {
+   |                         ^  ^ not allowed in type signatures
+   |                         |
+   |                         not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn ty_fn_mixed() -> Bar<_, _> {
+LL + fn ty_fn_mixed() -> Bar<i32, 3> {
+   |
 
 error: aborting due to 17 previous errors
 
