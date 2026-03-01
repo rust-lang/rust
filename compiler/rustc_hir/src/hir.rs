@@ -2652,7 +2652,9 @@ impl Expr<'_> {
             ExprKind::Struct(_, fields, init) => {
                 let init_side_effects = match init {
                     StructTailExpr::Base(init) => init.can_have_side_effects(),
-                    StructTailExpr::DefaultFields(_) | StructTailExpr::None => false,
+                    StructTailExpr::DefaultFields(_)
+                    | StructTailExpr::None
+                    | StructTailExpr::NoneWithError(_) => false,
                 };
                 fields.iter().map(|field| field.expr).any(|e| e.can_have_side_effects())
                     || init_side_effects
@@ -2944,6 +2946,12 @@ pub enum StructTailExpr<'hir> {
     /// fields' default values will be used to populate any fields not explicitly mentioned:
     /// `Foo { .. }`.
     DefaultFields(Span),
+    /// No trailing `..` was written, and also, a parse error occurred inside the struct braces.
+    ///
+    /// This struct should be treated similarly to as if it had an `..` in it,
+    /// in particular rather than reporting missing fields, because the parse error
+    /// makes which fields the struct was intended to have not fully known.
+    NoneWithError(ErrorGuaranteed),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.

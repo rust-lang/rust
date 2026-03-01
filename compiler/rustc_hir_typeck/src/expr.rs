@@ -2202,7 +2202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
             }
-            rustc_hir::StructTailExpr::None => {
+            rustc_hir::StructTailExpr::None | rustc_hir::StructTailExpr::NoneWithError(_) => {
                 if adt_kind != AdtKind::Union
                     && !remaining_fields.is_empty()
                     //~ non_exhaustive already reported, which will only happen for extern modules

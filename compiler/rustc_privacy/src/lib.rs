@@ -1097,7 +1097,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                         qpath.span(),
                     );
                 }
-                hir::StructTailExpr::None => {
+                hir::StructTailExpr::None | hir::StructTailExpr::NoneWithError(_) => {
                     let mut failed_fields = vec![];
                     for field in fields {
                         let (hir_id, use_ctxt) = (field.hir_id, field.ident.span);
