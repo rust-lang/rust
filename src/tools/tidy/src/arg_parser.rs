@@ -15,6 +15,7 @@ pub struct TidyArgParser {
     pub npm: PathBuf,
     pub verbose: bool,
     pub bless: bool,
+    pub ci: Option<bool>,
     pub extra_checks: Option<Vec<String>>,
     pub pos_args: Vec<String>,
 }
@@ -59,6 +60,7 @@ impl TidyArgParser {
             )
             .arg(Arg::new("verbose").help("verbose").long("verbose").action(ArgAction::SetTrue))
             .arg(Arg::new("bless").help("target files are modified").long("bless").action(ArgAction::SetTrue))
+            .arg(Arg::new("ci").help("ci flag").long("ci").default_missing_value("true").num_args(0..=1).value_parser(value_parser!(bool)))
             .arg(
                 Arg::new("extra_checks")
                     .help("extra checks")
@@ -78,6 +80,7 @@ impl TidyArgParser {
             npm: matches.get_one::<PathBuf>("npm").unwrap().clone(),
             verbose: *matches.get_one::<bool>("verbose").unwrap(),
             bless: *matches.get_one::<bool>("bless").unwrap(),
+            ci: matches.get_one::<bool>("ci").cloned(),
             extra_checks: None,
             pos_args: vec![],
         };

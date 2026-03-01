@@ -1334,6 +1334,9 @@ impl Step for Tidy {
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
+        if builder.config.is_running_on_ci() {
+            cmd.arg("--ci=true");
+        }
         if let Some(s) =
             builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
         {
