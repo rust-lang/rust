@@ -119,7 +119,7 @@ pub trait Error: Debug + Display {
         reason = "this is memory-unsafe to override in user code",
         issue = "60784"
     )]
-    fn type_id(&self, _: private::Internal) -> TypeId
+    final fn type_id(&self) -> TypeId
     where
         Self: 'static,
     {
@@ -260,14 +260,6 @@ pub trait Error: Debug + Display {
     fn provide<'a>(&'a self, request: &mut Request<'a>) {}
 }
 
-mod private {
-    // This is a hack to prevent `type_id` from being overridden by `Error`
-    // implementations, since that can enable unsound downcasting.
-    #[unstable(feature = "error_type_id", issue = "60784")]
-    #[derive(Debug)]
-    pub struct Internal;
-}
-
 #[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {}
 
@@ -281,7 +273,7 @@ impl dyn Error + 'static {
         let t = TypeId::of::<T>();
 
         // Get `TypeId` of the type in the trait object (`self`).
-        let concrete = self.type_id(private::Internal);
+        let concrete = self.type_id();
 
         // Compare both `TypeId`s on equality.
         t == concrete
