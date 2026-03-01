@@ -42,16 +42,16 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                     }
                 }
                 scope 7 (inlined Layout::for_value_raw::<T>) {
-                    let mut _3: std::ptr::Alignment;
+                    let mut _3: std::mem::Alignment;
                     scope 8 {
                         scope 16 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
                         }
                     }
                     scope 9 (inlined size_of_val_raw::<T>) {
                     }
-                    scope 10 (inlined std::ptr::Alignment::of_val_raw::<T>) {
+                    scope 10 (inlined std::mem::Alignment::of_val_raw::<T>) {
                         scope 11 {
-                            scope 13 (inlined #[track_caller] std::ptr::Alignment::new_unchecked) {
+                            scope 13 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
                                 scope 14 (inlined core::ub_checks::check_language_ub) {
                                     scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
                                     }
@@ -69,7 +69,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     bb0: {
         StorageLive(_4);
         _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
-        _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::ptr::Alignment (Transmute);
+        _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
     }
 

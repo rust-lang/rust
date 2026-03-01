@@ -55,7 +55,12 @@ pub unsafe trait Tag: Copy {
 /// Returns the number of bits available for use for tags in a pointer to `T`
 /// (this is based on `T`'s alignment).
 pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
-    crate::aligned::align_of::<T>().as_nonzero().trailing_zeros()
+    let alignment = crate::aligned::align_of::<T>();
+    #[cfg(bootstrap)]
+    let alignment = alignment.as_nonzero();
+    #[cfg(not(bootstrap))]
+    let alignment = alignment.as_nonzero_usize();
+    alignment.trailing_zeros()
 }
 
 /// Returns the correct [`Tag::BITS`] constant for a set of tag values.

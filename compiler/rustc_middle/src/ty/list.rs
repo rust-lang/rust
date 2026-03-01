@@ -264,7 +264,10 @@ unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 // Layouts of `ListSkeleton<H, T>` and `RawList<H, T>` are the same, modulo opaque tail,
 // thus aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
 unsafe impl<H, T> Aligned for RawList<H, T> {
+    #[cfg(bootstrap)]
     const ALIGN: ptr::Alignment = align_of::<ListSkeleton<H, T>>();
+    #[cfg(not(bootstrap))]
+    const ALIGN: mem::Alignment = align_of::<ListSkeleton<H, T>>();
 }
 
 /// A [`List`] that additionally stores type information inline to speed up
