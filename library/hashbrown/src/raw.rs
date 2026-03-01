@@ -3023,7 +3023,7 @@ impl RawTableInner {
 
             let i_p = unsafe { guard.bucket_ptr(i, size_of) };
 
-            'inner: loop {
+            loop {
                 // Hash the current item
                 let hash = hasher(*guard, i);
 
@@ -3066,7 +3066,6 @@ impl RawTableInner {
                 unsafe {
                     ptr::swap_nonoverlapping(i_p, new_i_p, size_of);
                 }
-                continue 'inner;
             }
         }
 
