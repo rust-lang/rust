@@ -168,16 +168,28 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_usize(self) -> usize {
-        // Going through `as_nonzero` helps this be more clearly the inverse of
+        // Going through `as_nonzero_usize` helps this be more clearly the inverse of
         // `new_unchecked`, letting MIR optimizations fold it away.
 
-        self.as_nonzero().get()
+        self.as_nonzero_usize().get()
+    }
+
+    /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[deprecated(
+        since = "CURRENT_RUSTC_VERSION",
+        note = "renamed to `as_nonzero_usize`",
+        suggestion = "as_nonzero_usize"
+    )]
+    #[inline]
+    pub const fn as_nonzero(self) -> NonZero<usize> {
+        self.as_nonzero_usize()
     }
 
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub const fn as_nonzero(self) -> NonZero<usize> {
+    pub const fn as_nonzero_usize(self) -> NonZero<usize> {
         // This transmutes directly to avoid the UbCheck in `NonZero::new_unchecked`
         // since there's no way for the user to trip that check anyway -- the
         // validity invariant of the type would have to have been broken earlier --
@@ -203,7 +215,7 @@ impl Alignment {
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn log2(self) -> u32 {
-        self.as_nonzero().trailing_zeros()
+        self.as_nonzero_usize().trailing_zeros()
     }
 
     /// Returns a bit mask that can be used to match this alignment.
@@ -246,7 +258,7 @@ impl Alignment {
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl fmt::Debug for Alignment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} (1 << {:?})", self.as_nonzero(), self.log2())
+        write!(f, "{:?} (1 << {:?})", self.as_nonzero_usize(), self.log2())
     }
 }
 
@@ -277,7 +289,7 @@ impl const TryFrom<usize> for Alignment {
 impl const From<Alignment> for NonZero<usize> {
     #[inline]
     fn from(align: Alignment) -> NonZero<usize> {
-        align.as_nonzero()
+        align.as_nonzero_usize()
     }
 }
 
@@ -294,7 +306,7 @@ impl const From<Alignment> for usize {
 impl cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nonzero().cmp(&other.as_nonzero())
+        self.as_nonzero_usize().cmp(&other.as_nonzero_usize())
     }
 }
 
@@ -310,7 +322,7 @@ impl cmp::PartialOrd for Alignment {
 impl hash::Hash for Alignment {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_nonzero().hash(state)
+        self.as_nonzero_usize().hash(state)
     }
 }
 

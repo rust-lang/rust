@@ -570,7 +570,7 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
     const fn new_in(alloc: A, align: Alignment) -> Self {
-        let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero()));
+        let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero_usize()));
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr, cap: ZERO_CAP, alloc }
     }

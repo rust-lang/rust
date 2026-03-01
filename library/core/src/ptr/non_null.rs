@@ -129,7 +129,7 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     pub const fn dangling() -> Self {
         let align = crate::mem::Alignment::of::<T>();
-        NonNull::without_provenance(align.as_nonzero())
+        NonNull::without_provenance(align.as_nonzero_usize())
     }
 
     /// Converts an address back to a mutable pointer, picking up some previously 'exposed'
