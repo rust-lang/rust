@@ -37,7 +37,7 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// use std::ptr::Alignment;
+    /// use std::mem::Alignment;
     ///
     /// assert_eq!(Alignment::MIN.as_usize(), 1);
     /// ```
@@ -65,7 +65,7 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// use std::ptr::Alignment;
+    /// use std::mem::Alignment;
     ///
     /// assert_eq!(Alignment::of_val(&5i32).as_usize(), 4);
     /// ```
@@ -112,14 +112,13 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// use std::ptr::Alignment;
+    /// use std::mem::Alignment;
     ///
     /// assert_eq!(unsafe { Alignment::of_val_raw(&5i32) }.as_usize(), 4);
     /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-    // #[unstable(feature = "layout_for_ptr", issue = "69835")]
     pub const unsafe fn of_val_raw<T: MetaSized>(val: *const T) -> Self {
         // SAFETY: precondition propagated to the caller
         let align = unsafe { mem::align_of_val_raw(val) };
@@ -214,9 +213,10 @@ impl Alignment {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_alignment_type)]
     /// #![feature(ptr_mask)]
-    /// use std::ptr::{Alignment, NonNull};
+    /// #![feature(ptr_alignment_type)]
+    /// use std::mem::Alignment;
+    /// use std::ptr::NonNull;
     ///
     /// #[repr(align(1))] struct Align1(u8);
     /// #[repr(align(2))] struct Align2(u16);
@@ -294,7 +294,7 @@ impl const From<Alignment> for usize {
 impl cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nonzero().get().cmp(&other.as_nonzero().get())
+        self.as_nonzero().cmp(&other.as_nonzero())
     }
 }
 

@@ -1224,6 +1224,7 @@ symbols! {
         maybe_uninit,
         maybe_uninit_uninit,
         maybe_uninit_zeroed,
+        mem,
         mem_align_const,
         mem_discriminant,
         mem_drop,

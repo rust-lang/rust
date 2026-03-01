@@ -252,7 +252,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, Alignment, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
@@ -261,7 +261,7 @@ use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::pin::PinCoerceUnsized;
-use core::ptr::{self, Alignment, NonNull, drop_in_place};
+use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
