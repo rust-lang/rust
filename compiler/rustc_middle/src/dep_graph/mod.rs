@@ -13,11 +13,9 @@ pub use self::graph::{
 use self::graph::{MarkFrame, print_markframe_trace};
 pub use self::retained::RetainedDepGraph;
 pub use self::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-pub use crate::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use crate::ty::print::with_reduced_queries;
 use crate::ty::{self, TyCtxt};
 
-mod debug;
 pub(crate) mod dep_node;
 mod dep_node_key;
 mod edges;

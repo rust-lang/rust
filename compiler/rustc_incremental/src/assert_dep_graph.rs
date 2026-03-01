@@ -34,6 +34,7 @@
 //! ```
 
 use std::env;
+use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
 
@@ -44,7 +45,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeFilter, EdgeFilter, RetainedDepGraph};
+use rustc_middle::dep_graph::{DepKind, DepNode, RetainedDepGraph};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
@@ -52,6 +53,60 @@ use tracing::debug;
 use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
+
+/// A dep-node filter goes from a user-defined string to a query over
+/// nodes. Right now the format is like this:
+/// ```ignore (illustrative)
+/// x & y & z
+/// ```
+/// where the format-string of the dep-node must contain `x`, `y`, and
+/// `z`.
+#[derive(Debug)]
+struct DepNodeFilter {
+    text: String,
+}
+
+impl DepNodeFilter {
+    fn new(text: &str) -> Self {
+        DepNodeFilter { text: text.trim().to_string() }
+    }
+
+    /// Returns `true` if all nodes always pass the filter.
+    fn accepts_all(&self) -> bool {
+        self.text.is_empty()
+    }
+
+    /// Tests whether `node` meets the filter, returning true if so.
+    fn test(&self, node: &DepNode) -> bool {
+        let debug_str = format!("{node:?}");
+        self.text.split('&').map(|s| s.trim()).all(|f| debug_str.contains(f))
+    }
+}
+
+/// A filter like `F -> G` where `F` and `G` are valid dep-node
+/// filters. This can be used to test the source/target independently.
+struct EdgeFilter {
+    source: DepNodeFilter,
+    target: DepNodeFilter,
+}
+
+impl EdgeFilter {
+    fn new(test: &str) -> Result<EdgeFilter, Box<dyn Error>> {
+        if let [source, target] = *test.split("->").collect::<Vec<_>>() {
+            Ok(EdgeFilter {
+                source: DepNodeFilter::new(source),
+                target: DepNodeFilter::new(target),
+            })
+        } else {
+            Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    fn test(&self, source: &DepNode, target: &DepNode) -> bool {
+        self.source.test(source) && self.target.test(target)
+    }
+}
 
 #[allow(missing_docs)]
 pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
