@@ -111,7 +111,7 @@ where
                     opaque_types_jank: OpaqueTypesJank::AllGood,
                 });
             }
-            Err(Err(NoSolution)) => ty,
+            Err(Err(NoSolution)) => return Err(NoSolution),
         };
 
         self.register_ty_outlives(ty, lt);
