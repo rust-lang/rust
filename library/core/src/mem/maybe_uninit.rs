@@ -658,8 +658,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes immediate undefined
-    /// behavior, even if `T` is an integer or other plain old data type. The [type-level
-    /// documentation][inv] contains more information about this initialization invariant.
+    /// behavior, even if `T` is an integer type. The [type-level documentation][inv] contains more
+    /// information about this initialization invariant.
     ///
     /// [inv]: #initialization-invariant
     ///
@@ -692,14 +692,6 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
-    /// let x_init = unsafe { x.assume_init() };
-    /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
-    /// ```
-    ///
-    /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let x = MaybeUninit::<u8>::uninit();
     /// let x_init = unsafe { x.assume_init() };
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
