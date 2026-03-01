@@ -5,8 +5,8 @@
 // run the tests. See the comment there for an explanation why this is the case.
 
 use core::marker::{Destruct, PhantomData};
-use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
-use core::ptr::{self, Alignment, NonNull, Unique};
+use core::mem::{Alignment, ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::ptr::{self, NonNull, Unique};
 use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]

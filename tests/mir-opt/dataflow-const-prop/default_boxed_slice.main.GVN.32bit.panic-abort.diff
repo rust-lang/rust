@@ -17,12 +17,12 @@
               let mut _5: std::ptr::NonNull<[bool; 0]>;
               scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
                   scope 6 {
-                      scope 8 (inlined std::ptr::Alignment::as_nonzero) {
+                      scope 8 (inlined std::mem::Alignment::as_nonzero) {
                       }
                       scope 9 (inlined NonNull::<[bool; 0]>::without_provenance) {
                       }
                   }
-                  scope 7 (inlined std::ptr::Alignment::of::<[bool; 0]>) {
+                  scope 7 (inlined std::mem::Alignment::of::<[bool; 0]>) {
                   }
               }
           }

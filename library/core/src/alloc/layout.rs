@@ -6,8 +6,8 @@
 
 use crate::error::Error;
 use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
-use crate::mem::SizedTypeProperties;
-use crate::ptr::{Alignment, NonNull};
+use crate::mem::{Alignment, SizedTypeProperties};
+use crate::ptr::NonNull;
 use crate::{assert_unsafe_precondition, fmt, mem};
 
 /// Layout of a block of memory.
