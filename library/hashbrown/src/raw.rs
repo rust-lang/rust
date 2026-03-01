@@ -3057,16 +3057,16 @@ impl RawTableInner {
                         ptr::copy_nonoverlapping(i_p, new_i_p, size_of);
                     }
                     continue 'outer;
-                } else {
-                    // If the target slot is occupied, swap the two elements
-                    // and then continue processing the element that we just
-                    // swapped into the old slot.
-                    debug_assert_eq!(prev_ctrl, Tag::DELETED);
-                    unsafe {
-                        ptr::swap_nonoverlapping(i_p, new_i_p, size_of);
-                    }
-                    continue 'inner;
                 }
+
+                // If the target slot is occupied, swap the two elements
+                // and then continue processing the element that we just
+                // swapped into the old slot.
+                debug_assert_eq!(prev_ctrl, Tag::DELETED);
+                unsafe {
+                    ptr::swap_nonoverlapping(i_p, new_i_p, size_of);
+                }
+                continue 'inner;
             }
         }
 
