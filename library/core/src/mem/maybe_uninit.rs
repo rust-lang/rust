@@ -663,6 +663,12 @@ impl<T> MaybeUninit<T> {
     ///
     /// [inv]: #initialization-invariant
     ///
+    /// In particular, it is **not** enough for the memory to be of a type for which
+    /// any bit pattern is valid (such as `u8`, `i32`, or other integer types):
+    /// uninitialized memory is not a "valid bit pattern" since uninitialized data
+    /// is not a fixed value and reading it multiple times can produce different
+    /// results. See the [type-level documentation][inv] for more details.
+    ///
     /// On top of that, remember that most types have additional invariants beyond merely
     /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
     /// is considered initialized (under the current implementation; this does not constitute
@@ -694,6 +700,18 @@ impl<T> MaybeUninit<T> {
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_init = unsafe { x.assume_init() };
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
+    /// ```
+    ///
+    /// Even for types where every bit pattern is valid, reading uninitialized
+    /// memory is still undefined behavior:
+    ///
+    /// ```rust,no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<u8>::uninit();
+    /// let x_init = unsafe { x.assume_init() };
+    /// // `x` had not been initialized yet, so this last line caused undefined
+    /// // behavior, even though `u8` can hold any fixed bit pattern! ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
