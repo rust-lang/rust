@@ -9,7 +9,7 @@
           scope 2 (inlined NonNull::<u8>::dangling) {
               let _3: std::mem::Alignment;
               scope 3 {
-                  scope 5 (inlined std::mem::Alignment::as_nonzero) {
+                  scope 5 (inlined std::mem::Alignment::as_nonzero_usize) {
                   }
                   scope 6 (inlined NonNull::<u8>::without_provenance) {
                   }

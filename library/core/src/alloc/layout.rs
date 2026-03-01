@@ -268,7 +268,7 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn dangling_ptr(&self) -> NonNull<u8> {
-        NonNull::without_provenance(self.align.as_nonzero())
+        NonNull::without_provenance(self.align.as_nonzero_usize())
     }
 
     /// Creates a layout describing the record that can hold a value
