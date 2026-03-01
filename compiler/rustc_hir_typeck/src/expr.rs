@@ -2202,7 +2202,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
             }
-            rustc_hir::StructTailExpr::None | rustc_hir::StructTailExpr::NoneWithError(_) => {
+            rustc_hir::StructTailExpr::NoneWithError(ErrorGuaranteed { .. }) => {
+                // If parsing the struct recovered from a syntax error, do not report missing
+                // fields. This prevents spurious errors when a field is intended to be present
+                // but a preceding syntax error caused it not to be parsed. For example, if a
+                // struct type `StructName` has fields `foo` and `bar`, then
+                //     StructName { foo(), bar: 2 }
+                // will not successfully parse a field `foo`, but we will not mention that,
+                // since the syntax error has already been reported.
+            }
+            rustc_hir::StructTailExpr::None => {
                 if adt_kind != AdtKind::Union
                     && !remaining_fields.is_empty()
                     //~ non_exhaustive already reported, which will only happen for extern modules
