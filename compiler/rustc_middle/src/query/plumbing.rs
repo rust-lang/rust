@@ -62,18 +62,6 @@ pub enum CycleErrorHandling {
     Stash,
 }
 
-pub type WillCacheOnDiskForKeyFn<'tcx, Key> = fn(tcx: TyCtxt<'tcx>, key: &Key) -> bool;
-
-pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
-    tcx: TyCtxt<'tcx>,
-    key: &Key,
-    prev_index: SerializedDepNodeIndex,
-    index: DepNodeIndex,
-) -> Option<Value>;
-
-pub type IsLoadableFromDiskFn<'tcx, Key> =
-    fn(tcx: TyCtxt<'tcx>, key: &Key, index: SerializedDepNodeIndex) -> bool;
-
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
 
 #[derive(Clone, Debug)]
@@ -128,7 +116,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub cycle_error_handling: CycleErrorHandling,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
-    pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
+    pub will_cache_on_disk_for_key_fn: Option<fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool>,
 
     /// Function pointer that calls `tcx.$query(key)` for this query and
     /// discards the returned value.
@@ -144,11 +132,19 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
-    pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
+    pub try_load_from_disk_fn: Option<
+        fn(
+            tcx: TyCtxt<'tcx>,
+            key: &C::Key,
+            prev_index: SerializedDepNodeIndex,
+            index: DepNodeIndex,
+        ) -> Option<C::Value>,
+    >,
+    pub is_loadable_from_disk_fn:
+        Option<fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool>,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 
     /// Formats a human-readable description of this query and its key, as
@@ -213,7 +209,7 @@ impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
     pub fn value_from_cycle_error(
         &self,
         tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
+        cycle_error: CycleError,
         guar: ErrorGuaranteed,
     ) -> C::Value {
         (self.value_from_cycle_error)(tcx, cycle_error, guar)
@@ -646,18 +642,6 @@ macro_rules! define_callbacks {
         }
     };
 }
-
-// Each of these queries corresponds to a function pointer field in the
-// `Providers` struct for requesting a value of that type, and a method
-// on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
-// which memoizes and does dep-graph tracking, wrapping around the actual
-// `Providers` that the driver creates (using several `rustc_*` crates).
-//
-// The result type of each query must implement `Clone`, and additionally
-// `ty::query::values::Value`, which produces an appropriate placeholder
-// (error) value if the query resulted in a query cycle.
-// Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise an fatal error on query cycles instead.
 
 mod sealed {
     use rustc_hir::def_id::{LocalModDefId, ModDefId};

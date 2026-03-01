@@ -603,7 +603,8 @@ macro_rules! define_queries {
                         None
                     }),
                     value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
+                        let result: queries::$name::Value<'tcx> =
+                            FromCycleError::from_cycle_error(tcx, cycle, guar);
                         erase::erase_val(result)
                     },
                     hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),

@@ -18,12 +18,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
+use crate::from_cycle_error::FromCycleError;
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
 pub use crate::plumbing::{collect_active_jobs_from_all_queries, query_key_hash_verify_all};
 use crate::plumbing::{encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;
 pub use crate::profiling_support::alloc_self_profile_query_strings;
-use crate::values::Value;
 
 #[macro_use]
 mod plumbing;
@@ -31,9 +31,9 @@ mod plumbing;
 mod dep_kind_vtables;
 mod error;
 mod execution;
+mod from_cycle_error;
 mod job;
 mod profiling_support;
-mod values;
 
 /// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
