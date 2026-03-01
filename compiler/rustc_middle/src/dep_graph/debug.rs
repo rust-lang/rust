@@ -2,10 +2,7 @@
 
 use std::error::Error;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lock;
-
-use super::{DepNode, DepNodeIndex};
+use super::DepNode;
 
 /// A dep-node filter goes from a user-defined string to a query over
 /// nodes. Right now the format is like this:
@@ -41,7 +38,6 @@ impl DepNodeFilter {
 pub struct EdgeFilter {
     pub source: DepNodeFilter,
     pub target: DepNodeFilter,
-    pub index_to_node: Lock<FxHashMap<DepNodeIndex, DepNode>>,
 }
 
 impl EdgeFilter {
@@ -50,7 +46,6 @@ impl EdgeFilter {
             Ok(EdgeFilter {
                 source: DepNodeFilter::new(source),
                 target: DepNodeFilter::new(target),
-                index_to_node: Lock::new(FxHashMap::default()),
             })
         } else {
             Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
