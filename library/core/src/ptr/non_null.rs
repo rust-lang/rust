@@ -128,7 +128,7 @@ impl<T: Sized> NonNull<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        let align = crate::ptr::Alignment::of::<T>();
+        let align = crate::mem::Alignment::of::<T>();
         NonNull::without_provenance(align.as_nonzero())
     }
 
