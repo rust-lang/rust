@@ -98,7 +98,7 @@ pub(crate) fn find_dep_kind_root<'tcx>(
     last_layout
 }
 
-/// Breaks cycle on some query.
+/// Finds a query to break cycle on.
 ///
 /// This function doesn't distinguish between a query wait and a query execution, so both are just
 /// query calls.
@@ -106,10 +106,9 @@ pub(crate) fn find_dep_kind_root<'tcx>(
 /// It uses depth-first search from a single root query down to the first duplicate query,
 /// establishing a cycle.
 #[allow(rustc::potential_query_instability)]
-pub fn break_query_cycles<'tcx>(
-    query_map: QueryJobMap<'tcx>,
-    registry: &rustc_thread_pool::Registry,
-) {
+fn find_cycle_in_graph<'tcx>(
+    query_map: &QueryJobMap<'tcx>,
+) -> (QueryJobId, usize, CycleError<QueryStackDeferred<'tcx>>) {
     // We pick any root query we find
     let (&root_query, _) = query_map
         .map
@@ -214,7 +213,16 @@ pub fn break_query_cycles<'tcx>(
         visited.get(&last.id).unwrap().1.waiter_idx
     };
 
-    let waited_on = &query_map.map[&last.id];
+    (last.id, waiter_idx, cycle_error)
+}
+
+pub fn break_query_cycles<'tcx>(
+    query_map: QueryJobMap<'tcx>,
+    registry: &rustc_thread_pool::Registry,
+) {
+    let (waited_on, waiter_idx, cycle_error) = find_cycle_in_graph(&query_map);
+
+    let waited_on = &query_map.map[&waited_on];
     let latch = waited_on.job.latch.as_ref().unwrap();
     let mut latch_info_lock = latch.info.try_lock().unwrap();
 
