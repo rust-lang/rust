@@ -57,7 +57,6 @@ pub enum ActiveKeyStatus<'tcx> {
 #[derive(Copy, Clone)]
 pub enum CycleErrorHandling {
     Error,
-    Fatal,
     DelayBug,
     Stash,
 }
