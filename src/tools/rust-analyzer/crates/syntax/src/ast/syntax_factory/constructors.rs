@@ -97,6 +97,19 @@ impl SyntaxFactory {
         make::struct_(visibility, strukt_name, generic_param_list, field_list).clone_for_update()
     }
 
+    pub fn enum_(
+        &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
+        visibility: Option<ast::Visibility>,
+        enum_name: ast::Name,
+        generic_param_list: Option<ast::GenericParamList>,
+        where_clause: Option<ast::WhereClause>,
+        variant_list: ast::VariantList,
+    ) -> ast::Enum {
+        make::enum_(attrs, visibility, enum_name, generic_param_list, where_clause, variant_list)
+            .clone_for_update()
+    }
+
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {
         let ast::Expr::FieldExpr(ast) =
             make::expr_field(receiver.clone(), field).clone_for_update()
@@ -293,6 +306,14 @@ impl SyntaxFactory {
         generic_args: impl IntoIterator<Item = ast::GenericArg>,
     ) -> ast::PathSegment {
         make::generic_ty_path_segment(name_ref, generic_args).clone_for_update()
+    }
+
+    pub fn tail_only_block_expr(&self, tail_expr: ast::Expr) -> ast::BlockExpr {
+        make::tail_only_block_expr(tail_expr)
+    }
+
+    pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
+        make::expr_bin_op(lhs, op, rhs)
     }
 
     pub fn ty_placeholder(&self) -> ast::Type {
