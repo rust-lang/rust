@@ -5,11 +5,11 @@ fn foo(_1: Option<String>) -> i32 {
     let mut _0: i32;
     let mut _2: bool;
     let mut _3: isize;
-    let mut _4: &std::string::String;
+    let mut _4: &std::string::generic::String;
     let mut _5: &str;
     let mut _6: &str;
     let mut _7: bool;
-    let _8: std::option::Option<std::string::String>;
+    let _8: std::option::Option<std::string::generic::String>;
     scope 1 {
         debug s => _8;
     }
@@ -22,7 +22,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb1: {
-        _4 = &((_1 as Some).0: std::string::String);
+        _4 = &((_1 as Some).0: std::string::generic::String);
         _5 = <String as Deref>::deref(move _4) -> [return: bb2, unwind unreachable];
     }
 

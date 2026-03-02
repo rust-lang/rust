@@ -15,8 +15,8 @@
 //@ cdb-check:    [<Raw View>]     [Type: core::mem::manually_drop::ManuallyDrop<i32>]
 
 //@ cdb-command: dx pin
-//@ cdb-check:pin              : Pin(0x[...]: "this") [Type: core::pin::Pin<ref_mut$<alloc::string::String> >]
-//@ cdb-check:    [<Raw View>]     [Type: core::pin::Pin<ref_mut$<alloc::string::String> >]
+//@ cdb-check:pin              : Pin(0x[...]: "this") [Type: core::pin::Pin<ref_mut$<alloc::string::generic::String<alloc::alloc::Global> > >]
+//@ cdb-check:    [<Raw View>]     [Type: core::pin::Pin<ref_mut$<alloc::string::generic::String<alloc::alloc::Global> > >]
 //@ cdb-check:    [len]            : 0x4 [Type: unsigned [...]]
 //@ cdb-check:    [capacity]       : 0x4 [Type: unsigned [...]]
 //@ cdb-check:    [chars]          : "this"

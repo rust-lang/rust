@@ -9,6 +9,8 @@ LL | |         "abc"
 LL | |     };
    | |_____- in this macro invocation
    |
+   = note: expected reference `&str`
+                 found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `intrinsic_match` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

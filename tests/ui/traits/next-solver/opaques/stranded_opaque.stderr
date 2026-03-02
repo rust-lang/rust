@@ -10,7 +10,7 @@ error[E0220]: associated type `Assoc` not found for `Trait`
 LL | fn produce() -> impl Trait<Assoc = impl Trait> {
    |                            ^^^^^ associated type `Assoc` not found
 
-error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/stranded_opaque.rs:28:27
    |
 LL | fn ill_formed_string() -> String<impl Trait> {
@@ -18,7 +18,7 @@ LL | fn ill_formed_string() -> String<impl Trait> {
    |                           |
    |                           expected 0 generic arguments
 
-error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/stranded_opaque.rs:46:25
    |
 LL | type IllFormedString =  String<impl Trait>;

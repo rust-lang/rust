@@ -7,7 +7,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    |       required by a bound introduced by this call
    |
    = help: the following other types implement trait `Pattern`:
-             &'b String
+             &'b String<A>
              &'b [char; N]
              &'b [char]
              &'b str
