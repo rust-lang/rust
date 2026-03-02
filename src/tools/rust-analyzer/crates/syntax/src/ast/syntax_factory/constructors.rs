@@ -141,6 +141,10 @@ impl SyntaxFactory {
         make::where_clause(predicates).clone_for_update()
     }
 
+    pub fn impl_trait_type(&self, bounds: ast::TypeBoundList) -> ast::ImplTraitType {
+        make::impl_trait_type(bounds).clone_for_update()
+    }
+
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {
         let ast::Expr::FieldExpr(ast) =
             make::expr_field(receiver.clone(), field).clone_for_update()
