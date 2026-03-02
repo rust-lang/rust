@@ -327,7 +327,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     let span = || item.ident(tcx).span;
 
     match item.kind {
-        ty::AssocKind::Const { name } => {
+        ty::AssocKind::Const { name, is_type_const } => {
             // We will permit type associated consts if they are explicitly mentioned in the
             // trait object type. We can't check this here, as here we only check if it is
             // guaranteed to not be possible.
@@ -337,7 +337,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             if tcx.features().min_generic_const_args() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !tcx.is_type_const(item.def_id) {
+                } else if !is_type_const {
                     errors.push(AssocConstViolation::NonType);
                 }
 

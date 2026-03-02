@@ -32,10 +32,11 @@ use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, TokenTreeCursor,
 };
 use rustc_ast::util::case::Case;
+use rustc_ast::util::classify;
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation, Mutability,
-    Recovered, Safety, StrLit, Visibility, VisibilityKind,
+    self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
+    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, MgcaDisambiguation,
+    Mutability, Recovered, Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::debug_assert_matches;
@@ -43,7 +44,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
@@ -232,6 +233,10 @@ pub struct Parser<'a> {
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     recovery: Recovery = Recovery::Allowed,
+    /// Whether we're parsing a function body.
+    in_fn_body: bool = false,
+    /// Whether we have detected a missing semicolon in function body.
+    pub fn_body_missing_semi_guar: Option<ErrorGuaranteed> = None,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
@@ -1648,6 +1653,65 @@ impl<'a> Parser<'a> {
             token::OpenInvisible(InvisibleOrigin::MetaVar(_)) => self.look_ahead(0, |t| t.span),
             _ => self.prev_token.span,
         }
+    }
+
+    fn missing_semi_from_binop(
+        &self,
+        kind_desc: &str,
+        expr: &Expr,
+        decl_lo: Option<Span>,
+    ) -> Option<(Span, ErrorGuaranteed)> {
+        if self.token == TokenKind::Semi {
+            return None;
+        }
+        if !self.may_recover() || expr.span.from_expansion() {
+            return None;
+        }
+        let sm = self.psess.source_map();
+        if let ExprKind::Binary(op, lhs, rhs) = &expr.kind
+            && sm.is_multiline(lhs.span.shrink_to_hi().until(rhs.span.shrink_to_lo()))
+            && matches!(op.node, BinOpKind::Mul | BinOpKind::BitAnd)
+            && classify::expr_requires_semi_to_be_stmt(rhs)
+        {
+            let lhs_end_span = lhs.span.shrink_to_hi();
+            let token_str = token_descr(&self.token);
+            let mut err = self
+                .dcx()
+                .struct_span_err(lhs_end_span, format!("expected `;`, found {token_str}"));
+            err.span_label(self.token.span, "unexpected token");
+
+            // Use the declaration start if provided, otherwise fall back to lhs_end_span.
+            let continuation_start = decl_lo.unwrap_or(lhs_end_span);
+            let continuation_span = continuation_start.until(rhs.span.shrink_to_hi());
+            err.span_label(
+                continuation_span,
+                format!(
+                    "to finish parsing this {kind_desc}, expected this to be followed by a `;`",
+                ),
+            );
+            let op_desc = match op.node {
+                BinOpKind::BitAnd => "a bit-and",
+                BinOpKind::Mul => "a multiplication",
+                _ => "a binary",
+            };
+            let mut note_spans = MultiSpan::new();
+            note_spans.push_span_label(lhs.span, "parsed as the left-hand expression");
+            note_spans.push_span_label(rhs.span, "parsed as the right-hand expression");
+            note_spans.push_span_label(op.span, format!("this was parsed as {op_desc}"));
+            err.span_note(
+                note_spans,
+                format!("the {kind_desc} was parsed as having {op_desc} binary expression"),
+            );
+
+            err.span_suggestion(
+                lhs_end_span,
+                format!("you may have meant to write a `;` to terminate the {kind_desc} earlier"),
+                ";",
+                Applicability::MaybeIncorrect,
+            );
+            return Some((lhs.span, err.emit()));
+        }
+        None
     }
 }
 

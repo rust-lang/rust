@@ -976,3 +976,7 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
         f.debug_list().entries(self.iter.clone()).finish()
     }
 }
+
+pub fn getpid() -> u32 {
+    unsafe { c::GetCurrentProcessId() }
+}

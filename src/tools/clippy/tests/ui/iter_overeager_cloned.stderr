@@ -165,5 +165,47 @@ LL |     let _ = vec.iter().cloned().any(|x| x.len() == 1);
    |                       |
    |                       help: try: `.any(|x| x.len() == 1)`
 
-error: aborting due to 19 previous errors
+error: unneeded cloning of iterator items
+  --> tests/ui/iter_overeager_cloned.rs:145:17
+   |
+LL |           let _ = vec.iter().cloned().map(|x| {
+   |  _________________^
+LL | |
+LL | |             let y = x.len();
+LL | |             async move { y }
+LL | |         });
+   | |__________^
+   |
+help: try
+   |
+LL ~         let _ = vec.iter().map(|x| {
+LL +
+LL +             let y = x.len();
+LL +             async move { y }
+LL ~         });
+   |
+
+error: unneeded cloning of iterator items
+  --> tests/ui/iter_overeager_cloned.rs:156:25
+   |
+LL |           let _: Vec<_> = vec
+   |  _________________________^
+LL | |
+LL | |             .iter()
+LL | |             .cloned()
+...  |
+LL | |                 move || y
+LL | |             })
+   | |______________^
+   |
+help: try
+   |
+LL ~             .iter()
+LL +             .map(|x| {
+LL +                 let y = x.len();
+LL +                 move || y
+LL +             })
+   |
+
+error: aborting due to 21 previous errors
 

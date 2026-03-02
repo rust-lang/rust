@@ -27,9 +27,9 @@ use crate::spanned::Spanned;
 use crate::stmt::Stmt;
 use crate::utils::{
     self, contains_skip, count_newlines, depr_skip_annotation, format_safety, inner_attributes,
-    last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, starts_with_newline, stmt_expr,
+    last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, starts_with_newline,
 };
-use crate::{ErrorKind, FormatReport, FormattingError};
+use crate::{Edition, ErrorKind, FormatReport, FormattingError};
 
 /// Creates a string slice corresponding to the specified span.
 pub(crate) struct SnippetProvider {
@@ -80,6 +80,7 @@ pub(crate) struct FmtVisitor<'a> {
     pub(crate) block_indent: Indent,
     pub(crate) config: &'a Config,
     pub(crate) is_if_else_block: bool,
+    pub(crate) is_loop_block: bool,
     pub(crate) snippet_provider: &'a SnippetProvider,
     pub(crate) line_number: usize,
     /// List of 1-based line ranges which were annotated with skip
@@ -233,11 +234,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         self.walk_block_stmts(b);
 
-        if !b.stmts.is_empty() {
-            if let Some(expr) = stmt_expr(&b.stmts[b.stmts.len() - 1]) {
-                if utils::semicolon_for_expr(&self.get_context(), expr) {
-                    self.push_str(";");
-                }
+        if let Some(stmt) = b.stmts.last() {
+            if self.add_semi_on_last_block_stmt(stmt) {
+                self.push_str(";");
             }
         }
 
@@ -327,7 +326,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 .saturating_sub(self.block_indent.width());
                             match comment_shape
                                 .visual_indent(offset_len)
-                                .sub_width(offset_len)
+                                .sub_width_opt(offset_len)
                             {
                                 Some(shp) => comment_shape = shp,
                                 None => comment_on_same_line = false,
@@ -492,17 +491,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::Impl(ref iimpl) => {
                     let block_indent = self.block_indent;
                     let rw = self.with_context(|ctx| format_impl(ctx, item, iimpl, block_indent));
-                    self.push_rewrite(item.span, rw);
+                    self.push_rewrite(item.span, rw.ok());
                 }
-                ast::ItemKind::Trait(..) => {
+                ast::ItemKind::Trait(ref trait_kind) => {
                     let block_indent = self.block_indent;
-                    let rw = self.with_context(|ctx| format_trait(ctx, item, block_indent));
-                    self.push_rewrite(item.span, rw);
+                    let rw =
+                        self.with_context(|ctx| format_trait(ctx, item, trait_kind, block_indent));
+                    self.push_rewrite(item.span, rw.ok());
                 }
                 ast::ItemKind::TraitAlias(ref ta) => {
                     let shape = Shape::indented(self.block_indent, self.config);
-                    let rw = format_trait_alias(&self.get_context(), ta, &item.vis, shape);
-                    self.push_rewrite(item.span, rw);
+                    let rw =
+                        format_trait_alias(&self.get_context(), ta, &item.vis, item.span, shape);
+                    self.push_rewrite(item.span, rw.ok());
                 }
                 ast::ItemKind::ExternCrate(..) => {
                     let rw = rewrite_extern_crate(&self.get_context(), item, self.shape());
@@ -511,7 +512,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     } else {
                         mk_sp(attrs[0].span.lo(), item.span.hi())
                     };
-                    self.push_rewrite(span, rw);
+                    self.push_rewrite(span, rw.ok());
                 }
                 ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
                     self.visit_struct(&StructParts::from_item(item));
@@ -834,6 +835,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             block_indent: Indent::empty(),
             config,
             is_if_else_block: false,
+            is_loop_block: false,
             snippet_provider,
             line_number: 0,
             skipped_range: Rc::new(RefCell::new(vec![])),
@@ -1036,10 +1038,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    pub(crate) fn with_context<F>(&mut self, f: F) -> Option<String>
-    where
-        F: Fn(&RewriteContext<'_>) -> Option<String>,
-    {
+    pub(crate) fn with_context<T>(&mut self, f: impl Fn(&RewriteContext<'_>) -> T) -> T {
         let context = self.get_context();
         let result = f(&context);
 
@@ -1054,6 +1053,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             inside_macro: Rc::new(Cell::new(false)),
             use_block: Cell::new(false),
             is_if_else_block: Cell::new(false),
+            is_loop_block: Cell::new(false),
             force_one_line_chain: Cell::new(false),
             snippet_provider: self.snippet_provider,
             macro_rewrite_failure: Cell::new(false),
@@ -1061,6 +1061,45 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             report: self.report.clone(),
             skip_context: self.skip_context.clone(),
             skipped_range: self.skipped_range.clone(),
+        }
+    }
+
+    fn add_semi_on_last_block_stmt(&self, stmt: &ast::Stmt) -> bool {
+        let ast::StmtKind::Expr(expr) = &stmt.kind else {
+            return false;
+        };
+
+        if self.is_macro_def {
+            return false;
+        }
+
+        match expr.kind {
+            ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
+                self.config.trailing_semicolon()
+            }
+
+            // TODO[reviewer-help]: This is roughly "does it end in a
+            // curly". There might be a helper for this, or cases I'm
+            // missing.
+            ast::ExprKind::Loop(..)
+            | ast::ExprKind::While(..)
+            | ast::ExprKind::ForLoop { .. }
+            | ast::ExprKind::Let(..)
+            | ast::ExprKind::If(..)
+            | ast::ExprKind::Match(..) => false,
+
+            _ => {
+                // Checking the edition as before 2024 the lack of a
+                // semicolon could impact temporary lifetimes[1].
+                //
+                // 1: https://rust-lang.github.io/rfcs/
+                //      3606-temporary-lifetimes-in-tail-expressions.html
+                let allowed_to_add_semi = self.is_loop_block
+                    && self.config.edition() >= Edition::Edition2024
+                    && self.config.style_edition() >= StyleEdition::Edition2027;
+
+                allowed_to_add_semi && self.config.trailing_semicolon()
+            }
         }
     }
 }

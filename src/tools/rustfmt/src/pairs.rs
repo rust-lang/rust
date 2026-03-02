@@ -86,7 +86,7 @@ fn rewrite_pairs_one_line<T: Rewrite>(
 
     let prefix_len = result.len();
     let last = list.list.last()?.0;
-    let cur_shape = base_shape.offset_left(last_line_width(&result))?;
+    let cur_shape = base_shape.offset_left_opt(last_line_width(&result))?;
     let last_rewrite = last.rewrite(context, cur_shape)?;
     result.push_str(&last_rewrite);
 
@@ -116,8 +116,7 @@ fn rewrite_pairs_multiline<T: Rewrite>(
         IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
     })
     .with_max_width(context.config)
-    .sub_width(rhs_offset)
-    .max_width_error(shape.width, list.span)?;
+    .sub_width(rhs_offset, list.span)?;
 
     let indent_str = nested_shape.indent.to_string_with_newline(context.config);
     let mut result = String::new();
@@ -136,7 +135,7 @@ fn rewrite_pairs_multiline<T: Rewrite>(
         if last_line_width(&result) + offset <= nested_shape.used_width() {
             // We must snuggle the next line onto the previous line to avoid an orphan.
             if let Some(line_shape) =
-                shape.offset_left(s.len() + 2 + trimmed_last_line_width(&result))
+                shape.offset_left_opt(s.len() + 2 + trimmed_last_line_width(&result))
             {
                 if let Ok(rewrite) = e.rewrite_result(context, line_shape) {
                     result.push(' ');
@@ -194,12 +193,11 @@ where
 
     // Try to put both lhs and rhs on the same line.
     let rhs_orig_result = shape
-        .offset_left(last_line_width(&lhs_result) + pp.infix.len())
-        .and_then(|s| s.sub_width(pp.suffix.len()))
-        .max_width_error(shape.width, rhs.span())
-        .and_then(|rhs_shape| rhs.rewrite_result(context, rhs_shape));
+        .offset_left_opt(last_line_width(&lhs_result) + pp.infix.len())
+        .and_then(|s| s.sub_width_opt(pp.suffix.len()))
+        .and_then(|rhs_shape| rhs.rewrite_result(context, rhs_shape).ok());
 
-    if let Ok(ref rhs_result) = rhs_orig_result {
+    if let Some(ref rhs_result) = rhs_orig_result {
         // If the length of the lhs is equal to or shorter than the tab width or
         // the rhs looks like block expression, we put the rhs on the same
         // line with the lhs even if the rhs is multi-lined.
@@ -227,15 +225,13 @@ where
     // Re-evaluate the rhs because we have more space now:
     let mut rhs_shape = match context.config.indent_style() {
         IndentStyle::Visual => shape
-            .sub_width(pp.suffix.len() + pp.prefix.len())
-            .max_width_error(shape.width, rhs.span())?
+            .sub_width(pp.suffix.len() + pp.prefix.len(), rhs.span())?
             .visual_indent(pp.prefix.len()),
         IndentStyle::Block => {
             // Try to calculate the initial constraint on the right hand side.
             let rhs_overhead = shape.rhs_overhead(context.config);
             Shape::indented(shape.indent.block_indent(context.config), context.config)
-                .sub_width(rhs_overhead)
-                .max_width_error(shape.width, rhs.span())?
+                .sub_width(rhs_overhead, rhs.span())?
         }
     };
     let infix = match separator_place {
@@ -243,9 +239,7 @@ where
         SeparatorPlace::Front => pp.infix.trim_start(),
     };
     if separator_place == SeparatorPlace::Front {
-        rhs_shape = rhs_shape
-            .offset_left(infix.len())
-            .max_width_error(rhs_shape.width, rhs.span())?;
+        rhs_shape = rhs_shape.offset_left(infix.len(), rhs.span())?;
     }
     let rhs_result = rhs.rewrite_result(context, rhs_shape)?;
     let indent_str = rhs_shape.indent.to_string_with_newline(context.config);
@@ -329,15 +323,10 @@ impl FlattenPair for ast::Expr {
                 IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
             })
             .with_max_width(context.config)
-            .sub_width(rhs_offset)
-            .max_width_error(shape.width, node.span)?;
+            .sub_width(rhs_offset, node.span)?;
             let default_shape = match context.config.binop_separator() {
-                SeparatorPlace::Back => nested_shape
-                    .sub_width(nested_overhead)
-                    .max_width_error(nested_shape.width, node.span)?,
-                SeparatorPlace::Front => nested_shape
-                    .offset_left(nested_overhead)
-                    .max_width_error(nested_shape.width, node.span)?,
+                SeparatorPlace::Back => nested_shape.sub_width(nested_overhead, node.span)?,
+                SeparatorPlace::Front => nested_shape.offset_left(nested_overhead, node.span)?,
             };
             node.rewrite_result(context, default_shape)
         };

@@ -1,7 +1,7 @@
 # Parameter `Ty`/`Const`/`Region`s
 
-When inside of generic items, types can be written that use in scope generic parameters, for example `fn foo<'a, T>(_: &'a Vec<T>)`. In this specific case
-the `&'a Vec<T>` type would be represented internally as:
+When inside of generic items, types can be written that use in scope generic parameters, for example `fn foo<'a, T>(_: &'a Vec<T>)`.
+In this specific case, the `&'a Vec<T>` type would be represented internally as:
 ```
 TyKind::Ref(
   RegionKind::LateParam(DefId(foo), DefId(foo::'a), "'a"),
@@ -29,8 +29,11 @@ struct Foo<T>(Vec<T>);
 ```
 The `Vec<T>` type is represented as `TyKind::Adt(Vec, &[GenericArgKind::Type(Param("T", 0))])`.
 
-The name is somewhat self explanatory, it's the name of the type parameter. The index of the type parameter is an integer indicating
-its order in the list of generic parameters in scope (note: this includes parameters defined on items on outer scopes than the item the parameter is defined on). Consider the following examples:
+The name is somewhat self explanatory; it's the name of the type parameter.
+The index of the type parameter is an integer indicating
+its order in the list of generic parameters in scope.
+Note that this includes parameters defined on items on outer scopes than the item the parameter is defined on.
+Consider the following examples:
 
 ```rust,ignore
 struct Foo<A, B> {
@@ -49,15 +52,20 @@ impl<X, Y> Foo<X, Y> {
 }
 ```
 
-Concretely given the `ty::Generics` for the item the parameter is defined on, if the index is `2` then starting from the root `parent`, it will be the third parameter to be introduced. For example in the above example, `Z` has index `2` and is the third generic parameter to be introduced, starting from the `impl` block.
+Concretely, given the `ty::Generics` for the item the parameter is defined on,
+if the index is `2` and if we start from the root `parent`, it will be the third parameter to be introduced.
+For example in the above example, `Z` has index `2` and is the third generic parameter to be introduced, starting from the `impl` block.
 
 The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling.
 
-Generally we do not care what the name is and only use the index. The name is included for diagnostics and debug logs as otherwise it would be
+Generally, we do not care what the name is, and we only use the index.
+The name is included for diagnostics and debug logs as otherwise it would be
 incredibly difficult to understand the output, i.e. `Vec<Param(0)>: Sized` vs `Vec<T>: Sized`. In debug output, parameter types are
 often printed out as `{name}/#{index}`, for example in the function `foo` if we were to debug print `Vec<T>` it would be written as `Vec<T/#0>`.
 
-An alternative representation would be to only have the name, however using an index is more efficient as it means we can index into `GenericArgs` when instantiating generic parameters with some arguments. We would otherwise have to store `GenericArgs` as a `HashMap<Symbol, GenericArg>` and do a hashmap lookup everytime we used a generic item.
+An alternative representation would be to only have the name.
+However, using an index is more efficient as it means we can index into `GenericArgs` when instantiating generic parameters with some arguments.
+We would otherwise have to store `GenericArgs` as a `HashMap<Symbol, GenericArg>` and do a hashmap lookup everytime we used a generic item.
 
 In theory an index would also allow for having multiple distinct parameters that use the same name, e.g.
 `impl<A> Foo<A> { fn bar<A>() { .. } }`.
@@ -65,9 +73,15 @@ The rules against shadowing make this difficult but those language rules could c
 
 ### Lifetime parameters
 
-In contrast to `Ty`/`Const`'s `Param` singular `Param` variant, lifetimes have two variants for representing region parameters: [`RegionKind::EarlyParam`] and [`RegionKind::LateParam`]. The reason for this is due to function's distinguishing between [early and late bound parameters][ch_early_late_bound] which is discussed in an earlier chapter (see link).
+In contrast to `Ty`/`Const`'s `Param` singular `Param` variant, lifetimes have two variants for representing region parameters: [`RegionKind::EarlyParam`] and [`RegionKind::LateParam`].
+The reason for this is due to function's distinguishing between [early and late bound parameters][ch_early_late_bound] which is discussed in an earlier chapter (see link).
 
-`RegionKind::EarlyParam` is structured identically to `Ty/Const`'s `Param` variant, it is simply a `u32` index and a `Symbol`. For lifetime parameters defined on non-function items we always use `ReEarlyParam`. For functions we use `ReEarlyParam` for any early bound parameters and `ReLateParam` for any late bound parameters. Note that just like `Ty` and `Const` params we often debug format them as `'SYMBOL/#INDEX`, see for example:
+`RegionKind::EarlyParam` is structured identically to `Ty/Const`'s `Param` variant; it is simply a `u32` index and a `Symbol`.
+For lifetime parameters defined on non-function items, we always use `ReEarlyParam`.
+For functions, we use `ReEarlyParam` for any early bound parameters and `ReLateParam` for any late bound parameters.
+Note that, just like `Ty` and `Const` params, we often debug format them as `'SYMBOL/#INDEX`.
+
+An example:
 
 ```rust,ignore
 // This function would have its signature represented as:

@@ -577,11 +577,11 @@ impl PathSource<'_, '_, '_> {
                 res,
                 Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
-                        | DefKind::Const
+                        | DefKind::Const { .. }
                         | DefKind::Static { .. }
                         | DefKind::Fn
                         | DefKind::AssocFn
-                        | DefKind::AssocConst
+                        | DefKind::AssocConst { .. }
                         | DefKind::ConstParam,
                     _,
                 ) | Res::Local(..)
@@ -589,7 +589,10 @@ impl PathSource<'_, '_, '_> {
             ),
             PathSource::Pat => {
                 res.expected_in_unit_struct_pat()
-                    || matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
+                    || matches!(
+                        res,
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, _)
+                    )
             }
             PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
             PathSource::Struct(_) => matches!(
@@ -605,7 +608,7 @@ impl PathSource<'_, '_, '_> {
                     | Res::SelfTyAlias { .. }
             ),
             PathSource::TraitItem(ns, _) => match res {
-                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
+                Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
@@ -3739,7 +3742,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match (def_kind, kind) {
             (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
-            | (DefKind::AssocConst, AssocItemKind::Const(..))
+            | (DefKind::AssocConst { .. }, AssocItemKind::Const(..))
             | (DefKind::AssocFn, AssocItemKind::Delegation(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
                 return;
@@ -4321,7 +4324,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match res {
             Res::SelfCtor(_) // See #70549.
             | Res::Def(
-                DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst | DefKind::ConstParam,
+                DefKind::Ctor(_, CtorKind::Const) | DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::ConstParam,
                 _,
             ) if is_syntactic_ambiguity => {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
@@ -4330,7 +4333,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
                 Some(res)
             }
-            Res::Def(DefKind::Ctor(..) | DefKind::Const | DefKind::AssocConst | DefKind::Static { .. }, _) => {
+            Res::Def(DefKind::Ctor(..) | DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::Static { .. }, _) => {
                 // This is unambiguously a fresh binding, either syntactically
                 // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
                 // to something unusable as a pattern (e.g., constructor function),
@@ -4351,7 +4354,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 None
             }
             Res::Def(DefKind::ConstParam, def_id) => {
-                // Same as for DefKind::Const above, but here, `binding` is `None`, so we
+                // Same as for DefKind::Const { .. } above, but here, `binding` is `None`, so we
                 // have to construct the error differently
                 self.report_error(
                     ident.span,

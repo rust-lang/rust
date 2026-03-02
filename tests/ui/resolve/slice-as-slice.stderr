@@ -1,0 +1,17 @@
+warning: a method with this name may be added to the standard library in the future
+  --> $DIR/slice-as-slice.rs:19:12
+   |
+LL |     b(data.as_slice());
+   |            ^^^^^^^^
+   |
+   = warning: once this associated item is added to the standard library, the ambiguity may cause an error or change in behavior!
+   = note: for more information, see issue #48919 <https://github.com/rust-lang/rust/issues/48919>
+   = help: call with fully qualified syntax `ComponentSlice::as_slice(...)` to keep using the current method
+   = note: `#[warn(unstable_name_collisions)]` (part of `#[warn(future_incompatible)]`) on by default
+help: add `#![feature(str_as_str)]` to the crate attributes to enable `core::slice::<impl [T]>::as_slice`
+   |
+LL + #![feature(str_as_str)]
+   |
+
+warning: 1 warning emitted
+

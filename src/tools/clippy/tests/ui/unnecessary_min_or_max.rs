@@ -77,6 +77,32 @@ fn main() {
     let _ = (X + 1).min(12);
     let _ = 12.min(X - 1);
     let _ = 12.max(X - 1);
+
+    let n: usize = 42;
+
+    let _ = n.min(0);
+    //~^ unnecessary_min_or_max
+
+    let _ = n.min(0usize);
+    //~^ unnecessary_min_or_max
+
+    let _ = (0usize).min(n);
+    //~^ unnecessary_min_or_max
+
+    let _ = n.min(usize::MIN);
+    //~^ unnecessary_min_or_max
+
+    let _ = n.max(usize::MAX);
+    //~^ unnecessary_min_or_max
+
+    let _ = (usize::MAX).max(n);
+    //~^ unnecessary_min_or_max
+
+    let _ = n.max(!0usize);
+    //~^ unnecessary_min_or_max
+
+    let _ = n.max(0);
+    //~^ unnecessary_min_or_max
 }
 fn random_u32() -> u32 {
     // random number generator

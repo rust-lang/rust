@@ -231,7 +231,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const
+            DefKind::Const { .. }
                 if !tcx.generics_of(item_def_id).own_requires_monomorphization()
                     && !tcx.is_type_const(item_def_id) =>
             {

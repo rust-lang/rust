@@ -490,8 +490,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
-            .filter(|e| *e)
-            .is_none()
+            .is_none_or(|e| !e)
     {
         if !is_copy(cx, caller_ty)
             && let Some(hir_id) = let_expr.res_local_id()

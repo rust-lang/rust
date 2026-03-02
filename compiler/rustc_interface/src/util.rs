@@ -300,7 +300,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
                     );
-                    diag.emit();
+                    diag.emit()
                 })
         })
     })

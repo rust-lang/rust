@@ -6,7 +6,6 @@
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
 use std::borrow::Cow;
-use std::error::Report;
 use std::fmt::Debug;
 use std::io;
 use std::io::Write;
@@ -17,7 +16,7 @@ use annotate_snippets::{AnnotationKind, Group, Origin, Padding, Patch, Renderer,
 use anstream::ColorChoice;
 use derive_setters::Setters;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_error_messages::{DiagArgMap, SpanLabel};
 use rustc_lint_defs::pluralize;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
@@ -27,7 +26,7 @@ use crate::emitter::{
     ConfusionType, Destination, MAX_SUGGESTIONS, OutputTheme, detect_confusion_type, is_different,
     normalize_whitespace, should_show_source_code,
 };
-use crate::translation::{format_diag_message, format_diag_messages, to_fluent_args};
+use crate::translation::{format_diag_message, format_diag_messages};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
     SuggestionStyle, TerminalUrl,
@@ -71,14 +70,12 @@ impl Debug for AnnotateSnippetEmitter {
 impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
-        let fluent_args = to_fluent_args(diag.args.iter());
-
         if self.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
             diag.children.insert(0, diag.emitted_at_sub_diag());
         }
 
         let mut suggestions = diag.suggestions.unwrap_tag();
-        self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
+        self.primary_span_formatted(&mut diag.span, &mut suggestions, &diag.args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &mut diag.span,
@@ -90,7 +87,7 @@ impl Emitter for AnnotateSnippetEmitter {
         self.emit_messages_default(
             &diag.level,
             &diag.messages,
-            &fluent_args,
+            &diag.args,
             &diag.code,
             &diag.span,
             &diag.children,
@@ -146,7 +143,7 @@ impl AnnotateSnippetEmitter {
         &mut self,
         level: &Level,
         msgs: &[(DiagMessage, Style)],
-        args: &FluentArgs<'_>,
+        args: &DiagArgMap,
         code: &Option<ErrCode>,
         msp: &MultiSpan,
         children: &[Subdiag],
@@ -361,10 +358,7 @@ impl AnnotateSnippetEmitter {
                     if substitutions.is_empty() {
                         continue;
                     }
-                    let mut msg = format_diag_message(&suggestion.msg, args)
-                        .map_err(Report::new)
-                        .unwrap()
-                        .to_string();
+                    let mut msg = format_diag_message(&suggestion.msg, args).to_string();
 
                     let lo = substitutions
                         .iter()
@@ -543,11 +537,11 @@ impl AnnotateSnippetEmitter {
         &self,
         msgs: &[(DiagMessage, Style)],
         level: Level,
-        args: &FluentArgs<'_>,
+        args: &DiagArgMap,
     ) -> String {
         msgs.iter()
             .filter_map(|(m, style)| {
-                let text = format_diag_message(m, args).map_err(Report::new).unwrap();
+                let text = format_diag_message(m, args);
                 let style = style.anstyle(level);
                 if text.is_empty() { None } else { Some(format!("{style}{text}{style:#}")) }
             })
@@ -677,7 +671,7 @@ struct Annotation {
 }
 
 fn collect_annotations(
-    args: &FluentArgs<'_>,
+    args: &DiagArgMap,
     msp: &MultiSpan,
     sm: &Arc<SourceMap>,
 ) -> Vec<(Arc<SourceFile>, Vec<Annotation>)> {
@@ -694,9 +688,7 @@ fn collect_annotations(
 
         let kind = if is_primary { AnnotationKind::Primary } else { AnnotationKind::Context };
 
-        let label = label.as_ref().map(|m| {
-            normalize_whitespace(&format_diag_message(m, args).map_err(Report::new).unwrap())
-        });
+        let label = label.as_ref().map(|m| normalize_whitespace(&format_diag_message(m, args)));
 
         let ann = Annotation { kind, span, label };
         if sm.is_valid_span(ann.span).is_ok() {

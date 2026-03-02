@@ -88,16 +88,6 @@ fn unnecessary_fold_should_ignore() {
     let _: i32 = (0..3).fold(0, FakeAdd::add);
     let _: i32 = (0..3).fold(1, FakeMul::mul);
 
-    // We only match against an accumulator on the left
-    // hand side. We could lint for .sum and .product when
-    // it's on the right, but don't for now (and this wouldn't
-    // be valid if we extended the lint to cover arbitrary numeric
-    // types).
-    let _ = (0..3).fold(false, |acc, x| x > 2 || acc);
-    let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
-    let _ = (0..3).fold(0, |acc, x| x + acc);
-    let _ = (0..3).fold(1, |acc, x| x * acc);
-
     let _ = [(0..2), (0..3)].iter().fold(0, |a, b| a + b.len());
     let _ = [(0..2), (0..3)].iter().fold(1, |a, b| a * b.len());
 }
@@ -176,6 +166,26 @@ fn issue10000() {
         (0..3).fold(1, |acc, x| acc * x)
         //~^ unnecessary_fold
     }
+}
+
+fn issue16581() {
+    let _ = (2..=3).fold(1, |a, b| a * b);
+    //~^ unnecessary_fold
+    let _ = (1..=3).fold(0, |a, b| a + b);
+    //~^ unnecessary_fold
+    let _ = (2..=3).fold(1, |b, a| a * b);
+    //~^ unnecessary_fold
+    let _ = (1..=3).fold(0, |b, a| a + b);
+    //~^ unnecessary_fold
+
+    let _ = (0..3).fold(false, |acc, x| x > 2 || acc);
+    //~^ unnecessary_fold
+    let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
+    //~^ unnecessary_fold
+    let _ = (0..3).fold(0, |acc, x| x + acc);
+    //~^ unnecessary_fold
+    let _ = (0..3).fold(1, |acc, x| x * acc);
+    //~^ unnecessary_fold
 }
 
 fn wrongly_unmangled_macros() {

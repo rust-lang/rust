@@ -798,6 +798,44 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return false;
         }
 
+        // If this is a zero-argument async closure directly passed as an argument
+        // and the expected type is `Future`, suggest using `async {}` block instead
+        // of `async || {}`
+        if let ty::CoroutineClosure(def_id, args) = *self_ty.kind()
+            && let sig = args.as_coroutine_closure().coroutine_closure_sig().skip_binder()
+            && let ty::Tuple(inputs) = *sig.tupled_inputs_ty.kind()
+            && inputs.is_empty()
+            && self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Future)
+            && let Some(hir::Node::Expr(hir::Expr {
+                kind:
+                    hir::ExprKind::Closure(hir::Closure {
+                        kind: hir::ClosureKind::CoroutineClosure(CoroutineDesugaring::Async),
+                        fn_arg_span: Some(arg_span),
+                        ..
+                    }),
+                ..
+            })) = self.tcx.hir_get_if_local(def_id)
+            && obligation.cause.span.contains(*arg_span)
+        {
+            let sm = self.tcx.sess.source_map();
+            let removal_span = if let Ok(snippet) =
+                sm.span_to_snippet(arg_span.with_hi(arg_span.hi() + rustc_span::BytePos(1)))
+                && snippet.ends_with(' ')
+            {
+                // There's a space after `||`, include it in the removal
+                arg_span.with_hi(arg_span.hi() + rustc_span::BytePos(1))
+            } else {
+                *arg_span
+            };
+            err.span_suggestion_verbose(
+                removal_span,
+                "use `async {}` instead of `async || {}` to introduce an async block",
+                "",
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
+
         // Get the name of the callable and the arguments to be used in the suggestion.
         let msg = match def_id_or_name {
             DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {

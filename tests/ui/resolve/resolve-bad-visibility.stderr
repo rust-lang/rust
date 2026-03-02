@@ -1,10 +1,10 @@
-error[E0577]: expected module, found enum `E`
+error[E0577]: expected module, found enum `::E`
   --> $DIR/resolve-bad-visibility.rs:5:8
    |
 LL | pub(in E) struct S;
    |        ^ not a module
 
-error[E0577]: expected module, found trait `Tr`
+error[E0577]: expected module, found trait `::Tr`
   --> $DIR/resolve-bad-visibility.rs:6:8
    |
 LL | pub(in Tr) struct Z;

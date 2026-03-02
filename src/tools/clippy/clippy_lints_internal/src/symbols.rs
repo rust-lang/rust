@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
                 }
 
                 for item in cx.tcx.module_children(def_id) {
-                    if let Res::Def(DefKind::Const, item_def_id) = item.res
+                    if let Res::Def(DefKind::Const { .. }, item_def_id) = item.res
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
                         && internal_paths::SYMBOL.matches_ty(cx, ty)
                         && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id)

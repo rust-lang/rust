@@ -165,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::AssocConst
+                | DefKind::AssocConst { .. }
                 | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),

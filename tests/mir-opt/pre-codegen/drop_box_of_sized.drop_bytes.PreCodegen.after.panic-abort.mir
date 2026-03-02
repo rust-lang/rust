@@ -13,6 +13,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                     }
                     scope 18 (inlined std::ptr::Unique::<[u8; 1024]>::cast::<u8>) {
                         scope 19 (inlined NonNull::<[u8; 1024]>::cast::<u8>) {
+                            let mut _3: *mut u8;
                             scope 20 (inlined NonNull::<[u8; 1024]>::as_ptr) {
                             }
                         }
@@ -24,7 +25,6 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _3: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
                                 scope 27 (inlined NonNull::<u8>::as_ptr) {
@@ -69,13 +69,11 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
 
     bb0: {
         _2 = copy (((*_1).0: std::ptr::Unique<[u8; 1024]>).0: std::ptr::NonNull<[u8; 1024]>);
-        StorageLive(_3);
         _3 = copy _2 as *mut u8 (Transmute);
         _4 = alloc::alloc::__rust_dealloc(move _3, const 1024_usize, const std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageDead(_3);
         return;
     }
 }

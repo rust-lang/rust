@@ -17,7 +17,7 @@ use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
-use rustc_type_ir::{Upcast as _, elaborate};
+use rustc_type_ir::{FieldInfo, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
 // `pretty` is a separate module only for organization.
@@ -404,7 +404,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(true);
         }
         if let Some(symbol) = key.get_opt_name() {
-            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
+            if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy = kind
                 && let Some(parent) = self.tcx().opt_parent(def_id)
                 && let parent_key = self.tcx().def_key(parent)
                 && let Some(symbol) = parent_key.get_opt_name()
@@ -429,7 +429,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::Trait
             | DefKind::TyAlias
             | DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Static { .. } = kind
             {
             } else {
@@ -793,6 +793,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     false => write!(self, "{}", self.tcx().item_name(def_id))?,
                 },
             },
+            ty::Adt(def, args)
+                if let Some(FieldInfo { base, variant, name, .. }) =
+                    def.field_representing_type_info(self.tcx(), args) =>
+            {
+                if let Some(variant) = variant {
+                    write!(self, "field_of!({base}, {variant}.{name})")?;
+                } else {
+                    write!(self, "field_of!({base}, {name})")?;
+                }
+            }
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r) => {
                 let print_r = self.should_print_optional_region(r);
@@ -1541,7 +1551,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 match self.tcx().def_kind(def) {
-                    DefKind::Const | DefKind::AssocConst => {
+                    DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                         self.pretty_print_value_path(def, args)?;
                     }
                     DefKind::AnonConst => {

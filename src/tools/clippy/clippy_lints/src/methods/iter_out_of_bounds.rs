@@ -5,7 +5,7 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self};
+use rustc_middle::ty;
 
 use super::ITER_OUT_OF_BOUNDS;
 

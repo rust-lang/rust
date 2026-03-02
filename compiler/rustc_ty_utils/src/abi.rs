@@ -627,6 +627,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
+
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.

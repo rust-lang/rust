@@ -159,6 +159,9 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if in_html_div {
             continue;
         }
+        if line.trim_end().ends_with("<br>") {
+            continue;
+        }
         if ignore(line, in_code_block) || REGEX_SPLIT.is_match(line) {
             continue;
         }

@@ -13,6 +13,7 @@ pub use unic_langid::{LanguageIdentifier, langid};
 
 mod diagnostic_impls;
 pub use diagnostic_impls::DiagArgFromDisplay;
+use rustc_data_structures::fx::FxIndexMap;
 
 pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle<R, M>) {
     bundle
@@ -309,6 +310,10 @@ pub enum DiagArgValue {
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
+
+/// A mapping from diagnostic argument names to their values.
+/// This contains all the arguments necessary to format a diagnostic message.
+pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
 /// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
 /// Implemented as a custom trait rather than `From` so that it is implemented on the type being

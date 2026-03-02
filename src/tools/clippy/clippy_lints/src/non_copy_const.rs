@@ -20,10 +20,10 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::{is_in_const_context, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
+use clippy_utils::{is_in_const_context, sym};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -394,14 +394,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                     let res = typeck.qpath_res(p, e.hir_id);
                     let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args);
                     match res {
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Ok(val) =
                                 tcx.const_eval_resolve(typing_env, UnevaluatedConst::new(did, gen_args), DUMMY_SP)
                                 && let Ok(is_freeze) = self.is_value_freeze(tcx, typing_env, ty, val) =>
                         {
                             is_freeze
                         },
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Some((typeck, init)) = get_const_hir_value(tcx, typing_env, did, gen_args) =>
                         {
                             self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, init)
@@ -588,7 +588,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id)).instantiate(tcx, init_args);
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Ok(val) = tcx.const_eval_resolve(
                                     typing_env,
                                     UnevaluatedConst::new(did, next_init_args),
@@ -598,7 +598,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             {
                                 return res;
                             },
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Some((next_typeck, value)) =
                                     get_const_hir_value(tcx, typing_env, did, next_init_args) =>
                             {
@@ -831,7 +831,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &e.kind
             && let typeck = cx.typeck_results()
-            && let Res::Def(DefKind::Const | DefKind::AssocConst, did) = typeck.qpath_res(qpath, e.hir_id)
+            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) = typeck.qpath_res(qpath, e.hir_id)
             // As of `1.80` constant contexts can't borrow any type with interior mutability
             && !is_in_const_context(cx)
             && !self.is_ty_freeze(cx.tcx, cx.typing_env(), typeck.expr_ty(e)).is_freeze()

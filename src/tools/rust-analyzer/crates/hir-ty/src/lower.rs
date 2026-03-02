@@ -40,7 +40,7 @@ use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind,
-    TyKind::{self},
+    TyKind,
     TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
     inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };

@@ -21,7 +21,6 @@ extern crate self as rustc_errors;
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::error::Report;
 use std::ffi::OsStr;
 use std::hash::Hash;
 use std::io::Write;
@@ -40,8 +39,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagArgMap, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee,
-    FatalAbort, LintDiagnostic, LintDiagnosticBox, StringPart, Subdiag, Subdiagnostic,
+    BugAbort, Diag, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee, FatalAbort,
+    LintDiagnostic, LintDiagnosticBox, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -54,7 +53,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
-    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
+    DiagArg, DiagArgFromDisplay, DiagArgMap, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
     LanguageIdentifier, MultiSpan, SpanLabel, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
@@ -78,7 +77,6 @@ mod decorate_diag;
 mod diagnostic;
 mod diagnostic_impls;
 pub mod emitter;
-pub mod error;
 pub mod json;
 mod lock;
 pub mod markdown;
@@ -1436,8 +1434,8 @@ impl DiagCtxtInner {
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
-        let args = crate::translation::to_fluent_args(args);
-        format_diag_message(&message, &args).map_err(Report::new).unwrap().to_string()
+        let args = args.map(|(name, val)| (name.clone(), val.clone())).collect();
+        format_diag_message(&message, &args).to_string()
     }
 
     fn eagerly_translate_for_subdiag(

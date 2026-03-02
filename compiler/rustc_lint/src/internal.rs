@@ -638,7 +638,7 @@ impl EarlyLintPass for BadUseOfFindAttr {
                     cx.emit_span_lint(
                         BAD_USE_OF_FIND_ATTR,
                         segment.span(),
-                        AttributeKindInFindAttr {},
+                        AttributeKindInFindAttr,
                     );
                 }
             }

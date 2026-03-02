@@ -1,10 +1,66 @@
+use std::fmt::Debug;
+
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
 
-use crate::dep_graph::{DepNode, DepNodeKey, KeyFingerprintStyle};
+use crate::dep_graph::{DepNode, KeyFingerprintStyle};
+use crate::ich::StableHashingContext;
 use crate::ty::TyCtxt;
+
+/// Trait for query keys as seen by dependency-node tracking.
+pub trait DepNodeKey<'tcx>: Debug + Sized {
+    fn key_fingerprint_style() -> KeyFingerprintStyle;
+
+    /// This method turns a query key into an opaque `Fingerprint` to be used
+    /// in `DepNode`.
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint;
+
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String;
+
+    /// This method tries to recover the query key from the given `DepNode`,
+    /// something which is needed when forcing `DepNode`s during red-green
+    /// evaluation. The query system will only call this method if
+    /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
+    /// It is always valid to return `None` here, in which case incremental
+    /// compilation will treat the query as having changed instead of forcing it.
+    fn try_recover_key(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
+}
+
+// Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
+impl<'tcx, T> DepNodeKey<'tcx> for T
+where
+    T: for<'a> HashStable<StableHashingContext<'a>> + Debug,
+{
+    #[inline(always)]
+    default fn key_fingerprint_style() -> KeyFingerprintStyle {
+        KeyFingerprintStyle::Opaque
+    }
+
+    #[inline(always)]
+    default fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            self.hash_stable(&mut hcx, &mut hasher);
+            hasher.finish()
+        })
+    }
+
+    #[inline(always)]
+    default fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        // Make sure to print dep node params with reduced queries since printing
+        // may themselves call queries, which may lead to (possibly untracked!)
+        // query cycles.
+        tcx.with_reduced_queries(|| format!("{self:?}"))
+    }
+
+    #[inline(always)]
+    default fn try_recover_key(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
+        None
+    }
+}
 
 impl<'tcx> DepNodeKey<'tcx> for () {
     #[inline(always)]

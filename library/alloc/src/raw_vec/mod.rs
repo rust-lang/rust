@@ -399,6 +399,21 @@ impl<T, A: Allocator> RawVec<T, A> {
         // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
         unsafe { self.inner.shrink_to_fit(cap, T::LAYOUT) }
     }
+
+    /// Shrinks the buffer down to the specified capacity. If the given amount
+    /// is 0, actually completely deallocates.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if the allocator cannot shrink the allocation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given amount is *larger* than the current capacity.
+    #[inline]
+    pub(crate) fn try_shrink_to_fit(&mut self, cap: usize) -> Result<(), TryReserveError> {
+        unsafe { self.inner.try_shrink_to_fit(cap, T::LAYOUT) }
+    }
 }
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
@@ -731,6 +746,20 @@ impl<A: Allocator> RawVecInner<A> {
         }
     }
 
+    /// # Safety
+    ///
+    /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
+    ///   initially construct `self`
+    /// - `elem_layout`'s size must be a multiple of its alignment
+    /// - `cap` must be less than or equal to `self.capacity(elem_layout.size())`
+    unsafe fn try_shrink_to_fit(
+        &mut self,
+        cap: usize,
+        elem_layout: Layout,
+    ) -> Result<(), TryReserveError> {
+        unsafe { self.shrink(cap, elem_layout) }
+    }
+
     #[inline]
     const fn needs_to_grow(&self, len: usize, additional: usize, elem_layout: Layout) -> bool {
         additional > self.capacity(elem_layout.size()).wrapping_sub(len)
@@ -778,7 +807,6 @@ impl<A: Allocator> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - `cap` must be less than or equal to `self.capacity(elem_layout.size())`
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn shrink(&mut self, cap: usize, elem_layout: Layout) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(elem_layout.size()), "Tried to shrink to a larger capacity");
@@ -796,7 +824,6 @@ impl<A: Allocator> RawVecInner<A> {
     ///
     /// # Safety
     /// `cap <= self.capacity()`
-    #[cfg(not(no_global_oom_handling))]
     unsafe fn shrink_unchecked(
         &mut self,
         cap: usize,

@@ -50,7 +50,8 @@
 +         _4 = const ();
           StorageLive(_12);
           StorageLive(_13);
-          _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
+-         _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
++         _13 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
       }
   
       bb1: {
@@ -103,5 +104,9 @@
 +         nop;
           drop(_3) -> [return: bb1, unwind unreachable];
       }
++ }
++ 
++ ALLOC0 (size: 16, align: 8) {
++     01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
   }
   

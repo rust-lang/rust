@@ -438,7 +438,8 @@ impl<'a> CrateLocator<'a> {
                 }
                 if let Some(matches) = spf.query(prefix, suffix) {
                     for (hash, spf) in matches {
-                        info!("lib candidate: {}", spf.path.display());
+                        let spf_path = spf.path(&search_path.dir);
+                        info!("lib candidate: {}", spf_path.display());
 
                         let (rlibs, rmetas, dylibs, interfaces) =
                             candidates.entry(hash).or_default();
@@ -447,8 +448,8 @@ impl<'a> CrateLocator<'a> {
                             // ones we've already seen. This allows us to ignore crates
                             // we know are exactual equal to ones we've already found.
                             // Going to the same crate through different symlinks does not change the result.
-                            let path = try_canonicalize(&spf.path)
-                                .unwrap_or_else(|_| spf.path.to_path_buf());
+                            let path =
+                                try_canonicalize(&spf_path).unwrap_or_else(|_| spf_path.clone());
                             if seen_paths.contains(&path) {
                                 continue;
                             };
@@ -456,12 +457,11 @@ impl<'a> CrateLocator<'a> {
                         }
                         // Use the original path (potentially with unresolved symlinks),
                         // filesystem code should not care, but this is nicer for diagnostics.
-                        let path = spf.path.to_path_buf();
                         match kind {
-                            CrateFlavor::Rlib => rlibs.insert(path),
-                            CrateFlavor::Rmeta => rmetas.insert(path),
-                            CrateFlavor::Dylib => dylibs.insert(path),
-                            CrateFlavor::SDylib => interfaces.insert(path),
+                            CrateFlavor::Rlib => rlibs.insert(spf_path),
+                            CrateFlavor::Rmeta => rmetas.insert(spf_path),
+                            CrateFlavor::Dylib => dylibs.insert(spf_path),
+                            CrateFlavor::SDylib => interfaces.insert(spf_path),
                         };
                     }
                 }
@@ -472,7 +472,7 @@ impl<'a> CrateLocator<'a> {
             {
                 for (_, spf) in static_matches {
                     crate_rejections.via_kind.push(CrateMismatch {
-                        path: spf.path.to_path_buf(),
+                        path: spf.path(&search_path.dir),
                         got: "static".to_string(),
                     });
                 }

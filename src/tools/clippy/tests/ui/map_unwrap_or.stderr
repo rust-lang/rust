@@ -203,13 +203,13 @@ LL ~         }, |x| x + 1);
    |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
-  --> tests/ui/map_unwrap_or.rs:111:13
+  --> tests/ui/map_unwrap_or.rs:108:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
-  --> tests/ui/map_unwrap_or.rs:119:13
+  --> tests/ui/map_unwrap_or.rs:116:13
    |
 LL |     let _ = opt.map(|x| x > 5).unwrap_or(false);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -221,7 +221,7 @@ LL +     let _ = opt.map_or(false, |x| x > 5);
    |
 
 error: called `map(<f>).unwrap_or(false)` on an `Option` value
-  --> tests/ui/map_unwrap_or.rs:127:13
+  --> tests/ui/map_unwrap_or.rs:124:13
    |
 LL |     let _ = opt.map(|x| x > 5).unwrap_or(false);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -233,7 +233,7 @@ LL +     let _ = opt.is_some_and(|x| x > 5);
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
-  --> tests/ui/map_unwrap_or.rs:164:5
+  --> tests/ui/map_unwrap_or.rs:161:5
    |
 LL |     x.map(|y| y.0).unwrap_or(&[]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

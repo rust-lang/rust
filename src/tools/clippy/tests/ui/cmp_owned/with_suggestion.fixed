@@ -114,6 +114,12 @@ fn issue16322(item: String) {
 }
 
 fn issue16458() {
+    macro_rules! m {
+        () => {
+            ""
+        };
+    }
+
     macro_rules! partly_comes_from_macro {
         ($i:ident: $ty:ty, $def:expr) => {
             let _ = {
@@ -125,7 +131,7 @@ fn issue16458() {
     }
 
     partly_comes_from_macro! {
-        required_version: String, env!("HOME").to_string()
+        required_version: String, m!().to_string()
     }
 
     macro_rules! all_comes_from_macro {
@@ -141,6 +147,6 @@ fn issue16458() {
         };
     }
     all_comes_from_macro! {
-        required_version: String, env!("HOME").to_string();
+        required_version: String, m!().to_string();
     }
 }

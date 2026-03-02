@@ -1,34 +1,27 @@
 //@ reference: attributes.diagnostic.on_unimplemented.invalid-string
 #[diagnostic::on_unimplemented(message = "{{Test } thing")]
 //~^WARN unmatched `}` found
-//~|WARN unmatched `}` found
 trait ImportantTrait1 {}
 
 #[diagnostic::on_unimplemented(message = "Test {}")]
 //~^WARN positional format arguments are not allowed here
-//~|WARN positional format arguments are not allowed here
 trait ImportantTrait2 {}
 
 #[diagnostic::on_unimplemented(message = "Test {1:}")]
 //~^WARN positional format arguments are not allowed here
-//~|WARN positional format arguments are not allowed here
-//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 //~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait3 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
 //~^WARN invalid format specifier
-//~|WARN invalid format specifier
 trait ImportantTrait4 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
 //~^WARN invalid format specifier [malformed_diagnostic_format_literals]
-//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait5 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:}")]
 //~^WARN invalid format specifier [malformed_diagnostic_format_literals]
-//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait6 {}
 
 

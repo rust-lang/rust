@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir};
+use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

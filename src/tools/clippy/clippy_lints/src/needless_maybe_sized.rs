@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicateKind};
@@ -34,6 +35,7 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessMaybeSized => [NEEDLESS_MAYBE_SIZED]);
 
 #[expect(clippy::struct_field_names)]
+#[derive(Debug)]
 struct Bound<'tcx> {
     /// The [`DefId`] of the type parameter the bound refers to
     param: DefId,
@@ -127,6 +129,7 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
             if bound.trait_bound.modifiers == TraitBoundModifiers::NONE
                 && let Some(sized_bound) = maybe_sized_params.get(&bound.param)
                 && let Some(path) = path_to_sized_bound(cx, bound.trait_bound)
+                && !is_from_proc_macro(cx, bound.trait_bound)
             {
                 span_lint_and_then(
                     cx,
