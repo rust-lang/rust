@@ -1,8 +1,9 @@
+// issue: <https://github.com/rust-lang/rust/issues/15562>
+// Test resolution of `transmute` in an extern block to rust intrinsics.
 //@ run-pass
-//@ aux-build:issue-15562.rs
+//@ aux-build:extern-transmute-aux.rs
 
-
-extern crate issue_15562 as i;
+extern crate extern_transmute_aux as i;
 
 pub fn main() {
     unsafe {
