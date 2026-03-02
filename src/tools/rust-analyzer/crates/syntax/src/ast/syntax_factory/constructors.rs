@@ -295,6 +295,10 @@ impl SyntaxFactory {
         make::generic_ty_path_segment(name_ref, generic_args).clone_for_update()
     }
 
+    pub fn ty_placeholder(&self) -> ast::Type {
+        make::ty_placeholder().clone_for_update()
+    }
+
     pub fn path_segment_generics(
         &self,
         name_ref: ast::NameRef,

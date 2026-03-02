@@ -2,7 +2,10 @@ use either::Either;
 use hir::HirDisplay;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
-    ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{
+        self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel,
+        syntax_factory::SyntaxFactory,
+    },
     syntax_editor,
 };
 
@@ -43,8 +46,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let resolved_ty = ctx.sema.resolve_type(&ty)?;
     let resolved_ty = if !resolved_ty.contains_unknown() {
         let module = ctx.sema.scope(ty.syntax())?.module();
-        let resolved_ty = resolved_ty.display_source_code(ctx.db(), module.into(), false).ok()?;
-        resolved_ty
+        resolved_ty.display_source_code(ctx.db(), module.into(), false).ok()?
     } else {
         ty.to_string()
     };
@@ -54,7 +56,6 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Extract type as type alias",
         target,
         |builder| {
-            
             let mut edit = builder.make_editor(node);
             let make = SyntaxFactory::without_mappings();
 
