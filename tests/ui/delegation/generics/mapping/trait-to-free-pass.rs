@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -15,7 +17,6 @@ mod test_1 {
 
     trait Trait<'a, A, B, C, const N: usize> {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<'static, 'static, i32, String, 1> as bar;
     }
 
@@ -23,7 +24,6 @@ mod test_1 {
     pub fn check() {
         <u32 as Trait<'static, i32, i32, i32, 1>>::foo::<'static, 'static, i32, String, 1>();
         <u32 as Trait<'static, i32, i32, i32, 1>>::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -34,7 +34,6 @@ mod test_2 {
 
     trait Trait<'a, A, B, C, const N: usize> {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<i32, String, 1> as bar;
     }
 
@@ -42,7 +41,6 @@ mod test_2 {
     pub fn check() {
         <u32 as Trait<'static, i32, i32, i32, 1>>::foo::<i32, String, 1>();
         <u32 as Trait<'static, i32, i32, i32, 1>>::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -68,7 +66,6 @@ mod test_4 {
 
     trait Trait<A, B, C, const N: usize> {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<'static, 'static, i32, String, 1> as bar;
     }
 
@@ -76,7 +73,6 @@ mod test_4 {
     pub fn check() {
         <u32 as Trait<i32, i32, i32, 1>>::foo::<'static, 'static, i32, String, 1>();
         <u32 as Trait<i32, i32, i32, 1>>::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -87,7 +83,6 @@ mod test_5 {
 
     trait Trait {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<'static, 'static, i32, String, 1> as bar;
     }
 
@@ -95,7 +90,6 @@ mod test_5 {
     pub fn check() {
         <u32 as Trait>::foo::<'static, 'static, i32, String, 1>();
         <u32 as Trait>::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -105,7 +99,6 @@ mod test_6 {
 
     trait Trait {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<i32, String, 1> as bar;
     }
 
@@ -113,7 +106,6 @@ mod test_6 {
     pub fn check() {
         <u32 as Trait>::foo::<i32, String, 1>();
         <u32 as Trait>::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 

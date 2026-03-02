@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -26,11 +28,11 @@ mod test_1 {
     struct F;
     impl<T> Trait1<T> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, T, A, B> Trait1<T> for S<'a, 'b, 'c, A, B> {
         reuse Trait1::<T>::foo { &self.0 }
-        //~^ ERROR: type annotations needed [E0283]
     }
 
     impl Trait0 for u16 {}
@@ -51,6 +53,7 @@ mod test_2 {
     struct F;
     impl Trait for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait for S<'a, 'b, 'c, A, B, C> {
@@ -73,6 +76,7 @@ mod test_3 {
     struct F;
     impl<'a, 'b, 'c, X, Y, Z> Trait<'a, 'b, 'c, X, Y, Z> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<'a, 'b, 'static, A, String, bool>
@@ -97,12 +101,12 @@ mod test_4 {
     struct F;
     impl<'a, 'b, 'c, X, Y, Z> Trait<'a, 'b, 'c, X, Y, Z> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<'a, 'b, 'static, A, String, bool>
         for S<'a, 'b, 'c, A, B, C> {
         reuse Trait::<'a, 'b, 'static, A, String, bool>::foo { &self.0 }
-        //~^ ERROR: type annotations needed [E0284]
     }
 
     pub fn check() {
@@ -123,6 +127,7 @@ mod test_5 {
     struct F;
     impl<X, Y, Z> Trait<X, Y, Z> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<A, String, bool> for S<'a, 'b, 'c, A, B, C> {
@@ -147,11 +152,11 @@ mod test_6 {
     struct F;
     impl<X, Y, Z> Trait<X, Y, Z> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<A, String, bool> for S<'a, 'b, 'c, A, B, C> {
         reuse Trait::<A, String, bool>::foo { &self.0 }
-        //~^ ERROR: type annotations needed [E0282]
     }
 
     pub fn check() {
@@ -170,6 +175,7 @@ mod test_7 {
     struct F;
     impl<X, Y, Z> Trait<X, Y, Z> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<A, String, bool> for S<'a, 'b, 'c, A, B, C> {
@@ -192,6 +198,7 @@ mod test_8 {
     struct F;
     impl<'a, 'b, 'c> Trait<'a, 'b, 'c> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<'a, 'b, 'c> for S<'a, 'b, 'c, A, B, C> {
@@ -214,6 +221,7 @@ mod test_9 {
     struct F;
     impl<'a, 'b, 'c> Trait<'a, 'b, 'c> for F {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct S<'a, 'b, 'c, A, B, const C: bool>(F, &'a A, &'b B, &'c B);
 
     impl<'a, 'b, 'c, A, B, const C: bool> Trait<'a, 'b, 'c> for S<'a, 'b, 'c, A, B, C> {

@@ -861,6 +861,10 @@ impl<'hir> GenericParam<'hir> {
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided(_) })
     }
+
+    pub fn is_lifetime(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Lifetime { .. })
+    }
 }
 
 /// Records where the generic parameter originated from.
@@ -3753,10 +3757,18 @@ pub enum OpaqueTyOrigin<D> {
     },
 }
 
+// Ids of parent (or child) path segment that contains user-specified args
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
-pub enum InferDelegationKind {
+pub struct DelegationGenerics {
+    pub parent_args_segment_id: Option<HirId>,
+    pub child_args_segment_id: Option<HirId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegationKind<'hir> {
     Input(usize),
-    Output,
+    // Place generics info here, as we always specify output type for delegations.
+    Output(&'hir DelegationGenerics),
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3768,7 +3780,7 @@ pub enum InferDelegationKind {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
-    InferDelegation(DefId, InferDelegationKind),
+    InferDelegation(DefId, InferDelegationKind<'hir>),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -3919,6 +3931,17 @@ impl<'hir> FnDecl<'hir> {
         {
             return Some(sig_id);
         }
+        None
+    }
+
+    pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
+        if let FnRetTy::Return(ty) = self.output
+            && let TyKind::InferDelegation(_, kind) = ty.kind
+            && let InferDelegationKind::Output(generics) = kind
+        {
+            return Some(generics);
+        }
+
         None
     }
 }
