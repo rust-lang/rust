@@ -136,6 +136,14 @@ struct GenericLifetime<'a, T: Trait>(&'a T);
 #[repr(packed)]
 struct PackedGeneric<T: Trait, U>(T, T::A, U);
 
+// A struct with a field referencing an associated constant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+struct AssociatedConst([u8; Self::LEN]);
+
+impl AssociatedConst {
+    const LEN: usize = 10;
+}
+
 // An empty enum.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Enum0 {}

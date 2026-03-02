@@ -1146,6 +1146,80 @@ impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
     }
 }
 
+// A struct with a field referencing an associated constant.
+struct AssociatedConst([u8; Self::LEN]);
+#[automatically_derived]
+#[doc(hidden)]
+unsafe impl ::core::clone::TrivialClone for AssociatedConst { }
+#[automatically_derived]
+impl ::core::clone::Clone for AssociatedConst {
+    #[inline]
+    fn clone(&self) -> AssociatedConst {
+        let _: ::core::clone::AssertParamIsClone<[u8; Self::LEN]>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for AssociatedConst { }
+#[automatically_derived]
+impl ::core::fmt::Debug for AssociatedConst {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f,
+            "AssociatedConst", &&self.0)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for AssociatedConst { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for AssociatedConst {
+    #[inline]
+    fn eq(&self, other: &AssociatedConst) -> bool { self.0 == other.0 }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for AssociatedConst { }
+const {
+    #[doc(hidden)]
+    #[coverage(off)]
+    #[inline]
+    const fn assert_fields_are_eq(_: *const AssociatedConst) {
+        let _: ::core::cmp::AssertParamIsEq<[u8; AssociatedConst::LEN]>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for AssociatedConst {
+    #[inline]
+    fn partial_cmp(&self, other: &AssociatedConst)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for AssociatedConst {
+    #[inline]
+    fn cmp(&self, other: &AssociatedConst) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for AssociatedConst {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for AssociatedConst {
+    #[inline]
+    fn default() -> AssociatedConst {
+        AssociatedConst(::core::default::Default::default())
+    }
+}
+
+impl AssociatedConst {
+    const LEN: usize = 10;
+}
+
 // An empty enum.
 enum Enum0 {}
 #[automatically_derived]

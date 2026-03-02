@@ -12,13 +12,39 @@ struct ReplaceSelfTyVisitor(Box<ast::Ty>);
 impl MutVisitor for ReplaceSelfTyVisitor {
     fn visit_ty(&mut self, ty: &mut ast::Ty) {
         if let ast::TyKind::Path(None, path) = &mut ty.kind
-            && let [segment] = &path.segments[..]
-            && *segment == kw::SelfUpper
+            && let [first, rest @ ..] = &path.segments[..]
+            && *first == kw::SelfUpper
         {
-            *ty = *self.0.clone();
+            if rest.is_empty() {
+                // Just `Self` — replace the whole type
+                *ty = *self.0.clone();
+            } else {
+                // `Self::Something` — splice concrete type's segments in
+                let ast::TyKind::Path(_, concrete_path) = &self.0.kind else {
+                    unreachable!("expected Self type to be a path");
+                };
+                let mut new_segments = concrete_path.segments.clone();
+                new_segments.extend_from_slice(rest);
+                path.segments = new_segments;
+                mut_visit::walk_ty(self, ty);
+            }
         } else {
             mut_visit::walk_ty(self, ty);
         }
+    }
+    fn visit_expr(&mut self, expr: &mut ast::Expr) {
+        if let ast::ExprKind::Path(None, path) = &mut expr.kind
+            && let [first, rest @ ..] = &*path.segments
+            && *first == kw::SelfUpper
+        {
+            let ast::TyKind::Path(_, concrete_path) = &self.0.kind else {
+                unreachable!("expected Self type to be a path");
+            };
+            let mut new_segments = concrete_path.segments.clone();
+            new_segments.extend_from_slice(rest);
+            path.segments = new_segments;
+        }
+        mut_visit::walk_expr(self, expr);
     }
 }
 
