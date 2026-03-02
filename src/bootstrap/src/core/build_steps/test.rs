@@ -3302,7 +3302,7 @@ impl Step for CrateRustdocJsonTypes {
             builder.kind,
             "src/rustdoc-json-types",
             SourceType::InTree,
-            &[],
+            &["rkyv_0_8".to_owned()],
         );
 
         // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
