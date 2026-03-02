@@ -1,7 +1,7 @@
-//! System bindings for HermitCore
+//! System bindings for Hermit
 //!
 //! This module contains the facade (aka platform-specific) implementations of
-//! OS level functionality for HermitCore.
+//! OS level functionality for Hermit.
 //!
 //! This is all super highly experimental and not actually intended for
 //! wide/production use yet, it's still all in the experimental category. This
@@ -30,7 +30,7 @@ pub fn unsupported<T>() -> io::Result<T> {
 }
 
 pub fn unsupported_err() -> io::Error {
-    io::const_error!(io::ErrorKind::Unsupported, "operation not supported on HermitCore yet")
+    io::const_error!(io::ErrorKind::Unsupported, "operation not supported on Hermit yet")
 }
 
 pub fn abort_internal() -> ! {
