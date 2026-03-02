@@ -9,7 +9,7 @@ use rustc_middle::query::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::plumbing::collect_active_jobs_from_all_queries;
 
@@ -117,6 +117,14 @@ pub fn break_query_cycles<'tcx>(
         .find(|(_, info)| info.job.parent.is_none())
         .expect("no root query was found");
 
+    #[derive(Clone, Copy)]
+    struct Subquery {
+        id: QueryJobId,
+        span: Span,
+        /// Waiter index or `usize::MAX` if subquery was executed
+        waiter_idx: usize,
+    }
+
     // We are allowed to keep track of just one subquery since each query has at least one subquery.
     //
     // If we would assume the opposite then thread of query with no subqueries cannot wait on any
@@ -130,7 +138,11 @@ pub fn break_query_cycles<'tcx>(
             continue;
         };
         // We are safe to only track a single subquery due to the statement above
-        subqueries.entry(parent).or_insert((query.job.id, usize::MAX));
+        subqueries.entry(parent).or_insert(Subquery {
+            id: query.job.id,
+            span: query.job.span,
+            waiter_idx: usize::MAX,
+        });
     }
 
     for query in query_map.map.values() {
@@ -143,7 +155,11 @@ pub fn break_query_cycles<'tcx>(
         for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
             let waited_on_query = waiter.query.expect("cannot wait on a root query");
             // We are safe to only track a single subquery due to the statement above
-            subqueries.entry(waited_on_query).or_insert((query.job.id, waiter_idx));
+            subqueries.entry(waited_on_query).or_insert(Subquery {
+                id: query.job.id,
+                span: waiter.span,
+                waiter_idx,
+            });
         }
     }
 
@@ -167,46 +183,43 @@ pub fn break_query_cycles<'tcx>(
     // However that means `b()` is not the first duplicate query in the stack,
     // so the original statement must be true.
     let mut visited = IndexMap::new();
-    let mut last_usage = None;
-    let mut last_waiter_idx = usize::MAX;
-    let mut current = root_query;
-    while let indexmap::map::Entry::Vacant(entry) = visited.entry(current) {
-        entry.insert((last_usage, last_waiter_idx));
-        last_usage = Some(current);
-        (current, last_waiter_idx) = subqueries[&current];
+    let mut last_parent = None;
+    let mut last = Subquery { id: root_query, span: DUMMY_SP, waiter_idx: usize::MAX };
+    while let indexmap::map::Entry::Vacant(entry) = visited.entry(last.id) {
+        entry.insert((last_parent, last));
+        last_parent = Some(last.id);
+        last = subqueries[&last.id];
     }
-    let usage = visited[&current].0;
-    let mut iter = visited.keys().rev();
+
+    let parent = visited[&last.id].0;
+    let mut iter = visited.values();
     let mut cycle = Vec::new();
     loop {
-        let query_id = *iter.next().unwrap();
-        let query = &query_map.map[&query_id];
-        cycle.push(QueryInfo { span: query.job.span, frame: query.frame.clone() });
-        if query_id == current {
+        let (_, subquery) = iter.next_back().unwrap();
+        let frame = query_map.map[&subquery.id].frame.clone();
+        cycle.push(QueryInfo { span: subquery.span, frame });
+        if subquery.id == last.id {
             break;
         }
     }
-
     cycle.reverse();
-    let cycle_error = CycleError {
-        usage: usage.map(|id| {
-            let query = &query_map.map[&id];
-            (query.job.span, query.frame.clone())
-        }),
-        cycle,
-    };
+    cycle[0].span = last.span;
+    let usage = parent.map(|parent| (last.span, query_map.map[&parent].frame.clone()));
+    let cycle_error = CycleError { usage, cycle };
 
     // Per statement above we should have wait at either of two occurrences of the duplicate query
-    if last_waiter_idx == usize::MAX {
-        last_waiter_idx = visited.get(&current).unwrap().1;
-    }
+    let waiter_idx = if last.waiter_idx != usize::MAX {
+        last.waiter_idx
+    } else {
+        visited.get(&last.id).unwrap().1.waiter_idx
+    };
 
-    let waited_on = &query_map.map[&current];
+    let waited_on = &query_map.map[&last.id];
     let latch = waited_on.job.latch.as_ref().unwrap();
     let mut latch_info_lock = latch.info.try_lock().unwrap();
 
     // And so this `Vec::remove` shouldn't cause a panic
-    let waiter = latch_info_lock.waiters.remove(last_waiter_idx);
+    let waiter = latch_info_lock.waiters.remove(waiter_idx);
 
     let mut cycle_lock = waiter.cycle.try_lock().unwrap();
     assert!(cycle_lock.is_none());
