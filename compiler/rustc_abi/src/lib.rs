@@ -2153,18 +2153,14 @@ pub enum PointerKind {
 pub struct PointeeInfo {
     /// If this is `None`, then this is a raw pointer.
     pub safe: Option<PointerKind>,
-    /// If this is true, the pointer is wrapped in `MaybeDangling` and thus can't be assumed to
-    /// not alias. Having this as separate state from `safe: None` allows us to keep `readonly` and
-    /// `captures(address, read_provenance)` llvm attributes.
-    pub may_dangle: bool,
     /// If `size` is not zero, then the pointer is either null or dereferenceable for this many bytes
-    /// (independent of `safe` and `may_dangle`).
+    /// (independent of `safe`).
     ///
     /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
     /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
     /// while this function is still running.
     pub size: Size,
-    /// The pointer is guaranteed to be aligned this much (independent of `safe` and `may_dangle`).
+    /// The pointer is guaranteed to be aligned this much (independent of `safe`).
     pub align: Align,
 }
 

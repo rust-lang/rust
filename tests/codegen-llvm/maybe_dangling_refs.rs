@@ -15,7 +15,7 @@ pub fn f(x: MaybeDangling<Box<u8>>) -> MaybeDangling<Box<u8>> {
     x
 }
 
-// CHECK: define {{(dso_local )?}}noundef nonnull ptr @g(ptr noundef nonnull readonly captures(address, read_provenance) %x) unnamed_addr
+// CHECK: define {{(dso_local )?}}noundef nonnull ptr @g(ptr noundef nonnull %x) unnamed_addr
 #[no_mangle]
 pub fn g(x: MaybeDangling<&u8>) -> MaybeDangling<&u8> {
     x
@@ -33,7 +33,7 @@ pub fn i(x: MaybeDangling<Box<u32>>) -> MaybeDangling<Box<u32>> {
     x
 }
 
-// CHECK: define {{(dso_local )?}}noundef nonnull align 4 ptr @j(ptr noundef nonnull readonly align 4 captures(address, read_provenance) %x) unnamed_addr
+// CHECK: define {{(dso_local )?}}noundef nonnull align 4 ptr @j(ptr noundef nonnull align 4 %x) unnamed_addr
 #[no_mangle]
 pub fn j(x: MaybeDangling<&u32>) -> MaybeDangling<&u32> {
     x

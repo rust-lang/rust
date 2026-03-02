@@ -351,12 +351,11 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // not return values.
             //
             // `&mut T` and `Box<T>` where `T: Unpin` are unique and hence `noalias`.
-            let no_alias = !pointee.may_dangle
-                && match kind {
-                    PointerKind::SharedRef { frozen } => frozen,
-                    PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
-                    PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
-                };
+            let no_alias = match kind {
+                PointerKind::SharedRef { frozen } => frozen,
+                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
+            };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
             if no_alias && !is_return {
