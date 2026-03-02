@@ -1,6 +1,7 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
+//@ reference: attributes.codegen.naked.body
 
 #![feature(asm_unwind, linkage, rustc_attrs)]
 #![crate_type = "lib"]

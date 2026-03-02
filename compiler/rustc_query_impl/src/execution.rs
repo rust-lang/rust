@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{Diag, FatalError, StashKey};
+use rustc_errors::{FatalError, StashKey};
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -126,24 +126,14 @@ fn mk_cycle<'tcx, C: QueryCache>(
     cycle_error: CycleError,
 ) -> C::Value {
     let error = report_cycle(tcx.sess, &cycle_error);
-    handle_cycle_error(query, tcx, &cycle_error, error)
-}
-
-fn handle_cycle_error<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    cycle_error: &CycleError,
-    error: Diag<'_>,
-) -> C::Value {
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
             query.value_from_cycle_error(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Fatal => {
-            error.emit();
-            tcx.dcx().abort_if_errors();
-            unreachable!()
+            let guar = error.emit();
+            guar.raise_fatal();
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
@@ -340,15 +330,15 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        return wait_for_query(query, tcx, span, key, latch, current_job_id);
+                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                    } else {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        cycle_error(query, tcx, id, span)
                     }
-
-                    let id = job.id;
-                    drop(state_lock);
-
-                    // If we are single-threaded we know that we have cycle error,
-                    // so we just return the error.
-                    cycle_error(query, tcx, id, span)
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
@@ -430,12 +420,6 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 ) -> (C::Value, DepNodeIndex) {
     debug_assert!(!tcx.dep_graph.is_fully_enabled());
 
-    // Fingerprint the key, just to assert that it doesn't
-    // have anything we don't consider hashable
-    if cfg!(debug_assertions) {
-        let _ = key.to_fingerprint(tcx);
-    }
-
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
     let value =
@@ -443,14 +427,14 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
     let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    // Similarly, fingerprint the result to assert that
-    // it doesn't have anything not considered hashable.
-    if cfg!(debug_assertions)
-        && let Some(hash_value_fn) = query.hash_value_fn
-    {
-        tcx.with_stable_hashing_context(|mut hcx| {
-            hash_value_fn(&mut hcx, &value);
-        });
+    // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
+    if cfg!(debug_assertions) {
+        let _ = key.to_fingerprint(tcx);
+        if let Some(hash_value_fn) = query.hash_value_fn {
+            tcx.with_stable_hashing_context(|mut hcx| {
+                hash_value_fn(&mut hcx, &value);
+            });
+        }
     }
 
     (value, dep_node_index)

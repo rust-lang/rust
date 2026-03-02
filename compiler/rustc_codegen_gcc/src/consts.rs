@@ -22,6 +22,25 @@ use crate::base;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
+pub(crate) fn const_alloc_to_gcc<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    alloc: ConstAllocation<'_>,
+) -> RValue<'gcc> {
+    // We ignore the alignment for the purpose of deduping RValues
+    // The alignment is not handled / used in any way by `const_alloc_to_gcc`,
+    // so it is OK to overwrite it here.
+    let mut mock_alloc = alloc.inner().clone();
+    mock_alloc.align = rustc_abi::Align::MAX;
+    // Check if the rvalue is already in the cache - if so, just return it directly.
+    if let Some(res) = cx.const_cache.borrow().get(&mock_alloc) {
+        return *res;
+    }
+    // Rvalue not in the cache - convert and add it.
+    let res = crate::consts::const_alloc_to_gcc_uncached(cx, alloc);
+    cx.const_cache.borrow_mut().insert(mock_alloc, res);
+    res
+}
+
 fn set_global_alignment<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     gv: LValue<'gcc>,
@@ -37,7 +56,10 @@ fn set_global_alignment<'gcc, 'tcx>(
 }
 
 impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
-    fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> RValue<'gcc> {
+        let cv = const_alloc_to_gcc(self, alloc);
+        let align = alloc.inner().align;
+
         if let Some(variable) = self.const_globals.borrow().get(&cv) {
             if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
                 let alignment = align.bits() as i32;
@@ -361,7 +383,7 @@ fn codegen_static_initializer<'gcc, 'tcx>(
     def_id: DefId,
 ) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
-    Ok((cx.const_data_from_alloc(alloc), alloc))
+    Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }
 
 fn check_and_apply_linkage<'gcc, 'tcx>(

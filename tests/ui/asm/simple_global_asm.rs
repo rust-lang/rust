@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-asm-support
+//@ reference: asm.scope.global_asm
 
 #![allow(dead_code)]
 

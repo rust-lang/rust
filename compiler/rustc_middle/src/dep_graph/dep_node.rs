@@ -174,11 +174,6 @@ impl fmt::Debug for DepNode {
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
 pub struct DepKindVTable<'tcx> {
-    /// Anonymous queries cannot be replayed from one compiler invocation to the next.
-    /// When their result is needed, it is recomputed. They are useful for fine-grained
-    /// dependency tracking, and caching within one compiler invocation.
-    pub is_anon: bool,
-
     /// Eval-always queries do not track their dependencies, and are always recomputed, even if
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.
