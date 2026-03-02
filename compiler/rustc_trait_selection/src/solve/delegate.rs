@@ -283,6 +283,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()
                 }
+                TypingMode::ErasedNotCoherence => todo!(),
             }
         };
 

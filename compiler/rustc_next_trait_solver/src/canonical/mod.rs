@@ -17,7 +17,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
-    TypeFoldable, TypingModeEqWrapper,
+    TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use tracing::instrument;
 
@@ -46,6 +46,11 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
     }
 }
 
+pub(super) enum EraseOpaqueTypes {
+    Yes,
+    No,
+}
+
 /// Canonicalizes the goal remembering the original values
 /// for each bound variable.
 ///
@@ -54,11 +59,35 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    erase_opaque_types: EraseOpaqueTypes,
 ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    let (opaque_types, typing_mode) = match (erase_opaque_types, delegate.typing_mode()) {
+        // In `TypingMode::Coherence` there should not be any opaques, and we also don't change typing mode.
+        (_, TypingMode::Coherence) => {
+            assert!(opaque_types.is_empty());
+            (&[][..], TypingMode::Coherence)
+        }
+        // Make sure we're not recursively in `ErasedNotCoherence`.
+        (_, TypingMode::ErasedNotCoherence) => {
+            assert!(opaque_types.is_empty());
+            (&[][..], TypingMode::ErasedNotCoherence)
+        }
+        // If we're supposed to erase opaque types, and we're in any typing mode other than coherence,
+        // do the erasing and change typing mode.
+        (
+            EraseOpaqueTypes::Yes,
+            TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis,
+        ) => (&[][..], TypingMode::ErasedNotCoherence),
+        (EraseOpaqueTypes::No, typing_mode) => (opaque_types, typing_mode),
+    };
+
     let (orig_values, canonical) = Canonicalizer::canonicalize_input(
         delegate,
         QueryInput {
@@ -66,10 +95,9 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
-    let query_input = ty::CanonicalQueryInput {
-        canonical,
-        typing_mode: TypingModeEqWrapper(delegate.typing_mode()),
-    };
+
+    let query_input =
+        ty::CanonicalQueryInput { canonical, typing_mode: TypingModeEqWrapper(typing_mode) };
     (orig_values, query_input)
 }
 

@@ -383,6 +383,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
                 )
             }
+            ty::TypingMode::ErasedNotCoherence => todo!(),
         }
 
         // Make sure we format the instance even if we do not print it.

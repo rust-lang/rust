@@ -144,6 +144,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
+                TypingMode::ErasedNotCoherence => todo!(),
             }
         }
 

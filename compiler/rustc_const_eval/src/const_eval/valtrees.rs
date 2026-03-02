@@ -247,6 +247,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                     "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
                 )
             }
+            ty::TypingMode::ErasedNotCoherence => todo!(),
         }
     }
     let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;

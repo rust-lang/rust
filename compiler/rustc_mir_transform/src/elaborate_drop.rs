@@ -556,6 +556,7 @@ where
                     | ty::TypingMode::PostBorrowckAnalysis { .. } => {
                         bug!()
                     }
+                    ty::TypingMode::ErasedNotCoherence => todo!(),
                 }
 
                 let field_ty = field.ty(tcx, args);

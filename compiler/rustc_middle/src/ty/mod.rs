@@ -1033,6 +1033,7 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. } => {}
             TypingMode::PostAnalysis => return self,
+            TypingMode::ErasedNotCoherence => todo!(),
         }
 
         // No need to reveal opaques with the new solver enabled,

@@ -478,6 +478,7 @@ where
                                 | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
                     }),
+                    TypingMode::ErasedNotCoherence => todo!(),
                 };
                 if assemble_impls {
                     self.assemble_impl_candidates(goal, &mut candidates);
@@ -967,6 +968,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
+            TypingMode::ErasedNotCoherence => todo!(),
         }
 
         let mut i = 0;
@@ -1030,6 +1032,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => vec![],
+            TypingMode::ErasedNotCoherence => todo!(),
         };
 
         if opaque_types.is_empty() {

@@ -251,6 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | TypingMode::PostBorrowckAnalysis { .. } => {
                     bug!("Const eval should always happens in PostAnalysis mode.");
                 }
+                TypingMode::ErasedNotCoherence => todo!(),
             }
         }
 

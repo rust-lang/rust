@@ -290,6 +290,7 @@ where
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
             | TypingMode::PostAnalysis => return Default::default(),
+            TypingMode::ErasedNotCoherence => todo!(),
         };
 
         if stalled_coroutines.is_empty() {

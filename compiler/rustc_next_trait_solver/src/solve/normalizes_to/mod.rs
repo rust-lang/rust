@@ -307,6 +307,7 @@ where
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                         }
+                        ty::TypingMode::ErasedNotCoherence => todo!(),
                     };
                 }
                 Err(guar) => return error_response(ecx, guar),
@@ -344,6 +345,7 @@ where
                             );
                             return then(ecx, Certainty::Yes);
                         }
+                        ty::TypingMode::ErasedNotCoherence => todo!(),
                     }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));

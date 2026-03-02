@@ -140,6 +140,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         | TypingMode::Borrowck { .. }
         | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::PostAnalysis => {}
+        TypingMode::ErasedNotCoherence => todo!(),
     }
 
     value.has_type_flags(flags)
@@ -419,6 +420,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         self.depth -= 1;
                         folded_ty
                     }
+                    TypingMode::ErasedNotCoherence => todo!(),
                 }
             }
 

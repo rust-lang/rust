@@ -80,6 +80,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
+                TypingMode::ErasedNotCoherence => todo!(),
             },
 
             // Impl matches polarity
@@ -1392,6 +1393,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
+            TypingMode::ErasedNotCoherence => todo!(),
         }
 
         if candidates
@@ -1566,6 +1568,7 @@ where
                 | TypingMode::PostAnalysis
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+                TypingMode::ErasedNotCoherence => todo!(),
             }
         }
 

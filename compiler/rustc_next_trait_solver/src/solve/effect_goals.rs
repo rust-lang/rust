@@ -144,6 +144,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
+                TypingMode::ErasedNotCoherence => todo!(),
             },
             ty::ImplPolarity::Positive => Certainty::Yes,
         };

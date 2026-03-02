@@ -18,8 +18,8 @@ use tracing::{Level, debug, instrument, trace, warn};
 
 use super::has_only_region_constraints;
 use crate::canonical::{
-    canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
-    response_no_constraints_raw,
+    EraseOpaqueTypes, canonicalize_goal, canonicalize_response,
+    instantiate_and_apply_query_response, response_no_constraints_raw,
 };
 use crate::coherence;
 use crate::delegate::SolverDelegate;
@@ -480,7 +480,8 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, &opaque_types);
+        let (orig_values, canonical_goal) =
+            canonicalize_goal(self.delegate, goal, &opaque_types, EraseOpaqueTypes::No);
         let (canonical_result, _accessed_opaques) = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -1522,7 +1523,8 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, &opaque_types);
+    let (orig_values, canonical_goal) =
+        canonicalize_goal(delegate, goal, &opaque_types, EraseOpaqueTypes::No);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);

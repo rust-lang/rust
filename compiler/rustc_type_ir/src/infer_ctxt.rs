@@ -107,6 +107,20 @@ pub enum TypingMode<I: Interner> {
     /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
     /// some information about the underlying type to users, but not the type itself.
     PostAnalysis,
+
+    /// The typing modes above (except coherence) only differ in how they handle
+    ///
+    /// - Generators
+    /// - Opaque types
+    /// - Specialization (in `PostAnalysis`)
+    ///
+    /// This typing mode replaces all of them in canonicalization on the first attempt.
+    /// If, during that attempt, we try to access information about opaques or generators
+    /// we bail out with a response containing [`AccessedOpaques::Yes`],
+    /// and we re-canonicalize in the original typing mode.
+    ///
+    /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
+    ErasedNotCoherence,
 }
 
 /// We want to highly discourage using equality checks on typing modes.
@@ -144,12 +158,14 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types: r },
             ) => l == r,
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
+            (TypingMode::ErasedNotCoherence, TypingMode::ErasedNotCoherence) => true,
             (
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis,
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence,
                 _,
             ) => false,
         }
@@ -170,7 +186,8 @@ impl<I: Interner> TypingMode<I> {
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::PostAnalysis
+            | TypingMode::ErasedNotCoherence => false,
         }
     }
 
@@ -411,5 +428,6 @@ where
             infcx.cx().features().feature_bound_holds_in_crate(symbol)
         }
         TypingMode::PostAnalysis => true,
+        TypingMode::ErasedNotCoherence => todo!(),
     }
 }
