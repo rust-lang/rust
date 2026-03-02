@@ -218,6 +218,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-eabihf",
     "only-elf",
     "only-emscripten",
+    "only-endian-big",
     "only-gnu",
     "only-i686-pc-windows-gnu",
     "only-i686-pc-windows-msvc",
