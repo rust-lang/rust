@@ -126,7 +126,8 @@ pub(crate) fn expand_deriving_eq(
 
     let self_ty =
         self_ty.unwrap_or_else(|| cx.dcx().span_bug(span, "missing self type in `derive(Eq)`"));
-    let assert_stmts = eq_assert_stmts_from_item(cx, span, item, ReplaceSelfTyVisitor(self_ty));
+    let assert_stmts =
+        eq_assert_stmts_from_item(cx, span, item, ReplaceSelfTyVisitor(self_ty.clone()));
 
     // Skip generating `assert_fields_are_eq` impl if there are no assertions to make
     if assert_stmts.is_empty() {
@@ -134,15 +135,33 @@ pub(crate) fn expand_deriving_eq(
     }
 
     StripConstTraitBoundsVisitor.visit_generics(&mut fn_generics);
-    push(Annotatable::Item(expand_const_item_block(cx, span, fn_generics, assert_stmts)));
+    push(Annotatable::Item(expand_const_item_block(cx, span, fn_generics, self_ty, assert_stmts)));
 }
 
 fn expand_const_item_block(
     cx: &ExtCtxt<'_>,
     span: Span,
     fn_generics: ast::Generics,
+    self_ty: Box<ast::Ty>,
     assert_stmts: ThinVec<ast::Stmt>,
 ) -> Box<ast::Item> {
+    // We need a dummy const pointer to Self argument to ensure well-formedness of the Self type.
+    // This doesn't add overhead because the fn itself is never called, and in fact should not
+    // even have any runtime code generated for it as it's an inline const fn.
+    let const_self_ptr_ty =
+        cx.ty(span, ast::TyKind::Ptr(ast::MutTy { mutbl: ast::Mutability::Not, ty: self_ty }));
+    let fn_args = thin_vec![cx.param(span, Ident::new(kw::Underscore, span), const_self_ptr_ty)];
+    let fn_sig = ast::FnSig {
+        header: ast::FnHeader {
+            constness: ast::Const::Yes(span),
+            coroutine_kind: None,
+            safety: ast::Safety::Default,
+            ext: ast::Extern::None,
+        },
+        decl: cx.fn_decl(fn_args, ast::FnRetTy::Default(span)),
+        span,
+    };
+
     cx.item(
         span,
         ast::AttrVec::new(),
@@ -151,10 +170,9 @@ fn expand_const_item_block(
             id: ast::DUMMY_NODE_ID,
             block: cx.block(
                 span,
-                thin_vec![ast::Stmt {
+                thin_vec![cx.stmt_item(
                     span,
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::StmtKind::Item(Box::new(ast::Item {
+                    Box::new(ast::Item {
                         span,
                         id: ast::DUMMY_NODE_ID,
                         attrs: thin_vec![
@@ -175,23 +193,14 @@ fn expand_const_item_block(
                             defaultness: ast::Defaultness::Implicit,
                             ident: Ident::new(sym::assert_fields_are_eq, span),
                             generics: fn_generics,
-                            sig: ast::FnSig {
-                                header: ast::FnHeader {
-                                    constness: ast::Const::Yes(span),
-                                    coroutine_kind: None,
-                                    safety: ast::Safety::Default,
-                                    ext: ast::Extern::None,
-                                },
-                                decl: cx.fn_decl(ThinVec::new(), ast::FnRetTy::Default(span)),
-                                span,
-                            },
+                            sig: fn_sig,
                             contract: None,
                             define_opaque: None,
                             body: Some(cx.block(span, assert_stmts)),
                             eii_impls: ThinVec::new(),
                         }))
-                    }))
-                },],
+                    })
+                ),],
             ),
         }),
     )

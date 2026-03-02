@@ -138,7 +138,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Point) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -227,7 +227,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const PackedPoint) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -311,7 +311,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const TupleSingleField) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -387,7 +387,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const SingleField) {
         let _: ::core::cmp::AssertParamIsEq<bool>;
     }
 }
@@ -493,7 +493,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Big) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -690,7 +690,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Recursive) {
         let _: ::core::cmp::AssertParamIsEq<Option<Box<Recursive>>>;
     }
 }
@@ -793,7 +793,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Unsized) {
         let _: ::core::cmp::AssertParamIsEq<[u32]>;
     }
 }
@@ -891,7 +891,8 @@ const {
     #[coverage(off)]
     #[inline]
     const fn assert_fields_are_eq<T: ::core::cmp::Eq + Trait,
-        U: ::core::cmp::Eq>() where T::A: ::core::cmp::Eq {
+        U: ::core::cmp::Eq>(_: *const Generic<T, U>) where
+        T::A: ::core::cmp::Eq {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
         let _: ::core::cmp::AssertParamIsEq<U>;
@@ -990,7 +991,8 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq<'a, T: ::core::cmp::Eq + Trait>() {
+    const fn assert_fields_are_eq<'a, T: ::core::cmp::Eq +
+        Trait>(_: *const GenericLifetime<'a, T>) {
         let _: ::core::cmp::AssertParamIsEq<&'a T>;
     }
 }
@@ -1095,7 +1097,8 @@ const {
     #[coverage(off)]
     #[inline]
     const fn assert_fields_are_eq<T: ::core::cmp::Eq + ::core::marker::Copy +
-        Trait, U: ::core::cmp::Eq + ::core::marker::Copy>() where
+        Trait, U: ::core::cmp::Eq +
+        ::core::marker::Copy>(_: *const PackedGeneric<T, U>) where
         T::A: ::core::cmp::Eq + ::core::marker::Copy {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
@@ -1247,7 +1250,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Enum1) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -1491,7 +1494,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Mixed) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1690,7 +1693,7 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq() {
+    const fn assert_fields_are_eq(_: *const Fielded) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<bool>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1814,7 +1817,8 @@ const {
     #[doc(hidden)]
     #[coverage(off)]
     #[inline]
-    const fn assert_fields_are_eq<T: ::core::cmp::Eq, U: ::core::cmp::Eq>() {
+    const fn assert_fields_are_eq<T: ::core::cmp::Eq,
+        U: ::core::cmp::Eq>(_: *const EnumGeneric<T, U>) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<U>;
     }
