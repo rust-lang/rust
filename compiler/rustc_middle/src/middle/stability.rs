@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer, msg};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer, LintDiagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -125,7 +125,19 @@ pub struct Deprecated {
     pub since_kind: DeprecatedSinceKind,
 }
 
-impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
+impl<'a, G: EmissionGuarantee> rustc_errors::Diagnostic<'a, G> for Deprecated {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, "");
+        self.decorate_lint(&mut diag);
+        diag
+    }
+}
+
+impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.primary_message(match &self.since_kind {
             DeprecatedSinceKind::InEffect => msg!(

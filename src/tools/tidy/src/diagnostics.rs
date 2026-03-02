@@ -4,6 +4,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use build_helper::ci::CiEnv;
+use build_helper::git::{GitConfig, get_closest_upstream_commit};
+use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
 use termcolor::Color;
 
 /// CLI flags used by tidy.
@@ -28,11 +31,24 @@ impl TidyFlags {
 pub struct TidyCtx {
     tidy_flags: TidyFlags,
     diag_ctx: Arc<Mutex<DiagCtxInner>>,
+    ci_env: CiEnv,
+    pub base_commit: Option<String>,
 }
 
 impl TidyCtx {
-    pub fn new(root_path: &Path, verbose: bool, tidy_flags: TidyFlags) -> Self {
-        Self {
+    pub fn new(
+        root_path: &Path,
+        verbose: bool,
+        ci_flag: Option<bool>,
+        tidy_flags: TidyFlags,
+    ) -> Self {
+        let ci_env = match ci_flag {
+            Some(true) => CiEnv::GitHubActions,
+            Some(false) => CiEnv::None,
+            None => CiEnv::current(),
+        };
+
+        let mut tidy_ctx = Self {
             diag_ctx: Arc::new(Mutex::new(DiagCtxInner {
                 running_checks: Default::default(),
                 finished_checks: Default::default(),
@@ -40,11 +56,20 @@ impl TidyCtx {
                 verbose,
             })),
             tidy_flags,
-        }
+            ci_env,
+            base_commit: None,
+        };
+        tidy_ctx.base_commit = find_base_commit(&tidy_ctx);
+
+        tidy_ctx
     }
 
     pub fn is_bless_enabled(&self) -> bool {
         self.tidy_flags.bless
+    }
+
+    pub fn is_running_on_ci(&self) -> bool {
+        self.ci_env.is_running_in_ci()
     }
 
     pub fn start_check<Id: Into<CheckId>>(&self, id: Id) -> RunningCheck {
@@ -72,6 +97,46 @@ impl TidyCtx {
         let ctx = Arc::into_inner(self.diag_ctx).unwrap().into_inner().unwrap();
         assert!(ctx.running_checks.is_empty(), "Some checks are still running");
         ctx.finished_checks.into_iter().filter(|c| c.bad).collect()
+    }
+}
+
+fn find_base_commit(tidy_ctx: &TidyCtx) -> Option<String> {
+    let mut check = tidy_ctx.start_check("CI history");
+
+    let stage0 = parse_stage0_file();
+    let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
+
+    let base_commit = match get_closest_upstream_commit(
+        None,
+        &GitConfig {
+            nightly_branch: &nightly_branch,
+            git_merge_commit_email: &git_merge_commit_email,
+        },
+        tidy_ctx.ci_env,
+    ) {
+        Ok(Some(commit)) => Some(commit),
+        Ok(None) => {
+            error_if_in_ci("no base commit found", tidy_ctx.is_running_on_ci(), &mut check);
+            None
+        }
+        Err(error) => {
+            error_if_in_ci(
+                &format!("failed to retrieve base commit: {error}"),
+                tidy_ctx.is_running_on_ci(),
+                &mut check,
+            );
+            None
+        }
+    };
+
+    base_commit
+}
+
+fn error_if_in_ci(msg: &str, is_ci: bool, check: &mut RunningCheck) {
+    if is_ci {
+        check.error(msg);
+    } else {
+        check.warning(format!("{msg}. Some checks will be skipped."));
     }
 }
 
@@ -175,7 +240,7 @@ impl RunningCheck {
     /// Useful if you want to run some functions from tidy without configuring
     /// diagnostics.
     pub fn new_noop() -> Self {
-        let ctx = TidyCtx::new(Path::new(""), false, TidyFlags::default());
+        let ctx = TidyCtx::new(Path::new(""), false, None, TidyFlags::default());
         ctx.start_check("noop")
     }
 

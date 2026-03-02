@@ -2343,9 +2343,10 @@ fn render_impl_summary(
         if let Some(doc) = doc {
             if impl_is_empty {
                 w.write_str(
-                    "<div class=\"item-info\">\
-                         <div class=\"stab empty-impl\">This impl block contains no items.</div>\
-                     </div>",
+                    "\
+<div class=\"item-info\">\
+    <div class=\"stab empty-impl\">This impl block contains no public items.</div>\
+</div>",
                 )?;
             }
             write!(w, "<div class=\"docblock\">{doc}</div>")?;

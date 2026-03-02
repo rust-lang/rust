@@ -164,12 +164,16 @@ impl server::Server for RaSpanServer<'_> {
         self.callback.as_mut()?.source_text(span)
     }
 
-    fn span_parent(&mut self, _span: Self::Span) -> Option<Self::Span> {
-        // FIXME requires db, looks up the parent call site
+    fn span_parent(&mut self, span: Self::Span) -> Option<Self::Span> {
+        if let Some(ref mut callback) = self.callback {
+            return callback.span_parent(span);
+        }
         None
     }
     fn span_source(&mut self, span: Self::Span) -> Self::Span {
-        // FIXME requires db, returns the top level call site
+        if let Some(ref mut callback) = self.callback {
+            return callback.span_source(span);
+        }
         span
     }
     fn span_byte_range(&mut self, span: Self::Span) -> Range<usize> {

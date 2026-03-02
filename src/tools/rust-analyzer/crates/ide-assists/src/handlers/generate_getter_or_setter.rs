@@ -11,7 +11,7 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists, GroupLabel,
-    utils::{convert_reference_type, find_struct_impl},
+    utils::{convert_reference_type, find_struct_impl, is_selected},
 };
 
 // Assist: generate_setter
@@ -377,7 +377,7 @@ fn extract_and_parse_record_fields(
             let info_of_record_fields_in_selection = ele
                 .fields()
                 .filter_map(|record_field| {
-                    if selection_range.contains_range(record_field.syntax().text_range()) {
+                    if is_selected(&record_field, selection_range, false) {
                         let record_field_info = parse_record_field(record_field, assist_type)?;
                         field_names.push(record_field_info.fn_name.clone());
                         return Some(record_field_info);
@@ -932,6 +932,37 @@ struct Context {
 struct Context {
     data: Data,
     count: usize,
+}
+
+impl Context {
+    fn data(&self) -> &Data {
+        &self.data
+    }
+
+    fn $0count(&self) -> &usize {
+        &self.count
+    }
+}
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_generate_multiple_getters_from_partial_selection() {
+        check_assist(
+            generate_getter,
+            r#"
+struct Context {
+    data$0: Data,
+    count$0: usize,
+    other: usize,
+}
+    "#,
+            r#"
+struct Context {
+    data: Data,
+    count: usize,
+    other: usize,
 }
 
 impl Context {

@@ -60,5 +60,31 @@ LL + #[must_use]
 LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |
 
-error: aborting due to 5 previous errors
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:108:8
+   |
+LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: a future version of Rust will treat `Result<T, E>` as `T` when `E` is uninhabited wrt `#[must_use]`
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
+   |
+
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:113:8
+   |
+LL | pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a future version of Rust will treat `ControlFlow<B, C>` as `C` when `B` is uninhabited wrt `#[must_use]`
+help: add the attribute
+   |
+LL + #[must_use] 
+LL | pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
+   |
+
+error: aborting due to 7 previous errors
 

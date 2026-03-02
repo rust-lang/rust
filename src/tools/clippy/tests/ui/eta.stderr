@@ -256,5 +256,11 @@ error: redundant closure
 LL |         .map(|n| f(n))
    |              ^^^^^^^^ help: replace the closure with the function itself: `f`
 
-error: aborting due to 42 previous errors
+error: redundant closure
+  --> tests/ui/eta.rs:651:31
+   |
+LL |         array.iter().for_each(|item| item.method());
+   |                               ^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `Self::method`
+
+error: aborting due to 43 previous errors
 

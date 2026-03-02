@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/hidden-lifetimes.rs:41:5
+  --> $DIR/hidden-lifetimes.rs:46:5
    |
 LL |     hide_ref(&mut res).swap(hide_ref(&mut &x));
    |                                           -- `x` is borrowed here
@@ -7,7 +7,7 @@ LL |     res
    |     ^^^ returns a value referencing data owned by the current function
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/hidden-lifetimes.rs:57:38
+  --> $DIR/hidden-lifetimes.rs:62:38
    |
 LL |     let x = [1, 2, 3];
    |         - binding `x` declared here

@@ -891,7 +891,7 @@ pub struct VarBindingForm<'tcx> {
     pub introductions: Vec<VarBindingIntroduction>,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
@@ -907,25 +907,6 @@ pub struct VarBindingIntroduction {
     pub span: Span,
     /// Is that introduction a shorthand struct pattern, i.e. `Foo { x }`.
     pub is_shorthand: bool,
-}
-
-mod binding_form_impl {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-
-    use crate::ich::StableHashingContext;
-
-    impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-            use super::BindingForm::*;
-            std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-            match self {
-                Var(binding) => binding.hash_stable(hcx, hasher),
-                ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
-                RefForGuard(local) => local.hash_stable(hcx, hasher),
-            }
-        }
-    }
 }
 
 /// `BlockTailInfo` is attached to the `LocalDecl` for temporaries

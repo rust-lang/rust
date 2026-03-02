@@ -55,11 +55,3 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     None
 }
-
-pub fn exit(code: i32) -> ! {
-    super::abi::exit_with_code(code as _)
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids in SGX")
-}

@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
+use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -269,7 +269,15 @@ fn fn_abi_of_instance<'tcx>(
     )
 }
 
-// Handle safe Rust thin and wide pointers.
+/// Returns argument attributes for a scalar argument.
+///
+/// `drop_target_pointee`, if set, causes pointer-typed scalars to be treated like mutable
+/// references to the given type. This is used to special-case the argument of `ptr::drop_in_place`,
+/// interpreting it as `&mut T` instead of `*mut T`, for the purposes of attributes (which is valid
+/// as per its safety contract). If `drop_target_pointee` is set, `offset` must be 0 and `layout.ty`
+/// must be a pointer to the given type. Note that for wide pointers this function is called twice
+/// -- once for the data pointer and once for the vtable pointer. `drop_target_pointee` must only
+/// be set for the data pointer.
 fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
     scalar: Scalar,
@@ -302,42 +310,31 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 
     let tcx = cx.tcx();
 
-    if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
-        let kind = if let Some(kind) = pointee.safe {
-            Some(kind)
-        } else if let Some(pointee) = drop_target_pointee {
-            assert_eq!(pointee, layout.ty.builtin_deref(true).unwrap());
-            assert_eq!(offset, Size::ZERO);
-            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            let mutref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, pointee);
-            let layout = cx.layout_of(mutref).unwrap();
-            layout.pointee_info_at(&cx, offset).and_then(|pi| pi.safe)
-        } else {
-            None
-        };
-        if let Some(kind) = kind {
+    let drop_target_pointee_info = drop_target_pointee.and_then(|pointee| {
+        assert_eq!(pointee, layout.ty.builtin_deref(true).unwrap());
+        assert_eq!(offset, Size::ZERO);
+        // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+        let mutref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, pointee);
+        let layout = cx.layout_of(mutref).unwrap();
+        layout.pointee_info_at(&cx, offset)
+    });
+
+    if let Some(pointee) = drop_target_pointee_info.or_else(|| layout.pointee_info_at(&cx, offset))
+    {
+        if pointee.align > Align::ONE {
             attrs.pointee_align =
                 Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
+        }
 
-            attrs.pointee_size = match kind {
-                // LLVM dereferenceable attribute has unclear semantics on the return type,
-                // they seem to be "dereferenceable until the end of the program", which is
-                // generally, not valid for references. See
-                // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
-                _ if is_return => Size::ZERO,
-                // `Box` are not necessarily dereferenceable for the entire duration of the function as
-                // they can be deallocated at any time. Same for non-frozen shared references (see
-                // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
-                // potentially self-referential types (see
-                // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
-                // to say "dereferenceable on entry" we could use it here.
-                PointerKind::Box { .. }
-                | PointerKind::SharedRef { frozen: false }
-                | PointerKind::MutableRef { unpin: false } => Size::ZERO,
-                PointerKind::SharedRef { frozen: true }
-                | PointerKind::MutableRef { unpin: true } => pointee.size,
-            };
+        // LLVM dereferenceable attribute has unclear semantics on the return type,
+        // they seem to be "dereferenceable until the end of the program", which is
+        // generally, not valid for references. See
+        // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
+        if !is_return {
+            attrs.pointee_size = pointee.size;
+        };
 
+        if let Some(kind) = pointee.safe {
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
@@ -554,7 +551,16 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         Ok(ArgAbi::new(cx, layout, |scalar, offset| {
-            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, drop_target_pointee)
+            arg_attrs_for_rust_scalar(
+                *cx,
+                scalar,
+                layout,
+                offset,
+                is_return,
+                // Only set `drop_target_pointee` for the data part of a wide pointer.
+                // See `arg_attrs_for_rust_scalar` docs for more information.
+                drop_target_pointee.filter(|_| offset == Size::ZERO),
+            )
         }))
     };
 
@@ -627,6 +633,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
+
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.

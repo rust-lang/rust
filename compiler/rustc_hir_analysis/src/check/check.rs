@@ -26,7 +26,6 @@ use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -805,7 +804,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
-            check_diagnostic_attrs(tcx, def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
@@ -828,7 +826,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
-            check_diagnostic_attrs(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
@@ -900,7 +897,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::Const => {
+        DefKind::Const { .. } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -980,7 +977,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
-                    let name = if find_attr!(tcx, def_id, EiiForeignItem) {
+                    let name = if find_attr!(tcx, def_id, RustcEiiForeignItem) {
                         "externally implementable items"
                     } else {
                         "foreign items"
@@ -1062,7 +1059,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::AssocConst => {
+        DefKind::AssocConst { .. } => {
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             res = res.and(check_associated_item(tcx, def_id));
@@ -1120,11 +1117,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         hir::Node::ForeignItem(item) => wfcheck::check_foreign_item(tcx, item),
         _ => unreachable!("{node:?}"),
     })
-}
-
-pub(super) fn check_diagnostic_attrs(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    // an error would be reported if this fails.
-    let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(

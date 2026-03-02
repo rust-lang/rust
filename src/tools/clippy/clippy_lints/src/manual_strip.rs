@@ -242,13 +242,13 @@ fn find_stripping<'tcx>(
                 && self.cx.qpath_res(path, ex.hir_id) == self.target
             {
                 match (self.strip_kind, start, end) {
-                    (StripKind::Prefix, Some(start), None) => {
-                        if eq_pattern_length(self.cx, self.pattern, start, self.ctxt) {
-                            self.results.push(ex);
-                            return;
-                        }
+                    (StripKind::Prefix, Some(start), None)
+                        if eq_pattern_length(self.cx, self.pattern, start, self.ctxt) =>
+                    {
+                        self.results.push(ex);
+                        return;
                     },
-                    (StripKind::Suffix, None, Some(end)) => {
+                    (StripKind::Suffix, None, Some(end))
                         if let ExprKind::Binary(
                             Spanned {
                                 node: BinOpKind::Sub, ..
@@ -259,11 +259,10 @@ fn find_stripping<'tcx>(
                             && let Some(left_arg) = len_arg(self.cx, left)
                             && let ExprKind::Path(left_path) = &left_arg.kind
                             && self.cx.qpath_res(left_path, left_arg.hir_id) == self.target
-                            && eq_pattern_length(self.cx, self.pattern, right, self.ctxt)
-                        {
-                            self.results.push(ex);
-                            return;
-                        }
+                            && eq_pattern_length(self.cx, self.pattern, right, self.ctxt) =>
+                    {
+                        self.results.push(ex);
+                        return;
                     },
                     _ => {},
                 }

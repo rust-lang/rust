@@ -8,7 +8,6 @@ use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{InliningThreshold, OptLevel};
-use rustc_span::sym;
 
 use crate::{inline, pass_manager as pm};
 
@@ -37,11 +36,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
 
     // FIXME(autodiff): replace this as per discussion in https://github.com/rust-lang/rust/pull/149033#discussion_r2535465880
-    #[allow(deprecated)]
-    if tcx.has_attr(def_id, sym::autodiff_forward)
-        || tcx.has_attr(def_id, sym::autodiff_reverse)
-        || tcx.has_attr(def_id, sym::rustc_autodiff)
-    {
+    if find_attr!(tcx, def_id, RustcAutodiff(..)) {
         return true;
     }
 

@@ -27,7 +27,6 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -715,7 +714,7 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
+pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
@@ -1428,13 +1427,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     borrow,
                     Some((WriteKind::StorageDeadOrDrop, place)),
                 );
-                this.infcx.tcx.node_span_lint(
+                this.infcx.tcx.emit_node_span_lint(
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
                     borrowed,
-                    |diag| {
-                        session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
-                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                    session_diagnostics::TailExprDropOrder {
+                        borrowed,
+                        callback: |diag| {
+                            explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                        },
                     },
                 );
                 // We may stop at the first case

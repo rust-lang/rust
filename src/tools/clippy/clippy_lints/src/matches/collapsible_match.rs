@@ -1,17 +1,19 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::higher::{If, IfLetOrMatch};
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
 use rustc_ast::BorrowKind;
-use rustc_errors::MultiSpan;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::Span;
 use rustc_span::symbol::Ident;
+use rustc_span::{BytePos, Span};
+
+use crate::collapsible_if::{parens_around, peel_parens};
 
 use super::{COLLAPSIBLE_MATCH, pat_contains_disallowed_or};
 
@@ -34,7 +36,7 @@ pub(super) fn check_if_let<'tcx>(
     check_arm(cx, false, pat, let_expr, body, None, else_expr, msrv);
 }
 
-#[expect(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, clippy::too_many_lines)]
 fn check_arm<'tcx>(
     cx: &LateContext<'tcx>,
     outer_is_match: bool,
@@ -119,6 +121,70 @@ fn check_arm<'tcx>(
                 "the outer pattern can be modified to include the inner pattern",
             );
         });
+    } else if outer_is_match // Leave if-let to the `collapsible_if` lint
+        && let Some(inner) = If::hir(inner_expr)
+        && outer_pat.span.eq_ctxt(inner.cond.span)
+        && match (outer_else_body, inner.r#else) {
+            (None, None) => true,
+            (None, Some(e)) | (Some(e), None) => is_unit_expr(e),
+            (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
+        }
+    {
+        span_lint_hir_and_then(
+            cx,
+            COLLAPSIBLE_MATCH,
+            inner_expr.hir_id,
+            inner_expr.span,
+            "this `if` can be collapsed into the outer `match`",
+            |diag| {
+                let outer_then_open_bracket = outer_then_body
+                    .span
+                    .split_at(1)
+                    .0
+                    .with_leading_whitespace(cx)
+                    .into_span();
+                let outer_then_closing_bracket = {
+                    let end = outer_then_body.span.shrink_to_hi();
+                    end.with_lo(end.lo() - BytePos(1))
+                        .with_leading_whitespace(cx)
+                        .into_span()
+                };
+                let outer_arrow_end = if let Some(outer_guard) = outer_guard {
+                    outer_guard.span.shrink_to_hi()
+                } else {
+                    outer_pat.span.shrink_to_hi()
+                };
+                let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner_expr.span);
+                let inner_if = inner_if_span.split_at(2).0;
+                let mut sugg = vec![
+                    (inner.then.span.shrink_to_lo(), "=> ".to_string()),
+                    (outer_arrow_end.to(outer_then_open_bracket), String::new()),
+                    (outer_then_closing_bracket, String::new()),
+                ];
+
+                if let Some(outer_guard) = outer_guard {
+                    sugg.extend(parens_around(outer_guard));
+                    sugg.push((inner_if, "&&".to_string()));
+                }
+
+                if !paren_start.is_empty() {
+                    sugg.push((paren_start, String::new()));
+                }
+
+                if !paren_end.is_empty() {
+                    sugg.push((paren_end, String::new()));
+                }
+
+                sugg.extend(parens_around(inner.cond));
+
+                if let Some(else_inner) = inner.r#else {
+                    let else_inner_span = inner.then.span.shrink_to_hi().to(else_inner.span);
+                    sugg.push((else_inner_span, String::new()));
+                }
+
+                diag.multipart_suggestion("collapse nested if block", sugg, Applicability::MachineApplicable);
+            },
+        );
     }
 }
 

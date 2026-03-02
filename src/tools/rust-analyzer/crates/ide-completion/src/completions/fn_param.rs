@@ -4,9 +4,9 @@ use hir::HirDisplay;
 use ide_db::FxHashMap;
 use itertools::Either;
 use syntax::{
-    AstNode, Direction, SyntaxKind, TextRange, TextSize, algo,
+    AstNode, Direction, SmolStr, SyntaxKind, TextRange, TextSize, ToSmolStr, algo,
     ast::{self, HasModuleItem},
-    match_ast,
+    format_smolstr, match_ast,
 };
 
 use crate::{
@@ -25,7 +25,7 @@ pub(crate) fn complete_fn_param(
     ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
-    let (ParamContext { param_list, kind, .. }, impl_or_trait) = match pattern_ctx {
+    let (ParamContext { param_list, kind, param, .. }, impl_or_trait) = match pattern_ctx {
         PatternContext { param_ctx: Some(kind), impl_or_trait, .. } => (kind, impl_or_trait),
         _ => return None,
     };
@@ -46,13 +46,18 @@ pub(crate) fn complete_fn_param(
 
     match kind {
         ParamKind::Function(function) => {
-            fill_fn_params(ctx, function, param_list, impl_or_trait, add_new_item_to_acc);
+            fill_fn_params(ctx, function, param_list, param, impl_or_trait, add_new_item_to_acc);
         }
         ParamKind::Closure(closure) => {
-            let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
-            params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
-                add_new_item_to_acc(&format!("{}: {ty}", name.display(ctx.db, ctx.edition)));
-            });
+            if is_simple_param(param) {
+                let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
+                params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
+                    add_new_item_to_acc(&format_smolstr!(
+                        "{}: {ty}",
+                        name.display(ctx.db, ctx.edition)
+                    ));
+                });
+            }
         }
     }
 
@@ -63,17 +68,20 @@ fn fill_fn_params(
     ctx: &CompletionContext<'_>,
     function: &ast::Fn,
     param_list: &ast::ParamList,
+    current_param: &ast::Param,
     impl_or_trait: &Option<Either<ast::Impl, ast::Trait>>,
     mut add_new_item_to_acc: impl FnMut(&str),
 ) {
     let mut file_params = FxHashMap::default();
 
     let mut extract_params = |f: ast::Fn| {
+        if !is_simple_param(current_param) {
+            return;
+        }
         f.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
             if let Some(pat) = param.pat() {
-                // FIXME: We should be able to turn these into SmolStr without having to allocate a String
-                let whole_param = param.syntax().text().to_string();
-                let binding = pat.syntax().text().to_string();
+                let whole_param = param.to_smolstr();
+                let binding = pat.to_smolstr();
                 file_params.entry(whole_param).or_insert(binding);
             }
         });
@@ -99,11 +107,13 @@ fn fill_fn_params(
         };
     }
 
-    if let Some(stmt_list) = function.syntax().parent().and_then(ast::StmtList::cast) {
+    if let Some(stmt_list) = function.syntax().parent().and_then(ast::StmtList::cast)
+        && is_simple_param(current_param)
+    {
         params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
             file_params
-                .entry(format!("{}: {ty}", name.display(ctx.db, ctx.edition)))
-                .or_insert(name.display(ctx.db, ctx.edition).to_string());
+                .entry(format_smolstr!("{}: {ty}", name.display(ctx.db, ctx.edition)))
+                .or_insert(name.display(ctx.db, ctx.edition).to_smolstr());
         });
     }
     remove_duplicated(&mut file_params, param_list.params());
@@ -139,11 +149,11 @@ fn params_from_stmt_list_scope(
 }
 
 fn remove_duplicated(
-    file_params: &mut FxHashMap<String, String>,
+    file_params: &mut FxHashMap<SmolStr, SmolStr>,
     fn_params: ast::AstChildren<ast::Param>,
 ) {
     fn_params.for_each(|param| {
-        let whole_param = param.syntax().text().to_string();
+        let whole_param = param.to_smolstr();
         file_params.remove(&whole_param);
 
         match param.pat() {
@@ -151,7 +161,7 @@ fn remove_duplicated(
             // if the type is missing we are checking the current param to be completed
             // in which case this would find itself removing the suggestions due to itself
             Some(pattern) if param.ty().is_some() => {
-                let binding = pattern.syntax().text().to_string();
+                let binding = pattern.to_smolstr();
                 file_params.retain(|_, v| v != &binding);
             }
             _ => (),
@@ -173,7 +183,7 @@ fn should_add_self_completions(
     }
 }
 
-fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> String, TextRange)> {
+fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> SmolStr, TextRange)> {
     let param =
         ctx.original_token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
@@ -196,5 +206,11 @@ fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> String
         matches!(prev_token_kind, SyntaxKind::COMMA | SyntaxKind::L_PAREN | SyntaxKind::PIPE);
     let leading = if has_leading_comma { "" } else { ", " };
 
-    Some((move |label: &_| format!("{leading}{label}{trailing}"), param.text_range()))
+    Some((move |label: &_| format_smolstr!("{leading}{label}{trailing}"), param.text_range()))
+}
+
+fn is_simple_param(param: &ast::Param) -> bool {
+    param
+        .pat()
+        .is_none_or(|pat| matches!(pat, ast::Pat::IdentPat(ident_pat) if ident_pat.pat().is_none()))
 }

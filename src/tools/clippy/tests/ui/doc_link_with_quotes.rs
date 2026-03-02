@@ -1,8 +1,6 @@
 #![warn(clippy::doc_link_with_quotes)]
 
-fn main() {
-    foo()
-}
+fn main() {}
 
 /// Calls ['bar'] uselessly
 //~^ doc_link_with_quotes

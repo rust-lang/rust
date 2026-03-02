@@ -293,7 +293,4 @@ fn issue16098(exts: Vec<&str>) {
     //~^ useless_asref
 }
 
-fn main() {
-    not_ok();
-    ok();
-}
+fn main() {}

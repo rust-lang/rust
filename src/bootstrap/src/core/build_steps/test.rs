@@ -805,6 +805,20 @@ impl Step for CargoMiri {
             &[],
         );
 
+        // If we are testing stage 2+ cargo miri, make sure that it works with the in-tree cargo.
+        // We want to do this *somewhere* to ensure that Miri + nightly cargo actually works.
+        if stage >= 2 {
+            let built_cargo = builder
+                .ensure(tool::Cargo::from_build_compiler(
+                    // Build stage 1 cargo here, we don't need it to be built in any special way,
+                    // just that it is built from in-tree sources.
+                    builder.compiler(0, builder.host_target),
+                    builder.host_target,
+                ))
+                .tool_path;
+            cargo.env("CARGO", built_cargo);
+        }
+
         // We're not using `prepare_cargo_test` so we have to do this ourselves.
         // (We're not using that as the test-cargo-miri crate is not known to bootstrap.)
         match builder.doc_tests {
@@ -1319,6 +1333,9 @@ impl Step for Tidy {
         }
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
+        }
+        if builder.config.is_running_on_ci() {
+            cmd.arg("--ci=true");
         }
         if let Some(s) =
             builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
@@ -3416,6 +3433,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
     command("./configure")
         .arg("--set")
         .arg("rust.omit-git-hash=false")
+        .arg("--set")
+        .arg("rust.remap-debuginfo=false")
         .args(&configure_args)
         .arg("--enable-vendor")
         .current_dir(plain_src_dir)

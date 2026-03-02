@@ -252,10 +252,8 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
         },
-        ExprKind::Binary(op, l, r) => {
-            if op.node.is_comparison() {
-                return is_infinite(cx, l).and(is_infinite(cx, r)).and(MaybeInfinite);
-            }
+        ExprKind::Binary(op, l, r) if op.node.is_comparison() => {
+            return is_infinite(cx, l).and(is_infinite(cx, r)).and(MaybeInfinite);
         }, // TODO: ExprKind::Loop + Match
         _ => (),
     }

@@ -900,3 +900,7 @@ fn env_changes(env: &CommandEnv) -> Option<BTreeMap<EnvKey, (Option<OsString>, O
 
     Some(result)
 }
+
+pub fn getpid() -> u32 {
+    panic!("no pids on this platform")
+}

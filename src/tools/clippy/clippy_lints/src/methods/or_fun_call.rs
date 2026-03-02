@@ -84,10 +84,10 @@ pub(super) fn check<'tcx>(
                         return ControlFlow::Break(());
                     }
                 },
-                hir::ExprKind::MethodCall(..) => {
-                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, None) {
-                        return ControlFlow::Break(());
-                    }
+                hir::ExprKind::MethodCall(..)
+                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, None) =>
+                {
+                    return ControlFlow::Break(());
                 },
                 _ => {},
             }

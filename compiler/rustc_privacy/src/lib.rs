@@ -574,7 +574,10 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         self.update(def_id, macro_ev, Level::Reachable);
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const | DefKind::Static { .. } | DefKind::TraitAlias | DefKind::TyAlias => {
+            DefKind::Const { .. }
+            | DefKind::Static { .. }
+            | DefKind::TraitAlias
+            | DefKind::TyAlias => {
                 if vis.is_accessible_from(module, self.tcx) {
                     self.update(def_id, macro_ev, Level::Reachable);
                 }
@@ -621,7 +624,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
             // These have type privacy, so are not reachable unless they're
             // public, or are not namespaced at all.
-            DefKind::AssocConst
+            DefKind::AssocConst { .. }
             | DefKind::AssocTy
             | DefKind::ConstParam
             | DefKind::Ctor(_, _)
@@ -679,7 +682,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
             }
             DefKind::ForeignTy
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Static { .. }
             | DefKind::Fn
             | DefKind::TyAlias => {
@@ -801,7 +804,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Variant
             | DefKind::AssocFn
             | DefKind::AssocTy
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::TyParam
             | DefKind::AnonConst
             | DefKind::InlineConst
@@ -1287,7 +1290,10 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static { .. }
+                DefKind::AssocFn
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocTy
+                    | DefKind::Static { .. }
             )
         });
         if let Some((kind, def_id)) = def {
@@ -1613,7 +1619,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         let def_kind = tcx.def_kind(def_id);
 
         match def_kind {
-            DefKind::Const | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
+            DefKind::Const { .. } | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }

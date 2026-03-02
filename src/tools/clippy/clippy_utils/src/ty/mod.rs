@@ -114,16 +114,15 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
-                            ty::ClauseKind::Trait(trait_predicate) => {
+                            ty::ClauseKind::Trait(trait_predicate)
                                 if trait_predicate
                                     .trait_ref
                                     .args
                                     .types()
                                     .skip(1) // Skip the implicit `Self` generic parameter
-                                    .any(|ty| contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen))
-                                {
-                                    return true;
-                                }
+                                    .any(|ty| contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen)) =>
+                            {
+                                return true;
                             },
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
@@ -308,19 +307,29 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Returns whether the type has #[must_use] attribute
+// Returns whether the `ty` has `#[must_use]` attribute. If `ty` is a `Result`/`ControlFlow`
+// whose `Err`/`Break` payload is an uninhabited type, the `Ok`/`Continue` payload type
+// will be used instead. See <https://github.com/rust-lang/rust/pull/148214>.
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match *ty.kind() {
-        ty::Adt(adt, _) => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
-        ty::Foreign(did) => find_attr!(cx.tcx, did, MustUse { .. }),
+    match ty.kind() {
+        ty::Adt(adt, args) => match cx.tcx.get_diagnostic_name(adt.did()) {
+            Some(sym::Result) if args.type_at(1).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
+                is_must_use_ty(cx, args.type_at(0))
+            },
+            Some(sym::ControlFlow) if args.type_at(0).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
+                is_must_use_ty(cx, args.type_at(1))
+            },
+            _ => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
+        },
+        ty::Foreign(did) => find_attr!(cx.tcx, *did, MustUse { .. }),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, ty)
+            is_must_use_ty(cx, *ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
+            for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                     && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
                 {
@@ -330,7 +339,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _) => {
-            for predicate in binder {
+            for predicate in *binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
                     && find_attr!(cx.tcx, trait_ref.def_id, MustUse { .. })
                 {
@@ -1260,6 +1269,13 @@ pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) ->
         ty::Tuple(args) => name.as_str().parse::<usize>().ok().and_then(|i| args.get(i).copied()),
         _ => None,
     }
+}
+
+pub fn get_field_def_id_by_name(ty: Ty<'_>, name: Symbol) -> Option<DefId> {
+    let ty::Adt(adt_def, ..) = ty.kind() else { return None };
+    adt_def
+        .all_fields()
+        .find_map(|field| if field.name == name { Some(field.did) } else { None })
 }
 
 /// Check if `ty` is an `Option` and return its argument type if it is.

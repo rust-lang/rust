@@ -28,6 +28,4 @@ fn test(a: u32, b: u32, c: u32) {
     if i - j < i {}
 }
 
-fn main() {
-    test(1, 2, 3)
-}
+fn main() {}

@@ -257,7 +257,7 @@ pub fn report_result<'tcx>(
                 // The "active" thread might actually be terminated, so we ignore it.
                 let mut any_pruned = false;
                 for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
-                    let stacktrace = Frame::generate_stacktrace_from_stack(stack);
+                    let stacktrace = Frame::generate_stacktrace_from_stack(stack, *ecx.tcx);
                     let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
                     any_pruned |= was_pruned;
                     report_msg(
@@ -633,7 +633,8 @@ impl<'tcx> MiriMachine<'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         use NonHaltingDiagnostic::*;
 
-        let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let stacktrace =
+            Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack(), self.tcx);
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (label, diag_level) = match &e {

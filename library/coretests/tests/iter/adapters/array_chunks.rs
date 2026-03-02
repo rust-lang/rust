@@ -1,4 +1,4 @@
-use core::iter::{self};
+use core::iter;
 
 use super::*;
 

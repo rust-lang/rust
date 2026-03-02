@@ -22,11 +22,16 @@ unsafe extern "Rust" {
     #[rustc_deallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: Alignment);
+    fn __rust_dealloc(ptr: NonNull<u8>, size: usize, align: Alignment);
     #[rustc_reallocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    fn __rust_realloc(ptr: *mut u8, old_size: usize, align: Alignment, new_size: usize) -> *mut u8;
+    fn __rust_realloc(
+        ptr: NonNull<u8>,
+        old_size: usize,
+        align: Alignment,
+        new_size: usize,
+    ) -> *mut u8;
     #[rustc_allocator_zeroed]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
@@ -112,6 +117,13 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    unsafe { dealloc_nonnull(NonNull::new_unchecked(ptr), layout) }
+}
+
+/// Same as [`dealloc`] but when you already have a non-null pointer
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+unsafe fn dealloc_nonnull(ptr: NonNull<u8>, layout: Layout) {
     unsafe { __rust_dealloc(ptr, layout.size(), layout.alignment()) }
 }
 
@@ -132,6 +144,13 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    unsafe { realloc_nonnull(NonNull::new_unchecked(ptr), layout, new_size) }
+}
+
+/// Same as [`realloc`] but when you already have a non-null pointer
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+unsafe fn realloc_nonnull(ptr: NonNull<u8>, layout: Layout, new_size: usize) -> *mut u8 {
     unsafe { __rust_realloc(ptr, layout.size(), layout.alignment(), new_size) }
 }
 
@@ -206,7 +225,7 @@ impl Global {
             //   allocation than requested.
             // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
             //   safety documentation.
-            unsafe { dealloc(ptr.as_ptr(), layout) }
+            unsafe { dealloc_nonnull(ptr, layout) }
         }
     }
 
@@ -236,7 +255,7 @@ impl Global {
                 // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size >= old_layout.size());
 
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = realloc_nonnull(ptr, old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
@@ -285,7 +304,7 @@ impl Global {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size <= old_layout.size());
 
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = realloc_nonnull(ptr, old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, new_size))
             },

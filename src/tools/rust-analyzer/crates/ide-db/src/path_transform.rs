@@ -553,6 +553,39 @@ impl Ctx<'_> {
                     return None;
                 }
 
+                // Similarly, modules cannot be used in pattern position.
+                if matches!(def, hir::ModuleDef::Module(_)) {
+                    return None;
+                }
+
+                if matches!(
+                    def,
+                    hir::ModuleDef::Function(_)
+                        | hir::ModuleDef::Trait(_)
+                        | hir::ModuleDef::TypeAlias(_)
+                ) {
+                    return None;
+                }
+
+                if let hir::ModuleDef::Adt(adt) = def {
+                    match adt {
+                        hir::Adt::Struct(s)
+                            if s.kind(self.source_scope.db) != hir::StructKind::Unit =>
+                        {
+                            return None;
+                        }
+                        hir::Adt::Union(_) => return None,
+                        hir::Adt::Enum(_) => return None,
+                        _ => (),
+                    }
+                }
+
+                if let hir::ModuleDef::Variant(v) = def
+                    && v.kind(self.source_scope.db) != hir::StructKind::Unit
+                {
+                    return None;
+                }
+
                 let cfg = FindPathConfig {
                     prefer_no_std: false,
                     prefer_prelude: true,
@@ -631,4 +664,88 @@ fn find_trait_for_assoc_item(
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RootDatabase;
+    use crate::path_transform::PathTransform;
+    use hir::Semantics;
+    use syntax::{AstNode, ast::HasName};
+    use test_fixture::WithFixture;
+    use test_utils::assert_eq_text;
+
+    #[test]
+    fn test_transform_ident_pat() {
+        let (db, file_id) = RootDatabase::with_single_file(
+            r#"
+mod foo {
+    pub struct UnitStruct;
+    pub struct RecordStruct {}
+    pub enum Enum { UnitVariant, RecordVariant {} }
+    pub fn function() {}
+    pub const CONST: i32 = 0;
+    pub static STATIC: i32 = 0;
+    pub type Alias = i32;
+    pub union Union { f: i32 }
+}
+
+mod bar {
+    fn anchor() {}
+}
+
+fn main() {
+    use foo::*;
+    use foo::Enum::*;
+    let UnitStruct = ();
+    let RecordStruct = ();
+    let Enum = ();
+    let UnitVariant = ();
+    let RecordVariant = ();
+    let function = ();
+    let CONST = ();
+    let STATIC = ();
+    let Alias = ();
+    let Union = ();
+}
+"#,
+        );
+        let sema = Semantics::new(&db);
+        let source_file = sema.parse(file_id);
+
+        let function = source_file
+            .syntax()
+            .descendants()
+            .filter_map(syntax::ast::Fn::cast)
+            .find(|it| it.name().unwrap().text() == "main")
+            .unwrap();
+        let source_scope = sema.scope(function.body().unwrap().syntax()).unwrap();
+
+        let anchor = source_file
+            .syntax()
+            .descendants()
+            .filter_map(syntax::ast::Fn::cast)
+            .find(|it| it.name().unwrap().text() == "anchor")
+            .unwrap();
+        let target_scope = sema.scope(anchor.body().unwrap().syntax()).unwrap();
+
+        let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
+        let transformed = transform.apply(function.body().unwrap().syntax());
+
+        let expected = r#"{
+    use crate::foo::*;
+    use crate::foo::Enum::*;
+    let crate::foo::UnitStruct = ();
+    let RecordStruct = ();
+    let Enum = ();
+    let crate::foo::Enum::UnitVariant = ();
+    let RecordVariant = ();
+    let function = ();
+    let crate::foo::CONST = ();
+    let crate::foo::STATIC = ();
+    let Alias = ();
+    let Union = ();
+}"#;
+        assert_eq_text!(expected, &transformed.to_string());
+    }
 }

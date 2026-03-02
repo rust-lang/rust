@@ -203,7 +203,14 @@ impl ExternalCrate {
             if !url.ends_with('/') {
                 url.push('/');
             }
-            Remote(url)
+            let is_absolute = url.starts_with('/')
+                || url.split_once(':').is_some_and(|(scheme, _)| {
+                    scheme.bytes().next().is_some_and(|b| b.is_ascii_alphabetic())
+                        && scheme
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'))
+                });
+            Remote { url, is_absolute }
         }
 
         // See if there's documentation generated into the local directory
@@ -316,7 +323,7 @@ impl ExternalCrate {
 #[derive(Debug)]
 pub(crate) enum ExternalLocation {
     /// Remote URL root of the external crate
-    Remote(String),
+    Remote { url: String, is_absolute: bool },
     /// This external crate can be found in the local doc/ folder
     Local,
     /// The external crate could not be found.
@@ -1342,6 +1349,7 @@ pub(crate) enum Type {
     /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, Box<str>),
     Pat(Box<Type>, Box<str>),
+    FieldOf(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
@@ -1555,6 +1563,7 @@ impl Type {
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
             Type::Pat(..) => PrimitiveType::Pat,
+            Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
@@ -1602,6 +1611,7 @@ pub(crate) enum PrimitiveType {
     Slice,
     Array,
     Pat,
+    FieldOf,
     Tuple,
     Unit,
     RawPointer,
@@ -1757,6 +1767,7 @@ impl PrimitiveType {
             Char => sym::char,
             Array => sym::array,
             Pat => sym::pat,
+            FieldOf => sym::field_of,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,

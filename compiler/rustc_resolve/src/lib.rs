@@ -25,7 +25,7 @@
 
 use std::cell::Ref;
 use std::collections::BTreeSet;
-use std::fmt::{self};
+use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -309,7 +309,11 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst { name: Symbol, param_kind: ParamKindInNonTrivialAnonConst },
+    ParamInNonTrivialAnonConst {
+        is_ogca: bool,
+        name: Symbol,
+        param_kind: ParamKindInNonTrivialAnonConst,
+    },
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.
@@ -1051,7 +1055,10 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn is_assoc_item(&self) -> bool {
-        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
+        matches!(
+            self.res(),
+            Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _)
+        )
     }
 
     fn macro_kinds(&self) -> Option<MacroKinds> {
@@ -2500,7 +2507,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
     let mut result = String::new();
-    for (i, name) in names.filter(|name| *name != kw::PathRoot).enumerate() {
+    for (i, name) in names.enumerate().filter(|(_, name)| *name != kw::PathRoot) {
         if i > 0 {
             result.push_str("::");
         }

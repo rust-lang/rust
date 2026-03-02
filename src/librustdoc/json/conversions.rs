@@ -579,6 +579,8 @@ impl FromClean<clean::Type> for Type {
                 type_: Box::new(t.into_json(renderer)),
                 __pat_unstable_do_not_use: p.to_string(),
             },
+            // FIXME(FRTs): implement
+            clean::Type::FieldOf(..) => todo!(),
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -916,7 +918,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
     };
 
     vec![match kind {
-        AK::Deprecation { .. } => return Vec::new(), // Handled separately into Item::deprecation.
+        AK::Deprecated { .. } => return Vec::new(), // Handled separately into Item::deprecation.
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
         AK::MacroExport { .. } => Attribute::MacroExport,
