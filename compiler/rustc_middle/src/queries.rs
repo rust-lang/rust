@@ -150,10 +150,10 @@ use crate::{dep_graph, mir, thir};
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
 // The result type of each query must implement `Clone`, and additionally
-// `ty::query::values::Value`, which produces an appropriate placeholder
-// (error) value if the query resulted in a query cycle.
+// `ty::query::from_cycle_error::FromCycleError`, which produces an appropriate
+// placeholder (error) value if the query resulted in a query cycle.
 // Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise an fatal error on query cycles instead.
+// as they will raise a fatal error on query cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
