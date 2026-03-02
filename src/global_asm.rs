@@ -120,9 +120,15 @@ fn codegen_global_asm_inner<'tcx>(
                         }
 
                         let symbol = tcx.symbol_name(instance);
+                        let symbol_name = if tcx.sess.target.is_like_darwin {
+                            format!("_{}", symbol.name)
+                        } else {
+                            symbol.name.to_owned()
+                        };
+
                         // FIXME handle the case where the function was made private to the
                         // current codegen unit
-                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
+                        global_asm.push_str(&escape_symbol_name(tcx, &symbol_name, span));
                     }
                     GlobalAsmOperandRef::SymStatic { def_id } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
@@ -134,7 +140,13 @@ fn codegen_global_asm_inner<'tcx>(
 
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
-                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
+                        let symbol_name = if tcx.sess.target.is_like_darwin {
+                            format!("_{}", symbol.name)
+                        } else {
+                            symbol.name.to_owned()
+                        };
+
+                        global_asm.push_str(&escape_symbol_name(tcx, &symbol_name, span));
                     }
                 }
             }
