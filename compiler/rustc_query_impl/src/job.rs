@@ -100,7 +100,7 @@ pub(crate) fn find_dep_kind_root<'tcx>(
 
 /// Breaks cycle on some query.
 ///
-/// This function  doesn't distinguish between a query wait and a query execution, so both are just
+/// This function doesn't distinguish between a query wait and a query execution, so both are just
 /// query calls.
 /// As such some queries may have two or more parent query calls too.
 /// It uses depth-first search from a single root query down to the first duplicate query,
