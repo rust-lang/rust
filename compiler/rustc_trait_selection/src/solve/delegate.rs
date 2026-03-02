@@ -71,7 +71,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // FIXME: Properly consider opaques here.
                 && self.inner.borrow_mut().opaque_types().is_empty()
             {
-                return Some(Certainty::AMBIGUOUS);
+                // in erased mode, observing that opaques are empty aren't enough to giv a result
+                // here, so let's try the slow path instead.
+                if self.typing_mode_raw().is_erased_not_coherence() {
+                    return None;
+                } else {
+                    return Some(Certainty::AMBIGUOUS);
+                }
             }
 
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
@@ -283,7 +289,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()
                 }
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    // TODO: make sure this can't be ignored by callers
+                    return Ok(None);
+                }
             }
         };
 

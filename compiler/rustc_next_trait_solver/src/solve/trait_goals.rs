@@ -2,16 +2,16 @@
 
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
-    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    self as ty, FieldInfo, Interner, MayBeErased, Movability, PredicatePolarity, TraitPredicate,
+    TraitRef, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
-use rustc_type_ir::{MayBeErased, inherent::*};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument, trace, warn};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -72,15 +72,15 @@ where
         // of reservation impl to ambiguous during coherence.
         let impl_polarity = cx.impl_polarity(impl_def_id);
         let maximal_certainty = match (impl_polarity, goal.predicate.polarity) {
-            // In intercrate mode, this is ambiguous. But outside of intercrate,
+            // In coherence mode, this is ambiguous. But outside of,
             // it's not a real impl.
             (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => return Err(NoSolution),
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(MayBeErased) => return Err(NoSolution),
             },
 
             // Impl matches polarity
@@ -234,6 +234,11 @@ where
         if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
             goal.predicate.self_ty().kind()
         {
+            if ecx.opaque_accesses.might_rerun() {
+                ecx.opaque_accesses.rerun_always("auto trait leakage");
+                return Err(NoSolution);
+            }
+
             debug_assert!(ecx.opaque_type_is_rigid(def_id));
             for item_bound in cx.item_self_bounds(def_id).skip_binder() {
                 if item_bound
@@ -1392,8 +1397,8 @@ where
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            | TypingMode::PostAnalysis
+            | TypingMode::ErasedNotCoherence(MayBeErased) => {}
         }
 
         if candidates
@@ -1547,7 +1552,7 @@ where
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let (candidates, failed_candidate_info) =
-            self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
+            self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
         let candidate_preference_mode =
             CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
         self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
@@ -1564,11 +1569,15 @@ where
                         return Some(self.forced_ambiguity(MaybeCause::Ambiguity));
                     }
                 }
+                TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    // Trying to continue here isn't worth it.
+                    self.opaque_accesses.rerun_always("try stall coroutine");
+                    return Some(Err(NoSolution));
+                }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             }
         }
 

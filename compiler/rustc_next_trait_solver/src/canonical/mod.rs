@@ -47,7 +47,9 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 }
 
 pub(super) enum EraseOpaqueTypes {
-    Yes,
+    /// This setting erases opaque types, unless we're in coherence.
+    /// In `TypingMode::Coherence` we never erase opaque types
+    IfNotCoherence,
     No,
 }
 
@@ -79,7 +81,7 @@ where
         // If we're supposed to erase opaque types, and we're in any typing mode other than coherence,
         // do the erasing and change typing mode.
         (
-            EraseOpaqueTypes::Yes,
+            EraseOpaqueTypes::IfNotCoherence,
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }

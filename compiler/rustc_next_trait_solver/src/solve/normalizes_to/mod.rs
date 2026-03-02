@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLa
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use rustc_type_ir::{MayBeErased, inherent::*};
-use tracing::{instrument, warn};
+use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -299,7 +299,8 @@ where
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
-                        | ty::TypingMode::PostAnalysis => {
+                        | ty::TypingMode::PostAnalysis
+                        | ty::TypingMode::ErasedNotCoherence(MayBeErased) => {
                             ecx.structurally_instantiate_normalizes_to_term(
                                 goal,
                                 goal.predicate.alias,
@@ -307,7 +308,6 @@ where
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                         }
-                        ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                     };
                 }
                 Err(guar) => return error_response(ecx, guar),
@@ -338,14 +338,14 @@ where
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
-                        | ty::TypingMode::PostAnalysis => {
+                        | ty::TypingMode::PostAnalysis
+                        | ty::TypingMode::ErasedNotCoherence(MayBeErased) => {
                             ecx.structurally_instantiate_normalizes_to_term(
                                 goal,
                                 goal.predicate.alias,
                             );
                             return then(ecx, Certainty::Yes);
                         }
-                        ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                     }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));
@@ -651,7 +651,6 @@ where
 
             ty::Dynamic(_, _) => {
                 let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
-                warn!("CBPC");
                 cx.type_of(dyn_metadata)
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
             }

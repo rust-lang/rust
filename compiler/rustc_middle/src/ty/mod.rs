@@ -1032,8 +1032,12 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. } => {}
-            TypingMode::PostAnalysis => return self,
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            TypingMode::PostAnalysis
+            // If we get here in erased mode, we don't know the original typing mode.
+            // It could be post analysis, or something else.
+            // Regardless of what it was, we want to continue in erased mode,
+            // if we end up accessing any opaque types we bail out anyway.
+            | TypingMode::ErasedNotCoherence(MayBeErased) => return self,
         }
 
         // No need to reveal opaques with the new solver enabled,

@@ -214,6 +214,22 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::ErasedNotCoherence(_) => false,
         }
     }
+
+    /// There are a bunch of places in the trait solver where we single out `Coherence`,
+    /// and alter behavior. We'd like to *always* match on `TypingMode` exhaustively,
+    /// but not having this method leads to a bunch of noisy code.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn is_erased_not_coherence(&self) -> bool {
+        match self {
+            TypingMode::ErasedNotCoherence(_) => true,
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => false,
+        }
+    }
 }
 
 impl<I: Interner> TypingMode<I, MayBeErased> {

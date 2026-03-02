@@ -143,8 +143,10 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    structurally_relate_tys(relation, a, b)
+                }
             }
         }
 

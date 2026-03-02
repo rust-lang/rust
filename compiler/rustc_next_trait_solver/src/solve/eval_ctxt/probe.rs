@@ -34,7 +34,7 @@ where
     ) -> (Result<T, NoSolution>, CandidateHeadUsages) {
         let mut candidate_usages = CandidateHeadUsages::default();
 
-        if self.ecx.canonicalize_accessed_opaques.should_bail_instantly() {
+        if self.ecx.opaque_accesses.should_bail() {
             return (Err(NoSolution), candidate_usages);
         }
 
@@ -69,7 +69,7 @@ where
     ) -> Result<T, NoSolution> {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
 
-        if outer.canonicalize_accessed_opaques.should_bail_instantly() {
+        if outer.opaque_accesses.should_bail() {
             return Err(NoSolution);
         }
 
@@ -88,7 +88,7 @@ where
             origin_span: outer.origin_span,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),
-            canonicalize_accessed_opaques: AccessedOpaques::default(),
+            opaque_accesses: AccessedOpaques::default(),
         };
         let r = nested.delegate.probe(|| {
             let r = f(&mut nested);
@@ -101,10 +101,7 @@ where
             outer.inspect = nested.inspect.finish_probe();
         }
 
-        if let AccessedOpaques::Yes(info) = nested.canonicalize_accessed_opaques {
-            warn!("forwarding accessed opaques {info:?}");
-            outer.canonicalize_accessed_opaques.merge(info);
-        }
+        outer.opaque_accesses.update(nested.opaque_accesses);
 
         r
     }

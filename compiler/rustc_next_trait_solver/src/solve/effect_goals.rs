@@ -143,8 +143,8 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => return Err(NoSolution),
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(MayBeErased) => return Err(NoSolution),
             },
             ty::ImplPolarity::Positive => Certainty::Yes,
         };

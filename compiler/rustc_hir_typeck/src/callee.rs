@@ -62,6 +62,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    #[tracing::instrument(skip(self))]
     pub(crate) fn check_expr_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,

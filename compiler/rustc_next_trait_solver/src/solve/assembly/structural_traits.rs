@@ -981,6 +981,13 @@ where
             .iter()
             .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));
         let Some(replacement) = matching_projections.next() else {
+            // In TypingMode::ErasedNotCoherence we might not have access to opaque types,
+            // causing all matching projections to be filtered out.
+            // In that case, we should just return ASAP.
+            if self.ecx.opaque_accesses.might_rerun() {
+                return Ok(None);
+            }
+
             // This shouldn't happen.
             panic!("could not replace {alias_term:?} with term from from {:?}", self.self_ty);
         };

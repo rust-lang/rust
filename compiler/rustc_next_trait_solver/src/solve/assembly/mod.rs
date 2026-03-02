@@ -419,14 +419,14 @@ where
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
-    ) -> (Vec<Candidate<I>>, FailedCandidateInfo) {
+    ) -> Result<(Vec<Candidate<I>>, FailedCandidateInfo), NoSolution> {
         let mut candidates = vec![];
         let mut failed_candidate_info =
             FailedCandidateInfo { param_env_head_usages: CandidateHeadUsages::default() };
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            return (candidates, failed_candidate_info);
+            return Ok((candidates, failed_candidate_info));
         };
 
         let goal: Goal<I, G> = goal
@@ -434,8 +434,8 @@ where
 
         if normalized_self_ty.is_ty_var() {
             debug!("self type has been normalized to infer");
-            self.try_assemble_bounds_via_registered_opaques(goal, assemble_from, &mut candidates);
-            return (candidates, failed_candidate_info);
+            self.try_assemble_bounds_via_registered_opaques(goal, assemble_from, &mut candidates)?;
+            return Ok((candidates, failed_candidate_info));
         }
 
         // Vars that show up in the rest of the goal substs may have been constrained by
@@ -446,7 +446,7 @@ where
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
             candidates.push(candidate);
-            return (candidates, failed_candidate_info);
+            return Ok((candidates, failed_candidate_info));
         }
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
@@ -471,14 +471,14 @@ where
                     TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. }
-                    | TypingMode::PostAnalysis => !candidates.iter().any(|c| {
+                    | TypingMode::PostAnalysis
+                    | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
                         matches!(
                             c.source,
                             CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
                                 | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
                     }),
-                    TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                 };
                 if assemble_impls {
                     self.assemble_impl_candidates(goal, &mut candidates);
@@ -497,7 +497,7 @@ where
             }
         }
 
-        (candidates, failed_candidate_info)
+        Ok((candidates, failed_candidate_info))
     }
 
     pub(super) fn forced_ambiguity(
@@ -962,13 +962,8 @@ where
         allow_inference_constraints: AllowInferenceConstraints,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        match self.typing_mode() {
-            TypingMode::Coherence => return,
-            TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+        if self.typing_mode().is_coherence() {
+            return;
         }
 
         let mut i = 0;
@@ -1018,12 +1013,13 @@ where
     ///
     /// See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/182>
     /// for why this is necessary.
+    #[tracing::instrument(skip(self, assemble_from))]
     fn try_assemble_bounds_via_registered_opaques<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
         candidates: &mut Vec<Candidate<I>>,
-    ) {
+    ) -> Result<(), NoSolution> {
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
         let opaque_types = match self.typing_mode() {
@@ -1032,12 +1028,15 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => vec![],
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => {
+                self.opaque_accesses.rerun_if_any_opaque_has_infer_as_hidden_type("self ty infer");
+                Vec::new()
+            }
         };
 
         if opaque_types.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
-            return;
+            return Ok(());
         }
 
         for &alias_ty in &opaque_types {
@@ -1064,7 +1063,7 @@ where
 
             // We look at all item-bounds of the opaque, replacing the
             // opaque with the current self type before considering
-            // them as a candidate. Imagine e've got `?x: Trait<?y>`
+            // them as a candidate. Imagine we've got `?x: Trait<?y>`
             // and `?x` has been sub-unified with the hidden type of
             // `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
             // and replace all occurrences of `opaque` with `?x`. This results
@@ -1135,6 +1134,8 @@ where
                     this.evaluate_added_goals_and_make_canonical_response(certainty)
                 }));
         }
+
+        Ok(())
     }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
@@ -1191,7 +1192,7 @@ where
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
                 let (mut candidates, _) = self
-                    .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
+                    .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds)?;
                 debug!(?candidates);
 
                 // If the trait goal has been proven by using the environment, we want to treat
@@ -1220,7 +1221,7 @@ where
             }
             TraitGoalProvenVia::Misc => {
                 let (mut candidates, _) =
-                    self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
+                    self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
 
                 // Prefer "orphaned" param-env normalization predicates, which are used
                 // (for example, and ideally only) when proving item bounds for an impl.

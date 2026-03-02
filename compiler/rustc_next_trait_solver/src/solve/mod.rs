@@ -376,7 +376,8 @@ where
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            // Caller should handle erased not coherence
+            TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
         }
     }
 }

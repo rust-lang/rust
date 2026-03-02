@@ -1,5 +1,6 @@
 pub mod inspect;
 
+use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::lang_items::SolverTraitLangItem;
@@ -11,7 +12,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContex
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
-use tracing::warn;
+use tracing::debug;
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
     ty::CanonicalQueryInput<I, QueryInput<I, T>>;
@@ -28,114 +29,246 @@ pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NoSolution;
 
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum SmallCopyList<T: Copy + Debug + Hash + Eq> {
+    Empty,
+    One([T; 1]),
+    Two([T; 2]),
+    Three([T; 3]),
+}
+
+impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
+    fn empty() -> Self {
+        Self::Empty
+    }
+
+    fn new(first: T) -> Self {
+        Self::One([first])
+    }
+
+    /// Computes the union of two lists. Duplicates are removed.
+    fn union(self, other: Self) -> Option<Self> {
+        match (self, other) {
+            (Self::Empty, other) | (other, Self::Empty) => Some(other),
+
+            (Self::One([a]), Self::One([b])) if a == b => Some(Self::One([a])),
+            (Self::One([a]), Self::One([b])) => Some(Self::Two([a, b])),
+            (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c]))
+                if a == b && b == c =>
+            {
+                Some(Self::One([a]))
+            }
+            (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) if a == b => {
+                Some(Self::Two([a, c]))
+            }
+            (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) if a == c => {
+                Some(Self::Two([a, b]))
+            }
+            (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) if b == c => {
+                Some(Self::Two([a, b]))
+            }
+            (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) => {
+                Some(Self::Three([a, b, c]))
+            }
+            _ => None,
+        }
+    }
+}
+
+impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
+    fn as_ref(&self) -> &[T] {
+        match self {
+            Self::Empty => &[],
+            Self::One(l) => l,
+            Self::Two(l) => l,
+            Self::Three(l) => l,
+        }
+    }
+}
+
+/// Information about how we accessed opaque types
+/// This is what the trait solver does when each states is encountered:
+///
+/// |                         | bail? | rerun goal?                                                                                                          |
+/// | ----------------------- | ----- | -------------------------------------------------------------------------------------------------------------------- |
+/// | never                   | no    | no                                                                                                                   |
+/// | always                  | yes   | yes                                                                                                                  |
+/// | [defid in storage]      | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
+/// | opaque with hidden type | no    | only if any of the the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Analysis |
+///
+/// - "bail" is implemented with [`should_bail`](Self::should_bail).
+///   If true, we're abandoning our attempt to canonicalize in [`TypingMode::Erased`],
+///   and should try to return as soon as possible to waste as little time as possible.
+///   A rerun will be attempted in the original typing mode.
+///
+/// - Rerun goal is implemented with `should_rerun_after_erased_canonicalization`, on the `EvalCtxt`.
+///
+/// Some variant names contain an `Or` here. They rerun when any of the two conditions applies
 #[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-pub enum AccessedState<I: Interner> {
-    Known1([I::LocalDefId; 1]),
-    Known2([I::LocalDefId; 2]),
-    Known3([I::LocalDefId; 3]),
-    UnknownOrTooManyKnown,
+pub enum RerunCondition<I: Interner> {
+    Never,
+
+    AnyOpaqueHasInferAsHidden,
+    /// Note: unconditionally reruns in postanalysis
+    OpaqueInStorage(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopyList<I::LocalDefId>),
+
+    Always,
+}
+
+impl<I: Interner> RerunCondition<I> {
+    /// Merge two rerun states according to the following transition diagram
+    /// (some cells are empty because the table is symmetric, i.e. `a.merge(b)` == `b.merge(a)`).
+    ///
+    /// |                                 | never  | always | postanalysis | [defid in storage]        | [opaque with hidden type]       |
+    /// | ------------------------------- | ------ | ------ | ------------ | ------------------------- | ------------------------------- |
+    /// | never                           | never  | always | postanalysis | [defid in storage]        | [opaque with hidden type]       |
+    /// | always                          |        | always | always       | always                    | always                          |
+    /// | postanalysis                    |        |        | postanalysis | [defid in storage]        | always                          |
+    /// | [defid in storage]              |        |        |              | concat [defid in storage] | always                          |
+    /// | opaque has infer as hidden type |        |        |              |                           | opaque has infer as hidden type |
+    ///
+    fn merge(self, other: Self) -> Self {
+        let merged = match (self, other) {
+            (Self::Never, other) | (other, Self::Never) => other,
+            (Self::Always, _) | (_, Self::Always) => Self::Always,
+
+            (Self::OpaqueInStorage(a), Self::OpaqueInStorage(b)) => {
+                a.union(b).map(Self::OpaqueInStorage).unwrap_or(Self::Always)
+            }
+            (Self::AnyOpaqueHasInferAsHidden, Self::AnyOpaqueHasInferAsHidden) => {
+                Self::AnyOpaqueHasInferAsHidden
+            }
+            (
+                Self::AnyOpaqueHasInferAsHidden,
+                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
+            )
+            | (
+                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
+                Self::AnyOpaqueHasInferAsHidden,
+            ) => Self::OpaqueInStorage(a),
+
+            (
+                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
+                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b),
+            ) => a
+                .union(b)
+                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
+                .unwrap_or(Self::Always),
+
+            (Self::OpaqueInStorage(a), Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b))
+            | (Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(b), Self::OpaqueInStorage(a)) => a
+                .union(b)
+                .map(Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden)
+                .unwrap_or(Self::Always),
+
+            (Self::OpaqueInStorage(a), Self::AnyOpaqueHasInferAsHidden)
+            | (Self::AnyOpaqueHasInferAsHidden, Self::OpaqueInStorage(a)) => {
+                Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a)
+            }
+        };
+        debug!("merging rerun state {self:?} + {other:?} => {merged:?}");
+        merged
+    }
+
+    #[must_use]
+    fn should_bail(&self) -> bool {
+        match self {
+            Self::Always => true,
+            Self::Never
+            | Self::OpaqueInStorage(_)
+            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
+            | Self::AnyOpaqueHasInferAsHidden => false,
+        }
+    }
+
+    /// Returns true when any access of opaques was attempted.
+    /// i.e. when `self != Self::Never`
+    #[must_use]
+    fn might_rerun(&self) -> bool {
+        match self {
+            Self::Never => false,
+            Self::Always
+            | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
+            | Self::OpaqueInStorage(_)
+            | Self::AnyOpaqueHasInferAsHidden => true,
+        }
+    }
 }
 
 #[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-pub struct AccessedOpaquesInfo<I: Interner> {
+pub struct AccessedOpaques<I: Interner> {
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub reason: &'static str,
-    pub defids_accessed: AccessedState<I>,
+    pub reason: Option<&'static str>,
+    pub rerun: RerunCondition<I>,
 }
 
-impl<I: Interner> AccessedOpaquesInfo<I> {
-    pub fn merge(&self, new_info: AccessedOpaquesInfo<I>) -> Self {
-        let defid_accessed = match (self.defids_accessed, new_info.defids_accessed) {
-            (AccessedState::Known1([one]), AccessedState::Known1([two])) => {
-                AccessedState::Known2([one, two])
-            }
-            (AccessedState::Known2([one, two]), AccessedState::Known1([three]))
-            | (AccessedState::Known1([one]), AccessedState::Known2([two, three])) => {
-                AccessedState::Known3([one, two, three])
-            }
-            _ => AccessedState::UnknownOrTooManyKnown,
-        };
-
-        Self {
-            // choose the newest one
-            reason: new_info.reason,
-            // merging accessed states can only result in MultipleOrUnknown
-            defids_accessed: defid_accessed,
-        }
-    }
-
-    pub fn opaques_accessed(&self) -> Option<&[I::LocalDefId]> {
-        match &self.defids_accessed {
-            AccessedState::Known1(d) => Some(d),
-            AccessedState::Known2(d) => Some(d),
-            AccessedState::Known3(d) => Some(d),
-            AccessedState::UnknownOrTooManyKnown => None,
-        }
-    }
-}
-
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-pub enum AccessedOpaques<I: Interner> {
-    Yes(AccessedOpaquesInfo<I>),
-    No,
-}
+impl<I: Interner> AccessedOpaques<I> {}
 
 impl<I: Interner> Default for AccessedOpaques<I> {
     fn default() -> Self {
-        Self::No
+        Self { reason: None, rerun: RerunCondition::Never }
     }
 }
 
 impl<I: Interner> AccessedOpaques<I> {
-    pub fn merge(&mut self, info: AccessedOpaquesInfo<I>) {
-        warn!("merging {info:?}");
-        *self = match self {
-            AccessedOpaques::Yes(existing_info) => AccessedOpaques::Yes(existing_info.merge(info)),
-            AccessedOpaques::No => AccessedOpaques::Yes(info),
+    pub fn update(&mut self, other: Self) {
+        *self = Self {
+            // prefer the newest reason
+            reason: other.reason.or(self.reason),
+            // merging accessed states can only result in MultipleOrUnknown
+            rerun: self.rerun.merge(other.rerun),
         };
     }
 
     #[must_use]
-    pub fn should_bail_instantly(&self) -> bool {
-        match self {
-            AccessedOpaques::Yes(AccessedOpaquesInfo {
-                reason: _,
-                defids_accessed: AccessedState::UnknownOrTooManyKnown,
-            }) => true,
-            AccessedOpaques::Yes(AccessedOpaquesInfo {
-                reason: _,
-                defids_accessed:
-                    AccessedState::Known1(_) | AccessedState::Known2(_) | AccessedState::Known3(_),
-            }) => false,
-            AccessedOpaques::No => false,
-        }
+    pub fn might_rerun(&self) -> bool {
+        self.rerun.might_rerun()
     }
 
-    pub fn opaques_accessed(&self) -> Option<&[I::LocalDefId]> {
-        match self {
-            AccessedOpaques::Yes(i) => i.opaques_accessed(),
-            AccessedOpaques::No => Some(&[]),
-        }
+    #[must_use]
+    pub fn should_bail(&self) -> bool {
+        self.rerun.should_bail()
     }
 
-    pub fn bail_unrecoverable(&mut self, reason: &'static str) {
-        warn!("bail unrecoverable {reason:?}");
-        self.merge(AccessedOpaquesInfo {
-            reason,
-            defids_accessed: AccessedState::UnknownOrTooManyKnown,
+    pub fn rerun_always(&mut self, reason: &'static str) {
+        debug!("set rerun always");
+        self.update(AccessedOpaques { reason: Some(reason), rerun: RerunCondition::Always });
+    }
+
+    pub fn rerun_if_in_post_analysis(&mut self, reason: &'static str) {
+        debug!("set rerun if post analysis");
+        self.update(AccessedOpaques {
+            reason: Some(reason),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::empty()),
         });
     }
 
-    pub fn bail_defid(&mut self, reason: &'static str, defid: I::LocalDefId) {
-        warn!("bail defid {defid:?} {reason:?}");
-        self.merge(AccessedOpaquesInfo { reason, defids_accessed: AccessedState::Known1([defid]) });
+    pub fn rerun_if_opaque_in_opaque_type_storage(
+        &mut self,
+        reason: &'static str,
+        defid: I::LocalDefId,
+    ) {
+        debug!("set rerun if opaque type {defid:?} in storage");
+        self.update(AccessedOpaques {
+            reason: Some(reason),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid)),
+        });
+    }
+
+    pub fn rerun_if_any_opaque_has_infer_as_hidden_type(&mut self, reason: &'static str) {
+        debug!("set rerun if any opaque in the storage has a hidden type that is an infer var");
+        self.update(AccessedOpaques {
+            reason: Some(reason),
+            rerun: RerunCondition::AnyOpaqueHasInferAsHidden,
+        });
     }
 }
 

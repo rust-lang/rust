@@ -3,9 +3,7 @@ use std::marker::PhantomData;
 
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::search_graph::{self, PathKind};
-use rustc_type_ir::solve::{
-    AccessedOpaques, AccessedOpaquesInfo, CanonicalInput, Certainty, NoSolution, QueryResult,
-};
+use rustc_type_ir::solve::{AccessedOpaques, CanonicalInput, Certainty, NoSolution, QueryResult};
 use rustc_type_ir::{Interner, MayBeErased, TypingMode};
 
 use crate::canonical::response_no_constraints_raw;
@@ -71,8 +69,10 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => (Err(NoSolution), AccessedOpaques::default()),
-                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    (Err(NoSolution), AccessedOpaques::default())
+                }
             },
         }
     }
@@ -158,6 +158,6 @@ fn response_no_constraints<I: Interner>(
             input.canonical.var_kinds,
             certainty,
         )),
-        AccessedOpaques::No,
+        AccessedOpaques::default(),
     )
 }

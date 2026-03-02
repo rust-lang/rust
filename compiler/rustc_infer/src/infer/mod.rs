@@ -1069,8 +1069,8 @@ impl<'tcx> InferCtxt<'tcx> {
             // to support PostBorrowckAnalysis in the old solver as well.
             TypingMode::Coherence
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
-            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            | TypingMode::PostAnalysis
+            | TypingMode::ErasedNotCoherence(MayBeErased) => false,
         }
     }
 
@@ -1396,8 +1396,8 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             mode @ (ty::TypingMode::Coherence
             | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis) => mode,
-            ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::ErasedNotCoherence(MayBeErased)) => mode,
         };
         ty::TypingEnv::new(param_env, typing_mode)
     }
