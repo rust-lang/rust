@@ -134,6 +134,13 @@ impl SyntaxFactory {
         make::where_pred(path, bounds).clone_for_update()
     }
 
+    pub fn where_clause(
+        &self,
+        predicates: impl IntoIterator<Item = ast::WherePred>,
+    ) -> ast::WhereClause {
+        make::where_clause(predicates).clone_for_update()
+    }
+
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {
         let ast::Expr::FieldExpr(ast) =
             make::expr_field(receiver.clone(), field).clone_for_update()

@@ -1,11 +1,8 @@
 use either::Either;
 use syntax::{
-    ast::{
-        self, AstNode, HasName, HasTypeBounds,
-        edit_in_place::{GenericParamsOwnerEdit, Removable},
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasGenericParams, HasName, HasTypeBounds, syntax_factory::SyntaxFactory},
     match_ast,
+    syntax_editor::{Position, Removable},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -47,22 +44,69 @@ pub(crate) fn move_bounds_to_where_clause(
         AssistId::refactor_rewrite("move_bounds_to_where_clause"),
         "Move to where clause",
         target,
-        |edit| {
-            let type_param_list = edit.make_mut(type_param_list);
-            let parent = edit.make_syntax_mut(parent);
+        |builder| {
+            let mut edit = builder.make_editor(&parent);
             let make = SyntaxFactory::without_mappings();
 
-            let where_clause: ast::WhereClause = match_ast! {
-                match parent {
-                    ast::Fn(it) => it.get_or_create_where_clause(),
-                    ast::Trait(it) => it.get_or_create_where_clause(),
-                    ast::Impl(it) => it.get_or_create_where_clause(),
-                    ast::Enum(it) => it.get_or_create_where_clause(),
-                    ast::Struct(it) => it.get_or_create_where_clause(),
-                    ast::TypeAlias(it) => it.get_or_create_where_clause(),
-                    _ => return,
+            let new_preds: Vec<ast::WherePred> = type_param_list
+                .generic_params()
+                .filter_map(|param| build_predicate(param, &make))
+                .collect();
+
+            let existing_where: Option<ast::WhereClause> = match_ast! {
+                match (&parent) {
+                    ast::Fn(it) => it.where_clause(),
+                    ast::Trait(it) => it.where_clause(),
+                    ast::Impl(it) => it.where_clause(),
+                    ast::Enum(it) => it.where_clause(),
+                    ast::Struct(it) => it.where_clause(),
+                    ast::TypeAlias(it) => it.where_clause(),
+                    _ => None,
                 }
             };
+
+            let all_preds = existing_where.iter().flat_map(|wc| wc.predicates()).chain(new_preds);
+            let new_where = make.where_clause(all_preds);
+
+            if let Some(existing) = &existing_where {
+                edit.replace(existing.syntax(), new_where.syntax());
+            } else {
+                let pos: Option<Position> = match_ast! {
+                    match (&parent) {
+                        ast::Fn(it) => it.ret_type()
+                            .map(|t| Position::after(t.syntax()))
+                            .or_else(|| it.param_list().map(|t| Position::after(t.syntax()))),
+                        ast::Trait(it) => it.generic_param_list()
+                            .map(|t| Position::after(t.syntax()))
+                            .or_else(|| it.name().map(|t| Position::after(t.syntax()))),
+                        ast::Impl(it) => it.self_ty()
+                            .map(|t| Position::after(t.syntax())),
+                        ast::Enum(it) => it.generic_param_list()
+                            .map(|t| Position::after(t.syntax()))
+                            .or_else(|| it.name().map(|t| Position::after(t.syntax()))),
+                        ast::Struct(it) => it.field_list()
+                            .and_then(|fl| match fl {
+                                ast::FieldList::TupleFieldList(it) => {
+                                    Some(Position::after(it.syntax()))
+                                }
+                                ast::FieldList::RecordFieldList(_) => None,
+                            })
+                            .or_else(|| it.generic_param_list()
+                                .map(|t| Position::after(t.syntax())))
+                            .or_else(|| it.name().map(|t| Position::after(t.syntax()))),
+                        ast::TypeAlias(it) => it.generic_param_list()
+                            .map(|t| Position::after(t.syntax()))
+                            .or_else(|| it.name().map(|t| Position::after(t.syntax()))),
+                        _ => None,
+                    }
+                };
+                if let Some(pos) = pos {
+                    edit.insert_all(
+                        pos,
+                        vec![make.whitespace(" ").into(), new_where.syntax().clone().into()],
+                    );
+                }
+            }
 
             for generic_param in type_param_list.generic_params() {
                 let param: &dyn HasTypeBounds = match &generic_param {
@@ -71,12 +115,11 @@ pub(crate) fn move_bounds_to_where_clause(
                     ast::GenericParam::ConstParam(_) => continue,
                 };
                 if let Some(tbl) = param.type_bound_list() {
-                    if let Some(predicate) = build_predicate(generic_param, &make) {
-                        where_clause.add_predicate(predicate)
-                    }
-                    tbl.remove()
+                    tbl.remove(&mut edit);
                 }
             }
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
