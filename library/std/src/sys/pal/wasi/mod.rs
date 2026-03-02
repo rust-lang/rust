@@ -4,6 +4,8 @@
 //! OS level functionality for WASI. Currently this includes both WASIp1 and
 //! WASIp2.
 
+pub mod conf;
+
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
