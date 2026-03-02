@@ -53,7 +53,11 @@ impl MutVisitor for RespanGenericsVisitor {
     fn visit_generics(&mut self, generics: &mut ast::Generics) {
         generics.where_clause.span = self.0.with_ctxt(generics.where_clause.span.ctxt());
         generics.span = self.0.with_ctxt(generics.span.ctxt());
-        mut_visit::walk_generics(self, generics);
+        // generic parameter declarations don't need to be respanned, so we visit the where clause
+        // predicates next
+        for predicate in &mut generics.where_clause.predicates {
+            self.visit_where_predicate(predicate);
+        }
     }
     fn visit_where_predicate(&mut self, predicate: &mut ast::WherePredicate) {
         predicate.span = self.0.with_ctxt(predicate.span.ctxt());

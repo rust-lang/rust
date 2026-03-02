@@ -13,6 +13,7 @@ struct NotSM<T>(T);
 //~^ ERROR: struct takes 0 generic arguments
 //~| ERROR: struct takes 0 generic arguments
 //~| ERROR: struct takes 0 generic arguments
+//~| ERROR: struct takes 0 generic arguments
 //~| ERROR: the name `NotSM` is defined multiple times
 //~| ERROR: no field `0`
 
