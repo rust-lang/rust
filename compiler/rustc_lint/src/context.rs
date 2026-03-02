@@ -13,10 +13,11 @@ use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, Diagnostic, LintBuffer, MultiSpan};
 use rustc_feature::Features;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_hir::{Pat, PatKind};
+use rustc_hir::{Attribute, Pat, PatKind};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -368,7 +369,7 @@ impl LintStore {
             }
         }
         match self.by_name.get(&complete_name) {
-            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(new_name.to_string()),
+            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(Symbol::intern(new_name)),
             Some(Removed(reason)) => CheckLintNameResult::Removed(reason.to_string()),
             None => match self.lint_groups.get(&*complete_name) {
                 // If neither the lint, nor the lint group exists check if there is a `clippy::`
@@ -879,7 +880,21 @@ impl<'tcx> LateContext<'tcx> {
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: hir::HirId| -> bool {
             for attr in self.tcx.hir_attrs(id) {
-                if attr.span().desugaring_kind().is_none() {
+                let span = match attr {
+                    Attribute::Unparsed(attr) => attr.span,
+                    Attribute::Parsed(AttributeKind::LintAttribute { sub_attrs, .. }) => {
+                        for attr in sub_attrs {
+                            if attr.attr_span.desugaring_kind().is_none() {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
+                    Attribute::Parsed(attr) => bug!("can't get span of parsed attr: {:?}", attr),
+                };
+
+                if span.desugaring_kind().is_none() {
                     return true;
                 }
             }

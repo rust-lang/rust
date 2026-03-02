@@ -133,6 +133,33 @@ impl<'sess> AttributeParser<'sess, Early> {
         )
     }
 
+    /// This method provides the same functionality as [`parse_limited_all`](Self::parse_limited_all) except filtered, 
+    /// making sure that only allow-listed symbols are parsed
+    pub fn parse_limited_all_filtered(
+        sess: &'sess Session,
+        mut attrs: Vec<ast::Attribute>,
+        filter: &[Symbol],
+        target: Target,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+        tools: RegisteredTools,
+    ) -> Vec<Attribute> {
+        attrs.retain(|attr| attr.has_any_name(filter));
+        Self::parse_limited_all(
+            sess,
+            &attrs,
+            None,
+            target,
+            target_span,
+            target_node_id,
+            features,
+            emit_errors,
+            tools,
+        )
+    }
+
     /// This method parses a single attribute, using `parse_fn`.
     /// This is useful if you already know what exact attribute this is, and want to parse it.
     pub fn parse_single<T>(

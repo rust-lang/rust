@@ -56,6 +56,7 @@ impl AttributeKind {
             LinkOrdinal { .. } => No,
             LinkSection { .. } => Yes, // Needed for rustdoc
             Linkage(..) => No,
+            LintAttribute { .. } => No,
             LoopMatch(..) => No,
             MacroEscape(..) => No,
             MacroExport { .. } => Yes,

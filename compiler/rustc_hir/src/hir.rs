@@ -1384,6 +1384,9 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
+            Attribute::Parsed(AttributeKind::LintAttribute { sub_attrs, .. }) => {
+                sub_attrs[0].attr_span
+            }
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }

@@ -875,6 +875,25 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    RenamedLint {
+        name: Symbol,
+        replace: Symbol,
+        suggestion: Span,
+    },
+    DeprecatedLintName {
+        name: Symbol,
+        suggestion: Span,
+        replace: Symbol,
+    },
+    RemovedLint {
+        name: Symbol,
+        reason: String,
+    },
+    UnknownLint {
+        name: Symbol,
+        span: Span,
+        suggestion: Option<(Symbol, bool)>,
+    },
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

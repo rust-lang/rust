@@ -35,6 +35,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -142,10 +143,14 @@ macro_rules! attribute_parsers {
 attribute_parsers!(
     pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
+        AllowParser,
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,
+        DenyParser,
         DocParser,
+        ExpectParser,
+        ForbidParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -155,6 +160,7 @@ attribute_parsers!(
         RustcCguTestAttributeParser,
         StabilityParser,
         UsedParser,
+        WarnParser,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start

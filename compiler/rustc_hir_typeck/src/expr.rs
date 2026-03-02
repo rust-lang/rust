@@ -15,10 +15,11 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{Attribute, ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
@@ -71,7 +72,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 //     let y: u32 = (x?).try_into().unwrap();
                 //                  +  +++++++++++++++++++++
-                if attr.span().desugaring_kind().is_none() {
+                let span = match attr {
+                    Attribute::Unparsed(attr) => attr.span,
+                    Attribute::Parsed(AttributeKind::LintAttribute { sub_attrs, .. }) => {
+                        for attr in sub_attrs {
+                            if attr.attr_span.desugaring_kind().is_none() {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
+                    Attribute::Parsed(attr) => bug!("can't get span of parsed attr: {:?}", attr),
+                };
+
+                if span.desugaring_kind().is_none() {
                     return true;
                 }
             }
