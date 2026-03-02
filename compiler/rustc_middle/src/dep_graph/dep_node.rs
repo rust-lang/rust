@@ -265,18 +265,20 @@ impl StableOrd for WorkProductId {
 // Note: `$K` and `$V` are unused but present so this can be called by `rustc_with_all_queries`.
 macro_rules! define_dep_nodes {
     (
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $variant:ident($K:ty) -> $V:ty,
-        )*
-    ) => {
-
-        #[macro_export]
-        macro_rules! make_dep_kind_array {
-            ($mod:ident) => {[ $($mod::$variant()),* ]};
+        queries {
+            $(
+                $(#[$q_attr:meta])*
+                [$($modifiers:tt)*]
+                fn $q_name:ident($K:ty) -> $V:ty,
+            )*
         }
-
-        /// This enum serves as an index into arrays built by `make_dep_kind_array`.
+        non_queries {
+            $(
+                $(#[$nq_attr:meta])*
+                $nq_name:ident,
+            )*
+        }
+    ) => {
         // This enum has more than u8::MAX variants so we need some kind of multi-byte
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
         // dense when only considering this enum. But DepKind is encoded in a larger
@@ -285,14 +287,18 @@ macro_rules! define_dep_nodes {
         #[allow(non_camel_case_types)]
         #[repr(u16)] // Must be kept in sync with the rest of `DepKind`.
         pub enum DepKind {
-            $( $( #[$attr] )* $variant),*
+            $( $(#[$nq_attr])* $nq_name, )*
+            $( $(#[$q_attr])* $q_name, )*
         }
 
         // This computes the number of dep kind variants. Along the way, it sanity-checks that the
         // discriminants of the variants have been assigned consecutively from 0 so that they can
         // be used as a dense index, and that all discriminants fit in a `u16`.
         pub(crate) const DEP_KIND_NUM_VARIANTS: u16 = {
-            let deps = &[$(DepKind::$variant,)*];
+            let deps = &[
+                $(DepKind::$nq_name,)*
+                $(DepKind::$q_name,)*
+            ];
             let mut i = 0;
             while i < deps.len() {
                 if i != deps[i].as_usize() {
@@ -306,7 +312,8 @@ macro_rules! define_dep_nodes {
 
         pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
-                $( stringify!($variant) => Ok(self::DepKind::$variant), )*
+                $( stringify!($nq_name) => Ok(self::DepKind::$nq_name), )*
+                $( stringify!($q_name) => Ok(self::DepKind::$q_name), )*
                 _ => Err(()),
             }
         }
@@ -315,27 +322,14 @@ macro_rules! define_dep_nodes {
         /// DepNode groups for tests.
         #[expect(non_upper_case_globals)]
         pub mod label_strs {
-            $( pub const $variant: &str = stringify!($variant); )*
+            $( pub const $nq_name: &str = stringify!($nq_name); )*
+            $( pub const $q_name: &str = stringify!($q_name); )*
         }
     };
 }
 
-// Create various data structures for each query, and also for a few things
-// that aren't queries. The key and return types aren't used, hence the use of `()`.
-rustc_with_all_queries!(define_dep_nodes![
-    /// We use this for most things when incr. comp. is turned off.
-    [] fn Null(()) -> (),
-    /// We use this to create a forever-red node.
-    [] fn Red(()) -> (),
-    /// We use this to create a side effect node.
-    [] fn SideEffect(()) -> (),
-    /// We use this to create the anon node with zero dependencies.
-    [] fn AnonZeroDeps(()) -> (),
-    [] fn TraitSelect(()) -> (),
-    [] fn CompileCodegenUnit(()) -> (),
-    [] fn CompileMonoItem(()) -> (),
-    [] fn Metadata(()) -> (),
-]);
+// Create various data structures for each query, and also for a few things that aren't queries.
+rustc_with_all_queries! { define_dep_nodes! }
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
