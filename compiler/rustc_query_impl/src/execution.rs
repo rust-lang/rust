@@ -555,14 +555,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
         if std::intrinsics::unlikely(
             try_verify || tcx.sess.opts.unstable_opts.incremental_verify_ich,
         ) {
-            incremental_verify_ich(
-                tcx,
-                dep_graph_data,
-                &value,
-                prev_index,
-                query.hash_value_fn,
-                query.format_value,
-            );
+            incremental_verify_ich(tcx, query, dep_graph_data, &value, prev_index);
         }
 
         return value;
@@ -602,14 +595,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(
-        tcx,
-        dep_graph_data,
-        &value,
-        prev_index,
-        query.hash_value_fn,
-        query.format_value,
-    );
+    incremental_verify_ich(tcx, query, dep_graph_data, &value, prev_index);
 
     value
 }

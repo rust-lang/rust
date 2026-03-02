@@ -4,31 +4,31 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use tracing::instrument;
 
 use crate::dep_graph::{DepGraphData, SerializedDepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::query::QueryCache;
+use crate::query::plumbing::QueryVTable;
 use crate::ty::TyCtxt;
 
 #[inline]
-#[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
-pub fn incremental_verify_ich<'tcx, V>(
+#[instrument(skip(tcx, dep_graph_data, value), level = "debug")]
+pub fn incremental_verify_ich<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     dep_graph_data: &DepGraphData,
-    result: &V,
+    value: &C::Value,
     prev_index: SerializedDepNodeIndex,
-    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    format_value: fn(&V) -> String,
 ) {
     if !dep_graph_data.is_index_green(prev_index) {
         incremental_verify_ich_not_green(tcx, prev_index)
     }
 
-    let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
-        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
+    let new_hash = query.hash_value_fn.map_or(Fingerprint::ZERO, |f| {
+        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, value))
     });
 
     let old_hash = dep_graph_data.prev_value_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(result));
+        incremental_verify_ich_failed(tcx, prev_index, &|| (query.format_value)(value));
     }
 }
 
@@ -49,7 +49,7 @@ fn incremental_verify_ich_not_green<'tcx>(tcx: TyCtxt<'tcx>, prev_index: Seriali
 fn incremental_verify_ich_failed<'tcx>(
     tcx: TyCtxt<'tcx>,
     prev_index: SerializedDepNodeIndex,
-    result: &dyn Fn() -> String,
+    format_value: &dyn Fn() -> String,
 ) {
     // When we emit an error message and panic, we try to debug-print the `DepNode`
     // and query result. Unfortunately, this can cause us to run additional queries,
@@ -77,7 +77,7 @@ fn incremental_verify_ich_failed<'tcx>(
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
+        panic!("Found unstable fingerprints for {dep_node:?}: {}", format_value());
     }
 
     INSIDE_VERIFY_PANIC.set(old_in_panic);
