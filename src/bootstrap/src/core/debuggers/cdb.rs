@@ -14,28 +14,42 @@ pub(crate) fn discover_cdb(target: TargetSelection) -> Option<Cdb> {
         return None;
     }
 
-    let pf86 =
-        PathBuf::from(env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?);
-    let cdb_arch = if cfg!(target_arch = "x86") {
-        "x86"
-    } else if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "arm") {
-        "arm"
-    } else {
-        return None; // No compatible CDB.exe in the Windows 10 SDK
-    };
-
-    let mut path = pf86;
-    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-    path.push(cdb_arch);
-    path.push(r"cdb.exe");
-
-    if !path.exists() {
-        return None;
+    if let Some(path) = env::var_os("RUSTC_CDB") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Some(Cdb { cdb: path });
+        }
     }
 
-    Some(Cdb { cdb: path })
+    let cdb_arch = if target.starts_with("x86_64") {
+        "x64"
+    } else if target.starts_with("x86") || target.starts_with("i686") || target.starts_with("i586")
+    {
+        "x86"
+    } else if target.starts_with("aarch64") {
+        "arm64"
+    } else if target.starts_with("arm") {
+        "arm"
+    } else {
+        return None;
+    };
+
+    let program_files = [env::var_os("ProgramFiles(x86)"), env::var_os("ProgramFiles")];
+
+    let sdk_versions = ["11", "10", "8.1"];
+
+    for base in program_files.iter().flatten() {
+        for version in &sdk_versions {
+            let mut path = PathBuf::from(base);
+            path.push(format!(r"Windows Kits\{}\Debuggers", version));
+            path.push(cdb_arch);
+            path.push("cdb.exe");
+
+            if path.exists() {
+                return Some(Cdb { cdb: path });
+            }
+        }
+    }
+
+    None
 }
