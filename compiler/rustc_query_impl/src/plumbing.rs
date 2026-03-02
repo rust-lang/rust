@@ -414,15 +414,20 @@ pub(crate) fn force_from_dep_node_inner<'tcx, Q: GetQueryVTable<'tcx>>(
     }
 }
 
-// Note: `$K` and `$V` are unused but present so this can be called by `rustc_with_all_queries`.
 macro_rules! define_queries {
     (
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,
-        )*
+        // Note: `$K` and `$V` are unused but present so this can be called by
+        // `rustc_with_all_queries`.
+        queries {
+            $(
+                $(#[$attr:meta])*
+                [$($modifiers:tt)*]
+                fn $name:ident($K:ty) -> $V:ty,
+            )*
+        }
+        // Non-queries are unused here.
+        non_queries { $($_:tt)* }
     ) => {
-
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
             use ::rustc_middle::query::erase::{self, Erased};
@@ -688,24 +693,6 @@ macro_rules! define_queries {
                     )*
                 })
             }
-        }
-
-        /// Declares a dep-kind vtable constructor for each query.
-        mod _dep_kind_vtable_ctors_for_queries {
-            use ::rustc_middle::dep_graph::DepKindVTable;
-            use $crate::dep_kind_vtables::make_dep_kind_vtable_for_query;
-
-            $(
-                /// `DepKindVTable` constructor for this query.
-                pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
-                    use $crate::query_impl::$name::VTableGetter;
-                    make_dep_kind_vtable_for_query::<VTableGetter>(
-                        is_anon!([$($modifiers)*]),
-                        if_cache_on_disk!([$($modifiers)*] true false),
-                        is_eval_always!([$($modifiers)*]),
-                    )
-                }
-            )*
         }
     }
 }

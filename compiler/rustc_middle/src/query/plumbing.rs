@@ -375,11 +375,15 @@ macro_rules! define_callbacks {
     (
         // You might expect the key to be `$K:ty`, but it needs to be `$($K:tt)*` so that
         // `query_helper_param_ty!` can match on specific type names.
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*]
-            fn $name:ident($($K:tt)*) -> $V:ty,
-        )*
+        queries {
+            $(
+                $(#[$attr:meta])*
+                [$($modifiers:tt)*]
+                fn $name:ident($($K:tt)*) -> $V:ty,
+            )*
+        }
+        // Non-queries are unused here.
+        non_queries { $($_:tt)* }
     ) => {
         $(
             #[allow(unused_lifetimes)]
