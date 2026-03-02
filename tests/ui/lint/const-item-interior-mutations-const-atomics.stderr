@@ -4,7 +4,7 @@ warning: mutation of an interior mutable `const` item with call to `store`
 LL |     let _a = A.store(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -22,7 +22,7 @@ warning: mutation of an interior mutable `const` item with call to `swap`
 LL |     let _a = A.swap(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -39,7 +39,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_and_
 LL |     let _a = A.compare_and_swap(false, true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -56,7 +56,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
 LL |     let _a = A.compare_exchange(false, true, Ordering::SeqCst, Ordering::Relaxed);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -73,7 +73,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
 LL |     let _a = A.compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Relaxed);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -90,7 +90,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_and`
 LL |     let _a = A.fetch_and(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -107,7 +107,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_nand`
 LL |     let _a = A.fetch_nand(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -124,7 +124,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_or`
 LL |     let _a = A.fetch_or(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -141,7 +141,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_xor`
 LL |     let _a = A.fetch_xor(true, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -158,7 +158,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_not`
 LL |     let _a = A.fetch_not(Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -175,7 +175,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_update
 LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(true));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -192,7 +192,7 @@ warning: mutation of an interior mutable `const` item with call to `try_update`
 LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(false));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -209,7 +209,7 @@ warning: mutation of an interior mutable `const` item with call to `update`
 LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| true);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |              `A` is a interior mutable `const` item of type `Atomic<bool>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -226,7 +226,7 @@ warning: mutation of an interior mutable `const` item with call to `store`
 LL |     let _a = A.store(std::ptr::null_mut(), Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -243,7 +243,7 @@ warning: mutation of an interior mutable `const` item with call to `swap`
 LL |     let _a = A.swap(std::ptr::null_mut(), Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -260,7 +260,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_and_
 LL |     let _a = A.compare_and_swap(std::ptr::null_mut(), std::ptr::null_mut(), Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -275,7 +275,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
   --> $DIR/const-item-interior-mutations-const-atomics.rs:64:14
    |
 LL |       let _a = A.compare_exchange(
-   |                ^ `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |                ^ `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |  ______________|
    | |
 LL | |
@@ -299,7 +299,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
   --> $DIR/const-item-interior-mutations-const-atomics.rs:72:14
    |
 LL |       let _a = A.compare_exchange_weak(
-   |                ^ `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |                ^ `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |  ______________|
    | |
 LL | |
@@ -325,7 +325,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_update
 LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(std::ptr::null_mut()));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -342,7 +342,7 @@ warning: mutation of an interior mutable `const` item with call to `try_update`
 LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(std::ptr::null_mut()));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -359,7 +359,7 @@ warning: mutation of an interior mutable `const` item with call to `update`
 LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| std::ptr::null_mut());
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -376,7 +376,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_ptr_ad
 LL |     let _a = A.fetch_ptr_add(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -393,7 +393,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_ptr_su
 LL |     let _a = A.fetch_ptr_sub(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -410,7 +410,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_byte_a
 LL |     let _a = A.fetch_byte_add(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -427,7 +427,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_byte_s
 LL |     let _a = A.fetch_byte_sub(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -444,7 +444,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_and`
 LL |     let _a = A.fetch_and(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -461,7 +461,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_or`
 LL |     let _a = A.fetch_or(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -478,7 +478,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_xor`
 LL |     let _a = A.fetch_xor(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |              `A` is a interior mutable `const` item of type `Atomic<*mut i32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -495,7 +495,7 @@ warning: mutation of an interior mutable `const` item with call to `store`
 LL |     let _a = A.store(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -512,7 +512,7 @@ warning: mutation of an interior mutable `const` item with call to `swap`
 LL |     let _a = A.swap(2, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -529,7 +529,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_and_
 LL |     let _a = A.compare_and_swap(2, 3, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -546,7 +546,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
 LL |     let _a = A.compare_exchange(3, 4, Ordering::SeqCst, Ordering::Relaxed);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -563,7 +563,7 @@ warning: mutation of an interior mutable `const` item with call to `compare_exch
 LL |     let _a = A.compare_exchange_weak(4, 5, Ordering::SeqCst, Ordering::Relaxed);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -580,7 +580,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_add`
 LL |     let _a = A.fetch_add(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -597,7 +597,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_sub`
 LL |     let _a = A.fetch_sub(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -614,7 +614,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_add`
 LL |     let _a = A.fetch_add(2, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -631,7 +631,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_nand`
 LL |     let _a = A.fetch_nand(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -648,7 +648,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_or`
 LL |     let _a = A.fetch_or(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -665,7 +665,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_xor`
 LL |     let _a = A.fetch_xor(1, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -682,7 +682,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_update
 LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(10));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -699,7 +699,7 @@ warning: mutation of an interior mutable `const` item with call to `try_update`
 LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(11));
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -716,7 +716,7 @@ warning: mutation of an interior mutable `const` item with call to `update`
 LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| 12);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -733,7 +733,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_max`
 LL |     let _a = A.fetch_max(20, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
@@ -750,7 +750,7 @@ warning: mutation of an interior mutable `const` item with call to `fetch_min`
 LL |     let _a = A.fetch_min(5, Ordering::SeqCst);
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |              `A` is a interior mutable `const` item of type `Atomic<u32>`
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified

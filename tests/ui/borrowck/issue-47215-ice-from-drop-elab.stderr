@@ -2,7 +2,7 @@ error[E0507]: cannot move out of static item `X`
   --> $DIR/issue-47215-ice-from-drop-elab.rs:17:21
    |
 LL |         let mut x = X;
-   |                     ^ move occurs because `X` has type `AtomicUsize`, which does not implement the `Copy` trait
+   |                     ^ move occurs because `X` has type `Atomic<usize>`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |

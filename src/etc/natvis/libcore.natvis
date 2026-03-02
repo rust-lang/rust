@@ -89,38 +89,38 @@
     </Expand>
   </Type>
 
-  <Type Name="core::sync::atomic::AtomicBool">
-    <DisplayString>{(bool)v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<bool>">
+    <DisplayString>{(bool)v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicI8">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<i8>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicI16">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<i16">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicI32">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<i32>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicI64">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<i64>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicIsize">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<isize>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-    <Type Name="core::sync::atomic::AtomicU8">
-    <DisplayString>{v.value}</DisplayString>
+    <Type Name="core::sync::atomic::Atomic<u8>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicU16">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<u16>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicU32">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<u32>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicU64">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<u64>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
-  <Type Name="core::sync::atomic::AtomicUsize">
-    <DisplayString>{v.value}</DisplayString>
+  <Type Name="core::sync::atomic::Atomic<usize>">
+    <DisplayString>{v.value.__0}</DisplayString>
   </Type>
 
   <Type Name="core::time::Duration">
