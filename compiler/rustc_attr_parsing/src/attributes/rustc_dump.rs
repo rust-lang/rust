@@ -1,5 +1,5 @@
-use rustc_hir::{MethodKind, Target};
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::prelude::Allow;

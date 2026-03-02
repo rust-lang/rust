@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::{GenericArgs, TyCtxt};
@@ -39,8 +40,21 @@ pub(crate) fn variances(tcx: TyCtxt<'_>) {
             continue;
         }
 
+        match tcx.def_kind(id) {
+            DefKind::Fn | DefKind::Enum | DefKind::Struct | DefKind::Union => {}
+            DefKind::TyAlias if tcx.type_alias_is_lazy(id) => {}
+            kind => {
+                let message = format!(
+                    "attr parsing didn't report an error for `#[{}]` on {kind:?}",
+                    rustc_span::sym::rustc_variance,
+                );
+                tcx.dcx().span_delayed_bug(tcx.def_span(id), message);
+                continue;
+            }
+        }
+
         tcx.dcx().emit_err(crate::errors::VariancesOf {
-            span: tcx.def_span(id.owner_id),
+            span: tcx.def_span(id),
             variances: format_variances(tcx, id.owner_id.def_id),
         });
     }
