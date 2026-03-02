@@ -485,12 +485,13 @@ impl<'a, 'gcc, 'tcx> Deref for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
-    type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
-    type Metadata = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Metadata;
     type Function = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Function;
     type BasicBlock = <CodegenCx<'gcc, 'tcx> as BackendTypes>::BasicBlock;
-    type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
     type Funclet = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Funclet;
+
+    type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
+    type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
+    type FunctionSignature = <CodegenCx<'gcc, 'tcx> as BackendTypes>::FunctionSignature;
 
     type DIScope = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIScope;
     type DILocation = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DILocation;

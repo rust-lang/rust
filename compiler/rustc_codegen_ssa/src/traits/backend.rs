@@ -21,13 +21,13 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
-    type Value: CodegenObject + PartialEq;
-    type Metadata: CodegenObject;
     type Function: CodegenObject;
-
     type BasicBlock: Copy;
-    type Type: CodegenObject + PartialEq;
     type Funclet;
+
+    type Value: CodegenObject + PartialEq;
+    type Type: CodegenObject + PartialEq;
+    type FunctionSignature: CodegenObject + PartialEq;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
@@ -137,7 +137,7 @@ pub trait CodegenBackend {
 }
 
 pub trait ExtraBackendMethods:
-    CodegenBackend + WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
+    WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
 {
     fn codegen_allocator<'tcx>(
         &self,
