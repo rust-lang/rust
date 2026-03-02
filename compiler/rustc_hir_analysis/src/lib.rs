@@ -88,6 +88,7 @@ use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lints::DelayedLint;
+use rustc_lint::DecorateAttrLint;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
@@ -149,31 +150,17 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
-    struct DiagEmitter<'tcx> {
-        hir_id: rustc_hir::HirId,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-        lint: &'static rustc_lint::Lint,
-    }
-
-    impl rustc_lint::EmitDiag for DiagEmitter<'_> {
-        fn emit(self, diag: impl for<'a> rustc_errors::Diagnostic<'a, ()>) {
-            self.tcx.emit_node_span_lint(self.lint, self.hir_id, self.span, diag);
-        }
-    }
-
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
-            rustc_lint::decorate_attribute_lint(
-                DiagEmitter {
-                    hir_id: attribute_lint.id,
-                    tcx,
-                    span: attribute_lint.span,
-                    lint: attribute_lint.lint_id.lint,
+            tcx.emit_node_span_lint(
+                attribute_lint.lint_id.lint,
+                attribute_lint.id,
+                attribute_lint.span,
+                DecorateAttrLint {
+                    sess: tcx.sess,
+                    tcx: Some(tcx),
+                    diagnostic: &attribute_lint.kind,
                 },
-                tcx.sess,
-                Some(tcx),
-                &attribute_lint.kind,
             );
         }
     }

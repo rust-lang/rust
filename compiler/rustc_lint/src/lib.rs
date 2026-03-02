@@ -131,8 +131,8 @@ use unused::*;
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
-pub use early::diagnostics::{decorate_attribute_lint, decorate_builtin_lint};
-pub use early::{EarlyCheckNode, EmitDiag, check_ast_node};
+pub use early::diagnostics::{DecorateAttrLint, DecorateBuiltinLint};
+pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
