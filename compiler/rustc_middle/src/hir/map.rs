@@ -289,7 +289,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
                 BodyOwnerKind::Const { inline: false }
             }
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },

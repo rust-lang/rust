@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
 
         // Per RFC we (currently) ignore anon-const (`const _: Ty = ...`) in top-level module.
         if self.body_depth == 1
-            && parent_def_kind == DefKind::Const
+            && matches!(parent_def_kind, DefKind::Const { .. })
             && parent_opt_item_name == Some(kw::Underscore)
         {
             return;
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // for impl, otherwise the item-def and impl-def won't have the same parent.
                 let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
                     tcx.def_kind(did) == DefKind::Mod
-                        || (tcx.def_kind(did) == DefKind::Const
+                        || (matches!(tcx.def_kind(did), DefKind::Const { .. })
                             && tcx.opt_item_name(did) == Some(kw::Underscore))
                 });
 
@@ -179,20 +179,22 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // Get the span of the parent const item ident (if it's a not a const anon).
                 //
                 // Used to suggest changing the const item to a const anon.
-                let span_for_const_anon_suggestion = if parent_def_kind == DefKind::Const
-                    && parent_opt_item_name != Some(kw::Underscore)
-                    && let Some(parent) = parent.as_local()
-                    && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
-                    && let ItemKind::Const(ident, _, ty, _) = item.kind
-                    && let TyKind::Tup(&[]) = ty.kind
-                {
-                    Some(ident.span)
-                } else {
-                    None
-                };
+                let span_for_const_anon_suggestion =
+                    if matches!(parent_def_kind, DefKind::Const { .. })
+                        && parent_opt_item_name != Some(kw::Underscore)
+                        && let Some(parent) = parent.as_local()
+                        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
+                        && let ItemKind::Const(ident, _, ty, _) = item.kind
+                        && let TyKind::Tup(&[]) = ty.kind
+                    {
+                        Some(ident.span)
+                    } else {
+                        None
+                    };
 
-                let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
-                    .then_some(span_for_const_anon_suggestion);
+                let const_anon =
+                    matches!(parent_def_kind, DefKind::Const { .. } | DefKind::Static { .. })
+                        .then_some(span_for_const_anon_suggestion);
 
                 let impl_span = item.span.shrink_to_lo().to(impl_.self_ty.span);
                 let mut ms = MultiSpan::from_span(impl_span);
@@ -315,7 +317,7 @@ fn did_has_local_parent(
 
     peel_parent_while(tcx, parent_did, |tcx, did| {
         tcx.def_kind(did) == DefKind::Mod
-            || (tcx.def_kind(did) == DefKind::Const
+            || (matches!(tcx.def_kind(did), DefKind::Const { .. })
                 && tcx.opt_item_name(did) == Some(kw::Underscore))
     })
     .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)

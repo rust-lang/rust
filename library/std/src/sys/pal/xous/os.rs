@@ -118,11 +118,3 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     None
 }
-
-pub fn exit(code: i32) -> ! {
-    crate::os::xous::ffi::exit(code as u32);
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids on this platform")
-}

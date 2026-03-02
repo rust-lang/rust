@@ -5,10 +5,7 @@ use std::borrow::Cow;
 use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
-use intern::{
-    Symbol,
-    sym::{self},
-};
+use intern::{Symbol, sym};
 use itertools::Itertools;
 use mbe::{DelimiterKind, expect_fragment};
 use span::{Edition, FileId, Span};

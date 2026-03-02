@@ -104,7 +104,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     if self.depth >= self.cause_depth {
                         self.cause = Some(error.obligation.cause);
                         if let hir::TyKind::TraitObject(..) = ty.kind
-                            && let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
+                            && let DefKind::AssocTy | DefKind::AssocConst { .. } | DefKind::AssocFn =
                                 self.tcx.def_kind(self.def_id)
                         {
                             self.cause = Some(ObligationCause::new(

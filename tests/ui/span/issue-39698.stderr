@@ -8,10 +8,10 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |         |                      variable not in all patterns
    |         pattern doesn't bind `b`
    |
-help: you might have meant to use the similarly named previously used binding `c`
+help: you might have meant to use the similarly named previously used binding `a`
    |
 LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-LL +         T::T1(a, d) | T::T2(d, c) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(a, d) | T::T2(d, a) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
    |
 
 error[E0408]: variable `c` is not bound in all patterns
@@ -24,10 +24,10 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |         |             pattern doesn't bind `c`
    |         pattern doesn't bind `c`
    |
-help: you might have meant to use the similarly named previously used binding `d`
+help: you might have meant to use the similarly named previously used binding `a`
    |
 LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-LL +         T::T1(a, d) | T::T2(d, b) | T::T3(d) | T::T4(a) => { println!("{:?}", a); }
+LL +         T::T1(a, d) | T::T2(d, b) | T::T3(a) | T::T4(a) => { println!("{:?}", a); }
    |
 
 error[E0408]: variable `a` is not bound in all patterns
@@ -40,10 +40,10 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |               |       pattern doesn't bind `a`
    |               variable not in all patterns
    |
-help: you might have meant to use the similarly named previously used binding `c`
+help: you might have meant to use the similarly named previously used binding `b`
    |
 LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-LL +         T::T1(c, d) | T::T2(d, b) | T::T3(c) | T::T4(c) => { println!("{:?}", a); }
+LL +         T::T1(b, d) | T::T2(d, b) | T::T3(c) | T::T4(b) => { println!("{:?}", a); }
    |
 
 error[E0408]: variable `d` is not bound in all patterns
@@ -55,12 +55,6 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |                  |          |       pattern doesn't bind `d`
    |                  |          variable not in all patterns
    |                  variable not in all patterns
-   |
-help: you might have meant to use the similarly named previously used binding `c`
-   |
-LL -         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-LL +         T::T1(a, c) | T::T2(c, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |
 
 error[E0381]: used binding `a` is possibly-uninitialized
   --> $DIR/issue-39698.rs:10:79

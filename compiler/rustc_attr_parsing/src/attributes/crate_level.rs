@@ -301,3 +301,96 @@ impl<S: Stage> NoArgsAttributeParser<S> for DefaultLibAllocatorParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
 }
+
+pub(crate) struct FeatureParser;
+
+impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
+    const PATH: &[Symbol] = &[sym::feature];
+    type Item = Ident;
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let ArgParser::List(list) = args else {
+            cx.expected_list(cx.attr_span, args);
+            return Vec::new();
+        };
+
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+        }
+
+        let mut res = Vec::new();
+
+        for elem in list.mixed() {
+            let Some(elem) = elem.meta_item() else {
+                cx.expected_identifier(elem.span());
+                continue;
+            };
+            if let Err(arg_span) = elem.args().no_args() {
+                cx.expected_no_args(arg_span);
+                continue;
+            }
+
+            let path = elem.path();
+            let Some(ident) = path.word() else {
+                cx.expected_identifier(path.span());
+                continue;
+            };
+            res.push(ident);
+        }
+
+        res
+    }
+}
+
+pub(crate) struct RegisterToolParser;
+
+impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
+    const PATH: &[Symbol] = &[sym::register_tool];
+    type Item = Ident;
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::RegisterTool;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let ArgParser::List(list) = args else {
+            cx.expected_list(cx.attr_span, args);
+            return Vec::new();
+        };
+
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+        }
+
+        let mut res = Vec::new();
+
+        for elem in list.mixed() {
+            let Some(elem) = elem.meta_item() else {
+                cx.expected_identifier(elem.span());
+                continue;
+            };
+            if let Err(arg_span) = elem.args().no_args() {
+                cx.expected_no_args(arg_span);
+                continue;
+            }
+
+            let path = elem.path();
+            let Some(ident) = path.word() else {
+                cx.expected_identifier(path.span());
+                continue;
+            };
+
+            res.push(ident);
+        }
+
+        res
+    }
+}

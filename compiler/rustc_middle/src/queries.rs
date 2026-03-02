@@ -825,7 +825,7 @@ rustc_queries! {
     /// Returns the explicitly user-written *predicates* of the definition given by `DefId`
     /// that must be proven true at usage sites (and which can be assumed at definition site).
     ///
-    /// You should probably use [`Self::predicates_of`] unless you're looking for
+    /// You should probably use [`TyCtxt::predicates_of`] unless you're looking for
     /// predicates with explicit spans for diagnostics purposes.
     query explicit_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { "computing explicit predicates of `{}`", tcx.def_path_str(key) }
@@ -2771,13 +2771,6 @@ rustc_queries! {
         cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }
-
-    query is_rhs_type_const(def_id: DefId) -> bool {
-        desc { "checking whether `{}` is a rhs type const", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
-        separate_provide_extern
-    }
 }
 
 rustc_with_all_queries! { define_callbacks! }
-rustc_feedable_queries! { define_feedable! }

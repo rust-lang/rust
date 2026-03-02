@@ -611,7 +611,7 @@ macro_rules! options {
         $parse:ident,
         [$dep_tracking_marker:ident $( $tmod:ident )?],
         $desc:expr
-        $(, deprecated_do_nothing: $dnn:literal )?)
+        $(, is_deprecated_and_do_nothing: $dnn:literal )?)
      ),* ,) =>
 (
     #[derive(Clone)]
@@ -760,7 +760,7 @@ fn build_options<O: Default>(
                     match value {
                         None => early_dcx.early_fatal(
                             format!(
-                                "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
+                                "{outputname} option `{key}` requires {type_desc} (`-{prefix} {key}=<value>`)"
                             ),
                         ),
                         Some(value) => early_dcx.early_fatal(
@@ -2059,7 +2059,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
@@ -2098,7 +2098,7 @@ options! {
     inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
         "this option is deprecated and does nothing \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -2139,7 +2139,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
         "this option is deprecated and does nothing",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
     no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],

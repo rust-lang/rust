@@ -1,6 +1,6 @@
 use rustc_data_structures::fingerprint::Fingerprint;
-pub use rustc_lint_defs::AttributeLintKind;
 use rustc_lint_defs::LintId;
+pub use rustc_lint_defs::{AttributeLintKind, FormatWarning};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Span;
 

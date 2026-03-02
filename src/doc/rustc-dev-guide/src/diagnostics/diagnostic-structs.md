@@ -4,8 +4,7 @@ rustc has three diagnostic traits that can be used to create diagnostics:
 
 For simple diagnostics,
 derived impls can be used, e.g. `#[derive(Diagnostic)]`. They are only suitable for simple diagnostics that
-don't require much logic in deciding whether or not to add additional
-subdiagnostics.
+don't require much logic in deciding whether or not to add additional subdiagnostics.
 
 In cases where diagnostics require more complex or dynamic behavior, such as conditionally adding subdiagnostics,
 customizing the rendering logic, or selecting messages at runtime, you will need to manually implement
@@ -16,8 +15,7 @@ Diagnostic can be translated into different languages.
 
 ## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
 
-Consider the [definition][defn] of the "field already declared" diagnostic
-shown below:
+Consider the [definition][defn] of the "field already declared" diagnostic shown below:
 
 ```rust,ignore
 #[derive(Diagnostic)]
@@ -32,47 +30,47 @@ pub struct FieldAlreadyDeclared {
 }
 ```
 
-`Diagnostic` can only be derived on structs and enums. 
+`Diagnostic` can only be derived on structs and enums.
 Attributes that are placed on the type for structs are placed on each 
-variants for enums (or vice versa). Each `Diagnostic` has to have one
+variants for enums (or vice versa).
+Each `Diagnostic` has to have one
 attribute, `#[diag(...)]`, applied to the struct or each enum variant.
 
 If an error has an error code (e.g. "E0624"), then that can be specified using
-the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
+the `code` sub-attribute.
+Specifying a `code` isn't mandatory, but if you are
 porting a diagnostic that uses `Diag` to use `Diagnostic`
 then you should keep the code if there was one.
 
-`#[diag(..)]` must provide a message as the first positional argument. 
-The message is written in English, but might be translated to the locale requested by the user. See
-[translation documentation](./translation.md) to learn more about how
+`#[diag(..)]` must provide a message as the first positional argument.
+The message is written in English, but might be translated to the locale requested by the user.
+See [translation documentation](./translation.md) to learn more about how
 translatable error messages are written and how they are generated.
 
 Every field of the `Diagnostic` which does not have an annotation is
-available in Fluent messages as a variable, like `field_name` in the example
-above. Fields can be annotated `#[skip_arg]` if this is undesired.
+available in Fluent messages as a variable, like `field_name` in the example above.
+Fields can be annotated `#[skip_arg]` if this is undesired.
 
 Using the `#[primary_span]` attribute on a field (that has type `Span`)
-indicates the primary span of the diagnostic which will have the main message
-of the diagnostic.
+indicates the primary span of the diagnostic which will have the main message of the diagnostic.
 
 Diagnostics are more than just their primary message, they often include
-labels, notes, help messages and suggestions, all of which can also be
-specified on a `Diagnostic`.
+labels, notes, help messages and suggestions, all of which can also be specified on a `Diagnostic`.
 
 `#[label]`, `#[help]`, `#[warning]` and `#[note]` can all be applied to fields which have the
-type `Span`. Applying any of these attributes will create the corresponding
-subdiagnostic with that `Span`. These attributes take a diagnostic message as an argument.
+type `Span`.
+Applying any of these attributes will create the corresponding subdiagnostic with that `Span`.
+These attributes take a diagnostic message as an argument.
 
 Other types have special behavior when used in a `Diagnostic` derive:
 
 - Any attribute applied to an `Option<T>` will only emit a
   subdiagnostic if the option is `Some(..)`.
-- Any attribute applied to a `Vec<T>` will be repeated for each element of the
-  vector.
+- Any attribute applied to a `Vec<T>` will be repeated for each element of the vector.
 
 `#[help]`, `#[warning]` and `#[note]` can also be applied to the struct itself, in which case
-they work exactly like when applied to fields except the subdiagnostic won't
-have a `Span`. These attributes can also be applied to fields of type `()` for
+they work exactly like when applied to fields except the subdiagnostic won't have a `Span`.
+These attributes can also be applied to fields of type `()` for
 the same effect, which when combined with the `Option` type can be used to
 represent optional `#[note]`/`#[help]`/`#[warning]` subdiagnostics.
 
@@ -84,8 +82,8 @@ Suggestions can be emitted using one of four field attributes:
 - `#[suggestion_verbose("message", code = "...", applicability = "...")]`
 
 Suggestions must be applied on either a `Span` field or a `(Span,
-MachineApplicability)` field. Similarly to other field attributes, a message
-needs to be provided which will be shown to the user.
+MachineApplicability)` field.
+Similarly to other field attributes, a message needs to be provided which will be shown to the user.
 `code` specifies the code that should be suggested as a
 replacement and is a format string (e.g. `{field_name}` would be replaced by
 the value of the `field_name` field of the struct).
@@ -113,8 +111,8 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a> for FieldAlreadyDeclared {
 }
 ```
 
-Now that we've defined our diagnostic, how do we [use it][use]? It's quite
-straightforward, just create an instance of the struct and pass it to
+Now that we've defined our diagnostic, how do we [use it][use]?
+It's quite straightforward, just create an instance of the struct and pass it to
 `emit_err` (or `emit_warning`):
 
 ```rust,ignore
@@ -126,8 +124,7 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
 ```
 
 ### Reference for `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
-`#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]` support the
-following attributes:
+`#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]` support the following attributes:
 
 - `#[diag("message", code = "...")]`
   - _Applied to struct or enum variant._
@@ -164,17 +161,17 @@ following attributes:
     - Value is the suggestion message that will be shown to the user.
     - See [translation documentation](./translation.md).
   - `code = "..."`/`code("...", ...)` (_Mandatory_)
-    - One or multiple format strings indicating the code to be suggested as a
-      replacement. Multiple values signify multiple possible replacements.
+    - One or multiple format strings indicating the code to be suggested as a replacement.
+      Multiple values signify multiple possible replacements.
   - `applicability = "..."` (_Optional_)
     - String which must be one of `machine-applicable`, `maybe-incorrect`,
       `has-placeholders` or `unspecified`.
 - `#[subdiagnostic]`
-  - _Applied to a type that implements `Subdiagnostic` (from
-    `#[derive(Subdiagnostic)]`)._
+  - _Applied to a type that implements `Subdiagnostic` (from `#[derive(Subdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
 - `#[primary_span]` (_Optional_)
-  - _Applied to `Span` fields on `Subdiagnostic`s. Not used for `LintDiagnostic`s._
+  - _Applied to `Span` fields on `Subdiagnostic`s.
+    Not used for `LintDiagnostic`s._
   - Indicates the primary span of the diagnostic.
 - `#[skip_arg]` (_Optional_)
   - _Applied to any field._
@@ -182,14 +179,14 @@ following attributes:
 
 ## `#[derive(Subdiagnostic)]`
 It is common in the compiler to write a function that conditionally adds a
-specific subdiagnostic to an error if it is applicable. Oftentimes these
-subdiagnostics could be represented using a diagnostic struct even if the
-overall diagnostic could not. In this circumstance, the `Subdiagnostic`
+specific subdiagnostic to an error if it is applicable.
+Oftentimes these subdiagnostics could be represented using a diagnostic struct even if the
+overall diagnostic could not.
+In this circumstance, the `Subdiagnostic`
 derive can be used to represent a partial diagnostic (e.g a note, label, help or
 suggestion) as a struct.
 
-Consider the [definition][subdiag_defn] of the "expected return type" label
-shown below:
+Consider the [definition][subdiag_defn] of the "expected return type" label shown below:
 
 ```rust
 #[derive(Subdiagnostic)]
@@ -208,10 +205,10 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 ```
 
-Like `Diagnostic`, `Subdiagnostic` can be derived for structs or
-enums. Attributes that are placed on the type for structs are placed on each
-variants for enums (or vice versa). Each `Subdiagnostic` should have one
-attribute applied to the struct or each variant, one of:
+Like `Diagnostic`, `Subdiagnostic` can be derived for structs or enums.
+Attributes that are placed on the type for structs are placed on each
+variants for enums (or vice versa).
+Each `Subdiagnostic` should have one attribute applied to the struct or each variant, one of:
 
 - `#[label(..)]` for defining a label
 - `#[note(..)]` for defining a note
@@ -224,15 +221,14 @@ See [translation documentation](./translation.md) to learn more about how
 translatable error messages are generated.
 
 Using the `#[primary_span]` attribute on a field (with type `Span`) will denote
-the primary span of the subdiagnostic. A primary span is only necessary for a
-label or suggestion, which can not be spanless.
+the primary span of the subdiagnostic.
+A primary span is only necessary for a label or suggestion, which can not be spanless.
 
 Every field of the type/variant which does not have an annotation is available
-in Fluent messages as a variable. Fields can be annotated `#[skip_arg]` if this
-is undesired.
+in Fluent messages as a variable.
+Fields can be annotated `#[skip_arg]` if this is undesired.
 
-Like `Diagnostic`, `Subdiagnostic` supports `Option<T>` and
-`Vec<T>` fields.
+Like `Diagnostic`, `Subdiagnostic` supports `Option<T>` and `Vec<T>` fields.
 
 Suggestions can be emitted using one of four attributes on the type/variant:
 
@@ -241,8 +237,7 @@ Suggestions can be emitted using one of four attributes on the type/variant:
 - `#[suggestion_short("...", code = "...", applicability = "...")]`
 - `#[suggestion_verbose("...", code = "...", applicability = "...")]`
 
-Suggestions require `#[primary_span]` be set on a field and can have the
-following sub-attributes:
+Suggestions require `#[primary_span]` be set on a field and can have the following sub-attributes:
 
 - The first positional argument specifies the message which will be shown to the user.
 - `code` specifies the code that should be suggested as a replacement and is a
@@ -276,8 +271,7 @@ impl<'tcx> Subdiagnostic for ExpectedReturnTypeLabel<'tcx> {
 
 Once defined, a subdiagnostic can be used by passing it to the `subdiagnostic`
 function ([example][subdiag_use_1] and [example][subdiag_use_2]) on a
-diagnostic or by assigning it to a `#[subdiagnostic]`-annotated field of a
-diagnostic struct.
+diagnostic or by assigning it to a `#[subdiagnostic]`-annotated field of a diagnostic struct.
 
 ### Argument sharing and isolation
 
@@ -310,22 +304,24 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
 `#[derive(Subdiagnostic)]` supports the following attributes:
 
 - `#[label("message")]`, `#[help("message")]`, `#[warning("message")]` or `#[note("message")]`
-  - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
+  - _Applied to struct or enum variant.
+    Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a label, help or note.
   - Message (_Mandatory_)
     - The diagnostic message that will be shown to the user.
     - See [translation documentation](./translation.md).
 - `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`
-  - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
+  - _Applied to struct or enum variant.
+    Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a suggestion.
   - Message (_Mandatory_)
     - The diagnostic message that will be shown to the user.
     - See [translation documentation](./translation.md).
   - `code = "..."`/`code("...", ...)` (_Mandatory_)
-    - One or multiple format strings indicating the code to be suggested as a
-      replacement. Multiple values signify multiple possible replacements.
+    - One or multiple format strings indicating the code to be suggested as a replacement.
+      Multiple values signify multiple possible replacements.
   - `applicability = "..."` (_Optional_)
     - _Mutually exclusive with `#[applicability]` on a field._
     - Value is the applicability of the suggestion.
@@ -335,7 +331,8 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
       - `has-placeholders`
       - `unspecified`
 - `#[multipart_suggestion{,_hidden,_short,_verbose}("message", applicability = "...")]`
-  - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
+  - _Applied to struct or enum variant.
+    Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a multipart suggestion.
   - Message (_Mandatory_): see `#[suggestion]`
@@ -348,8 +345,7 @@ to multipart suggestions)
   - _Applied to `Span` fields._
   - Indicates the span to be one part of the multipart suggestion.
   - `code = "..."` (_Mandatory_)
-    - Value is a format string indicating the code to be suggested as a
-      replacement.
+    - Value is a format string indicating the code to be suggested as a replacement.
 - `#[applicability]` (_Optional_; only applicable to (simple and multipart) suggestions)
   - _Applied to `Applicability` fields._
   - Indicates the applicability of the suggestion.

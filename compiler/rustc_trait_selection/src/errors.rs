@@ -1,4 +1,3 @@
-use rustc_ast::Path;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -12,7 +11,7 @@ use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, GenericArg, Region, Ty, TyCtxt};
-use rustc_span::{BytePos, Ident, Span, Symbol, kw};
+use rustc_span::{BytePos, Ident, Span, Symbol, kw, sym};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
@@ -26,60 +25,6 @@ pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
     pub unevaluated: ty::UnevaluatedConst<'a>,
-}
-
-#[derive(Diagnostic)]
-pub enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
-    Empty {
-        #[primary_span]
-        #[label("empty `on`-clause here")]
-        span: Span,
-    },
-    #[diag("expected a single predicate in `not(..)`", code = E0232)]
-    ExpectedOnePredInNot {
-        #[primary_span]
-        #[label("unexpected quantity of predicates here")]
-        span: Span,
-    },
-    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
-    UnsupportedLiteral {
-        #[primary_span]
-        #[label("unexpected literal here")]
-        span: Span,
-    },
-    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
-    ExpectedIdentifier {
-        #[primary_span]
-        #[label("expected an identifier here, not `{$path}`")]
-        span: Span,
-        path: Path,
-    },
-    #[diag("this predicate is invalid", code = E0232)]
-    InvalidPredicate {
-        #[primary_span]
-        #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
-        span: Span,
-        invalid_pred: Symbol,
-    },
-    #[diag("invalid flag in `on`-clause", code = E0232)]
-    InvalidFlag {
-        #[primary_span]
-        #[label(
-            "expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`"
-        )]
-        span: Span,
-        invalid_flag: Symbol,
-    },
-    #[diag("invalid name in `on`-clause", code = E0232)]
-    InvalidName {
-        #[primary_span]
-        #[label(
-            "expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `{$invalid_name}`"
-        )]
-        span: Span,
-        invalid_name: Symbol,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -212,6 +157,7 @@ pub struct ClosureFnOnceLabel {
     #[primary_span]
     pub span: Span,
     pub place: String,
+    pub trait_prefix: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -220,6 +166,7 @@ pub struct ClosureFnMutLabel {
     #[primary_span]
     pub span: Span,
     pub place: String,
+    pub trait_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -477,7 +424,7 @@ pub enum RegionOriginNote<'a> {
 
 impl Subdiagnostic for RegionOriginNote<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let mut label_or_note = |span, msg: DiagMessage| {
+        let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -491,22 +438,26 @@ impl Subdiagnostic for RegionOriginNote<'_> {
         };
         match self {
             RegionOriginNote::Plain { span, msg } => {
-                label_or_note(span, msg);
+                label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
-                label_or_note(span, msg);
                 diag.arg("name", name);
                 diag.arg("continues", continues);
+                label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithRequirement {
                 span,
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
-                label_or_note(
-                    span,
-                    msg!(
-                        "...so that the {$requirement ->
+                // `RegionOriginNote` can appear multiple times on one diagnostic with different
+                // `requirement` values. Scope args per-note and eagerly translate to avoid
+                // cross-note arg collisions.
+                // See https://github.com/rust-lang/rust/issues/143872 for details.
+                diag.store_args();
+                diag.arg("requirement", requirement);
+                let msg = diag.eagerly_translate(msg!(
+                    "...so that the {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
                             [const_compat] const is compatible with trait
@@ -519,9 +470,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                    ),
-                );
-                diag.arg("requirement", requirement);
+                ));
+                diag.restore_args();
+                label_or_note(diag, span, msg);
 
                 diag.note_expected_found("", expected, "", found);
             }
@@ -529,10 +480,10 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
-                label_or_note(
-                    span,
-                    msg!(
-                        "...so that {$requirement ->
+                diag.store_args();
+                diag.arg("requirement", requirement);
+                let msg = diag.eagerly_translate(msg!(
+                    "...so that {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
                             [const_compat] const is compatible with trait
@@ -545,9 +496,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                    ),
-                );
-                diag.arg("requirement", requirement);
+                ));
+                diag.restore_args();
+                label_or_note(diag, span, msg);
             }
         };
     }
@@ -2062,9 +2013,9 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     }
 
     let mut next_fresh_param = || {
-        ["T", "U", "V", "W", "X", "Y", "A", "B", "C"]
+        ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
             .into_iter()
-            .map(Symbol::intern)
+            .map(sym::character)
             .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
             .find(|s| captured_non_lifetimes.insert(*s))
             .unwrap()

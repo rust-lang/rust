@@ -87,19 +87,6 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char *FileName) {
   timeTraceProfilerCleanup();
 }
 
-// This struct and various functions are sort of a hack right now, but the
-// problem is that we've got in-memory LLVM modules after we generate and
-// optimize all codegen-units for one compilation in rustc. To be compatible
-// with the LTO support above we need to serialize the modules plus their
-// ThinLTO summary into memory.
-//
-// This structure is basically an owned version of a serialize module, with
-// a ThinLTO summary attached.
-struct LLVMRustThinLTOBuffer {
-  std::string data;
-  std::string thin_link_data;
-};
-
 extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
                                    const char *Feature) {
   TargetMachine *Target = unwrap(TM);
@@ -566,11 +553,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
     LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
     bool IsLinkerPluginLTO, bool NoPrepopulatePasses, bool VerifyIR,
-    bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef,
-    bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
-    bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-    bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr,
-    bool PrintBeforeEnzyme, bool PrintAfterEnzyme, bool PrintPasses,
+    bool LintIR, LLVMRustBuffer **ThinLTOBufferRef,
+    LLVMRustBuffer **ThinLTOSummaryBufferRef, bool MergeFunctions,
+    bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
+    bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
+    registerEnzymeAndPassPipelineFn EnzymePtr, bool PrintBeforeEnzyme,
+    bool PrintAfterEnzyme, bool PrintPasses,
     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
     const char *PGOUsePath, bool InstrumentCoverage,
     const char *InstrProfileOutput, const char *PGOSampleUsePath,
@@ -809,9 +797,10 @@ extern "C" LLVMRustResult LLVMRustOptimize(
 
   ModulePassManager MPM;
   bool NeedThinLTOBufferPasses = true;
-  auto ThinLTOBuffer = std::make_unique<LLVMRustThinLTOBuffer>();
+  auto ThinLTOBuffer = std::make_unique<LLVMRustBuffer>();
+  auto ThinLTOSummaryBuffer = std::make_unique<LLVMRustBuffer>();
   raw_string_ostream ThinLTODataOS(ThinLTOBuffer->data);
-  raw_string_ostream ThinLinkDataOS(ThinLTOBuffer->thin_link_data);
+  raw_string_ostream ThinLinkDataOS(ThinLTOSummaryBuffer->data);
   bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO ||
                OptStage == LLVMRustOptStage::FatLTO;
   if (!NoPrepopulatePasses) {
@@ -836,8 +825,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           // `ThinLTOPreLinkDefaultPipeline`.
           MPM.addPass(PB.buildThinLTOPreLinkDefaultPipeline(OptLevel));
           MPM.addPass(ThinLTOBitcodeWriterPass(
-              ThinLTODataOS, EmitThinLTOSummary ? &ThinLinkDataOS : nullptr));
+              ThinLTODataOS,
+              ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
           *ThinLTOBufferRef = ThinLTOBuffer.release();
+          if (ThinLTOSummaryBufferRef) {
+            *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
+          }
           MPM.addPass(PB.buildModuleOptimizationPipeline(
               OptLevel, ThinOrFullLTOPhase::None));
           MPM.addPass(
@@ -893,11 +886,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     // lto is requested. See PR #136840 for background information.
     if (OptStage != LLVMRustOptStage::PreLinkFatLTO) {
       MPM.addPass(ThinLTOBitcodeWriterPass(
-          ThinLTODataOS, EmitThinLTOSummary ? &ThinLinkDataOS : nullptr));
+          ThinLTODataOS, ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
     } else {
       MPM.addPass(BitcodeWriterPass(ThinLTODataOS));
     }
     *ThinLTOBufferRef = ThinLTOBuffer.release();
+    if (ThinLTOSummaryBufferRef) {
+      *ThinLTOSummaryBufferRef = ThinLTOSummaryBuffer.release();
+    }
   }
 
   // now load "-enzyme" pass:
@@ -1408,9 +1404,9 @@ extern "C" bool LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data,
   return true;
 }
 
-extern "C" LLVMRustThinLTOBuffer *LLVMRustThinLTOBufferCreate(LLVMModuleRef M,
-                                                              bool is_thin) {
-  auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
+extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
+                                                   bool is_thin) {
+  auto Ret = std::make_unique<LLVMRustBuffer>();
   {
     auto OS = raw_string_ostream(Ret->data);
     {
@@ -1434,30 +1430,6 @@ extern "C" LLVMRustThinLTOBuffer *LLVMRustThinLTOBufferCreate(LLVMModuleRef M,
     }
   }
   return Ret.release();
-}
-
-extern "C" void LLVMRustThinLTOBufferFree(LLVMRustThinLTOBuffer *Buffer) {
-  delete Buffer;
-}
-
-extern "C" const void *
-LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
-  return Buffer->data.data();
-}
-
-extern "C" size_t
-LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
-  return Buffer->data.length();
-}
-
-extern "C" const void *
-LLVMRustThinLTOBufferThinLinkDataPtr(const LLVMRustThinLTOBuffer *Buffer) {
-  return Buffer->thin_link_data.data();
-}
-
-extern "C" size_t
-LLVMRustThinLTOBufferThinLinkDataLen(const LLVMRustThinLTOBuffer *Buffer) {
-  return Buffer->thin_link_data.length();
 }
 
 // This is what we used to parse upstream bitcode for actual ThinLTO

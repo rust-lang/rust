@@ -4,7 +4,7 @@ use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
-use rustc_hir::lints::AttributeLintKind;
+use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -105,13 +105,11 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             let subs = spans
                 .into_iter()
-                .map(|(span, is_imported)| {
-                    (match (span.is_dummy(), is_imported) {
-                        (false, true) => lints::RedundantImportSub::ImportedHere,
-                        (false, false) => lints::RedundantImportSub::DefinedHere,
-                        (true, true) => lints::RedundantImportSub::ImportedPrelude,
-                        (true, false) => lints::RedundantImportSub::DefinedPrelude,
-                    })(span)
+                .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
+                    (false, true) => lints::RedundantImportSub::ImportedHere { span, ident },
+                    (false, false) => lints::RedundantImportSub::DefinedHere { span, ident },
+                    (true, true) => lints::RedundantImportSub::ImportedPrelude { span, ident },
+                    (true, false) => lints::RedundantImportSub::DefinedPrelude { span, ident },
                 })
                 .collect();
             lints::RedundantImport { subs, ident }.decorate_lint(diag);
@@ -446,5 +444,32 @@ pub fn decorate_attribute_lint(
         &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.decorate_lint(diag),
 
         &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.decorate_lint(diag),
+        &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
+            lints::MalformedOnUnimplementedAttrLint { span }.decorate_lint(diag)
+        }
+        &AttributeLintKind::MalformedOnConstAttr { span } => {
+            lints::MalformedOnConstAttrLint { span }.decorate_lint(diag)
+        }
+        AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
+            FormatWarning::PositionalArgument { .. } => {
+                lints::DisallowedPositionalArgument.decorate_lint(diag)
+            }
+            FormatWarning::InvalidSpecifier { .. } => {
+                lints::InvalidFormatSpecifier.decorate_lint(diag)
+            }
+        },
+        AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
+            lints::WrappedParserError { description, label, span: *span }.decorate_lint(diag)
+        }
+        &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
+            lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
+                .decorate_lint(diag)
+        }
+        &AttributeLintKind::MissingOptionsForOnUnimplemented => {
+            lints::MissingOptionsForOnUnimplementedAttr.decorate_lint(diag)
+        }
+        &AttributeLintKind::MissingOptionsForOnConst => {
+            lints::MissingOptionsForOnConstAttr.decorate_lint(diag)
+        }
     }
 }

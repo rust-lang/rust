@@ -6,7 +6,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
-use std::ffi::OsStr;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
@@ -151,11 +150,13 @@ fn execute() -> i32 {
 }
 
 fn rustfmt_command() -> Command {
-    let rustfmt_var = env::var_os("RUSTFMT");
-    let rustfmt = match &rustfmt_var {
-        Some(rustfmt) => rustfmt,
-        None => OsStr::new("rustfmt"),
+    let rustfmt = match env::var_os("RUSTFMT") {
+        Some(rustfmt) => PathBuf::from(rustfmt),
+        None => env::current_exe()
+            .expect("current executable path invalid")
+            .with_file_name("rustfmt"),
     };
+
     Command::new(rustfmt)
 }
 

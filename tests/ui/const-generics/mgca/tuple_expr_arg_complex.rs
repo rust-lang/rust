@@ -2,7 +2,6 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-
     type const ASSOC: usize;
 }
 

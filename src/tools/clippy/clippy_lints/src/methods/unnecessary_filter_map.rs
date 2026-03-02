@@ -131,17 +131,13 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             }
             (true, true)
         },
-        hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
+        hir::ExprKind::MethodCall(segment, recv, [arg], _)
             if segment.ident.name == sym::then_some
                 && cx.typeck_results().expr_ty(recv).is_bool()
-                && arg.res_local_id() == Some(arg_id)
-            {
-                // bool.then_some(arg_id)
-                (false, true)
-            } else {
-                // bool.then_some(not arg_id)
-                (true, true)
-            }
+                && arg.res_local_id() == Some(arg_id) =>
+        {
+            // bool.then_some(arg_id)
+            (false, true)
         },
         hir::ExprKind::Block(block, _) => block
             .expr

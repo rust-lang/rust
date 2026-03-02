@@ -469,7 +469,7 @@ enum DiagnosticOrMessage {
 }
 
 /// Collects applicabilities from the diagnostics produced for each UI test, producing the
-/// `util/gh-pages/lints.json` file used by <https://rust-lang.github.io/rust-clippy/>
+/// `util/gh-pages/index.html` file used by <https://rust-lang.github.io/rust-clippy/>
 #[derive(Debug, Clone)]
 struct DiagnosticCollector {
     sender: Sender<Vec<u8>>,

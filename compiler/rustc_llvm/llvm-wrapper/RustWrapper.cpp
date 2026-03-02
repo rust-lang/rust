@@ -1529,29 +1529,13 @@ extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {
   unwrap<GlobalValue>(Global)->setDSOLocal(is_dso_local);
 }
 
-struct LLVMRustModuleBuffer {
-  std::string data;
-};
+extern "C" void LLVMRustBufferFree(LLVMRustBuffer *Buffer) { delete Buffer; }
 
-extern "C" LLVMRustModuleBuffer *LLVMRustModuleBufferCreate(LLVMModuleRef M) {
-  auto Ret = std::make_unique<LLVMRustModuleBuffer>();
-  {
-    auto OS = raw_string_ostream(Ret->data);
-    WriteBitcodeToFile(*unwrap(M), OS);
-  }
-  return Ret.release();
-}
-
-extern "C" void LLVMRustModuleBufferFree(LLVMRustModuleBuffer *Buffer) {
-  delete Buffer;
-}
-
-extern "C" const void *
-LLVMRustModuleBufferPtr(const LLVMRustModuleBuffer *Buffer) {
+extern "C" const void *LLVMRustBufferPtr(const LLVMRustBuffer *Buffer) {
   return Buffer->data.data();
 }
 
-extern "C" size_t LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
+extern "C" size_t LLVMRustBufferLen(const LLVMRustBuffer *Buffer) {
   return Buffer->data.length();
 }
 

@@ -98,7 +98,6 @@
 // tidy-alphabetical-start
 #![feature(asm_experimental_arch)]
 #![feature(bstr_internals)]
-#![feature(cfg_select)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_cmp)]
@@ -138,6 +137,7 @@
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
+#![feature(field_projections)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
@@ -227,7 +227,7 @@ pub mod autodiff {
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
 pub use crate::macros::cfg_select;
 
 #[macro_use]
@@ -275,6 +275,8 @@ pub mod cmp;
 pub mod convert;
 pub mod default;
 pub mod error;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod field;
 pub mod index;
 pub mod marker;
 pub mod ops;

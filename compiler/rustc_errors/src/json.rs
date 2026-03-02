@@ -9,7 +9,6 @@
 
 // FIXME: spec the JSON output properly.
 
-use std::error::Report;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -18,7 +17,7 @@ use std::vec;
 use anstream::{AutoStream, ColorChoice};
 use derive_setters::Setters;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::DiagArgMap;
 use rustc_lint_defs::Applicability;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -32,7 +31,7 @@ use crate::emitter::{
     should_show_source_code,
 };
 use crate::timings::{TimingRecord, TimingSection};
-use crate::translation::{format_diag_message, format_diag_messages, to_fluent_args};
+use crate::translation::{format_diag_message, format_diag_messages};
 use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
 
 #[cfg(test)]
@@ -299,15 +298,13 @@ struct UnusedExterns<'a> {
 impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
     fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
-        let args = to_fluent_args(diag.args.iter());
         let sugg_to_diag = |sugg: &CodeSuggestion| {
-            let translated_message =
-                format_diag_message(&sugg.msg, &args).map_err(Report::new).unwrap();
+            let translated_message = format_diag_message(&sugg.msg, &diag.args);
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
                 level: "help",
-                spans: DiagnosticSpan::from_suggestion(sugg, &args, je),
+                spans: DiagnosticSpan::from_suggestion(sugg, &diag.args, je),
                 children: vec![],
                 rendered: None,
             }
@@ -333,7 +330,7 @@ impl Diagnostic {
             }
         }
 
-        let translated_message = format_diag_messages(&diag.messages, &args);
+        let translated_message = format_diag_messages(&diag.messages, &diag.args);
 
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
@@ -346,16 +343,18 @@ impl Diagnostic {
             None
         };
         let level = diag.level.to_str();
-        let spans = DiagnosticSpan::from_multispan(&diag.span, &args, je);
+        let spans = DiagnosticSpan::from_multispan(&diag.span, &diag.args, je);
         let mut children: Vec<Diagnostic> = diag
             .children
             .iter()
-            .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
+            .map(|c| Diagnostic::from_sub_diagnostic(c, &diag.args, je))
             .chain(sugg)
             .collect();
         if je.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
-            children
-                .insert(0, Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &args, je));
+            children.insert(
+                0,
+                Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &diag.args, je),
+            );
         }
         let buf = BufWriter(Arc::new(Mutex::new(Vec::new())));
         let dst: Destination = AutoStream::new(
@@ -390,11 +389,7 @@ impl Diagnostic {
         }
     }
 
-    fn from_sub_diagnostic(
-        subdiag: &Subdiag,
-        args: &FluentArgs<'_>,
-        je: &JsonEmitter,
-    ) -> Diagnostic {
+    fn from_sub_diagnostic(subdiag: &Subdiag, args: &DiagArgMap, je: &JsonEmitter) -> Diagnostic {
         let translated_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
@@ -411,16 +406,13 @@ impl DiagnosticSpan {
     fn from_span_label(
         span: SpanLabel,
         suggestion: Option<(&String, Applicability)>,
-        args: &FluentArgs<'_>,
+        args: &DiagArgMap,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         Self::from_span_etc(
             span.span,
             span.is_primary,
-            span.label
-                .as_ref()
-                .map(|m| format_diag_message(m, args).unwrap())
-                .map(|m| m.to_string()),
+            span.label.as_ref().map(|m| format_diag_message(m, args)).map(|m| m.to_string()),
             suggestion,
             je,
         )
@@ -514,11 +506,7 @@ impl DiagnosticSpan {
         }
     }
 
-    fn from_multispan(
-        msp: &MultiSpan,
-        args: &FluentArgs<'_>,
-        je: &JsonEmitter,
-    ) -> Vec<DiagnosticSpan> {
+    fn from_multispan(msp: &MultiSpan, args: &DiagArgMap, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
         msp.span_labels()
             .into_iter()
             .map(|span_str| Self::from_span_label(span_str, None, args, je))
@@ -527,7 +515,7 @@ impl DiagnosticSpan {
 
     fn from_suggestion(
         suggestion: &CodeSuggestion,
-        args: &FluentArgs<'_>,
+        args: &DiagArgMap,
         je: &JsonEmitter,
     ) -> Vec<DiagnosticSpan> {
         suggestion

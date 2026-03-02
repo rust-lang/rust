@@ -16,6 +16,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
 };
+use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -37,7 +38,6 @@ use rustc_span::{
     kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -3776,8 +3776,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "method `poll` found on `Pin<&mut {ty_str}>`, \
                 see documentation for `std::pin::Pin`"
             ));
-            err.help("self type must be pinned to call `Future::poll`, \
-                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+            err.help(
+                "self type must be pinned to call `Future::poll`, \
+                see https://rust-lang.github.io/async-book/part-reference/pinning.html",
             );
         }
 

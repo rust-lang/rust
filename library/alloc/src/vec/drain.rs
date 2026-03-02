@@ -1,8 +1,7 @@
-use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self, NonNull};
-use core::slice::{self};
+use core::{fmt, slice};
 
 use super::Vec;
 use crate::alloc::{Allocator, Global};

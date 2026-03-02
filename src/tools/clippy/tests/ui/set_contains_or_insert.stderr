@@ -128,7 +128,7 @@ LL |         borrow_set.insert(value);
    |                    ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:182:11
+  --> tests/ui/set_contains_or_insert.rs:176:11
    |
 LL |     if !s.contains(&v) {
    |           ^^^^^^^^^^^^

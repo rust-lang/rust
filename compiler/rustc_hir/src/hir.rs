@@ -1378,7 +1378,7 @@ impl AttributeExt for Attribute {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
@@ -1420,7 +1420,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn deprecation_note(&self) -> Option<Ident> {
         match &self {
-            Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
+            Attribute::Parsed(AttributeKind::Deprecated { deprecation, .. }) => deprecation.note,
             _ => None,
         }
     }
@@ -1739,6 +1739,12 @@ impl<'hir> Block<'hir> {
         }
         block
     }
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TyFieldPath {
+    pub variant: Option<Ident>,
+    pub field: Ident,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -3804,6 +3810,10 @@ pub enum TyKind<'hir, Unambig = ()> {
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)
     Pat(&'hir Ty<'hir>, &'hir TyPat<'hir>),
+    /// Field representing type (`field_of!(Struct, field)`).
+    ///
+    /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
+    FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///

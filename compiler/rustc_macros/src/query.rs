@@ -293,12 +293,10 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
 
     // Generate a function to check whether we should cache the query to disk, for some key.
     if let Some(CacheOnDiskIf { block, .. }) = modifiers.cache_on_disk_if.as_ref() {
-        // `pass_by_value`: some keys are marked with `rustc_pass_by_value`, but we take keys by
-        // reference here.
-        // FIXME: `pass_by_value` is badly named; `allow(rustc::pass_by_value)` actually means
-        // "allow pass by reference of `rustc_pass_by_value` types".
+        // `disallowed_pass_by_ref` is needed because some keys are `rustc_pass_by_value`.
         streams.cache_on_disk_if_fns_stream.extend(quote! {
-            #[allow(unused_variables, rustc::pass_by_value)]
+            #[cfg_attr(not(bootstrap), allow(unused_variables, rustc::disallowed_pass_by_ref))]
+            #[cfg_attr(bootstrap, allow(unused_variables, rustc::pass_by_value))]
             #[inline]
             pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: &#key_ty) -> bool
             #block
@@ -399,7 +397,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut helpers = HelperTokenStreams::default();
-    let mut feedable_queries = quote! {};
     let mut analyzer_stream = quote! {};
     let mut errors = quote! {};
 
@@ -480,10 +477,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 feedable.span(),
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
-            feedable_queries.extend(quote! {
-                [#modifiers_stream]
-                fn #name(#key_ty) #return_ty,
-            });
         }
 
         add_to_analyzer_stream(&query, &mut analyzer_stream);
@@ -512,11 +505,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                     $( $($extra_fake_queries)* )?
                     #query_stream
                 }
-            }
-        }
-        macro_rules! rustc_feedable_queries {
-            ( $macro:ident! ) => {
-                $macro!(#feedable_queries);
             }
         }
 

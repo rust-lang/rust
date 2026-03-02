@@ -1,6 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast};
+use rustc_ast as ast;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,

@@ -26,8 +26,8 @@ use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region, Ty,
-    TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
+    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -488,6 +488,35 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_field_representing_type(
+        tcx: TyCtxt<'tcx>,
+        base: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> Ty<'tcx> {
+        let Some(did) = tcx.lang_items().field_representing_type() else {
+            bug!("could not locate the `FieldRepresentingType` lang item")
+        };
+        let def = tcx.adt_def(did);
+        let args = tcx.mk_args(&[
+            base.into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, variant.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, field.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+        ]);
+        Ty::new_adt(tcx, def, args)
+    }
+
+    #[inline]
     #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
@@ -613,12 +642,12 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::TyParam
                 | DefKind::Fn
-                | DefKind::Const
+                | DefKind::Const { .. }
                 | DefKind::ConstParam
                 | DefKind::Static { .. }
                 | DefKind::Ctor(..)
                 | DefKind::AssocFn
-                | DefKind::AssocConst
+                | DefKind::AssocConst { .. }
                 | DefKind::Macro(..)
                 | DefKind::ExternCrate
                 | DefKind::Use

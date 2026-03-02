@@ -1,8 +1,8 @@
 use std::{fmt, iter};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
-    Scalar, Size, TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
+    Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 use rustc_macros::HashStable_Generic;
 
@@ -514,6 +514,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
     }
 
+    pub fn cast_to_with_attrs<T: Into<CastTarget>>(&mut self, target: T, attrs: ArgAttributes) {
+        self.mode =
+            PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32: false };
+    }
+
     pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
         self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
@@ -801,7 +806,12 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                         // We want to pass small aggregates as immediates, but using
                         // an LLVM aggregate type for this leads to bad optimizations,
                         // so we pick an appropriately sized integer type instead.
-                        arg.cast_to(Reg { kind: RegKind::Integer, size });
+                        let attr = if layout_is_noundef(arg.layout, cx) {
+                            ArgAttribute::NoUndef
+                        } else {
+                            ArgAttribute::default()
+                        };
+                        arg.cast_to_with_attrs(Reg { kind: RegKind::Integer, size }, attr.into());
                     }
                 }
 
@@ -834,6 +844,66 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
         }
     }
+}
+
+/// Determines whether `layout` contains no uninit bytes (no padding, no unions),
+/// using only the computed layout.
+///
+/// Conservative: returns `false` for anything it cannot prove fully initialized,
+/// including multi-variant enums and SIMD vectors.
+// FIXME: extend to multi-variant enums (per-variant padding analysis needed).
+fn layout_is_noundef<'a, Ty, C>(layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    match layout.backend_repr {
+        BackendRepr::Scalar(scalar) => !scalar.is_uninit_valid(),
+        BackendRepr::ScalarPair(s1, s2) => {
+            !s1.is_uninit_valid()
+                && !s2.is_uninit_valid()
+                // Ensure there is no padding.
+                && s1.size(cx) + s2.size(cx) == layout.size
+        }
+        BackendRepr::Memory { .. } => match layout.fields {
+            FieldsShape::Primitive | FieldsShape::Union(_) => false,
+            // Array elements are at stride offsets with no inter-element gaps.
+            FieldsShape::Array { stride: _, count } => {
+                count == 0 || layout_is_noundef(layout.field(cx, 0), cx)
+            }
+            FieldsShape::Arbitrary { .. } => {
+                // With `Variants::Multiple`, `layout.fields` only covers shared
+                // bytes (niche/discriminant); per-variant data is absent, so
+                // full coverage cannot be proven.
+                matches!(layout.variants, Variants::Single { .. }) && fields_are_noundef(layout, cx)
+            }
+        },
+        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => false,
+    }
+}
+
+/// Returns `true` if the fields of `layout` contiguously cover bytes `0..layout.size`
+/// with no padding gaps and each field is recursively `layout_is_noundef`.
+fn fields_are_noundef<'a, Ty, C>(layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    let mut cursor = Size::ZERO;
+    for i in layout.fields.index_by_increasing_offset() {
+        let field = layout.field(cx, i);
+        if field.size == Size::ZERO {
+            continue;
+        }
+        if layout.fields.offset(i) != cursor {
+            return false;
+        }
+        if !layout_is_noundef(field, cx) {
+            return false;
+        }
+        cursor += field.size;
+    }
+    cursor == layout.size
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.

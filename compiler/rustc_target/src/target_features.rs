@@ -2,7 +2,7 @@
 //! Note that these are similar to but not always identical to LLVM's feature names,
 //! and Rust adds some features that do not correspond to LLVM features at all.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_Generic;
 use rustc_span::{Symbol, sym};
 
 use crate::spec::{Abi, Arch, FloatAbi, RustcAbi, Target};
@@ -12,7 +12,7 @@ use crate::spec::{Abi, Arch, FloatAbi, RustcAbi, Target};
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
 /// Stability information for target features.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub enum Stability {
     /// This target feature is stable, it can be used in `#[target_feature]` and
     /// `#[cfg(target_feature)]`.
@@ -31,22 +31,6 @@ pub enum Stability {
     Forbidden { reason: &'static str },
 }
 use Stability::*;
-
-impl<CTX> HashStable<CTX> for Stability {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            Stability::Stable => {}
-            Stability::Unstable(nightly_feature) => {
-                nightly_feature.hash_stable(hcx, hasher);
-            }
-            Stability::Forbidden { reason } => {
-                reason.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
 
 impl Stability {
     /// Returns whether the feature can be used in `cfg(target_feature)` ever.

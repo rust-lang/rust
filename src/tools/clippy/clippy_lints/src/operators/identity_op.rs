@@ -52,11 +52,9 @@ pub(crate) fn check<'tcx>(
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
-        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-            if is_redundant_op(cx, right, 0, ctxt) {
-                let paren = needs_parenthesis(cx, expr, left);
-                span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
-            }
+        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub if is_redundant_op(cx, right, 0, ctxt) => {
+            let paren = needs_parenthesis(cx, expr, left);
+            span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
         },
         BinOpKind::Mul => {
             if is_redundant_op(cx, left, 1, ctxt) {
@@ -67,11 +65,9 @@ pub(crate) fn check<'tcx>(
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
-        BinOpKind::Div => {
-            if is_redundant_op(cx, right, 1, ctxt) {
-                let paren = needs_parenthesis(cx, expr, left);
-                span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
-            }
+        BinOpKind::Div if is_redundant_op(cx, right, 1, ctxt) => {
+            let paren = needs_parenthesis(cx, expr, left);
+            span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
         },
         BinOpKind::BitAnd => {
             if is_redundant_op(cx, left, -1, ctxt) {

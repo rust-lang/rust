@@ -7,6 +7,4 @@ fn external_constant_test() {
     // lint in external file `localhost.txt`
 }
 
-fn main() {
-    external_constant_test();
-}
+fn main() {}

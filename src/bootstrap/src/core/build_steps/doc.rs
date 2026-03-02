@@ -953,13 +953,6 @@ impl Step for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
-        // Point std library crate links to local docs for offline usage.
-        for krate in STD_PUBLIC_CRATES {
-            cargo.rustdocflag("--extern-html-root-url");
-            cargo.rustdocflag(&format!("{krate}=../"));
-        }
-        cargo.rustdocflag("--extern-html-root-takes-precedence");
-
         let mut to_open = None;
 
         let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target).join("doc");

@@ -2464,7 +2464,7 @@ impl Child {
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_exit")]
 pub fn exit(code: i32) -> ! {
     crate::rt::cleanup();
-    crate::sys::os::exit(code)
+    crate::sys::exit::exit(code)
 }
 
 /// Terminates the process in an abnormal fashion.
@@ -2545,7 +2545,7 @@ pub fn abort() -> ! {
 #[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
-    crate::sys::os::getpid()
+    imp::getpid()
 }
 
 /// A trait for implementing arbitrary return types in the `main` function.

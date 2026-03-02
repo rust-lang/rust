@@ -17,9 +17,9 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(cfg_select))]
 #![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
@@ -2653,7 +2653,7 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, HashStable_Generic)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2674,12 +2674,6 @@ impl<S: Encoder> Encodable<S> for BytePos {
 impl<D: Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
-    }
-}
-
-impl<H: HashStableContext> HashStable<H> for RelativeBytePos {
-    fn hash_stable(&self, hcx: &mut H, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
     }
 }
 

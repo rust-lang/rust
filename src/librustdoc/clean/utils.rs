@@ -504,7 +504,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         Res::Def(
             AssocTy
             | AssocFn
-            | AssocConst
+            | AssocConst { .. }
             | Variant
             | Fn
             | TyAlias
@@ -514,7 +514,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Union
             | Mod
             | ForeignTy
-            | Const
+            | Const { .. }
             | Static { .. }
             | Macro(..)
             | TraitAlias,

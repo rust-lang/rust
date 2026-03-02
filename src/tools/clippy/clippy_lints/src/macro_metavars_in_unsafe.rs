@@ -243,8 +243,8 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
         // We want to lint unsafe blocks #0 and #1
         let bad_unsafe_blocks = self
             .metavar_expns
-            .iter()
-            .filter_map(|(_, state)| match state {
+            .values()
+            .filter_map(|state| match state {
                 MetavarState::ReferencedInUnsafe { unsafe_blocks } => Some(unsafe_blocks.as_slice()),
                 MetavarState::ReferencedInSafe => None,
             })

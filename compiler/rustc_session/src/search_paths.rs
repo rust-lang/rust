@@ -16,7 +16,7 @@ pub struct SearchPath {
 
 /// [FilesIndex] contains paths that can be efficiently looked up with (prefix, suffix) pairs.
 #[derive(Clone, Debug)]
-pub struct FilesIndex(Vec<(Arc<str>, SearchPathFile)>);
+pub struct FilesIndex(Vec<SearchPathFile>);
 
 impl FilesIndex {
     /// Look up [SearchPathFile] by (prefix, suffix) pair.
@@ -25,15 +25,15 @@ impl FilesIndex {
         prefix: &str,
         suffix: &str,
     ) -> Option<impl Iterator<Item = (String, &'s SearchPathFile)>> {
-        let start = self.0.partition_point(|(k, _)| **k < *prefix);
+        let start = self.0.partition_point(|v| *v.file_name_str < *prefix);
         if start == self.0.len() {
             return None;
         }
-        let end = self.0[start..].partition_point(|(k, _)| k.starts_with(prefix));
+        let end = self.0[start..].partition_point(|v| v.file_name_str.starts_with(prefix));
         let prefixed_items = &self.0[start..][..end];
 
-        let ret = prefixed_items.into_iter().filter_map(move |(k, v)| {
-            k.ends_with(suffix).then(|| {
+        let ret = prefixed_items.into_iter().filter_map(move |v| {
+            v.file_name_str.ends_with(suffix).then(|| {
                 (
                     String::from(
                         &v.file_name_str[prefix.len()..v.file_name_str.len() - suffix.len()],
@@ -45,7 +45,7 @@ impl FilesIndex {
         Some(ret)
     }
     pub fn retain(&mut self, prefixes: &[&str]) {
-        self.0.retain(|(k, _)| prefixes.iter().any(|prefix| k.starts_with(prefix)));
+        self.0.retain(|v| prefixes.iter().any(|prefix| v.file_name_str.starts_with(prefix)));
     }
 }
 /// The obvious implementation of `SearchPath::files` is a `Vec<PathBuf>`. But
@@ -61,8 +61,14 @@ impl FilesIndex {
 /// UTF-8, and so a non-UTF-8 filename couldn't be one we're looking for.)
 #[derive(Clone, Debug)]
 pub struct SearchPathFile {
-    pub path: Arc<Path>,
-    pub file_name_str: Arc<str>,
+    file_name_str: Arc<str>,
+}
+
+impl SearchPathFile {
+    /// Constructs the full path to the file.
+    pub fn path(&self, dir: &Path) -> PathBuf {
+        dir.join(&*self.file_name_str)
+    }
 }
 
 #[derive(PartialEq, Clone, Copy, Debug, Hash, Eq, Encodable, Decodable, HashStable_Generic)]
@@ -134,20 +140,14 @@ impl SearchPath {
             Ok(files) => files
                 .filter_map(|e| {
                     e.ok().and_then(|e| {
-                        e.file_name().to_str().map(|s| {
-                            let file_name_str: Arc<str> = s.into();
-                            (
-                                Arc::clone(&file_name_str),
-                                SearchPathFile { path: e.path().into(), file_name_str },
-                            )
-                        })
+                        e.file_name().to_str().map(|s| SearchPathFile { file_name_str: s.into() })
                     })
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Vec<SearchPathFile>>(),
 
             Err(..) => Default::default(),
         };
-        files.sort_by(|(lhs, _), (rhs, _)| lhs.cmp(rhs));
+        files.sort_unstable_by(|lhs, rhs| lhs.file_name_str.cmp(&rhs.file_name_str));
         let files = FilesIndex(files);
         SearchPath { kind, dir, files }
     }

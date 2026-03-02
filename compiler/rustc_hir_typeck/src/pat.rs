@@ -312,7 +312,7 @@ enum ResolvedPatKind<'tcx> {
 impl<'tcx> ResolvedPat<'tcx> {
     fn adjust_mode(&self) -> AdjustMode {
         if let ResolvedPatKind::Path { res, .. } = self.kind
-            && matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
+            && matches!(res, Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, _))
         {
             // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
             // Peeling the reference types too early will cause type checking failures.
@@ -1567,8 +1567,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(
                 DefKind::Ctor(_, CtorKind::Const)
-                | DefKind::Const
-                | DefKind::AssocConst
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
                 | DefKind::ConstParam,
                 _,
             ) => {} // OK
@@ -1660,7 +1660,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {
                         let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
                             ty::Adt(def, _) => match res {
-                                Res::Def(DefKind::Const, def_id) => (Some(def.did()), Some(def_id)),
+                                Res::Def(DefKind::Const { .. }, def_id) => {
+                                    (Some(def.did()), Some(def_id))
+                                }
                                 _ => (None, None),
                             },
                             _ => (None, None),
@@ -1733,7 +1735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Err => {
                 self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
             }
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
+            Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn, _) => {
                 return report_unexpected_res(res);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),

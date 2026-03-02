@@ -864,7 +864,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(cfg_select)]
+    /// # #![cfg_attr(bootstrap, feature(cfg_select))]
     /// cfg_select! {
     ///     _ => (),
     ///     windows => (),
@@ -882,7 +882,6 @@ declare_lint! {
     pub UNREACHABLE_CFG_SELECT_PREDICATES,
     Warn,
     "detects unreachable configuration predicates in the cfg_select macro",
-    @feature_gate = cfg_select;
 }
 
 declare_lint! {
@@ -4566,7 +4565,7 @@ declare_lint! {
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_GLOB_IMPORTS,
-    Warn,
+    Deny,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #114095),

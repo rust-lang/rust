@@ -1496,6 +1496,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Pat(ty, pat) => {
                 hir::TyKind::Pat(self.lower_ty_alloc(ty, itctx), self.lower_ty_pat(pat, ty.span))
             }
+            TyKind::FieldOf(ty, variant, field) => hir::TyKind::FieldOf(
+                self.lower_ty_alloc(ty, itctx),
+                self.arena.alloc(hir::TyFieldPath {
+                    variant: variant.map(|variant| self.lower_ident(variant)),
+                    field: self.lower_ident(*field),
+                }),
+            ),
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
             }
@@ -2521,16 +2528,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Block(block, _) => {
                 if let [stmt] = block.stmts.as_slice()
                     && let StmtKind::Expr(expr) = &stmt.kind
-                    && matches!(
-                        expr.kind,
-                        ExprKind::Block(..)
-                            | ExprKind::Path(..)
-                            | ExprKind::Struct(..)
-                            | ExprKind::Call(..)
-                            | ExprKind::Tup(..)
-                            | ExprKind::Array(..)
-                            | ExprKind::ConstBlock(..)
-                    )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
                 }
@@ -2552,6 +2549,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             {
                 let span = expr.span;
                 let literal = self.lower_lit(literal, span);
+
+                if !matches!(literal.node, LitKind::Int(..)) {
+                    let err =
+                        self.dcx().struct_span_err(expr.span, "negated literal must be an integer");
+
+                    return ConstArg {
+                        hir_id: self.next_id(),
+                        kind: hir::ConstArgKind::Error(err.emit()),
+                        span,
+                    };
+                }
 
                 ConstArg {
                     hir_id: self.lower_node_id(expr.id),

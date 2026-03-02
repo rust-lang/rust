@@ -13,7 +13,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
+    self, FieldInfo, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
@@ -987,6 +987,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::Future
                         | LangItem::Iterator
                         | LangItem::AsyncIterator
+                        | LangItem::Field
                         | LangItem::Fn
                         | LangItem::FnMut
                         | LangItem::FnOnce
@@ -1547,6 +1548,20 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             }
         });
         (metadata_ty.into(), obligations)
+    } else if tcx.is_lang_item(trait_def_id, LangItem::Field) {
+        let ty::Adt(def, args) = self_ty.kind() else {
+            bug!("only field representing types can implement `Field`")
+        };
+        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(tcx, args) else {
+            bug!("only field representing types can implement `Field`")
+        };
+        if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
+            (base.into(), PredicateObligations::new())
+        } else if tcx.is_lang_item(item_def_id, LangItem::FieldType) {
+            (ty.into(), PredicateObligations::new())
+        } else {
+            bug!("unexpected associated type {:?} in `Field`", obligation.predicate);
+        }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
