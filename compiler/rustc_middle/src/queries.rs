@@ -2771,6 +2771,23 @@ rustc_queries! {
         cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }
+
+    //-----------------------------------------------------------------------------
+    // "Non-queries" are special dep kinds that are not queries.
+    //-----------------------------------------------------------------------------
+
+    /// We use this for most things when incr. comp. is turned off.
+    non_query Null
+    /// We use this to create a forever-red node.
+    non_query Red
+    /// We use this to create a side effect node.
+    non_query SideEffect
+    /// We use this to create the anon node with zero dependencies.
+    non_query AnonZeroDeps
+    non_query TraitSelect
+    non_query CompileCodegenUnit
+    non_query CompileMonoItem
+    non_query Metadata
 }
 
 rustc_with_all_queries! { define_callbacks! }
