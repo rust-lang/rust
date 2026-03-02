@@ -379,7 +379,7 @@ fn execute_job<'tcx, C: QueryCache, const INCR: bool>(
     };
 
     let cache = &query.cache;
-    if query.feedable {
+    if query.feed_fn.is_some() {
         // We should not compute queries that also got a value via feeding.
         // This can't happen, as query feeding adds the very dependencies to the fed query
         // as its feeding query had. So if the fed query is red, so is its feeder, which will

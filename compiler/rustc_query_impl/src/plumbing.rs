@@ -153,15 +153,11 @@ macro_rules! is_depth_limit {
     };
 }
 
-macro_rules! is_feedable {
-    ([]) => {{
-        false
-    }};
-    ([(feedable) $($rest:tt)*]) => {{
-        true
-    }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        is_feedable!([$($modifiers)*])
+macro_rules! if_feedable {
+    ([] $yes:tt $no:tt) => { $no };
+    ([(feedable) $($modifiers:tt)*] $yes:tt $no:tt) => { $yes };
+    ([$other:tt  $($modifiers:tt)*] $yes:tt $no:tt) => {
+        if_feedable! { [$($modifiers)*] $yes $no }
     };
 }
 
@@ -513,7 +509,6 @@ macro_rules! define_queries {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     depth_limit: is_depth_limit!([$($modifiers)*]),
-                    feedable: is_feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     state: Default::default(),
@@ -574,6 +569,18 @@ macro_rules! define_queries {
                     } else {
                         query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
                     },
+                    feed_fn: if_feedable!(
+                        [$($modifiers)*]
+                        (Some(|tcx, key, value| {
+                            $crate::feeding::feed_query_inner(
+                                tcx,
+                                &tcx.query_system.query_vtables.$name,
+                                key,
+                                value,
+                            )
+                        }))
+                        None
+                    ),
                 }
             }
 

@@ -118,8 +118,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub eval_always: bool,
     /// True if this query has the `depth_limit` modifier.
     pub depth_limit: bool,
-    /// True if this query has the `feedable` modifier.
-    pub feedable: bool,
 
     pub dep_kind: DepKind,
     /// How this query deals with query cycle errors.
@@ -170,6 +168,12 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+
+    /// Feeds a value to this query.
+    ///
+    /// Present only if this query has the `feedable` modifier, so
+    /// `feed_fn.is_some()` can be used to check whether a query is feedable.
+    pub feed_fn: Option<fn(TyCtxt<'tcx>, C::Key, C::Value)>,
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -569,13 +573,11 @@ macro_rules! define_callbacks {
                     pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
                         let key = self.key().into_query_param();
                         let erased_value = $name::provided_to_erased(self.tcx, value);
-                        $crate::query::inner::query_feed(
+                        self.tcx.query_system.query_vtables.$name.feed_fn.unwrap()(
                             self.tcx,
-                            dep_graph::DepKind::$name,
-                            &self.tcx.query_system.query_vtables.$name,
                             key,
                             erased_value,
-                        );
+                        )
                     }
                 }
             }

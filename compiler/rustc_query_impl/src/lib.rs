@@ -29,6 +29,7 @@ mod plumbing;
 mod dep_kind_vtables;
 mod error;
 mod execution;
+mod feeding;
 mod job;
 mod profiling_support;
 mod values;
