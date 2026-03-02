@@ -682,6 +682,39 @@ pub enum ItemEnum {
     },
 }
 
+impl ItemEnum {
+    /// Returns the [`ItemKind`] of this item.
+    pub fn item_kind(&self) -> ItemKind {
+        match self {
+            ItemEnum::Module(_) => ItemKind::Module,
+            ItemEnum::ExternCrate { .. } => ItemKind::ExternCrate,
+            ItemEnum::Use(_) => ItemKind::Use,
+            ItemEnum::Union(_) => ItemKind::Union,
+            ItemEnum::Struct(_) => ItemKind::Struct,
+            ItemEnum::StructField(_) => ItemKind::StructField,
+            ItemEnum::Enum(_) => ItemKind::Enum,
+            ItemEnum::Variant(_) => ItemKind::Variant,
+            ItemEnum::Function(_) => ItemKind::Function,
+            ItemEnum::Trait(_) => ItemKind::Trait,
+            ItemEnum::TraitAlias(_) => ItemKind::TraitAlias,
+            ItemEnum::Impl(_) => ItemKind::Impl,
+            ItemEnum::TypeAlias(_) => ItemKind::TypeAlias,
+            ItemEnum::Constant { .. } => ItemKind::Constant,
+            ItemEnum::Static(_) => ItemKind::Static,
+            ItemEnum::ExternType => ItemKind::ExternType,
+            ItemEnum::Macro(_) => ItemKind::Macro,
+            ItemEnum::ProcMacro(pm) => match pm.kind {
+                MacroKind::Bang => ItemKind::Macro,
+                MacroKind::Attr => ItemKind::ProcAttribute,
+                MacroKind::Derive => ItemKind::ProcDerive,
+            },
+            ItemEnum::Primitive(_) => ItemKind::Primitive,
+            ItemEnum::AssocConst { .. } => ItemKind::AssocConst,
+            ItemEnum::AssocType { .. } => ItemKind::AssocType,
+        }
+    }
+}
+
 /// A module declaration, e.g. `mod foo;` or `mod foo {}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Module {
