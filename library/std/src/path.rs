@@ -81,6 +81,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use alloc::alloc::Allocator;
+use alloc::string::generic::String;
 use core::clone::CloneToUninit;
 
 use crate::borrow::{Borrow, Cow};
@@ -2237,15 +2239,15 @@ impl cmp::PartialEq<PathBuf> for str {
 }
 
 #[stable(feature = "eq_str_for_path", since = "1.91.0")]
-impl cmp::PartialEq<String> for PathBuf {
+impl<A: Allocator> cmp::PartialEq<String<A>> for PathBuf {
     #[inline]
-    fn eq(&self, other: &String) -> bool {
+    fn eq(&self, other: &String<A>) -> bool {
         self.as_path() == other.as_str()
     }
 }
 
 #[stable(feature = "eq_str_for_path", since = "1.91.0")]
-impl cmp::PartialEq<PathBuf> for String {
+impl<A: Allocator> cmp::PartialEq<PathBuf> for String<A> {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
         self.as_str() == other.as_path()
@@ -3672,15 +3674,15 @@ impl cmp::PartialEq<Path> for str {
 }
 
 #[stable(feature = "eq_str_for_path", since = "1.91.0")]
-impl cmp::PartialEq<String> for Path {
+impl<A: Allocator> cmp::PartialEq<String<A>> for Path {
     #[inline]
-    fn eq(&self, other: &String) -> bool {
+    fn eq(&self, other: &String<A>) -> bool {
         self == other.as_str()
     }
 }
 
 #[stable(feature = "eq_str_for_path", since = "1.91.0")]
-impl cmp::PartialEq<Path> for String {
+impl<A: Allocator> cmp::PartialEq<Path> for String<A> {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.as_str() == other
@@ -3805,7 +3807,7 @@ impl AsRef<Path> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<Path> for String {
+impl<A: Allocator> AsRef<Path> for String<A> {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)

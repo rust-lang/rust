@@ -34,8 +34,8 @@ impl ArithmeticSideEffects {
             ("f32", FxHashSet::from_iter(["f32"])),
             ("f64", FxHashSet::from_iter(["f64"])),
             (
-                "std::string::String",
-                FxHashSet::from_iter(["str", "std::string::String"]),
+                "std::string::generic::String",
+                FxHashSet::from_iter(["str", "std::string::String", "std::string::generic::String"]),
             ),
         ]);
         for (lhs, rhs) in &conf.arithmetic_side_effects_allowed_binary {
