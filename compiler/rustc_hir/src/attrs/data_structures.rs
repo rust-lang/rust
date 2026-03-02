@@ -1378,6 +1378,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 
+    /// Represents `#[rustc_dump_variances]`
+    RustcDumpVariances,
+
     /// Represents `#[rustc_dump_vtable]`
     RustcDumpVtable(Span),
 
@@ -1573,9 +1576,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),
-
-    /// Represents `#[rustc_variance]`
-    RustcVariance,
 
     /// Represents `#[rustc_variance_of_opaques]`
     RustcVarianceOfOpaques,

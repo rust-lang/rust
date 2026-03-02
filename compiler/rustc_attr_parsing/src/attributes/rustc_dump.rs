@@ -76,6 +76,24 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpPredicatesParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
 }
 
+pub(crate) struct RustcDumpVariancesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVariancesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_variances];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
+}
+
 pub(crate) struct RustcDumpVtableParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVtableParser {

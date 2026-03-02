@@ -1046,8 +1046,8 @@ rustc_queries! {
     /// The list of variances corresponds to the list of (early-bound) generic
     /// parameters of the item (including its parents).
     ///
-    /// **Tip**: You can use `#[rustc_variance]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_variances]` on an item to basically print
+    /// the result of this query for use in UI tests or for debugging purposes.
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }

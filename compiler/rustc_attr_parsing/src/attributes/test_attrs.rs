@@ -93,24 +93,6 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     }
 }
 
-pub(crate) struct RustcVarianceParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
-    const PATH: &[Symbol] = &[sym::rustc_variance];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Enum),
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Struct),
-        Allow(Target::Union),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVariance;
-}
-
 pub(crate) struct RustcVarianceOfOpaquesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceOfOpaquesParser {
