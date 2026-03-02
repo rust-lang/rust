@@ -556,7 +556,7 @@ impl<T> Vec<T> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes), if
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes), if
     ///   nonzero, needs to be the same size as the pointer was allocated with.
     ///   (Because similar to alignment, [`dealloc`] must be called with the same
     ///   layout `size`.)
@@ -658,7 +658,7 @@ impl<T> Vec<T> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
@@ -1090,7 +1090,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
@@ -1201,7 +1201,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
