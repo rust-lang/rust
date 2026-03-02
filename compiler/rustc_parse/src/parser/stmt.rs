@@ -924,6 +924,21 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn try_recover_let_missing_semi(&mut self, local: &mut Local) -> Option<ErrorGuaranteed> {
+        let expr = match &mut local.kind {
+            LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => expr,
+            LocalKind::Decl => return None,
+        };
+        if let Some((span, guar)) =
+            self.missing_semi_from_binop("`let` binding", expr, Some(local.span.shrink_to_lo()))
+        {
+            self.fn_body_missing_semi_guar = Some(guar);
+            *expr = self.mk_expr(span, ExprKind::Err(guar));
+            return Some(guar);
+        }
+        None
+    }
+
     /// Parses a statement, including the trailing semicolon.
     pub fn parse_full_stmt(
         &mut self,
@@ -1066,71 +1081,74 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Let(local) if let Err(mut e) = self.expect_semi() => {
-                // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
-                match &mut local.kind {
-                    LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr).map_err(
-                            |mut e| {
-                                self.recover_missing_dot(&mut e);
-                                self.recover_missing_let_else(&mut e, &local.pat, stmt.span);
-                                e
-                            },
-                        )?;
-                        // We found `foo<bar, baz>`, have we fully recovered?
-                        self.expect_semi()?;
-                    }
-                    LocalKind::Decl => {
-                        if let Some(colon_sp) = local.colon_sp {
-                            e.span_label(
-                                colon_sp,
-                                format!(
-                                    "while parsing the type for {}",
-                                    local.pat.descr().map_or_else(
-                                        || "the binding".to_string(),
-                                        |n| format!("`{n}`")
-                                    )
-                                ),
-                            );
-                            let suggest_eq = if self.token == token::Dot
-                                && let _ = self.bump()
-                                && let mut snapshot = self.create_snapshot_for_diagnostic()
-                                && let Ok(_) = snapshot
-                                    .parse_dot_suffix_expr(
-                                        colon_sp,
-                                        self.mk_expr_err(
-                                            colon_sp,
-                                            self.dcx()
-                                                .delayed_bug("error during `:` -> `=` recovery"),
-                                        ),
-                                    )
-                                    .map_err(Diag::cancel)
-                            {
-                                true
-                            } else if let Some(op) = self.check_assoc_op()
-                                && op.node.can_continue_expr_unambiguously()
-                            {
-                                true
-                            } else {
-                                false
-                            };
-                            if suggest_eq {
-                                e.span_suggestion_short(
-                                    colon_sp,
-                                    "use `=` if you meant to assign",
-                                    "=",
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+            StmtKind::Let(local) => {
+                if self.try_recover_let_missing_semi(local).is_some() {
+                    return Ok(Some(stmt));
+                }
+                if let Err(mut e) = self.expect_semi() {
+                    // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
+                    match &mut local.kind {
+                        LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
+                                .map_err(|mut e| {
+                                    self.recover_missing_dot(&mut e);
+                                    self.recover_missing_let_else(&mut e, &local.pat, stmt.span);
+                                    e
+                                })?;
+                            // We found `foo<bar, baz>`, have we fully recovered?
+                            self.expect_semi()?;
                         }
-                        return Err(e);
+                        LocalKind::Decl => {
+                            if let Some(colon_sp) = local.colon_sp {
+                                e.span_label(
+                                    colon_sp,
+                                    format!(
+                                        "while parsing the type for {}",
+                                        local.pat.descr().map_or_else(
+                                            || "the binding".to_string(),
+                                            |n| format!("`{n}`")
+                                        )
+                                    ),
+                                );
+                                let suggest_eq = if self.token == token::Dot
+                                    && let _ = self.bump()
+                                    && let mut snapshot = self.create_snapshot_for_diagnostic()
+                                    && let Ok(_) = snapshot
+                                        .parse_dot_suffix_expr(
+                                            colon_sp,
+                                            self.mk_expr_err(
+                                                colon_sp,
+                                                self.dcx().delayed_bug(
+                                                    "error during `:` -> `=` recovery",
+                                                ),
+                                            ),
+                                        )
+                                        .map_err(Diag::cancel)
+                                {
+                                    true
+                                } else if let Some(op) = self.check_assoc_op()
+                                    && op.node.can_continue_expr_unambiguously()
+                                {
+                                    true
+                                } else {
+                                    false
+                                };
+                                if suggest_eq {
+                                    e.span_suggestion_short(
+                                        colon_sp,
+                                        "use `=` if you meant to assign",
+                                        "=",
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                            }
+                            return Err(e);
+                        }
                     }
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Let(_) | StmtKind::Semi(_) => {
-                eat_semi = false
-            }
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
         if add_semi_to_stmt || (eat_semi && self.eat(exp!(Semi))) {

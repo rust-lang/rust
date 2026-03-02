@@ -1,29 +1,29 @@
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ref_to_ref.rs:9:39
+  --> tests/ui/transmute_ref_to_ref.rs:7:39
    |
 LL |         let bools: &[bool] = unsafe { std::mem::transmute(single_u64) };
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(single_u64 as *const [u64] as *const [bool])`
    |
 note: the lint level is defined here
-  --> tests/ui/transmute_ref_to_ref.rs:3:9
+  --> tests/ui/transmute_ref_to_ref.rs:1:9
    |
 LL | #![deny(clippy::transmute_ptr_to_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ref_to_ref.rs:13:33
+  --> tests/ui/transmute_ref_to_ref.rs:11:33
    |
 LL |         let b: &[u8] = unsafe { std::mem::transmute(a) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(a as *const [u32] as *const [u8])`
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ref_to_ref.rs:17:42
+  --> tests/ui/transmute_ref_to_ref.rs:15:42
    |
 LL |         let alt_slice: &[u32] = unsafe { std::mem::transmute(bytes) };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(bytes as *const [u8] as *const [u32])`
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmute_ref_to_ref.rs:35:29
+  --> tests/ui/transmute_ref_to_ref.rs:33:29
    |
 LL |         let _: *const f32 = std::mem::transmute(call!(make_ptr));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +         let _: *const f32 = call!(make_ptr).cast::<f32>();
    |
 
 error: transmute from a reference to a reference
-  --> tests/ui/transmute_ref_to_ref.rs:37:23
+  --> tests/ui/transmute_ref_to_ref.rs:35:23
    |
 LL |         let _: &f32 = std::mem::transmute(take_ref!(1u32));
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(take_ref!(1u32) as *const u32 as *const f32)`

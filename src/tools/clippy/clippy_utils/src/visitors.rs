@@ -367,8 +367,8 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                     if matches!(
                         self.cx.qpath_res(p, e.hir_id),
                         Res::Def(
-                            DefKind::Const
-                                | DefKind::AssocConst
+                            DefKind::Const { .. }
+                                | DefKind::AssocConst { .. }
                                 | DefKind::AnonConst
                                 | DefKind::ConstParam
                                 | DefKind::Ctor(..)

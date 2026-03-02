@@ -7,8 +7,6 @@ use crate::session_diagnostics::{
     DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
 };
 
-pub(crate) struct DeprecationParser;
-
 fn get<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
     name: Symbol,
@@ -33,7 +31,8 @@ fn get<S: Stage>(
     }
 }
 
-impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
+pub(crate) struct DeprecatedParser;
+impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
@@ -164,7 +163,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
             return None;
         }
 
-        Some(AttributeKind::Deprecation {
+        Some(AttributeKind::Deprecated {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
         })

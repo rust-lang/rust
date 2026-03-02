@@ -34,12 +34,12 @@ fn setup_for_eval<'tcx>(
         cid.promoted.is_some()
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
-                DefKind::Const
+                DefKind::Const { .. }
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
                     | DefKind::InlineConst
-                    | DefKind::AssocConst
+                    | DefKind::AssocConst { .. }
             ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())

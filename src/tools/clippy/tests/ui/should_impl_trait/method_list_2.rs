@@ -12,7 +12,7 @@
     clippy::missing_panics_doc,
     clippy::return_self_not_must_use
 )]
-//@no-rustfix
+
 use std::ops::Mul;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};

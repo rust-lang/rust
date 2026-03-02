@@ -1,7 +1,7 @@
 //! Simple logger that logs either to stderr or to a file, using `tracing_subscriber`
 //! filter syntax and `tracing_appender` for non blocking output.
 
-use std::io::{self};
+use std::io;
 
 use anyhow::Context;
 use tracing::level_filters::LevelFilter;

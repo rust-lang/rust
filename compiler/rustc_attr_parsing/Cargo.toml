@@ -15,6 +15,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
+rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }

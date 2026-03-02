@@ -2426,7 +2426,7 @@ pub(crate) fn update_submodule<'a>(
     let actual_hash = recorded
         .split_whitespace()
         .nth(2)
-        .unwrap_or_else(|| panic!("unexpected output `{recorded}`"));
+        .unwrap_or_else(|| panic!("unexpected output `{recorded}` when updating {relative_path}"));
 
     if actual_hash == checked_out_hash {
         // already checked out

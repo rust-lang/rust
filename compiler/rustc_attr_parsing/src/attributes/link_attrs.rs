@@ -524,8 +524,8 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
 
-pub(crate) struct StdInternalSymbolParser;
-impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
+pub(crate) struct RustcStdInternalSymbolParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

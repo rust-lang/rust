@@ -1,11 +1,9 @@
 use std::borrow::Cow;
-use std::error::Report;
 
 pub use rustc_error_messages::FluentArgs;
-use rustc_error_messages::{langid, register_functions};
+use rustc_error_messages::{DiagArgMap, langid, register_functions};
 use tracing::{debug, trace};
 
-use crate::error::TranslateError;
 use crate::fluent_bundle::FluentResource;
 use crate::{DiagArg, DiagMessage, Style, fluent_bundle};
 
@@ -14,7 +12,7 @@ use crate::{DiagArg, DiagMessage, Style, fluent_bundle};
 ///
 /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
 /// passed around as a reference thereafter.
-pub fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> FluentArgs<'static> {
+fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> FluentArgs<'static> {
     let mut args = if let Some(size) = iter.size_hint().1 {
         FluentArgs::with_capacity(size)
     } else {
@@ -31,24 +29,17 @@ pub fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> Flue
 /// Convert `DiagMessage`s to a string
 pub fn format_diag_messages(
     messages: &[(DiagMessage, Style)],
-    args: &FluentArgs<'_>,
+    args: &DiagArgMap,
 ) -> Cow<'static, str> {
-    Cow::Owned(
-        messages
-            .iter()
-            .map(|(m, _)| format_diag_message(m, args).map_err(Report::new).unwrap())
-            .collect::<String>(),
-    )
+    Cow::Owned(messages.iter().map(|(m, _)| format_diag_message(m, args)).collect::<String>())
 }
 
 /// Convert a `DiagMessage` to a string
-pub fn format_diag_message<'a>(
-    message: &'a DiagMessage,
-    args: &'a FluentArgs<'_>,
-) -> Result<Cow<'a, str>, TranslateError<'a>> {
+pub fn format_diag_message<'a>(message: &'a DiagMessage, args: &DiagArgMap) -> Cow<'a, str> {
     trace!(?message, ?args);
+
     match message {
-        DiagMessage::Str(msg) => Ok(Cow::Borrowed(msg)),
+        DiagMessage::Str(msg) => Cow::Borrowed(msg),
         // This translates an inline fluent diagnostic message
         // It does this by creating a new `FluentBundle` with only one message,
         // and then translating using this bundle.
@@ -62,14 +53,15 @@ pub fn format_diag_message<'a>(
             register_functions(&mut bundle);
             let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
             let value = message.value().unwrap();
+            let args = to_fluent_args(args.iter());
 
             let mut errs = vec![];
-            let translated = bundle.format_pattern(value, Some(args), &mut errs).to_string();
+            let translated = bundle.format_pattern(value, Some(&args), &mut errs).to_string();
             debug!(?translated, ?errs);
             if errs.is_empty() {
-                Ok(Cow::Owned(translated))
+                Cow::Owned(translated)
             } else {
-                Err(TranslateError::fluent(&Cow::Borrowed(GENERATED_MSG_ID), args, errs))
+                panic!("Fluent errors while formatting message: {errs:?}");
             }
         }
     }

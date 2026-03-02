@@ -62,9 +62,4 @@ fn should_not_help_0(bomb: &mut Bomb) {
     let _: Vec<u8> = bomb.fire.drain(..).collect();
 }
 
-fn main() {
-    full();
-    closed();
-    should_not_help();
-    should_not_help_0(&mut Bomb::default());
-}
+fn main() {}

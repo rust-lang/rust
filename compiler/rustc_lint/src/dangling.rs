@@ -269,7 +269,6 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && find_attr!(cx.tcx, fn_id, RustcAsPtr(_))
     {
-        // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(
             DANGLING_POINTERS_FROM_TEMPORARIES,
             expr.hir_id,

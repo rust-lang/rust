@@ -357,9 +357,9 @@ impl<T> Trait<T> for X {
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
                                     | DefKind::Static { .. }
-                                    | DefKind::Const
+                                    | DefKind::Const { .. }
                                     | DefKind::AssocFn
-                                    | DefKind::AssocConst
+                                    | DefKind::AssocConst { .. }
                             )
                             && matches!(
                                 tcx.opaque_ty_origin(opaque_ty.def_id),

@@ -238,9 +238,7 @@ fn tester(fn_arg: i32) {
     }
 }
 
-fn main() {
-    tester(42);
-}
+fn main() {}
 
 #[clippy::msrv = "1.57"]
 fn _under_msrv() {

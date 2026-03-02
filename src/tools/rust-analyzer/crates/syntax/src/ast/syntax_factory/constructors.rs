@@ -79,8 +79,12 @@ impl SyntaxFactory {
         make::path_concat(first, second).clone_for_update()
     }
 
+    pub fn visibility_pub_crate(&self) -> ast::Visibility {
+        make::visibility_pub_crate().clone_for_update()
+    }
+
     pub fn visibility_pub(&self) -> ast::Visibility {
-        make::visibility_pub()
+        make::visibility_pub().clone_for_update()
     }
 
     pub fn struct_(

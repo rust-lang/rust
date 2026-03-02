@@ -321,12 +321,15 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     }
 
     #[must_use]
-    pub fn generate_stacktrace_from_stack(stack: &[Self]) -> Vec<FrameInfo<'tcx>> {
+    pub fn generate_stacktrace_from_stack(
+        stack: &[Self],
+        tcx: TyCtxt<'tcx>,
+    ) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let span = match frame.loc {
+            let mut span = match frame.loc {
                 Left(loc) => {
                     // If the stacktrace passes through MIR-inlined source scopes, add them.
                     let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
@@ -340,6 +343,10 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
                 }
                 Right(span) => span,
             };
+            if span.is_dummy() {
+                // Some statements lack a proper span; point at the function instead.
+                span = tcx.def_span(frame.instance.def_id());
+            }
             frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);

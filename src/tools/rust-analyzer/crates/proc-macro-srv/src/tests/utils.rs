@@ -142,6 +142,14 @@ impl ProcMacroClientInterface for MockCallback<'_> {
     fn byte_range(&mut self, span: Span) -> Range<usize> {
         Range { start: span.range.start().into(), end: span.range.end().into() }
     }
+
+    fn span_source(&mut self, span: Span) -> Span {
+        span
+    }
+
+    fn span_parent(&mut self, _span: Span) -> Option<Span> {
+        None
+    }
 }
 
 pub fn assert_expand_with_callback(

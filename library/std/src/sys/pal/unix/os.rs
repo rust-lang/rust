@@ -533,19 +533,6 @@ pub fn home_dir() -> Option<PathBuf> {
     }
 }
 
-pub fn exit(code: i32) -> ! {
-    crate::sys::exit_guard::unique_thread_exit();
-    unsafe { libc::exit(code as c_int) }
-}
-
-pub fn getpid() -> u32 {
-    unsafe { libc::getpid() as u32 }
-}
-
-pub fn getppid() -> u32 {
-    unsafe { libc::getppid() as u32 }
-}
-
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub fn glibc_version() -> Option<(usize, usize)> {
     unsafe extern "C" {

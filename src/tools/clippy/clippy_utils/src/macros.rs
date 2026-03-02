@@ -234,19 +234,30 @@ pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
     matches!(name, sym::assert_macro | sym::debug_assert_macro)
 }
 
+/// A call to a function in [`std::rt`] or [`core::panicking`] that results in a panic, typically
+/// part of a `panic!()` expansion (often wrapped in a block) but may be called directly by other
+/// macros such as `assert`.
 #[derive(Debug)]
-pub enum PanicExpn<'a> {
-    /// No arguments - `panic!()`
-    Empty,
-    /// A string literal or any `&str` - `panic!("message")` or `panic!(message)`
-    Str(&'a Expr<'a>),
-    /// A single argument that implements `Display` - `panic!("{}", object)`
+pub enum PanicCall<'a> {
+    // The default message - `panic!()`, `assert!(true)`, etc.
+    DefaultMessage,
+    /// A string literal or any `&str` in edition 2015/2018 - `panic!("message")` or
+    /// `panic!(message)`.
+    ///
+    /// In edition 2021+ `panic!("message")` will be a [`PanicCall::Format`] and `panic!(message)` a
+    /// compile error.
+    Str2015(&'a Expr<'a>),
+    /// A single argument that implements `Display` - `panic!("{}", object)`.
+    ///
+    /// `panic!("{object}")` will still be a [`PanicCall::Format`].
     Display(&'a Expr<'a>),
-    /// Anything else - `panic!("error {}: {}", a, b)`
+    /// Anything else - `panic!("error {}: {}", a, b)`, `panic!("on edition 2021+")`.
+    ///
+    /// See [`FormatArgsStorage::get`] to examine the contents of the formatting.
     Format(&'a Expr<'a>),
 }
 
-impl<'a> PanicExpn<'a> {
+impl<'a> PanicCall<'a> {
     pub fn parse(expr: &'a Expr<'a>) -> Option<Self> {
         let ExprKind::Call(callee, args) = &expr.kind else {
             return None;
@@ -260,8 +271,13 @@ impl<'a> PanicExpn<'a> {
             return None;
         };
         let result = match name {
-            sym::panic if arg.span.eq_ctxt(expr.span) => Self::Empty,
-            sym::panic | sym::panic_str => Self::Str(arg),
+            sym::panic | sym::begin_panic | sym::panic_str_2015 => {
+                if arg.span.eq_ctxt(expr.span) || arg.span.is_dummy() {
+                    Self::DefaultMessage
+                } else {
+                    Self::Str2015(arg)
+                }
+            },
             sym::panic_display => {
                 let ExprKind::AddrOf(_, _, e) = &arg.kind else {
                     return None;
@@ -281,12 +297,16 @@ impl<'a> PanicExpn<'a> {
                 let msg_arg = &rest[2];
                 match msg_arg.kind {
                     ExprKind::Call(_, [fmt_arg]) => Self::Format(fmt_arg),
-                    _ => Self::Empty,
+                    _ => Self::DefaultMessage,
                 }
             },
             _ => return None,
         };
         Some(result)
+    }
+
+    pub fn is_default_message(&self) -> bool {
+        matches!(self, Self::DefaultMessage)
     }
 }
 
@@ -295,18 +315,8 @@ pub fn find_assert_args<'a>(
     cx: &LateContext<'_>,
     expr: &'a Expr<'a>,
     expn: ExpnId,
-) -> Option<(&'a Expr<'a>, PanicExpn<'a>)> {
-    find_assert_args_inner(cx, expr, expn).map(|([e], mut p)| {
-        // `assert!(..)` expands to `core::panicking::panic("assertion failed: ...")` (which we map to
-        // `PanicExpn::Str(..)`) and `assert!(.., "..")` expands to
-        // `core::panicking::panic_fmt(format_args!(".."))` (which we map to `PanicExpn::Format(..)`).
-        // So even we got `PanicExpn::Str(..)` that means there is no custom message provided
-        if let PanicExpn::Str(_) = p {
-            p = PanicExpn::Empty;
-        }
-
-        (e, p)
-    })
+) -> Option<(&'a Expr<'a>, PanicCall<'a>)> {
+    find_assert_args_inner(cx, expr, expn).map(|([e], p)| (e, p))
 }
 
 /// Finds the arguments of an `assert_eq!` or `debug_assert_eq!` macro call within the macro
@@ -315,7 +325,7 @@ pub fn find_assert_eq_args<'a>(
     cx: &LateContext<'_>,
     expr: &'a Expr<'a>,
     expn: ExpnId,
-) -> Option<(&'a Expr<'a>, &'a Expr<'a>, PanicExpn<'a>)> {
+) -> Option<(&'a Expr<'a>, &'a Expr<'a>, PanicCall<'a>)> {
     find_assert_args_inner(cx, expr, expn).map(|([a, b], p)| (a, b, p))
 }
 
@@ -323,7 +333,7 @@ fn find_assert_args_inner<'a, const N: usize>(
     cx: &LateContext<'_>,
     expr: &'a Expr<'a>,
     expn: ExpnId,
-) -> Option<([&'a Expr<'a>; N], PanicExpn<'a>)> {
+) -> Option<([&'a Expr<'a>; N], PanicCall<'a>)> {
     let macro_id = expn.expn_data().macro_def_id?;
     let (expr, expn) = match cx.tcx.item_name(macro_id).as_str().strip_prefix("debug_") {
         None => (expr, expn),
@@ -332,7 +342,7 @@ fn find_assert_args_inner<'a, const N: usize>(
     let mut args = ArrayVec::new();
     let panic_expn = for_each_expr_without_closures(expr, |e| {
         if args.is_full() {
-            match PanicExpn::parse(e) {
+            match PanicCall::parse(e) {
                 Some(expn) => ControlFlow::Break(expn),
                 None => ControlFlow::Continue(Descend::Yes),
             }
@@ -344,10 +354,7 @@ fn find_assert_args_inner<'a, const N: usize>(
         }
     });
     let args = args.into_inner().ok()?;
-    // if no `panic!(..)` is found, use `PanicExpn::Empty`
-    // to indicate that the default assertion message is used
-    let panic_expn = panic_expn.unwrap_or(PanicExpn::Empty);
-    Some((args, panic_expn))
+    Some((args, panic_expn?))
 }
 
 fn find_assert_within_debug_assert<'a>(

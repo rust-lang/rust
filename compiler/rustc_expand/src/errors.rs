@@ -184,34 +184,6 @@ pub(crate) struct RecursionLimitReached {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed `feature` attribute input", code = E0556)]
-pub(crate) struct MalformedFeatureAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub help: MalformedFeatureAttributeHelp,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedFeatureAttributeHelp {
-    #[label("expected just one word")]
-    Label {
-        #[primary_span]
-        span: Span,
-    },
-    #[suggestion(
-        "expected just one word",
-        code = "{suggestion}",
-        applicability = "maybe-incorrect"
-    )]
-    Suggestion {
-        #[primary_span]
-        span: Span,
-        suggestion: Symbol,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag("removing an expression is not supported in this position")]
 pub(crate) struct RemoveExprNotSupported {
     #[primary_span]

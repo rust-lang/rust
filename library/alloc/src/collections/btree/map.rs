@@ -1240,6 +1240,162 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         )
     }
 
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
+    ///
+    /// If a key from `other` is already present in `self`, then the `conflict`
+    /// closure is used to return a value to `self`. The `conflict`
+    /// closure takes in a borrow of `self`'s key, `self`'s value, and `other`'s value
+    /// in that order.
+    ///
+    /// An example of why one might use this method over [`append`]
+    /// is to combine `self`'s value with `other`'s value when their keys conflict.
+    ///
+    /// Similar to [`insert`], though, the key is not overwritten,
+    /// which matters for types that can be `==` without being identical.
+    ///
+    /// [`insert`]: BTreeMap::insert
+    /// [`append`]: BTreeMap::append
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_merge)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, String::from("a"));
+    /// a.insert(2, String::from("b"));
+    /// a.insert(3, String::from("c")); // Note: Key (3) also present in b.
+    ///
+    /// let mut b = BTreeMap::new();
+    /// b.insert(3, String::from("d")); // Note: Key (3) also present in a.
+    /// b.insert(4, String::from("e"));
+    /// b.insert(5, String::from("f"));
+    ///
+    /// // concatenate a's value and b's value
+    /// a.merge(b, |_, a_val, b_val| {
+    ///     format!("{a_val}{b_val}")
+    /// });
+    ///
+    /// assert_eq!(a.len(), 5); // all of b's keys in a
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(a[&3], "cd"); // Note: "c" has been combined with "d".
+    /// assert_eq!(a[&4], "e");
+    /// assert_eq!(a[&5], "f");
+    /// ```
+    #[unstable(feature = "btree_merge", issue = "152152")]
+    pub fn merge(&mut self, mut other: Self, mut conflict: impl FnMut(&K, V, V) -> V)
+    where
+        K: Ord,
+        A: Clone,
+    {
+        // Do we have to append anything at all?
+        if other.is_empty() {
+            return;
+        }
+
+        // We can just swap `self` and `other` if `self` is empty.
+        if self.is_empty() {
+            mem::swap(self, &mut other);
+            return;
+        }
+
+        let mut other_iter = other.into_iter();
+        let (first_other_key, first_other_val) = other_iter.next().unwrap();
+
+        // find the first gap that has the smallest key greater than or equal to
+        // the first key from other
+        let mut self_cursor = self.lower_bound_mut(Bound::Included(&first_other_key));
+
+        if let Some((self_key, _)) = self_cursor.peek_next() {
+            match K::cmp(self_key, &first_other_key) {
+                Ordering::Equal => {
+                    // if `f` unwinds, the next entry is already removed leaving
+                    // the tree in valid state.
+                    // FIXME: Once `MaybeDangling` is implemented, we can optimize
+                    // this through using a drop handler and transmutating CursorMutKey<K, V>
+                    // to CursorMutKey<ManuallyDrop<K>, ManuallyDrop<V>> (see PR #152418)
+                    if let Some((k, v)) = self_cursor.remove_next() {
+                        // SAFETY: we remove the K, V out of the next entry,
+                        // apply 'f' to get a new (K, V), and insert it back
+                        // into the next entry that the cursor is pointing at
+                        let v = conflict(&k, v, first_other_val);
+                        unsafe { self_cursor.insert_after_unchecked(k, v) };
+                    }
+                }
+                Ordering::Greater =>
+                // SAFETY: we know our other_key's ordering is less than self_key,
+                // so inserting before will guarantee sorted order
+                unsafe {
+                    self_cursor.insert_before_unchecked(first_other_key, first_other_val);
+                },
+                Ordering::Less => {
+                    unreachable!("Cursor's peek_next should return None.");
+                }
+            }
+        } else {
+            // SAFETY: reaching here means our cursor is at the end
+            // self BTreeMap so we just insert other_key here
+            unsafe {
+                self_cursor.insert_before_unchecked(first_other_key, first_other_val);
+            }
+        }
+
+        for (other_key, other_val) in other_iter {
+            loop {
+                if let Some((self_key, _)) = self_cursor.peek_next() {
+                    match K::cmp(self_key, &other_key) {
+                        Ordering::Equal => {
+                            // if `f` unwinds, the next entry is already removed leaving
+                            // the tree in valid state.
+                            // FIXME: Once `MaybeDangling` is implemented, we can optimize
+                            // this through using a drop handler and transmutating CursorMutKey<K, V>
+                            // to CursorMutKey<ManuallyDrop<K>, ManuallyDrop<V>> (see PR #152418)
+                            if let Some((k, v)) = self_cursor.remove_next() {
+                                // SAFETY: we remove the K, V out of the next entry,
+                                // apply 'f' to get a new (K, V), and insert it back
+                                // into the next entry that the cursor is pointing at
+                                let v = conflict(&k, v, other_val);
+                                unsafe { self_cursor.insert_after_unchecked(k, v) };
+                            }
+                            break;
+                        }
+                        Ordering::Greater => {
+                            // SAFETY: we know our self_key's ordering is greater than other_key,
+                            // so inserting before will guarantee sorted order
+                            unsafe {
+                                self_cursor.insert_before_unchecked(other_key, other_val);
+                            }
+                            break;
+                        }
+                        Ordering::Less => {
+                            // FIXME: instead of doing a linear search here,
+                            // this can be optimized to search the tree by starting
+                            // from self_cursor and going towards the root and then
+                            // back down to the proper node -- that should probably
+                            // be a new method on Cursor*.
+                            self_cursor.next();
+                        }
+                    }
+                } else {
+                    // FIXME: If we get here, that means all of other's keys are greater than
+                    // self's keys. For performance, this should really do a bulk insertion of items
+                    // from other_iter into the end of self `BTreeMap`. Maybe this should be
+                    // a method for Cursor*?
+
+                    // SAFETY: reaching here means our cursor is at the end
+                    // self BTreeMap so we just insert other_key here
+                    unsafe {
+                        self_cursor.insert_before_unchecked(other_key, other_val);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
     /// yield elements from min (inclusive) to max (exclusive).

@@ -35,7 +35,7 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();
-        let is_assoc_const = def_kind == DefKind::AssocConst;
+        let is_assoc_const = matches!(def_kind, DefKind::AssocConst { .. });
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {

@@ -150,9 +150,9 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
+   = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
 
 error[E0038]: the trait `assoc_const::C` is not dyn compatible
@@ -175,9 +175,9 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
+   = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
 
 error[E0223]: ambiguous associated type

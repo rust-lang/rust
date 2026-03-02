@@ -1,8 +1,10 @@
-error: generic parameters may not be used in const operations
+error: generic parameters in const blocks are only allowed as the direct value of a `type const`
   --> $DIR/rhs-but-not-root.rs:7:54
    |
 LL | type const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
    |                                                      ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
 
 error: aborting due to 1 previous error
 

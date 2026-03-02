@@ -3,10 +3,7 @@
 
 use std::iter::{Empty, Peekable};
 
-fn main() {
-    invalid();
-    valid();
-}
+fn main() {}
 
 #[allow(clippy::unused_unit)]
 fn invalid() {

@@ -120,7 +120,9 @@ pub enum DefKind {
 
     // Value namespace
     Fn,
-    Const,
+    Const {
+        is_type_const: bool,
+    },
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
     Static {
@@ -147,7 +149,9 @@ pub enum DefKind {
     /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
-    AssocConst,
+    AssocConst {
+        is_type_const: bool,
+    },
 
     // Macro namespace
     Macro(MacroKinds),
@@ -222,8 +226,8 @@ impl DefKind {
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
             DefKind::AssocFn => "associated function",
-            DefKind::Const => "constant",
-            DefKind::AssocConst => "associated constant",
+            DefKind::Const { .. } => "constant",
+            DefKind::AssocConst { .. } => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(kinds) => kinds.descr(),
@@ -249,7 +253,7 @@ impl DefKind {
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
@@ -277,12 +281,12 @@ impl DefKind {
             | DefKind::TyParam => Some(Namespace::TypeNS),
 
             DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(..)
             | DefKind::AssocFn
-            | DefKind::AssocConst => Some(Namespace::ValueNS),
+            | DefKind::AssocConst { .. } => Some(Namespace::ValueNS),
 
             DefKind::Macro(..) => Some(Namespace::MacroNS),
 
@@ -323,11 +327,11 @@ impl DefKind {
             DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
 
             DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::AssocFn
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
             DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
             DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
@@ -345,7 +349,7 @@ impl DefKind {
     }
 
     pub fn is_assoc(self) -> bool {
-        matches!(self, DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy)
+        matches!(self, DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy)
     }
 
     /// This is a "module" in name resolution sense.
@@ -371,11 +375,11 @@ impl DefKind {
     pub fn has_generics(self) -> bool {
         match self {
             DefKind::AnonConst
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::AssocFn
             | DefKind::AssocTy
             | DefKind::Closure
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Ctor(..)
             | DefKind::Enum
             | DefKind::Field
@@ -423,8 +427,8 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::Const
-            | DefKind::AssocConst
+            | DefKind::Const { .. }
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(..)
             | DefKind::Use
             | DefKind::ForeignMod
@@ -459,12 +463,12 @@ impl DefKind {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(_, _)
             | DefKind::AssocFn
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use

@@ -1,8 +1,8 @@
 error: `to_string()` called on a `&str`
-  --> tests/ui/str_to_string.rs:4:17
+  --> tests/ui/str_to_string.rs:4:25
    |
-LL |     let hello = "hello world".to_string();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"hello world".to_owned()`
+LL |     let hello: String = "hello world".to_string();
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"hello world".to_owned()`
    |
    = note: `-D clippy::str-to-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::str_to_string)]`
@@ -14,40 +14,34 @@ LL |     msg.to_string();
    |     ^^^^^^^^^^^^^^^ help: try: `msg.to_owned()`
 
 error: `to_string()` called on a `&str`
-  --> tests/ui/str_to_string.rs:22:18
+  --> tests/ui/str_to_string.rs:22:26
    |
-LL |     let _value = t!(str::from_utf8(key)).to_string();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(str::from_utf8(key)).to_owned()`
+LL |     let _value: String = t!(str::from_utf8(key)).to_string();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(str::from_utf8(key)).to_owned()`
 
 error: `ToString::to_string` used as `&str` to `String` converter
-  --> tests/ui/str_to_string.rs:35:19
+  --> tests/ui/str_to_string.rs:35:35
    |
-LL |     let _ = x.map(ToString::to_string);
-   |                   ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+LL |     let _: Option<String> = x.map(ToString::to_string);
+   |                                   ^^^^^^^^^^^^^^^^^^^ help: try: `str::to_owned`
 
 error: `ToString::to_string` used as `&str` to `String` converter
-  --> tests/ui/str_to_string.rs:38:19
+  --> tests/ui/str_to_string.rs:38:35
    |
-LL |     let _ = x.map(str::to_string);
-   |                   ^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+LL |     let _: Option<String> = x.map(str::to_string);
+   |                                   ^^^^^^^^^^^^^^ help: try: `str::to_owned`
 
 error: `ToString::to_string` used as `&str` to `String` converter
-  --> tests/ui/str_to_string.rs:41:35
+  --> tests/ui/str_to_string.rs:47:28
    |
-LL |     let _ = ["a", "b"].iter().map(ToString::to_string);
-   |                                   ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+LL |     let _: String = mapper(ToString::to_string);
+   |                            ^^^^^^^^^^^^^^^^^^^ help: try: `str::to_owned`
 
 error: `ToString::to_string` used as `&str` to `String` converter
-  --> tests/ui/str_to_string.rs:47:20
+  --> tests/ui/str_to_string.rs:51:30
    |
-LL |     let _ = mapper(ToString::to_string);
-   |                    ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
+LL |     let _: String = w.mapper(ToString::to_string);
+   |                              ^^^^^^^^^^^^^^^^^^^ help: try: `str::to_owned`
 
-error: `ToString::to_string` used as `&str` to `String` converter
-  --> tests/ui/str_to_string.rs:51:22
-   |
-LL |     let _ = w.mapper(ToString::to_string);
-   |                      ^^^^^^^^^^^^^^^^^^^ help: try: `ToOwned::to_owned`
-
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 

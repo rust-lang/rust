@@ -50,7 +50,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install rustup-toolchain-install-master
-        run: cargo install rustup-toolchain-install-master@1.6.0
+        run: cargo install rustup-toolchain-install-master@1.11.0
 
       # Install a pinned rustc commit to avoid surprises
       - name: Install Rust toolchain
@@ -226,7 +226,12 @@ jobs:
 
     strategy:
       matrix:
-        target: [powerpc-unknown-linux-gnu, x86_64-unknown-linux-musl, wasm32-unknown-unknown]
+        target:
+          [
+            powerpc-unknown-linux-gnu,
+            x86_64-unknown-linux-musl,
+            wasm32-unknown-unknown,
+          ]
         include:
           # The rust-analyzer binary is not expected to compile on WASM, but the IDE
           # crate should
@@ -330,7 +335,18 @@ jobs:
         run: typos
 
   conclusion:
-    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri, rustfmt, clippy, analysis-stats]
+    needs:
+      [
+        rust,
+        rust-cross,
+        typescript,
+        typo-check,
+        proc-macro-srv,
+        miri,
+        rustfmt,
+        clippy,
+        analysis-stats,
+      ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run

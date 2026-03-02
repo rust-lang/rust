@@ -540,7 +540,6 @@ impl<'a> TraitDef<'a> {
                         .filter(|a| {
                             a.has_any_name(&[
                                 sym::allow,
-                                sym::expect,
                                 sym::warn,
                                 sym::deny,
                                 sym::forbid,

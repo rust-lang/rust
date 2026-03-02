@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -11,13 +11,10 @@ use rustc_macros::HashStable;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
-use crate::dep_graph;
-use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
-use crate::queries::{
-    ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
-};
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
+use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
+use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
 use crate::query::{QueryCache, QueryInfo, QueryJob};
 use crate::ty::TyCtxt;
@@ -77,8 +74,6 @@ pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
 pub type IsLoadableFromDiskFn<'tcx, Key> =
     fn(tcx: TyCtxt<'tcx>, key: &Key, index: SerializedDepNodeIndex) -> bool;
 
-pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
-
 #[derive(Clone, Debug)]
 pub struct CycleError<I = QueryStackFrameExtra> {
     /// The query and related span that uses the cycle.
@@ -97,21 +92,40 @@ impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
 
 #[derive(Debug)]
 pub enum QueryMode {
+    /// This is a normal query call to `tcx.$query(..)` or `tcx.at(span).$query(..)`.
     Get,
-    Ensure { check_cache: bool },
+    /// This is a call to `tcx.ensure_ok().$query(..)` or `tcx.ensure_done().$query(..)`.
+    Ensure { ensure_mode: EnsureMode },
 }
 
-/// Stores function pointers and other metadata for a particular query.
+/// Distinguishes between `tcx.ensure_ok()` and `tcx.ensure_done()` in shared
+/// code paths that handle both modes.
+#[derive(Debug)]
+pub enum EnsureMode {
+    /// Corresponds to [`TyCtxt::ensure_ok`].
+    Ok,
+    /// Corresponds to [`TyCtxt::ensure_done`].
+    Done,
+}
+
+/// Stores data and metadata (e.g. function pointers) for a particular query.
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
+
+    /// True if this query has the `anon` modifier.
+    pub anon: bool,
+    /// True if this query has the `eval_always` modifier.
     pub eval_always: bool,
+    /// True if this query has the `depth_limit` modifier.
+    pub depth_limit: bool,
+    /// True if this query has the `feedable` modifier.
+    pub feedable: bool,
+
     pub dep_kind: DepKind,
     /// How this query deals with query cycle errors.
     pub cycle_error_handling: CycleErrorHandling,
-    // Offset of this query's state field in the QueryStates struct
-    pub query_state: usize,
-    // Offset of this query's cache field in the QueryCaches struct
-    pub query_cache: usize,
+    pub state: QueryState<'tcx, C::Key>,
+    pub cache: C,
     pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
 
     /// Function pointer that calls `tcx.$query(key)` for this query and
@@ -130,7 +144,12 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 
     pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
     pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
-    pub hash_result: HashResult<C::Value>,
+
+    /// Function pointer that hashes this query's result values.
+    ///
+    /// For `no_hash` queries, this function pointer is None.
+    pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
+
     pub value_from_cycle_error:
         fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
@@ -140,25 +159,77 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     ///
     /// Used when reporting query cycle errors and similar problems.
     pub description_fn: fn(TyCtxt<'tcx>, C::Key) -> String,
+
+    /// Function pointer that is called by the query methods on [`TyCtxt`] and
+    /// friends[^1], after they have checked the in-memory cache and found no
+    /// existing value for this key.
+    ///
+    /// Transitive responsibilities include trying to load a disk-cached value
+    /// if possible (incremental only), invoking the query provider if necessary,
+    /// and putting the obtained value into the in-memory cache.
+    ///
+    /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
+    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
 }
 
-pub struct QuerySystemFns {
-    pub engine: QueryEngine,
-    pub local_providers: Providers,
-    pub extern_providers: ExternProviders,
-    pub encode_query_results: for<'tcx> fn(
+impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // When debug-printing a query vtable (e.g. for ICE or tracing),
+        // just print the query name to know what query we're dealing with.
+        // The other fields and flags are probably just unhelpful noise.
+        //
+        // If there is need for a more detailed dump of all flags and fields,
+        // consider writing a separate dump method and calling it explicitly.
+        f.write_str(self.name)
+    }
+}
+
+impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
+    #[inline(always)]
+    pub fn will_cache_on_disk_for_key(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> bool {
+        self.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
+    }
+
+    #[inline(always)]
+    pub fn try_load_from_disk(
+        &self,
         tcx: TyCtxt<'tcx>,
-        encoder: &mut CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut EncodedDepNodeIndex,
-    ),
-    pub try_mark_green: for<'tcx> fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
+        key: &C::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<C::Value> {
+        // `?` will return None immediately for queries that never cache to disk.
+        self.try_load_from_disk_fn?(tcx, key, prev_index, index)
+    }
+
+    #[inline]
+    pub fn is_loadable_from_disk(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        key: &C::Key,
+        index: SerializedDepNodeIndex,
+    ) -> bool {
+        self.is_loadable_from_disk_fn.map_or(false, |f| f(tcx, key, index))
+    }
+
+    /// Synthesize an error value to let compilation continue after a cycle.
+    pub fn value_from_cycle_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> C::Value {
+        (self.value_from_cycle_error)(tcx, cycle_error, guar)
+    }
+
+    pub fn construct_dep_node(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
+        DepNode::construct(tcx, self.dep_kind, key)
+    }
 }
 
 pub struct QuerySystem<'tcx> {
-    pub states: QueryStates<'tcx>,
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
-    pub caches: QueryCaches<'tcx>,
-    pub query_vtables: PerQueryVTables<'tcx>,
+    pub query_vtables: QueryVTables<'tcx>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -166,7 +237,8 @@ pub struct QuerySystem<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub on_disk_cache: Option<OnDiskCache>,
 
-    pub fns: QuerySystemFns,
+    pub local_providers: Providers,
+    pub extern_providers: ExternProviders,
 
     pub jobs: AtomicU64,
 }
@@ -256,10 +328,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
     }
-
-    pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
-        (self.query_system.fns.try_mark_green)(self, dep_node)
-    }
 }
 
 macro_rules! query_helper_param_ty {
@@ -295,6 +363,17 @@ macro_rules! if_return_result_from_ensure_ok {
     };
 }
 
+// Expands to `$item` if the `feedable` modifier is present.
+macro_rules! item_if_feedable {
+    ([] $($item:tt)*) => {};
+    ([(feedable) $($rest:tt)*] $($item:tt)*) => {
+        $($item)*
+    };
+    ([$other:tt $($modifiers:tt)*] $($item:tt)*) => {
+        item_if_feedable! { [$($modifiers)*] $($item)* }
+    };
+}
+
 macro_rules! define_callbacks {
     (
         // You might expect the key to be `$K:ty`, but it needs to be `$($K:tt)*` so that
@@ -316,7 +395,7 @@ macro_rules! define_callbacks {
 
                 pub type LocalKey<'tcx> = if_separate_provide_extern!(
                     [$($modifiers)*]
-                    (<Key<'tcx> as $crate::query::AsLocalKey>::LocalKey)
+                    (<Key<'tcx> as $crate::query::AsLocalQueryKey>::LocalQueryKey)
                     (Key<'tcx>)
                 );
 
@@ -360,8 +439,8 @@ macro_rules! define_callbacks {
                     erase::erase_val(value)
                 }
 
-                pub type Storage<'tcx> =
-                    <Key<'tcx> as $crate::query::Key>::Cache<Erased<Value<'tcx>>>;
+                pub type Cache<'tcx> =
+                    <Key<'tcx> as $crate::query::QueryKey>::Cache<Erased<Value<'tcx>>>;
 
                 // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
@@ -410,13 +489,6 @@ macro_rules! define_callbacks {
             )*
         }
 
-        #[derive(Default)]
-        pub struct QueryCaches<'tcx> {
-            $(
-                pub $name: $name::Storage<'tcx>,
-            )*
-        }
-
         impl<'tcx> $crate::query::TyCtxtEnsureOk<'tcx> {
             $(
                 $(#[$attr])*
@@ -435,10 +507,9 @@ macro_rules! define_callbacks {
                         (crate::query::inner::query_ensure)
                     )(
                         self.tcx,
-                        self.tcx.query_system.fns.engine.$name,
-                        &self.tcx.query_system.caches.$name,
+                        &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
-                        false,
+                        $crate::query::EnsureMode::Ok,
                     )
                 }
             )*
@@ -451,10 +522,9 @@ macro_rules! define_callbacks {
                 pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                     crate::query::inner::query_ensure(
                         self.tcx,
-                        self.tcx.query_system.fns.engine.$name,
-                        &self.tcx.query_system.caches.$name,
+                        &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
-                        true,
+                        $crate::query::EnsureMode::Done,
                     );
                 }
             )*
@@ -480,28 +550,41 @@ macro_rules! define_callbacks {
 
                     erase::restore_val::<$V>(inner::query_get_at(
                         self.tcx,
-                        self.tcx.query_system.fns.engine.$name,
-                        &self.tcx.query_system.caches.$name,
                         self.span,
+                        &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
                     ))
                 }
             )*
         }
 
-        /// Holds a `QueryVTable` for each query.
-        ///
-        /// ("Per" just makes this pluralized name more visually distinct.)
-        pub struct PerQueryVTables<'tcx> {
-            $(
-                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, $name::Storage<'tcx>>,
-            )*
-        }
+        $(
+            item_if_feedable! {
+                [$($modifiers)*]
+                impl<'tcx, K: $crate::query::IntoQueryParam<$name::Key<'tcx>> + Copy>
+                    TyCtxtFeed<'tcx, K>
+                {
+                    $(#[$attr])*
+                    #[inline(always)]
+                    pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
+                        let key = self.key().into_query_param();
+                        let erased_value = $name::provided_to_erased(self.tcx, value);
+                        $crate::query::inner::query_feed(
+                            self.tcx,
+                            dep_graph::DepKind::$name,
+                            &self.tcx.query_system.query_vtables.$name,
+                            key,
+                            erased_value,
+                        );
+                    }
+                }
+            }
+        )*
 
-        #[derive(Default)]
-        pub struct QueryStates<'tcx> {
+        /// Holds a `QueryVTable` for each query.
+        pub struct QueryVTables<'tcx> {
             $(
-                pub $name: $crate::query::QueryState<'tcx, $name::Key<'tcx>>,
+                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, $name::Cache<'tcx>>,
             )*
         }
 
@@ -564,51 +647,7 @@ macro_rules! define_callbacks {
         impl Clone for ExternProviders {
             fn clone(&self) -> Self { *self }
         }
-
-        pub struct QueryEngine {
-            $(
-                pub $name: for<'tcx> fn(
-                    TyCtxt<'tcx>,
-                    Span,
-                    $name::Key<'tcx>,
-                    $crate::query::QueryMode,
-                ) -> Option<$crate::query::erase::Erased<$V>>,
-            )*
-        }
     };
-}
-
-// Note: `$V` is unused but present so this can be called by `rustc_with_all_queries`.
-macro_rules! define_feedable {
-    (
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*]
-            fn $name:ident($K:ty) -> $V:ty,
-        )*
-    ) => {
-        $(
-            impl<'tcx, K: $crate::query::IntoQueryParam<$K> + Copy> TyCtxtFeed<'tcx, K> {
-                $(#[$attr])*
-                #[inline(always)]
-                pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
-                    let key = self.key().into_query_param();
-
-                    let tcx = self.tcx;
-                    let erased_value = $name::provided_to_erased(tcx, value);
-
-                    $crate::query::inner::query_feed(
-                        tcx,
-                        dep_graph::DepKind::$name,
-                        &tcx.query_system.query_vtables.$name,
-                        &tcx.query_system.caches.$name,
-                        key,
-                        erased_value,
-                    );
-                }
-            }
-        )*
-    }
 }
 
 // Each of these queries corresponds to a function pointer field in the

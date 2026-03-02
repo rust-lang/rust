@@ -18,7 +18,4 @@ fn above_limit() {
     }
 }
 
-fn main() {
-    below_limit();
-    above_limit();
-}
+fn main() {}

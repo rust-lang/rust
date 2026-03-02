@@ -1,12 +1,51 @@
-use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir;
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::{mir, span_bug, ty};
+use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
 use super::{InterpCx, MPlaceTy, MemoryKind, interp_ok, throw_inval};
 use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationResult};
+use crate::interpret::Machine;
+
+/// Checks if a type implements predicates.
+/// Calls `ensure_monomorphic_enough` on `ty` and `trait_ty` for you.
+pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
+    ecx: &mut InterpCx<'tcx, M>,
+    ty: Ty<'tcx>,
+    trait_ty: Ty<'tcx>,
+) -> InterpResult<'tcx, (bool, &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>)> {
+    ensure_monomorphic_enough(ecx.tcx.tcx, ty)?;
+    ensure_monomorphic_enough(ecx.tcx.tcx, trait_ty)?;
+
+    let ty::Dynamic(preds, _) = trait_ty.kind() else {
+        span_bug!(
+            ecx.find_closest_untracked_caller_location(),
+            "Invalid type provided to type_implements_predicates. U must be dyn Trait, got {trait_ty}."
+        );
+    };
+
+    let (infcx, param_env) = ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env);
+
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {
+        let pred = pred.with_self_ty(ecx.tcx.tcx, ty);
+        // Lifetimes can only be 'static because of the bound on T
+        let pred = rustc_middle::ty::fold_regions(ecx.tcx.tcx, pred, |r, _| {
+            if r == ecx.tcx.tcx.lifetimes.re_erased { ecx.tcx.tcx.lifetimes.re_static } else { r }
+        });
+        Obligation::new(ecx.tcx.tcx, ObligationCause::dummy(), param_env, pred)
+    }));
+    let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+    // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
+    let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
+
+    interp_ok((regions_are_valid && type_impls_trait, preds))
+}
 
 /// Checks whether a type contains generic parameters which must be instantiated.
 ///

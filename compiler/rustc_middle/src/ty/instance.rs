@@ -508,8 +508,8 @@ impl<'tcx> Instance<'tcx> {
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const
-                | DefKind::AssocConst
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
                 | DefKind::AnonConst
                 | DefKind::InlineConst
                 | DefKind::Static { .. }
