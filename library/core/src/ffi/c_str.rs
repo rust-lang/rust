@@ -8,7 +8,7 @@ use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 use crate::slice::memchr;
-use crate::{fmt, ops, slice, str};
+use crate::{fmt, ops, range, slice, str};
 
 // FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
 //   depends on where the item is being documented. however, since this is libcore, we can't
@@ -713,6 +713,16 @@ impl ops::Index<ops::RangeFrom<usize>> for CStr {
                 index.start
             );
         }
+    }
+}
+
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl ops::Index<range::RangeFrom<usize>> for CStr {
+    type Output = CStr;
+
+    #[inline]
+    fn index(&self, index: range::RangeFrom<usize>) -> &CStr {
+        ops::Index::index(self, ops::RangeFrom::from(index))
     }
 }
 
