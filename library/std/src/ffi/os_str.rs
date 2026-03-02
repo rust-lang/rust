@@ -3,6 +3,8 @@
 #[cfg(test)]
 mod tests;
 
+use alloc::alloc::Allocator;
+use alloc::string::generic::String;
 use core::clone::CloneToUninit;
 
 use crate::borrow::{Borrow, Cow};
@@ -1721,7 +1723,7 @@ impl AsRef<OsStr> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for String {
+impl<A: Allocator> AsRef<OsStr> for String<A> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()

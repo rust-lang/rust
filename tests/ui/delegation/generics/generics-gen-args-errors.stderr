@@ -70,15 +70,11 @@ help: consider introducing a named lifetime parameter
 LL |     reuse Trait::<Trait<'a, 'a, 'a>, Clone, _, 'static, dyn Send, _>::foo'a, ::<1, 2, 3, _, 6> as bar7;
    |                        ++++++++++++                                      +++
 
-error[E0423]: expected value, found struct `String`
+error[E0423]: expected value, found type alias `String`
   --> $DIR/generics-gen-args-errors.rs:15:33
    |
 LL |         bar::<String, String, { String }>();
-   |                                 ^^^^^^
-   |
-  --> $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-   = note: `String` defined here
+   |                                 ^^^^^^ not a value
 
 error[E0425]: cannot find type `asd` in this scope
   --> $DIR/generics-gen-args-errors.rs:29:15

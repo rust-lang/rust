@@ -32,6 +32,8 @@ LL |     let g: String = f;
    |            |
    |            expected due to this
    |
+   = note: expected struct `String`
+              found struct `Bar`
 help: try using a conversion method
    |
 LL |     let g: String = f.to_string();
