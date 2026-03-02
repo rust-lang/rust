@@ -928,6 +928,7 @@ impl FunctionBody {
             false
         };
 
+        // FIXME: make trait arguments
         let trait_name = ast::Trait::cast(insert_after.clone())
             .and_then(|trait_| Some(make::ty_path(make::ext::ident_path(&trait_.name()?.text()))));
 
