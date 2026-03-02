@@ -33,7 +33,7 @@ pub(super) struct StackEntry<X: Cx> {
 
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
-    pub provisional_result: Option<X::Result>,
+    pub provisional_result: Option<X::ResultAndAccessedOpaques>,
 
     /// All cycle heads this goal depends on. Lazily updated and only
     /// up-to date for the top of the stack.

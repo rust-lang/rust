@@ -39,7 +39,7 @@ pub use global_cache::GlobalCache;
 /// of the search graph.
 pub trait Cx: Copy {
     type Input: Debug + Eq + Hash + Copy;
-    type Result: Debug + Eq + Hash + Copy;
+    type ResultAndAccessedOpaques: Debug + Eq + Hash + Copy;
     type AmbiguityInfo: Debug + Eq + Hash + Copy;
 
     type DepNodeIndex;
@@ -86,32 +86,34 @@ pub trait Delegate: Sized {
         cx: Self::Cx,
         kind: PathKind,
         input: <Self::Cx as Cx>::Input,
-    ) -> <Self::Cx as Cx>::Result;
-    fn is_initial_provisional_result(result: <Self::Cx as Cx>::Result) -> Option<PathKind>;
+    ) -> <Self::Cx as Cx>::ResultAndAccessedOpaques;
+    fn is_initial_provisional_result(
+        result: <Self::Cx as Cx>::ResultAndAccessedOpaques,
+    ) -> Option<PathKind>;
     fn stack_overflow_result(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
-    ) -> <Self::Cx as Cx>::Result;
+    ) -> <Self::Cx as Cx>::ResultAndAccessedOpaques;
     fn fixpoint_overflow_result(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
-    ) -> <Self::Cx as Cx>::Result;
+    ) -> <Self::Cx as Cx>::ResultAndAccessedOpaques;
 
     fn is_ambiguous_result(
-        result: <Self::Cx as Cx>::Result,
+        result: <Self::Cx as Cx>::ResultAndAccessedOpaques,
     ) -> Option<<Self::Cx as Cx>::AmbiguityInfo>;
     fn propagate_ambiguity(
         cx: Self::Cx,
         for_input: <Self::Cx as Cx>::Input,
         ambiguity_info: <Self::Cx as Cx>::AmbiguityInfo,
-    ) -> <Self::Cx as Cx>::Result;
+    ) -> <Self::Cx as Cx>::ResultAndAccessedOpaques;
 
     fn compute_goal(
         search_graph: &mut SearchGraph<Self>,
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
         inspect: &mut Self::ProofTreeBuilder,
-    ) -> <Self::Cx as Cx>::Result;
+    ) -> <Self::Cx as Cx>::ResultAndAccessedOpaques;
 }
 
 /// In the initial iteration of a cycle, we do not yet have a provisional
@@ -538,7 +540,7 @@ struct ProvisionalCacheEntry<X: Cx> {
     /// The path from the highest cycle head to this goal. This differs from
     /// `heads` which tracks the path to the cycle head *from* this goal.
     path_from_head: PathKind,
-    result: X::Result,
+    result: X::ResultAndAccessedOpaques,
 }
 
 /// The final result of evaluating a goal.
@@ -556,14 +558,14 @@ struct EvaluationResult<X: Cx> {
     required_depth: usize,
     heads: CycleHeads,
     nested_goals: NestedGoals<X>,
-    result: X::Result,
+    result: X::ResultAndAccessedOpaques,
 }
 
 impl<X: Cx> EvaluationResult<X> {
     fn finalize(
         final_entry: StackEntry<X>,
         encountered_overflow: bool,
-        result: X::Result,
+        result: X::ResultAndAccessedOpaques,
     ) -> EvaluationResult<X> {
         EvaluationResult {
             encountered_overflow,
@@ -734,7 +736,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         root_depth: usize,
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
-    ) -> X::Result {
+    ) -> X::ResultAndAccessedOpaques {
         let mut this = SearchGraph::<D>::new(root_depth);
         let available_depth = AvailableDepth(root_depth);
         let step_kind_from_parent = PathKind::Inductive; // is never used
@@ -765,7 +767,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         step_kind_from_parent: PathKind,
         inspect: &mut D::ProofTreeBuilder,
-    ) -> X::Result {
+    ) -> X::ResultAndAccessedOpaques {
         let Some(available_depth) =
             AvailableDepth::allowed_depth_for_nested::<D>(self.root_depth, &self.stack)
         else {
@@ -854,7 +856,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             if let Some((_scope, expected)) = validate_cache {
                 // Do not try to move a goal into the cache again if we're testing
                 // the global cache.
-                assert_eq!(expected, evaluation_result.result, "input={input:?}");
+                assert_eq!(expected, result, "input={input:?}");
             } else if D::inspect_is_noop(inspect) {
                 self.insert_global_cache(cx, input, evaluation_result, dep_node)
             }
@@ -884,7 +886,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         result
     }
 
-    fn handle_overflow(&mut self, cx: X, input: X::Input) -> X::Result {
+    fn handle_overflow(&mut self, cx: X, input: X::Input) -> X::ResultAndAccessedOpaques {
         if let Some(last) = self.stack.last_mut() {
             last.encountered_overflow = true;
             // If computing a goal `B` depends on another goal `A` and
@@ -1084,7 +1086,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         input: X::Input,
         step_kind_from_parent: PathKind,
-    ) -> Option<X::Result> {
+    ) -> Option<X::ResultAndAccessedOpaques> {
         if !D::ENABLE_PROVISIONAL_CACHE {
             return None;
         }
@@ -1210,7 +1212,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         input: X::Input,
         step_kind_from_parent: PathKind,
         available_depth: AvailableDepth,
-    ) -> Option<X::Result> {
+    ) -> Option<X::ResultAndAccessedOpaques> {
         cx.with_global_cache(|cache| {
             cache
                 .get(cx, input, available_depth, |nested_goals| {
@@ -1229,7 +1231,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         input: X::Input,
         step_kind_from_parent: PathKind,
         available_depth: AvailableDepth,
-    ) -> Option<X::Result> {
+    ) -> Option<X::ResultAndAccessedOpaques> {
         cx.with_global_cache(|cache| {
             let CacheData { result, required_depth, encountered_overflow, nested_goals } = cache
                 .get(cx, input, available_depth, |nested_goals| {
@@ -1258,7 +1260,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
-    ) -> Option<X::Result> {
+    ) -> Option<X::ResultAndAccessedOpaques> {
         let head_index = self.stack.find(input)?;
         // We have a nested goal which directly relies on a goal deeper in the stack.
         //
@@ -1295,7 +1297,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         stack_entry: &StackEntry<X>,
         usages: HeadUsages,
-        result: X::Result,
+        result: X::ResultAndAccessedOpaques,
     ) -> Result<Option<PathKind>, ()> {
         let provisional_result = stack_entry.provisional_result;
         if let Some(provisional_result) = provisional_result {

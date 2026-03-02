@@ -3,7 +3,9 @@ use std::marker::PhantomData;
 
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::search_graph::{self, PathKind};
-use rustc_type_ir::solve::{CanonicalInput, Certainty, NoSolution, QueryResult};
+use rustc_type_ir::solve::{
+    AccessedOpaques, AccessedOpaquesInfo, CanonicalInput, Certainty, NoSolution, QueryResult,
+};
 use rustc_type_ir::{Interner, TypingMode};
 
 use crate::canonical::response_no_constraints_raw;
@@ -47,7 +49,7 @@ where
         cx: I,
         kind: PathKind,
         input: CanonicalInput<I>,
-    ) -> QueryResult<I> {
+    ) -> (QueryResult<I>, AccessedOpaques<I>) {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
             PathKind::Unknown | PathKind::ForcedAmbiguity => {
@@ -69,13 +71,15 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => Err(NoSolution),
+                | TypingMode::PostAnalysis => (Err(NoSolution), AccessedOpaques::default()),
             },
         }
     }
 
-    fn is_initial_provisional_result(result: QueryResult<I>) -> Option<PathKind> {
-        match result {
+    fn is_initial_provisional_result(
+        result: (QueryResult<I>, AccessedOpaques<I>),
+    ) -> Option<PathKind> {
+        match result.0 {
             Ok(response) => {
                 if has_no_inference_or_external_constraints(response) {
                     if response.value.certainty == Certainty::Yes {
@@ -91,16 +95,22 @@ where
         }
     }
 
-    fn stack_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn stack_overflow_result(
+        cx: I,
+        input: CanonicalInput<I>,
+    ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 
-    fn fixpoint_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn fixpoint_overflow_result(
+        cx: I,
+        input: CanonicalInput<I>,
+    ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
 
-    fn is_ambiguous_result(result: QueryResult<I>) -> Option<Certainty> {
-        result.ok().and_then(|response| {
+    fn is_ambiguous_result(result: (QueryResult<I>, AccessedOpaques<I>)) -> Option<Certainty> {
+        result.0.ok().and_then(|response| {
             if has_no_inference_or_external_constraints(response)
                 && matches!(response.value.certainty, Certainty::Maybe { .. })
             {
@@ -115,7 +125,7 @@ where
         cx: I,
         for_input: CanonicalInput<I>,
         certainty: Certainty,
-    ) -> QueryResult<I> {
+    ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, for_input, certainty)
     }
 
@@ -124,7 +134,7 @@ where
         cx: I,
         input: CanonicalInput<I>,
         inspect: &mut Self::ProofTreeBuilder,
-    ) -> QueryResult<I> {
+    ) -> (QueryResult<I>, AccessedOpaques<I>) {
         ensure_sufficient_stack(|| {
             EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
                 let result = ecx.compute_goal(goal);
@@ -139,11 +149,14 @@ fn response_no_constraints<I: Interner>(
     cx: I,
     input: CanonicalInput<I>,
     certainty: Certainty,
-) -> QueryResult<I> {
-    Ok(response_no_constraints_raw(
-        cx,
-        input.canonical.max_universe,
-        input.canonical.var_kinds,
-        certainty,
-    ))
+) -> (QueryResult<I>, AccessedOpaques<I>) {
+    (
+        Ok(response_no_constraints_raw(
+            cx,
+            input.canonical.max_universe,
+            input.canonical.var_kinds,
+            certainty,
+        )),
+        AccessedOpaques::No,
+    )
 }

@@ -682,14 +682,18 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        let () = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
+        let _res = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
             ecx.assemble_alias_bound_candidates_recur(
                 goal.predicate.self_ty(),
                 goal,
                 candidates,
                 AliasBoundKind::SelfBounds,
             );
+            Ok(())
         });
+        // always returns Ok
+        // TODO: separate path for probes erroring because of accessing opaques
+        // assert!(res.is_ok());
     }
 
     /// For some deeply nested `<T>::A::B::C::D` rigid associated type,

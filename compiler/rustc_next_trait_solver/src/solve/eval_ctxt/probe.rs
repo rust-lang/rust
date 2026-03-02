@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::{AccessedOpaques, AccessedOpaquesInfo};
+use rustc_type_ir::solve::{AccessedOpaques, CanonicalResponse};
 use rustc_type_ir::{InferCtxtLike, Interner};
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
@@ -24,16 +24,21 @@ where
 
 impl<D, I, F, T> ProbeCtxt<'_, '_, D, I, F, T>
 where
-    F: FnOnce(&T) -> inspect::ProbeKind<I>,
+    F: FnOnce(&Result<T, NoSolution>) -> inspect::ProbeKind<I>,
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     pub(in crate::solve) fn enter_single_candidate(
         self,
-        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
-    ) -> (T, CandidateHeadUsages) {
-        self.ecx.search_graph.enter_single_candidate();
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<T, NoSolution>,
+    ) -> (Result<T, NoSolution>, CandidateHeadUsages) {
         let mut candidate_usages = CandidateHeadUsages::default();
+
+        if self.ecx.canonicalize_accessed_opaques.should_bail_instantly() {
+            return (Err(NoSolution), candidate_usages);
+        }
+
+        self.ecx.search_graph.enter_single_candidate();
         let result = self.enter(|ecx| {
             let result = f(ecx);
             candidate_usages = ecx.search_graph.finish_single_candidate();
@@ -42,24 +47,31 @@ where
         (result, candidate_usages)
     }
 
-    pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
+    pub(in crate::solve) fn enter(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<T, NoSolution>,
+    ) -> Result<T, NoSolution> {
         let nested_goals = self.ecx.nested_goals.clone();
         self.enter_inner(f, nested_goals)
     }
 
     pub(in crate::solve) fn enter_without_propagated_nested_goals(
         self,
-        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
-    ) -> T {
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<T, NoSolution>,
+    ) -> Result<T, NoSolution> {
         self.enter_inner(f, Default::default())
     }
 
-    fn enter_inner(
+    pub(in crate::solve) fn enter_inner(
         self,
-        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> Result<T, NoSolution>,
         propagated_nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
-    ) -> T {
+    ) -> Result<T, NoSolution> {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
+
+        if outer.canonicalize_accessed_opaques.should_bail_instantly() {
+            return Err(NoSolution);
+        }
 
         let delegate = outer.delegate;
         let max_input_universe = outer.max_input_universe;
@@ -88,6 +100,12 @@ where
             nested.inspect.probe_kind(probe_kind);
             outer.inspect = nested.inspect.finish_probe();
         }
+
+        if let AccessedOpaques::Yes(info) = nested.canonicalize_accessed_opaques {
+            warn!("forwarding accessed opaques {info:?}");
+            outer.canonicalize_accessed_opaques.merge(info);
+        }
+
         r
     }
 }
@@ -97,7 +115,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    cx: ProbeCtxt<'me, 'a, D, I, F, QueryResult<I>>,
+    cx: ProbeCtxt<'me, 'a, D, I, F, CanonicalResponse<I>>,
     source: CandidateSource<I>,
 }
 
@@ -126,7 +144,7 @@ where
     /// as expensive as necessary to output the desired information.
     pub(in crate::solve) fn probe<F, T>(&mut self, probe_kind: F) -> ProbeCtxt<'_, 'a, D, I, F, T>
     where
-        F: FnOnce(&T) -> inspect::ProbeKind<I>,
+        F: FnOnce(&Result<T, NoSolution>) -> inspect::ProbeKind<I>,
     {
         ProbeCtxt { ecx: self, probe_kind, _result: PhantomData }
     }

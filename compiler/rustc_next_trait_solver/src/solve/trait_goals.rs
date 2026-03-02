@@ -799,58 +799,56 @@ where
             return vec![];
         }
 
-        let result_to_single = |result| match result {
-            Ok(resp) => vec![resp],
+        let result = ecx.probe(|_| ProbeKind::UnsizeAssembly).enter(
+            |ecx| -> Result<Vec<Candidate<I>>, NoSolution> {
+                let a_ty = goal.predicate.self_ty();
+                // We need to normalize the b_ty since it's matched structurally
+                // in the other functions below.
+                let b_ty = ecx.structurally_normalize_ty(
+                    goal.param_env,
+                    goal.predicate.trait_ref.args.type_at(1),
+                )?;
+
+                let goal = goal.with(ecx.cx(), (a_ty, b_ty));
+                match (a_ty.kind(), b_ty.kind()) {
+                    (ty::Infer(ty::TyVar(..)), ..) => panic!("unexpected infer {a_ty:?} {b_ty:?}"),
+
+                    (_, ty::Infer(ty::TyVar(..))) => {
+                        Ok(vec![ecx.forced_ambiguity(MaybeCause::Ambiguity)?])
+                    }
+
+                    // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
+                    (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => Ok(ecx
+                        .consider_builtin_dyn_upcast_candidates(
+                            goal, a_data, a_region, b_data, b_region,
+                        )),
+
+                    // `T` -> `dyn Trait` unsizing.
+                    (_, ty::Dynamic(b_region, b_data)) => Ok(vec![
+                        ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data)?,
+                    ]),
+
+                    // `[T; N]` -> `[T]` unsizing
+                    (ty::Array(a_elem_ty, ..), ty::Slice(b_elem_ty)) => {
+                        Ok(vec![ecx.consider_builtin_array_unsize(goal, a_elem_ty, b_elem_ty)?])
+                    }
+
+                    // `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
+                    (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args))
+                        if a_def.is_struct() && a_def == b_def =>
+                    {
+                        Ok(vec![ecx.consider_builtin_struct_unsize(goal, a_def, a_args, b_args)?])
+                    }
+
+                    _ => Err(NoSolution),
+                }
+            },
+        );
+
+        match result {
+            Ok(resp) => resp,
             Err(NoSolution) => vec![],
-        };
-
-        ecx.probe(|_| ProbeKind::UnsizeAssembly).enter(|ecx| {
-            let a_ty = goal.predicate.self_ty();
-            // We need to normalize the b_ty since it's matched structurally
-            // in the other functions below.
-            let Ok(b_ty) = ecx.structurally_normalize_ty(
-                goal.param_env,
-                goal.predicate.trait_ref.args.type_at(1),
-            ) else {
-                return vec![];
-            };
-
-            let goal = goal.with(ecx.cx(), (a_ty, b_ty));
-            match (a_ty.kind(), b_ty.kind()) {
-                (ty::Infer(ty::TyVar(..)), ..) => panic!("unexpected infer {a_ty:?} {b_ty:?}"),
-
-                (_, ty::Infer(ty::TyVar(..))) => {
-                    result_to_single(ecx.forced_ambiguity(MaybeCause::Ambiguity))
-                }
-
-                // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
-                (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => ecx
-                    .consider_builtin_dyn_upcast_candidates(
-                        goal, a_data, a_region, b_data, b_region,
-                    ),
-
-                // `T` -> `dyn Trait` unsizing.
-                (_, ty::Dynamic(b_region, b_data)) => result_to_single(
-                    ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data),
-                ),
-
-                // `[T; N]` -> `[T]` unsizing
-                (ty::Array(a_elem_ty, ..), ty::Slice(b_elem_ty)) => {
-                    result_to_single(ecx.consider_builtin_array_unsize(goal, a_elem_ty, b_elem_ty))
-                }
-
-                // `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-                (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args))
-                    if a_def.is_struct() && a_def == b_def =>
-                {
-                    result_to_single(
-                        ecx.consider_builtin_struct_unsize(goal, a_def, a_args, b_args),
-                    )
-                }
-
-                _ => vec![],
-            }
-        })
+        }
     }
 
     fn consider_builtin_field_candidate(

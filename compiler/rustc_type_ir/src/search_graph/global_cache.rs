@@ -7,12 +7,12 @@ use crate::search_graph::EvaluationResult;
 struct Success<X: Cx> {
     required_depth: usize,
     nested_goals: NestedGoals<X>,
-    result: X::Tracked<X::Result>,
+    result: X::Tracked<X::ResultAndAccessedOpaques>,
 }
 
 struct WithOverflow<X: Cx> {
     nested_goals: NestedGoals<X>,
-    result: X::Tracked<X::Result>,
+    result: X::Tracked<X::ResultAndAccessedOpaques>,
 }
 
 /// The cache entry for a given input.
@@ -28,7 +28,7 @@ struct CacheEntry<X: Cx> {
 
 #[derive_where(Debug; X: Cx)]
 pub(super) struct CacheData<'a, X: Cx> {
-    pub(super) result: X::Result,
+    pub(super) result: X::ResultAndAccessedOpaques,
     pub(super) required_depth: usize,
     pub(super) encountered_overflow: bool,
     pub(super) nested_goals: &'a NestedGoals<X>,

@@ -361,13 +361,13 @@ where
     ///
     /// This function takes care of setting up the inference context, setting the anchor,
     /// and registering opaques from the canonicalized input.
-    pub(super) fn enter_canonical<R>(
+    pub(super) fn enter_canonical<T>(
         cx: I,
         search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
         proof_tree_builder: &mut inspect::ProofTreeBuilder<D>,
-        f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
-    ) -> R {
+        f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> Result<T, NoSolution>,
+    ) -> (Result<T, NoSolution>, AccessedOpaques<I>) {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
         for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
@@ -414,7 +414,7 @@ where
         // FIXME: Could we make `build_with_canonical` into `enter_with_canonical` and call this at the end?
         delegate.reset_opaque_types();
 
-        result
+        (result, ecx.canonicalize_accessed_opaques)
     }
 
     pub(super) fn ignore_candidate_head_usages(&mut self, usages: CandidateHeadUsages) {
@@ -481,7 +481,7 @@ where
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
         let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, &opaque_types);
-        let canonical_result = self.search_graph.evaluate_goal(
+        let (canonical_result, _accessed_opaques) = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
             self.step_kind_for_source(source),
@@ -1498,13 +1498,15 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
     canonical_goal: CanonicalInput<I>,
 ) -> (QueryResult<I>, I::Probe) {
     let mut inspect = inspect::ProofTreeBuilder::new();
-    let canonical_result = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
+    let (canonical_result, accessed_opaques) = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
         cx,
         cx.recursion_limit(),
         canonical_goal,
         &mut inspect,
     );
     let final_revision = inspect.unwrap();
+
+    assert!(!matches!(accessed_opaques, AccessedOpaques::Yes(..)));
     (canonical_result, cx.mk_probe(final_revision))
 }
 
