@@ -484,7 +484,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 BackendRepr::Scalar(..)
                 | BackendRepr::ScalarPair(..)
                 | BackendRepr::SimdVector { .. }
-                | BackendRepr::ScalableVector { .. }
+                | BackendRepr::SimdScalableVector { .. }
                 | BackendRepr::Memory { .. } => repr,
             },
         };
@@ -557,7 +557,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     hide_niches(b);
                 }
                 BackendRepr::SimdVector { element, .. }
-                | BackendRepr::ScalableVector { element, .. } => hide_niches(element),
+                | BackendRepr::SimdScalableVector { element, .. } => hide_niches(element),
                 BackendRepr::Memory { sized: _ } => {}
             }
             st.largest_niche = None;
@@ -1560,7 +1560,7 @@ where
         elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
     let (repr, align) = match kind {
         VectorKind::Scalable => {
-            (BackendRepr::ScalableVector { element, count }, dl.llvmlike_vector_align(size))
+            (BackendRepr::SimdScalableVector { element, count }, dl.llvmlike_vector_align(size))
         }
         // Non-power-of-two vectors have padding up to the next power-of-two.
         // If we're a packed repr, remove the padding while keeping the alignment as close

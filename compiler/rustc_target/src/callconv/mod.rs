@@ -392,7 +392,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             ),
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
-            BackendRepr::ScalableVector { .. } => PassMode::Direct(ArgAttributes::new()),
+            BackendRepr::SimdScalableVector { .. } => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
     }
@@ -878,7 +878,7 @@ where
                 matches!(layout.variants, Variants::Single { .. }) && fields_are_noundef(layout, cx)
             }
         },
-        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => false,
+        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => false,
     }
 }
 
