@@ -99,8 +99,9 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
     const PATH: &[Symbol] = &[sym::rustc_variance];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
         Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::Struct),
         Allow(Target::Union),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVariance;
