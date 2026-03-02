@@ -2,16 +2,16 @@ pub mod inspect;
 
 use std::hash::Hash;
 
+use crate::lang_items::SolverTraitLangItem;
+use crate::search_graph::PathKind;
+use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
-
-use crate::lang_items::SolverTraitLangItem;
-use crate::search_graph::PathKind;
-use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
+use tracing::warn;
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
     ty::CanonicalQueryInput<I, QueryInput<I, T>>;
@@ -27,6 +27,117 @@ pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct NoSolution;
+
+#[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum AccessedState<I: Interner> {
+    Known1([I::LocalDefId; 1]),
+    Known2([I::LocalDefId; 2]),
+    Known3([I::LocalDefId; 3]),
+    UnknownOrTooManyKnown,
+}
+
+#[derive_where(Copy, Clone, Debug, Hash, PartialEq, Eq; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub struct AccessedOpaquesInfo<I: Interner> {
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
+    pub reason: &'static str,
+    pub defids_accessed: AccessedState<I>,
+}
+
+impl<I: Interner> AccessedOpaquesInfo<I> {
+    pub fn merge(&self, new_info: AccessedOpaquesInfo<I>) -> Self {
+        let defid_accessed = match (self.defids_accessed, new_info.defids_accessed) {
+            (AccessedState::Known1([one]), AccessedState::Known1([two])) => {
+                AccessedState::Known2([one, two])
+            }
+            (AccessedState::Known2([one, two]), AccessedState::Known1([three]))
+            | (AccessedState::Known1([one]), AccessedState::Known2([two, three])) => {
+                AccessedState::Known3([one, two, three])
+            }
+            _ => AccessedState::UnknownOrTooManyKnown,
+        };
+
+        Self {
+            // choose the newest one
+            reason: new_info.reason,
+            // merging accessed states can only result in MultipleOrUnknown
+            defids_accessed: defid_accessed,
+        }
+    }
+
+    pub fn opaques_accessed(&self) -> Option<&[I::LocalDefId]> {
+        match &self.defids_accessed {
+            AccessedState::Known1(d) => Some(d),
+            AccessedState::Known2(d) => Some(d),
+            AccessedState::Known3(d) => Some(d),
+            AccessedState::UnknownOrTooManyKnown => None,
+        }
+    }
+}
+
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum AccessedOpaques<I: Interner> {
+    Yes(AccessedOpaquesInfo<I>),
+    No,
+}
+
+impl<I: Interner> Default for AccessedOpaques<I> {
+    fn default() -> Self {
+        Self::No
+    }
+}
+
+impl<I: Interner> AccessedOpaques<I> {
+    pub fn merge(&mut self, info: AccessedOpaquesInfo<I>) {
+        warn!("merging {info:?}");
+        *self = match self {
+            AccessedOpaques::Yes(existing_info) => AccessedOpaques::Yes(existing_info.merge(info)),
+            AccessedOpaques::No => AccessedOpaques::Yes(info),
+        };
+    }
+
+    #[must_use]
+    pub fn should_bail_instantly(&self) -> bool {
+        match self {
+            AccessedOpaques::Yes(AccessedOpaquesInfo {
+                reason: _,
+                defids_accessed: AccessedState::UnknownOrTooManyKnown,
+            }) => true,
+            AccessedOpaques::Yes(AccessedOpaquesInfo {
+                reason: _,
+                defids_accessed:
+                    AccessedState::Known1(_) | AccessedState::Known2(_) | AccessedState::Known3(_),
+            }) => false,
+            AccessedOpaques::No => false,
+        }
+    }
+
+    pub fn opaques_accessed(&self) -> Option<&[I::LocalDefId]> {
+        match self {
+            AccessedOpaques::Yes(i) => i.opaques_accessed(),
+            AccessedOpaques::No => Some(&[]),
+        }
+    }
+
+    pub fn bail_unrecoverable(&mut self, reason: &'static str) {
+        warn!("bail unrecoverable {reason:?}");
+        self.merge(AccessedOpaquesInfo {
+            reason,
+            defids_accessed: AccessedState::UnknownOrTooManyKnown,
+        });
+    }
+
+    pub fn bail_defid(&mut self, reason: &'static str, defid: I::LocalDefId) {
+        warn!("bail defid {defid:?} {reason:?}");
+        self.merge(AccessedOpaquesInfo { reason, defids_accessed: AccessedState::Known1([defid]) });
+    }
+}
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.

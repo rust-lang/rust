@@ -8,13 +8,13 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
-use rustc_type_ir::solve::OpaqueTypesJank;
+use rustc_type_ir::solve::{AccessedOpaques, AccessedOpaquesInfo, OpaqueTypesJank};
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
-use tracing::{debug, instrument, trace};
+use tracing::{Level, debug, instrument, trace, warn};
 
 use super::has_only_region_constraints;
 use crate::canonical::{
@@ -132,6 +132,19 @@ where
     // ambiguous goals. Instead, a probe needs to be introduced somewhere in the
     // evaluation code.
     tainted: Result<(), NoSolution>,
+
+    /// This method is called any time we canonicalize in [`TypingMode::ErasedNotCoherence`],
+    /// and some operation attempts to access opaque types.
+    /// In this typing mode, we do not provide opaque types.
+    /// Attempting to access them should bail out of canonicalization as fast as possible,
+    /// so we can retry *with* opaque types.
+    ///
+    /// This is an optimization strategy: if we *can* canonicalize in `TypingMode::ErasedNotCoherence`,
+    /// so without accessing opaque types, we can create a smaller cache key (without opaque types),
+    /// making it more likely that we can use this cached result in the future.
+    ///
+    /// This function returns [`NoSolution`] that must be used, to encourage you to bail out.
+    pub(super) canonicalize_accessed_opaques: AccessedOpaques<I>,
 
     pub(super) inspect: inspect::EvaluationStepBuilder<D>,
 }
@@ -330,6 +343,7 @@ where
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
             tainted: Ok(()),
+            canonicalize_accessed_opaques: AccessedOpaques::default(),
         };
         let result = f(&mut ecx);
         assert!(
@@ -386,6 +400,7 @@ where
             origin_span: I::Span::dummy(),
             tainted: Ok(()),
             inspect: proof_tree_builder.new_evaluation_step(var_values),
+            canonicalize_accessed_opaques: AccessedOpaques::default(),
         };
 
         let result = f(&mut ecx, input.goal);

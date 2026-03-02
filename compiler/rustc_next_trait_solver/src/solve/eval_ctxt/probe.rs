@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use rustc_type_ir::search_graph::CandidateHeadUsages;
+use rustc_type_ir::solve::{AccessedOpaques, AccessedOpaquesInfo};
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::instrument;
 
@@ -75,6 +76,7 @@ where
             origin_span: outer.origin_span,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),
+            canonicalize_accessed_opaques: AccessedOpaques::default(),
         };
         let r = nested.delegate.probe(|| {
             let r = f(&mut nested);
