@@ -1,7 +1,10 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::{Applicability, DiagArgValue, elided_lifetime_in_path_suggestion};
+use rustc_errors::{
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
+    elided_lifetime_in_path_suggestion,
+};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
@@ -10,16 +13,29 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::BytePos;
 use tracing::debug;
 
-use crate::{EmitDiag, lints};
+use crate::lints;
 
 mod check_cfg;
 
-pub fn decorate_builtin_lint(
-    ctx: impl EmitDiag,
+pub struct DecorateBuiltinLint<'sess, 'tcx> {
+    pub sess: &'sess Session,
+    pub tcx: Option<TyCtxt<'tcx>>,
+    pub diagnostic: BuiltinLintDiag,
+}
+
+impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        decorate_builtin_lint_inner(self.sess, self.tcx, self.diagnostic, dcx, level)
+    }
+}
+
+fn decorate_builtin_lint_inner<'d>(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     diagnostic: BuiltinLintDiag,
-) {
+    dcx: DiagCtxtHandle<'d>,
+    level: Level,
+) -> Diag<'d, ()> {
     match diagnostic {
         BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
             let spans: Vec<_> = content
@@ -39,12 +55,13 @@ pub fn decorate_builtin_lint(
                 spans: spans.iter().map(|(_c, span)| *span).collect(),
             });
 
-            ctx.emit(lints::UnicodeTextFlow {
+            lints::UnicodeTextFlow {
                 comment_span,
                 characters,
                 suggestions,
                 num_codepoints: spans.len(),
-            });
+            }
+            .into_diag(dcx, level)
         }
         BuiltinLintDiag::AbsPathWithModule(mod_span) => {
             let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
@@ -57,12 +74,13 @@ pub fn decorate_builtin_lint(
                 }
                 Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
             };
-            ctx.emit(lints::AbsPathWithModule {
+            lints::AbsPathWithModule {
                 sugg: lints::AbsPathWithModuleSugg { span: mod_span, applicability, replacement },
-            });
+            }
+            .into_diag(dcx, level)
         }
         BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
-            ctx.emit(lints::ElidedLifetimesInPaths {
+            lints::ElidedLifetimesInPaths {
                 subdiag: elided_lifetime_in_path_suggestion(
                     sess.source_map(),
                     n,
@@ -70,7 +88,8 @@ pub fn decorate_builtin_lint(
                     incl_angl_brckt,
                     insertion_span,
                 ),
-            });
+            }
+            .into_diag(dcx, level)
         }
         BuiltinLintDiag::UnusedImports {
             remove_whole_use,
@@ -87,14 +106,15 @@ pub fn decorate_builtin_lint(
             let test_module_span =
                 test_module_span.map(|span| sess.source_map().guess_head_span(span));
 
-            ctx.emit(lints::UnusedImports {
+            lints::UnusedImports {
                 sugg,
                 test_module_span,
                 num_snippets: span_snippets.len(),
                 span_snippets: DiagArgValue::StrListSepByAnd(
                     span_snippets.into_iter().map(Cow::Owned).collect(),
                 ),
-            });
+            }
+            .into_diag(dcx, level)
         }
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             let subs = spans
@@ -108,7 +128,7 @@ pub fn decorate_builtin_lint(
                     })(span)
                 })
                 .collect();
-            ctx.emit(lints::RedundantImport { subs, ident });
+            lints::RedundantImport { subs, ident }.into_diag(dcx, level)
         }
         BuiltinLintDiag::DeprecatedMacro {
             suggestion,
@@ -123,47 +143,42 @@ pub fn decorate_builtin_lint(
                 suggestion,
             });
 
-            ctx.emit(stability::Deprecated {
-                sub,
-                kind: "macro".to_owned(),
-                path,
-                note,
-                since_kind,
-            });
+            stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+                .into_diag(dcx, level)
         }
         BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
             let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-            ctx.emit(if is_foreign {
+            if is_foreign {
                 lints::PatternsInFnsWithoutBody::Foreign { sub }
             } else {
                 lints::PatternsInFnsWithoutBody::Bodiless { sub }
-            });
+            }
+            .into_diag(dcx, level)
         }
-        BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
-            ctx.emit(lints::ReservedPrefix {
-                label: label_span,
-                suggestion: label_span.shrink_to_hi(),
-                prefix,
-            });
+        BuiltinLintDiag::ReservedPrefix(label_span, prefix) => lints::ReservedPrefix {
+            label: label_span,
+            suggestion: label_span.shrink_to_hi(),
+            prefix,
         }
+        .into_diag(dcx, level),
         BuiltinLintDiag::RawPrefix(label_span) => {
-            ctx.emit(lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() });
+            lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
+                .into_diag(dcx, level)
         }
         BuiltinLintDiag::ReservedString { is_string, suggestion } => {
             if is_string {
-                ctx.emit(lints::ReservedString { suggestion });
+                lints::ReservedString { suggestion }.into_diag(dcx, level)
             } else {
-                ctx.emit(lints::ReservedMultihash { suggestion });
+                lints::ReservedMultihash { suggestion }.into_diag(dcx, level)
             }
         }
-        BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
-            ctx.emit(lints::BreakWithLabelAndLoop {
-                sub: lints::BreakWithLabelAndLoopSub {
-                    left: sugg_span.shrink_to_lo(),
-                    right: sugg_span.shrink_to_hi(),
-                },
-            });
+        BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => lints::BreakWithLabelAndLoop {
+            sub: lints::BreakWithLabelAndLoopSub {
+                left: sugg_span.shrink_to_lo(),
+                right: sugg_span.shrink_to_hi(),
+            },
         }
+        .into_diag(dcx, level),
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {
                 Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
@@ -173,7 +188,7 @@ pub fn decorate_builtin_lint(
                 },
                 None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
             };
-            ctx.emit(lints::DeprecatedWhereClauseLocation { suggestion });
+            lints::DeprecatedWhereClauseLocation { suggestion }.into_diag(dcx, level)
         }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
@@ -200,10 +215,11 @@ pub fn decorate_builtin_lint(
                 None
             };
 
-            ctx.emit(lints::SingleUseLifetime { suggestion, param_span, use_span, ident });
+            lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
+                .into_diag(dcx, level)
         }
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
-            ctx.emit(lints::UnusedLifetime { deletion_span, ident });
+            lints::UnusedLifetime { deletion_span, ident }.into_diag(dcx, level)
         }
         BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
@@ -231,43 +247,42 @@ pub fn decorate_builtin_lint(
                 (None, String::new())
             };
 
-            ctx.emit(lints::NamedArgumentUsedPositionally {
+            lints::NamedArgumentUsedPositionally {
                 named_arg_sp,
                 position_label_sp: position_sp_for_msg,
                 suggestion,
                 name,
                 named_arg_name,
-            });
+            }
+            .into_diag(dcx, level)
         }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
             first_reexport_span,
             duplicate_reexport_span,
-        } => {
-            ctx.emit(lints::AmbiguousGlobReexports {
-                first_reexport: first_reexport_span,
-                duplicate_reexport: duplicate_reexport_span,
-                name,
-                namespace,
-            });
+        } => lints::AmbiguousGlobReexports {
+            first_reexport: first_reexport_span,
+            duplicate_reexport: duplicate_reexport_span,
+            name,
+            namespace,
         }
+        .into_diag(dcx, level),
         BuiltinLintDiag::HiddenGlobReexports {
             name,
             namespace,
             glob_reexport_span,
             private_item_span,
-        } => {
-            ctx.emit(lints::HiddenGlobReexports {
-                glob_reexport: glob_reexport_span,
-                private_item: private_item_span,
+        } => lints::HiddenGlobReexports {
+            glob_reexport: glob_reexport_span,
+            private_item: private_item_span,
 
-                name,
-                namespace,
-            });
+            name,
+            namespace,
         }
+        .into_diag(dcx, level),
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            ctx.emit(lints::UnusedQualifications { removal_span });
+            lints::UnusedQualifications { removal_span }.into_diag(dcx, level)
         }
         BuiltinLintDiag::AssociatedConstElidedLifetime {
             elided,
@@ -276,56 +291,73 @@ pub fn decorate_builtin_lint(
         } => {
             let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
             let code = if elided { "'static " } else { "'static" };
-            ctx.emit(lints::AssociatedConstElidedLifetime {
-                span: lt_span,
-                code,
-                elided,
-                lifetimes_in_scope,
-            });
+            lints::AssociatedConstElidedLifetime { span: lt_span, code, elided, lifetimes_in_scope }
+                .into_diag(dcx, level)
         }
         BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
             Some(wildcard_span) => {
-                ctx.emit(lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span })
+                lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                    .into_diag(dcx, level)
             }
-            None => ctx.emit(lints::UnreachableCfgSelectPredicate { span }),
+            None => lints::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
         },
 
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
-            ctx.emit(lints::UnusedCrateDependency { extern_crate, local_crate })
+            lints::UnusedCrateDependency { extern_crate, local_crate }.into_diag(dcx, level)
         }
-        BuiltinLintDiag::UnusedVisibility(span) => ctx.emit(lints::UnusedVisibility { span }),
-        BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(ctx, sess, tcx, &kind),
+        BuiltinLintDiag::UnusedVisibility(span) => {
+            lints::UnusedVisibility { span }.into_diag(dcx, level)
+        }
+        BuiltinLintDiag::AttributeLint(kind) => {
+            decorate_attribute_lint(sess, tcx, &kind, dcx, level)
+        }
     }
 }
 
-pub fn decorate_attribute_lint(
-    ctx: impl EmitDiag,
+pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
+    pub sess: &'sess Session,
+    pub tcx: Option<TyCtxt<'tcx>>,
+    pub diagnostic: &'a AttributeLintKind,
+}
+
+impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        decorate_attribute_lint(self.sess, self.tcx, self.diagnostic, dcx, level)
+    }
+}
+
+fn decorate_attribute_lint<'d>(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     kind: &AttributeLintKind,
-) {
+    dcx: DiagCtxtHandle<'d>,
+    level: Level,
+) -> Diag<'d, ()> {
     match kind {
         &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
-            ctx.emit(lints::UnusedDuplicate { this, other, warning })
+            lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
         }
         AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
-            ctx.emit(lints::IllFormedAttributeInput {
+            lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
                     suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
                 ),
                 has_docs: docs.is_some(),
                 docs: docs.unwrap_or(""),
-            })
+            }
+            .into_diag(dcx, level)
         }
-        AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => ctx
-            .emit(lints::EmptyAttributeList {
+        AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
+            lints::EmptyAttributeList {
                 attr_span: *first_span,
                 attr_path: attr_path.clone(),
                 valid_without_list: *valid_without_list,
-            }),
+            }
+            .into_diag(dcx, level)
+        }
         AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
-            ctx.emit(lints::InvalidTargetLint {
+            lints::InvalidTargetLint {
                 name: name.clone(),
                 target,
                 applied: DiagArgValue::StrListSepByAnd(
@@ -333,117 +365,129 @@ pub fn decorate_attribute_lint(
                 ),
                 only,
                 attr_span: *attr_span,
-            })
+            }
+            .into_diag(dcx, level)
         }
-        &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => ctx
-            .emit(lints::InvalidAttrStyle {
+        &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => {
+            lints::InvalidAttrStyle {
                 name: name.clone(),
                 is_used_as_inner,
                 target_span: (!is_used_as_inner).then_some(target_span),
                 target,
-            }),
-        &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => ctx
-            .emit(lints::UnsafeAttrOutsideUnsafeLint {
+            }
+            .into_diag(dcx, level)
+        }
+        &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
+            lints::UnsafeAttrOutsideUnsafeLint {
                 span: attribute_name_span,
                 suggestion: sugg_spans
                     .map(|(left, right)| lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }),
-            }),
+            }
+            .into_diag(dcx, level)
+        }
         &AttributeLintKind::UnexpectedCfgName(name, value) => {
-            ctx.emit(check_cfg::unexpected_cfg_name(sess, tcx, name, value))
+            check_cfg::unexpected_cfg_name(sess, tcx, name, value).into_diag(dcx, level)
         }
         &AttributeLintKind::UnexpectedCfgValue(name, value) => {
-            ctx.emit(check_cfg::unexpected_cfg_value(sess, tcx, name, value))
+            check_cfg::unexpected_cfg_value(sess, tcx, name, value).into_diag(dcx, level)
         }
         &AttributeLintKind::DuplicateDocAlias { first_definition } => {
-            ctx.emit(lints::DocAliasDuplicated { first_defn: first_definition })
+            lints::DocAliasDuplicated { first_defn: first_definition }.into_diag(dcx, level)
         }
 
         &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
-            ctx.emit(lints::DocAutoCfgExpectsHideOrShow)
+            lints::DocAutoCfgExpectsHideOrShow.into_diag(dcx, level)
         }
 
-        &AttributeLintKind::AmbiguousDeriveHelpers => ctx.emit(lints::AmbiguousDeriveHelpers),
+        &AttributeLintKind::AmbiguousDeriveHelpers => {
+            lints::AmbiguousDeriveHelpers.into_diag(dcx, level)
+        }
 
         &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
-            ctx.emit(lints::DocAutoCfgHideShowUnexpectedItem { attr_name })
+            lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.into_diag(dcx, level)
         }
 
         &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
-            ctx.emit(lints::DocAutoCfgHideShowExpectsList { attr_name })
+            lints::DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
         }
 
-        &AttributeLintKind::DocInvalid => ctx.emit(lints::DocInvalid),
+        &AttributeLintKind::DocInvalid => lints::DocInvalid.into_diag(dcx, level),
 
         &AttributeLintKind::DocUnknownInclude { span, inner, value } => {
-            ctx.emit(lints::DocUnknownInclude {
-                inner,
-                value,
-                sugg: (span, Applicability::MaybeIncorrect),
-            })
+            lints::DocUnknownInclude { inner, value, sugg: (span, Applicability::MaybeIncorrect) }
+                .into_diag(dcx, level)
         }
 
         &AttributeLintKind::DocUnknownSpotlight { span } => {
-            ctx.emit(lints::DocUnknownSpotlight { sugg_span: span })
+            lints::DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level)
         }
 
         &AttributeLintKind::DocUnknownPasses { name, span } => {
-            ctx.emit(lints::DocUnknownPasses { name, note_span: span })
+            lints::DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
         }
 
         &AttributeLintKind::DocUnknownPlugins { span } => {
-            ctx.emit(lints::DocUnknownPlugins { label_span: span })
+            lints::DocUnknownPlugins { label_span: span }.into_diag(dcx, level)
         }
 
-        &AttributeLintKind::DocUnknownAny { name } => ctx.emit(lints::DocUnknownAny { name }),
+        &AttributeLintKind::DocUnknownAny { name } => {
+            lints::DocUnknownAny { name }.into_diag(dcx, level)
+        }
 
-        &AttributeLintKind::DocAutoCfgWrongLiteral => ctx.emit(lints::DocAutoCfgWrongLiteral),
+        &AttributeLintKind::DocAutoCfgWrongLiteral => {
+            lints::DocAutoCfgWrongLiteral.into_diag(dcx, level)
+        }
 
-        &AttributeLintKind::DocTestTakesList => ctx.emit(lints::DocTestTakesList),
+        &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.into_diag(dcx, level),
 
-        &AttributeLintKind::DocTestUnknown { name } => ctx.emit(lints::DocTestUnknown { name }),
+        &AttributeLintKind::DocTestUnknown { name } => {
+            lints::DocTestUnknown { name }.into_diag(dcx, level)
+        }
 
-        &AttributeLintKind::DocTestLiteral => ctx.emit(lints::DocTestLiteral),
+        &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.into_diag(dcx, level),
 
-        &AttributeLintKind::AttrCrateLevelOnly => ctx.emit(lints::AttrCrateLevelOnly),
+        &AttributeLintKind::AttrCrateLevelOnly => lints::AttrCrateLevelOnly.into_diag(dcx, level),
 
         &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
-            ctx.emit(lints::DoNotRecommendDoesNotExpectArgs)
+            lints::DoNotRecommendDoesNotExpectArgs.into_diag(dcx, level)
         }
 
-        &AttributeLintKind::CrateTypeUnknown { span, suggested } => {
-            ctx.emit(lints::UnknownCrateTypes {
-                sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
-            })
+        &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
+            sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
         }
+        .into_diag(dcx, level),
 
-        &AttributeLintKind::MalformedDoc => ctx.emit(lints::MalformedDoc),
+        &AttributeLintKind::MalformedDoc => lints::MalformedDoc.into_diag(dcx, level),
 
-        &AttributeLintKind::ExpectedNoArgs => ctx.emit(lints::ExpectedNoArgs),
+        &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
 
-        &AttributeLintKind::ExpectedNameValue => ctx.emit(lints::ExpectedNameValue),
+        &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
         &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
-            ctx.emit(lints::MalformedOnUnimplementedAttrLint { span })
+            lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
         }
         &AttributeLintKind::MalformedOnConstAttr { span } => {
-            ctx.emit(lints::MalformedOnConstAttrLint { span })
+            lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
         }
         AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
             FormatWarning::PositionalArgument { .. } => {
-                ctx.emit(lints::DisallowedPositionalArgument)
+                lints::DisallowedPositionalArgument.into_diag(dcx, level)
             }
-            FormatWarning::InvalidSpecifier { .. } => ctx.emit(lints::InvalidFormatSpecifier),
+            FormatWarning::InvalidSpecifier { .. } => {
+                lints::InvalidFormatSpecifier.into_diag(dcx, level)
+            }
         },
         AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
-            ctx.emit(lints::WrappedParserError { description, label, span: *span })
+            lints::WrappedParserError { description, label, span: *span }.into_diag(dcx, level)
         }
         &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
-            ctx.emit(lints::IgnoredDiagnosticOption { option_name, first_span, later_span })
+            lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
+                .into_diag(dcx, level)
         }
         &AttributeLintKind::MissingOptionsForOnUnimplemented => {
-            ctx.emit(lints::MissingOptionsForOnUnimplementedAttr)
+            lints::MissingOptionsForOnUnimplementedAttr.into_diag(dcx, level)
         }
         &AttributeLintKind::MissingOptionsForOnConst => {
-            ctx.emit(lints::MissingOptionsForOnConstAttr)
+            lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
         }
     }
 }
