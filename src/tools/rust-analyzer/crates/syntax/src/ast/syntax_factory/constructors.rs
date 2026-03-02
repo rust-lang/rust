@@ -3,7 +3,7 @@ use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
         self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility, RangeItem, make,
+        HasTypeBounds, HasVisibility, Param, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -108,6 +108,20 @@ impl SyntaxFactory {
     ) -> ast::Enum {
         make::enum_(attrs, visibility, enum_name, generic_param_list, where_clause, variant_list)
             .clone_for_update()
+    }
+
+    pub fn unnamed_param(&self, ty: ast::Type) -> ast::Param {
+        make::unnamed_param(ty).clone_for_update()
+    }
+
+    pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
+        &self,
+        is_unsafe: bool,
+        abi: Option<ast::Abi>,
+        params: I,
+        ret_type: Option<ast::RetType>,
+    ) -> ast::FnPtrType {
+        make::ty_fn_ptr(is_unsafe, abi, params, ret_type).clone_for_update()
     }
 
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {

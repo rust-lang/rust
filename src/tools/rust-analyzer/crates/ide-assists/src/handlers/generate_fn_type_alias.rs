@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
     AstNode,
-    ast::{self, HasGenericParams, HasName, edit::IndentLevel, make},
+    ast::{self, HasGenericParams, HasName, edit::IndentLevel, syntax_factory::SyntaxFactory},
     syntax_editor,
 };
 
@@ -56,6 +56,7 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
             func_node.syntax().text_range(),
             |builder| {
                 let mut edit = builder.make_editor(func);
+                let make = SyntaxFactory::without_mappings();
 
                 let alias_name = format!("{}Fn", stdx::to_camel_case(&name.to_string()));
 
@@ -68,24 +69,24 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                     let is_mut = self_ty.is_mutable_reference();
 
                     if let Some(adt) = self_ty.strip_references().as_adt() {
-                        let inner_type = make::ty(adt.name(ctx.db()).as_str());
+                        let inner_type = make.ty(adt.name(ctx.db()).as_str());
 
                         let ast_self_ty =
-                            if is_ref { make::ty_ref(inner_type, is_mut) } else { inner_type };
+                            if is_ref { make.ty_ref(inner_type, is_mut) } else { inner_type };
 
-                        fn_params_vec.push(make::unnamed_param(ast_self_ty));
+                        fn_params_vec.push(make.unnamed_param(ast_self_ty));
                     }
                 }
 
                 fn_params_vec.extend(param_list.params().filter_map(|p| match style {
                     ParamStyle::Named => Some(p),
-                    ParamStyle::Unnamed => p.ty().map(make::unnamed_param),
+                    ParamStyle::Unnamed => p.ty().map(|ty| make.unnamed_param(ty)),
                 }));
 
                 let generic_params = func_node.generic_param_list();
 
                 let is_unsafe = func_node.unsafe_token().is_some();
-                let ty = make::ty_fn_ptr(
+                let ty = make.ty_fn_ptr(
                     is_unsafe,
                     func_node.abi(),
                     fn_params_vec.into_iter(),
@@ -93,22 +94,21 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                 );
 
                 // Insert new alias
-                let ty_alias = make::ty_alias(
+                let ty_alias = make.ty_alias(
                     None,
                     &alias_name,
                     generic_params,
                     None,
                     None,
                     Some((ast::Type::FnPtrType(ty), None)),
-                )
-                .clone_for_update();
+                );
 
                 let indent = IndentLevel::from_node(insertion_node);
                 edit.insert_all(
                     syntax_editor::Position::before(insertion_node),
                     vec![
                         ty_alias.syntax().clone().into(),
-                        make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+                        make.whitespace(&format!("\n\n{indent}")).into(),
                     ],
                 );
 
