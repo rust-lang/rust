@@ -448,7 +448,7 @@ marker_impls! {
 ///   while variables captured by mutable reference never implement `Copy`.
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 /// [`size_of::<T>`]: size_of
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]

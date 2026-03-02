@@ -48,7 +48,7 @@ impl Trait for i32 {
 }
 
 fn bar<T: Trait>() {
-    check!(T::Assoc, "alloc::string::String");
+    check!(T::Assoc, "alloc::string::generic::String");
     check!(T, "i32");
 }
 
