@@ -10,7 +10,7 @@ pub(crate) fn feed_query_inner<'tcx, C: QueryCache>(
     key: C::Key,
     value: C::Value,
 ) {
-    let format_value = query.format_value;
+    let format_value_fn = query.format_value_fn;
 
     // Check whether the in-memory cache already has a value for this key.
     match rustc_middle::query::try_get_cached(tcx, &query.cache, &key) {
@@ -29,8 +29,8 @@ pub(crate) fn feed_query_inner<'tcx, C: QueryCache>(
                     tcx.dcx().delayed_bug(format!(
                         "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                         old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
-                        value = format_value(&value),
+                        old = format_value_fn(&old),
+                        value = format_value_fn(&value),
                     ));
                 }
             } else {
@@ -40,8 +40,8 @@ pub(crate) fn feed_query_inner<'tcx, C: QueryCache>(
                 bug!(
                     "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                     old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
+                    old = format_value_fn(&old),
+                    value = format_value_fn(&value),
                 )
             }
         }

@@ -28,7 +28,7 @@ pub fn incremental_verify_ich<'tcx, C: QueryCache>(
     let old_hash = dep_graph_data.prev_value_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, &|| (query.format_value)(value));
+        incremental_verify_ich_failed(tcx, prev_index, &|| (query.format_value_fn)(value));
     }
 }
 

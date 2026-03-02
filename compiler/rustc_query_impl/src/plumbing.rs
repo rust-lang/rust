@@ -562,7 +562,9 @@ macro_rules! define_queries {
                             })
                         }
                     ),
-                    format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
+                    format_value_fn: |value| {
+                        format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value))
+                    },
                     description_fn: $crate::queries::_description_fns::$name,
                     execute_query_fn: if incremental {
                         query_impl::$name::execute_query_incr::__rust_end_short_backtrace

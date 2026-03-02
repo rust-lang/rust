@@ -390,14 +390,14 @@ fn execute_job<'tcx, C: QueryCache, const INCR: bool>(
                     "no_hash fed query later has its value computed.\n\
                     Remove `no_hash` modifier to allow recomputation.\n\
                     The already cached value: {}",
-                    (query.format_value)(&cached_value)
+                    (query.format_value_fn)(&cached_value)
                 );
             };
 
             let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
                 (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, &value))
             });
-            let formatter = query.format_value;
+            let formatter = query.format_value_fn;
             if old_hash != new_hash {
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors.

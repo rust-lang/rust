@@ -150,7 +150,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 
     pub value_from_cycle_error:
         fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
-    pub format_value: fn(&C::Value) -> String,
+    pub format_value_fn: fn(&C::Value) -> String,
 
     /// Formats a human-readable description of this query and its key, as
     /// specified by the `desc` query modifier.
