@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -24,13 +26,11 @@ mod test_1 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false> as bar2 {
                 Self::get()
         }
 
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar4 { self.get_self() }
 
@@ -47,11 +47,9 @@ mod test_1 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar2 { Self::get() }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar4 { self.get_self() }
     }
@@ -60,11 +58,9 @@ mod test_1 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar2 { Self::get() }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar4 { self.get_self() }
     }
@@ -73,11 +69,9 @@ mod test_1 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar2 { Self::get() }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar4 { self.get_self() }
     }
@@ -90,17 +84,9 @@ mod test_1 {
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar1::<'static, String, true>(&123);
-            //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-            //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
         <u32 as Trait3>::bar2(&123);
@@ -109,17 +95,9 @@ mod test_1 {
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar3::<'static, String, true>(&123);
-            //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-            //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
-        //~| ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
         <u32 as Trait3>::bar4(&123);
@@ -144,10 +122,8 @@ mod test_2 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::<i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -155,10 +131,8 @@ mod test_2 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::<i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -166,10 +140,8 @@ mod test_2 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::<i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -177,10 +149,8 @@ mod test_2 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::<i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<i32>::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -192,13 +162,9 @@ mod test_2 {
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar1::<'static, String, true>(&123);
-            //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait3>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
         <u32 as Trait3>::bar2(&123);
@@ -207,13 +173,9 @@ mod test_2 {
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar3::<'static, String, true>(&123);
-            //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait3>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
         <u32 as Trait3>::bar4(&123);
@@ -238,12 +200,10 @@ mod test_3 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar4 {
             self.get_self()
         }
@@ -253,12 +213,10 @@ mod test_3 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar4 {
             self.get_self()
         }
@@ -268,12 +226,10 @@ mod test_3 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false> as bar4 {
             self.get_self()
         }
@@ -283,11 +239,9 @@ mod test_3 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false>
             as bar2 { Self::get() }
         reuse Trait::<'static, 'static, 'static>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static>::foo::<'static, String, false>
             as bar4 { self.get_self() }
     }
@@ -300,13 +254,9 @@ mod test_3 {
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar1::<'static, String, true>(&123);
-            //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
         <u32 as Trait3>::bar2(&123);
@@ -315,13 +265,9 @@ mod test_3 {
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar3::<'static, String, true>(&123);
-            //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
         <u32 as Trait3>::bar4(&123);
@@ -346,10 +292,8 @@ mod test_4 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -357,10 +301,8 @@ mod test_4 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -368,10 +310,8 @@ mod test_4 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -379,10 +319,8 @@ mod test_4 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar2 { Self::get() }
         reuse Trait::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::foo::<'static, String, false> as bar4 { self.get_self() }
     }
 
@@ -399,13 +337,9 @@ mod test_4 {
         <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait3>::bar2(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait4<'a, 'a, 'static>>::bar2(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait5<i32, u64, String>>::bar2(&123);
-        //~^ ERROR: type annotations needed [E0284]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar3::<'static, String, true>(&123);
@@ -414,13 +348,9 @@ mod test_4 {
         <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait3>::bar4(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait4<'a, 'a, 'static>>::bar4(&123);
-        //~^ ERROR: type annotations needed [E0284]
         <u32 as Trait5<i32, u64, String>>::bar4(&123);
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -440,12 +370,10 @@ mod test_5 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar4 {
             self.get_self()
         }
@@ -455,12 +383,10 @@ mod test_5 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar4 {
             self.get_self()
         }
@@ -470,12 +396,10 @@ mod test_5 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar4 {
             self.get_self()
         }
@@ -485,12 +409,10 @@ mod test_5 {
         fn get() -> &'static u8 { &0 }
         fn get_self(&self) -> &'static u8 { &0 }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar1 { Self::get() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar2 {
             Self::get()
         }
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
-        //~^ ERROR: type annotations needed [E0284]
         reuse Trait::<'static, 'static, 'static, i32>::foo::<String, false> as bar4 {
             self.get_self()
         }
@@ -503,13 +425,9 @@ mod test_5 {
 
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait3>::bar1::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait5<i32, u64, String>>::bar1::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
         <u32 as Trait3>::bar2(&123);
@@ -517,13 +435,9 @@ mod test_5 {
         <u32 as Trait5<i32, u64, String>>::bar2(&123);
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar3::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait3>::bar3::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait4<'a, 'a, 'static>>::bar3::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
         <u32 as Trait5<i32, u64, String>>::bar3::<String, true>(&123);
-        //~^ ERROR: method takes 3 generic arguments but 2 generic arguments were supplied [E0107]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
         <u32 as Trait3>::bar4(&123);
@@ -579,7 +493,6 @@ mod test_6 {
 
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1(&123);
-        //~^ ERROR: type annotations needed [E0282]
         <u32 as Trait3>::bar1(&123);
         <u32 as Trait4<'a, 'a, 'static>>::bar1(&123);
         <u32 as Trait5<i32, u64, String>>::bar1(&123);
@@ -638,7 +551,6 @@ mod test_7 {
 
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar1(&123);
-        //~^ ERROR: type annotations needed [E0282]
         <u32 as Trait3>::bar1(&123);
         <u32 as Trait4<'a, 'a, 'static>>::bar1(&123);
         <u32 as Trait5<i32, u64, String>>::bar1(&123);
@@ -763,7 +675,6 @@ mod test_9 {
 
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
-        //~^ ERROR: type annotations needed [E0282]
             ::bar1::<'static, 'static>(&123);
         <u32 as Trait3>::bar1::<'static, 'static>(&123);
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'a, 'a>(&123);
@@ -851,13 +762,9 @@ mod test_10 {
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar1::<'static, 'static>(&123);
-            //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar1::<'static, 'static>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar1::<'a, 'a>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar1::<'a, 'a>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
         <u32 as Trait3>::bar2(&123);
@@ -866,13 +773,9 @@ mod test_10 {
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
             ::bar3::<'static, 'static>(&123);
-            //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait3>::bar3::<'static, 'static>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, 'static>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
         <u32 as Trait5<i32, u64, String>>::bar3::<'static, 'static>(&123);
-        //~^ ERROR: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present [E0794]
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
         <u32 as Trait3>::bar4(&123);

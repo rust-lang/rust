@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -20,13 +22,11 @@ mod test_1 {
     pub fn check() {
         fn no_ctx() {
             reuse Trait::foo as bar;
-            //~^ ERROR: type annotations needed [E0284]
             bar::<'static, 'static, 'static, 'static, u8, i32, 1, String, true>(123);
         }
 
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse Trait::foo as bar;
-            //~^ ERROR: type annotations needed [E0284]
             bar::<'static, 'static, 'static, 'a, u8, i32, 1, A, M>(123);
         }
 
@@ -45,11 +45,8 @@ mod test_2 {
 
     pub fn check() {
         reuse Trait::<'static, i32, 1>::foo as bar;
-        //~^ ERROR: the trait bound `Self: test_2::Trait<'static, i32, 1>` is not satisfied [E0277]
 
         bar::<'static, u8, String, true>(123);
-        //~^ ERROR: function takes 5 generic arguments but 3 generic arguments were supplied [E0107]
-        //~| ERROR: function takes 2 lifetime arguments but 1 lifetime argument was supplied [E0107]
     }
 }
 
@@ -66,8 +63,6 @@ mod test_3 {
         reuse Trait::foo::<'static, i32, true> as bar;
 
         bar::<'static, u8, String, 1>(123);
-        //~^ ERROR: function takes 5 generic arguments but 3 generic arguments were supplied [E0107]
-        //~| ERROR: function takes 2 lifetime arguments but 1 lifetime argument was supplied [E0107]
     }
 }
 
@@ -84,7 +79,6 @@ mod test_4 {
         reuse Trait::foo::<'static, i32, true> as bar;
 
         bar::<u8, String, 1>(123);
-        //~^ ERROR: function takes 5 generic arguments but 3 generic arguments were supplied [E0107]
     }
 }
 
@@ -100,7 +94,6 @@ mod test_5 {
         reuse Trait::foo::<'static, i32, true> as bar;
 
         bar::<u8, 1>(123);
-        //~^ ERROR: function takes 4 generic arguments but 2 generic arguments were supplied [E0107]
     }
 }
 
@@ -117,7 +110,6 @@ mod test_6 {
         reuse Trait::foo::<'static, i32, true> as bar;
 
         bar::<u8>(123);
-        //~^ ERROR: function takes 3 generic arguments but 1 generic argument was supplied [E0107]
     }
 }
 
@@ -132,10 +124,8 @@ mod test_7 {
 
     pub fn check() {
         reuse Trait::<'static, i32, 1>::foo as bar;
-        //~^ ERROR: the trait bound `Self: test_7::Trait<'static, i32, 1>` is not satisfied [E0277]
 
         bar::<u8, String, true>(123);
-        //~^ ERROR: function takes 5 generic arguments but 3 generic arguments were supplied [E0107]
     }
 }
 
@@ -149,10 +139,8 @@ mod test_8 {
 
     pub fn check() {
         reuse Trait::<'static, i32, 1>::foo as bar;
-        //~^ ERROR: the trait bound `Self: test_8::Trait<'static, i32, 1>` is not satisfied [E0277]
 
         bar::<u8, true>(123);
-        //~^ ERROR: function takes 4 generic arguments but 2 generic arguments were supplied [E0107]
     }
 }
 
@@ -166,10 +154,8 @@ mod test_9 {
 
     pub fn check() {
         reuse Trait::<'static, i32, 1>::foo as bar;
-        //~^ ERROR: the trait bound `Self: test_9::Trait<'static, i32, 1>` is not satisfied [E0277]
 
         bar::<u8>(123);
-        //~^ ERROR: function takes 3 generic arguments but 1 generic argument was supplied [E0107]
     }
 }
 
@@ -186,19 +172,14 @@ mod test_10 {
     pub fn check() {
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse <u8 as Trait>::foo as bar;
-            //~^ ERROR: missing generics for trait `test_10::Trait` [E0107]
             bar::<'a, 'b, 'c, u8, C, A, M>();
             bar::<'static, 'static, 'static, u8, i32, i32, false>();
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
-            //~^ ERROR: type annotations needed [E0284]
             bar1::<'static, u8, i32, true>();
-            //~^ ERROR: function takes 4 generic arguments but 3 generic arguments were supplied [E0107]
-            //~| ERROR: function takes 3 lifetime arguments but 1 lifetime argument was supplied [E0107]
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo::<'static, u32, true> as bar2;
             bar2::<u8>();
-            //~^ ERROR: function takes 4 generic arguments but 1 generic argument was supplied [E0107]
         }
 
         with_ctx::<i32, i32, i32, 1, true>();
@@ -231,7 +212,6 @@ mod test_11 {
 
     pub fn check<'b>() {
         reuse <usize as Trait>::foo;
-        //~^ ERROR: missing generics for trait `test_11::Trait` [E0107]
         foo::<'static, 'b, usize, u32, Struct, String, false>();
     }
 }

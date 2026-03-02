@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -16,24 +18,23 @@ mod test_1 {
         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
     }
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X1<'a, 'b, T, X, const N: usize>(&'a T, &'b X, &'a [i32; N]);
     impl<'a, 'b, T, E, const N: usize> X1<'a, 'b, T, E, N> {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
     }
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X2<T, X, const N: usize>(T, X, &'static [i32; N]);
     impl<T, E, const N: usize> X2<T, E, N> {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
     }
 
     struct X3;
     impl X3 {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
     }
 
@@ -41,15 +42,12 @@ mod test_1 {
         X1::<'static, 'static, i32, i32, 1>
             ::foo::<'static, 'static, String, String, 123>();
         X1::<'static, 'static, i32, i32, 1>::bar();
-        //~^ ERROR: type annotations needed [E0284]
 
         X2::<i32, i32, 1>::foo::<'static, 'static, String, String, 123>();
         X2::<i32, i32, 1>::bar();
-        //~^ ERROR: type annotations needed [E0284]
 
         X3::foo::<'static, 'static, String, String, 123>();
         X3::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -58,39 +56,35 @@ mod test_1 {
 mod test_2 {
     fn foo<A, B, const N: usize>() {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X1<'a, 'b, T, X, const N: usize>(&'a T, &'b X, &'a [i32; N]);
     impl<'a, 'b, T, E, const N: usize> X1<'a, 'b, T, E, N> {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<i32, String, 1> as bar;
     }
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X2<T, X, const N: usize>(T, X, &'static [i32; N]);
     impl<T, E, const N: usize> X2<T, E, N> {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<i32, String, 1> as bar;
     }
 
     struct X3;
     impl X3 {
         reuse foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse foo::<i32, String, 1> as bar;
     }
 
     pub fn check() {
         X1::<'static, 'static, i32, i32, 1>::foo::<String, String, 123>();
         X1::<'static, 'static, i32, i32, 1>::bar();
-        //~^ ERROR: type annotations needed [E0284]
 
         X2::<i32, i32, 1>::foo::<String, String, 123>();
         X2::<i32, i32, 1>::bar();
-        //~^ ERROR: type annotations needed [E0284]
 
         X3::foo::<String, String, 123>();
         X3::bar();
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -99,11 +93,13 @@ mod test_2 {
 mod test_3 {
     fn foo() {}
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X1<'a, 'b, T, X, const N: usize>(&'a T, &'b X, &'a [i32; N]);
     impl<'a, 'b, T, E, const N: usize> X1<'a, 'b, T, E, N> {
         reuse foo;
     }
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X2<T, X, const N: usize>(T, X, &'static [i32; N]);
     impl<T, E, const N: usize> X2<T, E, N> {
         reuse foo;

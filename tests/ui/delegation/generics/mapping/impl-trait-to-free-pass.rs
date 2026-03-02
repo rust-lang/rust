@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -13,7 +15,7 @@
 mod test_1 {
     mod to_reuse {
         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
-        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(x: &super::XX) {}
+        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(_x: &super::XX) {}
     }
 
     trait Trait<'a, 'b, 'c, A, B, const N: usize>: Sized {
@@ -23,15 +25,14 @@ mod test_1 {
         fn rab(&self) {}
     }
 
+    #[allow(dead_code)] // Fields are used instead of phantom data for generics use
     struct X<'x1, 'x2, 'x3, 'x4, X1, X2, const X3: usize>(
         &'x1 X1, &'x2 X2, &'x3 X1, &'x4 [usize; X3]);
     type XX = X::<'static, 'static, 'static, 'static, i32, i32, 3>;
 
     impl<'a, 'b, 'c, A, B, const N: usize> Trait<'a, 'b, 'c, A, B, N> for XX {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::bar;
-        //~^ ERROR: type annotations needed [E0284]
 
         reuse to_reuse::foo::<'a, 'c, A, String, 322> as oof;
         reuse to_reuse::bar::<'a, 'c, A, B, 223> as rab;
@@ -54,7 +55,7 @@ mod test_1 {
 mod test_2 {
     mod to_reuse {
         pub fn foo<A, B, const N: usize>() {}
-        pub fn bar<A, B, const N: usize>(x: &super::X) {}
+        pub fn bar<A, B, const N: usize>(_x: &super::X) {}
     }
 
     trait Trait<'a, 'b, 'c, A, B, const N: usize>: Sized {
@@ -67,9 +68,7 @@ mod test_2 {
     struct X;
     impl<'a, A, B, const N: usize> Trait<'a, 'static, 'static, A, B, N> for X {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::bar;
-        //~^ ERROR: type annotations needed [E0284]
 
         reuse to_reuse::foo::<A, String, 322> as oof;
         reuse to_reuse::bar::<i32, B, 223> as rab;
@@ -88,7 +87,7 @@ mod test_2 {
 mod test_3 {
     mod to_reuse {
         pub fn foo() {}
-        pub fn bar(x: &super::X) {}
+        pub fn bar(_x: &super::X) {}
     }
 
     trait Trait<'a, 'b, 'c, A, B, const N: usize>: Sized {
@@ -113,7 +112,7 @@ mod test_3 {
 mod test_4 {
     mod to_reuse {
         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
-        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(x: &super::X) {}
+        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(_x: &super::X) {}
     }
 
     trait Trait<A, B, const N: usize>: Sized {
@@ -126,9 +125,7 @@ mod test_4 {
     struct X;
     impl<'a, 'c, A, B, const N: usize> Trait<A, B, N> for X {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::bar;
-        //~^ ERROR: type annotations needed [E0284]
 
         reuse to_reuse::foo::<'a, 'c, A, String, 322> as oof;
         reuse to_reuse::bar::<'a, 'c, i32, B, 223> as rab;
@@ -147,23 +144,25 @@ mod test_4 {
 mod test_5 {
     mod to_reuse {
         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
-        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(x: &super::X::<A, B>) {}
+        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(_x: &super::X::<A, B>) {}
     }
 
     trait Trait: Sized {
         fn foo<'x: 'x, 'y: 'y, AA, BB, const NN: usize>() {}
-        fn bar<'x: 'x, 'y: 'y, AA, BB, const NN: usize>(&self) {}
         fn oof() {}
         fn rab(&self) {}
     }
 
     struct X<A, B>(A, B);
     impl<'a, 'c, A, B> Trait for X<A, B> {
+        reuse to_reuse::foo;
+
         reuse to_reuse::foo::<'a, 'c, A, B, 322> as oof;
         reuse to_reuse::bar::<'a, 'c, A, B, 223> as rab;
     }
 
     pub fn check() {
+        <X::<i32, i32> as Trait>::foo::<'static, 'static, i8, i16, 123>();
         <X::<i32, i32> as Trait>::oof();
         <X::<i32, i32> as Trait>::rab(&X(1, 2));
     }
@@ -174,7 +173,7 @@ mod test_5 {
 mod test_6 {
     mod to_reuse {
         pub fn foo<A, B, const N: usize>() {}
-        pub fn bar<A, B, const N: usize>(x: &super::X) {}
+        pub fn bar<A, B, const N: usize>(_x: &super::X) {}
     }
 
     trait Trait<A, B, const N: usize>: Sized {
@@ -187,9 +186,7 @@ mod test_6 {
     struct X;
     impl<'a, 'c, A, B, const N: usize> Trait<A, B, N> for X {
         reuse to_reuse::foo;
-        //~^ ERROR: type annotations needed [E0284]
         reuse to_reuse::bar;
-        //~^ ERROR: type annotations needed [E0284]
 
         reuse to_reuse::foo::<A, String, 322> as oof;
         reuse to_reuse::bar::<i32, B, 223> as rab;
@@ -208,7 +205,7 @@ mod test_6 {
 mod test_7 {
     mod to_reuse {
         pub fn foo() {}
-        pub fn bar(x: &super::X) {}
+        pub fn bar(_x: &super::X) {}
     }
 
     trait Trait<A, B, const N: usize>: Sized {
@@ -232,7 +229,7 @@ mod test_7 {
 mod test_8 {
     mod to_reuse {
         pub fn foo() {}
-        pub fn bar(x: &super::X) {}
+        pub fn bar(_x: &super::X) {}
     }
 
     trait Trait: Sized {
