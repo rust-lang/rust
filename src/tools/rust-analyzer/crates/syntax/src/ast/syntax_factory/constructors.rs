@@ -1,4 +1,6 @@
 //! Wrappers over [`make`] constructors
+use either::Either;
+
 use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
@@ -122,6 +124,14 @@ impl SyntaxFactory {
         ret_type: Option<ast::RetType>,
     ) -> ast::FnPtrType {
         make::ty_fn_ptr(is_unsafe, abi, params, ret_type).clone_for_update()
+    }
+
+    pub fn where_pred(
+        &self,
+        path: Either<ast::Lifetime, ast::Type>,
+        bounds: impl IntoIterator<Item = ast::TypeBound>,
+    ) -> ast::WherePred {
+        make::where_pred(path, bounds).clone_for_update()
     }
 
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {

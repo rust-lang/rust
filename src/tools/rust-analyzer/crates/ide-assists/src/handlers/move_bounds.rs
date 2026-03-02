@@ -3,7 +3,7 @@ use syntax::{
     ast::{
         self, AstNode, HasName, HasTypeBounds,
         edit_in_place::{GenericParamsOwnerEdit, Removable},
-        make,
+        syntax_factory::SyntaxFactory,
     },
     match_ast,
 };
@@ -50,6 +50,7 @@ pub(crate) fn move_bounds_to_where_clause(
         |edit| {
             let type_param_list = edit.make_mut(type_param_list);
             let parent = edit.make_syntax_mut(parent);
+            let make = SyntaxFactory::without_mappings();
 
             let where_clause: ast::WhereClause = match_ast! {
                 match parent {
@@ -70,7 +71,7 @@ pub(crate) fn move_bounds_to_where_clause(
                     ast::GenericParam::ConstParam(_) => continue,
                 };
                 if let Some(tbl) = param.type_bound_list() {
-                    if let Some(predicate) = build_predicate(generic_param) {
+                    if let Some(predicate) = build_predicate(generic_param, &make) {
                         where_clause.add_predicate(predicate)
                     }
                     tbl.remove()
@@ -80,15 +81,13 @@ pub(crate) fn move_bounds_to_where_clause(
     )
 }
 
-fn build_predicate(param: ast::GenericParam) -> Option<ast::WherePred> {
+fn build_predicate(param: ast::GenericParam, make: &SyntaxFactory) -> Option<ast::WherePred> {
     let target = match &param {
-        ast::GenericParam::TypeParam(t) => {
-            Either::Right(make::ty_path(make::ext::ident_path(&t.name()?.to_string())))
-        }
+        ast::GenericParam::TypeParam(t) => Either::Right(make.ty(&t.name()?.to_string())),
         ast::GenericParam::LifetimeParam(l) => Either::Left(l.lifetime()?),
         ast::GenericParam::ConstParam(_) => return None,
     };
-    let predicate = make::where_pred(
+    let predicate = make.where_pred(
         target,
         match param {
             ast::GenericParam::TypeParam(t) => t.type_bound_list()?,
@@ -97,7 +96,7 @@ fn build_predicate(param: ast::GenericParam) -> Option<ast::WherePred> {
         }
         .bounds(),
     );
-    Some(predicate.clone_for_update())
+    Some(predicate)
 }
 
 #[cfg(test)]
