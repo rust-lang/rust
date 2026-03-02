@@ -94,6 +94,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVariancesParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
 }
 
+pub(crate) struct RustcDumpVariancesOfOpaquesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVariancesOfOpaquesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_variances_of_opaques];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariancesOfOpaques;
+}
+
 pub(crate) struct RustcDumpVtableParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpVtableParser {

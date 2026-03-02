@@ -324,6 +324,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpVariances
+                    | AttributeKind::RustcDumpVariancesOfOpaques
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcEffectiveVisibility
@@ -377,7 +378,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
-                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal

@@ -285,6 +285,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDumpItemBoundsParser>>,
         Single<WithoutArgs<RustcDumpPredicatesParser>>,
         Single<WithoutArgs<RustcDumpUserArgsParser>>,
+        Single<WithoutArgs<RustcDumpVariancesOfOpaquesParser>>,
         Single<WithoutArgs<RustcDumpVariancesParser>>,
         Single<WithoutArgs<RustcDumpVtableParser>>,
         Single<WithoutArgs<RustcDynIncompatibleTraitParser>>,
@@ -324,7 +325,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
-        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
