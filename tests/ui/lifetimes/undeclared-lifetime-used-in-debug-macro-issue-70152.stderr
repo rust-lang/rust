@@ -17,11 +17,6 @@ LL | #[derive(Eq, PartialEq)]
 LL | struct Test {
 LL |     a: &'b str,
    |         ^^ undeclared lifetime
-   |
-help: consider introducing lifetime `'b` here
-   |
-LL | struct Test<'b> {
-   |            ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/undeclared-lifetime-used-in-debug-macro-issue-70152.rs:13:13

@@ -59,26 +59,13 @@ LL | struct NotSM;
    |        ^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/multiple-types-with-same-name-and-derive.rs:12:8
-   |
-LL | struct NotSM<T>(T);
-   |        ^^^^^ expected 0 generic arguments
-   |
-note: struct defined here, with 0 generic parameters
-  --> $DIR/multiple-types-with-same-name-and-derive.rs:8:8
-   |
-LL | struct NotSM;
-   |        ^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error[E0609]: no field `0` on type `&NotSM`
   --> $DIR/multiple-types-with-same-name-and-derive.rs:12:17
    |
 LL | struct NotSM<T>(T);
    |                 ^ unknown field
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0107, E0428, E0609.
 For more information about an error, try `rustc --explain E0107`.

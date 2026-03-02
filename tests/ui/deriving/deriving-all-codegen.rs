@@ -79,6 +79,10 @@ struct Reorder {
     b10: &'static *const bool,
 }
 
+// A struct with a recursive type.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Recursive(Option<Box<Self>>);
+
 // A struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[derive(Clone)]
