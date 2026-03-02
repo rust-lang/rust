@@ -807,17 +807,23 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(())
     }
 
-    /// Create an obligation for `ty: Unpin`.
-    fn unpin_obligation(&self, ty: Ty<'tcx>) -> PredicateObligation<'tcx> {
+    /// Create an obligation for `ty: Unpin`, where .
+    fn unpin_obligation(
+        &self,
+        source: Ty<'tcx>,
+        target: Ty<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> PredicateObligation<'tcx> {
         let pred = ty::TraitRef::new(
             self.tcx,
             self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
             [ty],
         );
-        PredicateObligation::new(self.tcx, self.cause.clone(), self.param_env, pred)
+        let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+        PredicateObligation::new(self.tcx, cause, self.param_env, pred)
     }
 
-    /// Checks if the given types are compatible for coercion to a pinned reference.
+    /// Checks if the given types are compatible for coercion from a pinned reference to a normal reference.
     fn maybe_pin_ref_to_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> Option<CoerceMaybePinnedRef<'tcx>> {
         if !self.tcx.features().pin_ergonomics() {
             return None;
@@ -847,6 +853,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         coerce_mutbls(a_mut, b_mut)?;
 
+        let unpin_obligation = self.unpin_obligation(a, b, a_ty);
+
         let a = Ty::new_ref(self.tcx, a_r, a_ty, b_mut);
         let mut coerce = self.unify_and(
             a,
@@ -855,7 +863,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::new(b_mut, self.allow_two_phase))),
             ForceLeakCheck::No,
         )?;
-        coerce.obligations.push(self.unpin_obligation(a_ty));
+        coerce.obligations.push(unpin_obligation);
         Ok(coerce)
     }
 
@@ -902,7 +910,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // no `Unpin` required when reborrowing a pinned reference to a pinned reference
             ty::Pinnedness::Pinned => (DerefAdjustKind::Pin, None),
             // `Unpin` required when reborrowing a non-pinned reference to a pinned reference
-            ty::Pinnedness::Not => (DerefAdjustKind::Builtin, Some(self.unpin_obligation(a_ty))),
+            ty::Pinnedness::Not => {
+                (DerefAdjustKind::Builtin, Some(self.unpin_obligation(a, b, a_ty)))
+            }
         };
 
         coerce_mutbls(a_mut, b_mut)?;

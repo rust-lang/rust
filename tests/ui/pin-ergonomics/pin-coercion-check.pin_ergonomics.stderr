@@ -21,6 +21,7 @@ LL |     |x: Pin<&mut T>| -> &mut T { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&mut T>` to `&mut T`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
@@ -34,6 +35,7 @@ LL |     |x: Pin<&mut T>| -> &T { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&mut T>` to `&T`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
@@ -47,6 +49,7 @@ LL |     |x: Pin<&T>| -> &T { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&T>` to `&T`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
@@ -90,6 +93,7 @@ LL |     |x: &mut T| -> Pin<&mut T> { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&mut T` to `Pin<&mut T>`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
@@ -103,6 +107,7 @@ LL |     |x: &mut T| -> Pin<&T> { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&mut T` to `Pin<&T>`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
@@ -116,6 +121,7 @@ LL |     |x: &T| -> Pin<&T> { x };
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&T` to `Pin<&T>`
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
