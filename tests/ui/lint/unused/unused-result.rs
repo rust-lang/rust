@@ -3,11 +3,15 @@
 //~^ NOTE: the lint level is defined here
 //~| NOTE: the lint level is defined here
 
+use std::ops::ControlFlow;
+
 #[must_use]
 enum MustUse { Test }
 
 #[must_use = "some message"]
 enum MustUseMsg { Test2 }
+
+enum Nothing {}
 
 fn foo<T>() -> T { panic!() }
 
@@ -39,4 +43,15 @@ fn main() {
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();
     let _ = foo::<MustUseMsg>();
+
+    // "trivial" types
+    ();
+    ((), ());
+    Ok::<(), Nothing>(());
+    ControlFlow::<Nothing>::Continue(());
+    ((), Ok::<(), Nothing>(()), ((((), ())), ((),)));
+    foo::<Nothing>();
+
+    ((), 1); //~ ERROR: unused result of type `((), i32)`
+    (1, ()); //~ ERROR: unused result of type `(i32, ())`
 }
