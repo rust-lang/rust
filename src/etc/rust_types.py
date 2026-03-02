@@ -20,6 +20,7 @@ class RustType(object):
     STD_OS_STRING = "StdOsString"
     STD_STR = "StdStr"
     STD_SLICE = "StdSlice"
+    STD_BOX_STR = "StdBoxStr"
     STD_VEC = "StdVec"
     STD_VEC_DEQUE = "StdVecDeque"
     STD_BTREE_SET = "StdBTreeSet"
@@ -41,6 +42,7 @@ STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String$")
 STD_STR_REGEX = re.compile(r"^&(mut )?str$")
 STD_SLICE_REGEX = re.compile(r"^&(mut )?\[.+\]$")
 STD_OS_STRING_REGEX = re.compile(r"^(std::ffi::([a-z_]+::)+)OsString$")
+STD_BOX_STR_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)Box<str,.+>$")
 STD_VEC_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)Vec<.+>$")
 STD_VEC_DEQUE_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)VecDeque<.+>$")
 STD_BTREE_SET_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)BTreeSet<.+>$")
@@ -68,6 +70,7 @@ STD_TYPE_TO_REGEX = {
     RustType.STD_OS_STRING: STD_OS_STRING_REGEX,
     RustType.STD_STR: STD_STR_REGEX,
     RustType.STD_SLICE: STD_SLICE_REGEX,
+    RustType.STD_BOX_STR: STD_BOX_STR_REGEX,
     RustType.STD_VEC: STD_VEC_REGEX,
     RustType.STD_VEC_DEQUE: STD_VEC_DEQUE_REGEX,
     RustType.STD_HASH_MAP: STD_HASH_MAP_REGEX,
