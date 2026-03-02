@@ -124,6 +124,11 @@ impl<S: Stage, T: Lint + 'static + Default> AttributeParser<S> for LintParser<T>
             Allow(Target::Delegation { mac: false }),
             Allow(Target::Delegation { mac: true }),
             Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: false }),
+            Allow(Target::GenericParam { kind: GenericParamKind::Lifetime, has_default: false }),
+            Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: false }),
+            Allow(Target::GenericParam { kind: GenericParamKind::Type, has_default: true }),
+            Allow(Target::GenericParam { kind: GenericParamKind::Lifetime, has_default: true }),
+            Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: true }),
             Warn(Target::MacroCall),
         ])
     };
