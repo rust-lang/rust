@@ -48,6 +48,33 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpItemBoundsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
 }
 
+pub(crate) struct RustcDumpObjectLifetimeDefaultsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpObjectLifetimeDefaultsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_object_lifetime_defaults];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::AssocConst),
+        Allow(Target::AssocTy),
+        Allow(Target::Const),
+        Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Struct),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::TyAlias),
+        Allow(Target::Union),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpObjectLifetimeDefaults;
+}
+
 pub(crate) struct RustcDumpPredicatesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpPredicatesParser {

@@ -1372,6 +1372,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
+    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
+    RustcDumpObjectLifetimeDefaults,
+
     /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
 
@@ -1501,9 +1504,6 @@ pub enum AttributeKind {
         methname: Symbol,
         span: Span,
     },
-
-    /// Represents `#[rustc_object_lifetime_default]`.
-    RustcObjectLifetimeDefault,
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
