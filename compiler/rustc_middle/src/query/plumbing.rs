@@ -87,6 +87,19 @@ pub struct CycleError<I = QueryStackFrameExtra> {
 }
 
 impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
+    pub fn is_similar_to(&self, other: &Self) -> bool {
+        (match (&self.usage, &other.usage) {
+            (None, None) => true,
+            (None, Some(_)) | (Some(_), None) => false,
+            (Some((s1, f1)), Some((s2, f2))) => s1 == s2 && f1.is_similar_to(&f2),
+        }) && self.cycle.len() == other.cycle.len()
+            && self
+                .cycle
+                .iter()
+                .zip(&other.cycle)
+                .all(|(q1, q2)| q1.span == q2.span && q1.frame.is_similar_to(&q2.frame))
+    }
+
     pub fn lift(&self) -> CycleError<QueryStackFrameExtra> {
         CycleError {
             usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift())),

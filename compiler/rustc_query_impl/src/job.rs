@@ -41,13 +41,12 @@ pub(crate) struct QueryJobInfo<'tcx> {
 
 pub(crate) fn find_cycle_in_stack<'tcx>(
     id: QueryJobId,
-    job_map: QueryJobMap<'tcx>,
-    current_job: &Option<QueryJobId>,
+    job_map: &QueryJobMap<'tcx>,
+    mut current_job: Option<QueryJobId>,
     span: Span,
-) -> CycleError<QueryStackDeferred<'tcx>> {
+) -> Option<CycleError<QueryStackDeferred<'tcx>>> {
     // Find the waitee amongst `current_job` parents
     let mut cycle = Vec::new();
-    let mut current_job = Option::clone(current_job);
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
@@ -62,17 +61,15 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
             // Replace it with the span which caused the cycle to form
             cycle[0].span = span;
             // Find out why the cycle itself was used
-            let usage = try {
-                let parent = info.job.parent?;
-                (info.job.span, job_map.frame_of(parent).clone())
-            };
-            return CycleError { usage, cycle };
+            let usage =
+                info.job.parent.map(|parent| (info.job.span, job_map.frame_of(parent).clone()));
+            return Some(CycleError { usage, cycle });
         }
 
         current_job = info.job.parent;
     }
 
-    panic!("did not find a cycle")
+    None
 }
 
 #[cold]
@@ -205,6 +202,12 @@ fn find_cycle_in_graph<'tcx>(
     cycle[0].span = last.span;
     let usage = parent.map(|parent| (last.span, query_map.map[&parent].frame.clone()));
     let cycle_error = CycleError { usage, cycle };
+
+    if cfg!(debug_assertions)
+        && let Some(expected) = find_cycle_in_stack(last.id, query_map, last_parent, last.span)
+    {
+        assert!(cycle_error.is_similar_to(&expected));
+    }
 
     // Per statement above we should have wait at either of two occurrences of the duplicate query
     let waiter_idx = if last.waiter_idx != usize::MAX {

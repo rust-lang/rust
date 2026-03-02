@@ -46,6 +46,12 @@ impl<'tcx> QueryStackFrame<QueryStackDeferred<'tcx>> {
             def_id_for_ty_in_cycle: self.def_id_for_ty_in_cycle,
         }
     }
+
+    pub fn is_similar_to(&self, other: &Self) -> bool {
+        self.dep_kind == other.dep_kind
+            && self.def_id == other.def_id
+            && self.def_id_for_ty_in_cycle == other.def_id_for_ty_in_cycle
+    }
 }
 
 #[derive(Clone, Debug)]
