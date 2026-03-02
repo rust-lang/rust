@@ -6,6 +6,7 @@
 //! 3. instantiate and register where clauses.
 
 use rustc_type_ir::{self as ty, Interner};
+use tracing::warn;
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
@@ -19,6 +20,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
+        warn!("NFA");
         let cx = self.cx();
         let inherent = goal.predicate.alias;
 

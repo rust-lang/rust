@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLa
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use rustc_type_ir::{MayBeErased, inherent::*};
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -651,6 +651,7 @@ where
 
             ty::Dynamic(_, _) => {
                 let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
+                warn!("CBPC");
                 cx.type_of(dyn_metadata)
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
             }

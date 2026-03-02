@@ -63,7 +63,7 @@ impl<X: Cx> GlobalCache<X> {
             let prev = entry.success.replace(Success { required_depth, nested_goals, result });
             if let Some(prev) = &prev {
                 cx.assert_evaluation_is_concurrent();
-                assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result);
+                assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result, "{input:?}");
             }
         }
     }

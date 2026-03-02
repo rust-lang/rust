@@ -13,6 +13,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    #[tracing::instrument(skip(self))]
     pub(super) fn normalize_opaque_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,

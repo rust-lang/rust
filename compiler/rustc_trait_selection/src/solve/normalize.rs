@@ -95,6 +95,7 @@ impl<'tcx, E> NormalizationFolder<'_, 'tcx, E>
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
+    #[tracing::instrument(skip(self))]
     fn normalize_alias_term(
         &mut self,
         alias_term: ty::Term<'tcx>,
