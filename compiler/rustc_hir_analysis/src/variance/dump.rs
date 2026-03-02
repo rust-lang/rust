@@ -35,13 +35,13 @@ pub(crate) fn variances(tcx: TyCtxt<'_>) {
         }
     }
 
-    for id in crate_items.free_items() {
-        if !find_attr!(tcx, id.owner_id, RustcVariance) {
+    for id in crate_items.owners() {
+        if !find_attr!(tcx, id, RustcVariance) {
             continue;
         }
 
         match tcx.def_kind(id) {
-            DefKind::Fn | DefKind::Enum | DefKind::Struct | DefKind::Union => {}
+            DefKind::AssocFn | DefKind::Fn | DefKind::Enum | DefKind::Struct | DefKind::Union => {}
             DefKind::TyAlias if tcx.type_alias_is_lazy(id) => {}
             kind => {
                 let message = format!(
@@ -55,7 +55,7 @@ pub(crate) fn variances(tcx: TyCtxt<'_>) {
 
         tcx.dcx().emit_err(crate::errors::VariancesOf {
             span: tcx.def_span(id),
-            variances: format_variances(tcx, id.owner_id.def_id),
+            variances: format_variances(tcx, id.def_id),
         });
     }
 }

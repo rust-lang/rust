@@ -101,6 +101,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true})),
+        Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Struct),
         Allow(Target::Union),
     ]);
