@@ -287,6 +287,14 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn generic_ty_path_segment(
+        &self,
+        name_ref: ast::NameRef,
+        generic_args: impl IntoIterator<Item = ast::GenericArg>,
+    ) -> ast::PathSegment {
+        make::generic_ty_path_segment(name_ref, generic_args).clone_for_update()
+    }
+
     pub fn path_segment_generics(
         &self,
         name_ref: ast::NameRef,
