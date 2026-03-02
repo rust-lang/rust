@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(lang_items, unboxed_closures, fn_traits)]
+#![feature(unboxed_closures, fn_traits)]
 
 struct S1 {
     x: i32,

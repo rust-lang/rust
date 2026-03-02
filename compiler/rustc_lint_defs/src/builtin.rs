@@ -1088,11 +1088,6 @@ declare_lint! {
     /// crate-level [`feature` attributes].
     ///
     /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
-    ///
-    /// Note: This lint is currently not functional, see [issue #44232] for
-    /// more details.
-    ///
-    /// [issue #44232]: https://github.com/rust-lang/rust/issues/44232
     pub UNUSED_FEATURES,
     Warn,
     "unused features found in crate-level `#[feature]` directives"
