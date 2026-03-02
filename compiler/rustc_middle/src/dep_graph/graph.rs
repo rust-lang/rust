@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -1353,8 +1352,6 @@ pub struct TaskDeps {
     /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
     /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
     read_set: FxHashSet<DepNodeIndex>,
-
-    phantom_data: PhantomData<DepNode>,
 }
 
 impl TaskDeps {
@@ -1368,7 +1365,6 @@ impl TaskDeps {
             node,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
-            phantom_data: PhantomData,
         }
     }
 }
