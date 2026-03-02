@@ -110,14 +110,12 @@ pub fn break_query_cycles<'tcx>(
     query_map: QueryJobMap<'tcx>,
     registry: &rustc_thread_pool::Registry,
 ) {
-    let mut root_query = None;
-    for (&query, info) in &query_map.map {
-        if info.job.parent.is_none() {
-            assert!(root_query.is_none(), "found multiple threads without start");
-            root_query = Some(query);
-        }
-    }
-    let root_query = root_query.expect("no root query was found");
+    // We pick any root query we find
+    let (&root_query, _) = query_map
+        .map
+        .iter()
+        .find(|(_, info)| info.job.parent.is_none())
+        .expect("no root query was found");
 
     // We are allowed to keep track of just one subquery since each query has at least one subquery.
     //
