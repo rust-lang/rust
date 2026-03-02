@@ -30,11 +30,13 @@ error[E0308]: mismatched types
   --> $DIR/into-convert.rs:14:24
    |
 LL |     let z: AtomicU32 = 1;
-   |            ---------   ^ expected `AtomicU32`, found integer
+   |            ---------   ^ expected `Atomic<u32>`, found integer
    |            |
    |            expected due to this
    |
-help: call `Into::into` on this expression to convert `{integer}` into `AtomicU32`
+   = note: expected struct `Atomic<u32>`
+                found type `{integer}`
+help: call `Into::into` on this expression to convert `{integer}` into `Atomic<u32>`
    |
 LL |     let z: AtomicU32 = 1.into();
    |                         +++++++
