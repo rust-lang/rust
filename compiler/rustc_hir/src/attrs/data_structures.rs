@@ -1366,6 +1366,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
+    /// Represents `#[rustc_dump_inferred_outlives]`
+    RustcDumpInferredOutlives,
+
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
@@ -1498,9 +1501,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
-
-    /// Represents `#[rustc_outlives]`
-    RustcOutlives,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),

@@ -25,6 +25,20 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpDefParentsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpDefParents;
 }
 
+pub(crate) struct RustcDumpInferredOutlivesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpInferredOutlivesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_inferred_outlives];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpInferredOutlives;
+}
+
 pub(crate) struct RustcDumpItemBoundsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpItemBoundsParser {

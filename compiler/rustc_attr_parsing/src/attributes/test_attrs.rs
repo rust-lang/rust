@@ -103,7 +103,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true})),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Struct),
         Allow(Target::Union),
@@ -218,20 +218,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
-}
-
-pub(crate) struct RustcOutlivesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
-    const PATH: &[Symbol] = &[sym::rustc_outlives];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-        Allow(Target::TyAlias),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
 }
 
 pub(crate) struct TestRunnerParser;

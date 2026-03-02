@@ -1419,7 +1419,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     rustc_attr!(
-        TEST, rustc_outlives, Normal, template!(Word),
+        TEST, rustc_dump_inferred_outlives, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
