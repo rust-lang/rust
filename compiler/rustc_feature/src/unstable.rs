@@ -368,7 +368,7 @@ declare_features! (
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Target features on avr.
-    (unstable, avr_target_feature, "CURRENT_RUSTC_VERSION", Some(146889)),
+    (unstable, avr_target_feature, "1.95.0", Some(146889)),
     /// Allows using Intel AVX10 target features and intrinsics
     (unstable, avx10_target_feature, "1.88.0", Some(138843)),
     /// Target features on bpf.
@@ -411,9 +411,9 @@ declare_features! (
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const { ... }` as a shorthand for `const _: () = const { ... };` for module items.
-    (unstable, const_block_items, "CURRENT_RUSTC_VERSION", Some(149226)),
+    (unstable, const_block_items, "1.95.0", Some(149226)),
     /// Allows defining and calling c-variadic functions in const contexts.
-    (unstable, const_c_variadic, "CURRENT_RUSTC_VERSION", Some(151787)),
+    (unstable, const_c_variadic, "1.95.0", Some(151787)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
@@ -487,7 +487,7 @@ declare_features! (
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
     /// Allows marking trait functions as `final` to prevent overriding impls
-    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(131179)),
+    (unstable, final_associated_functions, "1.95.0", Some(131179)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -554,7 +554,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
-    (incomplete, mgca_type_const_syntax, "CURRENT_RUSTC_VERSION", Some(132980)),
+    (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
     /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
     (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
@@ -600,7 +600,7 @@ declare_features! (
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
-    (unstable, opaque_generic_const_args, "CURRENT_RUSTC_VERSION", Some(151972)),
+    (unstable, opaque_generic_const_args, "1.95.0", Some(151972)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
@@ -635,7 +635,7 @@ declare_features! (
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows `extern "rust-preserve-none"`.
-    (unstable, rust_preserve_none_cc, "CURRENT_RUSTC_VERSION", Some(151401)),
+    (unstable, rust_preserve_none_cc, "1.95.0", Some(151401)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.
