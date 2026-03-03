@@ -34,20 +34,6 @@ pub fn is_win7() -> bool {
     target().contains("win7")
 }
 
-/// Check if target uses WASI
-pub fn is_wasi() -> bool {
-    // The condition below is roughly equivalent to the following `cfg`
-    // attribute from `library/std/src/sys/env_consts.rs`.
-    //
-    // ```
-    // #[cfg(all(
-    //      target_family = "wasm",
-    //      not(any(target_os = "emscripten", target_os = "linux"))
-    // ))]
-    // ```
-    target().starts_with("wasm") && !target().contains("linux") && !target().contains("emscripten")
-}
-
 /// Check if target uses macOS.
 #[must_use]
 pub fn is_darwin() -> bool {
