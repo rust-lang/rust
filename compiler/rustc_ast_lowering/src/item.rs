@@ -512,6 +512,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 constness,
                 is_auto,
                 safety,
+                // FIXME(impl_restrictions): lower to HIR
+                impl_restriction: _,
                 ident,
                 generics,
                 bounds,

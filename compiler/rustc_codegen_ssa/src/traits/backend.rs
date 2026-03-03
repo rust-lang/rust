@@ -18,7 +18,7 @@ use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
 use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen, TargetConfig};
+use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
     type Function: CodegenObject;
@@ -103,7 +103,9 @@ pub trait CodegenBackend {
 
     fn provide(&self, _providers: &mut Providers) {}
 
-    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any>;
+    fn target_cpu(&self, sess: &Session) -> String;
+
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, crate_info: &CrateInfo) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
     ///
@@ -115,20 +117,22 @@ pub trait CodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>);
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
 
-    /// This is called on the returned [`CodegenResults`] from [`join_codegen`](Self::join_codegen).
+    /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
         link_binary(
             sess,
             &ArArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),

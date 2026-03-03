@@ -3553,6 +3553,19 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ImplRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
@@ -3752,6 +3765,7 @@ pub struct Trait {
     pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
+    pub impl_restriction: ImplRestriction,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::SuperTraits)]

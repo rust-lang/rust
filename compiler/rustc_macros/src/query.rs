@@ -137,54 +137,23 @@ struct CacheOnDiskIf {
     block: Block,
 }
 
+/// See `rustc_middle::query::modifiers` for documentation of each query modifier.
 struct QueryModifiers {
-    /// The description of the query.
-    desc: Desc,
-
-    /// Use this type for the in-memory cache.
-    arena_cache: Option<Ident>,
-
-    /// Cache the query to disk if the `Block` returns true.
-    cache_on_disk_if: Option<CacheOnDiskIf>,
-
-    /// A cycle error for this query aborting the compilation with a fatal error.
-    cycle_fatal: Option<Ident>,
-
-    /// A cycle error results in a delay_bug call
-    cycle_delay_bug: Option<Ident>,
-
-    /// A cycle error results in a stashed cycle error that can be unstashed and canceled later
-    cycle_stash: Option<Ident>,
-
-    /// Don't hash the result, instead just mark a query red if it runs
-    no_hash: Option<Ident>,
-
-    /// Generate a dep node based on the dependencies of the query
+    // tidy-alphabetical-start
     anon: Option<Ident>,
-
-    /// Always evaluate the query, ignoring its dependencies
-    eval_always: Option<Ident>,
-
-    /// Whether the query has a call depth limit
+    arena_cache: Option<Ident>,
+    cache_on_disk_if: Option<CacheOnDiskIf>,
+    cycle_delay_bug: Option<Ident>,
+    cycle_fatal: Option<Ident>,
+    cycle_stash: Option<Ident>,
     depth_limit: Option<Ident>,
-
-    /// Use a separate query provider for local and extern crates
-    separate_provide_extern: Option<Ident>,
-
-    /// Generate a `feed` method to set the query's value from another query.
+    desc: Desc,
+    eval_always: Option<Ident>,
     feedable: Option<Ident>,
-
-    /// When this query is called via `tcx.ensure_ok()`, it returns
-    /// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
-    /// be executed, and that execution returns an error, the error result is
-    /// returned to the caller.
-    ///
-    /// If execution is skipped, a synthetic `Ok(())` is returned, on the
-    /// assumption that a query with all-green inputs must have succeeded.
-    ///
-    /// Can only be applied to queries with a return value of
-    /// `Result<_, ErrorGuaranteed>`.
+    no_hash: Option<Ident>,
     return_result_from_ensure_ok: Option<Ident>,
+    separate_provide_extern: Option<Ident>,
+    // tidy-alphabetical-end
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
@@ -270,6 +239,68 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         feedable,
         return_result_from_ensure_ok,
     })
+}
+
+fn make_modifiers_stream(query: &Query, modifiers: &QueryModifiers) -> proc_macro2::TokenStream {
+    let QueryModifiers {
+        // tidy-alphabetical-start
+        anon,
+        arena_cache,
+        cache_on_disk_if,
+        cycle_delay_bug,
+        cycle_fatal,
+        cycle_stash,
+        depth_limit,
+        desc: _,
+        eval_always,
+        feedable,
+        no_hash,
+        return_result_from_ensure_ok,
+        separate_provide_extern,
+        // tidy-alphabetical-end
+    } = modifiers;
+
+    let anon = anon.is_some();
+    let arena_cache = arena_cache.is_some();
+    let cache_on_disk = cache_on_disk_if.is_some();
+
+    let cycle_error_handling = if cycle_delay_bug.is_some() {
+        quote! { DelayBug }
+    } else if cycle_fatal.is_some() {
+        quote! { Fatal }
+    } else if cycle_stash.is_some() {
+        quote! { Stash }
+    } else {
+        quote! { Error }
+    };
+
+    let depth_limit = depth_limit.is_some();
+    let eval_always = eval_always.is_some();
+    let feedable = feedable.is_some();
+    let no_hash = no_hash.is_some();
+    let return_result_from_ensure_ok = return_result_from_ensure_ok.is_some();
+    let separate_provide_extern = separate_provide_extern.is_some();
+
+    // Giving an input span to the modifier names in the modifier list seems
+    // to give slightly more helpful errors when one of the callback macros
+    // fails to parse the modifier list.
+    let query_name_span = query.name.span();
+    quote_spanned! {
+        query_name_span =>
+        // Search for (QMODLIST) to find all occurrences of this query modifier list.
+        // tidy-alphabetical-start
+        anon: #anon,
+        arena_cache: #arena_cache,
+        cache_on_disk: #cache_on_disk,
+        cycle_error_handling: #cycle_error_handling,
+        depth_limit: #depth_limit,
+        eval_always: #eval_always,
+        feedable: #feedable,
+        no_hash: #no_hash,
+        return_result_from_ensure_ok: #return_result_from_ensure_ok,
+        separate_provide_extern: #separate_provide_extern,
+        // tidy-alphabetical-end
+    }
 }
 
 fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attribute> {
@@ -458,51 +489,13 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
             ReturnType::Type(..) => quote! { #return_ty },
         };
 
-        let mut modifiers_out = vec![];
-
-        macro_rules! passthrough {
-            ( $( $modifier:ident ),+ $(,)? ) => {
-                $( if let Some($modifier) = &modifiers.$modifier {
-                    modifiers_out.push(quote! { (#$modifier) });
-                }; )+
-            }
-        }
-
-        passthrough!(
-            arena_cache,
-            cycle_fatal,
-            cycle_delay_bug,
-            cycle_stash,
-            no_hash,
-            anon,
-            eval_always,
-            feedable,
-            depth_limit,
-            separate_provide_extern,
-            return_result_from_ensure_ok,
-        );
-
-        // If there was a `cache_on_disk_if` modifier in the real input, pass
-        // on a synthetic `(cache_on_disk)` modifier that can be inspected by
-        // macro-rules macros.
-        if modifiers.cache_on_disk_if.is_some() {
-            modifiers_out.push(quote! { (cache_on_disk) });
-        }
-
-        // This uses the span of the query definition for the commas,
-        // which can be important if we later encounter any ambiguity
-        // errors with any of the numerous macro_rules! macros that
-        // we use. Using the call-site span would result in a span pointing
-        // at the entire `rustc_queries!` invocation, which wouldn't
-        // be very useful.
-        let span = name.span();
-        let modifiers_stream = quote_spanned! { span => #(#modifiers_out),* };
+        let modifiers_stream = make_modifiers_stream(&query, modifiers);
 
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
-            [#modifiers_stream]
-            fn #name(#key_ty) #return_ty,
+            fn #name(#key_ty) #return_ty
+            { #modifiers_stream }
         });
 
         if let Some(feedable) = &modifiers.feedable {

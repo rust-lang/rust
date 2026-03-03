@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // special handling for self trait bounds as these are not considered generics
-        // ie. trait Foo: Display {}
+        // i.e. trait Foo: Display {}
         if let Item {
             kind: ItemKind::Trait(_, _, _, _, _, bounds, ..),
             ..
