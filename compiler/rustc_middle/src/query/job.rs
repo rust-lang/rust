@@ -65,7 +65,7 @@ impl<'tcx> QueryJob<'tcx> {
 
 #[derive(Debug)]
 pub struct QueryWaiter<'tcx> {
-    pub query: Option<QueryJobId>,
+    pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
     pub cycle: Mutex<Option<CycleError<'tcx>>>,
@@ -94,8 +94,12 @@ impl<'tcx> QueryLatch<'tcx> {
             return Ok(()); // already complete
         };
 
-        let waiter =
-            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
+        let waiter = Arc::new(QueryWaiter {
+            parent: query,
+            span,
+            cycle: Mutex::new(None),
+            condvar: Condvar::new(),
+        });
 
         // We push the waiter on to the `waiters` list. It can be accessed inside
         // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
