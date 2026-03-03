@@ -70,7 +70,7 @@ pub(crate) enum ImportKind<'ra> {
         decls: PerNS<CmCell<PendingDecl<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
-        /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
+        /// Did this import result from a nested import? i.e. `use foo::{bar, baz};`
         nested: bool,
         /// The ID of the `UseTree` that imported this `Import`.
         ///
