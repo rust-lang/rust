@@ -757,7 +757,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     (
                                         val.span.shrink_to_hi().with_hi(index.span.lo() + offset), //remove the
                                         //leading &
-                                        format!(".insert("),
+                                        ".insert(".to_string(),
                                     ),
                                     (
                                         index.span.shrink_to_hi().with_hi(rv.span.lo()),
@@ -778,7 +778,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     (
                                         val.span.shrink_to_hi().with_hi(index.span.lo() + offset), //remove the
                                         //leading &
-                                        format!(".entry("),
+                                        ".entry(".to_string(),
                                     ),
                                     (
                                         index.span.shrink_to_hi().with_hi(rv.span.lo()),
@@ -826,7 +826,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
                                 (
                                     val.span.shrink_to_hi().with_hi(index.span.lo()),
-                                    format!(".get_mut("),
+                                    ".get_mut(".to_string(),
                                 ),
                                 (
                                     index.span.shrink_to_hi().with_hi(receiver.span.hi()),
