@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
@@ -15,7 +17,6 @@ mod test_1 {
 
     pub fn check() {
         reuse foo as bar;
-        //~^ ERROR: type annotations needed [E0284]
         bar::<i32, i32, 1>();
     }
 }
@@ -27,7 +28,6 @@ mod test_2 {
 
     pub fn check<T: Clone, U: Clone>() {
         reuse foo as bar;
-        //~^ ERROR: type annotations needed [E0284]
         bar::<T, U, 1>();
     }
 }
@@ -39,7 +39,6 @@ mod test_3 {
 
     pub fn check<T: Clone, U: Clone>() {
         reuse foo as bar;
-        //~^ ERROR: type annotations needed [E0284]
         bar::<u64, i32, 1>();
     }
 }
@@ -52,7 +51,6 @@ mod test_4 {
 
     pub fn check<T: Clone, U: Clone>() {
         reuse foo as bar;
-        //~^ ERROR: type annotations needed [E0284]
         bar::<u64, i32, 1>(&1, &2);
     }
 }
@@ -65,7 +63,6 @@ mod test_5 {
 
     pub fn check<T: Clone, U: Clone>() {
         reuse foo as bar;
-        //~^ ERROR: type annotations needed [E0284]
         bar::<u64, 1, u32>(&1, &2);
     }
 }
@@ -77,9 +74,7 @@ mod test_6 {
 
     pub fn check<T: Clone, U: Clone>() {
         reuse foo::<String, 1, String> as bar;
-        //~^ ERROR: arguments to this function are incorrect [E0308]
         bar(&"".to_string(), &"".to_string());
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -104,9 +99,7 @@ mod test_8 {
         fn foo<'a, 'b, const N: usize, T: Clone, U: Clone>(_t: &'a T, _u: &'b U) {}
 
         reuse foo::<1, String, String> as bar;
-        //~^ ERROR: arguments to this function are incorrect [E0308]
         bar(&"".to_string(), &"".to_string());
-        //~^ ERROR: type annotations needed [E0284]
     }
 }
 
@@ -119,9 +112,7 @@ mod test_9 {
             fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
 
             reuse foo::<String, 1, String> as bar;
-            //~^ ERROR: arguments to this function are incorrect [E0308]
             bar(&"".to_string(), &"".to_string());
-            //~^ ERROR: type annotations needed [E0284]
         };
 
         closure();
