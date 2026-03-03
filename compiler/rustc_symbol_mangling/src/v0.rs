@@ -898,6 +898,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::CrateRoot
             | DefPathData::Use
             | DefPathData::Impl
+            | DefPathData::AutoImpl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
             | DefPathData::DesugaredAnonymousLifetime

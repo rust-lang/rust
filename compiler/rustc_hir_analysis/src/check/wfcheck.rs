@@ -2361,6 +2361,7 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::TraitAlias
         | DefKind::Fn
         | DefKind::Const { .. }
+        | DefKind::AutoImpl
         | DefKind::Impl { of_trait: _ } => {
             // Proceed
         }

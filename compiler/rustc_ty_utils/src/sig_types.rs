@@ -100,6 +100,9 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 try_visit!(visitor.visit(span, pred));
             }
         }
+        DefKind::AutoImpl => {
+            unreachable!()
+        }
         DefKind::TraitAlias | DefKind::Trait => {
             for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, pred));

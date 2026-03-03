@@ -13,8 +13,9 @@ use crate::comment::{
 use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
-    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_impl, format_trait,
-    format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate, rewrite_type_alias,
+    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_auto_impl,
+    format_extern_impl, format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
+    rewrite_extern_crate, rewrite_type_alias,
 };
 use crate::macros::{MacroPosition, macro_style, rewrite_macro, rewrite_macro_def};
 use crate::modules::Module;
@@ -493,6 +494,20 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let rw = self.with_context(|ctx| format_impl(ctx, item, iimpl, block_indent));
                     self.push_rewrite(item.span, rw.ok());
                 }
+                ast::ItemKind::AutoImpl(ref aimpl) => {
+                    let block_indent = self.block_indent;
+                    let rw = self.with_context(|ctx| {
+                        format_auto_impl(ctx, aimpl, item.span, &attrs, block_indent)
+                    });
+                    self.push_rewrite(item.span, rw.ok());
+                }
+                ast::ItemKind::ExternImpl(ref eimpl) => {
+                    let block_indent = self.block_indent;
+                    let rw = self.with_context(|ctx| {
+                        format_extern_impl(ctx, eimpl, item.span, &attrs, block_indent)
+                    });
+                    self.push_rewrite(item.span, rw.ok());
+                }
                 ast::ItemKind::Trait(ref trait_kind) => {
                     let block_indent = self.block_indent;
                     let rw =
@@ -714,6 +729,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             (ast::AssocItemKind::MacCall(ref mac), _) => {
                 self.visit_mac(mac, MacroPosition::Item);
             }
+            (ast::AssocItemKind::AutoImpl(ref aimpl), _) => {
+                self.visit_auto_impl(aimpl, ai.span, &ai.attrs);
+            }
             _ => unreachable!(),
         }
     }
@@ -724,6 +742,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub(crate) fn visit_impl_item(&mut self, ii: &ast::AssocItem) {
         self.visit_assoc_item(ii, ItemVisitorKind::AssocImplItem);
+    }
+
+    fn visit_auto_impl(&mut self, ai: &ast::AutoImpl, span: Span, attrs: &[ast::Attribute]) {
+        let block_indent = self.block_indent;
+        let rw = self.with_context(|ctx| format_auto_impl(ctx, ai, span, attrs, block_indent));
+        self.push_rewrite(span, rw.ok());
     }
 
     fn visit_mac(&mut self, mac: &ast::MacCall, pos: MacroPosition) {

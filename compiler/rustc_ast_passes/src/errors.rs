@@ -615,6 +615,13 @@ pub(crate) struct NestedImplTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag("`auto impl` is outside a `trait` block or trait-`impl` block")]
+pub(crate) struct AutoImplOutsideTraitOrImplTrait {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("at least one trait must be specified")]
 pub(crate) struct AtLeastOneTrait {
     #[primary_span]

@@ -1,7 +1,7 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
-use rustc_span::Ident;
+use rustc_span::{Ident, Span};
 
 use crate::pp::BoxMarker;
 use crate::pp::Breaks::Inconsistent;
@@ -320,23 +320,12 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
 
-                let impl_generics = |this: &mut Self| {
-                    this.word("impl");
-
-                    if generics.params.is_empty() {
-                        this.nbsp();
-                    } else {
-                        this.print_generic_params(&generics.params);
-                        this.space();
-                    }
-                };
-
                 if let Some(box of_trait) = of_trait {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
                     self.print_safety(safety);
-                    impl_generics(self);
+                    self.print_impl_generics_head(generics);
                     self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
@@ -346,7 +335,7 @@ impl<'a> State<'a> {
                     self.word_space("for");
                 } else {
                     self.print_constness(*constness);
-                    impl_generics(self);
+                    self.print_impl_generics_head(generics);
                 }
 
                 self.print_type(self_ty);
@@ -360,6 +349,28 @@ impl<'a> State<'a> {
                 }
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
+            }
+            ast::ItemKind::AutoImpl(box ast::AutoImpl { generics, of_trait, items, constness }) => {
+                self.print_assoc_auto_extern_impl(
+                    true,
+                    &item.attrs,
+                    generics,
+                    *constness,
+                    of_trait,
+                    items,
+                    item.span,
+                );
+            }
+            ast::ItemKind::ExternImpl(box ast::ExternImpl { generics, of_trait }) => {
+                self.print_assoc_auto_extern_impl(
+                    false,
+                    &item.attrs,
+                    generics,
+                    ast::Const::No,
+                    of_trait,
+                    &[],
+                    item.span,
+                );
             }
             ast::ItemKind::Trait(box ast::Trait {
                 constness,
@@ -612,6 +623,24 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
+            ast::AssocItemKind::AutoImpl(ai) => self.print_assoc_auto_extern_impl(
+                true,
+                &item.attrs,
+                &ai.generics,
+                ai.constness,
+                &ai.of_trait,
+                &ai.items,
+                item.span,
+            ),
+            ast::AssocItemKind::ExternImpl(ei) => self.print_assoc_auto_extern_impl(
+                false,
+                &item.attrs,
+                &ei.generics,
+                ast::Const::No,
+                &ei.of_trait,
+                &[],
+                item.span,
+            ),
             ast::AssocItemKind::Delegation(deleg) => self.print_delegation(
                 &item.attrs,
                 vis,
@@ -630,6 +659,54 @@ impl<'a> State<'a> {
             ),
         }
         self.ann.post(self, AnnNode::SubItem(id))
+    }
+
+    fn print_assoc_auto_extern_impl(
+        &mut self,
+        is_auto: bool,
+        attrs: &[ast::Attribute],
+        generics: &ast::Generics,
+        constness: ast::Const,
+        of_trait: &ast::TraitImplHeader,
+        items: &[Box<ast::AssocItem>],
+        span: Span,
+    ) {
+        let (cb, ib) = self.head("");
+        let &ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } = of_trait;
+        self.print_defaultness(defaultness);
+        self.print_safety(safety);
+        self.word(if is_auto { "auto" } else { "extern" });
+        self.print_impl_generics_head(generics);
+        self.print_constness(constness);
+        if let ast::ImplPolarity::Negative(_) = polarity {
+            self.word("!");
+        }
+        self.print_trait_ref(trait_ref);
+
+        self.space();
+        self.bopen(ib);
+        self.print_inner_attributes(&attrs);
+        if !is_auto || items.is_empty() {
+            self.word(";");
+        } else {
+            for impl_item in items {
+                self.print_assoc_item(impl_item);
+            }
+        }
+        let empty = attrs.is_empty() && items.is_empty();
+        self.bclose(span, empty, cb);
+    }
+
+    // Pretty-prints `impl<generics...> `
+    fn print_impl_generics_head(&mut self, generics: &ast::Generics) {
+        self.word("impl");
+
+        if generics.params.is_empty() {
+            self.nbsp();
+        } else {
+            self.print_generic_params(&generics.params);
+            self.space();
+        }
     }
 
     fn print_delegation(
