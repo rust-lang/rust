@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 
