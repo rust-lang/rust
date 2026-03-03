@@ -1,0 +1,20 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/syntactic-type-mismatch.rs:7:16
+   |
+LL | type const T0: _ = ();
+   |                ^ not allowed in type signatures
+
+error: missing type for `const` item
+  --> $DIR/syntactic-type-mismatch.rs:10:14
+   |
+LL | type const T1 = [0];
+   |              ^
+   |
+help: provide a type for the item
+   |
+LL | type const T1: <type> = [0];
+   |              ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.
