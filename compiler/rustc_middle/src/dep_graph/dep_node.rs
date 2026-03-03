@@ -268,8 +268,10 @@ macro_rules! define_dep_nodes {
         queries {
             $(
                 $(#[$q_attr:meta])*
-                [$($modifiers:tt)*]
-                fn $q_name:ident($K:ty) -> $V:ty,
+                fn $q_name:ident($K:ty) -> $V:ty
+                // Search for (QMODLIST) to find all occurrences of this query modifier list.
+                // Query modifiers are currently not used here, so skip the whole list.
+                { $($modifiers:tt)* }
             )*
         }
         non_queries {
