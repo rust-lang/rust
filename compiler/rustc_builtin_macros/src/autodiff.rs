@@ -214,7 +214,7 @@ mod llvm_enzyme {
         // first get information about the annotable item: visibility, signature, name and generic
         // parameters.
         // these will be used to generate the differentiated version of the function
-        let Some((vis, sig, primal, generics, impl_of_trait)) = (match &item {
+        let Some((vis, sig, primal, generics, is_impl)) = (match &item {
             Annotatable::Item(iitem) => {
                 extract_item_info(iitem).map(|(v, s, p, g)| (v, s, p, g, false))
             }
@@ -224,13 +224,13 @@ mod llvm_enzyme {
                 }
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { of_trait }) => match &assoc_item.kind {
+            Annotatable::AssocItem(assoc_item, Impl { of_trait: _ }) => match &assoc_item.kind {
                 ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => Some((
                     assoc_item.vis.clone(),
                     sig.clone(),
                     ident.clone(),
                     generics.clone(),
-                    *of_trait,
+                    true,
                 )),
                 _ => None,
             },
@@ -328,7 +328,7 @@ mod llvm_enzyme {
                 span,
                 &d_sig,
                 &generics,
-                impl_of_trait,
+                is_impl,
             )],
         );
 
