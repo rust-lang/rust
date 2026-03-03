@@ -1,7 +1,7 @@
 //! This checks the output of `--print=cfg`
 //!
 //! Specifically it checks that output is correctly formatted
-//! (ie. no duplicated cfgs, values are between "", names are not).
+//! (i.e. no duplicated cfgs, values are between "", names are not).
 //!
 //! It also checks that some targets have the correct set cfgs.
 
