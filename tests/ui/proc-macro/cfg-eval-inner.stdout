@@ -1,16 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): impl
-Foo<[u8;
-{
-    #![rustc_dummy(cursed_inner)] #![allow(unused)] struct Inner
-    { field: [u8; { #![rustc_dummy(another_cursed_inner)] 1 }] } 0
-}]> { #![rustc_dummy(evaluated_attr)] fn bar() {} }
-PRINT-ATTR RE-COLLECTED (DISPLAY): impl Foo <
-[u8;
-{
-    #![rustc_dummy(cursed_inner)] #![allow(unused)] struct Inner
-    { field: [u8; { #![rustc_dummy(another_cursed_inner)] 1 }] } 0
-}] > { #![rustc_dummy(evaluated_attr)] fn bar() {} }
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): impl Foo <
+PRINT-ATTR INPUT (DISPLAY): impl Foo <
 [u8;
 {
     #! [rustc_dummy(cursed_inner)] #! [allow(unused)] struct Inner
