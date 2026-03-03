@@ -634,7 +634,7 @@ impl FileAttr {
     }
 
     #[cfg(any(
-        target_os = "vxworks",
+        all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
         target_os = "vita",
         target_os = "rtems",
@@ -643,7 +643,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_mtime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
+    #[cfg(any(
+        target_os = "horizon",
+        target_os = "hurd",
+        target_os = "nuttx",
+        all(target_os = "vxworks", not(vxworks_lt_25_09))
+    ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec as i64, self.stat.st_mtim.tv_nsec as i64)
     }
@@ -669,7 +674,7 @@ impl FileAttr {
     }
 
     #[cfg(any(
-        target_os = "vxworks",
+        all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
         target_os = "vita",
         target_os = "rtems"
@@ -678,7 +683,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atime as i64, 0)
     }
 
-    #[cfg(any(target_os = "horizon", target_os = "hurd", target_os = "nuttx"))]
+    #[cfg(any(
+        target_os = "horizon",
+        target_os = "hurd",
+        target_os = "nuttx",
+        all(target_os = "vxworks", not(vxworks_lt_25_09))
+    ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
