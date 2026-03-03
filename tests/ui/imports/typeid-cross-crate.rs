@@ -1,14 +1,16 @@
+// issue: <https://github.com/rust-lang/rust/issues/13507>
+// Test cross-crate TypeId stability
 //@ run-pass
 #![allow(unused_imports)]
-//@ aux-build:issue-13507.rs
+//@ aux-build:typeid-cross-crate-aux.rs
 
-extern crate issue_13507;
-use issue_13507::testtypes;
+extern crate typeid_cross_crate_aux;
+use typeid_cross_crate_aux::testtypes;
 
 use std::any::TypeId;
 
 pub fn type_ids() -> Vec<TypeId> {
-    use issue_13507::testtypes::*;
+    use typeid_cross_crate_aux::testtypes::*;
     vec![
         TypeId::of::<FooBool>(),
         TypeId::of::<FooInt>(),
@@ -25,12 +27,12 @@ pub fn type_ids() -> Vec<TypeId> {
         TypeId::of::<FooTuple>(),
         TypeId::of::<dyn FooTrait>(),
         TypeId::of::<FooStruct>(),
-        TypeId::of::<FooEnum>()
+        TypeId::of::<FooEnum>(),
     ]
 }
 
 pub fn main() {
-    let othercrate = issue_13507::testtypes::type_ids();
+    let othercrate = typeid_cross_crate_aux::testtypes::type_ids();
     let thiscrate = type_ids();
     assert_eq!(thiscrate, othercrate);
 }
