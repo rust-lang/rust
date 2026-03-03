@@ -1330,7 +1330,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         safety: AttributeSafety::Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
-        gate: Gated{
+        gate: Gated {
             feature: sym::rustc_attrs,
             message: "use of an internal attribute",
             check: Features::rustc_attrs,

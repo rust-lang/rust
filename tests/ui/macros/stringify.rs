@@ -9,12 +9,10 @@
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
-#![feature(explicit_tail_calls)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
-#![feature(type_ascription)]
 #![feature(yeet_expr)]
 #![deny(unused_macros)]
 
