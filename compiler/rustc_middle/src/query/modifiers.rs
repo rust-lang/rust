@@ -58,20 +58,6 @@ pub(crate) struct feedable;
 /// Don't hash the result, instead just mark a query red if it runs
 pub(crate) struct no_hash;
 
-/// # `return_result_from_ensure_ok` query modifier
-///
-/// When this query is called via `tcx.ensure_ok()`, it returns
-/// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
-/// be executed, and that execution returns an error, the error result is
-/// returned to the caller.
-///
-/// If execution is skipped, a synthetic `Ok(())` is returned, on the
-/// assumption that a query with all-green inputs must have succeeded.
-///
-/// Can only be applied to queries with a return value of
-/// `Result<_, ErrorGuaranteed>`.
-pub(crate) struct return_result_from_ensure_ok;
-
 /// # `separate_provide_extern` query modifier
 ///
 /// Use a separate query provider for local and extern crates

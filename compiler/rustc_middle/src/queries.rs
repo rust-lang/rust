@@ -40,9 +40,6 @@
 //! - `depth_limit`: Impose a recursion depth limit on the query to prevent stack overflows.
 //! - `separate_provide_extern`: Use separate provider functions for local and external crates.
 //! - `feedable`: Allow the query result to be set from another query ("fed" externally).
-//! - `return_result_from_ensure_ok`: When called via `tcx.ensure_ok()`, return `Result<(), ErrorGuaranteed>` instead of `()`.
-//!   If the query needs to be executed and returns an error, the error is returned to the caller.
-//!   Only valid for queries returning `Result<_, ErrorGuaranteed>`.
 //!
 //! For the up-to-date list, see the `QueryModifiers` struct in
 //! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
@@ -716,7 +713,6 @@ rustc_queries! {
 
     query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Used in case `mir_borrowck` fails to prove an obligation. We generally assume that
@@ -1164,9 +1160,8 @@ rustc_queries! {
     }
 
     /// Checks well-formedness of tail calls (`become f()`).
-    query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+    query check_tail_calls(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "tail-call-checking `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Returns the types assumed to be well formed while "inside" of the given item.
@@ -1238,7 +1233,6 @@ rustc_queries! {
 
     query check_type_wf(key: ()) -> Result<(), ErrorGuaranteed> {
         desc { "checking that types are well-formed" }
-        return_result_from_ensure_ok
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
@@ -1246,7 +1240,6 @@ rustc_queries! {
         desc { "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
-        return_result_from_ensure_ok
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
@@ -1261,7 +1254,6 @@ rustc_queries! {
 
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
-        return_result_from_ensure_ok
     }
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
@@ -1293,7 +1285,6 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_validity_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for inherent impls that should not be defined in crate" }
-        return_result_from_ensure_ok
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
@@ -1305,7 +1296,6 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
-        return_result_from_ensure_ok
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1315,7 +1305,6 @@ rustc_queries! {
             "checking whether impl `{}` follows the orphan rules",
             tcx.def_path_str(key),
         }
-        return_result_from_ensure_ok
     }
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
@@ -1420,9 +1409,8 @@ rustc_queries! {
         desc { "converting literal to const" }
     }
 
-    query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+    query check_match(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "match-checking `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Performs part of the privacy check and computes effective visibilities.
@@ -1651,7 +1639,6 @@ rustc_queries! {
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
-        return_result_from_ensure_ok
     }
     query dyn_compatibility_violations(trait_id: DefId) -> &'tcx [DynCompatibilityViolation] {
         desc { "determining dyn-compatibility of trait `{}`", tcx.def_path_str(trait_id) }
@@ -1930,12 +1917,10 @@ rustc_queries! {
 
     query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking that `{}` is well-formed", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     query enforce_impl_non_lifetime_params_are_constrained(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking that `{}`'s generics are constrained by the impl header", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     // The `DefId`s of all non-generic functions and statics in the given crate
@@ -2697,7 +2682,6 @@ rustc_queries! {
     /// Any other def id will ICE.
     query compare_impl_item(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking assoc item `{}` is compatible with trait definition", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [DeducedParamAttrs] {
