@@ -2,8 +2,6 @@
 //@ needs-unwind
 //@ compile-flags: -O -C overflow-checks=yes
 
-#![feature(new_range_api)]
-
 use std::panic;
 
 fn main() {

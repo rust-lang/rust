@@ -294,7 +294,7 @@ range_incl_exact_iter_impl! {
 }
 
 /// By-value [`RangeFrom`] iterator.
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug, Clone)]
 pub struct RangeFromIter<A> {
     start: A,
@@ -307,7 +307,7 @@ impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
     #[inline]
     #[rustc_inherit_overflow_checks]
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
     pub fn remainder(self) -> RangeFrom<A> {
         if intrinsics::overflow_checks() {
             if !self.first {
@@ -319,7 +319,7 @@ impl<A: Step> RangeFromIter<A> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> Iterator for RangeFromIter<A> {
     type Item = A;
 
@@ -371,10 +371,10 @@ impl<A: Step> Iterator for RangeFromIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeFromIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> FusedIterator for RangeFromIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> IntoIterator for RangeFrom<A> {
     type Item = A;
     type IntoIter = RangeFromIter<A>;

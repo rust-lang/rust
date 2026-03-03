@@ -131,7 +131,7 @@ mod private_slice_index {
     impl Sealed for range::RangeInclusive<usize> {}
     #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
     impl Sealed for range::RangeToInclusive<usize> {}
-    #[unstable(feature = "new_range_api", issue = "125687")]
+    #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
     impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
@@ -588,7 +588,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl<T> const SliceIndex<[T]> for range::RangeFrom<usize> {
     type Output = [T];
