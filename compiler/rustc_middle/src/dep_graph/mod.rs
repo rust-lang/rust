@@ -63,7 +63,7 @@ where
     OP: FnOnce() -> R,
 {
     ty::tls::with_context(|icx| {
-        let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
+        let icx = ty::tls::ImplicitCtxt { task_deps, ..*icx };
         ty::tls::enter_context(&icx, op)
     })
 }

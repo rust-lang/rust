@@ -9,7 +9,6 @@ use crate::query::QueryJobId;
 /// executing a new query. Whenever there's a `TyCtxt` value available
 /// you should also have access to an `ImplicitCtxt` through the functions
 /// in this module.
-#[derive(Clone)]
 pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current `TyCtxt`.
     pub tcx: TyCtxt<'tcx>,

@@ -81,7 +81,7 @@ pub(crate) fn start_query<R>(
         let icx = ImplicitCtxt {
             query: Some(job_id),
             query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
-            ..icx.clone()
+            ..*icx
         };
 
         // Use the `ImplicitCtxt` while we execute the query.
