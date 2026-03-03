@@ -1,9 +1,10 @@
 //@ check-pass
 //@ compile-flags: -Zunpretty=expanded,hygiene
 
-// Regression test: metavar parameters in macro-generated macro_rules!
-// definitions should have hygiene annotations so that textually identical
-// `$marg` bindings are distinguishable by their syntax contexts.
+// Regression test for token hygiene annotations in -Zunpretty=expanded,hygiene
+// Previously, metavar parameters in macro-generated macro_rules! definitions
+// were missing hygiene annotations, making identical `$marg` bindings
+// indistinguishable.
 
 // Don't break whenever Symbol numbering changes
 //@ normalize-stdout: "\d+#" -> "0#"
