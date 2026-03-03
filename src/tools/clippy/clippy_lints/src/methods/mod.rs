@@ -4761,6 +4761,8 @@ pub struct Methods {
     allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
     allow_unwrap_types: Vec<String>,
+    unwrap_allowed_ids: FxHashSet<rustc_hir::def_id::DefId>,
+    unwrap_allowed_aliases: Vec<rustc_hir::def_id::DefId>,
 }
 
 impl Methods {
@@ -4778,6 +4780,8 @@ impl Methods {
             allowed_dotfiles,
             format_args,
             allow_unwrap_types: conf.allow_unwrap_types.clone(),
+            unwrap_allowed_ids: FxHashSet::default(),
+            unwrap_allowed_aliases: Vec::new(),
         }
     }
 }
@@ -4953,6 +4957,19 @@ pub fn method_call<'tcx>(recv: &'tcx Expr<'tcx>) -> Option<(Symbol, &'tcx Expr<'
 }
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        for s in &self.allow_unwrap_types {
+            let def_ids = clippy_utils::paths::lookup_path_str(cx.tcx, clippy_utils::paths::PathNS::Type, s);
+            for def_id in def_ids {
+                if cx.tcx.def_kind(def_id) == rustc_hir::def::DefKind::TyAlias {
+                    self.unwrap_allowed_aliases.push(def_id);
+                } else {
+                    self.unwrap_allowed_ids.insert(def_id);
+                }
+            }
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
@@ -4976,7 +4993,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     self.allow_expect_in_tests,
                     self.allow_unwrap_in_consts,
                     self.allow_expect_in_consts,
-                    &self.allow_unwrap_types,
+                    &self.unwrap_allowed_ids,
+                    &self.unwrap_allowed_aliases,
                 );
             },
             ExprKind::MethodCall(..) => {
@@ -5730,7 +5748,8 @@ impl Methods {
                         false,
                         self.allow_expect_in_consts,
                         self.allow_expect_in_tests,
-                        &self.allow_unwrap_types,
+                        &self.unwrap_allowed_ids,
+                        &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Expect,
                     );
                     expect_fun_call::check(cx, &self.format_args, expr, method_span, recv, arg);
@@ -5743,7 +5762,8 @@ impl Methods {
                         true,
                         self.allow_expect_in_consts,
                         self.allow_expect_in_tests,
-                        &self.allow_unwrap_types,
+                        &self.unwrap_allowed_ids,
+                        &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Expect,
                     );
                 },
@@ -5764,7 +5784,8 @@ impl Methods {
                         false,
                         self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
-                        &self.allow_unwrap_types,
+                        &self.unwrap_allowed_ids,
+                        &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Unwrap,
                     );
                 },
@@ -5776,7 +5797,8 @@ impl Methods {
                         true,
                         self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
-                        &self.allow_unwrap_types,
+                        &self.unwrap_allowed_ids,
+                        &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Unwrap,
                     );
                 },
