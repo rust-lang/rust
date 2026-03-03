@@ -130,8 +130,20 @@ macro_rules! define_dep_kind_vtables {
         queries {
             $(
                 $(#[$attr:meta])*
-                [$($modifiers:tt)*]
-                fn $name:ident($K:ty) -> $V:ty,
+                fn $name:ident($K:ty) -> $V:ty
+                {
+                    // Search for (QMODLIST) to find all occurrences of this query modifier list.
+                    anon: $anon:literal,
+                    arena_cache: $arena_cache:literal,
+                    cache_on_disk: $cache_on_disk:literal,
+                    cycle_error_handling: $cycle_error_handling:ident,
+                    depth_limit: $depth_limit:literal,
+                    eval_always: $eval_always:literal,
+                    feedable: $feedable:literal,
+                    no_hash: $no_hash:literal,
+                    return_result_from_ensure_ok: $return_result_from_ensure_ok:literal,
+                    separate_provide_extern: $separate_provide_extern:literal,
+                }
             )*
         }
         non_queries {
@@ -154,9 +166,9 @@ macro_rules! define_dep_kind_vtables {
                 $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
                     $crate::query_impl::$name::VTableGetter,
                 >(
-                    is_anon!([$($modifiers)*]),
-                    if_cache_on_disk!([$($modifiers)*] true false),
-                    is_eval_always!([$($modifiers)*]),
+                    $anon,
+                    $cache_on_disk,
+                    $eval_always,
                 )
             ),*
         ];
