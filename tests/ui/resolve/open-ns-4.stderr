@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `utils` in `my_api`
+error[E0433]: cannot find `utils` in `my_api`
   --> $DIR/open-ns-4.rs:10:21
    |
 LL |     let _ = my_api::utils::utils_helper();
