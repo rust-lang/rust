@@ -1,4 +1,4 @@
-#![feature(adt_const_params, unsized_const_params, generic_const_parameter_types)]
+#![feature(adt_const_params, const_param_ty_trait, generic_const_parameter_types)]
 #![allow(incomplete_features)]
 
 use std::marker::ConstParamTy_;

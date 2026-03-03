@@ -7,7 +7,7 @@
 #![feature(generic_const_items)]
 #![feature(generic_const_parameter_types)]
 #![feature(min_generic_const_args)]
-#![feature(unsized_const_params)]
+#![feature(const_param_ty_trait)]
 #![expect(incomplete_features)]
 
 trait Trait {

@@ -8,7 +8,7 @@
     min_generic_const_args,
     adt_const_params,
     generic_const_parameter_types,
-    unsized_const_params
+    const_param_ty_trait
 )]
 #![expect(incomplete_features)]
 use std::marker::{ConstParamTy, ConstParamTy_};
