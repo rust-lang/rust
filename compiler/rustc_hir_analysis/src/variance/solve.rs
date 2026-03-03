@@ -5,8 +5,9 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
-use rustc_hir::def_id::DefIdMap;
-use rustc_middle::ty;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use tracing::debug;
 
 use super::constraints::*;
@@ -40,6 +41,55 @@ struct SolveContext<'a, 'tcx> {
     solutions: Vec<ty::Variance>,
 }
 
+struct GroundingUseVisitor {
+    item_def_id: DefId,
+    grounded_params: Vec<u32>,
+    in_self: bool,
+    in_alias: bool,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GroundingUseVisitor {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> () {
+        match ty.kind() {
+            // Self-reference: visit args in a self-recursive context.
+            ty::Adt(def, _) if def.did() == self.item_def_id => {
+                let was_in_self = self.in_self;
+                self.in_self = true;
+                ty.super_visit_with(self);
+                self.in_self = was_in_self;
+                ()
+            }
+            // Projections/aliases: treat parameter uses as grounding.
+            ty::Alias(..) => {
+                let was_in_alias = self.in_alias;
+                self.in_alias = true;
+                ty.super_visit_with(self);
+                self.in_alias = was_in_alias;
+                ()
+            }
+            // Found a direct parameter use, record it
+            ty::Param(data) => {
+                if !self.in_self || self.in_alias {
+                    self.grounded_params.push(data.index);
+                }
+                ()
+            }
+            // Everything else: recurse normally via super_visit_with,
+            // which visits generic args of ADTs, elements of tuples, etc.
+            _ => ty.super_visit_with(self),
+        }
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> () {
+        if let ty::ReEarlyParam(ref data) = r.kind() {
+            if !self.in_self || self.in_alias {
+                self.grounded_params.push(data.index);
+            }
+        }
+        ()
+    }
+}
+
 pub(crate) fn solve_constraints<'tcx>(
     constraints_cx: ConstraintContext<'_, 'tcx>,
 ) -> ty::CrateVariancesMap<'tcx> {
@@ -55,6 +105,7 @@ pub(crate) fn solve_constraints<'tcx>(
 
     let mut solutions_cx = SolveContext { terms_cx, constraints, solutions };
     solutions_cx.solve();
+    solutions_cx.fix_purely_recursive_params();
     let variances = solutions_cx.create_map();
 
     ty::CrateVariancesMap { variances }
@@ -88,6 +139,75 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                     changed = true;
                 }
             }
+        }
+    }
+
+    /// After the fixed-point solver, check for parameters whose non-bivariance
+    /// is solely due to self-referential cycles (e.g. `struct Thing<T>(*mut Thing<T>)`).
+    /// Those parameters have no "grounding" use and should be bivariant.
+    fn fix_purely_recursive_params(&mut self) {
+        let tcx = self.terms_cx.tcx;
+
+        // First pass: identify which solution slots need to be reset to Bivariant.
+        // We use a RefCell so the Fn closure required by `UnordItems::all` can
+        // accumulate results via interior mutability.
+        let to_reset: std::cell::RefCell<Vec<usize>> = std::cell::RefCell::new(Vec::new());
+
+        self.terms_cx.inferred_starts.items().all(|(&def_id, &InferredIndex(start))| {
+            // Skip lang items with hardcoded variance (e.g., PhantomData).
+            if self.terms_cx.lang_items.iter().any(|(id, _)| *id == def_id) {
+                return true;
+            }
+
+            // Only check ADTs (structs, enums, unions).
+            if !matches!(tcx.def_kind(def_id), DefKind::Struct | DefKind::Enum | DefKind::Union) {
+                return true;
+            }
+
+            let generics = tcx.generics_of(def_id);
+            let count = generics.count();
+
+            // Quick check: if all params are already bivariant, nothing to do.
+            if (0..count).all(|i| self.solutions[start + i] == ty::Bivariant) {
+                return true;
+            }
+
+            // Walk all fields to find grounding uses.
+            let mut visitor = GroundingUseVisitor {
+                item_def_id: def_id.to_def_id(),
+                grounded_params: Default::default(),
+                in_self: false,
+                in_alias: false,
+            };
+            let adt = tcx.adt_def(def_id);
+            for field in adt.all_fields() {
+                tcx.type_of(field.did).instantiate_identity().visit_with(&mut visitor);
+            }
+
+            // Collect solution indices with no grounding use.
+            for i in 0..count {
+                if !matches!(generics.param_at(i, tcx).kind, ty::GenericParamDefKind::Type { .. }) {
+                    continue;
+                }
+                if self.solutions[start + i] != ty::Bivariant
+                    && !visitor.grounded_params.contains(&(i as u32))
+                {
+                    debug!(
+                        "fix_purely_recursive_params: param {} of {:?} has no grounding use \
+                        (was {:?}), will reset to Bivariant",
+                        i,
+                        def_id,
+                        self.solutions[start + i]
+                    );
+                    to_reset.borrow_mut().push(start + i);
+                }
+            }
+            true
+        });
+
+        // Second pass: apply the resets.
+        for idx in to_reset.into_inner() {
+            self.solutions[idx] = ty::Bivariant;
         }
     }
 
