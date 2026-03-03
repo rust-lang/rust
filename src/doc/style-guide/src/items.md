@@ -111,7 +111,7 @@ struct Foo {
 
 If and only if the type of a field does not fit within the right margin, it is
 pulled down to its own line and indented again. If and only if the default value
-does not not fit within the right margin, split the line after the =. Also apply
+does not not fit within the right margin, split the line before the =. Also apply
 a block indent if this was not already done by pulling down the type.
 
 ```rust
