@@ -453,7 +453,8 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
     if !query.anon && !query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.get_or_insert_with(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
@@ -485,7 +486,8 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         }
 
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.unwrap_or_else(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // Call the query provider.
         dep_graph_data.with_task(
@@ -629,7 +631,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.construct_dep_node(tcx, key);
+    let dep_node = DepNode::construct(tcx, query.dep_kind, key);
 
     let dep_graph = &tcx.dep_graph;
     let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {

@@ -11,7 +11,7 @@ use rustc_macros::HashStable;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
-use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
 use crate::query::on_disk_cache::OnDiskCache;
@@ -177,12 +177,6 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
         // If there is need for a more detailed dump of all flags and fields,
         // consider writing a separate dump method and calling it explicitly.
         f.write_str(self.name)
-    }
-}
-
-impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
-    pub fn construct_dep_node(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
-        DepNode::construct(tcx, self.dep_kind, key)
     }
 }
 
