@@ -65,8 +65,7 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RegisteredTools,
-    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RealResolver, RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -1842,22 +1841,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            partial_res_map: self.partial_res_map,
-            import_res_map: self.import_res_map,
-            label_res_map: self.label_res_map,
-            lifetimes_res_map: self.lifetimes_res_map,
-            extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
-            node_id_to_def_id: self
-                .node_id_to_def_id
-                .into_items()
-                .map(|(k, f)| (k, f.key()))
-                .collect(),
-            trait_map: self.trait_map,
-            lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_fn_sigs: self.delegation_fn_sigs,
-            delegation_infos: self.delegation_infos,
+            resolver: RealResolver {
+                partial_res_map: self.partial_res_map,
+                import_res_map: self.import_res_map,
+                label_res_map: self.label_res_map,
+                lifetimes_res_map: self.lifetimes_res_map,
+                extra_lifetime_params_map: self.extra_lifetime_params_map,
+                node_id_to_def_id: self
+                    .node_id_to_def_id
+                    .into_items()
+                    .map(|(k, f)| (k, f.key()))
+                    .collect(),
+                trait_map: self.trait_map,
+                lifetime_elision_allowed: self.lifetime_elision_allowed,
+                delegation_fn_sigs: self.delegation_fn_sigs,
+                delegation_infos: self.delegation_infos,
+            },
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
