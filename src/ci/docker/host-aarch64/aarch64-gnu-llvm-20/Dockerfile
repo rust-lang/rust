@@ -37,20 +37,19 @@ RUN sh /scripts/sccache.sh
 
 # We are disabling CI LLVM since this builder is intentionally using a host
 # LLVM, rather than the typical src/llvm-project LLVM.
-ENV NO_DOWNLOAD_CI_LLVM 1
-ENV EXTERNAL_LLVM 1
+ENV NO_DOWNLOAD_CI_LLVM="1"
+ENV EXTERNAL_LLVM="1"
 
 # Using llvm-link-shared due to libffi issues -- see #34486
-ENV RUST_CONFIGURE_ARGS \
-      --build=aarch64-unknown-linux-gnu \
+ENV RUST_CONFIGURE_ARGS="--build=aarch64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-20 \
       --enable-llvm-link-shared \
       --set rust.randomize-layout=true \
-      --set rust.thin-lto-import-instr-limit=10
+      --set rust.thin-lto-import-instr-limit=10"
 
 COPY scripts/shared.sh /scripts/
 
 COPY scripts/stage_2_test_set1.sh /scripts/
 COPY scripts/stage_2_test_set2.sh /scripts/
 
-ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"
+ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"
