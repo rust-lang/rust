@@ -136,7 +136,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            let diag = self.ambiguity_diagnostic(ambiguity_error);
+            let mut diag = self.ambiguity_diagnostic(ambiguity_error);
 
             if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
@@ -152,6 +152,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 self.lint_buffer.buffer_lint(lint, node_id, diag.ident.span, diag);
             } else {
+                diag.is_error = true;
                 self.dcx().emit_err(diag);
             }
         }
@@ -2093,6 +2094,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             b1_help_msgs,
             b2_note,
             b2_help_msgs,
+            is_error: false,
         }
     }
 
