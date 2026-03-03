@@ -27,7 +27,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         StorageDead(_4);
         PlaceMention(_3);
         _11 = &(*(_3.0: &str));
-        _12 = <str as PartialEq>::eq(copy _11, const "a") -> [return: bb9, unwind: bb19];
+        _12 = <str as PartialEq>::eq(copy _11, const "a") -> [return: bb9, unwind: bb21];
     }
 
     bb1: {
@@ -48,7 +48,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb5: {
         _9 = &(*(_3.0: &str));
-        _10 = <str as PartialEq>::eq(copy _9, const "b") -> [return: bb8, unwind: bb19];
+        _10 = <str as PartialEq>::eq(copy _9, const "b") -> [return: bb8, unwind: bb21];
     }
 
     bb6: {
@@ -69,7 +69,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb10: {
         _0 = const 5_u32;
-        goto -> bb18;
+        goto -> bb20;
     }
 
     bb11: {
@@ -78,17 +78,17 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
 
     bb12: {
         _0 = const 4_u32;
-        goto -> bb18;
+        goto -> bb20;
     }
 
     bb13: {
         _0 = const 3_u32;
-        goto -> bb18;
+        goto -> bb20;
     }
 
     bb14: {
         _0 = const 2_u32;
-        goto -> bb18;
+        goto -> bb20;
     }
 
     bb15: {
@@ -97,29 +97,37 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
         _8 = &fake shallow (_3.1: bool);
         StorageLive(_13);
         _13 = const true;
-        switchInt(move _13) -> [0: bb17, otherwise: bb16];
+        switchInt(move _13) -> [0: bb19, otherwise: bb17];
     }
 
     bb16: {
-        StorageDead(_13);
-        FakeRead(ForMatchGuard, _6);
-        FakeRead(ForMatchGuard, _7);
-        FakeRead(ForMatchGuard, _8);
-        _0 = const 1_u32;
-        goto -> bb18;
+        falseEdge -> [real: bb3, imaginary: bb5];
     }
 
     bb17: {
         StorageDead(_13);
-        falseEdge -> [real: bb3, imaginary: bb5];
+        falseEdge -> [real: bb18, imaginary: bb16];
     }
 
     bb18: {
+        FakeRead(ForMatchGuard, _6);
+        FakeRead(ForMatchGuard, _7);
+        FakeRead(ForMatchGuard, _8);
+        _0 = const 1_u32;
+        goto -> bb20;
+    }
+
+    bb19: {
+        StorageDead(_13);
+        goto -> bb16;
+    }
+
+    bb20: {
         StorageDead(_3);
         return;
     }
 
-    bb19 (cleanup): {
+    bb21 (cleanup): {
         resume;
     }
 }

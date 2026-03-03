@@ -19,7 +19,7 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb1: {
         _0 = const 3_u32;
-        goto -> bb14;
+        goto -> bb16;
     }
 
     bb2: {
@@ -55,34 +55,42 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb9: {
         _0 = const 2_u32;
-        goto -> bb14;
+        goto -> bb16;
     }
 
     bb10: {
         _0 = const 1_u32;
-        goto -> bb14;
+        goto -> bb16;
     }
 
     bb11: {
         _3 = &fake shallow _1;
         StorageLive(_8);
         _8 = copy _2;
-        switchInt(move _8) -> [0: bb13, otherwise: bb12];
+        switchInt(move _8) -> [0: bb15, otherwise: bb13];
     }
 
     bb12: {
-        StorageDead(_8);
-        FakeRead(ForMatchGuard, _3);
-        _0 = const 0_u32;
-        goto -> bb14;
+        falseEdge -> [real: bb1, imaginary: bb3];
     }
 
     bb13: {
         StorageDead(_8);
-        falseEdge -> [real: bb1, imaginary: bb3];
+        falseEdge -> [real: bb14, imaginary: bb12];
     }
 
     bb14: {
+        FakeRead(ForMatchGuard, _3);
+        _0 = const 0_u32;
+        goto -> bb16;
+    }
+
+    bb15: {
+        StorageDead(_8);
+        goto -> bb12;
+    }
+
+    bb16: {
         return;
     }
 }

@@ -64,7 +64,7 @@ fn main() -> () {
         _14 = copy _2;
         _1 = const 4_i32;
         StorageDead(_14);
-        goto -> bb22;
+        goto -> bb28;
     }
 
     bb6: {
@@ -87,7 +87,7 @@ fn main() -> () {
         StorageLive(_12);
         StorageLive(_13);
         _13 = copy (*_11);
-        _12 = guard2(move _13) -> [return: bb18, unwind: bb24];
+        _12 = guard2(move _13) -> [return: bb21, unwind: bb30];
     }
 
     bb10: {
@@ -99,7 +99,7 @@ fn main() -> () {
         _9 = copy _2;
         _1 = const 2_i32;
         StorageDead(_9);
-        goto -> bb22;
+        goto -> bb28;
     }
 
     bb12: {
@@ -107,7 +107,7 @@ fn main() -> () {
         _7 = &((_2 as Some).0: i32);
         _3 = &fake shallow _2;
         StorageLive(_8);
-        _8 = guard() -> [return: bb14, unwind: bb24];
+        _8 = guard() -> [return: bb14, unwind: bb30];
     }
 
     bb13: {
@@ -120,6 +120,14 @@ fn main() -> () {
 
     bb15: {
         StorageDead(_8);
+        falseEdge -> [real: bb17, imaginary: bb18];
+    }
+
+    bb16: {
+        goto -> bb19;
+    }
+
+    bb17: {
         FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _7);
         StorageLive(_6);
@@ -127,26 +135,38 @@ fn main() -> () {
         _1 = const 1_i32;
         StorageDead(_6);
         StorageDead(_7);
-        goto -> bb22;
+        goto -> bb28;
     }
 
-    bb16: {
-        goto -> bb17;
+    bb18: {
+        goto -> bb20;
     }
 
-    bb17: {
+    bb19: {
         StorageDead(_8);
+        goto -> bb20;
+    }
+
+    bb20: {
         StorageDead(_7);
         goto -> bb13;
     }
 
-    bb18: {
-        switchInt(move _12) -> [0: bb20, otherwise: bb19];
+    bb21: {
+        switchInt(move _12) -> [0: bb23, otherwise: bb22];
     }
 
-    bb19: {
+    bb22: {
         StorageDead(_13);
         StorageDead(_12);
+        falseEdge -> [real: bb24, imaginary: bb25];
+    }
+
+    bb23: {
+        goto -> bb26;
+    }
+
+    bb24: {
         FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _11);
         StorageLive(_10);
@@ -154,21 +174,25 @@ fn main() -> () {
         _1 = const 3_i32;
         StorageDead(_10);
         StorageDead(_11);
-        goto -> bb22;
+        goto -> bb28;
     }
 
-    bb20: {
-        goto -> bb21;
+    bb25: {
+        goto -> bb27;
     }
 
-    bb21: {
+    bb26: {
         StorageDead(_13);
         StorageDead(_12);
+        goto -> bb27;
+    }
+
+    bb27: {
         StorageDead(_11);
         goto -> bb10;
     }
 
-    bb22: {
+    bb28: {
         PlaceMention(_1);
         StorageDead(_2);
         StorageDead(_1);
@@ -176,12 +200,12 @@ fn main() -> () {
         return;
     }
 
-    bb23: {
+    bb29: {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
     }
 
-    bb24 (cleanup): {
+    bb30 (cleanup): {
         resume;
     }
 }

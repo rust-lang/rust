@@ -1,0 +1,49 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/move-guard-if-let.rs:14:23
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+...
+LL |         (1, 2) if let y = x => (),
+   |                       - value moved here
+LL |         (1, 2) if let z = x => (),
+   |                       ^ value used here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (1, 2) if let ref y = x => (),
+   |                       +++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/move-guard-if-let.rs:25:32
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+...
+LL |         (1, _) | (_, 2) if let y = x => (),
+   |                                ^ value used here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (1, _) | (_, 2) if let ref y = x => (),
+   |                                +++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/move-guard-if-let.rs:37:14
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+...
+LL |         (1, 2) if let y = x => false,
+   |                       - value moved here
+LL |         _ => *x == 1,
+   |              ^^ value used here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         (1, 2) if let ref y = x => false,
+   |                       +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

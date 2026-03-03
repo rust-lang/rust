@@ -20,7 +20,7 @@
   
       bb1: {
           _0 = const 1_i32;
-          goto -> bb7;
+          goto -> bb9;
       }
   
       bb2: {
@@ -43,11 +43,21 @@
 +         nop;
           StorageLive(_8);
           _8 = copy _2;
-          switchInt(move _8) -> [0: bb6, otherwise: bb5];
+          switchInt(move _8) -> [0: bb8, otherwise: bb6];
       }
   
       bb5: {
+-         falseEdge -> [real: bb1, imaginary: bb1];
++         goto -> bb1;
+      }
+  
+      bb6: {
           StorageDead(_8);
+-         falseEdge -> [real: bb7, imaginary: bb5];
++         goto -> bb7;
+      }
+  
+      bb7: {
 -         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForMatchGuard, _4);
 -         FakeRead(ForMatchGuard, _5);
@@ -57,16 +67,15 @@
 +         nop;
 +         nop;
           _0 = const 0_i32;
-          goto -> bb7;
+          goto -> bb9;
       }
   
-      bb6: {
+      bb8: {
           StorageDead(_8);
--         falseEdge -> [real: bb1, imaginary: bb1];
-+         goto -> bb1;
+          goto -> bb5;
       }
   
-      bb7: {
+      bb9: {
           return;
       }
   }

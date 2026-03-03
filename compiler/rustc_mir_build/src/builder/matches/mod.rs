@@ -2452,18 +2452,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let mut guard_span = rustc_span::DUMMY_SP;
+            let guard_span = self.thir[guard].span;
+            let source_info = self.source_info(guard_span);
 
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
-                    guard_span = this.thir[guard].span;
-                    this.then_else_break(
+                    let guard_end = this.then_else_break(
                         block,
                         guard,
                         None, // Use `self.local_scope()` as the temp scope
                         this.source_info(arm.span),
                         DeclareLetBindings::No, // For guards, `let` bindings are declared separately
-                    )
+                    );
+                    // Falsely branch to always treat guards as fallible when borrow-checking. In
+                    // particular, this means that `if let` guards' by-move bindings are treated as
+                    // as fallible. This matters because we can encounter errors after moving out
+                    // of a guard condition's scrutinee if we can then reach other arms (or a later
+                    // sub-branch's instance of this same guard). See #153263.
+                    let real_post_guard_block = this.cfg.start_new_block();
+                    let false_failure_block = this.cfg.start_new_block();
+                    this.false_edges(
+                        guard_end.into_block(),
+                        real_post_guard_block,
+                        false_failure_block,
+                        source_info,
+                    );
+                    this.break_for_else(false_failure_block, source_info);
+                    real_post_guard_block.unit()
                 });
 
             // If this isn't the final sub-branch being lowered, we need to unschedule drops of
@@ -2473,7 +2488,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.clear_match_arm_and_guard_scopes(arm.scope);
             }
 
-            let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);

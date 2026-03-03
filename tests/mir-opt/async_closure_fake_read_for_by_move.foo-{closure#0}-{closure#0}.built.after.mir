@@ -18,7 +18,7 @@ yields ()
 
     bb1: {
         _0 = const ();
-        goto -> bb10;
+        goto -> bb13;
     }
 
     bb2: {
@@ -47,34 +47,46 @@ yields ()
 
     bb7: {
         StorageDead(_6);
-        FakeRead(ForMatchGuard, _3);
-        FakeRead(ForMatchGuard, _4);
-        _0 = const ();
-        goto -> bb10;
+        falseEdge -> [real: bb9, imaginary: bb10];
     }
 
     bb8: {
-        goto -> bb9;
+        goto -> bb11;
     }
 
     bb9: {
-        StorageDead(_6);
-        goto -> bb6;
+        FakeRead(ForMatchGuard, _3);
+        FakeRead(ForMatchGuard, _4);
+        _0 = const ();
+        goto -> bb13;
     }
 
     bb10: {
-        drop(_1) -> [return: bb11, unwind: bb13, drop: bb12];
+        goto -> bb12;
     }
 
     bb11: {
-        return;
+        StorageDead(_6);
+        goto -> bb12;
     }
 
     bb12: {
+        goto -> bb6;
+    }
+
+    bb13: {
+        drop(_1) -> [return: bb14, unwind: bb16, drop: bb15];
+    }
+
+    bb14: {
+        return;
+    }
+
+    bb15: {
         coroutine_drop;
     }
 
-    bb13 (cleanup): {
+    bb16 (cleanup): {
         resume;
     }
 }

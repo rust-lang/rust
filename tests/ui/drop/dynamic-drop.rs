@@ -336,10 +336,11 @@ fn move_ref_pattern(a: &Allocator) {
 
 fn if_let_guard(a: &Allocator, c: bool, d: i32) {
     let foo = if c { Some(a.alloc()) } else { None };
+    let bar = if c { Some(a.alloc()) } else { None };
 
     match d == 0 {
         false if let Some(a) = foo => { let b = a; }
-        true if let true = { drop(foo.unwrap_or_else(|| a.alloc())); d == 1 } => {}
+        true if let true = { drop(bar.unwrap_or_else(|| a.alloc())); d == 1 } => {}
         _ => {}
     }
 }
