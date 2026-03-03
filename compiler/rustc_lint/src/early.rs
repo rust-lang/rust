@@ -7,7 +7,10 @@
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
+use rustc_data_structures::sync::DynSend;
+use rustc_errors::{
+    BufferedEarlyLint, DecorateDiagCompat, Diag, DiagCtxtHandle, Diagnostic, Level, LintBuffer,
+};
 use rustc_feature::Features;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
@@ -35,6 +38,16 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
 
 impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     fn check_id(&mut self, id: ast::NodeId) {
+        struct BoxDiag(
+            Box<dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>,
+        );
+
+        impl<'a> Diagnostic<'a, ()> for BoxDiag {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                (self.0)(dcx, level)
+            }
+        }
+
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
             match diagnostic {
@@ -50,8 +63,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     );
                 }
                 DecorateDiagCompat::Dynamic(d) => {
-                    self.context
-                        .opt_span_lint(lint_id.lint, span, |diag| d.decorate_lint_box(diag));
+                    self.context.opt_span_diag_lint(lint_id.lint, span, BoxDiag(d));
                 }
             }
         }
