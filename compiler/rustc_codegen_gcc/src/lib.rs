@@ -88,7 +88,7 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
+use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
@@ -287,11 +287,12 @@ impl CodegenBackend for GccCodegenBackend {
             |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
-        let target_cpu = target_cpu(tcx.sess);
-        let res = codegen_crate(self.clone(), tcx, target_cpu.to_string());
+    fn target_cpu(&self, sess: &Session) -> String {
+        target_cpu(sess).to_owned()
+    }
 
-        Box::new(res)
+    fn codegen_crate(&self, tcx: TyCtxt<'_>, crate_info: &CrateInfo) -> Box<dyn Any> {
+        Box::new(codegen_crate(self.clone(), tcx, crate_info))
     }
 
     fn join_codegen(
@@ -299,7 +300,7 @@ impl CodegenBackend for GccCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
