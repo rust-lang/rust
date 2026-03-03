@@ -988,6 +988,20 @@ pub(crate) struct ImpliedFeatureNotExist {
 }
 
 #[derive(Diagnostic)]
+#[diag("feature `{$feature}` has been removed", code = E0557)]
+#[note("removed in {$since}; see <{$link}> for more information")]
+#[note("{$reason}")]
+pub(crate) struct FeatureRemoved {
+    #[primary_span]
+    #[label("feature has been removed")]
+    pub span: Span,
+    pub feature: Symbol,
+    pub reason: Symbol,
+    pub since: String,
+    pub link: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`"
 )]
