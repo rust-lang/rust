@@ -12,6 +12,7 @@ use crate::search_paths::{PathKind, SearchPath};
 pub struct FileSearch {
     cli_search_paths: Vec<SearchPath>,
     tlib_path: SearchPath,
+    use_implicit_sysroot_deps: bool,
 }
 
 impl FileSearch {
@@ -20,16 +21,27 @@ impl FileSearch {
     }
 
     pub fn search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
+        //If the crate is `PathKind::Crate` (a top level dependency)
+        //and `-Z implicit-sysroot-deps=false`, then don't include the sysroot in the search paths.
+        let maybe_tlib = (self.use_implicit_sysroot_deps || !kind.matches(PathKind::Crate))
+            .then_some(&self.tlib_path);
+
         self.cli_search_paths
             .iter()
             .filter(move |sp| sp.kind.matches(kind))
-            .chain(std::iter::once(&self.tlib_path))
+            .chain(maybe_tlib.into_iter())
     }
 
-    pub fn new(cli_search_paths: &[SearchPath], tlib_path: &SearchPath, target: &Target) -> Self {
+    pub fn new(
+        cli_search_paths: &[SearchPath],
+        tlib_path: &SearchPath,
+        target: &Target,
+        use_implicit_sysroot_deps: bool,
+    ) -> Self {
         let this = FileSearch {
             cli_search_paths: cli_search_paths.to_owned(),
             tlib_path: tlib_path.clone(),
+            use_implicit_sysroot_deps,
         };
         this.refine(&["lib", &target.staticlib_prefix, &target.dll_prefix])
     }
