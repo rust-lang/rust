@@ -114,7 +114,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub cycle_error_handling: CycleErrorHandling,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
-    pub will_cache_on_disk_for_key_fn: Option<fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool>,
 
     /// Function pointer that calls `tcx.$query(key)` for this query and
     /// discards the returned value.
@@ -130,17 +129,17 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub try_load_from_disk_fn: Option<
-        fn(
-            tcx: TyCtxt<'tcx>,
-            key: &C::Key,
-            prev_index: SerializedDepNodeIndex,
-            index: DepNodeIndex,
-        ) -> Option<C::Value>,
-    >,
+    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
+
+    pub try_load_from_disk_fn: fn(
+        tcx: TyCtxt<'tcx>,
+        key: &C::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<C::Value>,
 
     pub is_loadable_from_disk_fn:
-        Option<fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool>,
+        fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
 
     /// Function pointer that hashes this query's result values.
     ///
@@ -182,43 +181,6 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
 }
 
 impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
-    #[inline(always)]
-    pub fn will_cache_on_disk_for_key(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> bool {
-        self.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
-    }
-
-    #[inline(always)]
-    pub fn try_load_from_disk(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-    ) -> Option<C::Value> {
-        // `?` will return None immediately for queries that never cache to disk.
-        self.try_load_from_disk_fn?(tcx, key, prev_index, index)
-    }
-
-    #[inline]
-    pub fn is_loadable_from_disk(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        index: SerializedDepNodeIndex,
-    ) -> bool {
-        self.is_loadable_from_disk_fn.map_or(false, |f| f(tcx, key, index))
-    }
-
-    /// Synthesize an error value to let compilation continue after a cycle.
-    pub fn value_from_cycle_error(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        cycle_error: CycleError,
-        guar: ErrorGuaranteed,
-    ) -> C::Value {
-        (self.value_from_cycle_error)(tcx, cycle_error, guar)
-    }
-
     pub fn construct_dep_node(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
         DepNode::construct(tcx, self.dep_kind, key)
     }

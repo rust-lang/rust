@@ -168,7 +168,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
 
     assert!(all_inactive(&query.state));
     query.cache.iter(&mut |key, value, dep_node| {
-        if query.will_cache_on_disk_for_key(tcx, key) {
+        if (query.will_cache_on_disk_for_key_fn)(tcx, key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -221,7 +221,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
             dep_node.key_fingerprint
         )
     });
-    if query.will_cache_on_disk_for_key(tcx, &key) {
+    if (query.will_cache_on_disk_for_key_fn)(tcx, &key) {
         // Call `tcx.$query(key)` for its side-effect of loading the disk-cached
         // value into memory.
         (query.call_query_method_fn)(tcx, key);
@@ -427,12 +427,6 @@ macro_rules! define_queries {
                     state: Default::default(),
                     cache: Default::default(),
 
-                    #[cfg($cache_on_disk)]
-                    will_cache_on_disk_for_key_fn:
-                        Some(rustc_middle::queries::_cache_on_disk_if_fns::$name),
-                    #[cfg(not($cache_on_disk))]
-                    will_cache_on_disk_for_key_fn: None,
-
                     call_query_method_fn: |tcx, key| {
                         // Call the query method for its side-effect of loading a value
                         // from disk-cache; the caller doesn't need the value.
@@ -441,7 +435,13 @@ macro_rules! define_queries {
                     invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
                     #[cfg($cache_on_disk)]
-                    try_load_from_disk_fn: Some(|tcx, key, prev_index, index| {
+                    will_cache_on_disk_for_key_fn:
+                        rustc_middle::queries::_cache_on_disk_if_fns::$name,
+                    #[cfg(not($cache_on_disk))]
+                    will_cache_on_disk_for_key_fn: |_, _| false,
+
+                    #[cfg($cache_on_disk)]
+                    try_load_from_disk_fn: |tcx, key, prev_index, index| {
                         // Check the `cache_on_disk_if` condition for this key.
                         if !rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) {
                             return None;
@@ -452,17 +452,17 @@ macro_rules! define_queries {
 
                         // Arena-alloc the value if appropriate, and erase it.
                         Some(queries::$name::provided_to_erased(tcx, value))
-                    }),
+                    },
                     #[cfg(not($cache_on_disk))]
-                    try_load_from_disk_fn: None,
+                    try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
 
                     #[cfg($cache_on_disk)]
-                    is_loadable_from_disk_fn: Some(|tcx, key, index| -> bool {
+                    is_loadable_from_disk_fn: |tcx, key, index| -> bool {
                         rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) &&
                             $crate::plumbing::loadable_from_disk(tcx, index)
-                    }),
+                    },
                     #[cfg(not($cache_on_disk))]
-                    is_loadable_from_disk_fn: None,
+                    is_loadable_from_disk_fn: |_tcx, _key, _index| false,
 
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> =
