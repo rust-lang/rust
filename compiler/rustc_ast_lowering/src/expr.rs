@@ -340,12 +340,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
                 ExprKind::Struct(se) => {
-                    let rest = match &se.rest {
-                        StructRest::Base(e) => hir::StructTailExpr::Base(self.lower_expr(e)),
+                    let rest = match se.rest {
+                        StructRest::Base(ref e) => hir::StructTailExpr::Base(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            hir::StructTailExpr::DefaultFields(self.lower_span(*sp))
+                            hir::StructTailExpr::DefaultFields(self.lower_span(sp))
                         }
                         StructRest::None => hir::StructTailExpr::None,
+                        StructRest::NoneWithError(guar) => hir::StructTailExpr::NoneWithError(guar),
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -1435,7 +1436,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(self.lower_span(e.span))
                     }
                     StructRest::Rest(span) => Some(self.lower_span(*span)),
-                    StructRest::None => None,
+                    StructRest::None | StructRest::NoneWithError(_) => None,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat_without_dbm(lhs.span, struct_pat);

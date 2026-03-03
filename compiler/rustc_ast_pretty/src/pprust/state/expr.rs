@@ -162,7 +162,7 @@ impl<'a> State<'a> {
         self.word("{");
         let has_rest = match rest {
             ast::StructRest::Base(_) | ast::StructRest::Rest(_) => true,
-            ast::StructRest::None => false,
+            ast::StructRest::None | ast::StructRest::NoneWithError(_) => false,
         };
         if fields.is_empty() && !has_rest {
             self.word("}");
