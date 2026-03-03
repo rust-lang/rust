@@ -72,8 +72,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
         sym::fabsf32 => "fabsf",
         sym::fabsf64 => "fabs",
-        sym::minnumf32 => "fminf",
-        sym::minnumf64 => "fmin",
         sym::minimumf32 => "fminimumf",
         sym::minimumf64 => "fminimum",
         sym::minimumf128 => {
@@ -92,8 +90,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
                 false,
             ));
         }
-        sym::maxnumf32 => "fmaxf",
-        sym::maxnumf64 => "fmax",
         sym::maximumf32 => "fmaximumf",
         sym::maximumf64 => "fmaximum",
         sym::maximumf128 => {
@@ -236,8 +232,6 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
 
     let f128_type = cx.type_f128();
     let func_name = match name {
-        sym::maxnumf128 => "fmaxf128",
-        sym::minnumf128 => "fminf128",
         sym::copysignf128 => "copysignf128",
         _ => return None,
     };
@@ -266,8 +260,6 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::fabsf16 => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
-        sym::maxnumf16 => "__builtin_fmaxf",
-        sym::minnumf16 => "__builtin_fminf",
         sym::powf16 => "__builtin_powf",
         sym::powif16 => {
             let func = cx.context.get_builtin_function("__builtin_powif");
@@ -333,8 +325,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::fabsf16
             | sym::floorf16
             | sym::fmaf16
-            | sym::maxnumf16
-            | sym::minnumf16
             | sym::powf16
             | sym::powif16
             | sym::roundf16
