@@ -10,7 +10,7 @@
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 
 fn main() {
-    rustc().input("checkrust.rs").run();
+    rustc().edition("2021").input("checkrust.rs").run();
     cc().input("test.c")
         .input(static_lib_name("checkrust"))
         .out_exe("test")

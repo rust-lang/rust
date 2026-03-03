@@ -1809,7 +1809,7 @@ fn rewrite_struct_lit<'a>(
             match struct_rest {
                 ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
                 ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
-                ast::StructRest::None => None,
+                ast::StructRest::None | ast::StructRest::NoneWithError(_) => None,
             }
             .into_iter(),
         );

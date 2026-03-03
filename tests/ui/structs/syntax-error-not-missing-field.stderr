@@ -1,0 +1,74 @@
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`
+  --> $DIR/syntax-error-not-missing-field.rs:12:30
+   |
+LL |     let f = Foo { a: make_a(); b: 2 };
+   |             ---              ^
+   |             |                |
+   |             |                expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `b`
+  --> $DIR/syntax-error-not-missing-field.rs:16:31
+   |
+LL |     let f = Foo { a: make_a() b: 2 };
+   |             ---              -^ expected one of `,`, `.`, `?`, `}`, or an operator
+   |             |                |
+   |             |                help: try adding a comma: `,`
+   |             while parsing this struct
+
+error: cannot use a comma after the base struct
+  --> $DIR/syntax-error-not-missing-field.rs:20:32
+   |
+LL |     let f = Foo { a: make_a(), ..todo!(), };
+   |                                ^^^^^^^^^
+   |
+   = note: the base struct must always be the last field
+help: remove this comma
+   |
+LL -     let f = Foo { a: make_a(), ..todo!(), };
+LL +     let f = Foo { a: make_a(), ..todo!() };
+   |
+
+error: expected one of `,`, `:`, or `}`, found `(`
+  --> $DIR/syntax-error-not-missing-field.rs:24:25
+   |
+LL |     let f = Foo { make_a(), b: 2, };
+   |             ---   ------^ expected one of `,`, `:`, or `}`
+   |             |     |
+   |             |     while parsing this struct field
+   |             while parsing this struct
+   |
+help: try naming a field
+   |
+LL |     let f = Foo { make_a: make_a(), b: 2, };
+   |                   +++++++
+
+error: expected `,`
+  --> $DIR/syntax-error-not-missing-field.rs:27:31
+   |
+LL | fn pat_wrong_separator(Foo { a; b }: Foo) {
+   |                        ---    ^
+   |                        |
+   |                        while parsing the fields for this pattern
+
+error: expected `,`
+  --> $DIR/syntax-error-not-missing-field.rs:31:34
+   |
+LL | fn pat_missing_separator(Foo { a b }: Foo) {
+   |                          ---     ^
+   |                          |
+   |                          while parsing the fields for this pattern
+
+error: expected `}`, found `,`
+  --> $DIR/syntax-error-not-missing-field.rs:35:39
+   |
+LL | fn pat_rest_trailing_comma(Foo { a, .., }: Foo) {
+   |                                     --^
+   |                                     | |
+   |                                     | expected `}`
+   |                                     | help: remove this comma
+   |                                     `..` must be at the end and cannot have a trailing comma
+
+error: aborting due to 7 previous errors
+
