@@ -41,6 +41,13 @@ struct SolveContext<'a, 'tcx> {
     solutions: Vec<ty::Variance>,
 }
 
+/// Visitor to find "grounding" uses of type parameters which are any use that is not
+/// solely through self-referential cycles.
+///
+/// For example, in `struct Thing<T>(*mut Thing<T>)`, the use of `T` is not grounding
+/// because it only appears in a self-referential cycle. In contrast, in
+/// `struct Thing<T>(Option<T>)`, the use of `T` is grounding because it appears in a
+/// non-self-referential context (`Option<T>`).
 struct GroundingUseVisitor {
     item_def_id: DefId,
     grounded_params: Vec<u32>,
