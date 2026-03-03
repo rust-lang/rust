@@ -1035,10 +1035,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let adt_def = self.tcx.adt_def(def_id);
                     assert!(adt_def.is_union());
                     assert_eq!(idx, FIRST_VARIANT);
-                    let dest_ty = self.tcx.normalize_erasing_regions(
-                        self.typing_env,
-                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
-                    );
+                    let field_ty =
+                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args);
+                    let dest_ty = self
+                        .tcx
+                        .try_normalize_erasing_regions(self.typing_env, field_ty)
+                        .unwrap_or(field_ty);
                     if let [field] = fields.raw.as_slice() {
                         let src_ty = field.ty(self.body, self.tcx);
                         if !self.mir_assign_valid_types(src_ty, dest_ty) {
@@ -1060,9 +1062,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ));
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
+                        let field_ty = dest.ty(self.tcx, args);
                         let dest_ty = self
                             .tcx
-                            .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
+                            .try_normalize_erasing_regions(self.typing_env, field_ty)
+                            .unwrap_or(field_ty);
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }
@@ -1397,25 +1401,28 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                         // for any two `Sized` types, just potentially UB to run.
 
-                        if !self
-                            .tcx
-                            .normalize_erasing_regions(self.typing_env, op_ty)
-                            .is_sized(self.tcx, self.typing_env)
+                        if let Ok(norm_op_ty) =
+                            self.tcx.try_normalize_erasing_regions(self.typing_env, op_ty)
                         {
-                            self.fail(
-                                location,
-                                format!("Cannot transmute from non-`Sized` type {op_ty}"),
-                            );
+                            if !norm_op_ty.is_sized(self.tcx, self.typing_env) {
+                                self.fail(
+                                    location,
+                                    format!("Cannot transmute from non-`Sized` type {op_ty}"),
+                                );
+                            }
                         }
-                        if !self
-                            .tcx
-                            .normalize_erasing_regions(self.typing_env, *target_type)
-                            .is_sized(self.tcx, self.typing_env)
+                        if let Ok(norm_target_ty) =
+                            self.tcx
+                                .try_normalize_erasing_regions(self.typing_env, *target_type)
                         {
-                            self.fail(
-                                location,
-                                format!("Cannot transmute to non-`Sized` type {target_type:?}"),
-                            );
+                            if !norm_target_ty.is_sized(self.tcx, self.typing_env) {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Cannot transmute to non-`Sized` type {target_type:?}"
+                                    ),
+                                );
+                            }
                         }
                     }
                     CastKind::Subtype => {

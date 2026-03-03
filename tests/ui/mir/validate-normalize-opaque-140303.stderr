@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Assoc`
+  --> $DIR/validate-normalize-opaque-140303.rs:27:1
+   |
+LL |     type Assoc;
+   |     ---------- `Assoc` from trait
+...
+LL | impl<F, R> FilterBase for F
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.
