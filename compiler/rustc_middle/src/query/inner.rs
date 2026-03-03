@@ -59,8 +59,11 @@ pub(crate) fn query_ensure<'tcx, C>(
 ) where
     C: QueryCache,
 {
-    if try_get_cached(tcx, &query.cache, &key).is_none() {
-        (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+    match try_get_cached(tcx, &query.cache, &key) {
+        Some(_value) => {}
+        None => {
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+        }
     }
 }
 
@@ -81,19 +84,18 @@ where
 {
     assert_matches!(ensure_mode, EnsureMode::Ok);
 
-    if let Some(res) = try_get_cached(tcx, &query.cache, &key) {
-        erase::restore_val(res).map(drop)
-    } else {
-        (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode })
+    match try_get_cached(tcx, &query.cache, &key) {
+        Some(value) => erase::restore_val(value).map(drop),
+        None => (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode })
             .map(erase::restore_val)
-            .map(|res| res.map(drop))
+            .map(|value| value.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
             // or we can just assume the query succeeded, because it was green in the
             // incremental cache. If it is green, that means that the previous compilation
             // that wrote to the incremental cache compiles successfully. That is only
             // possible if the cache entry was `Ok(())`, so we emit that here, without
             // actually encoding the `Result` in the cache or loading it from there.
-            .unwrap_or(Ok(()))
+            .unwrap_or(Ok(())),
     }
 }
 
