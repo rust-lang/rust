@@ -1035,8 +1035,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let adt_def = self.tcx.adt_def(def_id);
                     assert!(adt_def.is_union());
                     assert_eq!(idx, FIRST_VARIANT);
-                    let field_ty =
-                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args);
+                    let field_ty = adt_def.non_enum_variant().fields[field].ty(self.tcx, args);
                     let dest_ty = self
                         .tcx
                         .try_normalize_erasing_regions(self.typing_env, field_ty)
@@ -1412,15 +1411,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
                         }
                         if let Ok(norm_target_ty) =
-                            self.tcx
-                                .try_normalize_erasing_regions(self.typing_env, *target_type)
+                            self.tcx.try_normalize_erasing_regions(self.typing_env, *target_type)
                         {
                             if !norm_target_ty.is_sized(self.tcx, self.typing_env) {
                                 self.fail(
                                     location,
-                                    format!(
-                                        "Cannot transmute to non-`Sized` type {target_type:?}"
-                                    ),
+                                    format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                                 );
                             }
                         }
