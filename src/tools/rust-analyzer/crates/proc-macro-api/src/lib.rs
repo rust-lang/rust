@@ -10,7 +10,7 @@
     feature = "sysroot-abi",
     feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
 )]
-#![allow(internal_features)]
+#![allow(internal_features, unused_features)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
