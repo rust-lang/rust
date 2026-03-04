@@ -334,6 +334,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     DUMMY_NODE_ID,
                     Some(self.tcx.features()),
                     ShouldEmit::Nothing,
+                    Some(self.tcx.registered_tools(())),
                 ));
             }
         }
