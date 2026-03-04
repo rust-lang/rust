@@ -3308,6 +3308,34 @@ impl Path {
         fs::canonicalize(self)
     }
 
+    /// Makes the path absolute without accessing the filesystem.
+    ///
+    /// This is an alias to [`path::absolute`](absolute).
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error in the following situations:
+    ///
+    /// * If the path is syntactically invalid; in particular, if it is empty.
+    /// * If getting the [current directory][crate::env::current_dir] fails.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(path_absolute_method)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("foo/./bar");
+    /// let absolute = path.absolute()?;
+    /// assert!(absolute.is_absolute());
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    #[unstable(feature = "path_absolute_method", issue = "153328")]
+    #[inline]
+    pub fn absolute(&self) -> io::Result<PathBuf> {
+        absolute(self)
+    }
+
     /// Normalize a path, including `..` without traversing the filesystem.
     ///
     /// Returns an error if normalization would leave leading `..` components.
