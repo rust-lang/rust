@@ -259,14 +259,28 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             normalized_inputs_and_output.push(norm_ty);
         }
 
-        // Get early and late bound params.
-        let var_values = GenericArgs::identity_for_item(tcx, self.infcx.root_def_id);
+        let early_bound_params = GenericArgs::identity_for_item(tcx, self.infcx.root_def_id);
 
-        // Add the normalized fn_sig to var_values too
-        let var_values = var_values
-            .iter()
-            .chain(normalized_inputs_and_output.iter().map(|ty| GenericArg::from(*ty)))
-            .collect();
+        // Add non-region params to var_values.
+        let mut var_values: SmallVec<[GenericArg<'_>; 8]> = early_bound_params
+            .into_iter()
+            .filter(|k| k.as_region().is_none()).collect();
+
+        // Add both early and late bound region to var_values. 
+        for (region, region_vid) in self.universal_regions.named_universal_regions_iter() {
+            if region_vid != fr_static {
+                // filter out 'static, it is always in indices
+                var_values.push(GenericArg::from(region));
+            }
+
+        }
+
+        // Add normalized fn_sig to var_values.
+        for ty in &normalized_inputs_and_output {
+            var_values.push(GenericArg::from(*ty));
+        }
+
+        debug!("var value at call site is {:?}", var_values);
 
         let Ok(canonical_result) = tcx.compute_outlives_bounds_rename(self.def) else {
             // see what will hit this case and think about this later
@@ -298,7 +312,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
 
         // FIXME: let it fail early to see which test fails under this.
-        self.see_if_bounds_contain_non_universals(bounds.clone());
+        //self.see_if_bounds_contain_non_universals(bounds.clone());
 
         self.add_outlives_bounds(bounds);
 
@@ -395,31 +409,31 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     }
 
     // FIXME: remove this later, for debug purpose
-    fn see_if_bounds_contain_non_universals<I>(&mut self, outlives_bounds: I)
-    where
-        I: IntoIterator<Item = OutlivesBound<'tcx>>,
-    {
-        for outlives_bound in outlives_bounds {
-            match outlives_bound {
-                OutlivesBound::RegionSubRegion(r1, r2) => {
-                    let r1 = self.universal_regions.to_region_vid(r1);
-                    let r2 = self.universal_regions.to_region_vid(r2);
+    //fn see_if_bounds_contain_non_universals<I>(&mut self, outlives_bounds: I)
+    //where
+    //    I: IntoIterator<Item = OutlivesBound<'tcx>>,
+    //{
+    //    for outlives_bound in outlives_bounds {
+    //        match outlives_bound {
+    //            OutlivesBound::RegionSubRegion(r1, r2) => {
+    //                let r1 = self.universal_regions.to_region_vid(r1);
+    //                let r2 = self.universal_regions.to_region_vid(r2);
 
-                    assert!(self.universal_regions.is_universal_region(r1));
-                    assert!(self.universal_regions.is_universal_region(r2));
-                }
+    //                assert!(self.universal_regions.is_universal_region(r1));
+    //                assert!(self.universal_regions.is_universal_region(r2));
+    //            }
 
-                OutlivesBound::RegionSubParam(r_a, _param_b) => {
-                    let r1 = self.universal_regions.to_region_vid(r_a);
-                    assert!(self.universal_regions.is_universal_region(r1));
-                }
+    //            OutlivesBound::RegionSubParam(r_a, _param_b) => {
+    //                let r1 = self.universal_regions.to_region_vid(r_a);
+    //                assert!(self.universal_regions.is_universal_region(r1));
+    //            }
 
-                OutlivesBound::RegionSubAlias(r_a, _alias_b) => {
-                    // FIXME remove later? should always return universal vid?
-                    let r1 = self.universal_regions.to_region_vid(r_a);
-                    assert!(self.universal_regions.is_universal_region(r1));
-                }
-            }
-        }
-    }
+    //            OutlivesBound::RegionSubAlias(r_a, _alias_b) => {
+    //                // FIXME remove later? should always return universal vid?
+    //                let r1 = self.universal_regions.to_region_vid(r_a);
+    //                assert!(self.universal_regions.is_universal_region(r1));
+    //            }
+    //        }
+    //    }
+    //}
 }
