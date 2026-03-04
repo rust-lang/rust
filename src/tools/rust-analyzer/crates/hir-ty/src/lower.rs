@@ -2467,7 +2467,7 @@ fn fn_sig_for_struct_constructor(
     let inputs_and_output =
         Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
     StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
-        abi: FnAbi::RustCall,
+        abi: FnAbi::Rust,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
@@ -2486,7 +2486,7 @@ fn fn_sig_for_enum_variant_constructor(
     let inputs_and_output =
         Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
     StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
-        abi: FnAbi::RustCall,
+        abi: FnAbi::Rust,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
