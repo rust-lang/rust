@@ -7,7 +7,6 @@
 //@ ignore-windows
 // Tests EIIs with default implementations.
 // When there's no explicit declaration, the default should be called from the declaring crate.
-#![feature(extern_item_impls)]
 
 extern crate decl_with_default;
 

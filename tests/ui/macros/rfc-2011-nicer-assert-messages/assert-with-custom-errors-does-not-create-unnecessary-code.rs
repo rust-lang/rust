@@ -3,7 +3,6 @@
 //@ compile-flags: --test -Zpanic_abort_tests
 //@ run-pass
 
-#![feature(core_intrinsics, generic_assert)]
 
 #[should_panic(expected = "Custom user message")]
 #[test]
