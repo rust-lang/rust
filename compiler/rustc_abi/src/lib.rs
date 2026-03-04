@@ -66,7 +66,7 @@ pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
 pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
 #[cfg(feature = "nightly")]
-pub use layout::{Layout, TyAbiInterface, TyAndLayout};
+pub use layout::{Layout, PackCoroutineLayout, TyAbiInterface, TyAndLayout};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro

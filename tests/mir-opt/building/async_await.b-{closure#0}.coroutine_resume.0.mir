@@ -47,6 +47,10 @@
         (_s0, _s0),
         (_s1, _s1),
     },
+    relocated_upvars: {
+        _s0: None,
+        _s1: None,
+    },
 } */
 
 fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
