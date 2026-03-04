@@ -6149,6 +6149,13 @@ impl<'db> Type<'db> {
         Some(adt.into())
     }
 
+    /// Holes in the args can come from lifetime/const params.
+    pub fn as_adt_with_args(&self) -> Option<(Adt, Vec<Option<Type<'db>>>)> {
+        let (adt, args) = self.ty.as_adt()?;
+        let args = args.iter().map(|arg| Some(self.derived(arg.ty()?))).collect();
+        Some((adt.into(), args))
+    }
+
     pub fn as_builtin(&self) -> Option<BuiltinType> {
         self.ty.as_builtin().map(|inner| BuiltinType { inner })
     }
