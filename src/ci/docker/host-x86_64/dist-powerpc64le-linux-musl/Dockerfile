@@ -27,13 +27,12 @@ ENV \
 
 ENV HOSTS=powerpc64le-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS \
-    --enable-extended \
+ENV RUST_CONFIGURE_ARGS="--enable-extended \
     --enable-full-tools \
     --enable-profiler \
     --enable-sanitizers \
     --disable-docs \
     --set target.powerpc64le-unknown-linux-musl.crt-static=false \
-    --musl-root-powerpc64le=/x-tools/powerpc64le-unknown-linux-musl/powerpc64le-unknown-linux-musl/sysroot/usr
+    --musl-root-powerpc64le=/x-tools/powerpc64le-unknown-linux-musl/powerpc64le-unknown-linux-musl/sysroot/usr"
 
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"
