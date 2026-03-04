@@ -266,10 +266,11 @@ impl LowerTypeRelativePathMode {
         }
     }
 
-    fn def_kind(self) -> DefKind {
+    ///NOTE: use `assoc_tag` for any important logic
+    fn def_kind_for_diagnostics(self) -> DefKind {
         match self {
             Self::Type(_) => DefKind::AssocTy,
-            Self::Const => DefKind::AssocConst,
+            Self::Const => DefKind::AssocConst { is_type_const: false },
         }
     }
 
@@ -320,7 +321,7 @@ pub enum IsMethodCall {
 
 /// Denotes the "position" of a generic argument, indicating if it is a generic type,
 /// generic function or generic method call.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum GenericArgPosition {
     Type,
     Value, // e.g., functions
@@ -555,7 +556,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            def_id,
+            &[],
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
@@ -597,13 +605,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn lower_generic_args_of_path(
+    pub(crate) fn lower_generic_args_of_path(
         &self,
         span: Span,
         def_id: DefId,
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
+        pos: GenericArgPosition,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -626,14 +635,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assert!(self_ty.is_none());
         }
 
-        let arg_count = check_generic_arg_count(
-            self,
-            def_id,
-            segment,
-            generics,
-            GenericArgPosition::Type,
-            self_ty.is_some(),
-        );
+        let arg_count =
+            check_generic_arg_count(self, def_id, segment, generics, pos, self_ty.is_some());
 
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
@@ -796,6 +799,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             infer_args: segment.infer_args,
             incorrect_args: &arg_count.correct,
         };
+
         let args = lower_generic_args(
             self,
             def_id,
@@ -817,8 +821,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) =
-            self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            item_def_id,
+            parent_args,
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
@@ -930,6 +940,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             segment,
             Some(self_ty),
+            GenericArgPosition::Type,
         );
 
         let constraints = segment.args().constraints;
@@ -1105,8 +1116,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ty::TraitRef<'tcx> {
         self.report_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) =
-            self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
+        let (generic_args, _) = self.lower_generic_args_of_path(
+            span,
+            trait_def_id,
+            &[],
+            trait_segment,
+            Some(self_ty),
+            GenericArgPosition::Type,
+        );
         if let Some(c) = trait_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
         }
@@ -1552,7 +1569,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 };
 
                 could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind(), item_def_id, " also");
+                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
 
                 lint.span_suggestion(
                     span,
@@ -2085,12 +2102,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // Case 3. Reference to a top-level value.
-            DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } => {
+            DefKind::Fn | DefKind::Const { .. } | DefKind::ConstParam | DefKind::Static { .. } => {
                 generic_segments.push(GenericPathSegment(def_id, last));
             }
 
             // Case 4. Reference to a method or associated const.
-            DefKind::AssocFn | DefKind::AssocConst => {
+            DefKind::AssocFn | DefKind::AssocConst { .. } => {
                 if segments.len() >= 2 {
                     let generics = tcx.generics_of(def_id);
                     generic_segments.push(GenericPathSegment(generics.parent.unwrap(), last - 1));
@@ -2399,11 +2416,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let ty::Array(elem_ty, _) = ty.kind() else {
-            let e = tcx
-                .dcx()
-                .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
-            return Const::new_error(tcx, e);
+        let elem_ty = match ty.kind() {
+            ty::Array(elem_ty, _) => elem_ty,
+            ty::Error(e) => return Const::new_error(tcx, *e),
+            _ => {
+                let e = tcx
+                    .dcx()
+                    .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
+                return Const::new_error(tcx, e);
+            }
         };
 
         let elems = array_expr
@@ -2522,9 +2543,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let ty::Tuple(tys) = ty.kind() else {
-            let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
-            return Const::new_error(tcx, e);
+        let tys = match ty.kind() {
+            ty::Tuple(tys) => tys,
+            ty::Error(e) => return Const::new_error(tcx, *e),
+            _ => {
+                let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
+                return Const::new_error(tcx, e);
+            }
         };
 
         let exprs = exprs
@@ -2663,7 +2688,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 self.lower_const_param(def_id, hir_id)
             }
-            Res::Def(DefKind::Const, did) => {
+            Res::Def(DefKind::Const { .. }, did) => {
                 if let Err(guar) = self.require_type_const_attribute(did, span) {
                     return Const::new_error(self.tcx(), guar);
                 }
@@ -2704,7 +2729,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = self.lower_generic_args_of_path_segment(span, generics_did, segment);
                 ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
             }
-            Res::Def(DefKind::AssocConst, did) => {
+            Res::Def(DefKind::AssocConst { .. }, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
                     let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
                     Some(trait_)
@@ -2891,11 +2916,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
+    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind<'tcx>) -> Ty<'tcx> {
         let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
+
         match idx {
             hir::InferDelegationKind::Input(idx) => delegation_sig[idx],
-            hir::InferDelegationKind::Output => *delegation_sig.last().unwrap(),
+            hir::InferDelegationKind::Output { .. } => *delegation_sig.last().unwrap(),
         }
     }
 

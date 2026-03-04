@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
         };
 
         if let ExprKind::Path(qpath) = &receiver.kind
-            && let Res::Def(DefKind::Const | DefKind::AssocConst, const_did) =
+            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, const_did) =
                 typeck.qpath_res(qpath, receiver.hir_id)
             // Don't consider derefs as those can do arbitrary things
             // like using thread local (see rust-lang/rust#150157)

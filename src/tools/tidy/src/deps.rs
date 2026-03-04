@@ -6,7 +6,6 @@ use std::fs::{File, read_dir};
 use std::io::Write;
 use std::path::Path;
 
-use build_helper::ci::CiEnv;
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
@@ -426,6 +425,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha1",
     "sha2",
     "sharded-slab",
+    "shell-words",
     "shlex",
     "simd-adler32",
     "smallvec",
@@ -638,7 +638,7 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
     check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
     for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
-        if has_missing_submodule(root, submodules) {
+        if has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
             continue;
         }
 
@@ -758,8 +758,8 @@ pub static CRATES: &[&str] = &[
 /// Used to skip a check if a submodule is not checked out, and not in a CI environment.
 ///
 /// This helps prevent enforcing developers to fetch submodules for tidy.
-pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
-    !CiEnv::is_ci()
+pub fn has_missing_submodule(root: &Path, submodules: &[&str], is_ci: bool) -> bool {
+    !is_ci
         && submodules.iter().any(|submodule| {
             let path = root.join(submodule);
             !path.exists()

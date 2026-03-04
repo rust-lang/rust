@@ -203,8 +203,6 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_ok)]
-    ///
     /// use std::ops::ControlFlow;
     ///
     /// struct TreeNode<T> {
@@ -263,8 +261,9 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Ok(&5));
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_ok", issue = "140266")]
-    #[rustc_const_unstable(feature = "control_flow_ok", issue = "140266")]
+    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
             ControlFlow::Continue(c) => Err(c),
@@ -317,8 +316,6 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_ok)]
-    ///
     /// use std::ops::ControlFlow;
     ///
     /// struct TreeNode<T> {
@@ -376,8 +373,9 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Err("too big value detected"));
     /// ```
     #[inline]
-    #[unstable(feature = "control_flow_ok", issue = "140266")]
-    #[rustc_const_unstable(feature = "control_flow_ok", issue = "140266")]
+    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {
             ControlFlow::Continue(c) => Ok(c),

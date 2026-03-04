@@ -1,4 +1,3 @@
-use super::hermit_abi;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
@@ -55,8 +54,4 @@ pub fn temp_dir() -> PathBuf {
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn getpid() -> u32 {
-    unsafe { hermit_abi::getpid() as u32 }
 }

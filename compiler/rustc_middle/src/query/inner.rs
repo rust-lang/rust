@@ -116,9 +116,9 @@ pub(crate) fn query_feed<'tcx, C>(
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
-            if let Some(hasher_fn) = query_vtable.hash_result {
+            if let Some(hash_value_fn) = query_vtable.hash_value_fn {
                 let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hasher_fn(hcx, &old), hasher_fn(hcx, &value))
+                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
                 });
                 if old_hash != value_hash {
                     // We have an inconsistency. This can happen if one of the two
@@ -151,7 +151,7 @@ pub(crate) fn query_feed<'tcx, C>(
                 dep_node,
                 tcx,
                 &value,
-                query_vtable.hash_result,
+                query_vtable.hash_value_fn,
                 query_vtable.format_value,
             );
             query_vtable.cache.complete(key, value, dep_node_index);

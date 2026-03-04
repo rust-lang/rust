@@ -160,7 +160,7 @@ where
 ///
 /// The passed `elaborator` is used to determine what should happen at the drop terminator. It
 /// decides whether the drop can be statically determined or whether it needs a dynamic drop flag,
-/// and whether the drop is "open", ie. should be expanded to drop all subfields of the dropped
+/// and whether the drop is "open", i.e. should be expanded to drop all subfields of the dropped
 /// value.
 ///
 /// When this returns, the MIR patch in the `elaborator` contains the necessary changes.

@@ -150,10 +150,10 @@ use crate::{dep_graph, mir, thir};
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
 // The result type of each query must implement `Clone`, and additionally
-// `ty::query::values::Value`, which produces an appropriate placeholder
-// (error) value if the query resulted in a query cycle.
+// `ty::query::from_cycle_error::FromCycleError`, which produces an appropriate
+// placeholder (error) value if the query resulted in a query cycle.
 // Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise an fatal error on query cycles instead.
+// as they will raise a fatal error on query cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -2772,11 +2772,22 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query is_rhs_type_const(def_id: DefId) -> bool {
-        desc { "checking whether `{}` is a rhs type const", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
-        separate_provide_extern
-    }
+    //-----------------------------------------------------------------------------
+    // "Non-queries" are special dep kinds that are not queries.
+    //-----------------------------------------------------------------------------
+
+    /// We use this for most things when incr. comp. is turned off.
+    non_query Null
+    /// We use this to create a forever-red node.
+    non_query Red
+    /// We use this to create a side effect node.
+    non_query SideEffect
+    /// We use this to create the anon node with zero dependencies.
+    non_query AnonZeroDeps
+    non_query TraitSelect
+    non_query CompileCodegenUnit
+    non_query CompileMonoItem
+    non_query Metadata
 }
 
 rustc_with_all_queries! { define_callbacks! }

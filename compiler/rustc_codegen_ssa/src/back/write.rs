@@ -42,7 +42,7 @@ use crate::back::lto::check_lto_allowed;
 use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
+    CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, ModuleKind,
     errors,
 };
 
@@ -394,16 +394,8 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
         .collect()
 }
 
-pub struct CompiledModules {
-    pub modules: Vec<CompiledModule>,
-    pub allocator_module: Option<CompiledModule>,
-}
-
 enum MaybeLtoModules<B: WriteBackendMethods> {
-    NoLto {
-        modules: Vec<CompiledModule>,
-        allocator_module: Option<CompiledModule>,
-    },
+    NoLto(CompiledModules),
     FatLto {
         cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
@@ -443,14 +435,12 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
-    target_cpu: String,
+    crate_info: &CrateInfo,
     allocator_module: Option<ModuleCodegen<B::Module>>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
     let no_builtins = find_attr!(tcx, crate, NoBuiltins);
-
-    let crate_info = CrateInfo::new(tcx, target_cpu);
 
     let regular_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
     let allocator_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
@@ -461,7 +451,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     let coordinator_thread = start_executing_work(
         backend.clone(),
         tcx,
-        &crate_info,
+        crate_info,
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
@@ -473,7 +463,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 
     OngoingCodegen {
         backend,
-        crate_info,
 
         codegen_worker_receive,
         shared_emitter_main,
@@ -1818,12 +1807,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
         }
 
-        Ok(MaybeLtoModules::NoLto {
+        Ok(MaybeLtoModules::NoLto(CompiledModules {
             modules: compiled_modules,
             allocator_module: allocator_module.map(|allocator_module| {
                 B::codegen(&cgcx, &prof, &shared_emitter, allocator_module, &allocator_config)
             }),
-        })
+        }))
     })
     .expect("failed to spawn coordinator thread");
 
@@ -2139,7 +2128,6 @@ impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
 
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
-    pub crate_info: CrateInfo,
     pub output_filenames: Arc<OutputFilenames>,
     // Field order below is intended to terminate the coordinator thread before two fields below
     // drop and prematurely close channels used by coordinator thread. See `Coordinator`'s
@@ -2150,7 +2138,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 }
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
-    pub fn join(self, sess: &Session) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    pub fn join(self, sess: &Session) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2170,9 +2158,9 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
         let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
-            MaybeLtoModules::NoLto { modules, allocator_module } => {
+            MaybeLtoModules::NoLto(compiled_modules) => {
                 drop(shared_emitter);
-                CompiledModules { modules, allocator_module }
+                compiled_modules
             }
             MaybeLtoModules::FatLto {
                 cgcx,
@@ -2256,15 +2244,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             self.backend.print_statistics()
         }
 
-        (
-            CodegenResults {
-                crate_info: self.crate_info,
-
-                modules: compiled_modules.modules,
-                allocator_module: compiled_modules.allocator_module,
-            },
-            work_products,
-        )
+        (compiled_modules, work_products)
     }
 
     pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {

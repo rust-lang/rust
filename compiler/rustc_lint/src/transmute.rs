@@ -216,7 +216,7 @@ fn check_ptr_transmute_in_const<'tcx>(
     dst: Ty<'tcx>,
 ) {
     if matches!(const_context, Some(hir::ConstContext::ConstFn))
-        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst)
+        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst { .. })
     {
         if src.is_raw_ptr() && dst.is_integral() {
             cx.tcx.emit_node_span_lint(

@@ -33,7 +33,7 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
+use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
@@ -360,12 +360,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         will_not_use_fallback
     }
 
-    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
-        Box::new(rustc_codegen_ssa::base::codegen_crate(
-            LlvmCodegenBackend(()),
-            tcx,
-            crate::llvm_util::target_cpu(tcx.sess).to_string(),
-        ))
+    fn target_cpu(&self, sess: &Session) -> String {
+        crate::llvm_util::target_cpu(sess).to_string()
+    }
+
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, crate_info: &CrateInfo) -> Box<dyn Any> {
+        Box::new(rustc_codegen_ssa::base::codegen_crate(LlvmCodegenBackend(()), tcx, crate_info))
     }
 
     fn join_codegen(
@@ -373,8 +373,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        let (codegen_results, work_products) = ongoing_codegen
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
+        let (compiled_modules, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess);
@@ -386,13 +386,14 @@ impl CodegenBackend for LlvmCodegenBackend {
             });
         }
 
-        (codegen_results, work_products)
+        (compiled_modules, work_products)
     }
 
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
@@ -405,7 +406,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         link_binary(
             sess,
             &LlvmArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),

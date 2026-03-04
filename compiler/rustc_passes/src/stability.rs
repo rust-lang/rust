@@ -52,7 +52,7 @@ fn inherit_deprecation(def_kind: DefKind) -> bool {
 fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let def_kind = tcx.def_kind(def_id);
     match def_kind {
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
                 DefKind::Impl { .. } => true,
                 _ => false,
@@ -84,7 +84,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
         }
 
         // Impl items in trait impls cannot have stability.
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
                 DefKind::Impl { of_trait: true } => AnnotationKind::Prohibited,
                 _ => AnnotationKind::Required,

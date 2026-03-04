@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::{format_diag_message, to_fluent_args};
+use rustc_errors::translation::format_diag_message;
 use rustc_errors::{Applicability, DiagCtxt, DiagInner};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -150,9 +150,7 @@ impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: DiagInner) {
         let mut buffer = self.buffer.borrow_mut();
 
-        let fluent_args = to_fluent_args(diag.args.iter());
-        let translated_main_message = format_diag_message(&diag.messages[0].0, &fluent_args)
-            .unwrap_or_else(|e| panic!("{e}"));
+        let translated_main_message = format_diag_message(&diag.messages[0].0, &diag.args);
 
         buffer.messages.push(format!("error from rustc: {translated_main_message}"));
         if diag.is_error() {

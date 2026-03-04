@@ -23,9 +23,6 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{env, fmt, fs, io};
 
-use build_helper::ci::CiEnv;
-
-use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
 
 mod rustdoc_js;
@@ -53,7 +50,6 @@ const SPELLCHECK_VER: &str = "1.38.1";
 pub fn check(
     root_path: &Path,
     outdir: &Path,
-    ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
@@ -67,7 +63,6 @@ pub fn check(
     if let Err(e) = check_impl(
         root_path,
         outdir,
-        ci_info,
         librustdoc_path,
         tools_path,
         npm,
@@ -83,7 +78,6 @@ pub fn check(
 fn check_impl(
     root_path: &Path,
     outdir: &Path,
-    ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
@@ -121,9 +115,12 @@ fn check_impl(
     };
     lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
-        crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
-            ck.is_non_auto_or_matches(path)
-        });
+        crate::files_modified_batch_filter(
+            &tidy_ctx.base_commit,
+            tidy_ctx.is_running_on_ci(),
+            &mut lint_args,
+            |ck, path| ck.is_non_auto_or_matches(path),
+        );
     }
 
     macro_rules! extra_check {
@@ -321,7 +318,7 @@ fn check_impl(
         } else {
             eprintln!("spellchecking files");
         }
-        let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
+        let res = spellcheck_runner(root_path, &outdir, &cargo, &args, tidy_ctx.is_running_on_ci());
         if res.is_err() {
             rerun_with_bless("spellcheck", "fix typos");
         }
@@ -629,9 +626,16 @@ fn spellcheck_runner(
     outdir: &Path,
     cargo: &Path,
     args: &[&str],
+    is_ci: bool,
 ) -> Result<(), Error> {
-    let bin_path =
-        ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", SPELLCHECK_VER)?;
+    let bin_path = ensure_version_or_cargo_install(
+        outdir,
+        cargo,
+        "typos-cli",
+        "typos",
+        SPELLCHECK_VER,
+        is_ci,
+    )?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -713,6 +717,7 @@ fn ensure_version_or_cargo_install(
     pkg_name: &str,
     bin_name: &str,
     version: &str,
+    is_ci: bool,
 ) -> Result<PathBuf, Error> {
     if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
         return Ok(bin_path);
@@ -746,7 +751,7 @@ fn ensure_version_or_cargo_install(
     // On CI, we set opt-level flag for quicker installation.
     // Since lower opt-level decreases the tool's performance,
     // we don't set this option on local.
-    if CiEnv::is_ci() {
+    if is_ci {
         cmd.env("RUSTFLAGS", "-Copt-level=0");
     }
 

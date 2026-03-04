@@ -114,52 +114,40 @@
 //@ cdb-check:    [+0x000] __0              : 0x78 [Type: unsigned __int64]
 
 //@ cdb-command: dx a_bool_t
-//@ cdb-check:a_bool_t         : true [Type: core::sync::atomic::AtomicBool]
-//@ cdb-check:    [+0x000] v                : 0x1 [Type: core::cell::UnsafeCell<u8>]
+//@ cdb-check:a_bool_t         : true [Type: core::sync::atomic::Atomic<bool>]
 
 //@ cdb-command: dx a_bool_f
-//@ cdb-check:a_bool_f         : false [Type: core::sync::atomic::AtomicBool]
-//@ cdb-check:    [+0x000] v                : 0x0 [Type: core::cell::UnsafeCell<u8>]
+//@ cdb-check:a_bool_f         : false [Type: core::sync::atomic::Atomic<bool>]
 
 //@ cdb-command: dx a_i8
-//@ cdb-check:a_i8             : 2 [Type: core::sync::atomic::AtomicI8]
-//@ cdb-check:    [+0x000] v                : 2 [Type: core::cell::UnsafeCell<i8>]
+//@ cdb-check:a_i8             : 2 [Type: core::sync::atomic::Atomic<i8>]
 
 //@ cdb-command: dx a_i16
-//@ cdb-check:a_i16            : 4 [Type: core::sync::atomic::AtomicI16]
-//@ cdb-check:    [+0x000] v                : 4 [Type: core::cell::UnsafeCell<i16>]
+//@ cdb-check:a_i16            : 4 [Type: core::sync::atomic::Atomic<i16>]
 
 //@ cdb-command: dx a_i32
-//@ cdb-check:a_i32            : 8 [Type: core::sync::atomic::AtomicI32]
-//@ cdb-check:    [+0x000] v                : 8 [Type: core::cell::UnsafeCell<i32>]
+//@ cdb-check:a_i32            : 8 [Type: core::sync::atomic::Atomic<i32>]
 
 //@ cdb-command: dx a_i64
-//@ cdb-check:a_i64            : 16 [Type: core::sync::atomic::AtomicI64]
-//@ cdb-check:    [+0x000] v                : 16 [Type: core::cell::UnsafeCell<i64>]
+//@ cdb-check:a_i64            : 16 [Type: core::sync::atomic::Atomic<i64>]
 
 //@ cdb-command: dx a_isize
-//@ cdb-check:a_isize          : 32 [Type: core::sync::atomic::AtomicIsize]
-//@ cdb-check:    [+0x000] v                : 32 [Type: core::cell::UnsafeCell<isize>]
+//@ cdb-check:a_isize          : 32 [Type: core::sync::atomic::Atomic<isize>]
 
 //@ cdb-command: dx a_u8
-//@ cdb-check:a_u8             : 0x40 [Type: core::sync::atomic::AtomicU8]
-//@ cdb-check:    [+0x000] v                : 0x40 [Type: core::cell::UnsafeCell<u8>]
+//@ cdb-check:a_u8             : 0x40 [Type: core::sync::atomic::Atomic<u8>]
 
 //@ cdb-command: dx a_u16
-//@ cdb-check:a_u16            : 0x80 [Type: core::sync::atomic::AtomicU16]
-//@ cdb-check:    [+0x000] v                : 0x80 [Type: core::cell::UnsafeCell<u16>]
+//@ cdb-check:a_u16            : 0x80 [Type: core::sync::atomic::Atomic<u16>]
 
 //@ cdb-command: dx a_u32
-//@ cdb-check:a_u32            : 0x100 [Type: core::sync::atomic::AtomicU32]
-//@ cdb-check:    [+0x000] v                : 0x100 [Type: core::cell::UnsafeCell<u32>]
+//@ cdb-check:a_u32            : 0x100 [Type: core::sync::atomic::Atomic<u32>]
 
 //@ cdb-command: dx a_u64
-//@ cdb-check:a_u64            : 0x200 [Type: core::sync::atomic::AtomicU64]
-//@ cdb-check:    [+0x000] v                : 0x200 [Type: core::cell::UnsafeCell<u64>]
+//@ cdb-check:a_u64            : 0x200 [Type: core::sync::atomic::Atomic<u64>]
 
 //@ cdb-command: dx a_usize
-//@ cdb-check:a_usize          : 0x400 [Type: core::sync::atomic::AtomicUsize]
-//@ cdb-check:    [+0x000] v                : 0x400 [Type: core::cell::UnsafeCell<usize>]
+//@ cdb-check:a_usize          : 0x400 [Type: core::sync::atomic::Atomic<usize>]
 
 
 // === GDB TESTS ===================================================================================

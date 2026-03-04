@@ -1846,7 +1846,7 @@ impl<'tcx> Pick<'tcx> {
                         tcx.def_path_str(self.item.def_id),
                     ));
                 }
-                (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
+                (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
                     lint.span_suggestion(
                         span,

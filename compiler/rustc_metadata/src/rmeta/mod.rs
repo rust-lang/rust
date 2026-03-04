@@ -476,7 +476,6 @@ define_tables! {
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
-    is_rhs_type_const: Table<DefIndex, LazyValue<bool>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

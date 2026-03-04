@@ -32,6 +32,9 @@ pub(crate) fn expand_deriving_eq(
             nonself_args: vec![],
             ret_ty: Unit,
             attributes: thin_vec![
+                // This method will never be called, so doing codegen etc. for it is unnecessary.
+                // We prevent this by adding `#[inline]`, which improves compile-time.
+                cx.attr_word(sym::inline, span),
                 cx.attr_nested_word(sym::doc, sym::hidden, span),
                 cx.attr_nested_word(sym::coverage, sym::off, span),
             ],
