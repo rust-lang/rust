@@ -593,7 +593,14 @@ pub(crate) struct RustcObjectLifetimeDefaultParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const PATH: &[Symbol] = &[sym::rustc_object_lifetime_default];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TyAlias),
+        Allow(Target::AssocTy),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcObjectLifetimeDefault;
 }
 
