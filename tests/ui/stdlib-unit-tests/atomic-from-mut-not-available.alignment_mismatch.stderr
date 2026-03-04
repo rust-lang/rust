@@ -4,18 +4,14 @@ error[E0599]: no function or associated item named `from_mut` found for struct `
 LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
    |                                    ^^^^^^^^ function or associated item not found in `Atomic<u64>`
    |
-note: if you're trying to build a new `Atomic<u64>`, consider using `Atomic::<u64>::new` which returns `Atomic<u64>`
+note: if you're trying to build a new `Atomic<u64>`, consider using `Atomic::<T>::new` which returns `Atomic<_>`
   --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
-  ::: $SRC_DIR/core/src/sync/atomic.rs:LL:COL
-   |
-   = note: in this macro invocation
    = note: the function or associated item was found for
            - `Atomic<*mut T>`
            - `Atomic<bool>`
            - `Atomic<i16>`
            - `Atomic<i32>`
            and 6 more types
-   = note: this error originates in the macro `atomic_int` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: there is an associated function `from` with a similar name
    |
 LL -     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
