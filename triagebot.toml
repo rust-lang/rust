@@ -534,7 +534,7 @@ trigger_files = [
 [autolabel."A-translation"]
 trigger_files = [
     "compiler/rustc_error_messages",
-    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_errors/src/formatting.rs",
     "compiler/rustc_macros/src/diagnostics"
 ]
 
@@ -1180,8 +1180,8 @@ cc = ["@Muscraft"]
 message = "`rustc_errors::emitter` was changed"
 cc = ["@Muscraft"]
 
-[mentions."compiler/rustc_errors/src/translation.rs"]
-message = "`rustc_errors::translation` was changed"
+[mentions."compiler/rustc_errors/src/formatting.rs"]
+message = "`rustc_errors::formatting` was changed"
 cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]

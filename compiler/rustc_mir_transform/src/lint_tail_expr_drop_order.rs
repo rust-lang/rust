@@ -531,7 +531,7 @@ impl Subdiagnostic for LocalLabel<'_> {
         diag.arg("is_generated_name", self.is_generated_name);
         diag.remove_arg("is_dropped_first_edition_2024");
         diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             "{$is_generated_name ->
                 [true] this value will be stored in a temporary; let us call it `{$name}`
                 *[false] `{$name}` calls a custom destructor
@@ -542,7 +542,7 @@ impl Subdiagnostic for LocalLabel<'_> {
             dtor.add_to_diag(diag);
         }
         let msg =
-            diag.eagerly_translate(msg!(
+            diag.eagerly_format(msg!(
                 "{$is_dropped_first_edition_2024 ->
                     [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
                     *[false] `{$name}` will be dropped later as of Edition 2024
