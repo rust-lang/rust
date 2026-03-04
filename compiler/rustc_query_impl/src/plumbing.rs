@@ -19,14 +19,15 @@ use rustc_middle::query::on_disk_cache::{
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    QueryCache, QueryJobId, QueryKey, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
-    erase,
+    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackDeferred, QueryStackFrame,
+    QueryStackFrameExtra, erase,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
@@ -221,10 +222,27 @@ pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
             dep_node.key_fingerprint
         )
     });
-    if (query.will_cache_on_disk_for_key_fn)(tcx, &key) {
-        // Call `tcx.$query(key)` for its side-effect of loading the disk-cached
-        // value into memory.
-        (query.call_query_method_fn)(tcx, key);
+
+    // If the recovered key isn't eligible for cache-on-disk, then there's no
+    // value on disk to promote.
+    if !(query.will_cache_on_disk_for_key_fn)(tcx, &key) {
+        return;
+    }
+
+    match query.cache.lookup(&key) {
+        // If the value is already in memory, then promotion isn't needed.
+        Some(_) => {}
+
+        // "Execute" the query to load its disk-cached value into memory.
+        //
+        // We know that the key is cache-on-disk and its node is green,
+        // so there _must_ be a value on disk to load.
+        //
+        // FIXME(Zalathar): Is there a reasonable way to skip more of the
+        // query bookkeeping when doing this?
+        None => {
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+        }
     }
 }
 
@@ -427,11 +445,6 @@ macro_rules! define_queries {
                     state: Default::default(),
                     cache: Default::default(),
 
-                    call_query_method_fn: |tcx, key| {
-                        // Call the query method for its side-effect of loading a value
-                        // from disk-cache; the caller doesn't need the value.
-                        let _ = tcx.$name(key);
-                    },
                     invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
                     #[cfg($cache_on_disk)]
