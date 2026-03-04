@@ -741,8 +741,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
+/// This type exists just so a `FromCycleError` impl can be made for the `check_representability`
+/// query.
 #[derive(Clone, Copy, Debug, HashStable)]
-pub enum Representability {
-    Representable,
-    Infinite(ErrorGuaranteed),
-}
+pub struct Representability;

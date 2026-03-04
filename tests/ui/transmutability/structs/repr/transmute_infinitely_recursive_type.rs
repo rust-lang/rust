@@ -1,4 +1,3 @@
-//~ ERROR: cycle detected
 //! Safe transmute did not handle cycle errors that could occur during
 //! layout computation. This test checks that we do not ICE in such
 //! situations (see #117491).
