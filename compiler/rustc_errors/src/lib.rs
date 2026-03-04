@@ -40,7 +40,7 @@ pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee, FatalAbort,
-    LintDiagnostic, StringPart, Subdiag, Subdiagnostic,
+    StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
