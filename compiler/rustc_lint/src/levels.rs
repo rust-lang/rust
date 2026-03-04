@@ -22,12 +22,14 @@ use rustc_session::lint::builtin::{
     self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
-use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
+use rustc_session::lint::{
+    CheckLintNameResult, Level, Lint, LintExpectationId, LintId, TargetLint,
+};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
-use crate::context::{CheckLintNameResult, LintStore};
+use crate::context::LintStore;
 use crate::errors::{
     CheckNameUnknownTool, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,

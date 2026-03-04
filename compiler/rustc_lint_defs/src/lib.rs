@@ -583,6 +583,26 @@ impl Lint {
     }
 }
 
+/// The target of the `by_name` map, which accounts for renaming/deprecation.
+#[derive(Debug)]
+pub enum TargetLint {
+    /// A direct lint target
+    Id(LintId),
+
+    /// Temporary renaming, used for easing migration pain; see #16545
+    Renamed(String, LintId),
+
+    /// Lint with this name existed previously, but has been removed/deprecated.
+    /// The string argument is the reason for removal.
+    Removed(String),
+
+    /// A lint name that should give no warnings and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
+    Ignored,
+}
+
 /// Identifies a lint known to the compiler.
 #[derive(Clone, Copy, Debug)]
 pub struct LintId {
@@ -808,6 +828,31 @@ pub enum AttributeLintKind {
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
+}
+
+#[derive(Debug)]
+pub enum CheckLintNameResult<'a> {
+    Ok(&'a [LintId]),
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<(Symbol, bool)>),
+    /// The lint refers to a tool that has not been registered.
+    NoTool,
+    /// The lint has been renamed to a new name.
+    Renamed(Symbol),
+    /// Lint that previously was part of rustc, but now is part of external lint tool
+    RenamedToolLint(Symbol),
+    /// The lint has been removed due to the given reason.
+    Removed(String),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<String>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
