@@ -714,6 +714,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
 }
 
+pub(crate) struct RustcNoWritableParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNoWritableParser {
+    const PATH: &[Symbol] = &[sym::rustc_no_writable];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoWritable;
+}
+
 pub(crate) struct RustcOffloadKernelParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {

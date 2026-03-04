@@ -1481,6 +1481,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_nounwind]`
     RustcNounwind,
 
+    /// Represents `#[rustc_no_writable]`
+    RustcNoWritable,
+
     /// Represents `#[rustc_objc_class]`
     RustcObjcClass {
         classname: Symbol,

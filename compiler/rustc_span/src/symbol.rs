@@ -1745,6 +1745,7 @@ symbols! {
         rustc_non_const_trait_method,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
+        rustc_no_writable,
         rustc_objc_class,
         rustc_objc_selector,
         rustc_object_lifetime_default,

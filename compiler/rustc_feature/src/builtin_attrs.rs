@@ -1412,6 +1412,9 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_scalable_vector, Normal, template!(List: &["count"]), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_scalable_vector]` defines a scalable vector type"
     ),
+    rustc_attr!(
+        rustc_no_writable, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes, "`#[rustc_no_writable]` prevents the compiler from adding the `writable` flag in llvm and disable the strong mode in Miri"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

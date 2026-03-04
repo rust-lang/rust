@@ -352,6 +352,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNonConstTraitMethod
                     | AttributeKind::RustcNonnullOptimizationGuaranteed
                     | AttributeKind::RustcNounwind
+                    | AttributeKind::RustcNoWritable
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
