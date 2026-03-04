@@ -138,14 +138,6 @@ where
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 }
 
-/// Trait implemented by lint types. This should not be implemented manually. Instead, use
-/// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "LintDiagnostic"]
-pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate a lint with the information from this type.
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-}
-
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub(crate) struct DiagLocation {
     file: Cow<'static, str>,
