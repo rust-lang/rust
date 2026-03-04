@@ -21,8 +21,8 @@ impl<'a> DescriptionCtx<'a> {
     ) -> Option<Self> {
         let (span, kind, arg) = match region.kind() {
             ty::ReEarlyParam(br) => {
-                let scope_def_id = tcx
-                    .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id);
+                let scope_def_id =
+                    tcx.parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id);
                 let span = if let Some(scope) = scope_def_id.as_local()
                     && let Some(param) =
                         tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
