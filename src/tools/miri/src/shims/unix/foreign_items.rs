@@ -539,6 +539,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
+            // Network sockets
+            "socket" => {
+                let [domain, type_, protocol] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.socket(domain, type_, protocol)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Time
             "gettimeofday" => {
                 let [tv, tz] = this.check_shim_sig(

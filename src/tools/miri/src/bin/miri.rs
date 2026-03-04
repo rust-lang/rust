@@ -193,7 +193,11 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+        // We never reach codegen anyway.
         config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
@@ -354,6 +358,9 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
                 )
             }
         });
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
