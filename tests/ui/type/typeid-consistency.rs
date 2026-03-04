@@ -3,7 +3,6 @@
 //@ run-pass
 
 #![allow(deprecated)]
-#![feature(core_intrinsics)]
 
 //@ aux-build:typeid-consistency-aux1.rs
 //@ aux-build:typeid-consistency-aux2.rs

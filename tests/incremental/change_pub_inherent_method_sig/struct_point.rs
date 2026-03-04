@@ -7,7 +7,6 @@
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 // These are expected to require codegen.

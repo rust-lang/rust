@@ -3,8 +3,8 @@
 // Makes sure we use `==` (not bitwise) semantics for float comparison.
 
 #![feature(cfg_target_has_reliable_f16_f128)]
-#![feature(f128)]
-#![feature(f16)]
+#![cfg_attr(target_has_reliable_f16, feature(f16))]
+#![cfg_attr(target_has_reliable_f128, feature(f128))]
 
 #[cfg(target_has_reliable_f16)]
 fn check_f16() {
