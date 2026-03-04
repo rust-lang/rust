@@ -886,3 +886,18 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn never_coercion_in_struct_update_syntax() {
+    check_no_mismatches(
+        r#"
+struct Struct {
+    field: i32,
+}
+
+fn example() -> Struct {
+    Struct { ..loop {} }
+}
+    "#,
+    );
+}
