@@ -1374,9 +1374,11 @@ fn codegen_autodiff<'ll, 'tcx>(
         bug!("could not find autodiff attrs")
     };
 
+    let fn_ptr_ty =
+        Ty::new_fn_ptr(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()).fn_sig(tcx));
     adjust_activity_to_abi(
         tcx,
-        fn_source,
+        fn_ptr_ty,
         TypingEnv::fully_monomorphized(),
         &mut diff_attrs.input_activity,
     );
