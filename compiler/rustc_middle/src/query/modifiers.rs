@@ -28,11 +28,6 @@ pub(crate) struct cache_on_disk_if;
 /// A cycle error results in a delay_bug call
 pub(crate) struct cycle_delay_bug;
 
-/// # `cycle_fatal` query modifier
-///
-/// A cycle error for this query aborting the compilation with a fatal error.
-pub(crate) struct cycle_fatal;
-
 /// # `cycle_stash` query modifier
 ///
 /// A cycle error results in a stashed cycle error that can be unstashed and canceled later
