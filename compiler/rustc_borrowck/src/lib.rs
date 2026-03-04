@@ -123,7 +123,7 @@ fn mir_borrowck(
     // We should eagerly check stalled coroutine obligations from HIR typeck.
     // Not doing so leads to silent normalization failures later, which will
     // fail to register opaque types in the next solver.
-    tcx.check_coroutine_obligations(def)?;
+    tcx.ensure_ok().check_coroutine_obligations(def)?;
 
     let input_body: &Body<'_> = &input_body.borrow();
     if let Some(guar) = input_body.tainted_by_errors {
