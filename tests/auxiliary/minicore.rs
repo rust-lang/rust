@@ -288,6 +288,17 @@ pub mod mem {
     pub const fn align_of<T>() -> usize;
 }
 
+pub mod ptr {
+    #[inline]
+    #[rustc_diagnostic_item = "ptr_write_volatile"]
+    pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+        #[rustc_intrinsic]
+        pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+
+        unsafe { volatile_store(dst, src) };
+    }
+}
+
 #[lang = "c_void"]
 #[repr(u8)]
 pub enum c_void {
