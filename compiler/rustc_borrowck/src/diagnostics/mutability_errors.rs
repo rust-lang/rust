@@ -682,14 +682,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         }
                     };
 
-                    // Lets see:
-                    // because of TypeChecking and indexing, we know: index is &Q
+                    // Because of TypeChecking and indexing, we know: index is &Q
                     // with K: Eq + Hash + Borrow<Q>,
-                    // with Q: Eq + Hash + ?Sized,index is a &Q with K:Borrow<Q>,
+                    // with Q: Eq + Hash + ?Sized,
                     //
                     //
                     //
-                    // there is no other constraint on the types, therefore we need to look at the
+                    // There is no other constraint on the types, therefore we need to look at the
                     // constraints of the suggestions:
                     // pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
                     // where
@@ -699,15 +698,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // pub fn insert(&mut self, k: K, v: V) -> Option<V>
                     // pub fn entry(&mut self, key: K) -> Entry<'_, K, V>
                     //
-                    // But lets note that there could be also, if imported from hashbrown:
+                    // But let's note that there could be also, if imported from hashbrown:
                     // pub fn entry_ref<'a, 'b, Q>(
-                    // &'a mut self,
-                    // key: &'b Q,
+                    //     &'a mut self,
+                    //     key: &'b Q,
                     // ) -> EntryRef<'a, 'b, K, Q, V, S, A>
                     // where
-                    // Q: Hash + Equivalent<K> + ?Sized,
+                    //     Q: Hash + Equivalent<K> + ?Sized,
 
-                    /// testing if index AND key are &Q. We cannot simply test equality because the
+                    /// Testing if index AND key are &Q. We cannot simply test equality because the
                     /// lifetimes differ.
                     fn index_and_key_are_same_borrowed_type<'tcx>(
                         index: Ty<'tcx>,
@@ -721,7 +720,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             false
                         }
                     }
-                    /// testing if index is &K:
+                    /// Testing if index is &K:
                     fn index_is_borrowed_key<'tcx>(index: Ty<'tcx>, key: Ty<'tcx>) -> bool {
                         if let ty::Ref(_, inner_ty, _) = index.kind() {
                             *inner_ty == key
