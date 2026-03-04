@@ -144,7 +144,6 @@ struct QueryModifiers {
     arena_cache: Option<Ident>,
     cache_on_disk_if: Option<CacheOnDiskIf>,
     cycle_delay_bug: Option<Ident>,
-    cycle_fatal: Option<Ident>,
     cycle_stash: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
@@ -160,7 +159,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
     let mut cache_on_disk_if = None;
     let mut desc = None;
-    let mut cycle_fatal = None;
     let mut cycle_delay_bug = None;
     let mut cycle_stash = None;
     let mut no_hash = None;
@@ -197,8 +195,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
-        } else if modifier == "cycle_fatal" {
-            try_insert!(cycle_fatal = modifier);
         } else if modifier == "cycle_delay_bug" {
             try_insert!(cycle_delay_bug = modifier);
         } else if modifier == "cycle_stash" {
@@ -228,7 +224,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         arena_cache,
         cache_on_disk_if,
         desc,
-        cycle_fatal,
         cycle_delay_bug,
         cycle_stash,
         no_hash,
@@ -248,7 +243,6 @@ fn make_modifiers_stream(query: &Query, modifiers: &QueryModifiers) -> proc_macr
         arena_cache,
         cache_on_disk_if,
         cycle_delay_bug,
-        cycle_fatal,
         cycle_stash,
         depth_limit,
         desc: _,
@@ -266,8 +260,6 @@ fn make_modifiers_stream(query: &Query, modifiers: &QueryModifiers) -> proc_macr
 
     let cycle_error_handling = if cycle_delay_bug.is_some() {
         quote! { DelayBug }
-    } else if cycle_fatal.is_some() {
-        quote! { Fatal }
     } else if cycle_stash.is_some() {
         quote! { Stash }
     } else {
@@ -407,7 +399,6 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 
     doc_link!(
         arena_cache,
-        cycle_fatal,
         cycle_delay_bug,
         cycle_stash,
         no_hash,
