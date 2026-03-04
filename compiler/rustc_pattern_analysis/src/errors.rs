@@ -1,5 +1,5 @@
 use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -131,10 +131,12 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub uncovered: Uncovered,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("the lint level must be set on the whole match")]
 #[help("it no longer has any effect to set the lint level on an individual match arm")]
 pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
+    #[primary_span]
+    pub span: Span,
     #[label("remove this attribute")]
     pub lint_span: Span,
     #[suggestion(
