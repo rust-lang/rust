@@ -1162,14 +1162,10 @@ impl FilePermissions {
     }
 
     pub fn set_readonly(&mut self, readonly: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if readonly {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_READONLY;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_READONLY;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_READONLY;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
         }
@@ -1180,14 +1176,10 @@ impl FilePermissions {
     }
 
     fn set_hidden(&mut self, hidden: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if hidden {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_HIDDEN;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_HIDDEN;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_HIDDEN;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_HIDDEN;
         }
@@ -1198,14 +1190,10 @@ impl FilePermissions {
     }
 
     fn set_system(&mut self, system: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if system {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_SYSTEM;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_SYSTEM;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_SYSTEM;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_SYSTEM;
         }
@@ -1216,14 +1204,10 @@ impl FilePermissions {
     }
 
     fn set_archive(&mut self, archive: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if archive {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_ARCHIVE;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_ARCHIVE;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_ARCHIVE;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_ARCHIVE;
         }
@@ -1251,14 +1235,10 @@ impl FilePermissions {
     }
 
     fn set_temporary(&mut self, temporary: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if temporary {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_TEMPORARY;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_TEMPORARY;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_TEMPORARY;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_TEMPORARY;
         }
@@ -1269,14 +1249,10 @@ impl FilePermissions {
     }
 
     fn set_offline(&mut self, offline: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if offline {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_OFFLINE;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_OFFLINE;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_OFFLINE;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_OFFLINE;
         }
@@ -1287,14 +1263,11 @@ impl FilePermissions {
     }
 
     fn set_not_content_indexed(&mut self, not_content_indexed: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if not_content_indexed {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
-            }
+            self.attrs =
+                self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
         }
@@ -1311,14 +1284,10 @@ impl FilePermissions {
     // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
     // Windows Vista, Windows Server 2003 and Windows XP)
     fn set_integrity_stream(&mut self, integrity_stream: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if integrity_stream {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_INTEGRITY_STREAM;
         }
@@ -1335,14 +1304,10 @@ impl FilePermissions {
     // (not supported on Windows Server 2008 R2, Windows 7, Windows Server 2008,
     // Windows Vista, Windows Server 2003 and Windows XP)
     fn set_no_scrub_data(&mut self, no_scrub_data: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if no_scrub_data {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_NO_SCRUB_DATA;
         }
@@ -1356,13 +1321,7 @@ impl FilePermissions {
     // This flag was introduced in Windows 10, version 1703
     fn set_pinned(&mut self, pinned: bool) {
         if pinned {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_PINNED;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_PINNED;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_PINNED;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_PINNED;
         }
@@ -1375,14 +1334,10 @@ impl FilePermissions {
 
     // This flag was introduced in Windows 10, version 1703
     fn set_unpinned(&mut self, unpinned: bool) {
+        // According to SetFileAttributes, any other values
+        // passed to this should override FILE_ATTRIBUTE_NORMAL
         if unpinned {
-            // According to SetFileAttributes, any other values
-            // passed to this should override FILE_ATTRIBUTE_NORMAL
-            if self.normal() {
-                self.attrs = c::FILE_ATTRIBUTE_UNPINNED;
-            } else {
-                self.attrs |= c::FILE_ATTRIBUTE_UNPINNED;
-            }
+            self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_UNPINNED;
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_UNPINNED;
         }
@@ -1400,14 +1355,10 @@ impl FilePermissions {
     // }
 
     // fn set_strictly_sequential(&mut self, pinned: bool) {
+    //     // According to SetFileAttributes, any other values
+    //     // passed to this should override FILE_ATTRIBUTE_NORMAL
     //     if pinned {
-    //         // According to SetFileAttributes, any other values
-    //         // passed to this should override FILE_ATTRIBUTE_NORMAL
-    //         if self.normal() {
-    //             self.attrs = c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
-    //         } else {
-    //             self.attrs |= c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
-    //         }
+    //         self.attrs = self.attrs ^ c::FILE_ATTRIBUTE_NORMAL | c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
     //     } else {
     //         self.attrs &= !c::FILE_ATTRIBUTE_STRICTLY_SEQUENTIAL;
     //     }

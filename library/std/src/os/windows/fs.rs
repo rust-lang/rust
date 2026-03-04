@@ -357,72 +357,30 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-/// Windows-specific extensions to [`fs::Permissions`].
-/// # Examples
+/// Windows-specific extensions to [`fs::Permissions`]. This extension trait
+/// allows a view into what Windows file attributes are enabled in
+/// [`Permissions`] and manually set file attributes on [`Permissions`].
+/// See Microsoft's [`File Attribute Constants`] page to know what file
+/// attribute metadata are defined and stored on Windows files.
 ///
-/// ```no_run
-/// use std::fs::{File, Permissions};
-/// use std::io::{ErrorKind, Result as IoResult};
-/// use std::os::windows::fs::PermissionsExt;
+/// [`Permissions`]: fs::Permissions
+/// [`File Attribute Constants`]:
+///     https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
 ///
-/// fn main() -> IoResult<()> {
-///     let name = "test_file_for_permissions";
-///
-///     // make sure file does not exist
-///     let _ = std::fs::remove_file(name);
-///     assert_eq!(
-///         File::open(name).unwrap_err().kind(),
-///         ErrorKind::NotFound,
-///         "file already exists"
-///     );
-///
-///     // readonly and hidden file attributes that we
-///     // want to add to existing file
-///     let my_file_attr = 0x1 | 0x2;
-///
-///     // create new file with specified permissions
-///     {
-///         let file = File::create(name)?;
-///         let mut permissions = file.metadata()?.permissions();
-///         eprintln!("Current file attributes: {:o}", permissions.file_attributes());
-///
-///         // make sure new permissions are not already set
-///         assert!(
-///             permissions.file_attributes() & my_file_attr != my_file_attr,
-///             "file attributes already set"
-///         );
-///
-///         // or use `set_file_attributes` to construct a new Permissions struct
-///         permissions = Permissions::set_file_attributes(permissions.file_attributes() | my_file_attr);
-///
-///         // write new permissions to file
-///         file.set_permissions(permissions)?;
-///     }
-///
-///     let permissions = File::open(name)?.metadata()?.permissions();
-///     eprintln!("New file attributes: {:o}", permissions.mode());
-///
-///     // assert new file attributes were set
-///     assert_eq!(
-///         permissions.mode() & my_file_attr,
-///         my_file_attr,
-///         "new file attributes not set"
-///     );
-///     Ok(())
-/// }
-/// ```
+/// # Example
 ///
 /// ```no_run
 /// use std::fs::Permissions;
 /// use std::os::windows::fs::PermissionsExt;
 ///
-/// // system and archive file attributes
-/// let my_file_attr = 0x4 | 0x20;
+/// const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+/// const FILE_ATTRIBUTE_ARCHIVE: u32 = 0x20;
+/// let my_file_attr = FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_ARCHIVE;
 /// let mut permissions = Permissions::set_file_attributes(my_file_attr);
 /// assert_eq!(permissions.mode(), my_file_attr);
 /// ```
 #[unstable(feature = "windows_permissions_ext", issue = "152956")]
-pub trait PermissionsExt {
+pub trait PermissionsExt: Sealed {
     /// Returns the file attribute bits.
     #[unstable(feature = "windows_permissions_ext", issue = "152956")]
     fn file_attributes(&self) -> u32;
@@ -438,7 +396,10 @@ pub trait PermissionsExt {
 }
 
 #[unstable(feature = "windows_permissions_ext", issue = "152956")]
-impl PermissionsExt for Permissions {
+impl Sealed for fs::Permissions {}
+
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+impl PermissionsExt for fs::Permissions {
     fn file_attributes(&self) -> u32 {
         self.as_inner().file_attributes()
     }
