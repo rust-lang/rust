@@ -32,7 +32,6 @@
 #![feature(const_select_unpredictable)]
 #![feature(const_trait_impl)]
 #![feature(const_unsigned_bigint_helpers)]
-#![feature(control_flow_ok)]
 #![feature(core_intrinsics)]
 #![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]

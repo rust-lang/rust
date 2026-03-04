@@ -1055,7 +1055,10 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn is_assoc_item(&self) -> bool {
-        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
+        matches!(
+            self.res(),
+            Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _)
+        )
     }
 
     fn macro_kinds(&self) -> Option<MacroKinds> {

@@ -188,7 +188,3 @@ pub fn home_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
         .or_else(home_dir_crt)
 }
-
-pub fn getpid() -> u32 {
-    unsafe { c::GetCurrentProcessId() }
-}

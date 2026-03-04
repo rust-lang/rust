@@ -156,6 +156,7 @@
         target_env = "sgx",
         target_os = "xous",
         target_os = "trusty",
+        target_os = "hermit",
     ))
 ))]
 mod tests;
@@ -2545,7 +2546,7 @@ pub fn abort() -> ! {
 #[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
-    crate::sys::os::getpid()
+    imp::getpid()
 }
 
 /// A trait for implementing arbitrary return types in the `main` function.

@@ -444,8 +444,8 @@ fn mir_promoted(
         {
             tcx.mir_const_qualif(def)
         }
-        DefKind::AssocConst
-        | DefKind::Const
+        DefKind::AssocConst { .. }
+        | DefKind::Const { .. }
         | DefKind::Static { .. }
         | DefKind::InlineConst
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
@@ -562,8 +562,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         DefKind::Fn
         | DefKind::AssocFn
         | DefKind::Static { .. }
-        | DefKind::Const
-        | DefKind::AssocConst => {
+        | DefKind::Const { .. }
+        | DefKind::AssocConst { .. } => {
             if let Err(guar) = tcx.ensure_ok().check_well_formed(root.expect_local()) {
                 body.tainted_by_errors = Some(guar);
             }

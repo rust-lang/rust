@@ -712,7 +712,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         _vtable: Self::Value,
         _vtable_byte_offset: u64,
-        _typeid: Self::Value,
+        _typeid: &[u8],
     ) -> Self::Value {
         // Unsupported.
         self.context.new_rvalue_from_int(self.int_type, 0)

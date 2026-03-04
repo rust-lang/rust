@@ -685,7 +685,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
+                                if a.def == b.def
+                                    && matches!(
+                                        tcx.def_kind(a.def),
+                                        DefKind::AssocConst { .. }
+                                    ) =>
                             {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)

@@ -38,7 +38,7 @@ use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
 };
-use crate::llvm::{self, Metadata, Type, Value};
+use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -799,8 +799,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         llvtable: &'ll Value,
         vtable_byte_offset: u64,
-        typeid: &'ll Metadata,
+        typeid: &[u8],
     ) -> Self::Value {
+        let typeid = self.create_metadata(typeid);
         let typeid = self.get_metadata_value(typeid);
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
         let type_checked_load = self.call_intrinsic(

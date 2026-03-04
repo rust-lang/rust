@@ -681,7 +681,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
-    target_cpu: String,
+    crate_info: &CrateInfo,
 ) -> OngoingCodegen<B> {
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
@@ -719,7 +719,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         None
     };
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, allocator_module);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, crate_info, allocator_module);
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization

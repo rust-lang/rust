@@ -1577,7 +1577,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
-        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+        if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy =
+            self.def_kind(def_id)
+        {
             Some(self.associated_item(def_id))
         } else {
             None
@@ -1679,9 +1681,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let def_kind = self.def_kind(def);
                 debug!("returned from def_kind: {:?}", def_kind);
                 match def_kind {
-                    DefKind::Const
+                    DefKind::Const { .. }
                     | DefKind::Static { .. }
-                    | DefKind::AssocConst
+                    | DefKind::AssocConst { .. }
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
                     | DefKind::InlineConst => self.mir_for_ctfe(def),
@@ -2128,10 +2130,10 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TyParam
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use

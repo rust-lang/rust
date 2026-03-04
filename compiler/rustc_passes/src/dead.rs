@@ -43,10 +43,10 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const
+        | DefKind::Const { .. }
         | DefKind::Static { .. }
         | DefKind::AssocFn
-        | DefKind::AssocConst
+        | DefKind::AssocConst { .. }
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
@@ -120,7 +120,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn handle_res(&mut self, res: Res) {
         match res {
             Res::Def(
-                DefKind::Const | DefKind::AssocConst | DefKind::AssocTy | DefKind::TyAlias,
+                DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
+                | DefKind::AssocTy
+                | DefKind::TyAlias,
                 def_id,
             ) => {
                 self.check_def_id(def_id);
@@ -485,7 +488,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+            DefKind::AssocConst { .. } | DefKind::AssocTy | DefKind::AssocFn => {
                 let trait_item_id =
                     self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
                 (self.tcx.local_parent(local_def_id), trait_item_id)
@@ -766,7 +769,7 @@ fn maybe_record_as_seed<'tcx>(
                 );
             }
         }
-        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
+        DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
             if allow_dead_code.is_none() {
                 let parent = tcx.local_parent(owner_id.def_id);
                 match tcx.def_kind(parent) {
@@ -809,7 +812,7 @@ fn maybe_record_as_seed<'tcx>(
             // global_asm! is always live.
             worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
         }
-        DefKind::Const => {
+        DefKind::Const { .. } => {
             if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
@@ -1069,7 +1072,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let enum_variants_with_same_name = dead_codes
                     .iter()
                     .filter_map(|dead_item| {
-                        if let DefKind::AssocFn | DefKind::AssocConst =
+                        if let DefKind::AssocFn | DefKind::AssocConst { .. } =
                             tcx.def_kind(dead_item.def_id)
                             && let impl_did = tcx.local_parent(dead_item.def_id)
                             && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
@@ -1142,12 +1145,12 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         match self.tcx.def_kind(def_id) {
-            DefKind::AssocConst
+            DefKind::AssocConst { .. }
             | DefKind::AssocTy
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static { .. }
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::TyAlias
             | DefKind::Enum
             | DefKind::Union

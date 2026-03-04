@@ -1110,6 +1110,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_visibility(v))
     }
 
+    fn impl_restriction_to_string(&self, r: &ast::ImplRestriction) -> String {
+        Self::to_string(|s| s.print_impl_restriction(r))
+    }
+
     fn block_to_string(&self, blk: &ast::Block) -> String {
         Self::to_string(|s| {
             let (cb, ib) = s.head("");

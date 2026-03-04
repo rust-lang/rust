@@ -4,8 +4,8 @@
 
 //@ has 'src/foo/non-local-method.rs.html'
 
-//@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html"]' 'std::sync::atomic::AtomicIsize'
-use std::sync::atomic::AtomicIsize;
+//@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html"]' 'std::boxed::Box'
+use std::boxed::Box;
 //@ has - '//a[@href="{{channel}}/std/io/trait.Read.html"]' 'std::io::Read'
 use std::io::Read;
 //@ has - '//a[@href="{{channel}}/std/io/index.html"]' 'std::io'
@@ -21,9 +21,9 @@ pub fn bar2<T: Read>(readable: T) {
 }
 
 pub fn bar() {
-    //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html"]' 'AtomicIsize'
-    //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html#method.new"]' 'new'
-    let _ = AtomicIsize::new(0);
+    //@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html"]' 'Box'
+    //@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html#method.new"]' 'new'
+    let _ = Box::new(0);
     //@ has - '//a[@href="#49"]' 'local_private'
     local_private();
 }

@@ -2,7 +2,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/atomic-types-not-copyable.rs:11:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicBool`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `Atomic<bool>`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -14,7 +14,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/atomic-types-not-copyable.rs:13:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicIsize`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `Atomic<isize>`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -26,7 +26,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/atomic-types-not-copyable.rs:15:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicUsize`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `Atomic<usize>`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -38,7 +38,7 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/atomic-types-not-copyable.rs:17:13
    |
 LL |     let x = *&x;
-   |             ^^^ move occurs because value has type `std::sync::atomic::AtomicPtr<usize>`, which does not implement the `Copy` trait
+   |             ^^^ move occurs because value has type `Atomic<*mut usize>`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |

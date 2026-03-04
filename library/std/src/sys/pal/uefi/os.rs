@@ -2,7 +2,6 @@ use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
 use super::{helpers, unsupported_err};
 use crate::ffi::{OsStr, OsString};
-use crate::marker::PhantomData;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
 use crate::{fmt, io};
@@ -38,16 +37,37 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
 }
 
-pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
+pub struct SplitPaths<'a> {
+    data: crate::os::uefi::ffi::EncodeWide<'a>,
+    must_yield: bool,
+}
 
-pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
-    panic!("unsupported")
+pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
+    SplitPaths { data: unparsed.encode_wide(), must_yield: true }
 }
 
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
+
     fn next(&mut self) -> Option<PathBuf> {
-        self.0
+        let must_yield = self.must_yield;
+        self.must_yield = false;
+
+        let mut in_progress = Vec::new();
+        for b in self.data.by_ref() {
+            if b == PATHS_SEP {
+                self.must_yield = true;
+                break;
+            } else {
+                in_progress.push(b)
+            }
+        }
+
+        if !must_yield && in_progress.is_empty() {
+            None
+        } else {
+            Some(PathBuf::from(OsString::from_wide(&in_progress)))
+        }
     }
 }
 
@@ -100,8 +120,4 @@ pub fn temp_dir() -> PathBuf {
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids on this platform")
 }

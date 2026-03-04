@@ -2358,7 +2358,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir_module_free_items(module) {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Const { .. })
                     && let item = tcx.hir_item(id)
                     && let ItemKind::Const(ident, _generics, ty, _body) = item.kind
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind

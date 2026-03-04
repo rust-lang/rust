@@ -42,8 +42,12 @@ pub enum KeyFingerprintStyle {
 }
 
 impl KeyFingerprintStyle {
+    /// True if a key can _potentially_ be recovered from a key fingerprint
+    /// with this style.
+    ///
+    /// For some key types, recovery is possible but not guaranteed.
     #[inline]
-    pub const fn reconstructible(self) -> bool {
+    pub const fn is_maybe_recoverable(self) -> bool {
         match self {
             KeyFingerprintStyle::DefPathHash
             | KeyFingerprintStyle::Unit
@@ -103,7 +107,7 @@ impl<'tcx> TyCtxt<'tcx> {
         prev_index: SerializedDepNodeIndex,
         frame: &MarkFrame<'_>,
     ) -> bool {
-        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node {
+        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node_fn {
             match panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 force_fn(self, dep_node, prev_index)
             })) {
@@ -117,13 +121,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         } else {
             false
-        }
-    }
-
-    /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(self, dep_node: &DepNode) {
-        if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
-            try_load_fn(self, *dep_node)
         }
     }
 }

@@ -914,8 +914,8 @@ impl<'tcx> TyCtxt<'tcx> {
         } else if matches!(
             def_kind,
             DefKind::AnonConst
-                | DefKind::AssocConst
-                | DefKind::Const
+                | DefKind::AssocConst { .. }
+                | DefKind::Const { .. }
                 | DefKind::InlineConst
                 | DefKind::GlobalAsm
         ) {
@@ -1114,13 +1114,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Check if the given `def_id` is a `type const` (mgca)
     pub fn is_type_const<I: Copy + IntoQueryParam<DefId>>(self, def_id: I) -> bool {
         // No need to call the query directly in this case always false.
-        if !(matches!(
-            self.def_kind(def_id.into_query_param()),
-            DefKind::Const | DefKind::AssocConst
-        )) {
-            return false;
+        let def_kind = self.def_kind(def_id.into_query_param());
+        match def_kind {
+            DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
+                is_type_const
+            }
+            _ => false,
         }
-        self.is_rhs_type_const(def_id)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
@@ -2151,9 +2151,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // ATPITs) do not.
         let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
             && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-            && self.is_type_const(def_id);
+        let is_inherent_assoc_type_const =
+            matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
         let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
             if generics.own_params.len() + 1 != args.len() {
                 return false;
@@ -2198,9 +2198,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
             let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
                 && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-            let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-                && self.is_type_const(def_id);
+            let is_inherent_assoc_type_const =
+                matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                    && matches!(
+                        self.def_kind(self.parent(def_id)),
+                        DefKind::Impl { of_trait: false }
+                    );
             if is_inherent_assoc_ty || is_inherent_assoc_type_const {
                 bug!(
                     "args not compatible with generics for {}: args={:#?}, generics={:#?}",

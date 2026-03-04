@@ -404,7 +404,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(true);
         }
         if let Some(symbol) = key.get_opt_name() {
-            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
+            if let DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy = kind
                 && let Some(parent) = self.tcx().opt_parent(def_id)
                 && let parent_key = self.tcx().def_key(parent)
                 && let Some(symbol) = parent_key.get_opt_name()
@@ -429,7 +429,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::Trait
             | DefKind::TyAlias
             | DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Static { .. } = kind
             {
             } else {
@@ -1551,7 +1551,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
                 match self.tcx().def_kind(def) {
-                    DefKind::Const | DefKind::AssocConst => {
+                    DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                         self.pretty_print_value_path(def, args)?;
                     }
                     DefKind::AnonConst => {

@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         predicate,
                     ));
 
-                    if tcx.def_kind(uv.def) == DefKind::AssocConst
+                    if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
                         && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
                     {
                         self.add_wf_preds_for_inherent_projection(uv.into());

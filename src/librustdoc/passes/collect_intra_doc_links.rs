@@ -125,9 +125,10 @@ impl Res {
             DefKind::Trait => "trait",
             DefKind::Union => "union",
             DefKind::Mod => "mod",
-            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
-                "const"
-            }
+            DefKind::Const { .. }
+            | DefKind::ConstParam
+            | DefKind::AssocConst { .. }
+            | DefKind::AnonConst => "const",
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
@@ -393,7 +394,10 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             return Ok(match res {
                 Res::Def(
-                    DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
+                    DefKind::AssocFn
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocTy
+                    | DefKind::Variant,
                     def_id,
                 ) => {
                     vec![(Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id))]
@@ -490,7 +494,7 @@ fn resolve_self_ty<'tcx>(
 
     let self_id = match tcx.def_kind(item_id) {
         def_kind @ (DefKind::AssocFn
-        | DefKind::AssocConst
+        | DefKind::AssocConst { .. }
         | DefKind::AssocTy
         | DefKind::Variant
         | DefKind::Field) => {
@@ -1210,7 +1214,7 @@ impl LinkCollector<'_, '_> {
         let tcx = self.cx.tcx;
         let def_kind = tcx.def_kind(original_did);
         let did = match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
                 // documented on their parent's page
                 tcx.parent(original_did)
             }
@@ -1398,7 +1402,13 @@ impl LinkCollector<'_, '_> {
         // Disallow e.g. linking to enums with `struct@`
         debug!("saw kind {kind:?} with disambiguator {disambiguator:?}");
         match (kind, disambiguator) {
-                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                | (
+                    DefKind::Const { .. }
+                    | DefKind::ConstParam
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AnonConst,
+                    Some(Disambiguator::Kind(DefKind::Const { .. })),
+                )
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
                 | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
@@ -1721,7 +1731,7 @@ impl Disambiguator {
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
-                "const" | "constant" => Kind(DefKind::Const),
+                "const" | "constant" => Kind(DefKind::Const { is_type_const: false }),
                 "static" => Kind(DefKind::Static {
                     mutability: Mutability::Not,
                     nested: false,
@@ -2122,11 +2132,11 @@ fn resolution_failure(
                             | Field
                             | Closure
                             | AssocTy
-                            | AssocConst
+                            | AssocConst { .. }
                             | AssocFn
                             | Fn
                             | Macro(_)
-                            | Const
+                            | Const { .. }
                             | ConstParam
                             | ExternCrate
                             | Use

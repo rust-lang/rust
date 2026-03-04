@@ -102,10 +102,6 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn getpid() -> u32 {
-    panic!("unsupported");
-}
-
 #[doc(hidden)]
 pub trait IsMinusOne {
     fn is_minus_one(&self) -> bool;

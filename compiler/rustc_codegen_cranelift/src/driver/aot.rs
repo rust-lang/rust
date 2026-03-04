@@ -10,9 +10,9 @@ use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
-use rustc_codegen_ssa::back::write::{CompiledModules, produce_final_output_artifacts};
+use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
@@ -54,7 +54,6 @@ impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
 pub(crate) struct OngoingCodegen {
     modules: Vec<OngoingModuleCodegen>,
     allocator_module: Option<CompiledModule>,
-    crate_info: CrateInfo,
     concurrency_limiter: ConcurrencyLimiter,
 }
 
@@ -63,7 +62,7 @@ impl OngoingCodegen {
         self,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
         let mut modules = vec![];
         let disable_incr_cache = disable_incr_cache();
@@ -126,15 +125,7 @@ impl OngoingCodegen {
 
         produce_final_output_artifacts(sess, &compiled_modules, outputs);
 
-        (
-            CodegenResults {
-                crate_info: self.crate_info,
-
-                modules: compiled_modules.modules,
-                allocator_module: compiled_modules.allocator_module,
-            },
-            work_products,
-        )
+        (compiled_modules, work_products)
     }
 }
 
@@ -483,13 +474,6 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
 }
 
 pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
-    // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu = match tcx.sess.opts.cg.target_cpu {
-        Some(ref name) => name,
-        None => tcx.sess.target.cpu.as_ref(),
-    }
-    .to_owned();
-
     let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
     if tcx.dep_graph.is_fully_enabled() {
@@ -549,7 +533,6 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
     Box::new(OngoingCodegen {
         modules,
         allocator_module,
-        crate_info: CrateInfo::new(tcx, target_cpu),
         concurrency_limiter: concurrency_limiter.0,
     })
 }

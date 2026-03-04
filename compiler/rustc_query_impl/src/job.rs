@@ -14,7 +14,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::plumbing::collect_active_jobs_from_all_queries;
+use crate::collect_active_jobs_from_all_queries;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.
@@ -26,7 +26,7 @@ pub struct QueryJobMap<'tcx> {
 impl<'tcx> QueryJobMap<'tcx> {
     /// Adds information about a job ID to the job map.
     ///
-    /// Should only be called by `gather_active_jobs_inner`.
+    /// Should only be called by `gather_active_jobs`.
     pub(crate) fn insert(&mut self, id: QueryJobId, info: QueryJobInfo<'tcx>) {
         self.map.insert(id, info);
     }

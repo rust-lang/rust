@@ -55,7 +55,3 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     None
 }
-
-pub fn getpid() -> u32 {
-    panic!("no pids in SGX")
-}

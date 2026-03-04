@@ -136,19 +136,24 @@ impl<'tcx> Value<'tcx> {
             ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
                 // `&str` can be interpreted as raw bytes
                 ty::Str => {}
-                // `&[u8]` can be interpreted as raw bytes
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
+                // `&[T]` can be interpreted as raw bytes if elements are `u8`
+                ty::Slice(_) => {}
                 // other `&_` can't be interpreted as raw bytes
                 _ => return None,
             },
-            // `[u8; N]` can be interpreted as raw bytes
-            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
+            // `[T; N]` can be interpreted as raw bytes if elements are `u8`
+            ty::Array(_, _) => {}
             // Otherwise, type cannot be interpreted as raw bytes
             _ => return None,
         }
 
         // We create an iterator that yields `Option<u8>`
-        let iterator = self.to_branch().into_iter().map(|ct| Some(ct.try_to_leaf()?.to_u8()));
+        let iterator = self.to_branch().into_iter().map(|ct| {
+            (*ct)
+                .try_to_value()
+                .and_then(|value| (value.ty == tcx.types.u8).then_some(value))
+                .and_then(|value| value.try_to_leaf().map(|leaf| leaf.to_u8()))
+        });
         // If there is `None` in the iterator, then the array is not a valid array of u8s and we return `None`
         let bytes: Vec<u8> = iterator.collect::<Option<Vec<u8>>>()?;
 

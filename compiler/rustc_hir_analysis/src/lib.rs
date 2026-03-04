@@ -88,6 +88,7 @@ use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lints::DelayedLint;
+use rustc_lint::DecorateAttrLint;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
@@ -148,20 +149,17 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+pub fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 attribute_lint.lint_id.lint,
                 attribute_lint.id,
                 attribute_lint.span,
-                |diag| {
-                    rustc_lint::decorate_attribute_lint(
-                        tcx.sess,
-                        Some(tcx),
-                        &attribute_lint.kind,
-                        diag,
-                    );
+                DecorateAttrLint {
+                    sess: tcx.sess,
+                    tcx: Some(tcx),
+                    diagnostic: &attribute_lint.kind,
                 },
             );
         }
@@ -231,7 +229,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const
+            DefKind::Const { .. }
                 if !tcx.generics_of(item_def_id).own_requires_monomorphization()
                     && !tcx.is_type_const(item_def_id) =>
             {

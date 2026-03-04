@@ -7,8 +7,8 @@ use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::{DiagArgName, DiagArgValue, IntoDiagArg};
+use rustc_data_structures::sync::DynSend;
+use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
@@ -19,8 +19,6 @@ use crate::{
     CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
     MultiSpan, StashKey, Style, Substitution, SubstitutionPart, SuggestionStyle, Suggestions,
 };
-
-pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
 /// Trait for types that `Diag::emit` can return as a "guarantee" (or "proof")
 /// token that the emission happened.
@@ -121,6 +119,14 @@ where
     }
 }
 
+impl<'a> Diagnostic<'a, ()>
+    for Box<dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSend + 'static>
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        self(dcx, level)
+    }
+}
+
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[rustc_diagnostic_item = "Subdiagnostic"]
@@ -138,16 +144,6 @@ where
 pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
     /// Decorate a lint with the information from this type.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-}
-
-pub trait LintDiagnosticBox<'a, G: EmissionGuarantee> {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>);
-}
-
-impl<'a, G: EmissionGuarantee, D: LintDiagnostic<'a, G>> LintDiagnosticBox<'a, G> for D {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>) {
-        self.decorate_lint(diag);
-    }
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
