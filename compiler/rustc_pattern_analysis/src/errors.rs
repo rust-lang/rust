@@ -109,8 +109,7 @@ impl Subdiagnostic for GappedRange {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let GappedRange { span, gap, first_range } = self;
 
-        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
-        // does not support `#[subdiagnostic(eager)]`...
+        // FIXME(mejrs) Use `#[subdiagnostic(eager)]` instead
         let message = format!(
             "this could appear to continue range `{first_range}`, but `{gap}` isn't matched by \
             either of them"
