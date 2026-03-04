@@ -216,6 +216,18 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     "redundant closure",
                     |diag| {
                         if let Some(mut snippet) = snippet_opt(cx, callee.span) {
+                            let n_refs = callee_ty_adjustments
+                                .iter()
+                                .rev()
+                                .fold(0, |acc, adjustment| match adjustment.kind {
+                                    Adjust::Deref(DerefAdjustKind::Overloaded(_)) => acc + 1,
+                                    Adjust::Deref(_) if acc > 0 => acc + 1,
+                                    _ => acc,
+                                });
+                            if n_refs > 0 {
+                                snippet = format!("{}{snippet}", "*".repeat(n_refs));
+                            }
+
                             if callee.res_local_id().is_some_and(|l| {
                                 // FIXME: Do we really need this `local_used_in` check?
                                 // Isn't it checking something like... `callee(callee)`?
@@ -231,18 +243,6 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                                     },
                                     _ => (),
                                 }
-                            } else if let n_refs =
-                                callee_ty_adjustments
-                                    .iter()
-                                    .rev()
-                                    .fold(0, |acc, adjustment| match adjustment.kind {
-                                        Adjust::Deref(DerefAdjustKind::Overloaded(_)) => acc + 1,
-                                        Adjust::Deref(_) if acc > 0 => acc + 1,
-                                        _ => acc,
-                                    })
-                                && n_refs > 0
-                            {
-                                snippet = format!("{}{snippet}", "*".repeat(n_refs));
                             }
 
                             let replace_with = match callee_ty_adjusted.kind() {
