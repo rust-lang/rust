@@ -3,26 +3,26 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
     Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.intel_syntax`, Intel syntax is the default")]
 pub(crate) struct AvoidIntelSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.att_syntax`, prefer using `options(att_syntax)` instead")]
 pub(crate) struct AvoidAttSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("include macro expected single expression in source")]
 pub(crate) struct IncompleteInclude;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot test inner items")]
 pub(crate) struct UnnameableTestItems;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("duplicated attribute")]
 pub(crate) struct DuplicateMacroAttribute;
 

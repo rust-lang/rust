@@ -50,8 +50,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     );
                 }
                 DecorateDiagCompat::Dynamic(d) => {
-                    self.context
-                        .opt_span_lint(lint_id.lint, span, |diag| d.decorate_lint_box(diag));
+                    self.context.opt_span_diag_lint(lint_id.lint, span, d);
                 }
             }
         }
