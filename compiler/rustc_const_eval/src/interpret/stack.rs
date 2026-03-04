@@ -631,8 +631,8 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// of variadic arguments. Return a list of the places that hold those arguments.
     pub(crate) fn allocate_varargs<I, J>(
         &mut self,
-        caller_args: &mut I,
-        callee_abis: &mut J,
+        caller_args: I,
+        mut callee_abis: J,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
         I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
