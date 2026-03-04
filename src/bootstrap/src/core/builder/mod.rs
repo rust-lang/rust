@@ -1125,6 +1125,12 @@ impl<'a> Builder<'a> {
     /// Returns if `std` should be statically linked into `rustc_driver`.
     /// It's currently not done on `windows-gnu` due to linker bugs.
     pub fn link_std_into_rustc_driver(&self, target: TargetSelection) -> bool {
+        // Respect explicit environment variable override
+        if let Ok(val) = std::env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER")
+            && val == "0"
+        {
+            return false;
+        }
         !target.triple.ends_with("-windows-gnu")
     }
 
