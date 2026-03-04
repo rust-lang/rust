@@ -235,7 +235,7 @@ pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tc
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
     e.add_args(&mut diag);
-    let s = dcx.eagerly_translate_to_string(msg, diag.args.iter());
+    let s = dcx.eagerly_format_to_string(msg, diag.args.iter());
     diag.cancel();
     s
 }

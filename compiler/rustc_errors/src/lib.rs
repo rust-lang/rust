@@ -66,8 +66,8 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
+use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
-use crate::translation::format_diag_message;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -75,11 +75,11 @@ mod decorate_diag;
 mod diagnostic;
 mod diagnostic_impls;
 pub mod emitter;
+pub mod formatting;
 pub mod json;
 mod lock;
 pub mod markdown;
 pub mod timings;
-pub mod translation;
 
 pub type PResult<'a, T> = Result<T, Diag<'a>>;
 
@@ -482,24 +482,24 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter = emitter;
     }
 
-    /// Translate `message` eagerly with `args` to `DiagMessage::Eager`.
-    pub fn eagerly_translate<'a>(
+    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
+    pub fn eagerly_format<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> DiagMessage {
         let inner = self.inner.borrow();
-        inner.eagerly_translate(message, args)
+        inner.eagerly_format(message, args)
     }
 
-    /// Translate `message` eagerly with `args` to `String`.
-    pub fn eagerly_translate_to_string<'a>(
+    /// Format `message` eagerly with `args` to `String`.
+    pub fn eagerly_format_to_string<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
-        inner.eagerly_translate_to_string(message, args)
+        inner.eagerly_format_to_string(message, args)
     }
 
     // This is here to not allow mutation of flags;
@@ -1417,17 +1417,17 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Translate `message` eagerly with `args` to `DiagMessage::Eager`.
-    fn eagerly_translate<'a>(
+    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
+    fn eagerly_format<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> DiagMessage {
-        DiagMessage::Str(Cow::from(self.eagerly_translate_to_string(message, args)))
+        DiagMessage::Str(Cow::from(self.eagerly_format_to_string(message, args)))
     }
 
-    /// Translate `message` eagerly with `args` to `String`.
-    fn eagerly_translate_to_string<'a>(
+    /// Format `message` eagerly with `args` to `String`.
+    fn eagerly_format_to_string<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
@@ -1436,12 +1436,12 @@ impl DiagCtxtInner {
         format_diag_message(&message, &args).to_string()
     }
 
-    fn eagerly_translate_for_subdiag(
+    fn eagerly_format_for_subdiag(
         &self,
         diag: &DiagInner,
         msg: impl Into<DiagMessage>,
     ) -> DiagMessage {
-        self.eagerly_translate(msg.into(), diag.args.iter())
+        self.eagerly_format(msg.into(), diag.args.iter())
     }
 
     fn flush_delayed(&mut self) {
@@ -1507,7 +1507,7 @@ impl DiagCtxtInner {
                 let msg = msg!(
                     "`flushed_delayed` got diagnostic with level {$level}, instead of the expected `DelayedBug`"
                 );
-                let msg = self.eagerly_translate_for_subdiag(&bug, msg); // after the `arg` call
+                let msg = self.eagerly_format_for_subdiag(&bug, msg); // after the `arg` call
                 bug.sub(Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
@@ -1558,7 +1558,7 @@ impl DelayedDiagInner {
         };
         diag.arg("emitted_at", diag.emitted_at.clone());
         diag.arg("note", self.note);
-        let msg = dcx.eagerly_translate_for_subdiag(&diag, msg); // after the `arg` calls
+        let msg = dcx.eagerly_format_for_subdiag(&diag, msg); // after the `arg` calls
         diag.sub(Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
         diag
     }
