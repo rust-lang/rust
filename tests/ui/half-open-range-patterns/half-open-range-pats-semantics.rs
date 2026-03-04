@@ -6,8 +6,8 @@
 
 #![allow(unreachable_patterns)]
 #![feature(cfg_target_has_reliable_f16_f128)]
-#![feature(f128)]
-#![feature(f16)]
+#![cfg_attr(target_has_reliable_f16, feature(f16))]
+#![cfg_attr(target_has_reliable_f128, feature(f128))]
 
 macro_rules! yes {
     ($scrutinee:expr, $($t:tt)+) => {

@@ -40,7 +40,7 @@ mod non_query {
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: Some(|tcx, _, prev_index| {
-                tcx.dep_graph.force_diagnostic_node(tcx, prev_index);
+                tcx.dep_graph.force_side_effect(tcx, prev_index);
                 true
             }),
             promote_from_disk_fn: None,

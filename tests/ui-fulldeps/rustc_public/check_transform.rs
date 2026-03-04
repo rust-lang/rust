@@ -6,7 +6,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
