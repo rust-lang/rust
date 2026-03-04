@@ -6,6 +6,10 @@
 
 struct Foo { a: isize, b: isize }
 
+enum Bar {
+    Baz { a: isize, b: isize },
+}
+
 fn make_a() -> isize { 1234 }
 
 fn expr_wrong_separator() {
@@ -33,6 +37,14 @@ fn pat_missing_separator(Foo { a b }: Foo) { //~ ERROR expected `,`
 }
 
 fn pat_rest_trailing_comma(Foo { a, .., }: Foo) { //~ ERROR expected `}`, found `,`
+}
+
+fn enum_expr_wrong_separator() {
+    let e = Bar::Baz { a: make_a(); b: 2 }; //~ ERROR found `;`
+}
+
+fn enum_expr_missing_separator() {
+    let e = Bar::Baz { a: make_a() b: 2 }; //~ ERROR found `b`
 }
 
 fn main() {}
