@@ -729,10 +729,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             false
                         }
                     }
-                    /// checking if the key is copy clone
-                    fn key_is_copyclone<'tcx>(key: Ty<'tcx>) -> bool {
-                        key.is_trivially_pure_clone_copy()
-                    }
 
                     // we know ty is a map, with a key type at walk distance 2.
                     let key_type = self.ty.walk().nth(1).unwrap().expect_ty();
@@ -743,11 +739,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     {
                         let index_ty =
                             self.infcx.tcx.typeck(val.hir_id.owner.def_id).expr_ty(index);
-                        // only suggest `insert` and `entry` if K is copy/clone because of the signature.
+                        // only suggest `insert` and `entry` if index is of type K or &K.
                         let index_is_borrowed_key = index_is_borrowed_key(index_ty, key_type);
-                        if (index_is_borrowed_key
-                            || index_and_key_are_same_borrowed_type(index_ty, key_type))
-                            && key_is_copyclone(key_type)
+                        if index_is_borrowed_key
+                            || index_and_key_are_same_borrowed_type(index_ty, key_type)
                         {
                             let offset = BytePos(index_is_borrowed_key as u32);
                             self.err.multipart_suggestion(
