@@ -870,9 +870,8 @@ impl<T, A: Allocator> RawTable<T, A> {
         // elements. If the calculation overflows then the requested bucket
         // count must be larger than what we have right and nothing needs to be
         // done.
-        let min_buckets = match capacity_to_buckets(min_size, Self::TABLE_LAYOUT) {
-            Some(buckets) => buckets,
-            None => return,
+        let Some(min_buckets) = capacity_to_buckets(min_size, Self::TABLE_LAYOUT) else {
+            return;
         };
 
         // If we have more buckets than we need, shrink the table.
@@ -1571,9 +1570,8 @@ impl RawTableInner {
         debug_assert!(buckets.is_power_of_two());
 
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-        let (layout, mut ctrl_offset) = match table_layout.calculate_layout_for(buckets) {
-            Some(lco) => lco,
-            None => return Err(fallibility.capacity_overflow()),
+        let Some((layout, mut ctrl_offset)) = table_layout.calculate_layout_for(buckets) else {
+            return Err(fallibility.capacity_overflow());
         };
 
         let ptr: NonNull<u8> = match do_alloc(alloc, layout) {
@@ -2752,9 +2750,8 @@ impl RawTableInner {
         A: Allocator,
     {
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-        let new_items = match self.items.checked_add(additional) {
-            Some(new_items) => new_items,
-            None => return Err(fallibility.capacity_overflow()),
+        let Some(new_items) = self.items.checked_add(additional) else {
+            return Err(fallibility.capacity_overflow());
         };
         let full_capacity = bucket_mask_to_capacity(self.bucket_mask);
         if new_items <= full_capacity / 2 {

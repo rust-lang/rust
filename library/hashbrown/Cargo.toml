@@ -35,6 +35,7 @@ option_if_let_else = "allow"
 redundant_else = "allow"
 
 borrow_as_ptr = "warn"
+manual_let_else = "warn"
 ptr_as_ptr = "warn"
 ptr_cast_constness = "warn"
 ref_as_ptr = "warn"
