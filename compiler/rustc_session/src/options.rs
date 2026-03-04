@@ -2412,6 +2412,8 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    jit_mode: bool = (false, parse_bool, [TRACKED],
+        "enable JIT mode (only supported by some backends, default: no)"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),
