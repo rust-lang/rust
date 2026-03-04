@@ -6965,24 +6965,17 @@ mod test_map_with_mmap_allocations {
                 return Err(AllocError);
             }
 
-            match NonNull::new(addr.cast()) {
-                Some(data) => {
-                    // SAFETY: this is NonNull::slice_from_raw_parts.
-                    Ok(unsafe {
-                        NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(
-                            data.as_ptr(),
-                            len,
-                        ))
-                    })
-                }
-
+            if let Some(data) = NonNull::new(addr.cast()) {
+                // SAFETY: this is NonNull::slice_from_raw_parts.
+                Ok(unsafe {
+                    NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(data.as_ptr(), len))
+                })
+            } else {
                 // This branch shouldn't be taken in practice, but since we
                 // cannot return null as a valid pointer in our type system,
                 // we attempt to handle it.
-                None => {
-                    _ = unsafe { libc::munmap(addr, len) };
-                    Err(AllocError)
-                }
+                _ = unsafe { libc::munmap(addr, len) };
+                Err(AllocError)
             }
         }
 
