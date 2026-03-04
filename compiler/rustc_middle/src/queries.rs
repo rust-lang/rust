@@ -32,7 +32,6 @@
 //! - `arena_cache`: Use an arena for in-memory caching of the query result.
 //! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
 //!   true. The query key identifier is available for use within the block, as is `tcx`.
-//! - `cycle_fatal`: If a dependency cycle is detected, abort compilation with a fatal error.
 //! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
 //! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
 //! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
@@ -149,11 +148,11 @@ use crate::{dep_graph, mir, thir};
 // which memoizes and does dep-graph tracking, wrapping around the actual
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
-// The result type of each query must implement `Clone`, and additionally
-// `ty::query::from_cycle_error::FromCycleError`, which produces an appropriate
+// The result type of each query must implement `Clone`. Additionally
+// `ty::query::from_cycle_error::FromCycleError` can be implemented which produces an appropriate
 // placeholder (error) value if the query resulted in a query cycle.
-// Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise a fatal error on query cycles instead.
+// Queries without a `FromCycleError` implementation will raise a fatal error on query
+// cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -587,7 +586,6 @@ rustc_queries! {
     }
 
     query is_panic_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_panic_runtime" }
         separate_provide_extern
     }
@@ -1323,7 +1321,6 @@ rustc_queries! {
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
     query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
-        cycle_fatal
         arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",
@@ -1334,7 +1331,6 @@ rustc_queries! {
 
     /// Obtain all the calls into other local functions
     query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
-        cycle_fatal
         desc {
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
@@ -1829,31 +1825,26 @@ rustc_queries! {
     }
 
     query is_compiler_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_compiler_builtins" }
         separate_provide_extern
     }
     query has_global_allocator(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
     query has_alloc_error_handler(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
     }
     query has_panic_handler(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate has_panic_handler" }
         separate_provide_extern
     }
     query is_profiler_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if a crate is `#![profiler_runtime]`" }
         separate_provide_extern
     }
@@ -1862,22 +1853,18 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
     query required_panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
-        cycle_fatal
         desc { "getting a crate's required panic strategy" }
         separate_provide_extern
     }
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
-        cycle_fatal
         desc { "getting a crate's configured panic-in-drop strategy" }
         separate_provide_extern
     }
     query is_no_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "getting whether a crate has `#![no_builtins]`" }
         separate_provide_extern
     }
     query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
-        cycle_fatal
         desc { "getting a crate's symbol mangling version" }
         separate_provide_extern
     }
