@@ -79,24 +79,18 @@ pub(crate) use macros::TryFromU32;
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
-struct TimeTraceProfiler {
-    enabled: bool,
-}
+struct TimeTraceProfiler {}
 
 impl TimeTraceProfiler {
-    fn new(enabled: bool) -> Self {
-        if enabled {
-            unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
-        }
-        TimeTraceProfiler { enabled }
+    fn new() -> Self {
+        unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
+        TimeTraceProfiler {}
     }
 }
 
 impl Drop for TimeTraceProfiler {
     fn drop(&mut self) {
-        if self.enabled {
-            unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
-        }
+        unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
     }
 }
 
@@ -122,6 +116,16 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> (ModuleCodegen<ModuleLlvm>, u64) {
         base::compile_codegen_unit(tcx, cgu_name)
     }
+}
+
+impl WriteBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+    type ModuleBuffer = back::lto::ModuleBuffer;
+    type TargetMachine = OwnedTargetMachine;
+    type ThinData = back::lto::ThinData;
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(TimeTraceProfiler::new())
+    }
     fn target_machine_factory(
         &self,
         sess: &Session,
@@ -130,38 +134,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
-
-    fn spawn_named_thread<F, T>(
-        time_trace: bool,
-        name: String,
-        f: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::Builder::new().name(name).spawn(move || {
-            let _profiler = TimeTraceProfiler::new(time_trace);
-            f()
-        })
-    }
-}
-
-impl WriteBackendMethods for LlvmCodegenBackend {
-    type Module = ModuleLlvm;
-    type ModuleBuffer = back::lto::ModuleBuffer;
-    type TargetMachine = OwnedTargetMachine;
-    type ThinData = back::lto::ThinData;
-    fn print_pass_timings(&self) {
-        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
-        print!("{timings}");
-    }
-    fn print_statistics(&self) {
-        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
-        print!("{stats}");
-    }
-    fn run_and_optimize_fat_lto(
+    fn optimize_and_codegen_fat_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
@@ -169,7 +142,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> ModuleCodegen<Self::Module> {
+    ) -> CompiledModule {
         let mut module = back::lto::run_fat(
             cgcx,
             prof,
@@ -184,7 +157,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let dcx = dcx.handle();
         back::lto::run_pass_manager(cgcx, prof, dcx, &mut module, false);
 
-        module
+        back::write::codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext,
@@ -214,14 +187,14 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) {
         back::write::optimize(cgcx, prof, shared_emitter, module, config)
     }
-    fn optimize_thin(
+    fn optimize_and_codegen_thin(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         thin: ThinModule<Self>,
-    ) -> ModuleCodegen<Self::Module> {
-        back::lto::optimize_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
+    ) -> CompiledModule {
+        back::lto::optimize_and_codegen_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
     }
     fn codegen(
         cgcx: &CodegenContext,
@@ -387,6 +360,16 @@ impl CodegenBackend for LlvmCodegenBackend {
         }
 
         (compiled_modules, work_products)
+    }
+
+    fn print_pass_timings(&self) {
+        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+        print!("{timings}");
+    }
+
+    fn print_statistics(&self) {
+        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+        print!("{stats}");
     }
 
     fn link(
