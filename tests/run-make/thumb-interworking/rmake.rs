@@ -1,6 +1,8 @@
 //@ needs-llvm-components: arm
 //@ needs-rust-lld
-use run_make_support::{llvm_filecheck, llvm_objdump, path, rfs, run, rustc, source_root};
+use run_make_support::{
+    llvm_filecheck, llvm_objdump, path, rfs, run, rustc, rustc_minicore, source_root,
+};
 
 // Test a thumb target calling arm functions. Doing so requires switching from thumb mode to arm
 // mode, calling the arm code, then switching back to thumb mode. Depending on the thumb version,
@@ -25,21 +27,13 @@ fn main() {
 }
 
 fn helper(prefix: &str, target: &str) {
-    rustc()
-        .input(source_root().join("tests/auxiliary/minicore.rs"))
-        .crate_name("minicore")
-        .crate_type("rlib")
-        .target(target)
-        .output("libminicore.rlib")
-        .run();
-    let minicore = path("libminicore.rlib");
+    rustc_minicore().target(target).output("libminicore.rlib").run();
 
     rustc()
         .input("main.rs")
         .panic("abort")
         .link_arg("-Tlink.ld")
-        .arg("--extern")
-        .arg(format!("minicore={}", minicore.display()))
+        .extern_("minicore", path("libminicore.rlib"))
         .target(target)
         .output(prefix)
         .run();

@@ -1,10 +1,11 @@
-//@ only-wasm32-wasip1
-
+//@ needs-rust-lld
 use std::path::Path;
 
-use run_make_support::{rfs, rustc, wasmparser};
+use run_make_support::{path, rfs, rustc, rustc_minicore, wasmparser};
 
 fn main() {
+    rustc_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
+
     rustc()
         .input("foo.rs")
         .target("wasm32-wasip1")
@@ -13,6 +14,7 @@ fn main() {
         .lto("fat")
         .linker_plugin_lto("on")
         .link_arg("--import-memory")
+        .extern_("minicore", path("libminicore.rlib"))
         .run();
     verify_features(Path::new("foo.wasm"));
 }
