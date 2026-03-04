@@ -154,7 +154,7 @@ struct LoweringContext<'a, 'hir, R> {
 
 impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R) -> Self {
-        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
+        let registered_tools = tcx.registered_tools(());
         Self {
             tcx,
             resolver,
