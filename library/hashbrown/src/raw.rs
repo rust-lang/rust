@@ -131,8 +131,7 @@ fn capacity_to_buckets(cap: usize, table_layout: TableLayout) -> Option<usize> {
         // 3 regardless of the table_layout.size.
         let min_cap = match (Group::WIDTH, table_layout.size) {
             (16, 0..=1) => 14,
-            (16, 2..=3) => 7,
-            (8, 0..=1) => 7,
+            (16, 2..=3) | (8, 0..=1) => 7,
             _ => 3,
         };
         let cap = min_cap.max(cap);
