@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use synstructure::Structure;
 
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
+use crate::diagnostics::diagnostic_builder::each_variant;
 use crate::diagnostics::error::DiagnosticDeriveError;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
@@ -19,8 +19,7 @@ impl<'a> DiagnosticDerive<'a> {
 
     pub(crate) fn into_tokens(self) -> TokenStream {
         let DiagnosticDerive { mut structure } = self;
-        let kind = DiagnosticDeriveKind::Diagnostic;
-        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
+        let implementation = each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
@@ -59,55 +58,6 @@ impl<'a> DiagnosticDerive<'a> {
                     level: rustc_errors::Level
                 ) -> rustc_errors::Diag<'_sess, G> {
                     #implementation
-                }
-            }
-        })
-    }
-}
-
-/// The central struct for constructing the `decorate_lint` method from an annotated struct.
-pub(crate) struct LintDiagnosticDerive<'a> {
-    structure: Structure<'a>,
-}
-
-impl<'a> LintDiagnosticDerive<'a> {
-    pub(crate) fn new(structure: Structure<'a>) -> Self {
-        Self { structure }
-    }
-
-    pub(crate) fn into_tokens(self) -> TokenStream {
-        let LintDiagnosticDerive { mut structure } = self;
-        let kind = DiagnosticDeriveKind::LintDiagnostic;
-        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(variant);
-            let body = builder.body(variant);
-
-            let Some(message) = builder.primary_message() else {
-                return DiagnosticDeriveError::ErrorHandled.to_compile_error();
-            };
-            let message = message.diag_message(Some(variant));
-            let primary_message = quote! {
-                diag.primary_message(#message);
-            };
-
-            let formatting_init = &builder.formatting_init;
-            quote! {
-                #primary_message
-                #preamble
-                #formatting_init
-                #body
-                diag
-            }
-        });
-
-        structure.gen_impl(quote! {
-            gen impl<'__a> rustc_errors::LintDiagnostic<'__a, ()> for @Self {
-                #[track_caller]
-                fn decorate_lint<'__b>(
-                    self,
-                    diag: &'__b mut rustc_errors::Diag<'__a, ()>
-                ) {
-                    #implementation;
                 }
             }
         })
