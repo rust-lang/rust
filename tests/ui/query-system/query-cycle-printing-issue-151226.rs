@@ -1,5 +1,6 @@
 struct A<T>(std::sync::OnceLock<Self>);
 //~^ ERROR recursive type `A` has infinite size
+//~| ERROR type parameter `T` is only used recursively
 //~| ERROR cycle detected when computing layout of `A<()>`
 
 static B: A<()> = todo!();

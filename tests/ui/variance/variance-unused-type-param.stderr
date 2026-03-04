@@ -1,23 +1,23 @@
 error[E0392]: type parameter `A` is never used
   --> $DIR/variance-unused-type-param.rs:6:19
    |
-LL | struct SomeStruct<A> { x: u32 }
+LL | struct SomeStruct<A> {
    |                   ^ unused type parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
 
 error[E0392]: type parameter `A` is never used
-  --> $DIR/variance-unused-type-param.rs:9:15
+  --> $DIR/variance-unused-type-param.rs:11:15
    |
-LL | enum SomeEnum<A> { Nothing }
+LL | enum SomeEnum<A> {
    |               ^ unused type parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
 
 error: type parameter `T` is only used recursively
-  --> $DIR/variance-unused-type-param.rs:14:23
+  --> $DIR/variance-unused-type-param.rs:18:23
    |
 LL | enum ListCell<T> {
    |               - type parameter must be used non-recursively in the definition
@@ -28,7 +28,18 @@ LL |     Cons(Box<ListCell<T>>),
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error: type parameter `T` is only used recursively
-  --> $DIR/variance-unused-type-param.rs:19:27
+  --> $DIR/variance-unused-type-param.rs:30:54
+   |
+LL | struct RecursiveInvariant<T>(*mut RecursiveInvariant<T>);
+   |                           -                          ^
+   |                           |
+   |                           type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error: type parameter `T` is only used recursively
+  --> $DIR/variance-unused-type-param.rs:33:27
    |
 LL | struct SelfTyAlias<T>(Box<Self>);
    |                    -      ^^^^
@@ -39,7 +50,7 @@ LL | struct SelfTyAlias<T>(Box<Self>);
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:22:19
+  --> $DIR/variance-unused-type-param.rs:36:19
    |
 LL | struct WithBounds<T: Sized> {}
    |                   ^ unused type parameter
@@ -47,15 +58,15 @@ LL | struct WithBounds<T: Sized> {}
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:25:24
+  --> $DIR/variance-unused-type-param.rs:39:24
    |
-LL | struct WithWhereBounds<T> where T: Sized {}
+LL | struct WithWhereBounds<T>
    |                        ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:28:27
+  --> $DIR/variance-unused-type-param.rs:44:27
    |
 LL | struct WithOutlivesBounds<T: 'static> {}
    |                           ^ unused type parameter
@@ -63,7 +74,7 @@ LL | struct WithOutlivesBounds<T: 'static> {}
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/variance-unused-type-param.rs:31:22
+  --> $DIR/variance-unused-type-param.rs:47:22
    |
 LL | struct DoubleNothing<T> {
    |                      ^ unused type parameter
@@ -74,6 +85,6 @@ LL |     s: SomeStruct<T>,
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0392`.

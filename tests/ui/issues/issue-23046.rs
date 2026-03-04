@@ -1,6 +1,7 @@
 pub enum Expr<'var, VAR> {
     Let(Box<Expr<'var, VAR>>,
-        Box<dyn for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>)
+        Box<dyn for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>),
+    Val(VAR),
 }
 
 pub fn add<'var, VAR>
