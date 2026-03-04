@@ -133,7 +133,12 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor>
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl)
+    let result = tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl);
+    // Async drop in libstd/libcore would become insta-stable — catch that mistake.
+    if result.is_some() && tcx.features().staged_api() {
+        span_bug!(tcx.def_span(def_id), "don't use async drop in libstd, it becomes insta-stable");
+    }
+    result
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
