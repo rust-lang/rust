@@ -871,8 +871,8 @@ impl fmt::Display for UnsafetyComment {
             Self::NoProvenance(arg) => write!(
                 f,
                 "Addresses passed in `{arg}` lack provenance, so this is similar to using a \
-                `usize as ptr` cast (or [`core::ptr::from_exposed_addr`]) on each lane before \
-                using it."
+                `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane \
+                before  using it."
             ),
             Self::UnpredictableOnFault => write!(
                 f,
