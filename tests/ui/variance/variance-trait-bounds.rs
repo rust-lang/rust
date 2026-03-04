@@ -12,24 +12,24 @@ trait Setter<T> {
     fn get(&self, _: T);
 }
 
-#[rustc_variance]
+#[rustc_dump_variances]
 struct TestStruct<U,T:Setter<U>> { //~ ERROR [U: +, T: +]
     t: T, u: U
 }
 
-#[rustc_variance]
+#[rustc_dump_variances]
 enum TestEnum<U,T:Setter<U>> { //~ ERROR [U: *, T: +]
     //~^ ERROR: `U` is never used
     Foo(T)
 }
 
-#[rustc_variance]
+#[rustc_dump_variances]
 struct TestContraStruct<U,T:Setter<U>> { //~ ERROR [U: *, T: +]
     //~^ ERROR: `U` is never used
     t: T
 }
 
-#[rustc_variance]
+#[rustc_dump_variances]
 struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [U: *, T: +]
     //~^ ERROR: `U` is never used
     t: T

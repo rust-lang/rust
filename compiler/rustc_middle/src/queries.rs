@@ -841,8 +841,8 @@ rustc_queries! {
     ///
     /// E.g., for `struct Foo<'a, T> { x: &'a T }`, this would return `[T: 'a]`.
     ///
-    /// **Tip**: You can use `#[rustc_outlives]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_inferred_outlives]` on an item to basically
+    /// print the result of this query for use in UI tests or for debugging purposes.
     query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
         desc { "computing inferred outlives-predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -1049,8 +1049,8 @@ rustc_queries! {
     /// The list of variances corresponds to the list of (early-bound) generic
     /// parameters of the item (including its parents).
     ///
-    /// **Tip**: You can use `#[rustc_variance]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_variances]` on an item to basically print
+    /// the result of this query for use in UI tests or for debugging purposes.
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
@@ -2111,7 +2111,7 @@ rustc_queries! {
     /// Returns the *default lifetime* to be used if a trait object type were to be passed for
     /// the type parameter given by `DefId`.
     ///
-    /// **Tip**: You can use `#[rustc_object_lifetime_default]` on an item to basically
+    /// **Tip**: You can use `#[rustc_dump_object_lifetime_defaults]` on an item to basically
     /// print the result of this query for use in UI tests or for debugging purposes.
     ///
     /// # Examples
