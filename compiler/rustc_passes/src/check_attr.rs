@@ -1924,27 +1924,6 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &'tcx hir::WherePredicate<'tcx>) {
-        // FIXME(where_clause_attrs): Currently, as the following check shows,
-        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
-        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
-        // in where clauses. After that, only `self.check_attributes` should be enough.
-        let spans = self
-            .tcx
-            .hir_attrs(where_predicate.hir_id)
-            .iter()
-            // FIXME: We shouldn't need to special-case `doc`!
-            .filter(|attr| {
-                matches!(
-                    attr,
-                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
-                        | Attribute::Unparsed(_)
-                )
-            })
-            .map(|attr| attr.span())
-            .collect::<Vec<_>>();
-        if !spans.is_empty() {
-            self.tcx.dcx().emit_err(errors::UnsupportedAttributesInWhere { span: spans.into() });
-        }
         self.check_attributes(
             where_predicate.hir_id,
             where_predicate.span,

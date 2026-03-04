@@ -1165,14 +1165,6 @@ pub(crate) struct RustcConstStableIndirectPairing {
 }
 
 #[derive(Diagnostic)]
-#[diag("most attributes are not supported in `where` clauses")]
-#[help("only `#[cfg]` and `#[cfg_attr]` are supported")]
-pub(crate) struct UnsupportedAttributesInWhere {
-    #[primary_span]
-    pub span: MultiSpan,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum UnexportableItem<'a> {
     #[diag("{$descr}'s are not exportable")]
     Item {

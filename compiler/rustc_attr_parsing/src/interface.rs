@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_errors::{DiagCtxtHandle, StashKey};
+use rustc_errors::{DiagCtxtHandle, MultiSpan, StashKey};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -17,7 +17,7 @@ use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::errors::{InvalidAttrAtCrateLevel, ItemFollowingInnerAttr};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
-use crate::{Early, Late, OmitDoc, ShouldEmit};
+use crate::{Early, Late, OmitDoc, ShouldEmit, errors};
 
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
@@ -440,6 +440,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             }
         }
 
+        if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
+            && target == Target::WherePredicate
+        {
+            self.check_invalid_where_predicate_attrs(attributes.iter());
+        }
+
         attributes
     }
 
@@ -579,5 +585,32 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             })
             .ok()
             .flatten()
+    }
+
+    fn check_invalid_where_predicate_attrs<'attr>(
+        &self,
+        attrs: impl IntoIterator<Item = &'attr Attribute>,
+    ) {
+        // FIXME(where_clause_attrs): Currently, as the following check shows,
+        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
+        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
+        // in where clauses. After that, this function would become useless.
+        let spans = attrs
+            .into_iter()
+            // FIXME: We shouldn't need to special-case `doc`!
+            .filter(|attr| {
+                matches!(
+                    attr,
+                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
+                        | Attribute::Unparsed(_)
+                )
+            })
+            .map(|attr| attr.span())
+            .collect::<Vec<_>>();
+        if !spans.is_empty() {
+            self.dcx().emit_err(errors::UnsupportedAttributesInWhere {
+                span: MultiSpan::from_spans(spans),
+            });
+        }
     }
 }

@@ -1,3 +1,4 @@
+use rustc_errors::MultiSpan;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -23,4 +24,12 @@ pub(crate) struct InvalidAttrAtCrateLevel {
 pub(crate) struct ItemFollowingInnerAttr {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("most attributes are not supported in `where` clauses")]
+#[help("only `#[cfg]` and `#[cfg_attr]` are supported")]
+pub(crate) struct UnsupportedAttributesInWhere {
+    #[primary_span]
+    pub span: MultiSpan,
 }
