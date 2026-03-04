@@ -7,10 +7,10 @@ use anyhow::Context;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
-    AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve, FilePosition,
-    FileRange, FileStructureConfig, FindAllRefsConfig, HoverAction, HoverGotoTypeData,
-    InlayFieldsToResolve, Query, RangeInfo, Runnable, RunnableKind, SingleResolve, SourceChange,
-    TextEdit,
+    AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
+    CompletionItemImport, FilePosition, FileRange, FileStructureConfig, FindAllRefsConfig,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, Runnable, RunnableKind,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
@@ -1233,7 +1233,10 @@ pub(crate) fn handle_completion_resolve(
             .resolve_completion_edits(
                 &forced_resolve_completions_config,
                 position,
-                resolve_data.imports.into_iter().map(|import| import.full_import_path),
+                resolve_data.imports.into_iter().map(|import| CompletionItemImport {
+                    path: import.full_import_path,
+                    as_underscore: import.as_underscore,
+                }),
             )?
             .into_iter()
             .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))

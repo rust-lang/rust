@@ -3319,6 +3319,19 @@ impl Trait {
     pub fn complete(self, db: &dyn HirDatabase) -> Complete {
         Complete::extract(true, self.attrs(db).attrs)
     }
+
+    // Feature: Prefer Underscore Import Attribute
+    // Crate authors can declare that their trait prefers to be imported `as _`. This can be used
+    // for example for extension traits. To do that, a trait has to include the attribute
+    // `#[rust_analyzer::prefer_underscore_import]`
+    //
+    // When a trait includes this attribute, flyimport will import it `as _`, and the quickfix
+    // to import it will prefer to import it `as _` (but allow to import it normally as well).
+    //
+    // Malformed attributes will be ignored without warnings.
+    pub fn prefer_underscore_import(self, db: &dyn HirDatabase) -> bool {
+        AttrFlags::query(db, self.id.into()).contains(AttrFlags::PREFER_UNDERSCORE_IMPORT)
+    }
 }
 
 impl HasVisibility for Trait {

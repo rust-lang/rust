@@ -127,7 +127,8 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
-    CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
+    CompletionItemImport, CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet,
+    SnippetScope,
 };
 pub use ide_db::{
     FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
@@ -769,7 +770,7 @@ impl Analysis {
         &self,
         config: &CompletionConfig<'_>,
         position: FilePosition,
-        imports: impl IntoIterator<Item = String> + std::panic::UnwindSafe,
+        imports: impl IntoIterator<Item = CompletionItemImport> + std::panic::UnwindSafe,
     ) -> Cancellable<Vec<TextEdit>> {
         Ok(self
             .with_db(|db| ide_completion::resolve_completion_edits(db, config, position, imports))?
