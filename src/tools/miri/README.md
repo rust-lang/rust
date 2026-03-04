@@ -421,10 +421,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   are experimental). Later flags take precedence: borrow tracking can be reactivated
   by `-Zmiri-tree-borrows`.
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
-  enforced by default.  This is mostly useful to focus on other failures (such
-  as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
-  in your program.  However, this can also help to make Miri run faster.  Using
-  this flag is **unsound**.
+  enforced by default. This only disables these checks for typed copies; using
+  invalid values in any other operation will still cause an error. This is mostly useful 
+  to focus on other failures (such as out-of-bounds accesses) first. Setting this 
+  flag means Miri can miss bugs in your program. However, this can also help to 
+  make Miri run faster. Using this flag is **unsound**.
 * `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
   memory effects.
 * `-Zmiri-fixed-schedule` disables preemption (like `-Zmiri-preemption-rate=0.0`) and furthermore
