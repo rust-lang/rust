@@ -154,6 +154,16 @@ platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
+### Controlling target features
+
+Controlling target features works similar to regular rustc invocations:
+`RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
+only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. Unlike regular
+rustc, this command has *two* effects: it builds the code with that target feature available (which
+affects `cfg(target_feature)`), and it tells Miri to consider the "virtual CPU" that the interpreted
+program runs on as having the feature available (meaning the code is allowed to invoke the
+corresponding intrinsics).
+
 ### Testing multiple different executions
 
 Certain parts of the execution are picked randomly by Miri, such as the exact base address
