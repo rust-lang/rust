@@ -61,7 +61,7 @@ labels = ["S-waiting-on-concerns"]
 threshold = 20
 
 [notify-zulip."lint-nominated"]
-zulip_stream = 257328 # #clippy
+zulip_stream = 577190 # #clippy/fcp
 topic = "FCP rust-clippy#{number}: {title}"
 # Zulip polls may not be preceded by any other text and pings & short links inside
 # the title of a poll don't get recognized. Therefore we need to send two messages.
