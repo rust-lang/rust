@@ -94,6 +94,7 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ETIMEDOUT", TimedOut),
         ("ETXTBSY", ExecutableFileBusy),
         ("EXDEV", CrossesDevices),
+        ("EINPROGRESS", InProgress),
         // The following have two valid options. We have both for the forwards mapping; only the
         // first one will be used for the backwards mapping.
         ("EPERM", PermissionDenied),

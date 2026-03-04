@@ -537,6 +537,9 @@ pub struct MiriMachine<'tcx> {
     /// The set of threads.
     pub(crate) threads: ThreadManager<'tcx>,
 
+    /// Handles blocking I/O and polling for completion.
+    pub(crate) blocking_io: BlockingIoManager,
+
     /// Stores which thread is eligible to run on which CPUs.
     /// This has no effect at all, it is just tracked to produce the correct result
     /// in `sched_getaffinity`
@@ -732,6 +735,8 @@ impl<'tcx> MiriMachine<'tcx> {
             thread_cpu_affinity
                 .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
+        let blocking_io = BlockingIoManager::new(config.isolated_op == IsolatedOp::Allow)
+            .expect("Couldn't create poll instance");
         let alloc_addresses =
             RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr, tcx));
         MiriMachine {
@@ -754,6 +759,7 @@ impl<'tcx> MiriMachine<'tcx> {
             layouts,
             threads,
             thread_cpu_affinity,
+            blocking_io,
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -1010,6 +1016,7 @@ impl VisitProvenance for MiriMachine<'_> {
             data_race,
             alloc_addresses,
             fds,
+            blocking_io:_,
             epoll_interests:_,
             tcx: _,
             isolated_op: _,
