@@ -1,15 +1,18 @@
 use std::borrow::Cow;
 
 use rustc_ast::AttrStyle;
-use rustc_errors::{DiagArgValue, StashKey};
+use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrItem, MethodKind, Target};
+use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
-use crate::errors::{InvalidAttrAtCrateLevel, ItemFollowingInnerAttr};
+use crate::errors::{
+    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
+};
 use crate::session_diagnostics::InvalidTarget;
 use crate::target_checking::Policy::Allow;
 
@@ -263,6 +266,32 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             })
             .ok()
             .flatten()
+    }
+
+    pub(crate) fn check_invalid_where_predicate_attrs<'attr>(
+        &self,
+        attrs: impl IntoIterator<Item = &'attr Attribute>,
+    ) {
+        // FIXME(where_clause_attrs): Currently, as the following check shows,
+        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
+        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
+        // in where clauses. After that, this function would become useless.
+        let spans = attrs
+            .into_iter()
+            // FIXME: We shouldn't need to special-case `doc`!
+            .filter(|attr| {
+                matches!(
+                    attr,
+                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
+                        | Attribute::Unparsed(_)
+                )
+            })
+            .map(|attr| attr.span())
+            .collect::<Vec<_>>();
+        if !spans.is_empty() {
+            self.dcx()
+                .emit_err(UnsupportedAttributesInWhere { span: MultiSpan::from_spans(spans) });
+        }
     }
 }
 

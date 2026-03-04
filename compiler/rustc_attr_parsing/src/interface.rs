@@ -439,6 +439,12 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             }
         }
 
+        if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
+            && target == Target::WherePredicate
+        {
+            self.check_invalid_where_predicate_attrs(attributes.iter());
+        }
+
         attributes
     }
 
