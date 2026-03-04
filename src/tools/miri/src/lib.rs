@@ -41,6 +41,8 @@
     clippy::len_zero,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
+    // FIXME: Unused features should be removed in the future
+    unused_features,
 )]
 #![warn(
     rust_2018_idioms,

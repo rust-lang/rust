@@ -3,9 +3,10 @@
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-#![feature(f16)]
-#![feature(f128)]
 #![feature(cfg_target_has_reliable_f16_f128)]
+#![cfg_attr(target_has_reliable_f16, feature(f16))]
+#![cfg_attr(target_has_reliable_f128, feature(f128))]
+
 #![allow(unused_macro_rules)]
 // expect the unexpected (`target_has_reliable_*` are not "known" configs since they are unstable)
 #![expect(unexpected_cfgs)]
