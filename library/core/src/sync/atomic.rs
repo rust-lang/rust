@@ -246,8 +246,7 @@
 use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::hint::spin_loop;
-use crate::intrinsics::AtomicOrdering as AO;
-use crate::mem::transmute;
+use crate::intrinsics::{AtomicOrdering as AO, transmute_unchecked};
 use crate::{fmt, intrinsics};
 
 #[unstable(
@@ -372,6 +371,166 @@ unsafe impl<T: AtomicPrimitive> Send for Atomic<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: AtomicPrimitive> Sync for Atomic<T> {}
 
+impl<T: AtomicPrimitive> Atomic<T> {
+    /// Creates a new `Atomic`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, AtomicI32, AtomicPtr};
+    ///
+    /// let atomic_bool = AtomicBool::new(true);
+    ///
+    /// let atomic_i32 = AtomicI32::new(42);
+    ///
+    /// let ptr = &mut 42;
+    /// let atomic_ptr = AtomicPtr::new(ptr);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
+    #[must_use]
+    pub const fn new(v: T) -> Atomic<T> {
+        // SAFETY:
+        // `Atomic<T>` is essentially a transparent wrapper around `T`.
+        unsafe { transmute_unchecked(v) }
+    }
+
+    /// Creates a new `Atomic` from a pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// // Get a pointer to an allocated value
+    /// let ptr: *mut i32 = Box::into_raw(Box::new(42));
+    ///
+    /// assert!(ptr.cast::<AtomicI32>().is_aligned());
+    ///
+    /// {
+    ///     // Create an atomic view of the allocated value
+    ///     let atomic = unsafe { AtomicI32::from_ptr(ptr) };
+    ///
+    ///     // Use `atomic` for atomic operations, possibly share it with other threads
+    ///     atomic.store(0, Ordering::Relaxed);
+    /// }
+    ///
+    /// // It's ok to non-atomically access the value behind `ptr`,
+    /// // since the reference to the atomic ended its lifetime in the block above
+    /// assert_eq!(unsafe { *ptr }, 0);
+    ///
+    /// // Deallocate the value
+    /// unsafe { drop(Box::from_raw(ptr)) }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// * `ptr` must be aligned to `align_of::<Atomic<T>>()`
+    /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
+    /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
+    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+    ///   sizes, without synchronization.
+    ///
+    /// [valid]: crate::ptr#safety
+    /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
+    #[inline]
+    #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
+    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
+    pub const unsafe fn from_ptr<'a>(ptr: *mut T) -> &'a Atomic<T> {
+        // SAFETY: guaranteed by the caller
+        unsafe { &*ptr.cast() }
+    }
+
+    /// Returns a mutable pointer to the underlying value.
+    ///
+    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
+    /// This method is mostly useful for FFI, where the function signature may use
+    /// `*mut T` instead of `&Atomic<T>`.
+    ///
+    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because `Atomic`
+    /// works with interior mutability. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
+    /// requirements of the [memory model].
+    ///
+    /// # Examples
+    ///
+    /// ```ignore (extern-declaration)
+    /// # fn main() {
+    /// use std::sync::atomic::AtomicU32;
+    ///
+    /// extern "C" {
+    ///     fn my_atomic_op(arg: *mut u32);
+    /// }
+    ///
+    /// let mut atomic = AtomicU32::new(42);
+    /// unsafe {
+    ///     my_atomic_op(atomic.as_ptr());
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// [memory model]: self#memory-model-for-atomic-accesses
+    #[inline]
+    #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
+    #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
+    #[rustc_never_returns_null_ptr]
+    #[rustc_should_not_be_called_on_const_items]
+    pub const fn as_ptr(&self) -> *mut T {
+        self.v.get().cast()
+    }
+
+    /// Consumes the atomic and returns the contained value.
+    ///
+    /// This is safe because passing `self` by value guarantees that no other threads are
+    /// concurrently accessing the atomic data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicI32;
+    ///
+    /// let atomic = AtomicI32::new(42);
+    /// assert_eq!(atomic.into_inner(), 42);
+    /// ```
+    #[inline]
+    #[stable(feature = "atomic_access", since = "1.15.0")]
+    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
+    pub const fn into_inner(self) -> T {
+        // SAFETY:
+        // * `Atomic<T>` is essentially a transparent wrapper around `T`.
+        unsafe { transmute_unchecked(self) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: AtomicPrimitive + Default> Default for Atomic<T> {
+    /// Creates an `Atomic` wrapping the default value of `T`.
+    #[inline]
+    fn default() -> Self {
+        Self::new(T::default())
+    }
+}
+
+#[stable(feature = "atomic_from", since = "1.23.0")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: AtomicPrimitive> const From<T> for Atomic<T> {
+    /// Converts a `T` into an `Atomic`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicI32;
+    /// let atomic = AtomicI32::from(42);
+    /// assert_eq!(format!("{atomic:?}"), "42")
+    /// ```
+    #[inline]
+    fn from(v: T) -> Self {
+        Self::new(v)
+    }
+}
+
 // Some architectures don't have byte-sized atomics, which results in LLVM
 // emulating them using a LL/SC loop. However for AtomicBool we can take
 // advantage of the fact that it only ever contains 0 or 1 and use atomic OR/AND
@@ -397,16 +556,6 @@ const EMULATE_ATOMIC_BOOL: bool = cfg!(any(
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type AtomicBool = Atomic<bool>;
 
-#[cfg(target_has_atomic_load_store = "8")]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Default for AtomicBool {
-    /// Creates an `AtomicBool` initialized to `false`.
-    #[inline]
-    fn default() -> Self {
-        Self::new(false)
-    }
-}
-
 /// A raw pointer type which can be safely shared between threads.
 ///
 /// This type has the same size and bit validity as a `*mut T`.
@@ -416,15 +565,6 @@ impl Default for AtomicBool {
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type AtomicPtr<T> = Atomic<*mut T>;
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for AtomicPtr<T> {
-    /// Creates a null `AtomicPtr<T>`.
-    fn default() -> AtomicPtr<T> {
-        AtomicPtr::new(crate::ptr::null_mut())
-    }
-}
 
 /// Atomic memory orderings
 ///
@@ -519,73 +659,6 @@ pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_has_atomic_load_store = "8")]
 impl AtomicBool {
-    /// Creates a new `AtomicBool`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::AtomicBool;
-    ///
-    /// let atomic_true = AtomicBool::new(true);
-    /// let atomic_false = AtomicBool::new(false);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
-    #[must_use]
-    pub const fn new(v: bool) -> AtomicBool {
-        // SAFETY:
-        // `Atomic<T>` is essentially a transparent wrapper around `T`.
-        unsafe { transmute(v) }
-    }
-
-    /// Creates a new `AtomicBool` from a pointer.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::{self, AtomicBool};
-    ///
-    /// // Get a pointer to an allocated value
-    /// let ptr: *mut bool = Box::into_raw(Box::new(false));
-    ///
-    /// assert!(ptr.cast::<AtomicBool>().is_aligned());
-    ///
-    /// {
-    ///     // Create an atomic view of the allocated value
-    ///     let atomic = unsafe { AtomicBool::from_ptr(ptr) };
-    ///
-    ///     // Use `atomic` for atomic operations, possibly share it with other threads
-    ///     atomic.store(true, atomic::Ordering::Relaxed);
-    /// }
-    ///
-    /// // It's ok to non-atomically access the value behind `ptr`,
-    /// // since the reference to the atomic ended its lifetime in the block above
-    /// assert_eq!(unsafe { *ptr }, true);
-    ///
-    /// // Deallocate the value
-    /// unsafe { drop(Box::from_raw(ptr)) }
-    /// ```
-    ///
-    /// # Safety
-    ///
-    /// * `ptr` must be aligned to `align_of::<AtomicBool>()` (note that this is always true, since
-    ///   `align_of::<AtomicBool>() == 1`).
-    /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
-    ///   sizes, without synchronization.
-    ///
-    /// [valid]: crate::ptr#safety
-    /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
-    #[inline]
-    #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
-    pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
-        // SAFETY: guaranteed by the caller
-        unsafe { &*ptr.cast() }
-    }
-
     /// Returns a mutable reference to the underlying [`bool`].
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
@@ -688,30 +761,6 @@ impl AtomicBool {
         // SAFETY: the mutable reference guarantees unique ownership, and
         // alignment of both `bool` and `Self` is 1.
         unsafe { &mut *(v as *mut [bool] as *mut [Self]) }
-    }
-
-    /// Consumes the atomic and returns the contained value.
-    ///
-    /// This is safe because passing `self` by value guarantees that no other threads are
-    /// concurrently accessing the atomic data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::AtomicBool;
-    ///
-    /// let some_bool = AtomicBool::new(true);
-    /// assert_eq!(some_bool.into_inner(), true);
-    /// ```
-    #[inline]
-    #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
-    pub const fn into_inner(self) -> bool {
-        // SAFETY:
-        // * `Atomic<T>` is essentially a transparent wrapper around `T`.
-        // * all operations on `Atomic<bool>` ensure that `T::Storage` remains
-        //   a valid `bool`.
-        unsafe { transmute(self) }
     }
 
     /// Loads a value from the bool.
@@ -1272,45 +1321,6 @@ impl AtomicBool {
         self.fetch_xor(true, order)
     }
 
-    /// Returns a mutable pointer to the underlying [`bool`].
-    ///
-    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
-    /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut bool` instead of `&AtomicBool`.
-    ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
-    /// requirements of the [memory model].
-    ///
-    /// # Examples
-    ///
-    /// ```ignore (extern-declaration)
-    /// # fn main() {
-    /// use std::sync::atomic::AtomicBool;
-    ///
-    /// extern "C" {
-    ///     fn my_atomic_op(arg: *mut bool);
-    /// }
-    ///
-    /// let mut atomic = AtomicBool::new(true);
-    /// unsafe {
-    ///     my_atomic_op(atomic.as_ptr());
-    /// }
-    /// # }
-    /// ```
-    ///
-    /// [memory model]: self#memory-model-for-atomic-accesses
-    #[inline]
-    #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
-    #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_should_not_be_called_on_const_items]
-    pub const fn as_ptr(&self) -> *mut bool {
-        self.v.get().cast()
-    }
-
     /// An alias for [`AtomicBool::try_update`].
     #[inline]
     #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
@@ -1467,72 +1477,6 @@ impl AtomicBool {
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 impl<T> AtomicPtr<T> {
-    /// Creates a new `AtomicPtr`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::AtomicPtr;
-    ///
-    /// let ptr = &mut 5;
-    /// let atomic_ptr = AtomicPtr::new(ptr);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
-    pub const fn new(p: *mut T) -> AtomicPtr<T> {
-        // SAFETY:
-        // `Atomic<T>` is essentially a transparent wrapper around `T`.
-        unsafe { transmute(p) }
-    }
-
-    /// Creates a new `AtomicPtr` from a pointer.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::{self, AtomicPtr};
-    ///
-    /// // Get a pointer to an allocated value
-    /// let ptr: *mut *mut u8 = Box::into_raw(Box::new(std::ptr::null_mut()));
-    ///
-    /// assert!(ptr.cast::<AtomicPtr<u8>>().is_aligned());
-    ///
-    /// {
-    ///     // Create an atomic view of the allocated value
-    ///     let atomic = unsafe { AtomicPtr::from_ptr(ptr) };
-    ///
-    ///     // Use `atomic` for atomic operations, possibly share it with other threads
-    ///     atomic.store(std::ptr::NonNull::dangling().as_ptr(), atomic::Ordering::Relaxed);
-    /// }
-    ///
-    /// // It's ok to non-atomically access the value behind `ptr`,
-    /// // since the reference to the atomic ended its lifetime in the block above
-    /// assert!(!unsafe { *ptr }.is_null());
-    ///
-    /// // Deallocate the value
-    /// unsafe { drop(Box::from_raw(ptr)) }
-    /// ```
-    ///
-    /// # Safety
-    ///
-    /// * `ptr` must be aligned to `align_of::<AtomicPtr<T>>()` (note that on some platforms this
-    ///   can be bigger than `align_of::<*mut T>()`).
-    /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-    /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
-    ///   sizes, without synchronization.
-    ///
-    /// [valid]: crate::ptr#safety
-    /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
-    #[inline]
-    #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
-    pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
-        // SAFETY: guaranteed by the caller
-        unsafe { &*ptr.cast() }
-    }
-
     /// Creates a new `AtomicPtr` initialized with a null pointer.
     ///
     /// # Examples
@@ -1680,29 +1624,6 @@ impl<T> AtomicPtr<T> {
         //  - the alignment of `*mut T` and `Self` is the same on all platforms
         //    supported by rust, as verified above.
         unsafe { &mut *(v as *mut [*mut T] as *mut [Self]) }
-    }
-
-    /// Consumes the atomic and returns the contained value.
-    ///
-    /// This is safe because passing `self` by value guarantees that no other threads are
-    /// concurrently accessing the atomic data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::AtomicPtr;
-    ///
-    /// let mut data = 5;
-    /// let atomic_ptr = AtomicPtr::new(&mut data);
-    /// assert_eq!(unsafe { *atomic_ptr.into_inner() }, 5);
-    /// ```
-    #[inline]
-    #[stable(feature = "atomic_access", since = "1.15.0")]
-    #[rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0")]
-    pub const fn into_inner(self) -> *mut T {
-        // SAFETY:
-        // `Atomic<T>` is essentially a transparent wrapper around `T`.
-        unsafe { transmute(self) }
     }
 
     /// Loads a value from the pointer.
@@ -2460,75 +2381,6 @@ impl<T> AtomicPtr<T> {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_xor(self.as_ptr(), val, order).cast() }
     }
-
-    /// Returns a mutable pointer to the underlying pointer.
-    ///
-    /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
-    /// This method is mostly useful for FFI, where the function signature may use
-    /// `*mut *mut T` instead of `&AtomicPtr<T>`.
-    ///
-    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-    /// atomic types work with interior mutability. All modifications of an atomic change the value
-    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
-    /// requirements of the [memory model].
-    ///
-    /// # Examples
-    ///
-    /// ```ignore (extern-declaration)
-    /// use std::sync::atomic::AtomicPtr;
-    ///
-    /// extern "C" {
-    ///     fn my_atomic_op(arg: *mut *mut u32);
-    /// }
-    ///
-    /// let mut value = 17;
-    /// let atomic = AtomicPtr::new(&mut value);
-    ///
-    /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
-    /// unsafe {
-    ///     my_atomic_op(atomic.as_ptr());
-    /// }
-    /// ```
-    ///
-    /// [memory model]: self#memory-model-for-atomic-accesses
-    #[inline]
-    #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
-    #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
-    #[rustc_never_returns_null_ptr]
-    pub const fn as_ptr(&self) -> *mut *mut T {
-        self.v.get().cast()
-    }
-}
-
-#[cfg(target_has_atomic_load_store = "8")]
-#[stable(feature = "atomic_bool_from", since = "1.24.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<bool> for AtomicBool {
-    /// Converts a `bool` into an `AtomicBool`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::sync::atomic::AtomicBool;
-    /// let atomic_bool = AtomicBool::from(true);
-    /// assert_eq!(format!("{atomic_bool:?}"), "true")
-    /// ```
-    #[inline]
-    fn from(b: bool) -> Self {
-        Self::new(b)
-    }
-}
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[stable(feature = "atomic_from", since = "1.23.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<*mut T> for AtomicPtr<T> {
-    /// Converts a `*mut T` into an `AtomicPtr<T>`.
-    #[inline]
-    fn from(p: *mut T) -> Self {
-        Self::new(p)
-    }
 }
 
 #[allow(unused_macros)] // This macro ends up being unused on some architectures.
@@ -2546,7 +2398,6 @@ macro_rules! atomic_int {
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
-     $stable_from:meta,
      $stable_nand:meta,
      $const_stable_new:meta,
      $const_stable_into_inner:meta,
@@ -2588,22 +2439,6 @@ macro_rules! atomic_int {
         #[$stable]
         pub type $atomic_type = Atomic<$int_type>;
 
-        #[$stable]
-        impl Default for $atomic_type {
-            #[inline]
-            fn default() -> Self {
-                Self::new(Default::default())
-            }
-        }
-
-        #[$stable_from]
-        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-        impl const From<$int_type> for $atomic_type {
-            #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
-            #[inline]
-            fn from(v: $int_type) -> Self { Self::new(v) }
-        }
-
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2612,84 +2447,6 @@ macro_rules! atomic_int {
         }
 
         impl $atomic_type {
-            /// Creates a new atomic integer.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
-            ///
-            #[doc = concat!("let atomic_forty_two = ", stringify!($atomic_type), "::new(42);")]
-            /// ```
-            #[inline]
-            #[$stable]
-            #[$const_stable_new]
-            #[must_use]
-            pub const fn new(v: $int_type) -> Self {
-                // SAFETY:
-                // `Atomic<T>` is essentially a transparent wrapper around `T`.
-                unsafe { transmute(v) }
-            }
-
-            /// Creates a new reference to an atomic integer from a pointer.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
-            ///
-            /// // Get a pointer to an allocated value
-            #[doc = concat!("let ptr: *mut ", stringify!($int_type), " = Box::into_raw(Box::new(0));")]
-            ///
-            #[doc = concat!("assert!(ptr.cast::<", stringify!($atomic_type), ">().is_aligned());")]
-            ///
-            /// {
-            ///     // Create an atomic view of the allocated value
-            // SAFETY: this is a doc comment, tidy, it can't hurt you (also guaranteed by the construction of `ptr` and the assert above)
-            #[doc = concat!("    let atomic = unsafe {", stringify!($atomic_type), "::from_ptr(ptr) };")]
-            ///
-            ///     // Use `atomic` for atomic operations, possibly share it with other threads
-            ///     atomic.store(1, atomic::Ordering::Relaxed);
-            /// }
-            ///
-            /// // It's ok to non-atomically access the value behind `ptr`,
-            /// // since the reference to the atomic ended its lifetime in the block above
-            /// assert_eq!(unsafe { *ptr }, 1);
-            ///
-            /// // Deallocate the value
-            /// unsafe { drop(Box::from_raw(ptr)) }
-            /// ```
-            ///
-            /// # Safety
-            ///
-            /// * `ptr` must be aligned to
-            #[doc = concat!("  `align_of::<", stringify!($atomic_type), ">()`")]
-            #[doc = if_8_bit!{
-                $int_type,
-                yes = [
-                    "  (note that this is always true, since `align_of::<",
-                    stringify!($atomic_type), ">() == 1`)."
-                ],
-                no = [
-                    "  (note that on some platforms this can be bigger than `align_of::<",
-                    stringify!($int_type), ">()`)."
-                ],
-            }]
-            /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
-            /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-            ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
-            ///   sizes, without synchronization.
-            ///
-            /// [valid]: crate::ptr#safety
-            /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
-            #[inline]
-            #[stable(feature = "atomic_from_ptr", since = "1.75.0")]
-            #[rustc_const_stable(feature = "const_atomic_from_ptr", since = "1.84.0")]
-            pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
-                // SAFETY: guaranteed by the caller
-                unsafe { &*ptr.cast() }
-            }
-
             /// Returns a mutable reference to the underlying integer.
             ///
             /// This is safe because the mutable reference guarantees that no other threads are
@@ -2820,28 +2577,6 @@ macro_rules! atomic_int {
                 //  - the alignment of `$int_type` and `Self` is the
                 //    same, as promised by $cfg_align and verified above.
                 unsafe { &mut *(v as *mut [$int_type] as *mut [Self]) }
-            }
-
-            /// Consumes the atomic and returns the contained value.
-            ///
-            /// This is safe because passing `self` by value guarantees that no other threads are
-            /// concurrently accessing the atomic data.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
-            ///
-            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
-            /// assert_eq!(some_var.into_inner(), 5);
-            /// ```
-            #[inline]
-            #[$stable_access]
-            #[$const_stable_into_inner]
-            pub const fn into_inner(self) -> $int_type {
-                // SAFETY:
-                // `Atomic<T>` is essentially a transparent wrapper around `T`.
-                unsafe { transmute(self) }
             }
 
             /// Loads a value from the atomic integer.
@@ -3574,46 +3309,6 @@ macro_rules! atomic_int {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { $min_fn(self.as_ptr(), val, order) }
             }
-
-            /// Returns a mutable pointer to the underlying integer.
-            ///
-            /// Doing non-atomic reads and writes on the resulting integer can be a data race.
-            /// This method is mostly useful for FFI, where the function signature may use
-            #[doc = concat!("`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.")]
-            ///
-            /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-            /// atomic types work with interior mutability. All modifications of an atomic change the value
-            /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
-            /// requirements of the [memory model].
-            ///
-            /// # Examples
-            ///
-            /// ```ignore (extern-declaration)
-            /// # fn main() {
-            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
-            ///
-            /// extern "C" {
-            #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
-            /// }
-            ///
-            #[doc = concat!("let atomic = ", stringify!($atomic_type), "::new(1);")]
-            ///
-            /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
-            /// unsafe {
-            ///     my_atomic_op(atomic.as_ptr());
-            /// }
-            /// # }
-            /// ```
-            ///
-            /// [memory model]: self#memory-model-for-atomic-accesses
-            #[inline]
-            #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
-            #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
-            #[rustc_never_returns_null_ptr]
-            pub const fn as_ptr(&self) -> *mut $int_type {
-                self.v.get().cast()
-            }
         }
     }
 }
@@ -3622,7 +3317,6 @@ macro_rules! atomic_int {
 atomic_int! {
     cfg(target_has_atomic = "8"),
     cfg(target_has_atomic_equal_alignment = "8"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3645,7 +3339,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     "u8",
@@ -3658,7 +3351,6 @@ atomic_int! {
 atomic_int! {
     cfg(target_has_atomic = "16"),
     cfg(target_has_atomic_equal_alignment = "16"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3681,7 +3373,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     "u16",
@@ -3694,7 +3385,6 @@ atomic_int! {
 atomic_int! {
     cfg(target_has_atomic = "32"),
     cfg(target_has_atomic_equal_alignment = "32"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3717,7 +3407,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     "u32",
@@ -3730,7 +3419,6 @@ atomic_int! {
 atomic_int! {
     cfg(target_has_atomic = "64"),
     cfg(target_has_atomic_equal_alignment = "64"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3753,7 +3441,6 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
-    stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
     "u64",
@@ -3771,7 +3458,6 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_unstable(feature = "integer_atomics", issue = "99069"),
     "i128",
@@ -3784,7 +3470,6 @@ atomic_int! {
 atomic_int! {
     cfg(target_has_atomic = "128"),
     cfg(target_has_atomic_equal_alignment = "128"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3810,7 +3495,6 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "extended_compare_and_swap", since = "1.10.0"),
             stable(feature = "atomic_debug", since = "1.3.0"),
             stable(feature = "atomic_access", since = "1.15.0"),
-            stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
@@ -3828,7 +3512,6 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "extended_compare_and_swap", since = "1.10.0"),
             stable(feature = "atomic_debug", since = "1.3.0"),
             stable(feature = "atomic_access", since = "1.15.0"),
-            stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             rustc_const_stable(feature = "const_atomic_into_inner", since = "1.79.0"),
