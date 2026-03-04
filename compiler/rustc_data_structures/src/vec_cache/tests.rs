@@ -16,7 +16,6 @@ fn bucket_index_iter_all_len() {
 fn bucket_index_capacity() {
     let mut total = 0u128;
     for i in BucketIndex::iter_all() {
-        assert_eq!(total, u128::try_from(i.first_slot_offset()).unwrap());
         total += u128::try_from(i.capacity()).unwrap();
     }
     assert_eq!(total, (u32::MAX as u128) + 1);

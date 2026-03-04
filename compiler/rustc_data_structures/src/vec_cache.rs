@@ -8,6 +8,7 @@
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
 
@@ -358,6 +359,8 @@ where
 /// Using an enum lets us tell the compiler that values range from 0 to 20,
 /// without having to resort to pattern types or other unstable features.
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+#[expect(dead_code)]
 enum BucketIndex {
     // tidy-alphabetical-start
     Bucket00,
@@ -399,60 +402,20 @@ impl BucketIndex {
     /// `(8192).ilog2()` gives 13, and subtracting 11 gives the bucket number of 2.
     const NONZERO_BUCKET_SHIFT_ADJUST: usize = 11;
 
-    #[inline]
+    #[inline(always)]
     const fn to_usize(self) -> usize {
         self as usize
     }
 
-    #[inline]
+    #[inline(always)]
     const fn from_raw(raw: usize) -> Self {
-        let this = match raw {
-            // tidy-alphabetical-start
-            00 => Self::Bucket00,
-            01 => Self::Bucket01,
-            02 => Self::Bucket02,
-            03 => Self::Bucket03,
-            04 => Self::Bucket04,
-            05 => Self::Bucket05,
-            06 => Self::Bucket06,
-            07 => Self::Bucket07,
-            08 => Self::Bucket08,
-            09 => Self::Bucket09,
-            10 => Self::Bucket10,
-            11 => Self::Bucket11,
-            12 => Self::Bucket12,
-            13 => Self::Bucket13,
-            14 => Self::Bucket14,
-            15 => Self::Bucket15,
-            16 => Self::Bucket16,
-            17 => Self::Bucket17,
-            18 => Self::Bucket18,
-            19 => Self::Bucket19,
-            20 => Self::Bucket20,
-            // tidy-alphabetical-end
-            _ => panic!(),
-        };
-        // In practice, this should always be optimized away.
-        assert!(this.to_usize() == raw);
+        assert!(raw < BUCKETS);
+        let this = unsafe { mem::transmute::<usize, BucketIndex>(raw) };
         this
     }
 
-    /// Flat index of the first slot in this bucket.
-    #[inline]
-    const fn first_slot_offset(self) -> usize {
-        // For all buckets other than 0, the first slot's offset is the same
-        // as the bucket's capacity.
-        //
-        // For example, bucket 1 starts at 4096 and has a capacity of 4096.
-        // Bucket 2 starts at 8192 (4096 + 4096) and has a capacity of 8192.
-        match self {
-            Self::Bucket00 => 0,
-            _ => self.capacity(),
-        }
-    }
-
     /// Total number of slots in this bucket.
-    #[inline]
+    #[inline(always)]
     const fn capacity(self) -> usize {
         match self {
             Self::Bucket00 => Self::BUCKET_0_CAPACITY,
@@ -466,7 +429,7 @@ impl BucketIndex {
     /// and a slot offset within that bucket.
     ///
     /// Panics if `flat > u32::MAX`.
-    #[inline]
+    #[inline(always)]
     const fn from_flat_index(flat: usize) -> (Self, usize) {
         if flat > u32::MAX as usize {
             panic!();
@@ -488,19 +451,22 @@ impl BucketIndex {
         // ...
         // 8191 |    12 |      1 |   4095
         // 8192 |    13 |      2 |      0
-        let raw_bucket_index = flat.ilog2() as usize - Self::NONZERO_BUCKET_SHIFT_ADJUST;
+        let flat_ilog2 = flat.ilog2() as usize;
+        let raw_bucket_index = flat_ilog2 - Self::NONZERO_BUCKET_SHIFT_ADJUST;
         let bucket_index = BucketIndex::from_raw(raw_bucket_index);
-        let slot_offset = flat - bucket_index.first_slot_offset();
+
+        let offset_delta = 1 << flat_ilog2;
+        let slot_offset = flat - offset_delta;
 
         (bucket_index, slot_offset)
     }
 
-    #[inline]
+    #[inline(always)]
     fn iter_all() -> impl ExactSizeIterator<Item = Self> {
         (0usize..BUCKETS).map(BucketIndex::from_raw)
     }
 
-    #[inline]
+    #[inline(always)]
     fn enumerate_buckets<T>(buckets: &[T; BUCKETS]) -> impl ExactSizeIterator<Item = (Self, &T)> {
         BucketIndex::iter_all().zip(buckets)
     }
