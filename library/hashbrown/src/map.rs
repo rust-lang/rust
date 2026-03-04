@@ -1281,14 +1281,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        if !self.table.is_empty() {
+        if self.table.is_empty() {
+            None
+        } else {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
             match self.table.get(hash, equivalent_key(k)) {
                 Some((_, v)) => Some(v),
                 None => None,
             }
-        } else {
-            None
         }
     }
 
@@ -1314,14 +1314,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        if !self.table.is_empty() {
+        if self.table.is_empty() {
+            None
+        } else {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
             match self.table.get(hash, equivalent_key(k)) {
                 Some((key, value)) => Some((key, value)),
                 None => None,
             }
-        } else {
-            None
         }
     }
 
@@ -1351,14 +1351,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        if !self.table.is_empty() {
+        if self.table.is_empty() {
+            None
+        } else {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
             match self.table.get_mut(hash, equivalent_key(k)) {
                 Some(&mut (ref key, ref mut value)) => Some((key, value)),
                 None => None,
             }
-        } else {
-            None
         }
     }
 
@@ -1383,11 +1383,11 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        if !self.table.is_empty() {
+        if self.table.is_empty() {
+            false
+        } else {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
             self.table.get(hash, equivalent_key(k)).is_some()
-        } else {
-            false
         }
     }
 
@@ -1417,14 +1417,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        if !self.table.is_empty() {
+        if self.table.is_empty() {
+            None
+        } else {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
             match self.table.get_mut(hash, equivalent_key(k)) {
                 Some(&mut (_, ref mut v)) => Some(v),
                 None => None,
             }
-        } else {
-            None
         }
     }
 
@@ -6930,10 +6930,10 @@ mod test_map_with_mmap_allocations {
             }
 
             let page_size = result as usize;
-            if !page_size.is_power_of_two() {
-                Err(AllocError)
-            } else {
+            if page_size.is_power_of_two() {
                 Ok(Self { page_size })
+            } else {
+                Err(AllocError)
             }
         }
 
