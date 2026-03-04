@@ -72,13 +72,12 @@ pub use crate::external_deps::llvm::{
     llvm_readobj,
 };
 pub use crate::external_deps::python::python_command;
-pub use crate::external_deps::rustc::{self, Rustc, bare_rustc, rustc, rustc_path};
+pub use crate::external_deps::rustc::{self, Rustc, bare_rustc, rustc, rustc_minicore, rustc_path};
 pub use crate::external_deps::rustdoc::{Rustdoc, bare_rustdoc, rustdoc};
 // Path-related helpers.
 pub use crate::path_helpers::{
     build_root, cwd, filename_contains, filename_not_in_denylist, has_extension, has_prefix,
-    has_suffix, minicore_path, not_contains, path, shallow_find_directories, shallow_find_files,
-    source_root,
+    has_suffix, not_contains, path, shallow_find_directories, shallow_find_files, source_root,
 };
 // Convenience helpers for running binaries and other commands.
 pub use crate::run::{cmd, run, run_fail, run_with_args};

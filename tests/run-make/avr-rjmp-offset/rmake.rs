@@ -15,17 +15,10 @@
 // crashes... so I'm going to disable this test for windows for now.
 //@ ignore-windows-gnu
 
-use run_make_support::{llvm_objdump, minicore_path, path, rustc};
+use run_make_support::{llvm_objdump, path, rustc, rustc_minicore};
 
 fn main() {
-    rustc()
-        .input(minicore_path())
-        .crate_name("minicore")
-        .crate_type("rlib")
-        .target("avr-none")
-        .target_cpu("avr")
-        .output("libminicore.rlib")
-        .run();
+    rustc_minicore().target("avr-none").target_cpu("avr").output("libminicore.rlib").run();
 
     rustc()
         .input("avr-rjmp-offsets.rs")

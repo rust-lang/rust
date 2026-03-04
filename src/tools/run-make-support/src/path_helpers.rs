@@ -40,12 +40,6 @@ pub fn build_root() -> PathBuf {
     env_var("BUILD_ROOT").into()
 }
 
-/// Path to minicore.
-#[must_use]
-pub fn minicore_path() -> PathBuf {
-    source_root().join("tests/auxiliary/minicore.rs")
-}
-
 /// Browse the directory `path` non-recursively and return all files which respect the parameters
 /// outlined by `closure`.
 #[track_caller]
