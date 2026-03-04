@@ -251,13 +251,21 @@ impl Permission {
     pub fn is_initial(&self) -> bool {
         self.inner.is_initial()
     }
+
     /// Check if `self` is the terminal state of a pointer (is `Disabled`).
     pub fn is_disabled(&self) -> bool {
         self.inner == Disabled
     }
+
     /// Check if `self` is the never-allow-writes-again state of a pointer (is `Frozen`).
     pub fn is_frozen(&self) -> bool {
         self.inner == Frozen
+    }
+
+    /// Check if `self` can be the initial state of a reborrowed mutable reference that is either
+    /// protected or not interior mutable (`ReservedFrz { conflicted: false }`)
+    pub fn is_reserved_frz(&self) -> bool {
+        self.inner == ReservedFrz { conflicted: false }
     }
 
     /// Check if `self` is the shared-reference-to-interior-mutable-data state of a pointer.

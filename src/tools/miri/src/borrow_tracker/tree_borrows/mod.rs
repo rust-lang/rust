@@ -5,8 +5,9 @@ use rustc_middle::ty::{self, Ty};
 
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;
+use crate::borrow_tracker::tree_borrows::tree::AccessType;
 use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
-use crate::concurrency::data_race::NaReadType;
+use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 
 pub mod diagnostics;
@@ -110,12 +111,15 @@ pub struct NewPermission {
     /// Permission for the frozen part of the range.
     freeze_perm: Permission,
     /// Whether a read access should be performed on the frozen part on a retag.
-    freeze_access: bool,
+    freeze_read: bool,
+    /// Whether a write access should be performed on the frozen part on a retag.
+    freeze_write: bool,
     /// Permission for the non-frozen part of the range.
     nonfreeze_perm: Permission,
-    /// Whether a read access should be performed on the non-frozen
-    /// part on a retag.
-    nonfreeze_access: bool,
+    /// Whether a read access should be performed on the non-frozen part on a retag.
+    nonfreeze_read: bool,
+    /// Whether a write access should be performed on the non-frozen part on a retag.
+    nonfreeze_write: bool,
     /// Permission for memory outside the range.
     outside_perm: Permission,
     /// Whether this pointer is part of the arguments of a function call.
@@ -159,14 +163,24 @@ impl<'tcx> NewPermission {
             _ => Permission::new_reserved_im(),
         };
 
-        // Everything except for `Cell` gets an initial access.
-        let initial_access = |perm: &Permission| !perm.is_cell();
+        // Everything except for `Cell` gets an initial read.
+        let initial_read = |perm: &Permission| !perm.is_cell();
+
+        // Every explicit mutable reference that gets an initial read also gets an initial write.
+        // Thus implicit mutable references (Two Phase borrowing) and Raw pointers are excluded
+        let initial_write = |perm: &Permission| {
+            Some(Mutability::Mut) == ref_mutability
+                && initial_read(perm)
+                && matches!(retag_kind, RetagKind::Default | RetagKind::FnEntry)
+        };
 
         Some(NewPermission {
             freeze_perm,
-            freeze_access: initial_access(&freeze_perm),
+            freeze_read: initial_read(&freeze_perm),
+            freeze_write: initial_write(&freeze_perm),
             nonfreeze_perm,
-            nonfreeze_access: initial_access(&nonfreeze_perm),
+            nonfreeze_read: initial_read(&nonfreeze_perm),
+            nonfreeze_write: initial_write(&nonfreeze_perm),
             outside_perm: if ty_is_freeze { freeze_perm } else { nonfreeze_perm },
             protector: is_protected.then_some(if ref_mutability.is_some() {
                 // Strong protector for references
@@ -288,17 +302,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Compute initial "inside" permissions.
         let loc_state = |frozen: bool| -> LocationState {
-            let (perm, access) = if frozen {
-                (new_perm.freeze_perm, new_perm.freeze_access)
+            let (perm, read, write) = if frozen {
+                (new_perm.freeze_perm, new_perm.freeze_read, new_perm.freeze_write)
             } else {
-                (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
+                (new_perm.nonfreeze_perm, new_perm.nonfreeze_read, new_perm.nonfreeze_write)
             };
             let sifa = perm.strongest_idempotent_foreign_access(protected);
-            if access {
-                LocationState::new_accessed(perm, sifa)
-            } else {
-                LocationState::new_non_accessed(perm, sifa)
-            }
+
+            LocationState::new(perm, sifa, AccessType::new(read, write))
         };
         let inside_perms = if !precise_interior_mut {
             // For `!Freeze` types, just pretend the entire thing is an `UnsafeCell`.
@@ -309,9 +320,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // The initial state will be overwritten by the visitor below.
             let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
                 ptr_size,
-                LocationState::new_accessed(
+                LocationState::new(
                     Permission::new_disabled(),
                     IdempotentForeignAccess::None,
+                    AccessType::Read,
                 ),
             );
             this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
@@ -324,17 +336,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             perms_map
         };
 
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
-        let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
-
         for (perm_range, perm) in inside_perms.iter_all() {
-            if perm.accessed() {
+            let access = perm.access();
+            if matches!(access, AccessType::Read | AccessType::ReadWrite) {
                 // Some reborrows incur a read access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {
                     start: Size::from_bytes(perm_range.start) + base_offset,
                     size: Size::from_bytes(perm_range.end - perm_range.start),
                 };
+
+                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
                 tree_borrows.perform_access(
                     parent_prov,
@@ -359,7 +372,48 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 }
             }
+
+            if matches!(access, AccessType::Write | AccessType::ReadWrite) {
+                // Some reborrows incur a write access to the parent.
+                // Adjust range to be relative to allocation start (rather than to `place`).
+                let range_in_alloc = AllocRange {
+                    start: Size::from_bytes(perm_range.start) + base_offset,
+                    size: Size::from_bytes(perm_range.end - perm_range.start),
+                };
+
+                let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
+                let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
+
+                tree_borrows.perform_access(
+                    parent_prov,
+                    range_in_alloc,
+                    AccessKind::Write,
+                    diagnostics::AccessCause::Reborrow,
+                    machine.borrow_tracker.as_ref().unwrap(),
+                    alloc_id,
+                    machine.current_user_relevant_span(),
+                )?;
+
+                // don't need it anymore
+                drop(tree_borrows);
+
+                // Also inform the data race model (but only if any bytes are actually affected).
+                if range_in_alloc.size.bytes() > 0 {
+                    if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
+                        data_race.write_non_atomic(
+                            alloc_id,
+                            range_in_alloc,
+                            NaWriteType::Retag,
+                            Some(place.layout.ty),
+                            machine,
+                        )?
+                    }
+                }
+            }
         }
+
+        let mut tree_borrows = this.get_alloc_extra(alloc_id)?.borrow_tracker_tb().borrow_mut();
+
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
             base_offset,
@@ -547,9 +601,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // argument doesn't matter
             // (`ty_is_freeze || true` in `new_reserved` will always be `true`).
             freeze_perm: Permission::new_reserved_frz(),
-            freeze_access: true,
+            freeze_read: true,
+            freeze_write: true, // TODO: is this correct?
             nonfreeze_perm: Permission::new_reserved_frz(),
-            nonfreeze_access: true,
+            nonfreeze_read: true,
+            nonfreeze_write: true, // TODO: is this correct?
             outside_perm: Permission::new_reserved_frz(),
             protector: Some(ProtectorKind::StrongProtector),
         };

@@ -6,13 +6,20 @@ use std::fmt;
 use super::*;
 use crate::borrow_tracker::tree_borrows::exhaustive::{Exhaustive, precondition};
 
+impl Exhaustive for AccessType {
+    fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+        use AccessType::*;
+        Box::new([None, Read, Write, ReadWrite].into_iter())
+    }
+}
+
 impl Exhaustive for LocationState {
     fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
         // We keep `latest_foreign_access` at `None` as that's just a cache.
-        Box::new(<(Permission, bool)>::exhaustive().map(|(permission, accessed)| {
+        Box::new(<(Permission, AccessType)>::exhaustive().map(|(permission, accessed)| {
             Self {
                 permission,
-                accessed,
+                access: accessed,
                 idempotent_foreign_access: IdempotentForeignAccess::default(),
             }
         }))
@@ -157,15 +164,17 @@ fn protected_enforces_noalias() {
 }
 
 /// We are going to exhaustively test the possibility of inserting
-/// a spurious read in some code.
+/// a spurious read or write in some code.
 ///
-/// We choose some pointer `x` through which we want a spurious read to be inserted.
+/// # General Model
+///
+/// We choose some pointer `x` through which we want a spurious operation to be inserted.
 /// `x` must thus be reborrowed, not have any children, and initially start protected.
 ///
-/// To check if inserting a spurious read is possible, we observe the behavior
+/// To check if inserting a spurious operation is possible, we observe the behavior
 /// of some pointer `y` different from `x` (possibly from a different thread, thus
 /// the protectors on `x` and `y` are not necessarily well-nested).
-/// It must be the case that no matter the context, the insertion of a spurious read
+/// It must be the case that no matter the context, the insertion of a spurious operation
 /// through `x` does not introduce UB in code that did not already have UB.
 ///
 /// Testing this will need some setup to simulate the evolution of the permissions
@@ -184,17 +193,79 @@ fn protected_enforces_noalias() {
 ///                           read/write x/y/other
 ///                        or retag y
 ///                        or unprotect y
-///     <spurious read x>      ||
+///     <spurious operation x>      ||
 ///                      arbitrary code
 ///                           read/write x/y/other
 ///                        or retag y
 ///                        or unprotect y
 ///                        or unprotect x
 ///
-/// `x` must still be protected at the moment the spurious read is inserted
-/// because spurious reads are impossible in general on unprotected tags.
-mod spurious_read {
+/// `x` must still be protected at the moment the spurious operation is inserted
+/// because spurious operations are impossible in general on unprotected tags.
+///
+/// # Implementation
+///
+/// The shared code is contained in this module, while the read / write specific code is implemented in their separate sub-modules.
+mod spurious {
     use super::*;
+
+    #[derive(Clone, Debug)]
+    struct Pattern {
+        /// The relative position of `x` and `y` at the beginning of the arbitrary
+        /// code (i.e., just after `x` got created).
+        /// Might change during the execution if said arbitrary code contains any `retag y`.
+        xy_rel: RelPosXY,
+        /// Permission that `x` will be created as
+        /// (always protected until a possible `ret x` in the second phase).
+        /// This one should be initial (as per `is_initial`).
+        x_retag_perm: LocationState,
+        /// Permission that `y` has at the beginning of the pattern.
+        /// Can be any state, not necessarily initial
+        /// (since `y` exists already before the pattern starts).
+        /// This state might be reset during the execution if the opaque code
+        /// contains any `retag y`, but only to an initial state this time.
+        y_current_perm: LocationState,
+        /// Whether `y` starts with a protector.
+        /// Might change if the opaque code contains any `ret y`.
+        y_protected: bool,
+    }
+
+    impl fmt::Display for Pattern {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let (x, y) = self.retag_permissions();
+            write!(f, "{}; ", self.xy_rel)?;
+            write!(f, "y: ({y}); ")?;
+            write!(f, "retag x ({x}); ")?;
+
+            write!(f, "<arbitrary code>; <spurious operation x>;")?;
+            Ok(())
+        }
+    }
+
+    impl Pattern {
+        /// Return the permission that `y` starts as, and the permission that we
+        /// will retag `x` with.
+        /// This does not yet include a possible operation-on-reborrow through `x`.
+        fn retag_permissions(&self) -> (LocStateProt, LocStateProt) {
+            let x = LocStateProt { state: self.x_retag_perm, prot: true };
+            let y = LocStateProt { state: self.y_current_perm, prot: self.y_protected };
+            (x, y)
+        }
+
+        /// State that the pattern deterministically produces immediately after
+        /// the retag of `x`.
+        ///
+        /// Depending if testing spurious reads or writes, set the [AccessKind] accordingly.
+        fn initial_state(&self, kind: AccessKind) -> Result<LocStateProtPair, ()> {
+            let (x, y) = self.retag_permissions();
+            let state = LocStateProtPair { xy_rel: self.xy_rel, x, y };
+
+            match kind {
+                AccessKind::Read => state.read_if_accessed(PtrSelector::X),
+                AccessKind::Write => state.write_if_accessed(PtrSelector::X),
+            }
+        }
+    }
 
     /// Accessed pointer.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -439,16 +510,34 @@ mod spurious_read {
         /// Must be called just after reborrowing a pointer, and just after
         /// removing a protector.
         fn read_if_accessed(self, ptr: PtrSelector) -> Result<Self, ()> {
-            let accessed = match ptr {
-                PtrSelector::X => self.x.state.accessed,
-                PtrSelector::Y => self.y.state.accessed,
+            let access = match ptr {
+                PtrSelector::X => self.x.state.access,
+                PtrSelector::Y => self.y.state.access,
                 PtrSelector::Other =>
                     panic!(
                         "the `accessed` status of `PtrSelector::Other` is unknown, do not pass it to `read_if_accessed`"
                     ),
             };
-            if accessed {
+            if access.accessed() {
                 self.perform_test_access(&TestAccess { ptr, kind: AccessKind::Read })
+            } else {
+                Ok(self)
+            }
+        }
+
+        /// Perform a write on the given pointer if its state is `accessed`.
+        /// Must be called just after reborrowing a pointer.
+        fn write_if_accessed(self, ptr: PtrSelector) -> Result<Self, ()> {
+            let access = match ptr {
+                PtrSelector::X => self.x.state.access,
+                PtrSelector::Y => self.y.state.access,
+                PtrSelector::Other =>
+                    panic!(
+                        "the `accessed` status of `PtrSelector::Other` is unknown, do not pass it to `write_if_accessed`"
+                    ),
+            };
+            if access.accessed() {
+                self.perform_test_access(&TestAccess { ptr, kind: AccessKind::Write })
             } else {
                 Ok(self)
             }
@@ -594,166 +683,266 @@ mod spurious_read {
         }
     }
 
-    #[test]
-    // `Reserved { conflicted: false }` and `Reserved { conflicted: true }` are properly indistinguishable
-    // under the conditions where we want to insert a spurious read.
-    fn reserved_aliased_protected_indistinguishable() {
-        let source = LocStateProtPair {
-            xy_rel: RelPosXY::MutuallyForeign,
-            x: LocStateProt {
-                // For the tests, the strongest idempotent foreign access does not matter, so we use `Default::default`
-                state: LocationState::new_accessed(
-                    Permission::new_frozen(),
-                    IdempotentForeignAccess::default(),
-                ),
-                prot: true,
-            },
-            y: LocStateProt {
-                state: LocationState::new_non_accessed(
-                    Permission::new_reserved_frz(),
-                    IdempotentForeignAccess::default(),
-                ),
-                prot: true,
-            },
-        };
-        let acc = TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
-        let target = source.clone().perform_test_access(&acc).unwrap();
-        assert!(source.y.state.permission.is_reserved_frz_with_conflicted(false));
-        assert!(target.y.state.permission.is_reserved_frz_with_conflicted(true));
-        assert!(!source.distinguishable::<(), ()>(&target))
-    }
+    /// Tests specific to spurious reads.
+    mod spurious_read {
+        use super::*;
 
-    #[derive(Clone, Debug)]
-    struct Pattern {
-        /// The relative position of `x` and `y` at the beginning of the arbitrary
-        /// code (i.e., just after `x` got created).
-        /// Might change during the execution if said arbitrary code contains any `retag y`.
-        xy_rel: RelPosXY,
-        /// Permission that `x` will be created as
-        /// (always protected until a possible `ret x` in the second phase).
-        /// This one should be initial (as per `is_initial`).
-        x_retag_perm: LocationState,
-        /// Permission that `y` has at the beginning of the pattern.
-        /// Can be any state, not necessarily initial
-        /// (since `y` exists already before the pattern starts).
-        /// This state might be reset during the execution if the opaque code
-        /// contains any `retag y`, but only to an initial state this time.
-        y_current_perm: LocationState,
-        /// Whether `y` starts with a protector.
-        /// Might change if the opaque code contains any `ret y`.
-        y_protected: bool,
-    }
+        #[derive(Clone, Debug)]
+        struct ReadPattern {
+            pattern: Pattern,
+        }
 
-    impl Exhaustive for Pattern {
-        fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
-            let mut v = Vec::new();
-            for xy_rel in RelPosXY::exhaustive() {
-                for (x_retag_perm, y_current_perm) in <(LocationState, LocationState)>::exhaustive()
-                {
-                    // We can only do spurious reads for accessed locations anyway.
-                    precondition!(x_retag_perm.accessed);
-                    // And `x` just got retagged, so it must be initial.
-                    precondition!(x_retag_perm.permission.is_initial());
-                    // As stated earlier, `x` is always protected in the patterns we consider here.
-                    precondition!(x_retag_perm.compatible_with_protector());
-                    for y_protected in bool::exhaustive() {
-                        // Finally `y` that is optionally protected must have a compatible permission.
-                        if y_protected {
-                            precondition!(y_current_perm.compatible_with_protector());
+        impl ReadPattern {
+            fn initial_state(&self) -> Result<LocStateProtPair, ()> {
+                self.pattern.initial_state(AccessKind::Read)
+            }
+        }
+
+        impl fmt::Display for ReadPattern {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.pattern.fmt(f)
+            }
+        }
+
+        impl Exhaustive for ReadPattern {
+            fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+                let mut v = Vec::new();
+                for xy_rel in RelPosXY::exhaustive() {
+                    for (x_retag_perm, y_current_perm) in
+                        <(LocationState, LocationState)>::exhaustive()
+                    {
+                        // Spurious reads can be done for any kind of accessed location, except writes.
+                        precondition!(
+                            x_retag_perm.access.accessed()
+                                && x_retag_perm.access != AccessType::Write
+                        );
+                        // And `x` just got retagged, so it must be initial.
+                        precondition!(x_retag_perm.permission.is_initial());
+                        // As stated earlier, `x` is always protected in the patterns we consider here.
+                        precondition!(x_retag_perm.compatible_with_protector());
+                        for y_protected in bool::exhaustive() {
+                            // Finally `y` that is optionally protected must have a compatible permission.
+                            if y_protected {
+                                precondition!(y_current_perm.compatible_with_protector());
+                            }
+                            v.push(ReadPattern {
+                                pattern: Pattern {
+                                    xy_rel,
+                                    x_retag_perm,
+                                    y_current_perm,
+                                    y_protected,
+                                },
+                            });
                         }
-                        v.push(Pattern { xy_rel, x_retag_perm, y_current_perm, y_protected });
                     }
                 }
+                Box::new(v.into_iter())
             }
-            Box::new(v.into_iter())
-        }
-    }
-
-    impl fmt::Display for Pattern {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let (x, y) = self.retag_permissions();
-            write!(f, "{}; ", self.xy_rel)?;
-            write!(f, "y: ({y}); ")?;
-            write!(f, "retag x ({x}); ")?;
-
-            write!(f, "<arbitrary code>; <spurious read x>;")?;
-            Ok(())
-        }
-    }
-
-    impl Pattern {
-        /// Return the permission that `y` starts as, and the permission that we
-        /// will retag `x` with.
-        /// This does not yet include a possible read-on-reborrow through `x`.
-        fn retag_permissions(&self) -> (LocStateProt, LocStateProt) {
-            let x = LocStateProt { state: self.x_retag_perm, prot: true };
-            let y = LocStateProt { state: self.y_current_perm, prot: self.y_protected };
-            (x, y)
         }
 
-        /// State that the pattern deterministically produces immediately after
-        /// the retag of `x`.
-        fn initial_state(&self) -> Result<LocStateProtPair, ()> {
-            let (x, y) = self.retag_permissions();
-            let state = LocStateProtPair { xy_rel: self.xy_rel, x, y };
-            state.read_if_accessed(PtrSelector::X)
-        }
-    }
-
-    #[test]
-    /// For each of the patterns described above, execute it once
-    /// as-is, and once with a spurious read inserted. Report any UB
-    /// in the target but not in the source.
-    fn test_all_patterns() {
-        let mut ok = 0;
-        let mut err = 0;
-        for pat in Pattern::exhaustive() {
-            let Ok(initial_source) = pat.initial_state() else {
-                // Failed to retag `x` in the source (e.g. `y` was protected Unique)
-                continue;
+        #[test]
+        // `Reserved { conflicted: false }` and `Reserved { conflicted: true }` are properly indistinguishable
+        // under the conditions where we want to insert a spurious read.
+        fn reserved_aliased_protected_indistinguishable() {
+            let source = LocStateProtPair {
+                xy_rel: RelPosXY::MutuallyForeign,
+                x: LocStateProt {
+                    // For the tests, the strongest idempotent foreign access does not matter, so we use `Default::default`
+                    state: LocationState::new(
+                        Permission::new_frozen(),
+                        IdempotentForeignAccess::default(),
+                        AccessType::Read,
+                    ),
+                    prot: true,
+                },
+                y: LocStateProt {
+                    state: LocationState::new(
+                        Permission::new_reserved_frz(),
+                        IdempotentForeignAccess::default(),
+                        AccessType::None,
+                    ),
+                    prot: true,
+                },
             };
-            // `x` must stay protected, but the function protecting `y` might return here
-            for (final_source, opaque) in
-                initial_source.all_states_reachable_via_opaque_code::</*X*/ NoRet, /*Y*/ AllowRet>()
-            {
-                // Both executions are identical up to here.
-                // Now we do nothing in the source and in the target we do a spurious read.
-                // Then we check if the resulting states are distinguishable.
-                let distinguishable = {
-                    assert!(final_source.x.prot);
-                    let spurious_read = TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
-                    if let Ok(final_target) =
-                        final_source.clone().perform_test_access(&spurious_read)
-                    {
-                        // Only after the spurious read has been executed can `x` lose its
-                        // protector.
-                        final_source
+            let acc = TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
+            let target = source.clone().perform_test_access(&acc).unwrap();
+            assert!(source.y.state.permission.is_reserved_frz_with_conflicted(false));
+            assert!(target.y.state.permission.is_reserved_frz_with_conflicted(true));
+            assert!(!source.distinguishable::<(), ()>(&target))
+        }
+
+        #[test]
+        /// For each of the patterns described above, execute it once
+        /// as-is, and once with a spurious read inserted. Report any UB
+        /// in the target but not in the source.
+        fn test_all_patterns() {
+            let mut ok = 0;
+            let mut err = 0;
+            for pat in ReadPattern::exhaustive() {
+                let Ok(initial_source) = pat.initial_state() else {
+                    // Failed to retag `x` in the source (e.g. `y` was protected Unique)
+                    continue;
+                };
+                // `x` must stay protected, but the function protecting `y` might return here
+                for (final_source, opaque) in initial_source.all_states_reachable_via_opaque_code::</*X*/ NoRet, /*Y*/ AllowRet>()
+                {
+                    // Both executions are identical up to here.
+                    // Now we do nothing in the source and in the target we do a spurious read.
+                    // Then we check if the resulting states are distinguishable.
+                    let distinguishable = {
+                        assert!(final_source.x.prot);
+                        let spurious_read =
+                            TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
+                        if let Ok(final_target) =
+                            final_source.clone().perform_test_access(&spurious_read)
+                        {
+                            // Only after the spurious read has been executed can `x` lose its
+                            // protector.
+                            final_source
                             .distinguishable::</*X*/ AllowRet, /*Y*/ AllowRet>(&final_target)
                             .then_some(format!("{final_target}"))
-                    } else {
-                        Some(format!("UB"))
-                    }
-                };
-                if let Some(final_target) = distinguishable {
-                    eprintln!(
-                        "For pattern '{pat}', inserting a spurious read through x makes the final state '{final_target}' \
+                        } else {
+                            Some(format!("UB"))
+                        }
+                    };
+                    if let Some(final_target) = distinguishable {
+                        eprintln!(
+                            "For pattern '{pat}', inserting a spurious read through x makes the final state '{final_target}' \
                         instead of '{final_source}' which is observable"
-                    );
-                    eprintln!("  (arbitrary code instanciated with '{opaque}')");
-                    err += 1;
-                    // We found an instantiation of the opaque code that makes this Pattern
-                    // fail, we don't really need to check the rest.
-                    break;
+                        );
+                        eprintln!("  (arbitrary code instantiated with '{opaque}')");
+                        err += 1;
+                        // We found an instantiation of the opaque code that makes this Pattern
+                        // fail, we don't really need to check the rest.
+                        break;
+                    }
+                    ok += 1;
                 }
-                ok += 1;
+            }
+            if err > 0 {
+                panic!(
+                    "Test failed after {}/{} patterns had UB in the target but not the source",
+                    err,
+                    ok + err
+                )
             }
         }
-        if err > 0 {
-            panic!(
-                "Test failed after {}/{} patterns had UB in the target but not the source",
-                err,
-                ok + err
-            )
+    }
+
+    /// Tests specific to spurious writes.
+    ///
+    /// This allows the compiler to always consider mutable references to be writable, thus allowing it to insert writes for optimization.
+    mod spurious_write {
+        use super::*;
+
+        #[derive(Clone, Debug)]
+        struct WritePattern {
+            pattern: Pattern,
+        }
+
+        impl WritePattern {
+            fn initial_state(&self) -> Result<LocStateProtPair, ()> {
+                self.pattern.initial_state(AccessKind::Write)
+            }
+        }
+
+        impl fmt::Display for WritePattern {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.pattern.fmt(f)
+            }
+        }
+
+        impl Exhaustive for WritePattern {
+            fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
+                let mut v = Vec::new();
+                for xy_rel in RelPosXY::exhaustive() {
+                    for (x_retag_perm, y_current_perm) in
+                        <(LocationState, LocationState)>::exhaustive()
+                    {
+                        // Spurious writes only work for locations with write access.
+                        precondition!(matches!(
+                            x_retag_perm.access,
+                            AccessType::Write | AccessType::ReadWrite
+                        ));
+                        // And `x` just got retagged, so it must be an initial mutable variable.
+                        precondition!(x_retag_perm.permission.is_reserved_frz());
+                        // As stated earlier, `x` is always protected in the patterns we consider here.
+                        precondition!(x_retag_perm.compatible_with_protector());
+                        for y_protected in bool::exhaustive() {
+                            // Finally `y` that is optionally protected must have a compatible permission.
+                            if y_protected {
+                                precondition!(y_current_perm.compatible_with_protector());
+                            }
+                            v.push(WritePattern {
+                                pattern: Pattern {
+                                    xy_rel,
+                                    x_retag_perm,
+                                    y_current_perm,
+                                    y_protected,
+                                },
+                            });
+                        }
+                    }
+                }
+                Box::new(v.into_iter())
+            }
+        }
+
+        #[test]
+        /// For each of the patterns described above, execute it once
+        /// as-is, and once with a spurious write inserted. Report any UB
+        /// in the target but not in the source.
+        fn test_all_patterns() {
+            let mut ok = 0;
+            let mut err = 0;
+            for pat in WritePattern::exhaustive() {
+                let Ok(initial_source) = pat.initial_state() else {
+                    // Failed to retag `x` in the source (e.g. `y` was protected Unique)
+                    continue;
+                };
+                // `x` must stay protected, but the function protecting `y` might return here
+                for (final_source, opaque) in initial_source.all_states_reachable_via_opaque_code::</*X*/ NoRet, /*Y*/ AllowRet>()
+                {
+                    // Both executions are identical up to here.
+                    // Now we do nothing in the source and in the target we do a spurious write.
+                    // Then we check if the resulting states are distinguishable.
+                    let distinguishable = {
+                        assert!(final_source.x.prot);
+                        let spurious_write =
+                            TestAccess { ptr: PtrSelector::X, kind: AccessKind::Write };
+                        if let Ok(final_target) =
+                            final_source.clone().perform_test_access(&spurious_write)
+                        {
+                            // Only after the spurious write has been executed can `x` lose its
+                            // protector.
+                            final_source
+                            .distinguishable::</*X*/ AllowRet, /*Y*/ AllowRet>(&final_target)
+                            .then_some(format!("{final_target}"))
+                        } else {
+                            Some(format!("UB"))
+                        }
+                    };
+                    if let Some(final_target) = distinguishable {
+                        eprintln!(
+                            "For pattern '{pat}', inserting a spurious write through x makes the final state '{final_target}' \
+                        instead of '{final_source}' which is observable"
+                        );
+                        eprintln!("  (arbitrary code instantiated with '{opaque}')");
+                        err += 1;
+                        // We found an instantiation of the opaque code that makes this Pattern
+                        // fail, we don't really need to check the rest.
+                        break;
+                    }
+                    ok += 1;
+                }
+            }
+            if err > 0 {
+                panic!(
+                    "Test failed after {}/{} patterns had UB in the target but not the source",
+                    err,
+                    ok + err
+                )
+            }
         }
     }
 }

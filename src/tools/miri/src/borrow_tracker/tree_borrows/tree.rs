@@ -32,6 +32,35 @@ use crate::*;
 
 mod tests;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Type of access to a location, see [LocationState].
+pub enum AccessType {
+    /// Location has not been accessed.
+    None,
+    /// Location has been accessed through a read.
+    Read,
+    /// Location has been accessed through a write.
+    Write,
+    /// Location has been accessed through a read and a write.
+    ReadWrite,
+}
+
+impl AccessType {
+    /// Returns true iff location has been accessed (all states except [AccessType::None]).
+    pub fn accessed(&self) -> bool {
+        *self != AccessType::None
+    }
+
+    pub fn new(read: bool, write: bool) -> Self {
+        match (read, write) {
+            (true, true) => Self::ReadWrite,
+            (false, true) => Self::Write,
+            (true, false) => Self::Read,
+            (false, false) => Self::None,
+        }
+    }
+}
+
 /// Data for a reference at single *location*.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct LocationState {
@@ -46,7 +75,7 @@ pub(super) struct LocationState {
     /// "future initial permission" of `Disabled`, causing UB only if an access is ever actually
     /// performed.
     /// Note that the tree root is also always accessed, as if the allocation was a write access.
-    accessed: bool,
+    access: AccessType,
     /// This pointer's current permission / future initial permission.
     permission: Permission,
     /// See `foreign_access_skipping.rs`.
@@ -57,26 +86,26 @@ pub(super) struct LocationState {
 }
 
 impl LocationState {
-    /// Constructs a new initial state. It has neither been accessed, nor been subjected
-    /// to any foreign access yet.
-    /// The permission is not allowed to be `Unique`.
+    /// Constructs a new initial state. It has not yet been subjected
+    /// to any foreign access.
+    /// `access` defines the [AccessType]. If it is [AccessType::None], the permission is not allowed to be `Unique`.
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
-    pub fn new_non_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
-        assert!(permission.is_initial() || permission.is_disabled());
-        Self { permission, accessed: false, idempotent_foreign_access: sifa }
+    pub fn new(permission: Permission, sifa: IdempotentForeignAccess, access: AccessType) -> Self {
+        if access == AccessType::None {
+            assert!(permission.is_initial() || permission.is_disabled());
+        }
+
+        Self { permission, access, idempotent_foreign_access: sifa }
     }
 
-    /// Constructs a new initial state. It has not yet been subjected
-    /// to any foreign access. However, it is already marked as having been accessed.
-    /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
-    pub fn new_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
-        Self { permission, accessed: true, idempotent_foreign_access: sifa }
+    pub fn access(&self) -> AccessType {
+        self.access
     }
 
     /// Check if the location has been accessed, i.e. if it has
     /// ever been accessed through a child pointer.
     pub fn accessed(&self) -> bool {
-        self.accessed
+        self.access.accessed()
     }
 
     pub fn permission(&self) -> Permission {
@@ -131,7 +160,17 @@ impl LocationState {
         let old_perm = self.permission;
         let transition = Permission::perform_access(access_kind, rel_pos, old_perm, protected)
             .ok_or(TransitionError::ChildAccessForbidden(old_perm))?;
-        self.accessed |= !rel_pos.is_foreign();
+        if !rel_pos.is_foreign() {
+            self.access = match (self.access, access_kind) {
+                (AccessType::None, AccessKind::Read) => AccessType::Read,
+                (AccessType::None, AccessKind::Write) => AccessType::Write,
+                (AccessType::Read, AccessKind::Read) => AccessType::Read,
+                (AccessType::Read, AccessKind::Write) => AccessType::ReadWrite,
+                (AccessType::Write, AccessKind::Read) => AccessType::ReadWrite,
+                (AccessType::Write, AccessKind::Write) => AccessType::Write,
+                (AccessType::ReadWrite, _) => AccessType::ReadWrite,
+            }
+        }
         self.permission = transition.applied(old_perm).unwrap();
         // Why do only accessed locations cause protector errors?
         // Consider two mutable references `x`, `y` into disjoint parts of
@@ -147,7 +186,7 @@ impl LocationState {
         //
         // See the test `two_mut_protected_same_alloc` in `tests/pass/tree_borrows/tree-borrows.rs`
         // for an example of safe code that would be UB if we forgot to check `self.accessed`.
-        if protected && self.accessed && transition.produces_disabled() {
+        if protected && self.access.accessed() && transition.produces_disabled() {
             return Err(TransitionError::ProtectedDisabled(old_perm));
         }
         Ok(transition)
@@ -242,7 +281,7 @@ impl LocationState {
 impl fmt::Display for LocationState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.permission)?;
-        if !self.accessed {
+        if !self.access.accessed() {
             write!(f, "?")?;
         }
         Ok(())
@@ -361,9 +400,10 @@ impl Tree {
             // was a write that initialized these to `Unique`.
             perms.insert(
                 root_idx,
-                LocationState::new_accessed(
+                LocationState::new(
                     Permission::new_unique(),
                     IdempotentForeignAccess::None,
+                    AccessType::Write,
                 ),
             );
             let exposed_cache = ExposedCache::default();
@@ -566,7 +606,7 @@ impl<'tcx> Tree {
                                 // Related to https://github.com/rust-lang/rust/issues/55005.
                                 && !perm.permission.is_cell()
                                 // Only trigger UB if the accessed bit is set, i.e. if the protector is actually protecting this offset. See #4579.
-                                && perm.accessed
+                                && perm.access.accessed()
                             {
                                 Err(TbError {
                                     error_kind: TransitionError::ProtectedDealloc,
@@ -691,7 +731,7 @@ impl<'tcx> Tree {
             // Only visit accessed permissions
             if let Some(p) = loc.perms.get(source_idx)
                 && let Some(access_kind) = p.permission.protector_end_access()
-                && p.accessed
+                && p.access.accessed()
             {
                 let diagnostics = DiagnosticInfo {
                     access_cause: AccessCause::FnExit(access_kind),
@@ -1179,9 +1219,10 @@ impl<'tcx> LocationTree {
 
 impl Node {
     pub fn default_location_state(&self) -> LocationState {
-        LocationState::new_non_accessed(
+        LocationState::new(
             self.default_initial_perm,
             self.default_initial_idempotent_foreign_access,
+            AccessType::None,
         )
     }
 }
