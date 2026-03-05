@@ -8,7 +8,6 @@
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
 
@@ -360,7 +359,6 @@ where
 /// without having to resort to pattern types or other unstable features.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
-#[expect(dead_code)]
 enum BucketIndex {
     // tidy-alphabetical-start
     Bucket00,
@@ -409,8 +407,34 @@ impl BucketIndex {
 
     #[inline(always)]
     const fn from_raw(raw: usize) -> Self {
-        assert!(raw < BUCKETS);
-        let this = unsafe { mem::transmute::<usize, BucketIndex>(raw) };
+        let this = match raw {
+            // tidy-alphabetical-start
+            00 => Self::Bucket00,
+            01 => Self::Bucket01,
+            02 => Self::Bucket02,
+            03 => Self::Bucket03,
+            04 => Self::Bucket04,
+            05 => Self::Bucket05,
+            06 => Self::Bucket06,
+            07 => Self::Bucket07,
+            08 => Self::Bucket08,
+            09 => Self::Bucket09,
+            10 => Self::Bucket10,
+            11 => Self::Bucket11,
+            12 => Self::Bucket12,
+            13 => Self::Bucket13,
+            14 => Self::Bucket14,
+            15 => Self::Bucket15,
+            16 => Self::Bucket16,
+            17 => Self::Bucket17,
+            18 => Self::Bucket18,
+            19 => Self::Bucket19,
+            20 => Self::Bucket20,
+            // tidy-alphabetical-end
+            _ => panic!(),
+        };
+        // In practice, this should always be optimized away.
+        debug_assert!(this.to_usize() == raw);
         this
     }
 
