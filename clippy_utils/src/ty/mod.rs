@@ -7,7 +7,6 @@ use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
@@ -25,7 +24,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -38,6 +37,7 @@ use std::{iter, mem};
 
 use crate::paths::{PathNS, lookup_path_str};
 use crate::res::{MaybeDef, MaybeQPath};
+use crate::sym;
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -319,9 +319,9 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             Some(sym::ControlFlow) if args.type_at(0).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
                 is_must_use_ty(cx, args.type_at(1))
             },
-            _ => find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::MustUse { .. }),
+            _ => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
         },
-        ty::Foreign(did) => find_attr!(cx.tcx.get_all_attrs(*did), AttributeKind::MustUse { .. }),
+        ty::Foreign(did) => find_attr!(cx.tcx, *did, MustUse { .. }),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
@@ -329,12 +329,9 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
+            for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                    && find_attr!(
-                        cx.tcx.get_all_attrs(trait_predicate.trait_ref.def_id),
-                        AttributeKind::MustUse { .. }
-                    )
+                    && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
                 {
                     return true;
                 }
@@ -344,7 +341,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Dynamic(binder, _) => {
             for predicate in *binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
-                    && find_attr!(cx.tcx.get_all_attrs(trait_ref.def_id), AttributeKind::MustUse { .. })
+                    && find_attr!(cx.tcx, trait_ref.def_id, MustUse { .. })
                 {
                     return true;
                 }

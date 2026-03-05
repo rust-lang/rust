@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core, sym};
 use itertools::Itertools;
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -16,7 +16,7 @@ use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

@@ -367,7 +367,7 @@ impl EmptyLineAfter {
                         Some(name) => format!("{} `{name}`", info.kind).into(),
                         None => Cow::from("the following item"),
                     };
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("if the doc comment should not document {name} then comment it out"),
                         suggestions,
                         Applicability::MaybeIncorrect,
@@ -384,7 +384,7 @@ impl EmptyLineAfter {
                     // Commentless empty gaps between line doc comments, possibly intended to be part of the markdown
 
                     let indent = snippet_indent(cx, first_gap.prev_stop.span).unwrap_or_default();
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("if the documentation should include the empty {lines} include {them} in the comment"),
                         empty_lines()
                             .map(|empty_line| (empty_line, format!("{indent}///")))
@@ -414,7 +414,7 @@ impl EmptyLineAfter {
             } else {
                 parent.kind
             };
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 match kind {
                     StopKind::Attr => format!("if the attribute should apply to the {desc} use an inner attribute"),
                     StopKind::Doc(_) => format!("if the comment should document the {desc} use an inner doc comment"),

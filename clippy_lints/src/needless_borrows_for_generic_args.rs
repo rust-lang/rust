@@ -4,7 +4,7 @@ use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_as
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs};
+use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,7 +17,6 @@ use rustc_middle::ty::{
     self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;

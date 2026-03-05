@@ -4,12 +4,11 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
-use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks};
+use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym::{self, thread_local_macro};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -63,7 +62,7 @@ fn is_thread_local_initializer(
 ) -> Option<bool> {
     let macro_def_id = span.source_callee()?.macro_def_id?;
     Some(
-        cx.tcx.is_diagnostic_item(thread_local_macro, macro_def_id)
+        cx.tcx.is_diagnostic_item(sym::thread_local_macro, macro_def_id)
             && matches!(fn_kind, intravisit::FnKind::ItemFn(..)),
     )
 }

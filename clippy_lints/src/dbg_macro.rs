@@ -1,14 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_in_test;
 use clippy_utils::macros::{MacroCall, macro_backtrace};
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_in_test, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

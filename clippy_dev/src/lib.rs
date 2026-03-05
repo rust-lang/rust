@@ -1,6 +1,5 @@
 #![feature(
     exit_status_error,
-    if_let_guard,
     new_range,
     new_range_api,
     os_str_slice,

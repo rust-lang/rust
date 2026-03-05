@@ -139,127 +139,154 @@ error: explicit call to `.into_iter()` in function argument accepting `IntoItera
   --> tests/ui/useless_conversion.rs:203:7
    |
 LL |     b(vec![1, 2].into_iter());
-   |       ^^^^^^^^^^------------
-   |                 |
-   |                 help: consider removing the `.into_iter()`
+   |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     b(vec![1, 2].into_iter());
+LL +     b(vec![1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:205:7
    |
 LL |     c(vec![1, 2].into_iter());
-   |       ^^^^^^^^^^------------
-   |                 |
-   |                 help: consider removing the `.into_iter()`
+   |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:194:18
    |
 LL |     fn c(_: impl IntoIterator<Item = i32>) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     c(vec![1, 2].into_iter());
+LL +     c(vec![1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:207:7
    |
 LL |     d(vec![1, 2].into_iter());
-   |       ^^^^^^^^^^------------
-   |                 |
-   |                 help: consider removing the `.into_iter()`
+   |       ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:197:12
    |
 LL |         T: IntoIterator<Item = i32>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     d(vec![1, 2].into_iter());
+LL +     d(vec![1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:211:7
    |
 LL |     b(vec![1, 2].into_iter().into_iter());
-   |       ^^^^^^^^^^------------------------
-   |                 |
-   |                 help: consider removing the `.into_iter()`s
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`s
+   |
+LL -     b(vec![1, 2].into_iter().into_iter());
+LL +     b(vec![1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:213:7
    |
 LL |     b(vec![1, 2].into_iter().into_iter().into_iter());
-   |       ^^^^^^^^^^------------------------------------
-   |                 |
-   |                 help: consider removing the `.into_iter()`s
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:193:13
    |
 LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`s
+   |
+LL -     b(vec![1, 2].into_iter().into_iter().into_iter());
+LL +     b(vec![1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:260:24
    |
 LL |         foo2::<i32, _>([1, 2, 3].into_iter());
-   |                        ^^^^^^^^^------------
-   |                                 |
-   |                                 help: consider removing the `.into_iter()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:239:12
    |
 LL |         I: IntoIterator<Item = i32> + Helper<X>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         foo2::<i32, _>([1, 2, 3].into_iter());
+LL +         foo2::<i32, _>([1, 2, 3]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:269:14
    |
 LL |         foo3([1, 2, 3].into_iter());
-   |              ^^^^^^^^^------------
-   |                       |
-   |                       help: consider removing the `.into_iter()`
+   |              ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:248:12
    |
 LL |         I: IntoIterator<Item = i32>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         foo3([1, 2, 3].into_iter());
+LL +         foo3([1, 2, 3]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:279:16
    |
 LL |         S1.foo([1, 2].into_iter());
-   |                ^^^^^^------------
-   |                      |
-   |                      help: consider removing the `.into_iter()`
+   |                ^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:276:27
    |
 LL |             pub fn foo<I: IntoIterator>(&self, _: I) {}
    |                           ^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         S1.foo([1, 2].into_iter());
+LL +         S1.foo([1, 2]);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:299:44
    |
 LL |         v0.into_iter().interleave_shortest(v1.into_iter());
-   |                                            ^^------------
-   |                                              |
-   |                                              help: consider removing the `.into_iter()`
+   |                                            ^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:286:20
    |
 LL |                 J: IntoIterator,
    |                    ^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         v0.into_iter().interleave_shortest(v1.into_iter());
+LL +         v0.into_iter().interleave_shortest(v1);
+   |
 
 error: useless conversion to the same type: `()`
   --> tests/ui/useless_conversion.rs:327:58
@@ -416,43 +443,52 @@ error: explicit call to `.into_iter()` in function argument accepting `IntoItera
   --> tests/ui/useless_conversion.rs:461:27
    |
 LL |     takes_into_iter_usize(b.into_iter());
-   |                           ^------------
-   |                            |
-   |                            help: consider removing the `.into_iter()`
+   |                           ^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:452:34
    |
 LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     takes_into_iter_usize(b.into_iter());
+LL +     takes_into_iter_usize(b);
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:470:31
    |
 LL |         takes_into_iter_usize(b.clone().into_iter());
-   |                               ^^^^^^^^^------------
-   |                                        |
-   |                                        help: consider removing the `.into_iter()`
+   |                               ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:452:34
    |
 LL | fn takes_into_iter_usize(_: impl IntoIterator<Item = usize>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -         takes_into_iter_usize(b.clone().into_iter());
+LL +         takes_into_iter_usize(b.clone());
+   |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
   --> tests/ui/useless_conversion.rs:478:34
    |
 LL |     takes_into_iter_usize_result(b.clone().into_iter())?;
-   |                                  ^^^^^^^^^------------
-   |                                           |
-   |                                           help: consider removing the `.into_iter()`
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
   --> tests/ui/useless_conversion.rs:453:41
    |
 LL | fn takes_into_iter_usize_result(_: impl IntoIterator<Item = usize>) -> Result<(), ()> {
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider removing the `.into_iter()`
+   |
+LL -     takes_into_iter_usize_result(b.clone().into_iter())?;
+LL +     takes_into_iter_usize_result(b.clone())?;
+   |
 
 error: aborting due to 48 previous errors
 
