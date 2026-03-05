@@ -38,8 +38,25 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     unsafe { libc::_NSGetEnviron() as *mut *const *const c_char }
 }
 
+// On FreeBSD, environ comes from CRT rather than libc
+#[cfg(target_os = "freebsd")]
+pub unsafe fn environ() -> *mut *const *const c_char {
+    use crate::sync::LazyLock;
+
+    struct Environ(*mut *const *const c_char);
+    unsafe impl Send for Environ {}
+    unsafe impl Sync for Environ {}
+
+    static ENVIRON: LazyLock<Environ> = LazyLock::new(|| {
+        Environ(unsafe {
+            libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) as *mut *const *const c_char
+        })
+    });
+    ENVIRON.0
+}
+
 // Use the `environ` static which is part of POSIX.
-#[cfg(not(target_vendor = "apple"))]
+#[cfg(not(any(target_os = "freebsd", target_vendor = "apple")))]
 pub unsafe fn environ() -> *mut *const *const c_char {
     unsafe extern "C" {
         static mut environ: *const *const c_char;
