@@ -22,7 +22,7 @@ impl FileDescription for DirHandle {
         "directory"
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+    fn host_metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
         interp_ok(self.path.metadata())
     }
 
@@ -49,7 +49,7 @@ impl FileDescription for MetadataHandle {
         "metadata-only"
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+    fn host_metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
         interp_ok(Ok(self.meta.clone()))
     }
 
@@ -328,7 +328,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.invalid_handle("GetFileInformationByHandle")?
         };
 
-        let metadata = match desc.metadata()? {
+        let metadata = match desc.host_metadata()? {
             Ok(meta) => meta,
             Err(e) => {
                 this.set_last_error(e)?;

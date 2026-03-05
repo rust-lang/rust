@@ -229,17 +229,22 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
-        let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
 
         // We do *not* use `deref_pointer_as` here since determining the right pointee type
         // is highly non-trivial: it depends on which exact alias of the function was invoked
         // (e.g. `fstat` vs `fstat64`), and then on FreeBSD it also depends on the ABI level
         // which can be different between the libc used by std and the libc used by everyone else.
         let buf = this.deref_pointer(buf_op)?;
+
+        // `libc::S_IF*` constants are of type `mode_t`, which varies in width across targets
+        // (`u16` on macOS, `u32` on Linux). Read the scalar using `mode_t`'s size on the target.
+        let mode_t_size = this.libc_ty_layout("mode_t").size;
+        let mode: u32 = metadata.mode.to_uint(mode_t_size)?.try_into().unwrap();
+
         this.write_int_fields_named(
             &[
                 ("st_dev", metadata.dev.into()),
-                ("st_mode", mode.try_into().unwrap()),
+                ("st_mode", mode.into()),
                 ("st_nlink", 0),
                 ("st_ino", 0),
                 ("st_uid", metadata.uid.into()),
@@ -340,6 +345,34 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ino: 0,
                 },
         })
+    }
+}
+
+fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
+    #[cfg(unix)]
+    use std::os::unix::fs::FileTypeExt;
+
+    if file_type.is_file() {
+        "S_IFREG"
+    } else if file_type.is_dir() {
+        "S_IFDIR"
+    } else if file_type.is_symlink() {
+        "S_IFLNK"
+    } else {
+        // Certain file types are only available when the host is a Unix system.
+        #[cfg(unix)]
+        {
+            if file_type.is_socket() {
+                return "S_IFSOCK";
+            } else if file_type.is_fifo() {
+                return "S_IFIFO";
+            } else if file_type.is_char_device() {
+                return "S_IFCHR";
+            } else if file_type.is_block_device() {
+                return "S_IFBLK";
+            }
+        }
+        "S_IFREG"
     }
 }
 
@@ -747,13 +780,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        // The `mode` field specifies the type of the file and the permissions over the file for
-        // the owner, its group and other users. Given that we can only provide the file type
-        // without using platform specific methods, we only set the bits corresponding to the file
-        // type. This should be an `__u16` but `libc` provides its values as `u32`.
+        // `statx.stx_mode` is `__u16`. `libc::S_IF*` are of type `mode_t`, which varies in
+        // width across targets (`u16` on macOS, `u32` on Linux). Read using `mode_t`'s size.
+        let mode_t_size = this.libc_ty_layout("mode_t").size;
         let mode: u16 = metadata
             .mode
-            .to_u32()?
+            .to_uint(mode_t_size)?
             .try_into()
             .unwrap_or_else(|_| bug!("libc contains bad value for constant"));
 
@@ -1632,7 +1664,7 @@ fn extract_sec_and_nsec<'tcx>(
 
 /// Stores a file's metadata in order to avoid code duplication in the different metadata related
 /// shims.
-struct FileMetadata {
+pub struct FileMetadata {
     mode: Scalar,
     size: u64,
     created: Option<(u64, u32)>,
@@ -1662,13 +1694,28 @@ impl FileMetadata {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));
         };
-
-        let metadata = fd.metadata()?;
-        drop(fd);
-        FileMetadata::from_meta(ecx, metadata)
+        fd.fstat(ecx)
     }
 
-    fn from_meta<'tcx>(
+    pub(crate) fn synthetic<'tcx>(
+        ecx: &mut MiriInterpCx<'tcx>,
+        mode_name: &str,
+        size: u64,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        let mode = ecx.eval_libc(mode_name);
+        interp_ok(Ok(FileMetadata {
+            mode,
+            size,
+            created: None,
+            accessed: None,
+            modified: None,
+            dev: 0,
+            uid: 0,
+            gid: 0,
+        }))
+    }
+
+    pub(crate) fn from_meta<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
@@ -1680,16 +1727,7 @@ impl FileMetadata {
         };
 
         let file_type = metadata.file_type();
-
-        let mode_name = if file_type.is_file() {
-            "S_IFREG"
-        } else if file_type.is_dir() {
-            "S_IFDIR"
-        } else {
-            "S_IFLNK"
-        };
-
-        let mode = ecx.eval_libc(mode_name);
+        let mode = ecx.eval_libc(file_type_to_mode_name(file_type));
 
         let size = metadata.len();
 

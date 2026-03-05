@@ -10,7 +10,7 @@ use crate::concurrency::VClock;
 use crate::shims::files::{
     DynFileDescriptionRef, FdId, FdNum, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
-use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::{FileMetadata, UnixFileDescription};
 use crate::*;
 
 type EpollEventKey = (FdId, FdNum);
@@ -117,6 +117,14 @@ impl EpollEvents {
 impl FileDescription for Epoll {
     fn name(&self) -> &'static str {
         "epoll"
+    }
+
+    fn fstat<'tcx>(
+        &self,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        // On Linux, epoll is an "anonymous inode" reported as S_IFREG.
+        FileMetadata::synthetic(ecx, "S_IFREG", 0)
     }
 
     fn destroy<'tcx>(

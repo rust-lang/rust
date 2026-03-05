@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::fs::{File, Metadata};
+use std::fs::File;
 use std::io::{ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
@@ -9,7 +9,7 @@ use std::{fs, io};
 
 use rustc_abi::Size;
 
-use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::{FileMetadata, UnixFileDescription};
 use crate::*;
 
 /// A unique id for file descriptions. While we could use the address, considering that
@@ -209,8 +209,21 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot close {}", self.name());
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<fs::Metadata>> {
+    /// Returns the host `fs::Metadata` for this FD, if available.
+    /// Used by host-aware shims like Windows's `GetFileInformationByHandle`.
+    /// Unrelated to Unix `fstat`, which goes through `fstat()`.
+    fn host_metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<fs::Metadata>> {
         throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");
+    }
+
+    /// Return the metadata describing this FD for the `fstat`/`statx` family of syscalls.
+    /// File-backed FDs should call `FileMetadata::from_meta` with their host metadata.
+    /// Non-file-backed FDs should call `FileMetadata::synthetic` with an appropriate mode.
+    fn fstat<'tcx>(
+        &self,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        throw_unsup_format!("fstat is not supported on {}", self.name());
     }
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
@@ -432,8 +445,15 @@ impl FileDescription for FileHandle {
         }
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+    fn host_metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<fs::Metadata>> {
         interp_ok(self.file.metadata())
+    }
+
+    fn fstat<'tcx>(
+        &self,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        FileMetadata::from_meta(ecx, self.file.metadata())
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {

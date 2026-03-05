@@ -5,8 +5,8 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollEvents, EvalContextExt as _};
+use crate::shims::unix::{FileMetadata, UnixFileDescription};
 use crate::*;
 
 /// Maximum value that the eventfd counter can hold.
@@ -35,6 +35,14 @@ struct EventFd {
 impl FileDescription for EventFd {
     fn name(&self) -> &'static str {
         "event"
+    }
+
+    fn fstat<'tcx>(
+        &self,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+        // On Linux, eventfd is an "anonymous inode" reported as S_IFREG.
+        FileMetadata::synthetic(ecx, "S_IFREG", 0)
     }
 
     fn destroy<'tcx>(
