@@ -2312,6 +2312,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// Element at index 0 is the front of the queue.
     ///
+    /// When removing the front element, 
+    /// this is equivalent to [`pop_front`] and no swap operation is preformed.
+    /// If always removing the front element, [`pop_front`] should be used instead. 
+    ///
+    /// [`pop_front']: VecDeque::pop_front
+    ///
     /// # Examples
     ///
     /// ```
@@ -2322,10 +2328,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
-    /// assert_eq!(buf, [1, 2, 3]);
+    /// buf.push_back(4);
+    /// assert_eq!(buf, [1, 2, 3, 4]);
     ///
     /// assert_eq!(buf.swap_remove_front(2), Some(3));
-    /// assert_eq!(buf, [2, 1]);
+    /// assert_eq!(buf, [2, 1, 4]);
+    ///
+    /// assert_eq!(buf.swap_remove_front(0), Some(2));
+    /// assert_eq!(buf, [1, 4]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
@@ -2347,6 +2357,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// Element at index 0 is the front of the queue.
     ///
+    /// When removing the back element, 
+    /// this is equivalent to [`pop_back`] and no swap operation is preformed.
+    /// If always removing the front element, [`pop_back`] should be used instead. 
+    ///
+    /// [`pop_back']: VecDeque::pop_back
+    ///
     /// # Examples
     ///
     /// ```
@@ -2357,10 +2373,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
-    /// assert_eq!(buf, [1, 2, 3]);
+    /// buf.push_back(4);
+    /// assert_eq!(buf, [1, 2, 3, 4]);
     ///
-    /// assert_eq!(buf.swap_remove_back(0), Some(1));
-    /// assert_eq!(buf, [3, 2]);
+    /// assert_eq!(buf.swap_remove_back(1), Some(2));
+    /// assert_eq!(buf, [1, 4, 3]);
+    ///
+    /// assert_eq!(buf.swap_remove_back(2), Some(3));
+    /// assert_eq!(buf, [1, 4]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {

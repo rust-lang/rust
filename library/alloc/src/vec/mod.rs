@@ -2174,8 +2174,12 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// This does not preserve ordering of the remaining elements, but is *O*(1).
     /// If you need to preserve the element order, use [`remove`] instead.
+    /// When removing the last element of a vec,
+    /// this is equivalent to [`pop`] and no swap operation is preformed.
+    /// If always removing the last element, pop should be used instead. 
     ///
     /// [`remove`]: Vec::remove
+    /// [`pop']: Vec::pop
     ///
     /// # Panics
     ///
@@ -2191,6 +2195,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// assert_eq!(v.swap_remove(0), "foo");
     /// assert_eq!(v, ["baz", "qux"]);
+    ///
+    /// assert_eq!(v.swap_remove(1), "qux");
+    /// assert_eq!(v, ["baz"]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
