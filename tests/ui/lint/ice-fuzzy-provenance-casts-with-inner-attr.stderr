@@ -1,0 +1,93 @@
+error[E0658]: use of unstable library feature `contracts`
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:14:4
+   |
+LL | #![core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+   = help: add `#![feature(contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:14:4
+   |
+LL | #![core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:9:1
+   |
+LL | / #![feature(strict_provenance_lints)]
+...  |
+LL | | }
+   | |_^ there are too many leading `super` keywords
+
+error[E0425]: cannot find type `Ts` in this scope
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:9:1
+   |
+LL | / #![feature(strict_provenance_lints)]
+...  |
+LL | | }
+   | |_^ not found in this scope
+
+error[E0658]: `#[prelude_import]` is for use by rustc only
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:9:1
+   |
+LL | / #![feature(strict_provenance_lints)]
+...  |
+LL | | }
+   | |_^
+   |
+   = help: add `#![feature(prelude_import)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0601]: `main` function not found in crate `ice_fuzzy_provenance_casts_with_inner_attr`
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:23:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs`
+
+error[E0433]: cannot find type `Stars` in this scope
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:14:50
+   |
+LL | #![core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |                                                  ^^^^^ use of undeclared type `Stars`
+
+warning: strict provenance disallows casting integer `usize` to pointer `*const u32`
+  --> $DIR/ice-fuzzy-provenance-casts-with-inner-attr.rs:9:1
+   |
+LL | / #![feature(strict_provenance_lints)]
+...  |
+LL | | }
+   | |_^
+   |
+   = help: if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead
+   = note: requested on the command line with `-W fuzzy-provenance-casts`
+help: use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
+   |
+LL - #![feature(strict_provenance_lints)]
+LL -
+LL -
+LL -
+LL -
+LL - #![core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+LL -
+LL -
+LL -
+LL - 
+LL - pub(super) fn foo() -> *const Ts {
+LL -     unsafe {
+LL -         let p2 = 0x52 as *const u32;
+LL -     }
+LL - }
+LL + (...).with_addr()
+   |
+
+error: aborting due to 7 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0425, E0433, E0601, E0658.
+For more information about an error, try `rustc --explain E0425`.

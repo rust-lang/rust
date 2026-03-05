@@ -28,7 +28,7 @@ use std::{env, str};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
+use rustc_codegen_ssa::{CodegenErrors, CompiledModules};
 use rustc_data_structures::profiling::{
     TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
@@ -338,7 +338,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 }
             }
 
-            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
+            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+
+            tcx.report_unused_features();
+
+            Some(linker)
         });
 
         // Linking is done outside the `compiler.enter()` so that the
@@ -556,9 +560,11 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
         let rlink_data = fs::read(file).unwrap_or_else(|err| {
             dcx.emit_fatal(RlinkUnableToRead { err });
         });
-        let (codegen_results, metadata, outputs) =
-            match CodegenResults::deserialize_rlink(sess, rlink_data) {
-                Ok((codegen, metadata, outputs)) => (codegen, metadata, outputs),
+        let (compiled_modules, crate_info, metadata, outputs) =
+            match CompiledModules::deserialize_rlink(sess, rlink_data) {
+                Ok((codegen, crate_info, metadata, outputs)) => {
+                    (codegen, crate_info, metadata, outputs)
+                }
                 Err(err) => {
                     match err {
                         CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
@@ -583,7 +589,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                     };
                 }
             };
-        compiler.codegen_backend.link(sess, codegen_results, metadata, &outputs);
+        compiler.codegen_backend.link(sess, compiled_modules, crate_info, metadata, &outputs);
     } else {
         dcx.emit_fatal(RlinkNotAFile {});
     }

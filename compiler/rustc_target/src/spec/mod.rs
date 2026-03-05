@@ -2210,8 +2210,10 @@ pub struct TargetOptions {
     pub env: Env,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
-    /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
-    /// However, parts of the backend do check this field for specific values to enable special behavior.
+    /// This field is *not* forwarded directly to LLVM and therefore does not control which ABI (in
+    /// the sense of function calling convention) is actually used; its primary purpose is
+    /// `cfg(target_abi)`. The actual calling convention is controlled by `llvm_abiname`,
+    /// `llvm_floatabi`, and `rustc_abi`.
     pub abi: Abi,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     #[rustc_lint_opt_deny_field_access(
@@ -3228,8 +3230,8 @@ impl Target {
                 ),
                 RustcAbi::Softfloat => check_matches!(
                     self.arch,
-                    Arch::X86 | Arch::X86_64 | Arch::S390x,
-                    "`softfloat` ABI is only valid for x86 and s390x targets"
+                    Arch::X86 | Arch::X86_64 | Arch::S390x | Arch::AArch64,
+                    "`softfloat` ABI is only valid for x86, s390x, and aarch64 targets"
                 ),
             }
         }

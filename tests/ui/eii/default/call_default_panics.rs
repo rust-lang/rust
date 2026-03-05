@@ -23,7 +23,6 @@
 // ```
 // This is a simple test to make sure that we can unwind through these,
 // and that this wrapper function effectively doesn't show up in the trace.
-#![feature(extern_item_impls)]
 
 extern crate decl_with_default_panics;
 

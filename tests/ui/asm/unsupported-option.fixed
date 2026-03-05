@@ -1,5 +1,6 @@
 //@ needs-asm-support
 //@ run-rustfix
+//@ reference: asm.options.global_asm-restriction
 
 use std::arch::global_asm;
 

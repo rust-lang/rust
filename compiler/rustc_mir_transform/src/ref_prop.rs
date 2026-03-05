@@ -245,7 +245,7 @@ fn compute_replacement<'tcx>(
         debug!(?rvalue);
         match rvalue {
             // This is a copy, just use the value we have in store for the previous one.
-            // As we are visiting in `assignment_order`, ie. reverse postorder, `rhs` should
+            // As we are visiting in `assignment_order`, i.e. reverse postorder, `rhs` should
             // have been visited before.
             Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                 if let Some(rhs) = place.as_local()

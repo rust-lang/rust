@@ -7,6 +7,7 @@ use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
+use rustc_data_structures::sync::DynSend;
 use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
@@ -118,6 +119,14 @@ where
     }
 }
 
+impl<'a> Diagnostic<'a, ()>
+    for Box<dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level) -> Diag<'b, ()> + DynSend + 'static>
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        self(dcx, level)
+    }
+}
+
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[rustc_diagnostic_item = "Subdiagnostic"]
@@ -127,24 +136,6 @@ where
 {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
-}
-
-/// Trait implemented by lint types. This should not be implemented manually. Instead, use
-/// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "LintDiagnostic"]
-pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate a lint with the information from this type.
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-}
-
-pub trait LintDiagnosticBox<'a, G: EmissionGuarantee> {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>);
-}
-
-impl<'a, G: EmissionGuarantee, D: LintDiagnostic<'a, G>> LintDiagnosticBox<'a, G> for D {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>) {
-        self.decorate_lint(diag);
-    }
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -1144,7 +1135,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     } }
 
     /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
-    /// [rustc_macros::Subdiagnostic]). Performs eager translation of any translatable messages
+    /// [rustc_macros::Subdiagnostic]). Performs eager formatting of any messages
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
     pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
@@ -1154,12 +1145,12 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
 
     /// Fluent variables are not namespaced from each other, so when
     /// `Diagnostic`s and `Subdiagnostic`s use the same variable name,
-    /// one value will clobber the other. Eagerly translating the
+    /// one value will clobber the other. Eagerly formatting the
     /// diagnostic uses the variables defined right then, before the
     /// clobbering occurs.
-    pub fn eagerly_translate(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
+    pub fn eagerly_format(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
         let args = self.args.iter();
-        self.dcx.eagerly_translate(msg.into(), args)
+        self.dcx.eagerly_format(msg.into(), args)
     }
 
     with_fn! { with_span,

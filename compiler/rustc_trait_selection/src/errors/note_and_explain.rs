@@ -169,7 +169,7 @@ impl Subdiagnostic for RegionExplanation<'_> {
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             "{$pref_kind ->
                 *[should_not_happen] [{$pref_kind}]
                 [ref_valid_for] ...the reference is valid for

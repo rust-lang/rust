@@ -467,6 +467,7 @@ macro_rules! common_visitor_and_walkers {
             RangeEnd,
             RangeSyntax,
             Recovered,
+            RestrictionKind,
             Safety,
             StaticItem,
             StrLit,
@@ -595,6 +596,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_poly_trait_ref(PolyTraitRef);
                 fn visit_precise_capturing_arg(PreciseCapturingArg);
                 fn visit_qself(QSelf);
+                fn visit_impl_restriction(ImplRestriction);
                 fn visit_trait_ref(TraitRef);
                 fn visit_ty_pat(TyPat);
                 fn visit_ty(Ty);
@@ -1117,6 +1119,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_poly_trait_ref(PolyTraitRef);
             pub fn walk_precise_capturing_arg(PreciseCapturingArg);
             pub fn walk_qself(QSelf);
+            pub fn walk_impl_restriction(ImplRestriction);
             pub fn walk_trait_ref(TraitRef);
             pub fn walk_ty_pat(TyPat);
             pub fn walk_ty(Ty);

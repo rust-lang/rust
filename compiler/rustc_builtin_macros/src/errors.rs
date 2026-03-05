@@ -3,26 +3,26 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
     Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.intel_syntax`, Intel syntax is the default")]
 pub(crate) struct AvoidIntelSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.att_syntax`, prefer using `options(att_syntax)` instead")]
 pub(crate) struct AvoidAttSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("include macro expected single expression in source")]
 pub(crate) struct IncompleteInclude;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot test inner items")]
 pub(crate) struct UnnameableTestItems;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("duplicated attribute")]
 pub(crate) struct DuplicateMacroAttribute;
 
@@ -764,7 +764,7 @@ pub(crate) struct FormatUnusedArg {
 impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             "{$named ->
                 [true] named argument
                 *[false] argument
@@ -947,8 +947,8 @@ pub(crate) struct AsmClobberNoReg {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = dcx.eagerly_translate_to_string(msg!("clobber_abi"), [].into_iter());
-        let lbl2 = dcx.eagerly_translate_to_string(msg!("generic outputs"), [].into_iter());
+        let lbl1 = dcx.eagerly_format_to_string(msg!("clobber_abi"), [].into_iter());
+        let lbl2 = dcx.eagerly_format_to_string(msg!("generic outputs"), [].into_iter());
         Diag::new(
             dcx,
             level,

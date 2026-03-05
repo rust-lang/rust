@@ -4,7 +4,7 @@
 // ignore-tidy-linelength
 //@ run-pass
 
-#![feature(core_intrinsics, generic_assert)]
+#![feature(generic_assert)]
 
 use std::fmt::{Debug, Formatter};
 
