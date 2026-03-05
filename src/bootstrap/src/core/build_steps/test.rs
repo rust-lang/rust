@@ -741,7 +741,13 @@ impl Step for Miri {
 
         // Run it again for mir-opt-level 4 to catch some miscompilations.
         if builder.config.test_args().is_empty() {
-            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4 -Cdebug-assertions=yes");
+            cargo.env(
+                "MIRIFLAGS",
+                format!(
+                    "{} -O -Zmir-opt-level=4 -Cdebug-assertions=yes",
+                    env::var("MIRIFLAGS").unwrap_or_default()
+                ),
+            );
             // Optimizations can change backtraces
             cargo.env("MIRI_SKIP_UI_CHECKS", "1");
             // `MIRI_SKIP_UI_CHECKS` and `RUSTC_BLESS` are incompatible
@@ -3108,6 +3114,17 @@ impl Step for Crate {
             // does not set this directly, but relies on the rustc wrapper to set it, and we are not using
             // the wrapper -- hence we have to set it ourselves.
             cargo.rustflag("-Zforce-unstable-if-unmarked");
+            // Miri is told to invoke the libtest runner and bootstrap sets unstable flags
+            // for that runner. That only works when RUSTC_BOOTSTRAP is set. Bootstrap sets
+            // that flag but Miri by default does not forward the host environment to the test.
+            // Here we set up MIRIFLAGS to forward that env var.
+            cargo.env(
+                "MIRIFLAGS",
+                format!(
+                    "{} -Zmiri-env-forward=RUSTC_BOOTSTRAP",
+                    env::var("MIRIFLAGS").unwrap_or_default()
+                ),
+            );
             cargo
         } else {
             // Also prepare a sysroot for the target.
