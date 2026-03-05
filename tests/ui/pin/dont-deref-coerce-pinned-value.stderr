@@ -1,0 +1,27 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-deref-coerce-pinned-value.rs:9:14
+   |
+LL | fn wrong_pin<T>(data: &mut T, callback: impl FnOnce(Pin<&mut T>)) {
+   |              - expected this type parameter
+LL |     callback(pin!(data));
+   |              ^^^^^^^^^^
+   |              |
+   |              expected type parameter `T`, found `&mut T`
+   |              arguments to this function are incorrect
+   |
+   = note: expected type parameter `_`
+           found mutable reference `&mut _`
+help: the return type of this call is `&mut T` due to the type of the argument passed
+  --> $DIR/dont-deref-coerce-pinned-value.rs:9:14
+   |
+LL |     callback(pin!(data));
+   |              ^^^^^^^^^^ this argument influences the return type of `unreachable_type_constraint`
+note: function defined here
+  --> $DIR/dont-deref-coerce-pinned-value.rs:9:14
+   |
+LL |     callback(pin!(data));
+   |              ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

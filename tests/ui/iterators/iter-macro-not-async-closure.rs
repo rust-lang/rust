@@ -27,6 +27,8 @@ fn main() {
     //~^^ ERROR AsyncFnOnce()` is not satisfied
     //~^^^ ERROR AsyncFnOnce()` is not satisfied
     //~^^^^ ERROR AsyncFnOnce()` is not satisfied
+    //~^^^^^ ERROR AsyncFnOnce()` is not satisfied
+    //~^^^^^^ ERROR AsyncFnOnce()` is not satisfied
     x.poll(&mut Context::from_waker(Waker::noop()));
     //~^ ERROR AsyncFnOnce()` is not satisfied
 }
