@@ -354,7 +354,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             "a `match` with a single arm can preserve the drop order up to Edition 2021"
         ));
         diag.multipart_suggestion_with_style(

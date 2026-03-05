@@ -815,14 +815,6 @@ pub(crate) struct UselessAssignment<'a> {
 pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
-#[diag("{$repr}")]
-pub(crate) struct ObjectLifetimeErr {
-    #[primary_span]
-    pub span: Span,
-    pub repr: String,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum AttrApplication {
     #[diag("attribute should be applied to an enum", code = E0517)]
     Enum {

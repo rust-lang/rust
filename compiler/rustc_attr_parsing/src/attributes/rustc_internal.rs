@@ -588,15 +588,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationPa
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
-pub(crate) struct RustcObjectLifetimeDefaultParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcObjectLifetimeDefaultParser {
-    const PATH: &[Symbol] = &[sym::rustc_object_lifetime_default];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcObjectLifetimeDefault;
-}
-
 pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {

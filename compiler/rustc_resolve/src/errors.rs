@@ -1366,7 +1366,7 @@ impl Subdiagnostic for FoundItemConfigureOut {
             ItemWas::BehindFeature { feature, span } => {
                 let key = "feature".into();
                 let value = feature.into_diag_arg(&mut None);
-                let msg = diag.dcx.eagerly_translate_to_string(
+                let msg = diag.dcx.eagerly_format_to_string(
                     msg!("the item is gated behind the `{$feature}` feature"),
                     [(&key, &value)].into_iter(),
                 );

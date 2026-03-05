@@ -4,7 +4,6 @@
 //@ ignore-emscripten no no_std executables
 //@ ignore-wasm different `main` convention
 
-#![feature(lang_items)]
 #![no_std]
 #![no_main]
 

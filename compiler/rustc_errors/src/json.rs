@@ -30,8 +30,8 @@ use crate::emitter::{
     ColorConfig, Destination, Emitter, HumanReadableErrorType, OutputTheme, TimingEvent,
     should_show_source_code,
 };
+use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::timings::{TimingRecord, TimingSection};
-use crate::translation::{format_diag_message, format_diag_messages};
 use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
 
 #[cfg(test)]
@@ -299,9 +299,9 @@ impl Diagnostic {
     /// Converts from `rustc_errors::DiagInner` to `Diagnostic`.
     fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let sugg_to_diag = |sugg: &CodeSuggestion| {
-            let translated_message = format_diag_message(&sugg.msg, &diag.args);
+            let formatted_message = format_diag_message(&sugg.msg, &diag.args);
             Diagnostic {
-                message: translated_message.to_string(),
+                message: formatted_message.to_string(),
                 code: None,
                 level: "help",
                 spans: DiagnosticSpan::from_suggestion(sugg, &diag.args, je),
@@ -330,7 +330,7 @@ impl Diagnostic {
             }
         }
 
-        let translated_message = format_diag_messages(&diag.messages, &diag.args);
+        let formatted_message = format_diag_messages(&diag.messages, &diag.args);
 
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
@@ -380,7 +380,7 @@ impl Diagnostic {
         let buf = String::from_utf8(buf).unwrap();
 
         Diagnostic {
-            message: translated_message.to_string(),
+            message: formatted_message.to_string(),
             code,
             level,
             spans,
@@ -390,9 +390,9 @@ impl Diagnostic {
     }
 
     fn from_sub_diagnostic(subdiag: &Subdiag, args: &DiagArgMap, je: &JsonEmitter) -> Diagnostic {
-        let translated_message = format_diag_messages(&subdiag.messages, args);
+        let formatted_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
-            message: translated_message.to_string(),
+            message: formatted_message.to_string(),
             code: None,
             level: subdiag.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&subdiag.span, args, je),

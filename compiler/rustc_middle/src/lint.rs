@@ -492,8 +492,8 @@ pub fn lint_level(
 /// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 ///
-/// This function will replace `lint_level` once all `LintDiagnostic` items have been migrated to
-/// `Diagnostic`.
+/// This function will replace `lint_level` once all its callers have been replaced
+/// with `diag_lint_level`.
 #[track_caller]
 pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
     sess: &'a Session,

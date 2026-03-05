@@ -1,75 +1,100 @@
-/// Xous passes a pointer to the parameter block as the second argument.
-/// This is used for passing flags such as environment variables. The
-/// format of the argument block is:
-///
-/// #[repr(C)]
-/// struct BlockHeader {
-///     /// Magic number that identifies this block. Must be printable ASCII.
-///     magic: [u8; 4],
-///
-///     /// The size of the data block. Does not include this header. May be 0.
-///     size: u32,
-///
-///     /// The contents of this block. Varies depending on the block type.
-///     data: [u8; 0],
-/// }
-///
-/// There is a BlockHeader at the start that has magic `AppP`, and the data
-/// that follows is the number of blocks present:
-///
-/// #[repr(C)]
-/// struct ApplicationParameters {
-///     magic: b"AppP",
-///     size: 4u32,
-///
-///     /// The size of the entire application slice, in bytes, including all headers
-///     length: u32,
-///
-///     /// Number of application parameters present. Must be at least 1 (this block)
-///     entries: (parameter_count as u32).to_bytes_le(),
-/// }
-///
-/// #[repr(C)]
-/// struct EnvironmentBlock {
-///     magic: b"EnvB",
-///
-///     /// Total number of bytes, excluding this header
-///     size: 2+data.len(),
-///
-///     /// The number of environment variables
-///     count: u16,
-///
-///     /// Environment variable iteration
-///     data: [u8; 0],
-/// }
-///
-/// Environment variables are present in an `EnvB` block. The `data` section is
-/// a sequence of bytes of the form:
-///
-///      (u16 /* key_len */; [0u8; key_len as usize] /* key */,
-///       u16 /* val_len */ [0u8; val_len as usize])
-///
-/// #[repr(C)]
-/// struct ArgumentList {
-///     magic: b"ArgL",
-///
-///     /// Total number of bytes, excluding this header
-///     size: 2+data.len(),
-///
-///     /// The number of arguments variables
-///     count: u16,
-///
-///     /// Argument variable iteration
-///     data: [u8; 0],
-/// }
-///
-/// Args are just an array of strings that represent command line arguments.
-/// They are a sequence of the form:
-///
-///      (u16 /* val_len */ [0u8; val_len as usize])
-use core::slice;
+//! Xous passes a pointer to the parameter block as the second argument.
+//! This is used for passing flags such as environment variables. The
+//! format of the argument block is:
+//!
+//! #[repr(C)]
+//! struct BlockHeader {
+//!     /// Magic number that identifies this block. Must be printable ASCII.
+//!     magic: [u8; 4],
+//!
+//!     /// The size of the data block. Does not include this header. May be 0.
+//!     size: u32,
+//!
+//!     /// The contents of this block. Varies depending on the block type.
+//!     data: [u8; 0],
+//! }
+//!
+//! There is a BlockHeader at the start that has magic `AppP`, and the data
+//! that follows is the number of blocks present:
+//!
+//! #[repr(C)]
+//! struct ApplicationParameters {
+//!     magic: b"AppP",
+//!     size: 4u32,
+//!
+//!     /// The size of the entire application slice, in bytes, including all headers
+//!     length: u32,
+//!
+//!     /// Number of application parameters present. Must be at least 1 (this block)
+//!     entries: (parameter_count as u32).to_bytes_le(),
+//! }
+//!
+//! #[repr(C)]
+//! struct EnvironmentBlock {
+//!     magic: b"EnvB",
+//!
+//!     /// Total number of bytes, excluding this header
+//!     size: 2+data.len(),
+//!
+//!     /// The number of environment variables
+//!     count: u16,
+//!
+//!     /// Environment variable iteration
+//!     data: [u8; 0],
+//! }
+//!
+//! Environment variables are present in an `EnvB` block. The `data` section is
+//! a sequence of bytes of the form:
+//!
+//!      (u16 /* key_len */; [0u8; key_len as usize] /* key */,
+//!       u16 /* val_len */ [0u8; val_len as usize])
+//!
+//! #[repr(C)]
+//! struct ArgumentList {
+//!     magic: b"ArgL",
+//!
+//!     /// Total number of bytes, excluding this header
+//!     size: 2+data.len(),
+//!
+//!     /// The number of arguments variables
+//!     count: u16,
+//!
+//!     /// Argument variable iteration
+//!     data: [u8; 0],
+//! }
+//!
+//! Args are just an array of strings that represent command line arguments.
+//! They are a sequence of the form:
+//!
+//!      (u16 /* val_len */ [0u8; val_len as usize])
 
 use crate::ffi::OsString;
+use crate::slice;
+
+#[cfg(test)]
+mod tests;
+
+static mut PARAMS: *mut u8 = crate::ptr::null_mut();
+
+/// Remember the location of the parameter block.
+///
+/// # Safety
+/// * This function may only be called before `main`.
+/// * `data` must either be `null` or point to a valid parameter block.
+pub(super) unsafe fn set(data: *mut u8) {
+    // SAFETY:
+    // Since this function is called before `main`, there cannot be any threads
+    // already running. Thus this write cannot race, and all threads will observe
+    // this write and the parameter block initialization since it happens-before
+    // their creation.
+    unsafe { PARAMS = data };
+}
+
+pub(crate) fn get() -> Option<ApplicationParameters> {
+    // SAFETY: See above.
+    let data = unsafe { PARAMS };
+    unsafe { ApplicationParameters::new_from_ptr(data) }
+}
 
 /// Magic number indicating we have an environment block
 const ENV_MAGIC: [u8; 4] = *b"EnvB";
@@ -80,9 +105,6 @@ const ARGS_MAGIC: [u8; 4] = *b"ArgL";
 /// Magic number indicating the loader has passed application parameters
 const PARAMS_MAGIC: [u8; 4] = *b"AppP";
 
-#[cfg(test)]
-mod tests;
-
 pub(crate) struct ApplicationParameters {
     data: &'static [u8],
     offset: usize,
@@ -90,7 +112,7 @@ pub(crate) struct ApplicationParameters {
 }
 
 impl ApplicationParameters {
-    pub(crate) unsafe fn new_from_ptr(data: *const u8) -> Option<ApplicationParameters> {
+    unsafe fn new_from_ptr(data: *const u8) -> Option<ApplicationParameters> {
         if data.is_null() {
             return None;
         }
