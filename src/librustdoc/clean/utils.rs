@@ -1,6 +1,3 @@
-#[cfg(bootstrap)]
-pub use std::assert_matches::debug_assert_matches;
-#[cfg(not(bootstrap))]
 pub use std::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;

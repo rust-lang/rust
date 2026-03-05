@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
 #![feature(control_flow_into_value)]
 #![feature(exact_div)]
