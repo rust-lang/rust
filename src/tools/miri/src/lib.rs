@@ -1,5 +1,3 @@
-#![cfg_attr(bootstrap, feature(if_let_guard))]
-#![cfg_attr(bootstrap, feature(cfg_select))]
 #![feature(abort_unwind)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
