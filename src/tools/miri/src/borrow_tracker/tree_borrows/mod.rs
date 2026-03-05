@@ -201,7 +201,6 @@ impl<'tcx> NewPermission {
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the provenance that should be used henceforth.
-    #[allow(unused, deprecated)] // TODO: remove
     fn tb_reborrow(
         &mut self,
         place: &MPlaceTy<'tcx>, // parent tag extracted from here
