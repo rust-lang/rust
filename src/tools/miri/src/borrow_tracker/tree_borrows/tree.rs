@@ -48,10 +48,9 @@ pub enum AccessType {
 impl AccessType {
     /// Returns true iff location has been accessed (all states except [AccessType::None]).
     pub fn accessed(&self) -> bool {
-        *self != AccessType::None
+        *self != Self::None
     }
 
-    #[cfg(test)]
     /// Returns true iff location has been accessed through a write.
     pub fn is_write(&self) -> bool {
         use AccessType::*;
@@ -61,7 +60,6 @@ impl AccessType {
         }
     }
 
-    #[cfg(test)]
     /// Returns true iff location has been accessed through a read.
     pub fn is_read(&self) -> bool {
         use AccessType::*;
@@ -72,11 +70,12 @@ impl AccessType {
     }
 
     pub fn new(read: bool, write: bool) -> Self {
+        use AccessType::*;
         match (read, write) {
-            (true, true) => Self::ReadWrite,
-            (false, true) => Self::Write,
-            (true, false) => Self::Read,
-            (false, false) => Self::None,
+            (true, true) => ReadWrite,
+            (false, true) => Write,
+            (true, false) => Read,
+            (false, false) => None,
         }
     }
 }
