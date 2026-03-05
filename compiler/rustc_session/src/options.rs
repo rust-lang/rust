@@ -825,6 +825,8 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
+    pub(crate) const parse_instrument_mcount_opts: &str =
+        "a comma separated list of options: `call`,`no-call`,`record`,`no-record`.";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1565,6 +1567,32 @@ pub mod parse {
             }
         }
         true
+    }
+
+    pub(crate) fn parse_instrument_mcount_opts(
+        slot: &mut InstrumentMcountOpts,
+        v: Option<&str>,
+    ) -> bool {
+        for option in v.into_iter().flat_map(|v| v.split(',')) {
+            match option {
+                "no-call" => {
+                    slot.no_call = true;
+                }
+                "call" => {
+                    slot.no_call = false;
+                }
+                "no-record" => {
+                    slot.record = false;
+                }
+                "record" => {
+                    slot.record = true;
+                }
+                _ => {
+                    return false;
+                }
+            }
+        }
+        v.is_some()
     }
 
     pub(crate) fn parse_instrument_xray(
@@ -2404,6 +2432,12 @@ options! {
         "insert function instrument code for fentry-based tracing (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
+    instrument_mcount_opts: InstrumentMcountOpts = (InstrumentMcountOpts::default(), parse_instrument_mcount_opts, [TRACKED],
+        "mcount instrumentation configuration options (default: `call,no-record`).
+         Optional extra settings:
+         `=call` or `=no-call`
+         `=no-record` or `=record`
+         Multiple options can be combined with commas."),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)
          Optional extra settings:
