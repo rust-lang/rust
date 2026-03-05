@@ -106,8 +106,8 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Alias(_, data) => {
-                stack.extend(data.args.iter().rev());
+            ty::Alias(alias) => {
+                stack.extend(alias.args.iter().rev());
             }
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());

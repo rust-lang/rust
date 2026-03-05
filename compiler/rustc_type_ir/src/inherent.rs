@@ -185,7 +185,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
@@ -390,7 +390,7 @@ pub trait Term<I: Interner<Term = Self>>:
     fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
+                ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {

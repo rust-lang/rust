@@ -181,11 +181,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
             match t.kind() {
                 // If we are only looking for "constrained" regions, we have to ignore the
                 // inputs to a projection as they may not appear in the normalized form.
-                ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) => {
+                ty::Alias(ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                    ..
+                }) => {
                     return;
                 }
                 // All free alias types should've been expanded beforehand.
-                ty::Alias(ty::Free, _) => bug!("unexpected free alias type"),
+                ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => {
+                    bug!("unexpected free alias type")
+                }
                 _ => {}
             }
         }

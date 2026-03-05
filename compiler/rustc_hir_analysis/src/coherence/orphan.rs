@@ -179,20 +179,20 @@ pub(crate) fn orphan_check_impl(
                 NonlocalImpl::DisallowOther,
             ),
 
-            ty::Alias(kind, _) => {
+            ty::Alias(ty::AliasTy { kind, .. }) => {
                 let problematic_kind = match kind {
                     // trait Id { type This: ?Sized; }
                     // impl<T: ?Sized> Id for T {
                     //     type This = T;
                     // }
                     // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
-                    ty::Projection => "associated type",
+                    ty::Projection { .. } => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Free => "type alias",
+                    ty::Free { .. } => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
-                    ty::Opaque => "opaque type",
+                    ty::Opaque { .. } => "opaque type",
                     // ```
                     // struct S<T>(T);
                     // impl<T: ?Sized> S<T> {
@@ -201,7 +201,7 @@ pub(crate) fn orphan_check_impl(
                     // impl<T: ?Sized> AutoTrait for S<T>::This {}
                     // ```
                     // FIXME(inherent_associated_types): The example code above currently leads to a cycle
-                    ty::Inherent => "associated type",
+                    ty::Inherent { .. } => "associated type",
                 };
                 (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
             }
@@ -436,7 +436,7 @@ fn emit_orphan_check_error<'tcx>(
                             });
                         }
                     }
-                    ty::Alias(ty::Opaque, ..) => {
+                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                         diag.subdiagnostic(errors::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {

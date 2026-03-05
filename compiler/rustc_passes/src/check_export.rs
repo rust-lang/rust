@@ -308,7 +308,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::UnsafeBinder(_)
-            | ty::Alias(ty::AliasTyKind::Opaque, _) => {
+            | ty::Alias(ty::AliasTy { kind: ty::AliasTyKind::Opaque { .. }, .. }) => {
                 return ControlFlow::Break(ty);
             }
 

@@ -471,7 +471,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
         debug_assert_matches!(
-            (kind, tcx.def_kind(alias_ty.kind.def_id())),
+            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
             (ty::Opaque { .. }, DefKind::OpaqueTy)
                 | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
                 | (ty::Free { .. }, DefKind::TyAlias)
@@ -516,11 +516,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(
-            tcx,
-            ty::Opaque { def_id },
-            AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args),
-        )
+        Ty::new_alias(tcx, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -776,7 +772,10 @@ impl<'tcx> Ty<'tcx> {
         item_def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Projection, AliasTy::new_from_args(tcx, item_def_id, args))
+        Ty::new_alias(
+            tcx,
+            AliasTy::new_from_args(tcx, ty::Projection { def_id: item_def_id }, args),
+        )
     }
 
     #[inline]
@@ -785,7 +784,7 @@ impl<'tcx> Ty<'tcx> {
         item_def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Projection, AliasTy::new(tcx, item_def_id, args))
+        Ty::new_alias(tcx, AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args))
     }
 
     #[inline]
@@ -961,12 +960,8 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_canonical_bound(tcx, var)
     }
 
-    fn new_alias(
-        interner: TyCtxt<'tcx>,
-        kind: ty::AliasTyKind,
-        alias_ty: ty::AliasTy<'tcx>,
-    ) -> Self {
-        Ty::new_alias(interner, kind, alias_ty)
+    fn new_alias(interner: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Self {
+        Ty::new_alias(interner, alias_ty)
     }
 
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
@@ -1590,7 +1585,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_impl_trait(self) -> bool {
-        matches!(self.kind(), Alias(ty::Opaque, ..))
+        matches!(self.kind(), Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
     }
 
     #[inline]

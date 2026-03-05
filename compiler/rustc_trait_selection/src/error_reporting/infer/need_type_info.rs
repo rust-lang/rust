@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 GenericArgKind::Type(ty) => {
                     if matches!(
                         ty.kind(),
-                        ty::Alias(ty::Opaque, ..)
+                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
                             | ty::Closure(..)
                             | ty::CoroutineClosure(..)
                             | ty::Coroutine(..)

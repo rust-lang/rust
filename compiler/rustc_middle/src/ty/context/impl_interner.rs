@@ -187,6 +187,21 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
+    fn alias_ty_kind_from_def_id(self, def_id: DefId) -> ty::AliasTyKind<'tcx> {
+        match self.def_kind(def_id) {
+            DefKind::AssocTy
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) =>
+            {
+                ty::Inherent { def_id }
+            }
+            DefKind::AssocTy => ty::Projection { def_id },
+
+            DefKind::OpaqueTy => ty::Opaque { def_id },
+            DefKind::TyAlias => ty::Free { def_id },
+            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+        }
+    }
+
     fn alias_term_kind(self, alias: ty::AliasTerm<'tcx>) -> ty::AliasTermKind {
         match self.def_kind(alias.def_id) {
             DefKind::AssocTy => {
@@ -571,7 +586,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             //
             // Impls which apply to an alias after normalization are handled by
             // `assemble_candidates_after_normalizing_self_ty`.
-            ty::Alias(_, _) | ty::Placeholder(..) | ty::Error(_) => (),
+            ty::Alias(_) | ty::Placeholder(..) | ty::Error(_) => (),
 
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of coroutines to instead directly recurse
