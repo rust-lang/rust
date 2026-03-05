@@ -9,8 +9,6 @@ help: either remove the unused type parameter `Q`, or make use of it
 LL - unsafe impl<Q: Trait> Send for Inner {}
 LL + unsafe impl Send for Inner {}
    |
-LL | unsafe impl<Q: Trait> Send for Inner<Q> {}
-   |                                     +++
 
 error: aborting due to 1 previous error
 
