@@ -49,7 +49,7 @@ pub fn __crc32d(crc: u32, data: u64) -> u32 {
 #[inline(always)]
 #[target_feature(enable = "jsconv")]
 #[cfg_attr(test, assert_instr(fjcvtzs))]
-#[stable(feature = "stdarch_aarch64_jscvt", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "stdarch_aarch64_jscvt", since = "1.95.0")]
 pub fn __jcvt(a: f64) -> i32 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
