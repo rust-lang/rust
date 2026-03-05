@@ -9,12 +9,14 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
@@ -23,7 +25,6 @@ use rustc_hir::{
 };
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
     to_string(&cx, |s| s.print_node(cx.hir_node(hir_id)))

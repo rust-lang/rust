@@ -42,10 +42,12 @@ use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::span_bug;
@@ -53,7 +55,6 @@ use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs, Resolve
 use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
