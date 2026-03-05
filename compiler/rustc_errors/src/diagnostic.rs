@@ -138,14 +138,6 @@ where
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 }
 
-/// Trait implemented by lint types. This should not be implemented manually. Instead, use
-/// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "LintDiagnostic"]
-pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate a lint with the information from this type.
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-}
-
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub(crate) struct DiagLocation {
     file: Cow<'static, str>,
@@ -1143,7 +1135,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     } }
 
     /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
-    /// [rustc_macros::Subdiagnostic]). Performs eager translation of any translatable messages
+    /// [rustc_macros::Subdiagnostic]). Performs eager formatting of any messages
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
     pub fn subdiagnostic(&mut self, subdiagnostic: impl Subdiagnostic) -> &mut Self {
@@ -1153,12 +1145,12 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
 
     /// Fluent variables are not namespaced from each other, so when
     /// `Diagnostic`s and `Subdiagnostic`s use the same variable name,
-    /// one value will clobber the other. Eagerly translating the
+    /// one value will clobber the other. Eagerly formatting the
     /// diagnostic uses the variables defined right then, before the
     /// clobbering occurs.
-    pub fn eagerly_translate(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
+    pub fn eagerly_format(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
         let args = self.args.iter();
-        self.dcx.eagerly_translate(msg.into(), args)
+        self.dcx.eagerly_format(msg.into(), args)
     }
 
     with_fn! { with_span,

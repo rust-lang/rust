@@ -3629,7 +3629,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 
             Explicit { lifetime_name, suggestions, optional_alternative } => {
                 diag.arg("lifetime_name", lifetime_name);
-                let msg = diag.eagerly_translate(msg!("consistently use `{$lifetime_name}`"));
+                let msg = diag.eagerly_format(msg!("consistently use `{$lifetime_name}`"));
                 diag.remove_arg("lifetime_name");
                 diag.multipart_suggestion_with_style(
                     msg,

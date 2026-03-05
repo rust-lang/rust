@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::format_diag_message;
+use rustc_errors::formatting::format_diag_message;
 use rustc_errors::{Applicability, DiagCtxt, DiagInner};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;

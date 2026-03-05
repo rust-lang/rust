@@ -534,7 +534,7 @@ trigger_files = [
 [autolabel."A-translation"]
 trigger_files = [
     "compiler/rustc_error_messages",
-    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_errors/src/formatting.rs",
     "compiler/rustc_macros/src/diagnostics"
 ]
 
@@ -1012,6 +1012,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."compiler/rustc_parse"]
+message = """
+The parser was modified, potentially altering the grammar of (stable) Rust
+which would be a breaking change.
+"""
+cc = ["@fmease"]
+
 [mentions."library/core/src/mem/type_info.rs"]
 message = """
 The reflection data structures are tied exactly to the implementation
@@ -1180,8 +1187,8 @@ cc = ["@Muscraft"]
 message = "`rustc_errors::emitter` was changed"
 cc = ["@Muscraft"]
 
-[mentions."compiler/rustc_errors/src/translation.rs"]
-message = "`rustc_errors::translation` was changed"
+[mentions."compiler/rustc_errors/src/formatting.rs"]
+message = "`rustc_errors::formatting` was changed"
 cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
@@ -1371,7 +1378,7 @@ cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
-cc = ["@BoxyUwU", "@jieyouxu", "@tshepang"]
+cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
