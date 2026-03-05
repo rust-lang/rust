@@ -3,10 +3,17 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
+
+fn default_track_feature(_: Symbol) {}
+
+/// Recording used features in the dependency graph so incremental can
+/// replay used features when needed.
+pub static TRACK_FEATURE: AtomicRef<fn(Symbol)> = AtomicRef::new(&(default_track_feature as _));
 
 #[derive(PartialEq)]
 enum FeatureStatus {
@@ -103,7 +110,12 @@ impl Features {
 
     /// Is the given feature enabled (via `#[feature(...)]`)?
     pub fn enabled(&self, feature: Symbol) -> bool {
-        self.enabled_features.contains(&feature)
+        if self.enabled_features.contains(&feature) {
+            TRACK_FEATURE(feature);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -124,7 +136,7 @@ macro_rules! declare_features {
         impl Features {
             $(
                 pub fn $feature(&self) -> bool {
-                    self.enabled_features.contains(&sym::$feature)
+                    self.enabled(sym::$feature)
                 }
             )*
 

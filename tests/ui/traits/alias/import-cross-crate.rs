@@ -1,7 +1,6 @@
 //@ run-pass
 //@ aux-build:greeter.rs
 
-#![feature(trait_alias)]
 
 extern crate greeter;
 

@@ -148,6 +148,24 @@ fn test_pipe_setfl_getfl() {
         errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
         libc::O_RDONLY
     );
+
+    // Test if ignored flags are indeed ignored.
+    errno_check(unsafe {
+        libc::fcntl(
+            fds[0],
+            libc::F_SETFL,
+            libc::O_RDWR
+                | libc::O_CREAT
+                | libc::O_EXCL
+                | libc::O_NOCTTY
+                | libc::O_TRUNC
+                | libc::O_NONBLOCK,
+        )
+    });
+    assert_eq!(
+        errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
+        libc::O_NONBLOCK | libc::O_RDONLY
+    );
 }
 
 /// Test the behaviour of F_SETFL/F_GETFL when a fd is blocking.

@@ -58,6 +58,15 @@ impl Linker {
                 }
             }
         });
+
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            codegen_backend.print_pass_timings()
+        }
+
+        if sess.print_llvm_stats() {
+            codegen_backend.print_statistics()
+        }
+
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()

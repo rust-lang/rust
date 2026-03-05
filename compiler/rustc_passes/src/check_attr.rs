@@ -184,8 +184,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
                 }
-                Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
-                    self.check_object_lifetime_default(hir_id);
+                Attribute::Parsed(AttributeKind::RustcDumpObjectLifetimeDefaults) => {
+                    self.check_dump_object_lifetime_defaults(hir_id);
                 }
                 &Attribute::Parsed(AttributeKind::RustcPubTransparent(attr_span)) => {
                     self.check_rustc_pub_transparent(attr_span, span, attrs)
@@ -319,9 +319,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpVariances
+                    | AttributeKind::RustcDumpVariancesOfOpaques
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcEffectiveVisibility
@@ -356,7 +359,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
-                    | AttributeKind::RustcOutlives
                     | AttributeKind::RustcParenSugar(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
@@ -377,8 +379,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
-                    | AttributeKind::RustcVariance
-                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal
@@ -782,8 +782,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Debugging aid for `object_lifetime_default` query.
-    fn check_object_lifetime_default(&self, hir_id: HirId) {
+    /// Debugging aid for the `object_lifetime_default` query.
+    fn check_dump_object_lifetime_defaults(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(owner_id) = hir_id.as_owner()
             && let Some(generics) = tcx.hir_get_generics(owner_id.def_id)
@@ -797,7 +797,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
-                tcx.dcx().emit_err(errors::ObjectLifetimeErr { span: p.span, repr });
+                tcx.dcx().span_err(p.span, repr);
             }
         }
     }

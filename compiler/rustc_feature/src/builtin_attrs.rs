@@ -1330,7 +1330,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         safety: AttributeSafety::Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
-        gate: Gated{
+        gate: Gated {
             feature: sym::rustc_attrs,
             message: "use of an internal attribute",
             check: Features::rustc_attrs,
@@ -1422,7 +1422,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(TEST, rustc_effective_visibility, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     rustc_attr!(
-        TEST, rustc_outlives, Normal, template!(Word),
+        TEST, rustc_dump_inferred_outlives, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1442,11 +1442,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(
-        TEST, rustc_variance, Normal, template!(Word),
+        TEST, rustc_dump_variances, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_variance_of_opaques, Normal, template!(Word),
+        TEST, rustc_dump_variances_of_opaques, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1534,7 +1534,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_object_lifetime_default, Normal, template!(Word),
+        TEST, rustc_dump_object_lifetime_defaults, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
