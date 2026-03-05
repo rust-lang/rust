@@ -595,7 +595,7 @@ pub enum Rvalue {
     /// CoerceShared trait. See [`Rvalue::Reborrow`] for a more detailed explanation.
     ///
     /// [`Rvalue::Reborrow`]: rustc_middle::mir::Rvalue::Reborrow
-    Reborrow(Mutability, Place),
+    Reborrow(Mutability, Place, Ty),
 }
 
 impl Rvalue {
@@ -610,10 +610,7 @@ impl Rvalue {
                 let place_ty = place.ty(locals)?;
                 Ok(Ty::new_ref(reg.clone(), place_ty, bk.to_mutable_lossy()))
             }
-            Rvalue::Reborrow(_mutability, place) => {
-                // FIXME(@aapoalas): when mutability is Not, the type should change.
-                place.ty(locals)
-            }
+            Rvalue::Reborrow(_, _, target) => Ok(*target),
             Rvalue::AddressOf(mutability, place) => {
                 let place_ty = place.ty(locals)?;
                 Ok(Ty::new_ptr(place_ty, mutability.to_mutable_lossy()))

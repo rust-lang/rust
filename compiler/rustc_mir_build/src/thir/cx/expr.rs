@@ -285,7 +285,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::GenericReborrow(mutability) => {
                 let expr = self.thir.exprs.push(expr);
-                let kind = ExprKind::Reborrow { source: expr, mutability };
+                let kind =
+                    ExprKind::Reborrow { source: expr, mutability, target: adjustment.target };
 
                 kind
             }

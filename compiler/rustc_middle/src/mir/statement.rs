@@ -761,7 +761,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
-            | Rvalue::Reborrow(_, _)
+            | Rvalue::Reborrow(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
             | Rvalue::Cast(
@@ -806,10 +806,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::Reborrow(_mutability, ref place) => {
-                // FIXME(@aapoalas): when mutability is Not, type changes.
-                place.ty(local_decls, tcx).ty
-            }
+            Rvalue::Reborrow(_, _, target) => target,
             Rvalue::RawPtr(kind, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())

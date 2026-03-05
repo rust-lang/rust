@@ -270,7 +270,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
 
-            Reborrow(_, place) => {
+            Reborrow(_, place, _) => {
                 let op = self.eval_place_to_op(place, Some(dest.layout))?;
                 self.copy_op(&op, &dest)?;
             }

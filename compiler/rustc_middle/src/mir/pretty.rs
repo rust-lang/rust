@@ -1251,7 +1251,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
 
-            Reborrow(mutability, ref place) => {
+            Reborrow(mutability, ref place, _) => {
                 if mutability.is_mut() {
                     write!(fmt, "reborrow {place:?}")
                 } else {

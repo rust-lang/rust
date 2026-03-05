@@ -255,7 +255,7 @@ where
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
 
-        Rvalue::Reborrow(_, place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
+        Rvalue::Reborrow(_, place, _) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
         Rvalue::WrapUnsafeBinder(op, _) => in_operand::<Q, _>(cx, in_local, op),
 

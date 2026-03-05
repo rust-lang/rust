@@ -556,6 +556,7 @@ pub enum ExprKind<'tcx> {
     Reborrow {
         source: ExprId,
         mutability: Mutability,
+        target: Ty<'tcx>,
     },
 }
 

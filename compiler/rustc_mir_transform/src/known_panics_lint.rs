@@ -418,7 +418,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             // Do not try creating references (#67862)
-            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) | Rvalue::Reborrow(_, place) => {
+            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) | Rvalue::Reborrow(_, place, _) => {
                 trace!("skipping RawPtr | Ref | Reborrow for {:?}", place);
 
                 // This may be creating mutable references or immutable references to cells.
@@ -550,7 +550,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 self.eval_operand(operand)?.into()
             }
 
-            CopyForDeref(place) | Reborrow(_, place) => self.eval_place(place)?.into(),
+            CopyForDeref(place) | Reborrow(_, place, _) => self.eval_place(place)?.into(),
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
                 let left = self.eval_operand(left)?;

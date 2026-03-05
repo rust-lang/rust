@@ -273,7 +273,7 @@ macro_rules! make_mir_visitor {
                         let pcx = PlaceContext { is_mut: matches!(kind, BorrowKind::Mut { .. }) };
                         self.visit_place(place, pcx, location);
                     }
-                    Rvalue::Reborrow(mutability, place) => {
+                    Rvalue::Reborrow(mutability, place, _) => {
                         let pcx = PlaceContext { is_mut: matches!(mutability, Mutability::Mut) };
                         self.visit_place(place, pcx, location);
                     }

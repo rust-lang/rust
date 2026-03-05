@@ -1040,7 +1040,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
-            Rvalue::Reborrow(_mutability, place) => {
+            Rvalue::Reborrow(_mutability, place, _target) => {
                 // FIXME(@aapoalas): when mutability is Not, the type should change.
                 let mut operand = Operand::Copy(place);
                 let val = self.simplify_operand(&mut operand, location);

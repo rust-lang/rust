@@ -514,7 +514,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Generic shared reborrowing is not (necessarily) a simple memcpy, but currently the
             // coherence check places such restrictions on the CoerceShared trait as to guarantee
             // that it is.
-            mir::Rvalue::Reborrow(_, place) => self.codegen_operand(bx, &mir::Operand::Copy(place)),
+            mir::Rvalue::Reborrow(_, place, _) => {
+                self.codegen_operand(bx, &mir::Operand::Copy(place))
+            }
 
             mir::Rvalue::RawPtr(kind, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
