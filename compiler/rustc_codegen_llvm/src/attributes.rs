@@ -229,6 +229,13 @@ fn instrument_function_attr<'ll>(
         if instrument_entry && sess.opts.unstable_opts.instrument_fentry {
             attrs.push(llvm::CreateAttrStringValue(cx.llcx, "fentry-call", "true"));
         }
+
+        if sess.opts.unstable_opts.instrument_mcount_opts.no_call {
+            attrs.push(llvm::CreateAttrString(cx.llcx, "mnop-mcount"));
+        }
+        if sess.opts.unstable_opts.instrument_mcount_opts.record {
+            attrs.push(llvm::CreateAttrString(cx.llcx, "mrecord-mcount"));
+        }
     }
     if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
         // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.

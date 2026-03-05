@@ -247,6 +247,15 @@ pub enum AnnotateMoves {
     Enabled(Option<u64>),
 }
 
+/// Settings for `-Z instrument-mcount-opts` flag.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentMcountOpts {
+    // Insert a nop which could be replaced by an mcount call.
+    pub no_call: bool,
+    // Record the location of the call instrument in a special linker section.
+    pub record: bool,
+}
+
 /// Settings for `-Z instrument-xray` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InstrumentXRay {
@@ -3057,10 +3066,11 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        InliningThreshold, InstrumentCoverage, InstrumentMcountOpts, InstrumentXRay,
+        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3122,6 +3132,7 @@ pub(crate) mod dep_tracking {
         TlsModel,
         InstrumentCoverage,
         CoverageOptions,
+        InstrumentMcountOpts,
         InstrumentXRay,
         CrateType,
         MergeFunctions,
