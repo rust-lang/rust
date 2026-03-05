@@ -167,7 +167,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
-    query.cache.iter(&mut |key, value, dep_node| {
+    query.cache.for_each(&mut |key, value, dep_node| {
         if (query.will_cache_on_disk_for_key_fn)(tcx, key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
@@ -189,7 +189,7 @@ pub(crate) fn query_key_hash_verify<'tcx, C: QueryCache>(
 
     let cache = &query.cache;
     let mut map = UnordMap::with_capacity(cache.len());
-    cache.iter(&mut |key, _, _| {
+    cache.for_each(&mut |key, _, _| {
         let node = DepNode::construct(tcx, query.dep_kind, key);
         if let Some(other_key) = map.insert(node, *key) {
             bug!(
