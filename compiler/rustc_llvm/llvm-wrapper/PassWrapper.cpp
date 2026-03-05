@@ -840,11 +840,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         }
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
-        MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
-        NeedThinLTOBufferPasses = false;
-        break;
       case LLVMRustOptStage::PreLinkFatLTO:
-        MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel);
+        MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
         NeedThinLTOBufferPasses = false;
         break;
       case LLVMRustOptStage::ThinLTO:
