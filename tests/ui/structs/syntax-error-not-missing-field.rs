@@ -47,4 +47,21 @@ fn enum_expr_missing_separator() {
     let e = Bar::Baz { a: make_a() b: 2 }; //~ ERROR found `b`
 }
 
+// Should error but not then ICE due to lack of type checking
+fn regression_test_for_issue_153388_a() {
+    struct TheStruct;
+    struct MyStruct {
+        value: i32,
+        s: TheStruct,
+    }
+    static A: MyStruct = MyStruct { ,s: TheStruct }; //~ ERROR expected identifier, found `,`
+}
+
+fn regression_test_for_issue_153388_b() {
+    struct MyStruct {
+        value: i32,
+    }
+    static A: MyStruct = MyStruct {,}; //~ ERROR expected identifier, found `,`
+}
+
 fn main() {}
