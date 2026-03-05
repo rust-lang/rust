@@ -1,7 +1,7 @@
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::get_iterator_item_ty;
 use hir::ExprKind;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 
 use super::{ITER_FILTER_IS_OK, ITER_FILTER_IS_SOME};
 
@@ -144,7 +144,7 @@ fn expression_type(
 ) -> Option<FilterType> {
     if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         || parent_is_map(cx, expr)
-        || span_contains_comment(cx.sess().source_map(), filter_span.with_hi(expr.span.hi()))
+        || span_contains_comment(cx, filter_span.with_hi(expr.span.hi()))
     {
         return None;
     }

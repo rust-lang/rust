@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 then,
                 r#else: Some(else_expr),
             }) = higher::If::hir(e)
-            && !span_contains_comment(cx.tcx.sess.source_map(), e.span)
+            && !span_contains_comment(cx, e.span)
         {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;

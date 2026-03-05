@@ -5,7 +5,7 @@ use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, QPath};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_span::sym;
 
@@ -101,7 +101,7 @@ fn handle(
         && local_id == binding_id
     {
         // Machine applicable only if there are no comments present
-        let mut applicability = if span_contains_comment(cx.sess().source_map(), expr.span) {
+        let mut applicability = if span_contains_comment(cx, expr.span) {
             Applicability::MaybeIncorrect
         } else {
             Applicability::MachineApplicable

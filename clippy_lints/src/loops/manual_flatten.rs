@@ -3,7 +3,7 @@ use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet_with_applicability};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, is_refutable, peel_blocks_with_stmt, span_contains_comment};
 use rustc_errors::Applicability;
@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
             format!("unnecessary `if let` since only the `{if_let_type}` variant of the iterator element is used");
 
         // Prepare the help message
-        let mut applicability = if span_contains_comment(cx.sess().source_map(), body.span) {
+        let mut applicability = if span_contains_comment(cx, body.span) {
             Applicability::MaybeIncorrect
         } else {
             Applicability::MachineApplicable
