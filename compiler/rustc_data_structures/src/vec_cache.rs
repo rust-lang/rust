@@ -341,7 +341,7 @@ where
         }
     }
 
-    pub fn iter(&self, f: &mut dyn FnMut(&K, &V, I)) {
+    pub fn for_each(&self, f: &mut dyn FnMut(&K, &V, I)) {
         for idx in 0..self.len.load(Ordering::Acquire) {
             let key = SlotIndex::from_index(idx as u32);
             match unsafe { key.get(&self.present) } {
