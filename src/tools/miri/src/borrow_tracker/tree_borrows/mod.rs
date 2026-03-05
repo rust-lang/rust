@@ -341,7 +341,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         for (perm_range, perm) in inside_perms.iter_all() {
             let access = perm.access();
-            if matches!(access, AccessType::Read | AccessType::ReadWrite) {
+            if access.is_read() {
                 // Some reborrows incur a read access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {
@@ -379,7 +379,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // checks wether this function has the `rustc_no_writable` flag, thus disabling the strong mode for this function
             let def_id = this.frame().instance().def_id();
             let disable_writes = find_attr!(this.tcx, def_id, AttributeKind::RustcNoWritable);
-            if matches!(access, AccessType::Write | AccessType::ReadWrite) && !disable_writes {
+            if access.is_write() && !disable_writes {
                 // Some reborrows incur a write access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {

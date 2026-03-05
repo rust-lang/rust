@@ -51,6 +51,26 @@ impl AccessType {
         *self != AccessType::None
     }
 
+    #[cfg(test)]
+    /// Returns true iff location has been accessed through a write.
+    pub fn is_write(&self) -> bool {
+        use AccessType::*;
+        match self {
+            Write | ReadWrite => true,
+            None | Read => false,
+        }
+    }
+
+    #[cfg(test)]
+    /// Returns true iff location has been accessed through a read.
+    pub fn is_read(&self) -> bool {
+        use AccessType::*;
+        match self {
+            Read | ReadWrite => true,
+            None | Write => false,
+        }
+    }
+
     pub fn new(read: bool, write: bool) -> Self {
         match (read, write) {
             (true, true) => Self::ReadWrite,
@@ -88,10 +108,10 @@ pub(super) struct LocationState {
 impl LocationState {
     /// Constructs a new initial state. It has not yet been subjected
     /// to any foreign access.
-    /// `access` defines the [AccessType]. If it is [AccessType::None], the permission is not allowed to be `Unique`.
+    /// `access` defines the [AccessType]. If it isn't accessed, the permission is not allowed to be `Unique`.
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
     pub fn new(permission: Permission, sifa: IdempotentForeignAccess, access: AccessType) -> Self {
-        if access == AccessType::None {
+        if !access.accessed() {
             assert!(permission.is_initial() || permission.is_disabled());
         }
 

@@ -711,11 +711,8 @@ mod spurious {
                     for (x_retag_perm, y_current_perm) in
                         <(LocationState, LocationState)>::exhaustive()
                     {
-                        // Spurious reads can be done for any kind of accessed location, except writes.
-                        precondition!(
-                            x_retag_perm.access.accessed()
-                                && x_retag_perm.access != AccessType::Write
-                        );
+                        // Spurious reads can be done for read-accessed location.
+                        precondition!(x_retag_perm.access.is_read());
                         // And `x` just got retagged, so it must be initial.
                         precondition!(x_retag_perm.permission.is_initial());
                         // As stated earlier, `x` is always protected in the patterns we consider here.
@@ -860,10 +857,7 @@ mod spurious {
                         <(LocationState, LocationState)>::exhaustive()
                     {
                         // Spurious writes only work for locations with write access.
-                        precondition!(matches!(
-                            x_retag_perm.access,
-                            AccessType::Write | AccessType::ReadWrite
-                        ));
+                        precondition!(x_retag_perm.access.is_write());
                         // And `x` just got retagged, so it must be an initial mutable variable.
                         precondition!(x_retag_perm.permission.is_reserved_frz());
                         // As stated earlier, `x` is always protected in the patterns we consider here.
