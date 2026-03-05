@@ -541,6 +541,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoMirInlineParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoMirInline;
 }
 
+pub(crate) struct RustcNoWritableParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNoWritableParser {
+    const PATH: &[Symbol] = &[sym::rustc_no_writable];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoWritable;
+}
+
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
@@ -712,15 +721,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
-}
-
-pub(crate) struct RustcNoWritableParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcNoWritableParser {
-    const PATH: &[Symbol] = &[sym::rustc_no_writable];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoWritable;
 }
 
 pub(crate) struct RustcOffloadKernelParser;
