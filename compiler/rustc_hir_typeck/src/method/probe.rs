@@ -5,13 +5,14 @@ use std::ops::Deref;
 use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
@@ -389,6 +390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
+        #[derive(Diagnostic)]
+        #[diag("type annotations needed")]
+        struct MissingTypeAnnot;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -471,13 +476,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
-                self.tcx.node_span_lint(
+                self.tcx.emit_node_span_lint(
                     lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
-                    |lint| {
-                        lint.primary_message("type annotations needed");
-                    },
+                    MissingTypeAnnot,
                 );
             } else {
                 // Ended up encountering a type variable when doing autoderef,
@@ -1823,47 +1826,68 @@ impl<'tcx> Pick<'tcx> {
         span: Span,
         scope_expr_id: HirId,
     ) {
+        struct ItemMaybeBeAddedToStd<'a, 'tcx> {
+            this: &'a Pick<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            span: Span,
+        }
+
+        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for ItemMaybeBeAddedToStd<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { this, tcx, span } = self;
+                let def_kind = this.item.as_def_kind();
+                let mut lint = Diag::new(
+                    dcx,
+                    level,
+                    format!(
+                        "{} {} with this name may be added to the standard library in the future",
+                        tcx.def_kind_descr_article(def_kind, this.item.def_id),
+                        tcx.def_kind_descr(def_kind, this.item.def_id),
+                    ),
+                );
+
+                match (this.item.kind, this.item.container) {
+                    (ty::AssocKind::Fn { .. }, _) => {
+                        // FIXME: This should be a `span_suggestion` instead of `help`
+                        // However `this.span` only
+                        // highlights the method name, so we can't use it. Also consider reusing
+                        // the code from `report_method_error()`.
+                        lint.help(format!(
+                            "call with fully qualified syntax `{}(...)` to keep using the current \
+                                 method",
+                            tcx.def_path_str(this.item.def_id),
+                        ));
+                    }
+                    (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
+                        let def_id = this.item.container_id(tcx);
+                        lint.span_suggestion(
+                            span,
+                            "use the fully qualified path to the associated const",
+                            format!("<{} as {}>::{}", this.self_ty, tcx.def_path_str(def_id), name),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
+                tcx.disabled_nightly_features(
+                    &mut lint,
+                    this.unstable_candidates.iter().map(|(candidate, feature)| {
+                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                    }),
+                );
+                lint
+            }
+        }
+
         if self.unstable_candidates.is_empty() {
             return;
         }
-        let def_kind = self.item.as_def_kind();
-        tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
-            lint.primary_message(format!(
-                "{} {} with this name may be added to the standard library in the future",
-                tcx.def_kind_descr_article(def_kind, self.item.def_id),
-                tcx.def_kind_descr(def_kind, self.item.def_id),
-            ));
-
-            match (self.item.kind, self.item.container) {
-                (ty::AssocKind::Fn { .. }, _) => {
-                    // FIXME: This should be a `span_suggestion` instead of `help`
-                    // However `self.span` only
-                    // highlights the method name, so we can't use it. Also consider reusing
-                    // the code from `report_method_error()`.
-                    lint.help(format!(
-                        "call with fully qualified syntax `{}(...)` to keep using the current \
-                             method",
-                        tcx.def_path_str(self.item.def_id),
-                    ));
-                }
-                (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
-                    let def_id = self.item.container_id(tcx);
-                    lint.span_suggestion(
-                        span,
-                        "use the fully qualified path to the associated const",
-                        format!("<{} as {}>::{}", self.self_ty, tcx.def_path_str(def_id), name),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                _ => {}
-            }
-            tcx.disabled_nightly_features(
-                lint,
-                self.unstable_candidates.iter().map(|(candidate, feature)| {
-                    (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                }),
-            );
-        });
+        tcx.emit_node_span_lint(
+            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            scope_expr_id,
+            span,
+            ItemMaybeBeAddedToStd { this: self, tcx, span },
+        );
     }
 }
 

@@ -35,7 +35,7 @@ use std::iter;
 use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
-use rustc_errors::{Applicability, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, HirId, find_attr};
@@ -964,6 +964,198 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         capture_clause: hir::CaptureBy,
         span: Span,
     ) {
+        struct MigrationLint<'a, 'b, 'tcx> {
+            closure_def_id: LocalDefId,
+            this: &'a FnCtxt<'b, 'tcx>,
+            body_id: hir::BodyId,
+            need_migrations: Vec<NeededMigration>,
+            migration_message: String,
+        }
+
+        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for MigrationLint<'b, 'c, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { closure_def_id, this, body_id, need_migrations, migration_message } =
+                    self;
+                let mut lint = Diag::new(dcx, level, migration_message);
+
+                let (migration_string, migrated_variables_concat) =
+                    migration_suggestion_for_2229(this.tcx, &need_migrations);
+
+                let closure_hir_id = this.tcx.local_def_id_to_hir_id(closure_def_id);
+                let closure_head_span = this.tcx.def_span(closure_def_id);
+
+                for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
+                    // Labels all the usage of the captured variable and why they are responsible
+                    // for migration being needed
+                    for lint_note in diagnostics_info.iter() {
+                        match &lint_note.captures_info {
+                            UpvarMigrationInfo::CapturingPrecise {
+                                source_expr: Some(capture_expr_id),
+                                var_name: captured_name,
+                            } => {
+                                let cause_span = this.tcx.hir_span(*capture_expr_id);
+                                lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
+                                    this.tcx.hir_name(*var_hir_id),
+                                    captured_name,
+                                ));
+                            }
+                            UpvarMigrationInfo::CapturingNothing { use_span } => {
+                                lint.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
+                                    this.tcx.hir_name(*var_hir_id),
+                                ));
+                            }
+
+                            _ => {}
+                        }
+
+                        // Add a label pointing to where a captured variable affected by drop order
+                        // is dropped
+                        if lint_note.reason.drop_order {
+                            let drop_location_span = drop_location_span(this.tcx, closure_hir_id);
+
+                            match &lint_note.captures_info {
+                                UpvarMigrationInfo::CapturingPrecise {
+                                    var_name: captured_name,
+                                    ..
+                                } => {
+                                    lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
+                                        this.tcx.hir_name(*var_hir_id),
+                                        captured_name,
+                                    ));
+                                }
+                                UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
+                                    lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
+                                        v = this.tcx.hir_name(*var_hir_id),
+                                    ));
+                                }
+                            }
+                        }
+
+                        // Add a label explaining why a closure no longer implements a trait
+                        for &missing_trait in &lint_note.reason.auto_traits {
+                            // not capturing something anymore cannot cause a trait to fail to be implemented:
+                            match &lint_note.captures_info {
+                                UpvarMigrationInfo::CapturingPrecise {
+                                    var_name: captured_name,
+                                    ..
+                                } => {
+                                    let var_name = this.tcx.hir_name(*var_hir_id);
+                                    lint.span_label(
+                                        closure_head_span,
+                                        format!(
+                                            "\
+                                    in Rust 2018, this closure implements {missing_trait} \
+                                    as `{var_name}` implements {missing_trait}, but in Rust 2021, \
+                                    this closure will no longer implement {missing_trait} \
+                                    because `{var_name}` is not fully captured \
+                                    and `{captured_name}` does not implement {missing_trait}"
+                                        ),
+                                    );
+                                }
+
+                                // Cannot happen: if we don't capture a variable, we impl strictly more traits
+                                UpvarMigrationInfo::CapturingNothing { use_span } => span_bug!(
+                                    *use_span,
+                                    "missing trait from not capturing something"
+                                ),
+                            }
+                        }
+                    }
+                }
+
+                let diagnostic_msg = format!(
+                    "add a dummy let to cause {migrated_variables_concat} to be fully captured"
+                );
+
+                let closure_span = this.tcx.hir_span_with_body(closure_hir_id);
+                let mut closure_body_span = {
+                    // If the body was entirely expanded from a macro
+                    // invocation, i.e. the body is not contained inside the
+                    // closure span, then we walk up the expansion until we
+                    // find the span before the expansion.
+                    let s = this.tcx.hir_span_with_body(body_id.hir_id);
+                    s.find_ancestor_inside(closure_span).unwrap_or(s)
+                };
+
+                if let Ok(mut s) = this.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                    if s.starts_with('$') {
+                        // Looks like a macro fragment. Try to find the real block.
+                        if let hir::Node::Expr(&hir::Expr {
+                            kind: hir::ExprKind::Block(block, ..),
+                            ..
+                        }) = this.tcx.hir_node(body_id.hir_id)
+                        {
+                            // If the body is a block (with `{..}`), we use the span of that block.
+                            // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
+                            // Since we know it's a block, we know we can insert the `let _ = ..` without
+                            // breaking the macro syntax.
+                            if let Ok(snippet) =
+                                this.tcx.sess.source_map().span_to_snippet(block.span)
+                            {
+                                closure_body_span = block.span;
+                                s = snippet;
+                            }
+                        }
+                    }
+
+                    let mut lines = s.lines();
+                    let line1 = lines.next().unwrap_or_default();
+
+                    if line1.trim_end() == "{" {
+                        // This is a multi-line closure with just a `{` on the first line,
+                        // so we put the `let` on its own line.
+                        // We take the indentation from the next non-empty line.
+                        let line2 = lines.find(|line| !line.is_empty()).unwrap_or_default();
+                        let indent =
+                            line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
+                        lint.span_suggestion(
+                            closure_body_span
+                                .with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len()))
+                                .shrink_to_lo(),
+                            diagnostic_msg,
+                            format!("\n{indent}{migration_string};"),
+                            Applicability::MachineApplicable,
+                        );
+                    } else if line1.starts_with('{') {
+                        // This is a closure with its body wrapped in
+                        // braces, but with more than just the opening
+                        // brace on the first line. We put the `let`
+                        // directly after the `{`.
+                        lint.span_suggestion(
+                            closure_body_span
+                                .with_lo(closure_body_span.lo() + BytePos(1))
+                                .shrink_to_lo(),
+                            diagnostic_msg,
+                            format!(" {migration_string};"),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        // This is a closure without braces around the body.
+                        // We add braces to add the `let` before the body.
+                        lint.multipart_suggestion(
+                            diagnostic_msg,
+                            vec![
+                                (
+                                    closure_body_span.shrink_to_lo(),
+                                    format!("{{ {migration_string}; "),
+                                ),
+                                (closure_body_span.shrink_to_hi(), " }".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                } else {
+                    lint.span_suggestion(
+                        closure_span,
+                        diagnostic_msg,
+                        migration_string,
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                lint
+            }
+        }
+
         let (need_migrations, reasons) = self.compute_2229_migrations(
             closure_def_id,
             span,
@@ -972,157 +1164,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if !need_migrations.is_empty() {
-            let (migration_string, migrated_variables_concat) =
-                migration_suggestion_for_2229(self.tcx, &need_migrations);
-
-            let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
-            let closure_head_span = self.tcx.def_span(closure_def_id);
-            self.tcx.node_span_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
-                closure_hir_id,
-                closure_head_span,
-                |lint| {
-                    lint.primary_message(reasons.migration_message());
-
-                    for NeededMigration { var_hir_id, diagnostics_info } in &need_migrations {
-                        // Labels all the usage of the captured variable and why they are responsible
-                        // for migration being needed
-                        for lint_note in diagnostics_info.iter() {
-                            match &lint_note.captures_info {
-                                UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
-                                    let cause_span = self.tcx.hir_span(*capture_expr_id);
-                                    lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
-                                        self.tcx.hir_name(*var_hir_id),
-                                        captured_name,
-                                    ));
-                                }
-                                UpvarMigrationInfo::CapturingNothing { use_span } => {
-                                    lint.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
-                                        self.tcx.hir_name(*var_hir_id),
-                                    ));
-                                }
-
-                                _ => { }
-                            }
-
-                            // Add a label pointing to where a captured variable affected by drop order
-                            // is dropped
-                            if lint_note.reason.drop_order {
-                                let drop_location_span = drop_location_span(self.tcx, closure_hir_id);
-
-                                match &lint_note.captures_info {
-                                    UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
-                                        lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
-                                            self.tcx.hir_name(*var_hir_id),
-                                            captured_name,
-                                        ));
-                                    }
-                                    UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
-                                        lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
-                                            v = self.tcx.hir_name(*var_hir_id),
-                                        ));
-                                    }
-                                }
-                            }
-
-                            // Add a label explaining why a closure no longer implements a trait
-                            for &missing_trait in &lint_note.reason.auto_traits {
-                                // not capturing something anymore cannot cause a trait to fail to be implemented:
-                                match &lint_note.captures_info {
-                                    UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
-                                        let var_name = self.tcx.hir_name(*var_hir_id);
-                                        lint.span_label(closure_head_span, format!("\
-                                        in Rust 2018, this closure implements {missing_trait} \
-                                        as `{var_name}` implements {missing_trait}, but in Rust 2021, \
-                                        this closure will no longer implement {missing_trait} \
-                                        because `{var_name}` is not fully captured \
-                                        and `{captured_name}` does not implement {missing_trait}"));
-                                    }
-
-                                    // Cannot happen: if we don't capture a variable, we impl strictly more traits
-                                    UpvarMigrationInfo::CapturingNothing { use_span } => span_bug!(*use_span, "missing trait from not capturing something"),
-                                }
-                            }
-                        }
-                    }
-
-                    let diagnostic_msg = format!(
-                        "add a dummy let to cause {migrated_variables_concat} to be fully captured"
-                    );
-
-                    let closure_span = self.tcx.hir_span_with_body(closure_hir_id);
-                    let mut closure_body_span = {
-                        // If the body was entirely expanded from a macro
-                        // invocation, i.e. the body is not contained inside the
-                        // closure span, then we walk up the expansion until we
-                        // find the span before the expansion.
-                        let s = self.tcx.hir_span_with_body(body_id.hir_id);
-                        s.find_ancestor_inside(closure_span).unwrap_or(s)
-                    };
-
-                    if let Ok(mut s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
-                        if s.starts_with('$') {
-                            // Looks like a macro fragment. Try to find the real block.
-                            if let hir::Node::Expr(&hir::Expr {
-                                kind: hir::ExprKind::Block(block, ..), ..
-                            }) = self.tcx.hir_node(body_id.hir_id) {
-                                // If the body is a block (with `{..}`), we use the span of that block.
-                                // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
-                                // Since we know it's a block, we know we can insert the `let _ = ..` without
-                                // breaking the macro syntax.
-                                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(block.span) {
-                                    closure_body_span = block.span;
-                                    s = snippet;
-                                }
-                            }
-                        }
-
-                        let mut lines = s.lines();
-                        let line1 = lines.next().unwrap_or_default();
-
-                        if line1.trim_end() == "{" {
-                            // This is a multi-line closure with just a `{` on the first line,
-                            // so we put the `let` on its own line.
-                            // We take the indentation from the next non-empty line.
-                            let line2 = lines.find(|line| !line.is_empty()).unwrap_or_default();
-                            let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
-                            lint.span_suggestion(
-                                closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
-                                diagnostic_msg,
-                                format!("\n{indent}{migration_string};"),
-                                Applicability::MachineApplicable,
-                            );
-                        } else if line1.starts_with('{') {
-                            // This is a closure with its body wrapped in
-                            // braces, but with more than just the opening
-                            // brace on the first line. We put the `let`
-                            // directly after the `{`.
-                            lint.span_suggestion(
-                                closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
-                                diagnostic_msg,
-                                format!(" {migration_string};"),
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            // This is a closure without braces around the body.
-                            // We add braces to add the `let` before the body.
-                            lint.multipart_suggestion(
-                                diagnostic_msg,
-                                vec![
-                                    (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
-                                    (closure_body_span.shrink_to_hi(), " }".to_string()),
-                                ],
-                                Applicability::MachineApplicable
-                            );
-                        }
-                    } else {
-                        lint.span_suggestion(
-                            closure_span,
-                            diagnostic_msg,
-                            migration_string,
-                            Applicability::HasPlaceholders
-                        );
-                    }
+                self.tcx.local_def_id_to_hir_id(closure_def_id),
+                self.tcx.def_span(closure_def_id),
+                MigrationLint {
+                    this: self,
+                    migration_message: reasons.migration_message(),
+                    closure_def_id,
+                    body_id,
+                    need_migrations,
                 },
             );
         }
