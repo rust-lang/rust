@@ -26,5 +26,10 @@ fn baz() -> Option<i32> {
         7
     };
 
+    let _ = overflowed_expr(x, try {
+        foo()?;
+        bar()?;
+    });
+
     return None;
 }
