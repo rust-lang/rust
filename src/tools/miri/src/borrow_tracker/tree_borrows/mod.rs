@@ -1,4 +1,6 @@
 use rustc_abi::Size;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
@@ -199,6 +201,7 @@ impl<'tcx> NewPermission {
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Returns the provenance that should be used henceforth.
+    #[allow(unused, deprecated)] // TODO: remove
     fn tb_reborrow(
         &mut self,
         place: &MPlaceTy<'tcx>, // parent tag extracted from here
@@ -373,7 +376,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            if matches!(access, AccessType::Write | AccessType::ReadWrite) {
+            // checks wether this function has the `rustc_no_writable` flag, thus disabling the strong mode for this function
+            let def_id = this.frame().instance().def_id();
+            let disable_writes = find_attr!(this.tcx, def_id, AttributeKind::RustcNoWritable);
+            if matches!(access, AccessType::Write | AccessType::ReadWrite) && !disable_writes {
                 // Some reborrows incur a write access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {
