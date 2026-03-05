@@ -33,7 +33,6 @@
 //! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
 //!   true. The query key identifier is available for use within the block, as is `tcx`.
 //! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
-//! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
 //! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
 //! - `anon`: Make the query anonymous in the dependency graph (no dep node is created).
 //! - `eval_always`: Always evaluate the query, ignoring its dependencies and cached results.
@@ -118,7 +117,6 @@ use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
-use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -339,22 +337,16 @@ rustc_queries! {
         feedable
     }
 
-    /// Returns the *hidden type* of the opaque type given by `DefId` unless a cycle occurred.
-    ///
-    /// This is a specialized instance of [`Self::type_of`] that detects query cycles.
-    /// Unless `CyclePlaceholder` needs to be handled separately, call [`Self::type_of`] instead.
-    /// This is used to improve the error message in cases where revealing the hidden type
-    /// for auto-trait leakage cycles.
+    /// Returns the *hidden type* of the opaque type given by `DefId`.
     ///
     /// # Panics
     ///
     /// This query will panic if the given definition is not an opaque type.
-    query type_of_opaque(key: DefId) -> Result<ty::EarlyBinder<'tcx, Ty<'tcx>>, CyclePlaceholder> {
+    query type_of_opaque(key: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         desc {
             "computing type of opaque `{path}`",
             path = tcx.def_path_str(key),
         }
-        cycle_stash
     }
     query type_of_opaque_hir_typeck(key: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         desc {

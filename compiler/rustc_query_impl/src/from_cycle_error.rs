@@ -12,7 +12,6 @@ use rustc_middle::dep_graph::DepKind;
 use rustc_middle::queries::QueryVTables;
 use rustc_middle::query::CycleError;
 use rustc_middle::query::erase::erase_val;
-use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -30,9 +29,6 @@ pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
 
     vtables.erase_and_anonymize_regions_ty.value_from_cycle_error =
         |tcx, _, guar| erase_val(Ty::new_error(tcx, guar));
-
-    vtables.type_of_opaque.value_from_cycle_error =
-        |_, _, guar| erase_val(Err(CyclePlaceholder(guar)));
 
     vtables.fn_sig.value_from_cycle_error = |tcx, cycle, guar| erase_val(fn_sig(tcx, cycle, guar));
 
