@@ -223,11 +223,10 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 /// Use [push_outlives_components] instead.
 pub fn compute_alias_components_recursive<I: Interner>(
     cx: I,
-    kind: ty::AliasTyKind,
     alias_ty: ty::AliasTy<I>,
     out: &mut SmallVec<[Component<I>; 4]>,
 ) {
-    let opt_variances = cx.opt_alias_variances(kind, alias_ty.def_id);
+    let opt_variances = cx.opt_alias_variances(alias_ty.kind, alias_ty.kind.def_id());
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 
