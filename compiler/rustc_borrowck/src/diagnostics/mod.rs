@@ -1310,7 +1310,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     {
                         let mut span: MultiSpan = spans.clone().into();
                         err.arg("ty", param_ty.to_string());
-                        let msg = err.dcx.eagerly_translate_to_string(
+                        let msg = err.dcx.eagerly_format_to_string(
                             msg!("`{$ty}` is made to be an `FnOnce` closure here"),
                             err.args.iter(),
                         );

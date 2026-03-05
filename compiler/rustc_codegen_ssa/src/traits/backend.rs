@@ -10,14 +10,13 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, OutputFilenames, PrintRequest};
+use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
 use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
-use crate::back::write::TargetMachineFactoryFn;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
@@ -119,6 +118,10 @@ pub trait CodegenBackend {
         outputs: &OutputFilenames,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
 
+    fn print_pass_timings(&self) {}
+
+    fn print_statistics(&self) {}
+
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(
         &self,
@@ -157,26 +160,6 @@ pub trait ExtraBackendMethods:
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-
-    fn target_machine_factory(
-        &self,
-        sess: &Session,
-        opt_level: config::OptLevel,
-        target_features: &[String],
-    ) -> TargetMachineFactoryFn<Self>;
-
-    fn spawn_named_thread<F, T>(
-        _time_trace: bool,
-        name: String,
-        f: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::Builder::new().name(name).spawn(f)
-    }
 
     /// Returns `true` if this backend can be safely called from multiple threads.
     ///

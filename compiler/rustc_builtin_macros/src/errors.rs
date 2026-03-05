@@ -764,7 +764,7 @@ pub(crate) struct FormatUnusedArg {
 impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             "{$named ->
                 [true] named argument
                 *[false] argument
@@ -947,8 +947,8 @@ pub(crate) struct AsmClobberNoReg {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = dcx.eagerly_translate_to_string(msg!("clobber_abi"), [].into_iter());
-        let lbl2 = dcx.eagerly_translate_to_string(msg!("generic outputs"), [].into_iter());
+        let lbl1 = dcx.eagerly_format_to_string(msg!("clobber_abi"), [].into_iter());
+        let lbl2 = dcx.eagerly_format_to_string(msg!("generic outputs"), [].into_iter());
         Diag::new(
             dcx,
             level,

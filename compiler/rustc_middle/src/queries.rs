@@ -32,7 +32,6 @@
 //! - `arena_cache`: Use an arena for in-memory caching of the query result.
 //! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
 //!   true. The query key identifier is available for use within the block, as is `tcx`.
-//! - `cycle_fatal`: If a dependency cycle is detected, abort compilation with a fatal error.
 //! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
 //! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
 //! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
@@ -149,11 +148,11 @@ use crate::{dep_graph, mir, thir};
 // which memoizes and does dep-graph tracking, wrapping around the actual
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
-// The result type of each query must implement `Clone`, and additionally
-// `ty::query::from_cycle_error::FromCycleError`, which produces an appropriate
+// The result type of each query must implement `Clone`. Additionally
+// `ty::query::from_cycle_error::FromCycleError` can be implemented which produces an appropriate
 // placeholder (error) value if the query resulted in a query cycle.
-// Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise a fatal error on query cycles instead.
+// Queries without a `FromCycleError` implementation will raise a fatal error on query
+// cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -587,24 +586,28 @@ rustc_queries! {
     }
 
     query is_panic_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_panic_runtime" }
         separate_provide_extern
     }
 
     /// Checks whether a type is representable or infinitely sized
-    query representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
-        // infinitely sized types will cause a cycle
+        // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
+        // `Representability` will print a custom error about the infinite size and then abort
+        // compilation. (In the past we recovered and continued, but in practice that leads to
+        // confusing subsequent error messages about cycles that then abort.)
         cycle_delay_bug
-        // we don't want recursive representability calls to be forced with
+        // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
-        // entire cycle to be in memory for diagnostics
+        // entire cycle to be in memory for diagnostics. This means we can't
+        // use `ensure_ok()` with this query.
         anon
     }
 
-    /// An implementation detail for the `representability` query
-    query representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    /// An implementation detail for the `check_representability` query. See that query for more
+    /// details, particularly on the modifiers.
+    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
         desc { "checking if `{}` is representable", key }
         cycle_delay_bug
         anon
@@ -838,8 +841,8 @@ rustc_queries! {
     ///
     /// E.g., for `struct Foo<'a, T> { x: &'a T }`, this would return `[T: 'a]`.
     ///
-    /// **Tip**: You can use `#[rustc_outlives]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_inferred_outlives]` on an item to basically
+    /// print the result of this query for use in UI tests or for debugging purposes.
     query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
         desc { "computing inferred outlives-predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -1046,8 +1049,8 @@ rustc_queries! {
     /// The list of variances corresponds to the list of (early-bound) generic
     /// parameters of the item (including its parents).
     ///
-    /// **Tip**: You can use `#[rustc_variance]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_variances]` on an item to basically print
+    /// the result of this query for use in UI tests or for debugging purposes.
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
@@ -1318,7 +1321,6 @@ rustc_queries! {
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
     query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
-        cycle_fatal
         arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",
@@ -1329,7 +1331,6 @@ rustc_queries! {
 
     /// Obtain all the calls into other local functions
     query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
-        cycle_fatal
         desc {
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
@@ -1850,31 +1851,26 @@ rustc_queries! {
     }
 
     query is_compiler_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_compiler_builtins" }
         separate_provide_extern
     }
     query has_global_allocator(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
     query has_alloc_error_handler(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
     }
     query has_panic_handler(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate has_panic_handler" }
         separate_provide_extern
     }
     query is_profiler_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if a crate is `#![profiler_runtime]`" }
         separate_provide_extern
     }
@@ -1883,22 +1879,18 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
     query required_panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
-        cycle_fatal
         desc { "getting a crate's required panic strategy" }
         separate_provide_extern
     }
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
-        cycle_fatal
         desc { "getting a crate's configured panic-in-drop strategy" }
         separate_provide_extern
     }
     query is_no_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "getting whether a crate has `#![no_builtins]`" }
         separate_provide_extern
     }
     query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
-        cycle_fatal
         desc { "getting a crate's symbol mangling version" }
         separate_provide_extern
     }
@@ -2145,7 +2137,7 @@ rustc_queries! {
     /// Returns the *default lifetime* to be used if a trait object type were to be passed for
     /// the type parameter given by `DefId`.
     ///
-    /// **Tip**: You can use `#[rustc_object_lifetime_default]` on an item to basically
+    /// **Tip**: You can use `#[rustc_dump_object_lifetime_defaults]` on an item to basically
     /// print the result of this query for use in UI tests or for debugging purposes.
     ///
     /// # Examples

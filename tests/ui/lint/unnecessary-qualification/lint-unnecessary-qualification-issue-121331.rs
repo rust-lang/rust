@@ -2,7 +2,7 @@
 //@ edition:2021
 #![deny(unused_qualifications)]
 #![deny(unused_imports)]
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutine_trait)]
 
 use std::ops::{
     Coroutine,

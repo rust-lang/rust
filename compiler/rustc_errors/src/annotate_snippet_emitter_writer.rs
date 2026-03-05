@@ -26,7 +26,7 @@ use crate::emitter::{
     ConfusionType, Destination, MAX_SUGGESTIONS, OutputTheme, detect_confusion_type, is_different,
     normalize_whitespace, should_show_source_code,
 };
-use crate::translation::{format_diag_message, format_diag_messages};
+use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
     SuggestionStyle, TerminalUrl,

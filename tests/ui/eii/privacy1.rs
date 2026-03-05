@@ -5,7 +5,6 @@
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
 // Tests whether re-exports work.
-#![feature(extern_item_impls)]
 
 extern crate other_crate_privacy1 as codegen;
 

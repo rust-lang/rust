@@ -1,6 +1,6 @@
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
-#![rustc_variance_of_opaques]
+#![rustc_dump_variances_of_opaques]
 
 trait Foo<'i> {
     fn implicit_capture_early<'a: 'a>() -> impl Sized {}

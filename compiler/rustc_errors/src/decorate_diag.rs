@@ -7,7 +7,7 @@ use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
 
 use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 
-/// We can't implement `LintDiagnostic` for `BuiltinLintDiag`, because decorating some of its
+/// We can't implement `Diagnostic` for `BuiltinLintDiag`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
     Dynamic(Box<dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>),

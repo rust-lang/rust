@@ -6,7 +6,6 @@
 // This test captures the behavior of macro-generating-macros with fragment
 // specifiers across edition boundaries.
 
-#![feature(macro_metavar_expr)]
 #![allow(incomplete_features)]
 
 extern crate metavar_2018;

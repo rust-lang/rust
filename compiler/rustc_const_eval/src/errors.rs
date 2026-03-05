@@ -366,7 +366,7 @@ impl Subdiagnostic for FrameNote {
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));
         }
-        let msg = diag.eagerly_translate(msg!(
+        let msg = diag.eagerly_format(msg!(
             r#"{$times ->
                 [0] inside {$where_ ->
                     [closure] closure
@@ -624,7 +624,7 @@ pub trait ReportErrorExt {
             let mut diag = dcx.struct_allow(DiagMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
             self.add_args(&mut diag);
-            let s = dcx.eagerly_translate_to_string(message, diag.args.iter());
+            let s = dcx.eagerly_format_to_string(message, diag.args.iter());
             diag.cancel();
             s
         })
@@ -1086,12 +1086,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
 
         let message = if let Some(path) = self.path {
-            err.dcx.eagerly_translate_to_string(
+            err.dcx.eagerly_format_to_string(
                 msg!("constructing invalid value at {$path}"),
                 [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
-            err.dcx.eagerly_translate_to_string(msg!("constructing invalid value"), [].into_iter())
+            err.dcx.eagerly_format_to_string(msg!("constructing invalid value"), [].into_iter())
         };
 
         err.arg("front_matter", message);
@@ -1122,7 +1122,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 ("hi".into(), DiagArgValue::Str(hi.to_string().into())),
             ];
             let args = args.iter().map(|(a, b)| (a, b));
-            let message = err.dcx.eagerly_translate_to_string(msg, args);
+            let message = err.dcx.eagerly_format_to_string(msg, args);
             err.arg("in_range", message);
         }
 
@@ -1144,7 +1144,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                     ExpectedKind::EnumTag => msg!("expected a valid enum tag"),
                     ExpectedKind::Str => msg!("expected a string"),
                 };
-                let msg = err.dcx.eagerly_translate_to_string(msg, [].into_iter());
+                let msg = err.dcx.eagerly_format_to_string(msg, [].into_iter());
                 err.arg("expected", msg);
             }
             InvalidEnumTag { value }

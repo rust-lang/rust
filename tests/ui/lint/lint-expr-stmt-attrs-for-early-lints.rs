@@ -1,6 +1,5 @@
 //@ run-pass
 
-#![feature(stmt_expr_attributes)]
 #![deny(unused_parens)]
 
 // Tests that lint attributes on statements/expressions are
