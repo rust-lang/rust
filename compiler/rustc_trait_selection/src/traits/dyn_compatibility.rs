@@ -405,6 +405,11 @@ fn virtual_call_violations_for_method<'tcx>(
 ) -> Vec<MethodViolation> {
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
 
+    // Parallel cycle recovery may produce wrong-arity FnSig (#153391).
+    if sig.references_error() {
+        return vec![];
+    }
+
     // The method's first parameter must be named `self`
     if !method.is_method() {
         let sugg = if let Some(hir::Node::TraitItem(hir::TraitItem {

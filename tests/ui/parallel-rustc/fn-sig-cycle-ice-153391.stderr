@@ -1,0 +1,36 @@
+error[E0782]: expected a type, found a trait
+   |
+LL |     fn g() -> B;
+   |               ^
+   |
+help: use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn g() -> impl B;
+   |               ++++
+help: alternatively, you can return an owned trait object
+   |
+LL |     fn g() -> Box<dyn B>;
+   |               +++++++  +
+
+error[E0782]: expected a type, found a trait
+   |
+LL |     fn bar(&self, x: &A);
+   |                       ^
+   |
+help: use a new generic type parameter, constrained by `A`
+   |
+LL -     fn bar(&self, x: &A);
+LL +     fn bar<T: A>(&self, x: &T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bar(&self, x: &impl A);
+   |                       ++++
+help: alternatively, use a trait object to accept any type that implements `A`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn bar(&self, x: &dyn A);
+   |                       +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0782`.
