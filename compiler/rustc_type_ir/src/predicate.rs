@@ -14,7 +14,7 @@ use crate::inherent::*;
 use crate::lift::Lift;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Interner};
+use crate::{self as ty, AliasTyKind, Interner};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -554,13 +554,13 @@ impl AliasTermKind {
     }
 }
 
-impl From<ty::AliasTyKind> for AliasTermKind {
-    fn from(value: ty::AliasTyKind) -> Self {
+impl<I: Interner> From<ty::AliasTyKind<I>> for AliasTermKind {
+    fn from(value: ty::AliasTyKind<I>) -> Self {
         match value {
-            ty::Projection => AliasTermKind::ProjectionTy,
-            ty::Opaque => AliasTermKind::OpaqueTy,
-            ty::Free => AliasTermKind::FreeTy,
-            ty::Inherent => AliasTermKind::InherentTy,
+            ty::Projection { .. } => AliasTermKind::ProjectionTy,
+            ty::Opaque { .. } => AliasTermKind::OpaqueTy,
+            ty::Free { .. } => AliasTermKind::FreeTy,
+            ty::Inherent { .. } => AliasTermKind::InherentTy,
         }
     }
 }
@@ -624,19 +624,19 @@ impl<I: Interner> AliasTerm<I> {
     }
 
     pub fn expect_ty(self, interner: I) -> ty::AliasTy<I> {
-        match self.kind(interner) {
-            AliasTermKind::ProjectionTy
-            | AliasTermKind::InherentTy
-            | AliasTermKind::OpaqueTy
-            | AliasTermKind::FreeTy => {}
+        let kind = match self.kind(interner) {
+            AliasTermKind::ProjectionTy => AliasTyKind::Projection { def_id: self.def_id },
+            AliasTermKind::InherentTy => AliasTyKind::Inherent { def_id: self.def_id },
+            AliasTermKind::OpaqueTy => AliasTyKind::Opaque { def_id: self.def_id },
+            AliasTermKind::FreeTy => AliasTyKind::Free { def_id: self.def_id },
             AliasTermKind::InherentConst
             | AliasTermKind::FreeConst
             | AliasTermKind::UnevaluatedConst
             | AliasTermKind::ProjectionConst => {
                 panic!("Cannot turn `UnevaluatedConst` into `AliasTy`")
             }
-        }
-        ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () }
+        };
+        ty::AliasTy { kind, args: self.args, _use_alias_ty_new_instead: () }
     }
 
     pub fn kind(self, interner: I) -> AliasTermKind {
@@ -647,26 +647,38 @@ impl<I: Interner> AliasTerm<I> {
         match self.kind(interner) {
             AliasTermKind::ProjectionTy => Ty::new_alias(
                 interner,
-                ty::AliasTyKind::Projection,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+                ty::AliasTy {
+                    kind: ty::AliasTyKind::Projection { def_id: self.def_id },
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                },
             )
             .into(),
             AliasTermKind::InherentTy => Ty::new_alias(
                 interner,
-                ty::AliasTyKind::Inherent,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+                ty::AliasTy {
+                    kind: ty::AliasTyKind::Inherent { def_id: self.def_id },
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                },
             )
             .into(),
             AliasTermKind::OpaqueTy => Ty::new_alias(
                 interner,
-                ty::AliasTyKind::Opaque,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+                ty::AliasTy {
+                    kind: ty::AliasTyKind::Opaque { def_id: self.def_id },
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                },
             )
             .into(),
             AliasTermKind::FreeTy => Ty::new_alias(
                 interner,
-                ty::AliasTyKind::Free,
-                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+                ty::AliasTy {
+                    kind: ty::AliasTyKind::Free { def_id: self.def_id },
+                    args: self.args,
+                    _use_alias_ty_new_instead: (),
+                },
             )
             .into(),
             AliasTermKind::FreeConst
@@ -760,7 +772,7 @@ impl<I: Interner> AliasTerm<I> {
 
 impl<I: Interner> From<ty::AliasTy<I>> for AliasTerm<I> {
     fn from(ty: ty::AliasTy<I>) -> Self {
-        AliasTerm { args: ty.args, def_id: ty.def_id, _use_alias_term_new_instead: () }
+        AliasTerm { args: ty.args, def_id: ty.kind.def_id(), _use_alias_term_new_instead: () }
     }
 }
 
