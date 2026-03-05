@@ -1046,6 +1046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 module,
                 error_implied_by_parse_error: _,
                 message,
+                note: _,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
@@ -1069,6 +1070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 segment_name,
+                note,
                 ..
             } => {
                 if no_ambiguity {
@@ -1097,7 +1099,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
-                            note: None,
+                            note,
                             suggestion,
                             candidates: None,
                             segment: Some(segment_name),
