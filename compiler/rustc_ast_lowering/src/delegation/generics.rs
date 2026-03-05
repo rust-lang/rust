@@ -1,6 +1,7 @@
 use hir::HirId;
 use hir::def::{DefKind, Res};
 use rustc_ast::*;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericParamDefKind;
@@ -165,12 +166,17 @@ impl<'hir> GenericsGenerationResults<'hir> {
         // then parent and child types and consts.
         // `generics_of` in `rustc_hir_analysis` will order them anyway,
         // however we want the order to be consistent in HIR too.
+        // Deduplicate by parameter name/ident to handle cases where
+        // parent and child create separate copies of the same logical param
+        let mut seen = FxHashSet::default();
+
         parent
             .iter()
             .filter(|p| p.is_lifetime())
             .chain(child.iter().filter(|p| p.is_lifetime()))
             .chain(parent.iter().filter(|p| !p.is_lifetime()))
             .chain(child.iter().filter(|p| !p.is_lifetime()))
+            .filter(move |p| seen.insert(p.def_id))
             .copied()
     }
 

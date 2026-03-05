@@ -1,0 +1,31 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/ice-fn-delegation-complex-generics.rs:9:5
+   |
+LL |     fn foo<const N: dyn for<'a> Foo>() {}
+   |     ---------------------------------- previous definition of the value `foo` here
+...
+LL |     reuse foo;
+   |     ^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this block
+
+error: `(dyn Foo + 'static)` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-fn-delegation-complex-generics.rs:6:21
+   |
+LL |     fn foo<const N: dyn for<'a> Foo>() {}
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: `(dyn Foo + 'static)` is forbidden as the type of a const generic parameter
+  --> $DIR/ice-fn-delegation-complex-generics.rs:6:21
+   |
+LL |     fn foo<const N: dyn for<'a> Foo>() {}
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0428`.
