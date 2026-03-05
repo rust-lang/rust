@@ -1954,6 +1954,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `a.and_then(|a| b.map(|b| (a, b)))` which can be
+    /// more concisely expressed as `a.zip(b)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option::zip` is more concise and directly expresses the intent of
+    /// combining two `Option` values into a tuple.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let a: Option<i32> = Some(1);
+    /// let b: Option<i32> = Some(2);
+    /// let _ = a.and_then(|x| b.map(|y| (x, y)));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let a: Option<i32> = Some(1);
+    /// let b: Option<i32> = Some(2);
+    /// let _ = a.zip(b);
+    /// ```
+    #[clippy::version = "1.95.0"]
+    pub MANUAL_OPTION_ZIP,
+    complexity,
+    "manual reimplementation of `Option::zip`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     ///
     /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
     ///
@@ -2114,34 +2142,6 @@ declare_clippy_lint! {
     pub MAP_ALL_ANY_IDENTITY,
     complexity,
     "combine `.map(_)` followed by `.all(identity)`/`.any(identity)` into a single call"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `a.and_then(|a| b.map(|b| (a, b)))` which can be
-    /// more concisely expressed as `a.zip(b)`.
-    ///
-    /// ### Why is this bad?
-    /// `Option::zip` is more concise and directly expresses the intent of
-    /// combining two `Option` values into a tuple.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let a: Option<i32> = Some(1);
-    /// let b: Option<i32> = Some(2);
-    /// let _ = a.and_then(|x| b.map(|y| (x, y)));
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let a: Option<i32> = Some(1);
-    /// let b: Option<i32> = Some(2);
-    /// let _ = a.zip(b);
-    /// ```
-    #[clippy::version = "1.95.0"]
-    pub MANUAL_OPTION_ZIP,
-    complexity,
-    "manual reimplementation of `Option::zip`"
 }
 
 declare_clippy_lint! {
