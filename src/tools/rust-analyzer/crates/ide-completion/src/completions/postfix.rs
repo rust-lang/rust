@@ -16,7 +16,7 @@ use itertools::Itertools;
 use stdx::never;
 use syntax::{
     SmolStr,
-    SyntaxKind::{EXPR_STMT, STMT_LIST},
+    SyntaxKind::{CLOSURE_EXPR, EXPR_STMT, MATCH_ARM, STMT_LIST},
     T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
     format_smolstr, match_ast,
@@ -156,7 +156,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
                     .add_to(acc, ctx.db);
             }
-            _ if ast::MatchArm::can_cast(parent.kind()) => {
+            _ if matches!(parent.kind(), MATCH_ARM | CLOSURE_EXPR) => {
                 postfix_snippet(
                     "let",
                     "let",
@@ -960,6 +960,28 @@ fn main() {
     $0
 }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn closure_let_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    let bar = 2;
+    let f = || bar.$0;
+}
+"#,
+            r#"
+fn main() {
+    let bar = 2;
+    let f = || {
+    let $1 = bar;
+    $0
+};
 }
 "#,
         );
