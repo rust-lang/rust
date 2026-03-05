@@ -214,7 +214,7 @@ fn interior_mutability_suggestion(
 
     let sugg =
         static_mutability_span(cx, def_id).map(|span| StaticMutRefsInteriorMutabilitySugg { span });
-    (true, sugg)
+    (sugg.is_none(), sugg)
 }
 
 fn static_mutability_span(cx: &LateContext<'_>, def_id: DefId) -> Option<Span> {
