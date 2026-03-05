@@ -46,6 +46,8 @@ declare_clippy_lint! {
     "file loaded as module multiple times"
 }
 
+impl_lint_pass!(DuplicateMod => [DUPLICATE_MOD]);
+
 struct Modules {
     local_path: PathBuf,
     spans: Vec<Span>,
@@ -58,8 +60,6 @@ pub struct DuplicateMod {
     /// order deterministic for tests
     modules: BTreeMap<PathBuf, Modules>,
 }
-
-impl_lint_pass!(DuplicateMod => [DUPLICATE_MOD]);
 
 impl EarlyLintPass for DuplicateMod {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {

@@ -20,6 +20,32 @@ use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `foo = bar; bar = foo` sequences.
+    ///
+    /// ### Why is this bad?
+    /// This looks like a failed attempt to swap.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// a = b;
+    /// b = a;
+    /// ```
+    /// If swapping is intended, use `swap()` instead:
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ALMOST_SWAPPED,
+    correctness,
+    "`foo = bar; bar = foo` sequence"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for manual swapping.
     ///
     /// Note that the lint will not be emitted in const blocks, as the suggestion would not be applicable.
@@ -49,33 +75,7 @@ declare_clippy_lint! {
     "manual swap of two variables"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `foo = bar; bar = foo` sequences.
-    ///
-    /// ### Why is this bad?
-    /// This looks like a failed attempt to swap.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// a = b;
-    /// b = a;
-    /// ```
-    /// If swapping is intended, use `swap()` instead:
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// std::mem::swap(&mut a, &mut b);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ALMOST_SWAPPED,
-    correctness,
-    "`foo = bar; bar = foo` sequence"
-}
-
-declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
+declare_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {

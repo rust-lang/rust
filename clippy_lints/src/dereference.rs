@@ -25,6 +25,29 @@ use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for dereferencing expressions which would be covered by auto-deref.
+    ///
+    /// ### Why is this bad?
+    /// This unnecessarily complicates the code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = String::new();
+    /// let y: &str = &*x;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = String::new();
+    /// let y: &str = &x;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub EXPLICIT_AUTO_DEREF,
+    complexity,
+    "dereferencing when the compiler would automatically dereference"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for explicit `deref()` or `deref_mut()` method calls.
     ///
     /// Doesn't lint inside the implementation of the `Deref` or `DerefMut` traits.
@@ -120,34 +143,11 @@ declare_clippy_lint! {
     "`ref` binding to a reference"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for dereferencing expressions which would be covered by auto-deref.
-    ///
-    /// ### Why is this bad?
-    /// This unnecessarily complicates the code.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = String::new();
-    /// let y: &str = &*x;
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = String::new();
-    /// let y: &str = &x;
-    /// ```
-    #[clippy::version = "1.64.0"]
-    pub EXPLICIT_AUTO_DEREF,
-    complexity,
-    "dereferencing when the compiler would automatically dereference"
-}
-
 impl_lint_pass!(Dereferencing<'_> => [
+    EXPLICIT_AUTO_DEREF,
     EXPLICIT_DEREF_METHODS,
     NEEDLESS_BORROW,
     REF_BINDING_TO_REFERENCE,
-    EXPLICIT_AUTO_DEREF,
 ]);
 
 #[derive(Default)]

@@ -34,6 +34,9 @@ declare_clippy_lint! {
     style,
     "checks for usage of legacy std numeric constants and methods"
 }
+
+impl_lint_pass!(LegacyNumericConstants => [LEGACY_NUMERIC_CONSTANTS]);
+
 pub struct LegacyNumericConstants {
     msrv: Msrv,
 }
@@ -43,8 +46,6 @@ impl LegacyNumericConstants {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(LegacyNumericConstants => [LEGACY_NUMERIC_CONSTANTS]);
 
 impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

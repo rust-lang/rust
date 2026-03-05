@@ -39,23 +39,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `unimplemented!`.
-    ///
-    /// ### Why restrict this?
-    /// This macro, or panics in general, may be unwanted in production code.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unimplemented!();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub UNIMPLEMENTED,
-    restriction,
-    "`unimplemented!` should not be present in production code"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for usage of `todo!`.
     ///
     /// ### Why restrict this?
@@ -78,6 +61,23 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `unimplemented!`.
+    ///
+    /// ### Why restrict this?
+    /// This macro, or panics in general, may be unwanted in production code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// unimplemented!();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub UNIMPLEMENTED,
+    restriction,
+    "`unimplemented!` should not be present in production code"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `unreachable!`.
     ///
     /// ### Why restrict this?
@@ -93,7 +93,7 @@ declare_clippy_lint! {
     "usage of the `unreachable!` macro"
 }
 
-impl_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
+impl_lint_pass!(PanicUnimplemented => [PANIC, TODO, UNIMPLEMENTED, UNREACHABLE]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

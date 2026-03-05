@@ -33,8 +33,8 @@ pub mod release;
 pub mod serve;
 pub mod setup;
 pub mod sync;
-pub mod update_lints;
 
+mod generate;
 mod parse;
 mod utils;
 

@@ -34,6 +34,8 @@ declare_clippy_lint! {
     "`&std::path::MAIN_SEPARATOR.to_string()` can be replaced by `std::path::MAIN_SEPARATOR_STR`"
 }
 
+impl_lint_pass!(ManualMainSeparatorStr => [MANUAL_MAIN_SEPARATOR_STR]);
+
 pub struct ManualMainSeparatorStr {
     msrv: Msrv,
 }
@@ -43,8 +45,6 @@ impl ManualMainSeparatorStr {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualMainSeparatorStr => [MANUAL_MAIN_SEPARATOR_STR]);
 
 impl LateLintPass<'_> for ManualMainSeparatorStr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

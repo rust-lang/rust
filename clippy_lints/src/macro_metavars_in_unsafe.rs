@@ -84,6 +84,7 @@ declare_clippy_lint! {
     suspicious,
     "expanding macro metavariables in an unsafe block"
 }
+
 impl_lint_pass!(ExprMetavarsInUnsafe => [MACRO_METAVARS_IN_UNSAFE]);
 
 #[derive(Clone, Debug)]

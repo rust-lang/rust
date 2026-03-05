@@ -66,7 +66,10 @@ declare_clippy_lint! {
     "redundant closures for method calls"
 }
 
-declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
+declare_lint_pass!(EtaReduction => [
+    REDUNDANT_CLOSURE,
+    REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {

@@ -72,6 +72,8 @@ declare_clippy_lint! {
     "ensures that all items used in the crate are available for the current MSRV"
 }
 
+impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
+
 #[derive(Clone, Copy)]
 enum Availability {
     FeatureEnabled,
@@ -113,8 +115,6 @@ pub struct IncompatibleMsrv {
     // been checked when visiting the call expression.
     called_path: Option<HirId>,
 }
-
-impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
 
 impl IncompatibleMsrv {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {

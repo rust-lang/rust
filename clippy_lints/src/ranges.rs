@@ -20,6 +20,71 @@ use std::cmp::Ordering;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for expressions like `x >= 3 && x < 8` that could
+    /// be more readably expressed as `(3..8).contains(x)`.
+    ///
+    /// ### Why is this bad?
+    /// `contains` expresses the intent better and has less
+    /// failure modes (such as fencepost errors or using `||` instead of `&&`).
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // given
+    /// let x = 6;
+    ///
+    /// assert!(x >= 3 && x < 8);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    ///# let x = 6;
+    /// assert!((3..8).contains(&x));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_RANGE_CONTAINS,
+    style,
+    "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for inclusive ranges where 1 is subtracted from
+    /// the upper bound, e.g., `x..=(y-1)`.
+    ///
+    /// ### Why is this bad?
+    /// The code is more readable with an exclusive range
+    /// like `x..y`.
+    ///
+    /// ### Limitations
+    /// The lint is conservative and will trigger only when switching
+    /// from an inclusive to an exclusive range is provably safe from
+    /// a typing point of view. This corresponds to situations where
+    /// the range is used as an iterator, or for indexing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=(y-1) {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..y {
+    ///     // ..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub RANGE_MINUS_ONE,
+    pedantic,
+    "`x..=(y-1)` reads better as `x..y`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for exclusive ranges where 1 is added to the
     /// upper bound, e.g., `x..(y+1)`.
     ///
@@ -68,44 +133,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for inclusive ranges where 1 is subtracted from
-    /// the upper bound, e.g., `x..=(y-1)`.
-    ///
-    /// ### Why is this bad?
-    /// The code is more readable with an exclusive range
-    /// like `x..y`.
-    ///
-    /// ### Limitations
-    /// The lint is conservative and will trigger only when switching
-    /// from an inclusive to an exclusive range is provably safe from
-    /// a typing point of view. This corresponds to situations where
-    /// the range is used as an iterator, or for indexing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let x = 0;
-    /// # let y = 1;
-    /// for i in x..=(y-1) {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let x = 0;
-    /// # let y = 1;
-    /// for i in x..y {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub RANGE_MINUS_ONE,
-    pedantic,
-    "`x..=(y-1)` reads better as `x..y`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for range expressions `x..y` where both `x` and `y`
     /// are constant and `x` is greater to `y`. Also triggers if `x` is equal to `y` when they are conditions to a `for` loop.
     ///
@@ -137,32 +164,12 @@ declare_clippy_lint! {
     "reversing the limits of range expressions, resulting in empty ranges"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for expressions like `x >= 3 && x < 8` that could
-    /// be more readably expressed as `(3..8).contains(x)`.
-    ///
-    /// ### Why is this bad?
-    /// `contains` expresses the intent better and has less
-    /// failure modes (such as fencepost errors or using `||` instead of `&&`).
-    ///
-    /// ### Example
-    /// ```no_run
-    /// // given
-    /// let x = 6;
-    ///
-    /// assert!(x >= 3 && x < 8);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    ///# let x = 6;
-    /// assert!((3..8).contains(&x));
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub MANUAL_RANGE_CONTAINS,
-    style,
-    "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
-}
+impl_lint_pass!(Ranges => [
+    MANUAL_RANGE_CONTAINS,
+    RANGE_MINUS_ONE,
+    RANGE_PLUS_ONE,
+    REVERSED_EMPTY_RANGES,
+]);
 
 pub struct Ranges {
     msrv: Msrv,
@@ -173,13 +180,6 @@ impl Ranges {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(Ranges => [
-    RANGE_PLUS_ONE,
-    RANGE_MINUS_ONE,
-    REVERSED_EMPTY_RANGES,
-    MANUAL_RANGE_CONTAINS,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

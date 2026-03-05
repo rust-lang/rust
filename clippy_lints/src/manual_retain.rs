@@ -44,6 +44,8 @@ declare_clippy_lint! {
     "`retain()` is simpler and the same functionalities"
 }
 
+impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
+
 pub struct ManualRetain {
     msrv: Msrv,
 }
@@ -53,8 +55,6 @@ impl ManualRetain {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {

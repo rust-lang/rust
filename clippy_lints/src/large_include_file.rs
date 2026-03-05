@@ -38,6 +38,8 @@ declare_clippy_lint! {
     "including a large file"
 }
 
+impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
+
 pub struct LargeIncludeFile {
     max_file_size: u64,
 }
@@ -49,8 +51,6 @@ impl LargeIncludeFile {
         }
     }
 }
-
-impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
 
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {

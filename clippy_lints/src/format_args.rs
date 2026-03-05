@@ -59,32 +59,30 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `Debug` formatting (`{:?}`) applied to an `OsStr` or `Path`.
+    /// Detects [pointer format] as well as `Debug` formatting of raw pointers or function pointers
+    /// or any types that have a derived `Debug` impl that recursively contains them.
     ///
-    /// ### Why is this bad?
-    /// Rust doesn't guarantee what `Debug` formatting looks like, and it could
-    /// change in the future. `OsStr`s and `Path`s can be `Display` formatted
-    /// using their `display` methods.
+    /// ### Why restrict this?
+    /// The addresses are only useful in very specific contexts, and certain projects may want to keep addresses of
+    /// certain data structures or functions from prying hacker eyes as an additional line of security.
     ///
-    /// Furthermore, with `Debug` formatting, certain characters are escaped.
-    /// Thus, a `Debug` formatted `Path` is less likely to be clickable.
+    /// ### Known problems
+    /// The lint currently only looks through derived `Debug` implementations. Checking whether a manual
+    /// implementation prints an address is left as an exercise to the next lint implementer.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::path::Path;
-    /// let path = Path::new("...");
-    /// println!("The path is {:?}", path);
+    /// let foo = &0_u32;
+    /// fn bar() {}
+    /// println!("{:p}", foo);
+    /// let _ = format!("{:?}", &(bar as fn()));
     /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # use std::path::Path;
-    /// let path = Path::new("…");
-    /// println!("The path is {}", path.display());
-    /// ```
-    #[clippy::version = "1.87.0"]
-    pub UNNECESSARY_DEBUG_FORMATTING,
-    pedantic,
-    "`Debug` formatting applied to an `OsStr` or `Path` when `.display()` is available"
+    ///
+    /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
+    #[clippy::version = "1.89.0"]
+    pub POINTER_FORMAT,
+    restriction,
+    "formatting a pointer"
 }
 
 declare_clippy_lint! {
@@ -172,61 +170,32 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects [formatting parameters] that have no effect on the output of
-    /// `format!()`, `println!()` or similar macros.
+    /// Checks for `Debug` formatting (`{:?}`) applied to an `OsStr` or `Path`.
     ///
     /// ### Why is this bad?
-    /// Shorter format specifiers are easier to read, it may also indicate that
-    /// an expected formatting operation such as adding padding isn't happening.
+    /// Rust doesn't guarantee what `Debug` formatting looks like, and it could
+    /// change in the future. `OsStr`s and `Path`s can be `Display` formatted
+    /// using their `display` methods.
+    ///
+    /// Furthermore, with `Debug` formatting, certain characters are escaped.
+    /// Thus, a `Debug` formatted `Path` is less likely to be clickable.
     ///
     /// ### Example
     /// ```no_run
-    /// println!("{:.}", 1.0);
-    ///
-    /// println!("not padded: {:5}", format_args!("..."));
+    /// # use std::path::Path;
+    /// let path = Path::new("...");
+    /// println!("The path is {:?}", path);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// println!("{}", 1.0);
-    ///
-    /// println!("not padded: {}", format_args!("..."));
-    /// // OR
-    /// println!("padded: {:5}", format!("..."));
+    /// # use std::path::Path;
+    /// let path = Path::new("…");
+    /// println!("The path is {}", path.display());
     /// ```
-    ///
-    /// [formatting parameters]: https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters
-    #[clippy::version = "1.66.0"]
-    pub UNUSED_FORMAT_SPECS,
-    complexity,
-    "use of a format specifier that has no effect"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects [pointer format] as well as `Debug` formatting of raw pointers or function pointers
-    /// or any types that have a derived `Debug` impl that recursively contains them.
-    ///
-    /// ### Why restrict this?
-    /// The addresses are only useful in very specific contexts, and certain projects may want to keep addresses of
-    /// certain data structures or functions from prying hacker eyes as an additional line of security.
-    ///
-    /// ### Known problems
-    /// The lint currently only looks through derived `Debug` implementations. Checking whether a manual
-    /// implementation prints an address is left as an exercise to the next lint implementer.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let foo = &0_u32;
-    /// fn bar() {}
-    /// println!("{:p}", foo);
-    /// let _ = format!("{:?}", &(bar as fn()));
-    /// ```
-    ///
-    /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
-    #[clippy::version = "1.89.0"]
-    pub POINTER_FORMAT,
-    restriction,
-    "formatting a pointer"
+    #[clippy::version = "1.87.0"]
+    pub UNNECESSARY_DEBUG_FORMATTING,
+    pedantic,
+    "`Debug` formatting applied to an `OsStr` or `Path` when `.display()` is available"
 }
 
 declare_clippy_lint! {
@@ -258,14 +227,45 @@ declare_clippy_lint! {
     "unnecessary trailing comma before closing parenthesis"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects [formatting parameters] that have no effect on the output of
+    /// `format!()`, `println!()` or similar macros.
+    ///
+    /// ### Why is this bad?
+    /// Shorter format specifiers are easier to read, it may also indicate that
+    /// an expected formatting operation such as adding padding isn't happening.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// println!("{:.}", 1.0);
+    ///
+    /// println!("not padded: {:5}", format_args!("..."));
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// println!("{}", 1.0);
+    ///
+    /// println!("not padded: {}", format_args!("..."));
+    /// // OR
+    /// println!("padded: {:5}", format!("..."));
+    /// ```
+    ///
+    /// [formatting parameters]: https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters
+    #[clippy::version = "1.66.0"]
+    pub UNUSED_FORMAT_SPECS,
+    complexity,
+    "use of a format specifier that has no effect"
+}
+
 impl_lint_pass!(FormatArgs<'_> => [
     FORMAT_IN_FORMAT_ARGS,
+    POINTER_FORMAT,
     TO_STRING_IN_FORMAT_ARGS,
     UNINLINED_FORMAT_ARGS,
     UNNECESSARY_DEBUG_FORMATTING,
-    UNUSED_FORMAT_SPECS,
-    POINTER_FORMAT,
     UNNECESSARY_TRAILING_COMMA,
+    UNUSED_FORMAT_SPECS,
 ]);
 
 #[expect(clippy::struct_field_names)]
