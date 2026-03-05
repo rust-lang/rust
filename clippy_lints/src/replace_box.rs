@@ -40,6 +40,8 @@ declare_clippy_lint! {
     "assigning a newly created box to `Box<T>` is inefficient"
 }
 
+impl_lint_pass!(ReplaceBox => [REPLACE_BOX]);
+
 #[derive(Default)]
 pub struct ReplaceBox {
     consumed_locals: FxHashSet<HirId>,
@@ -66,8 +68,6 @@ impl ReplaceBox {
         &self.consumed_locals
     }
 }
-
-impl_lint_pass!(ReplaceBox => [REPLACE_BOX]);
 
 impl LateLintPass<'_> for ReplaceBox {
     fn check_body_post(&mut self, _: &LateContext<'_>, body: &Body<'_>) {

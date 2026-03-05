@@ -13,14 +13,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub struct MyAtomic(AtomicBool);
 pub struct MyPure;
 
-#[must_use] 
+#[must_use]
 pub fn pure(i: u8) -> u8 {
     //~^ must_use_candidate
     i
 }
 
 impl MyPure {
-    #[must_use] 
+    #[must_use]
     pub fn inherent_pure(&self) -> u8 {
         //~^ must_use_candidate
         0
@@ -53,7 +53,7 @@ pub fn with_callback<F: Fn(u32) -> bool>(f: &F) -> bool {
     f(0)
 }
 
-#[must_use] 
+#[must_use]
 pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
     //~^ must_use_candidate
     true
@@ -67,7 +67,7 @@ pub fn atomics(b: &AtomicBool) -> bool {
     b.load(Ordering::SeqCst)
 }
 
-#[must_use] 
+#[must_use]
 pub fn rcd(_x: Rc<u32>) -> bool {
     //~^ must_use_candidate
     true
@@ -77,7 +77,7 @@ pub fn rcmut(_x: Rc<&mut u32>) -> bool {
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn arcd(_x: Arc<u32>) -> bool {
     //~^ must_use_candidate
     false
@@ -110,13 +110,13 @@ pub fn main() -> std::process::ExitCode {
 }
 
 //~v must_use_candidate
-#[must_use] 
+#[must_use]
 pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
     todo!()
 }
 
 //~v must_use_candidate
-#[must_use] 
+#[must_use]
 pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
     todo!()
 }

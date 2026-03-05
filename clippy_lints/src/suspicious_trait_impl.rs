@@ -53,7 +53,10 @@ declare_clippy_lint! {
     "suspicious use of operators in impl of OpAssign trait"
 }
 
-declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]);
+declare_lint_pass!(SuspiciousImpl => [
+    SUSPICIOUS_ARITHMETIC_IMPL,
+    SUSPICIOUS_OP_ASSIGN_IMPL,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {

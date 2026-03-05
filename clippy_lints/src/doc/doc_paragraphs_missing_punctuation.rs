@@ -94,17 +94,14 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
             Event::Code(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
             {
-                if doc_string[..offset.end]
-                    .trim_end()
-                    .ends_with(TERMINAL_PUNCTUATION_MARKS)
-                {
+                if trim_trailing_symbols(&doc_string[..offset.end]).ends_with(TERMINAL_PUNCTUATION_MARKS) {
                     current_paragraph = None;
                 } else {
                     current_paragraph = Some(MissingPunctuation::Fixable(offset.end));
                 }
             },
             Event::Text(..) if no_report_depth == 0 && !offset.is_empty() => {
-                let trimmed = doc_string[..offset.end].trim_end();
+                let trimmed = trim_trailing_symbols(&doc_string[..offset.end]);
                 if trimmed.ends_with(TERMINAL_PUNCTUATION_MARKS) {
                     current_paragraph = None;
                 } else if let Some(t) = trimmed.strip_suffix(|c| c == ')' || c == '"') {
@@ -123,6 +120,21 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
     }
 
     missing_punctuation
+}
+
+fn trim_trailing_symbols(s: &str) -> &str {
+    s.trim_end_matches(|c: char|
+        // Source: https://unicodeplus.com
+        matches!(c as u32,
+            0x1F300..=0x1F5FF | // Miscellaneous Symbols and Pictographs
+            0x1F600..=0x1F64F | // Emoticons
+            0x1F900..=0x1F9FF | // Supplemental Symbols and Pictographs
+            0x2700..=0x27BF   | // Dingbats
+            0x1FA70..=0x1FAFF | // Symbols and Pictographs Extended-A
+            0x1F680..=0x1F6FF | // Transport and Map Symbols
+            0x2600..=0x26FF | // Miscellaneous Symbols
+            0xFE00..=0xFE0F // Variation selectors
+        ) || c.is_whitespace())
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

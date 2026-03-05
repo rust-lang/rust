@@ -36,7 +36,9 @@ declare_clippy_lint! {
     "Checks if string literals have formatting arguments"
 }
 
-declare_lint_pass!(LiteralStringWithFormattingArg => [LITERAL_STRING_WITH_FORMATTING_ARGS]);
+declare_lint_pass!(LiteralStringWithFormattingArg => [
+    LITERAL_STRING_WITH_FORMATTING_ARGS,
+]);
 
 fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<String>)]) {
     if !spans.is_empty()

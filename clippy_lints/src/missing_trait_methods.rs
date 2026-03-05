@@ -55,6 +55,7 @@ declare_clippy_lint! {
     restriction,
     "trait implementation uses default provided method"
 }
+
 declare_lint_pass!(MissingTraitMethods => [MISSING_TRAIT_METHODS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {

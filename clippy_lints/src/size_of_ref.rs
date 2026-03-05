@@ -52,6 +52,7 @@ declare_clippy_lint! {
     suspicious,
     "Argument to `size_of_val()` is a double-reference, which is almost certainly unintended"
 }
+
 declare_lint_pass!(SizeOfRef => [SIZE_OF_REF]);
 
 impl LateLintPass<'_> for SizeOfRef {

@@ -652,3 +652,12 @@ trait Issue16360: Sized {
         //~^ redundant_closure_for_method_calls
     }
 }
+
+fn issue16641() {
+    use std::cell::LazyCell;
+
+    let closure = LazyCell::new(|| |x: usize| println!("{x}"));
+
+    (0..10).flat_map(|x| (0..10).map(|y| closure(y))).count();
+    //~^ redundant_closure
+}

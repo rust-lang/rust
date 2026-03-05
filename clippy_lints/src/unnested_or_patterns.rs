@@ -49,6 +49,8 @@ declare_clippy_lint! {
     "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`"
 }
 
+impl_lint_pass!(UnnestedOrPatterns => [UNNESTED_OR_PATTERNS]);
+
 pub struct UnnestedOrPatterns {
     msrv: MsrvStack,
 }
@@ -60,8 +62,6 @@ impl UnnestedOrPatterns {
         }
     }
 }
-
-impl_lint_pass!(UnnestedOrPatterns => [UNNESTED_OR_PATTERNS]);
 
 impl EarlyLintPass for UnnestedOrPatterns {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, a: &ast::Arm) {
