@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::assert_matches;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
@@ -16,6 +17,17 @@ use crate::middle::resolve_bound_vars as rbv;
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
+
+    struct GenericParametersForbiddenHere {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for GenericParametersForbiddenHere {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+        }
+    }
 
     // For an RPITIT, synthesize generics which are equal to the opaque's generics
     // and parent fn's generics compressed into one list.
@@ -269,13 +281,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     match param_default_policy.expect("no policy for generic param default") {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
-                            tcx.node_span_lint(
+                            tcx.emit_node_span_lint(
                                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
-                                |lint| {
-                                    lint.primary_message(MESSAGE);
-                                },
+                                GenericParametersForbiddenHere { msg: MESSAGE },
                             );
                         }
                         ParamDefaultPolicy::Forbidden => {
