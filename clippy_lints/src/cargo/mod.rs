@@ -58,126 +58,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for feature names with prefix `use-`, `with-` or suffix `-support`
-    ///
-    /// ### Why is this bad?
-    /// These prefixes and suffixes have no significant meaning.
-    ///
-    /// ### Example
-    /// ```toml
-    /// # The `Cargo.toml` with feature name redundancy
-    /// [features]
-    /// default = ["use-abc", "with-def", "ghi-support"]
-    /// use-abc = []  // redundant
-    /// with-def = []   // redundant
-    /// ghi-support = []   // redundant
-    /// ```
-    ///
-    /// Use instead:
-    /// ```toml
-    /// [features]
-    /// default = ["abc", "def", "ghi"]
-    /// abc = []
-    /// def = []
-    /// ghi = []
-    /// ```
-    ///
-    #[clippy::version = "1.57.0"]
-    pub REDUNDANT_FEATURE_NAMES,
-    cargo,
-    "usage of a redundant feature name"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for negative feature names with prefix `no-` or `not-`
-    ///
-    /// ### Why is this bad?
-    /// Features are supposed to be additive, and negatively-named features violate it.
-    ///
-    /// ### Example
-    /// ```toml
-    /// # The `Cargo.toml` with negative feature names
-    /// [features]
-    /// default = []
-    /// no-abc = []
-    /// not-def = []
-    ///
-    /// ```
-    /// Use instead:
-    /// ```toml
-    /// [features]
-    /// default = ["abc", "def"]
-    /// abc = []
-    /// def = []
-    ///
-    /// ```
-    #[clippy::version = "1.57.0"]
-    pub NEGATIVE_FEATURE_NAMES,
-    cargo,
-    "usage of a negative feature name"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks to see if multiple versions of a crate are being
-    /// used.
-    ///
-    /// ### Why is this bad?
-    /// This bloats the size of targets, and can lead to
-    /// confusing error messages when structs or traits are used interchangeably
-    /// between different versions of a crate.
-    ///
-    /// ### Known problems
-    /// Because this can be caused purely by the dependencies
-    /// themselves, it's not always possible to fix this issue.
-    /// In those cases, you can allow that specific crate using
-    /// the `allowed-duplicate-crates` configuration option.
-    ///
-    /// ### Example
-    /// ```toml
-    /// # This will pull in both winapi v0.3.x and v0.2.x, triggering a warning.
-    /// [dependencies]
-    /// ctrlc = "=3.1.0"
-    /// ansi_term = "=0.11.0"
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub MULTIPLE_CRATE_VERSIONS,
-    cargo,
-    "multiple versions of the same crate being used"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for wildcard dependencies in the `Cargo.toml`.
-    ///
-    /// ### Why is this bad?
-    /// [As the edition guide says](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
-    /// it is highly unlikely that you work with any possible version of your dependency,
-    /// and wildcard dependencies would cause unnecessary breakage in the ecosystem.
-    ///
-    /// ### Example
-    /// ```toml
-    /// [dependencies]
-    /// regex = "*"
-    /// ```
-    /// Use instead:
-    /// ```toml
-    /// [dependencies]
-    /// # allow patch updates, but not minor or major version changes
-    /// some_crate_1 = "~1.2.3"
-    ///
-    /// # pin the version to a specific version
-    /// some_crate_2 = "=1.2.3"
-    /// ```
-    #[clippy::version = "1.32.0"]
-    pub WILDCARD_DEPENDENCIES,
-    cargo,
-    "wildcard dependencies being used"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for lint groups with the same priority as lints in the `Cargo.toml`
     /// [`[lints]` table](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section).
     ///
@@ -213,19 +93,139 @@ declare_clippy_lint! {
     "a lint group in `Cargo.toml` at the same priority as a lint"
 }
 
-pub struct Cargo {
-    allowed_duplicate_crates: FxHashSet<String>,
-    ignore_publish: bool,
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks to see if multiple versions of a crate are being
+    /// used.
+    ///
+    /// ### Why is this bad?
+    /// This bloats the size of targets, and can lead to
+    /// confusing error messages when structs or traits are used interchangeably
+    /// between different versions of a crate.
+    ///
+    /// ### Known problems
+    /// Because this can be caused purely by the dependencies
+    /// themselves, it's not always possible to fix this issue.
+    /// In those cases, you can allow that specific crate using
+    /// the `allowed-duplicate-crates` configuration option.
+    ///
+    /// ### Example
+    /// ```toml
+    /// # This will pull in both winapi v0.3.x and v0.2.x, triggering a warning.
+    /// [dependencies]
+    /// ctrlc = "=3.1.0"
+    /// ansi_term = "=0.11.0"
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MULTIPLE_CRATE_VERSIONS,
+    cargo,
+    "multiple versions of the same crate being used"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for negative feature names with prefix `no-` or `not-`
+    ///
+    /// ### Why is this bad?
+    /// Features are supposed to be additive, and negatively-named features violate it.
+    ///
+    /// ### Example
+    /// ```toml
+    /// # The `Cargo.toml` with negative feature names
+    /// [features]
+    /// default = []
+    /// no-abc = []
+    /// not-def = []
+    ///
+    /// ```
+    /// Use instead:
+    /// ```toml
+    /// [features]
+    /// default = ["abc", "def"]
+    /// abc = []
+    /// def = []
+    ///
+    /// ```
+    #[clippy::version = "1.57.0"]
+    pub NEGATIVE_FEATURE_NAMES,
+    cargo,
+    "usage of a negative feature name"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for feature names with prefix `use-`, `with-` or suffix `-support`
+    ///
+    /// ### Why is this bad?
+    /// These prefixes and suffixes have no significant meaning.
+    ///
+    /// ### Example
+    /// ```toml
+    /// # The `Cargo.toml` with feature name redundancy
+    /// [features]
+    /// default = ["use-abc", "with-def", "ghi-support"]
+    /// use-abc = []  // redundant
+    /// with-def = []   // redundant
+    /// ghi-support = []   // redundant
+    /// ```
+    ///
+    /// Use instead:
+    /// ```toml
+    /// [features]
+    /// default = ["abc", "def", "ghi"]
+    /// abc = []
+    /// def = []
+    /// ghi = []
+    /// ```
+    ///
+    #[clippy::version = "1.57.0"]
+    pub REDUNDANT_FEATURE_NAMES,
+    cargo,
+    "usage of a redundant feature name"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for wildcard dependencies in the `Cargo.toml`.
+    ///
+    /// ### Why is this bad?
+    /// [As the edition guide says](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
+    /// it is highly unlikely that you work with any possible version of your dependency,
+    /// and wildcard dependencies would cause unnecessary breakage in the ecosystem.
+    ///
+    /// ### Example
+    /// ```toml
+    /// [dependencies]
+    /// regex = "*"
+    /// ```
+    /// Use instead:
+    /// ```toml
+    /// [dependencies]
+    /// # allow patch updates, but not minor or major version changes
+    /// some_crate_1 = "~1.2.3"
+    ///
+    /// # pin the version to a specific version
+    /// some_crate_2 = "=1.2.3"
+    /// ```
+    #[clippy::version = "1.32.0"]
+    pub WILDCARD_DEPENDENCIES,
+    cargo,
+    "wildcard dependencies being used"
 }
 
 impl_lint_pass!(Cargo => [
     CARGO_COMMON_METADATA,
-    REDUNDANT_FEATURE_NAMES,
-    NEGATIVE_FEATURE_NAMES,
-    MULTIPLE_CRATE_VERSIONS,
-    WILDCARD_DEPENDENCIES,
     LINT_GROUPS_PRIORITY,
+    MULTIPLE_CRATE_VERSIONS,
+    NEGATIVE_FEATURE_NAMES,
+    REDUNDANT_FEATURE_NAMES,
+    WILDCARD_DEPENDENCIES,
 ]);
+
+pub struct Cargo {
+    allowed_duplicate_crates: FxHashSet<String>,
+    ignore_publish: bool,
+}
 
 impl Cargo {
     pub fn new(conf: &'static Conf) -> Self {

@@ -16,34 +16,6 @@ use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds structs without fields (a so-called "empty struct") that are declared with brackets.
-    ///
-    /// ### Why restrict this?
-    /// Empty brackets after a struct declaration can be omitted,
-    /// and it may be desirable to do so consistently for style.
-    ///
-    /// However, removing the brackets also introduces a public constant named after the struct,
-    /// so this is not just a syntactic simplification but an API change, and adding them back
-    /// is a *breaking* API change.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// struct Cookie {}
-    /// struct Biscuit();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// struct Cookie;
-    /// struct Biscuit;
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub EMPTY_STRUCTS_WITH_BRACKETS,
-    restriction,
-    "finds struct declarations with empty brackets"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Finds enum variants without fields that are declared with empty brackets.
     ///
     /// ### Why restrict this?
@@ -77,6 +49,39 @@ declare_clippy_lint! {
     "finds enum variants with empty brackets"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds structs without fields (a so-called "empty struct") that are declared with brackets.
+    ///
+    /// ### Why restrict this?
+    /// Empty brackets after a struct declaration can be omitted,
+    /// and it may be desirable to do so consistently for style.
+    ///
+    /// However, removing the brackets also introduces a public constant named after the struct,
+    /// so this is not just a syntactic simplification but an API change, and adding them back
+    /// is a *breaking* API change.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// struct Cookie {}
+    /// struct Biscuit();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// struct Cookie;
+    /// struct Biscuit;
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub EMPTY_STRUCTS_WITH_BRACKETS,
+    restriction,
+    "finds struct declarations with empty brackets"
+}
+
+impl_lint_pass!(EmptyWithBrackets => [
+    EMPTY_ENUM_VARIANTS_WITH_BRACKETS,
+    EMPTY_STRUCTS_WITH_BRACKETS,
+]);
+
 #[derive(Debug)]
 enum Usage {
     Unused { redundant_use_sites: Vec<Span> },
@@ -89,8 +94,6 @@ pub struct EmptyWithBrackets {
     // Value holds `Usage::Used` if the empty tuple variant was used as a function
     empty_tuple_enum_variants: FxIndexMap<LocalDefId, Usage>,
 }
-
-impl_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM_VARIANTS_WITH_BRACKETS]);
 
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {

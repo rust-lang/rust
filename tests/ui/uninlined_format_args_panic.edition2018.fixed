@@ -1,6 +1,7 @@
-//@revisions: edition2018 edition2021
+//@revisions: edition2018 edition2021 edition2024
 //@[edition2018] edition:2018
 //@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 #![warn(clippy::uninlined_format_args)]
 #![allow(clippy::literal_string_with_formatting_args)]
@@ -14,14 +15,17 @@ fn main() {
     if var > 0 {
         panic!("p1 {}", var);
         //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
     }
     if var > 0 {
         panic!("p2 {0}", var);
         //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
     }
     if var > 0 {
         panic!("p3 {var}", var = var);
         //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
     }
 
     #[allow(non_fmt_panics)]
@@ -33,6 +37,34 @@ fn main() {
 
     assert!(var == 1, "p5 {}", var);
     //~[edition2021]^ uninlined_format_args
+    //~[edition2024]^^ uninlined_format_args
     debug_assert!(var == 1, "p6 {}", var);
     //~[edition2021]^ uninlined_format_args
+    //~[edition2024]^^ uninlined_format_args
+
+    // core::panic! with format string containing text: should warn on 2021+ (issue #16411)
+    if var > 0 {
+        core::panic!("p7 {}", var);
+        //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
+    }
+    if var > 0 {
+        core::panic!("p8 {0}", var);
+        //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
+    }
+    if var > 0 {
+        core::panic!("p9 {var}", var = var);
+        //~[edition2021]^ uninlined_format_args
+        //~[edition2024]^^ uninlined_format_args
+    }
+
+    // std::panic! and core::panic! with only "{}" format string: false negative due to
+    // panic_display special case in panic_2021 macro - no format_args node is created
+    if var > 0 {
+        std::panic!("{}", var);
+    }
+    if var > 0 {
+        core::panic!("{}", var);
+    }
 }

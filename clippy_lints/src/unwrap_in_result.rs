@@ -56,7 +56,7 @@ declare_clippy_lint! {
     "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`"
 }
 
-impl_lint_pass!(UnwrapInResult=> [UNWRAP_IN_RESULT]);
+impl_lint_pass!(UnwrapInResult => [UNWRAP_IN_RESULT]);
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum OptionOrResult {

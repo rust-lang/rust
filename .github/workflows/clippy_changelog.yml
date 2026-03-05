@@ -20,7 +20,8 @@ jobs:
     - name: Check Changelog
       if: ${{ github.event_name == 'pull_request' }}
       run: |
-        if [[ -z $(grep -oP 'changelog: *\K\S+' <<< "$PR_BODY") ]]; then
+        # Checks that the PR body contains a changelog entry, ignoring the placeholder from the PR template.
+        if [[ -z $(grep -oP 'changelog: *\K(?!\[`lint_name`\])\S+' <<< "$PR_BODY") ]]; then
           echo "::error::Pull request message must contain 'changelog: ...' with your changelog. Please add it."
           exit 1
         fi

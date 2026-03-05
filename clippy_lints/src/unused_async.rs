@@ -43,6 +43,8 @@ declare_clippy_lint! {
     "finds async functions with no await statements"
 }
 
+impl_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
+
 #[derive(Default)]
 pub struct UnusedAsync {
     /// Keeps track of async functions used as values (i.e. path expressions to async functions that
@@ -59,8 +61,6 @@ struct UnusedAsyncFn {
     fn_span: Span,
     await_in_async_block: Option<Span>,
 }
-
-impl_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
 
 struct AsyncFnVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,

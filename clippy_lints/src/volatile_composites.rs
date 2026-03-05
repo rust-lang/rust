@@ -57,6 +57,7 @@ declare_clippy_lint! {
     nursery,
     "warn about volatile read/write applied to composite types"
 }
+
 declare_lint_pass!(VolatileComposites => [VOLATILE_COMPOSITES]);
 
 /// Zero-sized types are intrinsically safe to use volatile on since they won't

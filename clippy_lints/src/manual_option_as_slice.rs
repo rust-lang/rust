@@ -40,6 +40,8 @@ declare_clippy_lint! {
     "manual `Option::as_slice`"
 }
 
+impl_lint_pass!(ManualOptionAsSlice => [MANUAL_OPTION_AS_SLICE]);
+
 pub struct ManualOptionAsSlice {
     msrv: Msrv,
 }
@@ -49,8 +51,6 @@ impl ManualOptionAsSlice {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualOptionAsSlice => [MANUAL_OPTION_AS_SLICE]);
 
 impl LateLintPass<'_> for ManualOptionAsSlice {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

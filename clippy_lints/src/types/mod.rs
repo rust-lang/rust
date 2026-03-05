@@ -24,6 +24,32 @@ use rustc_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `&Box<T>` anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
+    ///
+    /// ### Why is this bad?
+    /// A `&Box<T>` parameter requires the function caller to box `T` first before passing it to a function.
+    /// Using `&T` defines a concrete type for the parameter and generalizes the function, this would also
+    /// auto-deref to `&T` at the function call site if passed a `&Box<T>`.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// fn foo(bar: &Box<T>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// fn foo(bar: &T) { ... }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub BORROWED_BOX,
+    complexity,
+    "a borrow of a boxed type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `Box<T>` where T is a collection such as Vec anywhere in the code.
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
@@ -50,74 +76,6 @@ declare_clippy_lint! {
     pub BOX_COLLECTION,
     perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `Vec<Box<T>>` where T: Sized anywhere in the code.
-    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
-    ///
-    /// ### Why is this bad?
-    /// `Vec` already keeps its contents in a separate area on
-    /// the heap. So if you `Box` its contents, you just add another level of indirection.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// struct X {
-    ///     values: Vec<Box<i32>>,
-    /// }
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```no_run
-    /// struct X {
-    ///     values: Vec<i32>,
-    /// }
-    /// ```
-    #[clippy::version = "1.33.0"]
-    pub VEC_BOX,
-    complexity,
-    "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `Option<Option<_>>` in function signatures and type
-    /// definitions
-    ///
-    /// ### Why is this bad?
-    /// `Option<_>` represents an optional value. `Option<Option<_>>`
-    /// represents an optional value which itself wraps an optional. This is logically the
-    /// same thing as an optional value but has an unneeded extra level of wrapping.
-    ///
-    /// If you have a case where `Some(Some(_))`, `Some(None)` and `None` are distinct cases,
-    /// consider a custom `enum` instead, with clear names for each case.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn get_data() -> Option<Option<u32>> {
-    ///     None
-    /// }
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```no_run
-    /// pub enum Contents {
-    ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
-    ///     NotYetFetched, // Was Some(None)
-    ///     None,          // Was None
-    /// }
-    ///
-    /// fn get_data() -> Contents {
-    ///     Contents::None
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub OPTION_OPTION,
-    pedantic,
-    "usage of `Option<Option<T>>`"
 }
 
 declare_clippy_lint! {
@@ -162,53 +120,80 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `&Box<T>` anywhere in the code.
-    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
+    /// Checks for usage of `Option<Option<_>>` in function signatures and type
+    /// definitions
     ///
     /// ### Why is this bad?
-    /// A `&Box<T>` parameter requires the function caller to box `T` first before passing it to a function.
-    /// Using `&T` defines a concrete type for the parameter and generalizes the function, this would also
-    /// auto-deref to `&T` at the function call site if passed a `&Box<T>`.
+    /// `Option<_>` represents an optional value. `Option<Option<_>>`
+    /// represents an optional value which itself wraps an optional. This is logically the
+    /// same thing as an optional value but has an unneeded extra level of wrapping.
+    ///
+    /// If you have a case where `Some(Some(_))`, `Some(None)` and `None` are distinct cases,
+    /// consider a custom `enum` instead, with clear names for each case.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// fn foo(bar: &Box<T>) { ... }
+    /// ```no_run
+    /// fn get_data() -> Option<Option<u32>> {
+    ///     None
+    /// }
     /// ```
     ///
     /// Better:
     ///
-    /// ```rust,ignore
-    /// fn foo(bar: &T) { ... }
+    /// ```no_run
+    /// pub enum Contents {
+    ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
+    ///     NotYetFetched, // Was Some(None)
+    ///     None,          // Was None
+    /// }
+    ///
+    /// fn get_data() -> Contents {
+    ///     Contents::None
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub BORROWED_BOX,
-    complexity,
-    "a borrow of a boxed type"
+    pub OPTION_OPTION,
+    pedantic,
+    "usage of `Option<Option<T>>`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of redundant allocations anywhere in the code.
+    /// Detects needlessly owned `Cow` types.
     ///
     /// ### Why is this bad?
-    /// Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Arc<T>>`, `Rc<Box<T>>`, `Arc<&T>`, `Arc<Rc<T>>`,
-    /// `Arc<Arc<T>>`, `Arc<Box<T>>`, `Box<&T>`, `Box<Rc<T>>`, `Box<Arc<T>>`, `Box<Box<T>>`, add an unnecessary level of indirection.
+    /// The borrowed types are usually more flexible, in that e.g. a
+    /// `Cow<'_, str>` can accept both `&str` and `String` while
+    /// `Cow<'_, String>` can only accept `&String` and `String`. In
+    /// particular, `&str` is more general, because it allows for string
+    /// literals while `&String` can only be borrowed from a heap-owned
+    /// `String`).
+    ///
+    /// ### Known Problems
+    /// The lint does not check for usage of the type. There may be external
+    /// interfaces that require the use of an owned type.
+    ///
+    /// At least the `CString` type also has a different API than `CStr`: The
+    /// former has an `as_bytes` method which the latter calls `to_bytes`.
+    /// There is no guarantee that other types won't gain additional methods
+    /// leading to a similar mismatch.
+    ///
+    /// In addition, the lint only checks for the known problematic types
+    /// `String`, `Vec<_>`, `CString`, `OsString` and `PathBuf`. Custom types
+    /// that implement `ToOwned` will not be detected.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::rc::Rc;
-    /// fn foo(bar: Rc<&usize>) {}
+    /// let wrogn: std::borrow::Cow<'_, Vec<u8>>;
     /// ```
-    ///
-    /// Better:
-    ///
+    /// Use instead:
     /// ```no_run
-    /// fn foo(bar: &usize) {}
+    /// let right: std::borrow::Cow<'_, [u8]>;
     /// ```
-    #[clippy::version = "1.44.0"]
-    pub REDUNDANT_ALLOCATION,
-    perf,
-    "redundant allocation"
+    #[clippy::version = "1.87.0"]
+    pub OWNED_COW,
+    style,
+    "needlessly owned Cow type"
 }
 
 declare_clippy_lint! {
@@ -244,6 +229,64 @@ declare_clippy_lint! {
     pub RC_BUFFER,
     restriction,
     "shared ownership of a buffer type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `Rc<Mutex<T>>`.
+    ///
+    /// ### Why restrict this?
+    /// `Rc` is used in single thread and `Mutex` is used in multi thread.
+    /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
+    ///
+    /// ### Known problems
+    /// Sometimes combining generic types can lead to the requirement that a
+    /// type use Rc in conjunction with Mutex. We must consider those cases false positives, but
+    /// alas they are quite hard to rule out. Luckily they are also rare.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::sync::Mutex;
+    /// fn foo(interned: Rc<Mutex<i32>>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::cell::RefCell
+    /// fn foo(interned: Rc<RefCell<i32>>) { ... }
+    /// ```
+    #[clippy::version = "1.55.0"]
+    pub RC_MUTEX,
+    restriction,
+    "usage of `Rc<Mutex<T>>`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of redundant allocations anywhere in the code.
+    ///
+    /// ### Why is this bad?
+    /// Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Arc<T>>`, `Rc<Box<T>>`, `Arc<&T>`, `Arc<Rc<T>>`,
+    /// `Arc<Arc<T>>`, `Arc<Box<T>>`, `Box<&T>`, `Box<Rc<T>>`, `Box<Arc<T>>`, `Box<Box<T>>`, add an unnecessary level of indirection.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::rc::Rc;
+    /// fn foo(bar: Rc<&usize>) {}
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```no_run
+    /// fn foo(bar: &usize) {}
+    /// ```
+    #[clippy::version = "1.44.0"]
+    pub REDUNDANT_ALLOCATION,
+    perf,
+    "redundant allocation"
 }
 
 declare_clippy_lint! {
@@ -321,94 +364,51 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `Rc<Mutex<T>>`.
+    /// Checks for usage of `Vec<Box<T>>` where T: Sized anywhere in the code.
+    /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
-    /// ### Why restrict this?
-    /// `Rc` is used in single thread and `Mutex` is used in multi thread.
-    /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
-    ///
-    /// ### Known problems
-    /// Sometimes combining generic types can lead to the requirement that a
-    /// type use Rc in conjunction with Mutex. We must consider those cases false positives, but
-    /// alas they are quite hard to rule out. Luckily they are also rare.
+    /// ### Why is this bad?
+    /// `Vec` already keeps its contents in a separate area on
+    /// the heap. So if you `Box` its contents, you just add another level of indirection.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// use std::rc::Rc;
-    /// use std::sync::Mutex;
-    /// fn foo(interned: Rc<Mutex<i32>>) { ... }
+    /// ```no_run
+    /// struct X {
+    ///     values: Vec<Box<i32>>,
+    /// }
     /// ```
     ///
     /// Better:
     ///
-    /// ```rust,ignore
-    /// use std::rc::Rc;
-    /// use std::cell::RefCell
-    /// fn foo(interned: Rc<RefCell<i32>>) { ... }
+    /// ```no_run
+    /// struct X {
+    ///     values: Vec<i32>,
+    /// }
     /// ```
-    #[clippy::version = "1.55.0"]
-    pub RC_MUTEX,
-    restriction,
-    "usage of `Rc<Mutex<T>>`"
+    #[clippy::version = "1.33.0"]
+    pub VEC_BOX,
+    complexity,
+    "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects needlessly owned `Cow` types.
-    ///
-    /// ### Why is this bad?
-    /// The borrowed types are usually more flexible, in that e.g. a
-    /// `Cow<'_, str>` can accept both `&str` and `String` while
-    /// `Cow<'_, String>` can only accept `&String` and `String`. In
-    /// particular, `&str` is more general, because it allows for string
-    /// literals while `&String` can only be borrowed from a heap-owned
-    /// `String`).
-    ///
-    /// ### Known Problems
-    /// The lint does not check for usage of the type. There may be external
-    /// interfaces that require the use of an owned type.
-    ///
-    /// At least the `CString` type also has a different API than `CStr`: The
-    /// former has an `as_bytes` method which the latter calls `to_bytes`.
-    /// There is no guarantee that other types won't gain additional methods
-    /// leading to a similar mismatch.
-    ///
-    /// In addition, the lint only checks for the known problematic types
-    /// `String`, `Vec<_>`, `CString`, `OsString` and `PathBuf`. Custom types
-    /// that implement `ToOwned` will not be detected.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let wrogn: std::borrow::Cow<'_, Vec<u8>>;
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let right: std::borrow::Cow<'_, [u8]>;
-    /// ```
-    #[clippy::version = "1.87.0"]
-    pub OWNED_COW,
-    style,
-    "needlessly owned Cow type"
-}
+impl_lint_pass!(Types => [
+    BORROWED_BOX,
+    BOX_COLLECTION,
+    LINKEDLIST,
+    OPTION_OPTION,
+    OWNED_COW,
+    RC_BUFFER,
+    RC_MUTEX,
+    REDUNDANT_ALLOCATION,
+    TYPE_COMPLEXITY,
+    VEC_BOX,
+]);
 
 pub struct Types {
     vec_box_size_threshold: u64,
     type_complexity_threshold: u64,
     avoid_breaking_exported_api: bool,
 }
-
-impl_lint_pass!(Types => [
-    BOX_COLLECTION,
-    VEC_BOX,
-    OPTION_OPTION,
-    LINKEDLIST,
-    BORROWED_BOX,
-    REDUNDANT_ALLOCATION,
-    RC_BUFFER,
-    RC_MUTEX,
-    TYPE_COMPLEXITY,
-    OWNED_COW
-]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(

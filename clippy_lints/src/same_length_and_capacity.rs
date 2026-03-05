@@ -70,6 +70,7 @@ declare_clippy_lint! {
     pedantic,
     "`from_raw_parts` with same length and capacity"
 }
+
 declare_lint_pass!(SameLengthAndCapacity => [SAME_LENGTH_AND_CAPACITY]);
 
 impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
