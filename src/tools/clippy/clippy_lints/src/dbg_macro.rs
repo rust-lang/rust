@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{is_in_test, sym};
 use clippy_utils::macros::{MacroCall, macro_backtrace};
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_in_test, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
@@ -33,6 +33,8 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
+impl_lint_pass!(DbgMacro => [DBG_MACRO]);
+
 pub struct DbgMacro {
     allow_dbg_in_tests: bool,
     /// Tracks the `dbg!` macro callsites that are already checked.
@@ -40,8 +42,6 @@ pub struct DbgMacro {
     /// Tracks the previous `SyntaxContext`, to avoid walking the same context chain.
     prev_ctxt: SyntaxContext,
 }
-
-impl_lint_pass!(DbgMacro => [DBG_MACRO]);
 
 impl DbgMacro {
     pub fn new(conf: &'static Conf) -> Self {

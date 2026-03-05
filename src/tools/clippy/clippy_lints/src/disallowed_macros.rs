@@ -63,6 +63,8 @@ declare_clippy_lint! {
     "use of a disallowed macro"
 }
 
+impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
+
 pub struct DisallowedMacros {
     disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
     seen: FxHashSet<ExpnId>,
@@ -124,8 +126,6 @@ impl DisallowedMacros {
         }
     }
 }
-
-impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
 
 impl LateLintPass<'_> for DisallowedMacros {
     fn check_crate(&mut self, cx: &LateContext<'_>) {

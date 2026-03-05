@@ -1,7 +1,7 @@
 pub mod cursor;
 
 use self::cursor::{Capture, Cursor};
-use crate::utils::{ErrAction, File, Scoped, expect_action, walk_dir_no_dot_or_target};
+use crate::utils::{ErrAction, File, Scoped, expect_action, slice_groups_mut, walk_dir_no_dot_or_target};
 use core::fmt::{self, Display, Write as _};
 use core::range::Range;
 use rustc_arena::DroplessArena;
@@ -13,6 +13,7 @@ use std::str::pattern::Pattern;
 pub struct ParseCxImpl<'cx> {
     pub arena: &'cx DroplessArena,
     pub str_buf: StrBuf,
+    pub str_list_buf: VecBuf<&'cx str>,
 }
 pub type ParseCx<'cx> = &'cx mut ParseCxImpl<'cx>;
 
@@ -22,6 +23,7 @@ pub fn new_parse_cx<'env, T>(f: impl for<'cx> FnOnce(&'cx mut Scoped<'cx, 'env, 
     f(&mut Scoped::new(ParseCxImpl {
         arena: &arena,
         str_buf: StrBuf::with_capacity(128),
+        str_list_buf: VecBuf::with_capacity(128),
     }))
 }
 
@@ -82,6 +84,20 @@ impl StrBuf {
     }
 }
 
+pub struct VecBuf<T>(Vec<T>);
+impl<T> VecBuf<T> {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(Vec::with_capacity(cap))
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<R>(&mut self, f: impl FnOnce(&mut Vec<T>) -> R) -> R {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LintTool {
     Rustc,
@@ -128,7 +144,7 @@ pub struct ActiveLint<'cx> {
     pub group: &'cx str,
     pub module: &'cx str,
     pub path: PathBuf,
-    pub declaration_range: Range<usize>,
+    pub declaration_range: Range<u32>,
 }
 
 pub struct DeprecatedLint<'cx> {
@@ -147,8 +163,59 @@ pub enum Lint<'cx> {
     Renamed(RenamedLint<'cx>),
 }
 
+#[derive(Clone, Copy)]
+pub enum LintPassMac {
+    Declare,
+    Impl,
+}
+impl LintPassMac {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Declare => "declare_lint_pass",
+            Self::Impl => "impl_lint_pass",
+        }
+    }
+}
+
+pub struct LintPass<'cx> {
+    /// The raw text of the documentation comments. May include leading/trailing
+    /// whitespace and empty lines.
+    pub docs: &'cx str,
+    pub name: &'cx str,
+    pub lt: Option<&'cx str>,
+    pub mac: LintPassMac,
+    pub decl_range: Range<u32>,
+    pub lints: &'cx [&'cx str],
+    pub path: PathBuf,
+}
+
 pub struct LintData<'cx> {
     pub lints: FxHashMap<&'cx str, Lint<'cx>>,
+    pub lint_passes: Vec<LintPass<'cx>>,
+}
+impl<'cx> LintData<'cx> {
+    #[expect(clippy::type_complexity)]
+    pub fn split_by_lint_file<'s>(
+        &'s mut self,
+    ) -> (
+        FxHashMap<&'s Path, Vec<(&'s str, Range<u32>)>>,
+        impl Iterator<Item = &'s mut [LintPass<'cx>]>,
+    ) {
+        #[expect(clippy::default_trait_access)]
+        let mut lints = FxHashMap::with_capacity_and_hasher(500, Default::default());
+        for (&name, lint) in &self.lints {
+            if let Lint::Active(lint) = lint {
+                lints
+                    .entry(&*lint.path)
+                    .or_insert_with(|| Vec::with_capacity(8))
+                    .push((name, lint.declaration_range));
+            }
+        }
+        let passes = slice_groups_mut(&mut self.lint_passes, |head, tail| {
+            tail.iter().take_while(|&x| x.path == head.path).count()
+        });
+        (lints, passes)
+    }
 }
 
 impl<'cx> ParseCxImpl<'cx> {
@@ -158,6 +225,7 @@ impl<'cx> ParseCxImpl<'cx> {
         let mut data = LintData {
             #[expect(clippy::default_trait_access)]
             lints: FxHashMap::with_capacity_and_hasher(1000, Default::default()),
+            lint_passes: Vec::with_capacity(400),
         };
 
         let mut contents = String::new();
@@ -193,7 +261,7 @@ impl<'cx> ParseCxImpl<'cx> {
                         self.str_buf
                             .alloc_replaced(self.arena, path, path::MAIN_SEPARATOR, "::")
                     };
-                    self.parse_clippy_lint_decls(
+                    self.parse_lint_src_file(
                         e.path(),
                         File::open_read_to_cleared_string(e.path(), &mut contents),
                         module,
@@ -208,11 +276,11 @@ impl<'cx> ParseCxImpl<'cx> {
     }
 
     /// Parse a source file looking for `declare_clippy_lint` macro invocations.
-    fn parse_clippy_lint_decls(&mut self, path: &Path, contents: &str, module: &'cx str, data: &mut LintData<'cx>) {
+    fn parse_lint_src_file(&mut self, path: &Path, contents: &str, module: &'cx str, data: &mut LintData<'cx>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
         #[rustfmt::skip]
-        static DECL_TOKENS: &[cursor::Pat<'_>] = &[
+        static LINT_DECL_TOKENS: &[cursor::Pat<'_>] = &[
             // !{ /// docs
             Bang, OpenBrace, AnyComment,
             // #[clippy::version = "version"]
@@ -220,24 +288,101 @@ impl<'cx> ParseCxImpl<'cx> {
             // pub NAME, GROUP,
             Ident("pub"), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
         ];
+        #[rustfmt::skip]
+        static PASS_DECL_TOKENS: &[cursor::Pat<'_>] = &[
+            // !( NAME <'lt> => [
+            Bang, OpenParen, CaptureDocLines, CaptureIdent, CaptureOptLifetimeArg, FatArrow, OpenBracket,
+        ];
 
         let mut cursor = Cursor::new(contents);
-        let mut captures = [Capture::EMPTY; 2];
-        while let Some(start) = cursor.find_ident("declare_clippy_lint") {
-            if cursor.match_all(DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) {
-                assert!(
-                    data.lints
-                        .insert(
-                            self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[0])),
-                            Lint::Active(ActiveLint {
-                                group: self.arena.alloc_str(cursor.get_text(captures[1])),
-                                module,
-                                path: path.into(),
-                                declaration_range: start as usize..cursor.pos() as usize,
-                            }),
-                        )
-                        .is_none()
-                );
+        let mut captures = [Capture::EMPTY; 3];
+        while let Some(mac_name) = cursor.find_any_ident() {
+            match cursor.get_text(mac_name) {
+                "declare_clippy_lint"
+                    if cursor.match_all(LINT_DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) =>
+                {
+                    assert!(
+                        data.lints
+                            .insert(
+                                self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[0])),
+                                Lint::Active(ActiveLint {
+                                    group: self.arena.alloc_str(cursor.get_text(captures[1])),
+                                    module,
+                                    path: path.into(),
+                                    declaration_range: mac_name.pos..cursor.pos(),
+                                }),
+                            )
+                            .is_none()
+                    );
+                },
+                mac @ ("declare_lint_pass" | "impl_lint_pass") if cursor.match_all(PASS_DECL_TOKENS, &mut captures) => {
+                    let mac = if matches!(mac, "declare_lint_pass") {
+                        LintPassMac::Declare
+                    } else {
+                        LintPassMac::Impl
+                    };
+                    let docs = match cursor.get_text(captures[0]) {
+                        "" => "",
+                        x => self.arena.alloc_str(x),
+                    };
+                    let name = self.arena.alloc_str(cursor.get_text(captures[1]));
+                    let lt = cursor.get_text(captures[2]);
+                    let lt = if lt.is_empty() {
+                        None
+                    } else {
+                        Some(self.arena.alloc_str(lt))
+                    };
+
+                    let lints = self.str_list_buf.with(|buf| {
+                        // Parses a comma separated list of paths and converts each path
+                        // to a string with whitespace removed.
+                        while !cursor.match_pat(CloseBracket) {
+                            buf.push(self.str_buf.with(|buf| {
+                                if cursor.match_pat(DoubleColon) {
+                                    buf.push_str("::");
+                                }
+                                let capture = cursor.capture_ident()?;
+                                buf.push_str(cursor.get_text(capture));
+                                while cursor.match_pat(DoubleColon) {
+                                    buf.push_str("::");
+                                    let capture = cursor.capture_ident()?;
+                                    buf.push_str(cursor.get_text(capture));
+                                }
+                                Some(self.arena.alloc_str(buf))
+                            })?);
+
+                            if !cursor.match_pat(Comma) {
+                                if !cursor.match_pat(CloseBracket) {
+                                    return None;
+                                }
+                                break;
+                            }
+                        }
+
+                        // The arena panics when allocating a size of zero.
+                        Some(if buf.is_empty() {
+                            &[]
+                        } else {
+                            buf.sort_unstable();
+                            &*self.arena.alloc_slice(buf)
+                        })
+                    });
+
+                    if let Some(lints) = lints
+                        && cursor.match_all(&[CloseParen, Semi], &mut [])
+                    {
+                        data.lint_passes.push(LintPass {
+                            docs,
+                            name,
+                            lt,
+                            mac,
+                            decl_range: mac_name.pos..cursor.pos(),
+                            lints,
+                            path: path.into(),
+                        });
+                    }
+                },
+                _ => {},
             }
         }
     }

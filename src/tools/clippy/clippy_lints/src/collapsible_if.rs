@@ -14,38 +14,6 @@ use rustc_span::{BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for nested `if` statements which can be collapsed
-    /// by `&&`-combining their conditions.
-    ///
-    /// ### Why is this bad?
-    /// Each `if`-statement adds one level of nesting, which
-    /// makes code look more complex than it really is.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x {
-    ///     if y {
-    ///         // …
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x && y {
-    ///     // …
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub COLLAPSIBLE_IF,
-    style,
-    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for collapsible `else { if ... }` expressions
     /// that can be collapsed to `else if ...`.
     ///
@@ -79,6 +47,40 @@ declare_clippy_lint! {
     pedantic,
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for nested `if` statements which can be collapsed
+    /// by `&&`-combining their conditions.
+    ///
+    /// ### Why is this bad?
+    /// Each `if`-statement adds one level of nesting, which
+    /// makes code look more complex than it really is.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x {
+    ///     if y {
+    ///         // …
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x && y {
+    ///     // …
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub COLLAPSIBLE_IF,
+    style,
+    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
+}
+
+impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_ELSE_IF, COLLAPSIBLE_IF]);
 
 pub struct CollapsibleIf {
     msrv: Msrv,
@@ -258,8 +260,6 @@ impl CollapsibleIf {
         }
     }
 }
-
-impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
 
 impl LateLintPass<'_> for CollapsibleIf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

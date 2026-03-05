@@ -57,6 +57,8 @@ declare_clippy_lint! {
     "use of disallowed types"
 }
 
+impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
+
 pub struct DisallowedTypes {
     def_ids: DefIdMap<(&'static str, &'static DisallowedPath)>,
     prim_tys: FxHashMap<PrimTy, (&'static str, &'static DisallowedPath)>,
@@ -103,8 +105,6 @@ pub fn def_kind_predicate(def_kind: DefKind) -> bool {
             | DefKind::AssocTy
     )
 }
-
-impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

@@ -45,6 +45,8 @@ declare_clippy_lint! {
     "usage of non-allowed Unicode scripts"
 }
 
+impl_lint_pass!(DisallowedScriptIdents => [DISALLOWED_SCRIPT_IDENTS]);
+
 pub struct DisallowedScriptIdents {
     whitelist: FxHashSet<Script>,
 }
@@ -61,8 +63,6 @@ impl DisallowedScriptIdents {
         }
     }
 }
-
-impl_lint_pass!(DisallowedScriptIdents => [DISALLOWED_SCRIPT_IDENTS]);
 
 impl EarlyLintPass for DisallowedScriptIdents {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
