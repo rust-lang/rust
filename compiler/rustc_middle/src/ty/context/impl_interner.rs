@@ -187,22 +187,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
-    fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
-        match self.def_kind(alias.def_id) {
-            DefKind::AssocTy => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
-                {
-                    ty::Inherent
-                } else {
-                    ty::Projection
-                }
-            }
-            DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias => ty::Free,
-            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
-        }
-    }
-
     fn alias_term_kind(self, alias: ty::AliasTerm<'tcx>) -> ty::AliasTermKind {
         match self.def_kind(alias.def_id) {
             DefKind::AssocTy => {

@@ -211,7 +211,7 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
+    fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTyKind<Self>;
 
     fn alias_term_kind(self, alias: ty::AliasTerm<Self>) -> ty::AliasTermKind;
 

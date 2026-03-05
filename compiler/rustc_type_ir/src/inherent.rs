@@ -52,13 +52,12 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+    fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
 
     fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
         Self::new_alias(
             interner,
-            ty::AliasTyKind::Projection,
-            ty::AliasTy::new_from_args(interner, def_id, args),
+            ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
@@ -69,8 +68,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     ) -> Self {
         Self::new_alias(
             interner,
-            ty::AliasTyKind::Projection,
-            ty::AliasTy::new(interner, def_id, args),
+            ty::AliasTy::new(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
