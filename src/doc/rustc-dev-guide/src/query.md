@@ -168,12 +168,6 @@ pub fn provide(providers: &mut rustc_middle::util::Providers) {
 }
 ```
 
-Note that `util::Providers` implements `DerefMut` to `query::Providers` so callers of the `provide` functions can pass in a `util::Providers` and it will just work for provider functions that accept `query::Providers` too
-
-- This function takes a mutable reference to the `query::Providers` struct and sets the fields to point to the correct provider functions.
-- You can also assign queries individually, e.g. `providers.type_of = type_of;`.
-- You can assign fields individually for each provider type (local, external, and hooks).
-
 #### Adding a new provider
 
 Suppose you want to add a new query called `fubar`.
