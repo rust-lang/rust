@@ -2,7 +2,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, Diagnostic, MultiSpan, msg};
+use rustc_errors::{Diagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -972,19 +972,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Find the lint level for a lint.
     pub fn lint_level(&self, lint: &'static Lint) -> LevelAndSource {
         self.provider.get_lint_level(lint, self.sess)
-    }
-
-    /// Used to emit a lint-related diagnostic based on the current state of
-    /// this lint context.
-    #[track_caller]
-    pub(crate) fn opt_span_lint(
-        &self,
-        lint: &'static Lint,
-        span: Option<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level(lint);
-        lint_level(self.sess, lint, level, span, decorate)
     }
 
     /// Used to emit a lint-related diagnostic based on the current state of
