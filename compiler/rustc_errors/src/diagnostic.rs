@@ -106,6 +106,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 pub trait Diagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
+    #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G>;
 }
 
