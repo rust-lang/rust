@@ -1,6 +1,6 @@
 # Diagnostic and subdiagnostic structs
-rustc has three diagnostic traits that can be used to create diagnostics:
-`Diagnostic`, `LintDiagnostic`, and `Subdiagnostic`.
+rustc has two diagnostic traits that can be used to create diagnostics:
+`Diagnostic` and `Subdiagnostic`.
 
 For simple diagnostics,
 derived impls can be used, e.g. `#[derive(Diagnostic)]`. They are only suitable for simple diagnostics that
@@ -8,12 +8,12 @@ don't require much logic in deciding whether or not to add additional subdiagnos
 
 In cases where diagnostics require more complex or dynamic behavior, such as conditionally adding subdiagnostics,
 customizing the rendering logic, or selecting messages at runtime, you will need to manually implement
-the corresponding trait (`Diagnostic`, `LintDiagnostic`, or `Subdiagnostic`).
+the corresponding trait (`Diagnostic` or `Subdiagnostic`).
 This approach provides greater flexibility and is recommended for diagnostics that go beyond simple, static structures.
 
 Diagnostic can be translated into different languages.
 
-## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
+## `#[derive(Diagnostic)]`
 
 Consider the [definition][defn] of the "field already declared" diagnostic shown below:
 
@@ -123,8 +123,8 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
 });
 ```
 
-### Reference for `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
-`#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]` support the following attributes:
+### Reference for `#[derive(Diagnostic)]`
+`#[derive(Diagnostic)]` supports the following attributes:
 
 - `#[diag("message", code = "...")]`
   - _Applied to struct or enum variant._
@@ -171,7 +171,6 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - Adds the subdiagnostic represented by the subdiagnostic struct.
 - `#[primary_span]` (_Optional_)
   - _Applied to `Span` fields on `Subdiagnostic`s.
-    Not used for `LintDiagnostic`s._
   - Indicates the primary span of the diagnostic.
 - `#[skip_arg]` (_Optional_)
   - _Applied to any field._

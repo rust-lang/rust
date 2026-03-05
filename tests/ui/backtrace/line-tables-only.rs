@@ -18,7 +18,6 @@
 //@ needs-unwind
 //@ aux-build: line-tables-only-helper.rs
 
-#![feature(backtrace_frames)]
 
 extern crate line_tables_only_helper;
 

@@ -3,7 +3,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
-#![rustc_variance_of_opaques]
+#![rustc_dump_variances_of_opaques]
 
 trait Captures<'a> {}
 impl<T> Captures<'_> for T {}

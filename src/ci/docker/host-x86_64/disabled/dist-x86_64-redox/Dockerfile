@@ -18,5 +18,5 @@ ENV \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CXX_x86_64_unknown_redox=x86_64-unknown-redox-g++
 
-ENV RUST_CONFIGURE_ARGS --enable-extended
-ENV SCRIPT python3 ../x.py dist --host='' --target x86_64-unknown-redox
+ENV RUST_CONFIGURE_ARGS="--enable-extended"
+ENV SCRIPT="python3 ../x.py dist --host= --target x86_64-unknown-redox"

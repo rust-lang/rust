@@ -1,5 +1,7 @@
 //@ add-minicore
 //@ revisions: x86_64 aarch64
+//@ reference: asm.ts-args.at-least-once
+//@ reference: asm.template-modifiers.only-one
 
 //@ [x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@ [aarch64] compile-flags: --target aarch64-unknown-linux-gnu

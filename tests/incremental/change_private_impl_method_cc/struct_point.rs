@@ -9,7 +9,6 @@
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="cfail2")]

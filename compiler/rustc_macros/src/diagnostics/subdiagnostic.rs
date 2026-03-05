@@ -536,7 +536,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         for (kind, messages) in kind_messages {
             let message = format_ident!("__message");
             let message_stream = messages.diag_message(Some(self.variant));
-            calls.extend(quote! { let #message = #diag.eagerly_translate(#message_stream); });
+            calls.extend(quote! { let #message = #diag.eagerly_format(#message_stream); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {

@@ -11,7 +11,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
     Level, Subdiagnostic, SuggestionStyle, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
@@ -1270,6 +1270,26 @@ pub(crate) struct IncorrectVisibilityRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag("incorrect `impl` restriction")]
+#[help(
+    "some possible `impl` restrictions are:
+    `impl(crate)`: can only be implemented in the current crate
+    `impl(super)`: can only be implemented in the parent module
+    `impl(self)`: can only be implemented in current module
+    `impl(in path::to::module)`: can only be implemented in the specified path"
+)]
+pub(crate) struct IncorrectImplRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict implementations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("<assignment> ... else {\"{\"} ... {\"}\"} is not allowed")]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]
@@ -2400,6 +2420,14 @@ pub(crate) struct TraitAliasCannotBeAuto {
 pub(crate) struct TraitAliasCannotBeUnsafe {
     #[primary_span]
     #[label("trait aliases cannot be `unsafe`")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("trait aliases cannot be `impl`-restricted")]
+pub(crate) struct TraitAliasCannotBeImplRestricted {
+    #[primary_span]
+    #[label("trait aliases cannot be `impl`-restricted")]
     pub span: Span,
 }
 
@@ -4277,7 +4305,7 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     pub(crate) span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unicode codepoint changing visible direction of text present in {$label}")]
 #[note(
     "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
@@ -4360,7 +4388,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("missing pattern for `...` argument")]
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(
