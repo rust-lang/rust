@@ -129,11 +129,11 @@ fn mk_cycle<'tcx, C: QueryCache>(
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -143,7 +143,7 @@ fn mk_cycle<'tcx, C: QueryCache>(
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
     }
 }
@@ -449,7 +449,8 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
     if !query.anon && !query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.get_or_insert_with(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
@@ -481,7 +482,8 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         }
 
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.unwrap_or_else(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // Call the query provider.
         dep_graph_data.with_task(
@@ -518,7 +520,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(value) = query.try_load_from_disk(tcx, key, prev_index, dep_node_index) {
+    if let Some(value) = (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
         if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
             dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
@@ -551,7 +553,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // We always expect to find a cached result for things that
     // can be forced from `DepNode`.
     debug_assert!(
-        !query.will_cache_on_disk_for_key(tcx, key)
+        !(query.will_cache_on_disk_for_key_fn)(tcx, key)
             || !tcx.key_fingerprint_style(dep_node.kind).is_maybe_recoverable(),
         "missing on-disk cache entry for {dep_node:?}"
     );
@@ -559,7 +561,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.is_loadable_from_disk(tcx, key, prev_index),
+        !(query.is_loadable_from_disk_fn)(tcx, key, prev_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -625,7 +627,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.construct_dep_node(tcx, key);
+    let dep_node = DepNode::construct(tcx, query.dep_kind, key);
 
     let dep_graph = &tcx.dep_graph;
     let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
@@ -656,7 +658,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // In ensure-done mode, we can only skip execution for this key if
             // there's a disk-cached value available to load later if needed,
             // which guarantees the query provider will never run for this key.
-            let is_loadable = query.is_loadable_from_disk(tcx, key, serialized_dep_node_index);
+            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
             EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
         }
     }
