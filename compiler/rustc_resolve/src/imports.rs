@@ -1327,6 +1327,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         _ => (lev_suggestion, None),
                     };
 
+                // If importing of trait asscoiated items is enabled, an also find an
+                // `Enum`, then note that inherent associated items cannot be imported.
+                let note = if self.tcx.features().import_trait_associated_functions()
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(m)) = path_res
+                    && let Some(Res::Def(DefKind::Enum, _)) = m.res()
+                {
+                    note.or(Some(
+                        "cannot import inherent associated items, only trait associated items"
+                            .to_string(),
+                    ))
+                } else {
+                    note
+                };
+
                 let label = match module {
                     ModuleOrUniformRoot::Module(module) => {
                         let module_str = module_to_string(module);
