@@ -774,3 +774,7 @@ pub use self::avx512fp16::*;
 mod kl;
 #[stable(feature = "keylocker_x86", since = "1.89.0")]
 pub use self::kl::*;
+
+mod movrs;
+#[unstable(feature = "movrs_target_feature", issue = "137976")]
+pub use self::movrs::*;
