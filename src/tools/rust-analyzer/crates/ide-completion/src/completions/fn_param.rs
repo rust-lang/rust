@@ -75,9 +75,6 @@ fn fill_fn_params(
     let mut file_params = FxHashMap::default();
 
     let mut extract_params = |f: ast::Fn| {
-        if !is_simple_param(current_param) {
-            return;
-        }
         f.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
             if let Some(pat) = param.pat() {
                 let whole_param = param.to_smolstr();
@@ -88,6 +85,9 @@ fn fill_fn_params(
     };
 
     for node in ctx.token.parent_ancestors() {
+        if !is_simple_param(current_param) {
+            break;
+        }
         match_ast! {
             match node {
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {
