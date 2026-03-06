@@ -31,8 +31,6 @@ help: either remove the unused type parameter `UNUSED`, or make use of it
 LL - impl<const UNUSED: usize> Drop for Foo {}
 LL + impl Drop for Foo {}
    |
-LL | impl<const UNUSED: usize> Drop for Foo<UNUSED> {}
-   |                                       ++++++++
 
 error: aborting due to 3 previous errors
 

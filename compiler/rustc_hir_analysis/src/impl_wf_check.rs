@@ -383,6 +383,16 @@ fn suggest_to_remove_or_use_generic(
     // Option A: Remove (Only if not used in body)
     if !is_param_used {
         suggestions.push(vec![(hir_impl.generics.span_for_param_removal(index), String::new())]);
+    } else {
+        // there could be a case where the parameter is used in the body, but the self type is still missing the generic argument, so we want to suggest adding it in that case as well
+        // e.g.
+        // ```
+        // struct S;
+        // impl<'a> S {
+        //    fn foo(&self) -> &'a str { "" }
+        // }
+        // ```
+        // in such a case we could make the suggestion to add 'a to S in the `sturct S` definition and the `impl S` definition
     }
 
     // Option B: Suggest adding only if there's an available slot

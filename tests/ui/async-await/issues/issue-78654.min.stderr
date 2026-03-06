@@ -17,8 +17,6 @@ help: either remove the unused type parameter `H`, or make use of it
 LL - impl<const H: feature> Foo {
 LL + impl Foo {
    |
-LL | impl<const H: feature> Foo<H> {
-   |                           +++
 
 error: aborting due to 2 previous errors
 

@@ -50,6 +50,11 @@ LL | impl<const N: i32> Copy for S<A> {}
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the unused type parameter `N`, or make use of it
+   |
+LL - impl<const N: i32> Copy for S<A> {}
+LL + impl Copy for S<A> {}
+   |
 
 error[E0207]: the const parameter `M` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unsized-anon-const-err-2.rs:17:6
@@ -59,6 +64,11 @@ LL | impl<const M: usize> Copy for S<A> {}
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the unused type parameter `M`, or make use of it
+   |
+LL - impl<const M: usize> Copy for S<A> {}
+LL + impl Copy for S<A> {}
+   |
 
 error: aborting due to 6 previous errors; 1 warning emitted
 
