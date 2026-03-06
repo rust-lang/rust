@@ -1,9 +1,10 @@
 //! Configuration for skipping or changing the result for individual test cases (inputs) rather
 //! than ignoring entire tests.
 
+use BaseName as Bn;
 use CheckBasis::{Mpfr, Musl};
+use Identifier as Id;
 use libm::support::CastFrom;
-use {BaseName as Bn, Identifier as Id};
 
 use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 
