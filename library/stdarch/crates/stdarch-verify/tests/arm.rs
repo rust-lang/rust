@@ -445,6 +445,7 @@ fn verify_all_signatures() {
                     && !rust.file.ends_with("v7.rs\"")
                     && !rust.file.ends_with("v8.rs\"")
                     && !rust.file.ends_with("mte.rs\"")
+                    && !rust.file.ends_with("rand.rs\"")
                     && !rust.file.ends_with("ex.rs\"")
                     && !skip_intrinsic_verify.contains(&rust.name)
                 {
