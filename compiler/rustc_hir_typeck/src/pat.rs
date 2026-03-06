@@ -2436,10 +2436,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
+            // `..` does not allow a trailing comma, so if the last field already
+            // ends with one, insert `" .."` right after that comma rather than
+            // appending `", .."` after the field (which would produce `field, ..,`).
+            let sm = self.tcx.sess.source_map();
+            let after_field = field.span.shrink_to_hi();
+            let tail_span = after_field.with_hi(pat.span.hi());
+            // `span_through_char` scans past whitespace and comments, so this
+            // correctly handles cases like `field /*comment*/,`.
+            let comma_span = sm.span_through_char(tail_span, ',');
+            let (span, insertion) = if comma_span != tail_span {
+                // A comma was found; insert ` ..` right after it.
+                (comma_span.shrink_to_hi(), " ..")
+            } else {
+                (after_field, ", ..")
+            };
             err.span_suggestion_verbose(
-                field.span.shrink_to_hi(),
+                span,
                 "ignore the inaccessible and unused fields",
-                ", ..",
+                insertion,
                 Applicability::MachineApplicable,
             );
         } else {
