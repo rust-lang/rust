@@ -630,7 +630,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     let dep_node = DepNode::construct(tcx, query.dep_kind, key);
 
     let dep_graph = &tcx.dep_graph;
-    let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
+    let _serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -655,11 +655,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             EnsureCanSkip { skip_execution: true, dep_node: None }
         }
         EnsureMode::Done => {
-            // In ensure-done mode, we can only skip execution for this key if
-            // there's a disk-cached value available to load later if needed,
-            // which guarantees the query provider will never run for this key.
-            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
-            EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
+            panic!()
         }
     }
 }

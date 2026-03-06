@@ -457,11 +457,11 @@ macro_rules! define_callbacks {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                    crate::query::inner::query_ensure(
+                    crate::query::inner::query_get_at(
                         self.tcx,
+                        DUMMY_SP,
                         &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
-                        $crate::query::EnsureMode::Done,
                     );
                 }
             )*
