@@ -60,7 +60,7 @@ use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationRe
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
     AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
-    ParamMode, ResolverAstLowering2, ResolverAstLoweringExt,
+    ParamMode, CombinedResolverForLowering, ResolverAstLoweringExt,
 };
 
 mod generics;
@@ -815,7 +815,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 }
 
 struct SelfResolver<'a, 'b, 'tcx> {
-    resolver: &'b mut ResolverAstLowering2<'a, 'tcx>,
+    resolver: &'b mut CombinedResolverForLowering<'a, 'tcx>,
     path_id: NodeId,
     self_param_id: NodeId,
 }

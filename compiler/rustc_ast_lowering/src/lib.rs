@@ -44,6 +44,7 @@ use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
@@ -57,7 +58,7 @@ use rustc_hir::{
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{DelegationFnSig, DelegationInfo, RealResolver, TyCtxt};
+use rustc_middle::ty::{DelegationFnSig, DelegationInfo, ResolverAstLowering, TyCtxt};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -97,7 +98,7 @@ struct LoweringContext<'a, 'b, 'hir> {
     // will be in AST index.
     ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
 
-    resolver: &'b mut ResolverAstLowering2<'a, 'hir>,
+    resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -160,7 +161,7 @@ impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     fn new(
         tcx: TyCtxt<'hir>,
         ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-        resolver: &'b mut ResolverAstLowering2<'a, 'hir>,
+        resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
     ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
@@ -245,13 +246,13 @@ impl SpanLowerer {
     }
 }
 
-struct ResolverAstLowering2<'a, 'tcx> {
+struct CombinedResolverForLowering<'a, 'tcx> {
     next_node_id: NodeId,
-    base: &'a RealResolver<'tcx>,
-    mut_part: RealResolver<'tcx>,
+    base: &'a ResolverAstLowering<'tcx>,
+    mut_part: ResolverAstLowering<'tcx>,
 }
 
-impl ResolverAstLoweringExt for ResolverAstLowering2<'_, '_> {
+impl ResolverAstLoweringExt for CombinedResolverForLowering<'_, '_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         self.mut_part
             .legacy_const_generic_args(expr, tcx)
@@ -296,7 +297,7 @@ impl ResolverAstLoweringExt for ResolverAstLowering2<'_, '_> {
 }
 
 #[extension(trait ResolverAstLoweringExt)]
-impl RealResolver<'_> {
+impl ResolverAstLowering<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
@@ -510,7 +511,7 @@ enum TryBlockScope {
 }
 
 fn index_crate<'a, 'b, 'tcx>(
-    resolver: &'b ResolverAstLowering2<'a, 'tcx>,
+    resolver: &'b CombinedResolverForLowering<'a, 'tcx>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { resolver, index: IndexVec::new() };
@@ -520,7 +521,7 @@ fn index_crate<'a, 'b, 'tcx>(
     return indexer.index;
 
     struct Indexer<'s, 'a, 'tcx> {
-        resolver: &'s ResolverAstLowering2<'a, 'tcx>,
+        resolver: &'s CombinedResolverForLowering<'a, 'tcx>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -581,9 +582,9 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     tcx.ensure_done().early_lint_checks(());
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
     tcx.ensure_done().get_lang_items(());
-    let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
+    let (resolver, krate) = tcx.resolver_for_lowering().steal();
 
-    let mut resolver = ResolverAstLowering2 {
+    let mut resolver = CombinedResolverForLowering {
         next_node_id: resolver.next_node_id,
         base: &resolver.resolver,
         mut_part: Default::default(),
@@ -607,12 +608,12 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         lowerer.lower_node(def_id);
     }
 
-    // // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-    // let prof = sess.prof.clone();
-    // spawn(move || {
-    //     let _timer = prof.verbose_generic_activity("drop_ast");
-    //     drop(krate);
-    // });
+    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+    let prof = tcx.sess.prof.clone();
+    spawn(move || {
+        let _timer = prof.verbose_generic_activity("drop_ast");
+        drop(krate);
+    });
 
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =

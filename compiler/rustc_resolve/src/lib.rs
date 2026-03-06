@@ -65,7 +65,7 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RealResolver, RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
+    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, ResolverAstLowering, RegisteredTools, AstLoweringResolutionContext, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -1153,7 +1153,7 @@ impl MacroData {
 
 pub struct ResolverOutputs<'tcx> {
     pub global_ctxt: ResolverGlobalCtxt,
-    pub ast_lowering: ResolverAstLowering<'tcx>,
+    pub ast_lowering: AstLoweringResolutionContext<'tcx>,
 }
 
 /// The main resolver class.
@@ -1840,10 +1840,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
         };
-        let ast_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ty::AstLoweringResolutionContext {
             next_node_id: self.next_node_id,
             lint_buffer: Steal::new(self.lint_buffer),
-            resolver: RealResolver {
+            resolver: ResolverAstLowering {
                 partial_res_map: self.partial_res_map,
                 import_res_map: self.import_res_map,
                 label_res_map: self.label_res_map,
