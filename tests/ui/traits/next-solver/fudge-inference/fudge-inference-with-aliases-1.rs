@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 // A regression test for https://github.com/rust-lang/trait-system-refactor-initiative/issues/252.
 // `fn fudge_inference_if_ok` might lose relationships between ty vars so we need to normalize

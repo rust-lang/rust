@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `g1`
-  --> $DIR/region-var-in-moved-ty-issue-133118.rs:22:15
+  --> $DIR/region-var-in-moved-ty-issue-133118.rs:23:15
    |
 LL |     let g1 = beta.gamma();
    |         -- move occurs because `g1` has type `<&B as Beta>::Gamma`, which does not implement the `Copy` trait
@@ -9,7 +9,7 @@ LL |     a(g1) + a(g1)
    |       value moved here
    |
 note: consider changing this parameter type in function `a` to borrow instead if owning the value isn't necessary
-  --> $DIR/region-var-in-moved-ty-issue-133118.rs:12:24
+  --> $DIR/region-var-in-moved-ty-issue-133118.rs:13:24
    |
 LL | pub fn a<T: Alpha>(_x: T) -> usize {
    |        -               ^ this parameter takes ownership of the value

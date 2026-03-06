@@ -4,7 +4,7 @@
 //@[next] check-pass
 
 #![feature(type_alias_impl_trait)]
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_uses)]
 
 use std::fmt::Debug;
 

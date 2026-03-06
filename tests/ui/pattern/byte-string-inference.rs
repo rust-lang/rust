@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 fn load<L>() -> Option<L> {
     todo!()

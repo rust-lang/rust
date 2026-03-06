@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:10:5
+  --> $DIR/exhaustive.rs:11:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -12,7 +12,7 @@ LL |     impl Test {
    = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:15:5
+  --> $DIR/exhaustive.rs:16:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -26,7 +26,7 @@ LL |     impl Display for Test {
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:22:5
+  --> $DIR/exhaustive.rs:23:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -39,7 +39,7 @@ LL |     impl dyn Trait {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:25:5
+  --> $DIR/exhaustive.rs:26:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -53,7 +53,7 @@ LL |     impl<T: Trait> Trait for Vec<T> { }
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:28:5
+  --> $DIR/exhaustive.rs:29:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -67,7 +67,7 @@ LL |     impl Trait for &dyn Trait {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:31:5
+  --> $DIR/exhaustive.rs:32:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -81,7 +81,7 @@ LL |     impl Trait for *mut Test {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:34:5
+  --> $DIR/exhaustive.rs:35:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -95,7 +95,7 @@ LL |     impl Trait for *mut [Test] {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:37:5
+  --> $DIR/exhaustive.rs:38:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -109,7 +109,7 @@ LL |     impl Trait for [Test; 8] {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:40:5
+  --> $DIR/exhaustive.rs:41:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -123,7 +123,7 @@ LL |     impl Trait for (Test,) {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:43:5
+  --> $DIR/exhaustive.rs:44:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -137,7 +137,7 @@ LL |     impl Trait for fn(Test) -> () {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:46:5
+  --> $DIR/exhaustive.rs:47:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`
@@ -151,7 +151,7 @@ LL |     impl Trait for fn() -> Test {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:50:9
+  --> $DIR/exhaustive.rs:51:9
    |
 LL |     let _a = || {
    |              -- move the `impl` block outside of this closure `<unnameable>` and up 2 bodies
@@ -164,7 +164,7 @@ LL |         impl Trait for Test {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:67:9
+  --> $DIR/exhaustive.rs:68:9
    |
 LL |     fn inside_inside() {
    |     ------------------ move the `impl` block outside of this function `inside_inside` and up 2 bodies
@@ -177,7 +177,7 @@ LL |         impl Display for InsideMain {
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/exhaustive.rs:74:9
+  --> $DIR/exhaustive.rs:75:9
    |
 LL |     fn inside_inside() {
    |     ------------------ move the `impl` block outside of this function `inside_inside` and up 2 bodies

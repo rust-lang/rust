@@ -4,6 +4,7 @@
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-backends: gcc
 //@ build-pass
+#![allow(todo_macro_uses)]
 
 // See comment below for why this test exists.
 

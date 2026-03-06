@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 fn f(_: usize, _: &usize, _: usize) {}
 
 fn arg<T>() -> T { todo!() }

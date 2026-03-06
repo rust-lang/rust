@@ -1,5 +1,5 @@
 error: missing required bound on `TRef`
-  --> $DIR/issue-86787.rs:10:5
+  --> $DIR/issue-86787.rs:11:5
    |
 LL |     type TRef<'a>;
    |     ^^^^^^^^^^^^^-
@@ -10,7 +10,7 @@ LL |     type TRef<'a>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/issue-86787.rs:25:37
+  --> $DIR/issue-86787.rs:26:37
    |
 LL |     type TRef<'a>;
    |     ------------- definition of `TRef` from trait
@@ -19,7 +19,7 @@ LL |         <Left as HasChildrenOf>::T: 'a,
    |                                     ^^ impl has extra requirement `<Left as HasChildrenOf>::T: 'a`
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/issue-86787.rs:26:38
+  --> $DIR/issue-86787.rs:27:38
    |
 LL |     type TRef<'a>;
    |     ------------- definition of `TRef` from trait

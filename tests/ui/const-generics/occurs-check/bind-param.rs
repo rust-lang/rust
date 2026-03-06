@@ -1,6 +1,6 @@
 //@ build-pass
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 // This test does not use any "unevaluated" consts, so it should compile just fine.
 

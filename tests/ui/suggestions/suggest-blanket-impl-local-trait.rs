@@ -2,6 +2,7 @@
 // when inside a `impl` statement are used two local traits.
 //
 //@ edition:2021
+#![allow(todo_macro_uses)]
 use std::fmt;
 
 trait LocalTraitOne { }

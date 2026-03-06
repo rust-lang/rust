@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ run-rustfix
 
-#![allow(unused)]
+#![allow(unused, todo_macro_uses)]
 
 use std::future::Future;
 use std::pin::Pin;

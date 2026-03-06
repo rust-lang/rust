@@ -1,4 +1,5 @@
 //@ edition:2015..2021
+#![allow(todo_macro_uses)]
 fn main() {}
 
 fn foo(_src: &crate::Foo) -> Option<i32> {

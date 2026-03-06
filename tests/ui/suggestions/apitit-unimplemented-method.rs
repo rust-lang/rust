@@ -1,4 +1,5 @@
 //@ aux-build:dep.rs
+#![allow(todo_macro_uses)]
 
 extern crate dep;
 use dep::*;

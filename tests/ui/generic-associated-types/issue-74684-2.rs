@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 trait Fun {
     type F<'a>: ?Sized;
 

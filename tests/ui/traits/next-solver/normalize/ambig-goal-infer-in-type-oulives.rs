@@ -1,6 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicitly enabled)
+#![allow(todo_macro_uses)]
 
 // Regression test for an ICE when trying to bootstrap rustc
 // with #125343. An ambiguous goal returned a `TypeOutlives`

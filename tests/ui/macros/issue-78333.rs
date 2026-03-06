@@ -1,4 +1,5 @@
 //@ build-pass
+#![allow(todo_macro_uses)]
 
 #![no_implicit_prelude]
 

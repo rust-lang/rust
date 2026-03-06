@@ -3,6 +3,7 @@
 //
 // The stderr for this test should contain ONLY one syntax error per struct literal,
 // and not any errors about missing fields.
+#![allow(todo_macro_uses)]
 
 struct Foo { a: isize, b: isize }
 

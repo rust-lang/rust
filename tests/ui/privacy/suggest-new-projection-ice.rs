@@ -1,5 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/146174>.
 //! Ensure that we don't ICE when an associated function returns an associated type.
+#![allow(todo_macro_uses)]
 
 mod m {
     pub trait Project {

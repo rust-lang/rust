@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 struct Bool<const B: bool>;
 

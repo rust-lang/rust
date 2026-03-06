@@ -1,4 +1,4 @@
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 #![feature(generic_const_exprs)]
 
 pub struct Foo<const N: usize>;

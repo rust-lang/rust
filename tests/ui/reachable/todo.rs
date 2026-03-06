@@ -1,7 +1,7 @@
 //@ check-pass
 //@ edition: 2018
 
-#![allow(unused)]
+#![allow(unused, todo_macro_uses)]
 #![warn(unreachable_code)]
 
 macro_rules! later {

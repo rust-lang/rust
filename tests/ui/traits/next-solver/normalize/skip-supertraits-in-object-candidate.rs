@@ -1,6 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 //@ edition: 2024
+#![allow(todo_macro_uses)]
 
 // A regression test for trait-system-refactor-initiative#245.
 // The old solver doesn't check the supertraits of the principal trait

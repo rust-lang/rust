@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 pub trait Foo {
     type Error: Error;

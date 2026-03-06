@@ -3,6 +3,7 @@
 // other dyn-compatibility *hard errors* to be suppressed, because we currently
 // only emit one dyn-compatibility error per trait...
 // issue: rust-lang/rust#102762
+#![allow(todo_macro_uses)]
 
 use std::future::Future;
 use std::pin::Pin;

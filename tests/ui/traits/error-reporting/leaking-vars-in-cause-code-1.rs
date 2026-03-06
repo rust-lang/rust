@@ -9,6 +9,7 @@
 // The old solver doesn't trigger ICE because regions in the predicate are replaced with
 // placeholders when checking generator witness. Besides, the old solver doesn't eagerly
 // resolves vars before canonicalizing the predicate in `predicate_must_hold_modulo_regions`.
+#![allow(todo_macro_uses)]
 
 trait AsyncFn: Send + 'static {
     type Fut: Future<Output = ()> + Send;

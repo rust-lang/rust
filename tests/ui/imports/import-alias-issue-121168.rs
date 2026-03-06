@@ -4,6 +4,7 @@
 //@ [edition2021] edition:2021
 //@ compile-flags: --extern import_alias_issue_121168_extern
 //@ aux-build: import-alias-issue-121168-extern.rs
+#![allow(todo_macro_uses)]
 
 extern crate import_alias_issue_121168_extern as nice_crate_name;
 

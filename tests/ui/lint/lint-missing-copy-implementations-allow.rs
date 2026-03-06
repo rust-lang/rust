@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 #![deny(missing_copy_implementations)]
 
 // Don't recommend implementing Copy on something stateful like an iterator.

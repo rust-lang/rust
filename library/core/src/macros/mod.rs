@@ -846,6 +846,7 @@ macro_rules! unimplemented {
 /// # }
 /// struct MyStruct;
 ///
+/// # #[allow(todo_macro_uses)]
 /// impl Foo for MyStruct {
 ///     fn bar(&self) -> u8 {
 ///         1 + 1

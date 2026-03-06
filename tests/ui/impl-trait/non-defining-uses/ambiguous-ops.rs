@@ -2,6 +2,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] check-pass
+#![allow(todo_macro_uses)]
 
 // Make sure we support non-call operations for opaque types even if
 // its not part of its item bounds.

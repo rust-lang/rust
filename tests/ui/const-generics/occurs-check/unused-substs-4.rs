@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 fn bind<const N: usize>(value: [u8; N]) -> [u8; 3 + 4] {
     todo!()

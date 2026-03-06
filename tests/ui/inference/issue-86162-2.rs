@@ -1,4 +1,5 @@
 // Regression test of #86162.
+#![allow(todo_macro_uses)]
 
 fn gen<T>() -> T { todo!() }
 

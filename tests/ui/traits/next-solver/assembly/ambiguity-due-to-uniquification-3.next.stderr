@@ -1,17 +1,17 @@
 error[E0283]: type annotations needed: cannot satisfy `dyn Object<&(), &()>: Trait<&()>`
-  --> $DIR/ambiguity-due-to-uniquification-3.rs:28:5
+  --> $DIR/ambiguity-due-to-uniquification-3.rs:29:5
    |
 LL |     impls_trait(obj, t);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: cannot satisfy `dyn Object<&(), &()>: Trait<&()>`
 help: the trait `Trait<T>` is implemented for `()`
-  --> $DIR/ambiguity-due-to-uniquification-3.rs:17:1
+  --> $DIR/ambiguity-due-to-uniquification-3.rs:18:1
    |
 LL | impl<T> Trait<T> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `impls_trait`
-  --> $DIR/ambiguity-due-to-uniquification-3.rs:24:19
+  --> $DIR/ambiguity-due-to-uniquification-3.rs:25:19
    |
 LL | fn impls_trait<T: Trait<U>, U>(_: Inv<T>, _: Inv<U>) {}
    |                   ^^^^^^^^ required by this bound in `impls_trait`

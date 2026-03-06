@@ -1,5 +1,6 @@
 // issue: rust-lang/rust#106874
 // ICE BoundUniversalRegionError
+#![allow(todo_macro_uses)]
 
 use std::marker::PhantomData;
 use std::rc::Rc;

@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #![feature(type_alias_impl_trait)]
 
 //@ check-pass

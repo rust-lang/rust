@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 trait Foo {
     fn t1() -> [u8; std::mem::size_of::<Self>()]; //~ERROR generic parameters
 }

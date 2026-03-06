@@ -1,4 +1,5 @@
 // Tests to make sure that we reject polymorphic fn ptrs.
+#![allow(todo_macro_uses)]
 
 #![feature(non_lifetime_binders)]
 //~^ WARN the feature `non_lifetime_binders` is incomplete

@@ -5,7 +5,7 @@
 // exceeds the recursion limit and evaluates to `Certainty::Maybe`.
 // See https://github.com/rust-lang/rust/pull/152444.
 
-#![allow(warnings)]
+#![allow(warnings, todo_macro_uses)]
 
 struct W<T: ?Sized>(T);
 type Four<T: ?Sized> = W<W<W<W<T>>>>;

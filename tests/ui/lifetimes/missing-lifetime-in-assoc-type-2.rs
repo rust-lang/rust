@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 struct S;
 struct T;
 
