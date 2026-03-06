@@ -1,4 +1,5 @@
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
     Subdiagnostic, msg,
@@ -763,15 +764,17 @@ pub(crate) struct FormatUnusedArg {
 // form of diagnostic.
 impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.arg("named", self.named);
-        let msg = diag.eagerly_format(msg!(
-            "{$named ->
-                [true] named argument
-                *[false] argument
-            } never used"
-        ));
-        diag.remove_arg("named");
-        diag.span_label(self.span, msg);
+        diag.span_label(
+            self.span,
+            msg!(
+                "{$named ->
+                    [true] named argument
+                    *[false] argument
+                } never used"
+            )
+            .arg("named", self.named)
+            .format(),
+        );
     }
 }
 

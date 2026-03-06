@@ -1328,12 +1328,6 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.downgrade_to_delayed_bug();
         self.emit()
     }
-
-    pub fn remove_arg(&mut self, name: &str) {
-        if let Some(diag) = self.diag.as_mut() {
-            diag.remove_arg(name);
-        }
-    }
 }
 
 /// Destructor bomb: every `Diag` must be consumed (emitted, cancelled, etc.)

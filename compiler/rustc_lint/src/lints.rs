@@ -3,6 +3,7 @@
 use std::num::NonZero;
 
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     ElidedLifetimeInPathSubdiag, EmissionGuarantee, Level, MultiSpan, Subdiagnostic,
@@ -3628,9 +3629,9 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
             }
 
             Explicit { lifetime_name, suggestions, optional_alternative } => {
-                diag.arg("lifetime_name", lifetime_name);
-                let msg = diag.eagerly_format(msg!("consistently use `{$lifetime_name}`"));
-                diag.remove_arg("lifetime_name");
+                let msg = msg!("consistently use `{$lifetime_name}`")
+                    .arg("lifetime_name", lifetime_name)
+                    .format();
                 diag.multipart_suggestion_with_style(
                     msg,
                     suggestions,

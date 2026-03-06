@@ -4,6 +4,7 @@ use std::fmt::Write;
 use either::Either;
 use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
     Subdiagnostic, msg,
@@ -359,14 +360,11 @@ pub struct FrameNote {
 
 impl Subdiagnostic for FrameNote {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.arg("times", self.times);
-        diag.arg("where_", self.where_);
-        diag.arg("instance", self.instance);
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));
         }
-        let msg = diag.eagerly_format(msg!(
+        let msg = msg!(
             r#"{$times ->
                 [0] inside {$where_ ->
                     [closure] closure
@@ -379,10 +377,11 @@ impl Subdiagnostic for FrameNote {
                     *[other] {""}
                 } ...]
             }"#
-        ));
-        diag.remove_arg("times");
-        diag.remove_arg("where_");
-        diag.remove_arg("instance");
+        )
+        .arg("times", self.times)
+        .arg("where_", self.where_)
+        .arg("instance", self.instance)
+        .format();
         diag.span_note(span, msg);
     }
 }
