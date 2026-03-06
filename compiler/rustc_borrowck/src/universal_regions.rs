@@ -555,6 +555,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: global regions = {}..{}", FIRST_GLOBAL_INDEX, first_extern_index);
         debug!("build: extern regions = {}..{}", first_extern_index, first_local_index);
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
+        debug!("build: final indices={:?}", indices);
 
         let (resume_ty, yield_ty) = match defining_ty {
             DefiningTy::Coroutine(_, args) => {

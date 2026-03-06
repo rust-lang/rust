@@ -262,17 +262,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let early_bound_params = GenericArgs::identity_for_item(tcx, self.infcx.root_def_id);
 
         // Add non-region params to var_values.
-        let mut var_values: SmallVec<[GenericArg<'_>; 8]> = early_bound_params
-            .into_iter()
-            .filter(|k| k.as_region().is_none()).collect();
+        let mut var_values: SmallVec<[GenericArg<'_>; 8]> =
+            early_bound_params.into_iter().filter(|k| k.as_region().is_none()).collect();
 
-        // Add both early and late bound region to var_values. 
+        // Add both early and late bound region to var_values.
         for (region, region_vid) in self.universal_regions.named_universal_regions_iter() {
             if region_vid != fr_static {
                 // filter out 'static, it is always in indices
                 var_values.push(GenericArg::from(region));
             }
-
         }
 
         // Add normalized fn_sig to var_values.

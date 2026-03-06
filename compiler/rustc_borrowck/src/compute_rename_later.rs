@@ -11,9 +11,14 @@ use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::comp
 
 use crate::hir::def::DefKind;
 use crate::ty::solve::NoSolution;
-use crate::ty::{CanonicalVarValues, GenericArg, GenericArgs};
-use crate::universal_regions::{compute_inputs_and_output_non_nll, defining_ty_non_nll};
-use crate::{LocalDefId, ParamEnv, RegionVariableOrigin, Ty, TypingMode, fold_regions, ty};
+use crate::ty::{CanonicalVarValues, GenericArg, GenericArgKind, GenericArgs, Region};
+use crate::universal_regions::{
+    compute_inputs_and_output_non_nll, defining_ty_non_nll,
+    for_each_late_bound_region_in_recursive_scope,
+};
+use crate::{
+    LocalDefId, ParamEnv, RegionVariableOrigin, SmallVec, Ty, TypingMode, debug, fold_regions, ty,
+};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { compute_outlives_bounds_rename, ..*p };
@@ -26,14 +31,28 @@ fn compute_outlives_bounds_rename<'tcx>(
     &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
     NoSolution,
 > {
+    debug!("enter compute_outlives_bounds_rename");
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(&infcx);
     let param_env = ParamEnv::empty();
     let defining_ty = defining_ty_non_nll(&infcx, mir_def);
     let defining_ty_def_id = defining_ty.def_id().expect_local();
+    let mut late_bound_region: Vec<Region<'_>> = vec![];
 
     let unnormalized_input_output_tys =
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
+
+    // Get late bound params.
+    // TODO: ok we actually get a  relate param here, if we actually return it, it should be ok?
+    for (idx, bound_var) in unnormalized_input_output_tys.bound_vars().iter().enumerate() {
+        if let ty::BoundVariableKind::Region(kind) = bound_var {
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
+            let r = ty::Region::new_late_param(infcx.tcx, mir_def.to_def_id(), kind);
+            debug!("late bound region are {:?}", r);
+            late_bound_region.push(r);
+        }
+    }
+
     let unnormalized_input_output_tys =
         infcx.enter_forall_and_leak_universe(unnormalized_input_output_tys);
 
@@ -128,16 +147,54 @@ fn compute_outlives_bounds_rename<'tcx>(
             }
         }
     }
-    // Get early and late bound params.
-    let typeck_root_def_id = tcx.typeck_root_def_id(mir_def.to_def_id());
-    let params = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+    // TODO: clean up all these messy bunch together
 
-    let var_value = tcx.mk_args_from_iter(
-        params.iter().chain(norm_sig_tys.iter().map(|ty| GenericArg::from(*ty))),
-    );
+    // Get early bound params.
+    let typeck_root_def_id = tcx.typeck_root_def_id(mir_def.to_def_id());
+
+    let early_bound_params = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+    let mut early_bound_region: SmallVec<[GenericArg<'_>; 8]> = Default::default();
+    let mut early_bound_non_region: SmallVec<[GenericArg<'_>; 8]> = Default::default();
+
+    for param in early_bound_params {
+        match param.kind() {
+            GenericArgKind::Lifetime(_) => early_bound_region.push(param),
+            _ => early_bound_non_region.push(param),
+        }
+    }
+
+    let mut var_value: SmallVec<[GenericArg<'_>; 8]> = early_bound_non_region;
+
+    for param in early_bound_region {
+        var_value.push(param);
+    }
+
+    // Collect late bound region for closure, coroutine, or inline-const.
+    // TODO: remove this?
+    if mir_def.to_def_id() != typeck_root_def_id {
+        for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(mir_def), |r| {
+            var_value.push(GenericArg::from(r));
+        });
+    }
+
+    // var value = [generic param, early bound region, late bound region, sig tys]
+    // Make generic param goes before region to match with the call site in free_region_relations.
+
+    for region in &late_bound_region {
+        var_value.push(GenericArg::from(*region))
+    }
+
+    for ty in &norm_sig_tys {
+        var_value.push(GenericArg::from(*ty))
+    }
+
+    // TODO: see if either the early and late bound region are universal. If it is,
+    // then we need a separate var value for it? test closures too.
 
     let var_values: CanonicalVarValues<TyCtxt<'_>> =
-        CanonicalVarValues { var_values: tcx.mk_args(var_value) };
+        CanonicalVarValues { var_values: tcx.mk_args(var_value.as_slice()) };
+
+    debug!("var value in query is {:?}", var_values);
 
     ocx.make_canonicalized_query_response(var_values, outlives_bounds)
 }
