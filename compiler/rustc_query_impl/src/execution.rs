@@ -224,7 +224,8 @@ fn cycle_error<'tcx, C: QueryCache>(
         .ok()
         .expect("failed to collect active queries");
 
-    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(tcx), span);
+    let error = find_cycle_in_stack(try_execute, &job_map, current_query_job(tcx), span)
+        .expect("did not find a cycle");
     (mk_cycle(query, tcx, error.lift()), None)
 }
 
