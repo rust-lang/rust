@@ -1930,7 +1930,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Otherwise, print the array separated by commas (or if it's a tuple)
             (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
-                let fields_iter = fields.iter().copied();
+                let fields_iter = fields.iter();
 
                 match *cv.ty.kind() {
                     ty::Array(..) => {
