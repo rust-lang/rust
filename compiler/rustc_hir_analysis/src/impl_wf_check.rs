@@ -383,17 +383,29 @@ fn suggest_to_remove_or_use_generic(
     // Option A: Remove (Only if not used in body)
     if !is_param_used {
         suggestions.push(vec![(hir_impl.generics.span_for_param_removal(index), String::new())]);
-    } else {
-        // there could be a case where the parameter is used in the body, but the self type is still missing the generic argument, so we want to suggest adding it in that case as well
-        // e.g.
-        // ```
-        // struct S;
-        // impl<'a> S {
-        //    fn foo(&self) -> &'a str { "" }
-        // }
-        // ```
-        // in such a case we could make the suggestion to add 'a to S in the `sturct S` definition and the `impl S` definition
     }
+    // todo: there could be a case where the parameter is used in the body, but the self type is still missing the generic argument, so we want to suggest adding it in that case as well
+    // e.g.
+    // ```
+    // struct S;
+    // impl<T> S {
+    //    fn foo(&self, x: T) {
+    //        // use T here
+    //    }
+    // }
+    // ```
+    // in such a case we could make the suggestion to add 'a to S in the `struct S` definition and the `impl S` definition
+    // but finding out whether the parameter is used as a generic argument in a function which doesnt have the generic parameter set for itself is not trivial
+    // such a case can be seen here:
+    // ```
+    // struct S;
+    // impl<T> S {
+    //    fn foo<T>(&self, x: T) {
+    //        // use T here
+    //    }
+    // }
+    // ```
+    // where it would be a good suggestion to remove the generic parameter `T` from the `impl` definition as the function `foo` can work without it.
 
     // Option B: Suggest adding only if there's an available slot
     if provided_slots < total_slots {
