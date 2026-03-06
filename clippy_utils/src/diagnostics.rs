@@ -250,9 +250,11 @@ where
         }
     }
 
+    let sp = sp.into();
     #[expect(clippy::disallowed_methods)]
-    cx.emit_span_lint(lint, sp, ClippyDiag(|diag: &mut Diag<'_, ()>| {
+    cx.emit_span_lint(lint, sp.clone(), ClippyDiag(|diag: &mut Diag<'_, ()>| {
         diag.primary_message(msg);
+        diag.span(sp);
         f(diag);
         docs_link(diag, lint);
 
