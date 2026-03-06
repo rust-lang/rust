@@ -1169,7 +1169,7 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
             type_param_span
                 .push_span_label(span, msg!("consider borrowing this type parameter in the trait"));
         }
-        let msg = diag.eagerly_format(msg!("the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`"));
+        let msg = msg!("the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`");
         diag.span_help(type_param_span, msg);
     }
 }
@@ -1213,9 +1213,9 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
             self.ident.span,
             msg!("calling this method introduces the `impl`'s `'static` requirement"),
         );
-        let msg = diag.eagerly_format(msg!("the used `impl` has a `'static` requirement"));
+        let msg = msg!("the used `impl` has a `'static` requirement");
         diag.span_note(multi_span, msg);
-        let msg = diag.eagerly_format(msg!("consider relaxing the implicit `'static` requirement"));
+        let msg = msg!("consider relaxing the implicit `'static` requirement");
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
             msg,
@@ -1278,8 +1278,7 @@ impl Subdiagnostic for ReqIntroducedLocations {
             );
         }
         self.span.push_span_label(self.cause_span, msg!("because of this returned expression"));
-        let msg = diag
-            .eagerly_format(msg!("\"`'static` lifetime requirement introduced by the return type"));
+        let msg = msg!("\"`'static` lifetime requirement introduced by the return type");
         diag.span_note(self.span, msg);
     }
 }
@@ -1719,8 +1718,7 @@ pub struct SuggestTuplePatternMany {
 impl Subdiagnostic for SuggestTuplePatternMany {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("path", self.path);
-        let message =
-            diag.eagerly_format(msg!("try wrapping the pattern in a variant of `{$path}`"));
+        let message = msg!("try wrapping the pattern in a variant of `{$path}`");
         diag.multipart_suggestions(
             message,
             self.compatible_variants.into_iter().map(|variant| {

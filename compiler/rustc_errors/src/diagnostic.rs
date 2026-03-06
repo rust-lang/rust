@@ -1131,16 +1131,6 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
-    /// Fluent variables are not namespaced from each other, so when
-    /// `Diagnostic`s and `Subdiagnostic`s use the same variable name,
-    /// one value will clobber the other. Eagerly formatting the
-    /// diagnostic uses the variables defined right then, before the
-    /// clobbering occurs.
-    pub fn eagerly_format(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
-        let args = self.args.iter();
-        self.dcx.eagerly_format(msg.into(), args)
-    }
-
     with_fn! { with_span,
     /// Add a span.
     pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self {
