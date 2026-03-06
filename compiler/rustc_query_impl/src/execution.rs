@@ -104,20 +104,6 @@ where
     Some(())
 }
 
-/// Guard object representing the responsibility to execute a query job and
-/// mark it as completed.
-///
-/// This will poison the relevant query key if it is dropped without calling
-/// [`Self::complete`].
-struct ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    state: &'tcx QueryState<'tcx, K>,
-    key: K,
-    key_hash: u64,
-}
-
 #[cold]
 #[inline(never)]
 fn mk_cycle<'tcx, C: QueryCache>(
@@ -146,6 +132,20 @@ fn mk_cycle<'tcx, C: QueryCache>(
             (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
     }
+}
+
+/// Guard object representing the responsibility to execute a query job and
+/// mark it as completed.
+///
+/// This will poison the relevant query key if it is dropped without calling
+/// [`Self::complete`].
+struct ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    state: &'tcx QueryState<'tcx, K>,
+    key: K,
+    key_hash: u64,
 }
 
 impl<'tcx, K> ActiveJobGuard<'tcx, K>
