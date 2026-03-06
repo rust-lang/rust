@@ -595,6 +595,7 @@ impl<'a> Parser<'a> {
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
         } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
             let rhs_ty = self.parse_ty()?;
+            self.dcx().span_err(ty.span.to(rhs_ty.span), "[[[ equality predicate ]]]");
             Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;
