@@ -799,14 +799,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
-        self.tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            self.tcx.local_def_id_to_hir_id(self.def_id),
-            self.sp,
-            |lint| {
-                lint.primary_message(msg);
-            },
-        );
+        self.error_invalid_codeblock_attr_with_help(msg, |_| {});
     }
 
     fn error_invalid_codeblock_attr_with_help(
@@ -814,14 +807,14 @@ impl<'tcx> ExtraInfo<'tcx> {
         msg: impl Into<DiagMessage>,
         f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        self.tcx.node_span_lint(
+        self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             self.tcx.local_def_id_to_hir_id(self.def_id),
             self.sp,
-            |lint| {
+            rustc_errors::DiagDecorator(|lint| {
                 lint.primary_message(msg);
                 f(lint);
-            },
+            }),
         );
     }
 }
