@@ -438,6 +438,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                     return;
                 }
 
+                // Skip type consts as mGCA doesn't support evaluatable clauses.
+                if self.tcx.is_type_const(uv.def) {
+                    return;
+                }
+
                 let span = self.tcx.def_span(uv.def);
                 self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
             }
