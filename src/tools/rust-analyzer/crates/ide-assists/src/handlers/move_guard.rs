@@ -567,7 +567,8 @@ fn main() {
     match 92 {
         x => if true
             && true
-            && true {
+            && true
+        {
             {
                 false
             }

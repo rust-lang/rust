@@ -164,6 +164,7 @@ enum RefType {
     Mutable,
 }
 struct TupleData {
+    // FIXME: After removing ted, it may be possible to reuse destructure_struct_binding::Target
     ident_pat: IdentPat,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
