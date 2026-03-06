@@ -18,10 +18,17 @@ pub(crate) struct anon;
 /// Use this type for the in-memory cache.
 pub(crate) struct arena_cache;
 
-/// # `cache_on_disk_if` query modifier
+/// # `cache_on_disk` query modifier
 ///
-/// Cache the query to disk if the `Block` returns true.
-pub(crate) struct cache_on_disk_if;
+/// Cache the query's return values to disk, allowing them to be loaded in
+/// future incremental-compilation sessions if their dep-graph dependencies are
+/// all green.
+///
+/// If the [`separate_provide_extern`] modifier is also present, values will
+/// only be cached to disk if their key belongs to the local crate. Values
+/// corresponding to extern-crate keys can typically be loaded from their
+/// crate metadata instead.
+pub(crate) struct cache_on_disk;
 
 /// # `cycle_delay_bug` query modifier
 ///
@@ -74,7 +81,9 @@ pub(crate) struct return_result_from_ensure_ok;
 
 /// # `separate_provide_extern` query modifier
 ///
-/// Use a separate query provider for local and extern crates
+/// Use a separate query provider function for local and extern crates.
+///
+/// Also affects the [`cache_on_disk`] modifier, if present.
 pub(crate) struct separate_provide_extern;
 
 // tidy-alphabetical-end

@@ -553,7 +553,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // We always expect to find a cached result for things that
     // can be forced from `DepNode`.
     debug_assert!(
-        !(query.will_cache_on_disk_for_key_fn)(tcx, key)
+        !(query.will_cache_on_disk_for_key_fn)(key)
             || !tcx.key_fingerprint_style(dep_node.kind).is_maybe_recoverable(),
         "missing on-disk cache entry for {dep_node:?}"
     );

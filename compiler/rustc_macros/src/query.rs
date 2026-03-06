@@ -5,8 +5,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    AttrStyle, Attribute, Block, Error, Expr, Ident, Pat, ReturnType, Token, Type, braced,
-    parenthesized, parse_macro_input, token,
+    AttrStyle, Attribute, Error, Expr, Ident, Pat, ReturnType, Token, Type, braced, parenthesized,
+    parse_macro_input, token,
 };
 
 mod kw {
@@ -132,17 +132,12 @@ struct Desc {
     expr_list: Punctuated<Expr, Token![,]>,
 }
 
-struct CacheOnDiskIf {
-    modifier: Ident,
-    block: Block,
-}
-
 /// See `rustc_middle::query::modifiers` for documentation of each query modifier.
 struct QueryModifiers {
     // tidy-alphabetical-start
     anon: Option<Ident>,
     arena_cache: Option<Ident>,
-    cache_on_disk_if: Option<CacheOnDiskIf>,
+    cache_on_disk: Option<Ident>,
     cycle_delay_bug: Option<Ident>,
     cycle_stash: Option<Ident>,
     depth_limit: Option<Ident>,
@@ -157,7 +152,7 @@ struct QueryModifiers {
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
-    let mut cache_on_disk_if = None;
+    let mut cache_on_disk = None;
     let mut desc = None;
     let mut cycle_delay_bug = None;
     let mut cycle_stash = None;
@@ -188,11 +183,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             braced!(attr_content in input);
             let expr_list = attr_content.parse_terminated(Expr::parse, Token![,])?;
             try_insert!(desc = Desc { modifier, expr_list });
-        } else if modifier == "cache_on_disk_if" {
-            // Parse a cache-on-disk modifier like:
-            // `cache_on_disk_if { tcx.is_typeck_child(key.to_def_id()) }`
-            let block = input.parse()?;
-            try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
+        } else if modifier == "cache_on_disk" {
+            try_insert!(cache_on_disk = modifier);
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
         } else if modifier == "cycle_delay_bug" {
@@ -222,7 +214,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     };
     Ok(QueryModifiers {
         arena_cache,
-        cache_on_disk_if,
+        cache_on_disk,
         desc,
         cycle_delay_bug,
         cycle_stash,
@@ -241,7 +233,7 @@ fn make_modifiers_stream(query: &Query, modifiers: &QueryModifiers) -> proc_macr
         // tidy-alphabetical-start
         anon,
         arena_cache,
-        cache_on_disk_if,
+        cache_on_disk,
         cycle_delay_bug,
         cycle_stash,
         depth_limit,
@@ -256,7 +248,7 @@ fn make_modifiers_stream(query: &Query, modifiers: &QueryModifiers) -> proc_macr
 
     let anon = anon.is_some();
     let arena_cache = arena_cache.is_some();
-    let cache_on_disk = cache_on_disk_if.is_some();
+    let cache_on_disk = cache_on_disk.is_some();
 
     let cycle_error_handling = if cycle_delay_bug.is_some() {
         quote! { DelayBug }
@@ -330,7 +322,6 @@ fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attrib
 #[derive(Default)]
 struct HelperTokenStreams {
     description_fns_stream: proc_macro2::TokenStream,
-    cache_on_disk_if_fns_stream: proc_macro2::TokenStream,
 }
 
 fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
@@ -339,18 +330,6 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
     // Replace span for `name` to make rust-analyzer ignore it.
     let mut erased_name = name.clone();
     erased_name.set_span(Span::call_site());
-
-    // Generate a function to check whether we should cache the query to disk, for some key.
-    if let Some(CacheOnDiskIf { block, .. }) = modifiers.cache_on_disk_if.as_ref() {
-        // `disallowed_pass_by_ref` is needed because some keys are `rustc_pass_by_value`.
-        streams.cache_on_disk_if_fns_stream.extend(quote! {
-            #[cfg_attr(not(bootstrap), allow(unused_variables, rustc::disallowed_pass_by_ref))]
-            #[cfg_attr(bootstrap, allow(unused_variables, rustc::pass_by_value))]
-            #[inline]
-            pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: &#key_ty) -> bool
-            #block
-        });
-    }
 
     let Desc { expr_list, .. } = &modifiers.desc;
 
@@ -379,12 +358,6 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
         crate::query::modifiers::#name;
     });
 
-    if let Some(CacheOnDiskIf { modifier, .. }) = &modifiers.cache_on_disk_if {
-        modifiers_stream.extend(quote! {
-            crate::query::modifiers::#modifier;
-        });
-    }
-
     macro_rules! doc_link {
         ( $( $modifier:ident ),+ $(,)? ) => {
             $(
@@ -399,6 +372,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 
     doc_link!(
         arena_cache,
+        cache_on_disk,
         cycle_delay_bug,
         cycle_stash,
         no_hash,
@@ -506,7 +480,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         make_helpers_for_query(&query, &mut helpers);
     }
 
-    let HelperTokenStreams { description_fns_stream, cache_on_disk_if_fns_stream } = helpers;
+    let HelperTokenStreams { description_fns_stream } = helpers;
 
     TokenStream::from(quote! {
         /// Higher-order macro that invokes the specified macro with (a) a list of all query
@@ -540,14 +514,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         pub mod _description_fns {
             use super::*;
             #description_fns_stream
-        }
-
-        // FIXME(Zalathar): Instead of declaring these functions directly, can
-        // we put them in a macro and then expand that macro downstream in
-        // `rustc_query_impl`, where the functions are actually used?
-        pub mod _cache_on_disk_if_fns {
-            use super::*;
-            #cache_on_disk_if_fns_stream
         }
 
         #errors
