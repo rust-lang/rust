@@ -10,7 +10,7 @@
 
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::dep_graph;
-use rustc_middle::queries::{self, ExternProviders, Providers};
+use rustc_middle::queries::{self, ExternProviders, Providers, TaggedQueryKey};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_middle::query::plumbing::{QuerySystem, QueryVTable};
 use rustc_middle::query::{AsLocalQueryKey, QueryCache, QueryMode};
