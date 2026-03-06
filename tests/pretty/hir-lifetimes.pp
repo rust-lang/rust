@@ -1,13 +1,20 @@
+#![attr = LintAttribute {kind: Allow,
+sub_attrs: [LintAttribute {lint_instances: [unused_imports, unused_variables,
+unused_visibilities, unused_assignments, dead_code, unused_mut,
+unreachable_code, unreachable_patterns, unused_must_use, unused_unsafe,
+path_statements, unused_attributes, unused_macros, unused_macro_rules,
+unused_allocation, unused_doc_comments, unused_extern_crates, unused_features,
+unused_labels, unused_parens, unused_braces, redundant_semicolons,
+map_unit_fn], attr_style: Inner, attr_index: 0}]}]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir
 //@ pp-exact:hir-lifetimes.pp
 
 // This tests the pretty-printing of lifetimes in lots of ways.
 
-#![allow(unused)]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 struct Foo<'a> {
     x: &'a u32,

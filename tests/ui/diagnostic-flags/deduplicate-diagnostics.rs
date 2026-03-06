@@ -7,7 +7,5 @@
                       //[duplicate]~| ERROR cannot find derive macro `Unresolved` in this scope
 struct S;
 
-#[deny("literal")] //~ ERROR malformed lint attribute input
-                   //[duplicate]~| ERROR malformed lint attribute input
-                   //[duplicate]~| ERROR malformed lint attribute input
+#[deny("literal")] //~ ERROR malformed `deny` attribute input [E0539]
 fn main() {}

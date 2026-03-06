@@ -18,11 +18,26 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     let mut expectations = Vec::new();
 
     for owner in krate.owners() {
+        // Deduplicate expectations
+        let mut inner_expectations = Vec::new();
         let lints = tcx.shallow_lint_levels_on(owner);
-        expectations.extend_from_slice(&lints.expectations);
+        for expectation in &lints.expectations {
+            let canonicalized = canonicalize_id(&expectation.0);
+            if !inner_expectations.iter().any(|(id, _)| canonicalize_id(id) == canonicalized) {
+                inner_expectations.push(expectation.clone());
+            }
+        }
+        expectations.extend(inner_expectations);
     }
 
     expectations
+}
+
+fn canonicalize_id(expect_id: &LintExpectationId) -> (rustc_span::AttrId, u16) {
+    match *expect_id {
+        LintExpectationId::Unstable { attr_id, lint_index, .. } => (attr_id, lint_index),
+        LintExpectationId::Stable { attr_id, lint_index, .. } => (attr_id, lint_index),
+    }
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
@@ -30,21 +45,6 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     let fulfilled_expectations = tcx.dcx().steal_fulfilled_expectation_ids();
 
     // Turn a `LintExpectationId` into a `(AttrId, lint_index)` pair.
-    let canonicalize_id = |expect_id: &LintExpectationId| {
-        match *expect_id {
-            LintExpectationId::Unstable { attr_id, lint_index: Some(lint_index) } => {
-                (attr_id, lint_index)
-            }
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
-                let attr_id = tcx.hir_attrs(hir_id)[attr_index as usize].id();
-
-                (attr_id, lint_index)
-            }
-            _ => panic!("fulfilled expectations must have a lint index"),
-        }
-    };
-
     let fulfilled_expectations: FxHashSet<_> =
         fulfilled_expectations.iter().map(canonicalize_id).collect();
 

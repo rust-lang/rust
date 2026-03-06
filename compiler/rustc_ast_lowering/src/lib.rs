@@ -164,7 +164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
         resolver: &'a mut ResolverAstLowering,
     ) -> Self {
-        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
+        let registered_tools = tcx.registered_tools(());
         Self {
             // Pseudo-globals.
             tcx,

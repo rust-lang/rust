@@ -1,12 +1,14 @@
-//@ pretty-compare-only
-//@ pretty-mode:hir
-//@ pp-exact:delegation-inline-attribute.pp
-
-#![allow(incomplete_features)]
+#![attr = LintAttribute {kind: Allow,
+sub_attrs: [LintAttribute {lint_instances: [incomplete_features],
+attr_style: Inner, attr_index: 0}]}]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:delegation-inline-attribute.pp
+
 
 mod to_reuse {
     fn foo(x: usize) -> usize { x }

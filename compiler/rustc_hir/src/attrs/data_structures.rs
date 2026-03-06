@@ -22,7 +22,9 @@ use thin_vec::ThinVec;
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
-use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
+use crate::{
+    DefaultBodyStability, HashIgnoredAttrId, PartialConstStability, RustcVersion, Stability,
+};
 
 #[derive(Copy, Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
@@ -894,6 +896,122 @@ impl fmt::Display for AutoDiffItem {
     }
 }
 
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct LintAttribute {
+    pub lint_instances: ThinVec<LintInstance>,
+    pub attr_span: Span,
+    pub reason: Option<Symbol>,
+    pub attr_style: AttrStyle,
+    pub attr_id: HashIgnoredAttrId,
+    pub attr_index: usize,
+}
+
+#[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
+pub struct LintInstance {
+    span: Span,
+    lint_name: Symbol,
+    original_name: Option<Symbol>,
+    lint_index: usize,
+    kind: LintAttrTool,
+}
+
+impl fmt::Display for LintInstance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.full_lint().fmt(f)
+    }
+}
+
+impl LintInstance {
+    pub fn new(
+        original_name: Symbol,
+        long_lint_name: String,
+        span: Span,
+        lint_index: usize,
+    ) -> Self {
+        let original_name = (original_name.as_str() != long_lint_name).then_some(original_name);
+        let mut tool_name = None;
+
+        let lint_name = match long_lint_name.split_once("::") {
+            Some((new_tool_name, lint_name)) => {
+                tool_name = Some(Symbol::intern(new_tool_name));
+                Symbol::intern(lint_name)
+            }
+            None => Symbol::intern(&long_lint_name),
+        };
+        let kind = match tool_name {
+            Some(tool_name) => {
+                let full_lint = Symbol::intern(&format!("{tool_name}::{lint_name}",));
+                LintAttrTool::Present { tool_name, full_lint }
+            }
+            None => LintAttrTool::NoTool,
+        };
+
+        Self { original_name, span, lint_index, lint_name, kind }
+    }
+
+    pub fn full_lint(&self) -> Symbol {
+        match self.kind {
+            LintAttrTool::Present { full_lint, .. } => full_lint,
+            LintAttrTool::NoTool => self.lint_name,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn lint_index(&self) -> usize {
+        self.lint_index
+    }
+
+    pub fn lint_name(&self) -> Symbol {
+        self.lint_name
+    }
+
+    pub fn original_name_without_tool(&self) -> Symbol {
+        let full_original_lint_name = self.original_lint_name();
+        match self.kind {
+            LintAttrTool::Present { tool_name, .. } => Symbol::intern(
+                full_original_lint_name
+                    .as_str()
+                    .trim_start_matches(tool_name.as_str())
+                    .trim_start_matches("::"),
+            ),
+            LintAttrTool::NoTool => full_original_lint_name,
+        }
+    }
+
+    pub fn tool_name(&self) -> Option<Symbol> {
+        if let LintAttrTool::Present { tool_name, .. } = self.kind { Some(tool_name) } else { None }
+    }
+
+    pub fn tool_is_named(&self, other: Symbol) -> bool {
+        self.tool_name().is_some_and(|tool_name| tool_name == other)
+    }
+
+    pub fn original_lint_name(&self) -> Symbol {
+        match self.original_name {
+            Some(name) => name,
+            None => self.full_lint(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PrintAttribute, Encodable, Decodable, HashStable_Generic)]
+enum LintAttrTool {
+    Present { tool_name: Symbol, full_lint: Symbol },
+    NoTool,
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum LintAttributeKind {
+    Allow,
+    Warn,
+    Deny,
+    Forbid,
+    Expect,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -1097,6 +1215,11 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[allow]`, `#[expect]`, `#[warn]`, `#[deny]`, `#[forbid]`
+    LintAttribute {
+        kind: LintAttributeKind,
+        sub_attrs: ThinVec<LintAttribute>,
+    },
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
