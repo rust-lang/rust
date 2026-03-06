@@ -2218,6 +2218,40 @@ fn test() {
 }
 
 #[test]
+fn tuple_struct_constructor_as_fn_trait() {
+    check_types(
+        r#"
+//- minicore: fn
+struct S(u32, u64);
+
+fn takes_fn<F: Fn(u32, u64) -> S>(f: F) -> S { f(1, 2) }
+
+fn test() {
+    takes_fn(S);
+  //^^^^^^^^^^^ S
+}
+"#,
+    );
+}
+
+#[test]
+fn enum_variant_constructor_as_fn_trait() {
+    check_types(
+        r#"
+//- minicore: fn
+enum E { A(u32) }
+
+fn takes_fn<F: Fn(u32) -> E>(f: F) -> E { f(1) }
+
+fn test() {
+    takes_fn(E::A);
+  //^^^^^^^^^^^^^^ E
+}
+"#,
+    );
+}
+
+#[test]
 fn fn_item_fn_trait() {
     check_types(
         r#"

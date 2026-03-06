@@ -5952,7 +5952,16 @@ impl<'db> Type<'db> {
     ) -> R {
         let module = resolver.module();
         let interner = DbInterner::new_with(db, module.krate(db));
-        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        // Most IDE operations want to operate in PostAnalysis mode, revealing opaques. This makes
+        // for a nicer IDE experience. However, method resolution is always done on real code (either
+        // existing code or code to be inserted), and there using PostAnalysis is dangerous - we may
+        // suggest invalid methods. So we're using the TypingMode of the body we're in.
+        let typing_mode = if let Some(body_owner) = resolver.body_owner() {
+            TypingMode::analysis_in_body(interner, body_owner.into())
+        } else {
+            TypingMode::non_body_analysis()
+        };
+        let infcx = interner.infer_ctxt().build(typing_mode);
         let unstable_features =
             MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
         let environment = param_env_from_resolver(db, resolver);
@@ -6147,6 +6156,13 @@ impl<'db> Type<'db> {
     pub fn as_adt(&self) -> Option<Adt> {
         let (adt, _subst) = self.ty.as_adt()?;
         Some(adt.into())
+    }
+
+    /// Holes in the args can come from lifetime/const params.
+    pub fn as_adt_with_args(&self) -> Option<(Adt, Vec<Option<Type<'db>>>)> {
+        let (adt, args) = self.ty.as_adt()?;
+        let args = args.iter().map(|arg| Some(self.derived(arg.ty()?))).collect();
+        Some((adt.into(), args))
     }
 
     pub fn as_builtin(&self) -> Option<BuiltinType> {

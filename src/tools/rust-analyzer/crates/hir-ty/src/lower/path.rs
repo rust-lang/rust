@@ -30,7 +30,10 @@ use crate::{
     consteval::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics},
-    lower::{GenericPredicateSource, LifetimeElisionKind, PathDiagnosticCallbackData},
+    lower::{
+        AssocTypeShorthandResolution, GenericPredicateSource, LifetimeElisionKind,
+        PathDiagnosticCallbackData,
+    },
     next_solver::{
         Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg, GenericArgs,
         Predicate, ProjectionPredicate, Region, TraitRef, Ty,
@@ -38,8 +41,8 @@ use crate::{
 };
 
 use super::{
-    ImplTraitLoweringMode, TyLoweringContext, associated_type_by_name_including_super_traits,
-    const_param_ty_query, ty_query,
+    ImplTraitLoweringMode, TyLoweringContext,
+    associated_type_by_name_including_super_traits_allow_ambiguity, const_param_ty_query, ty_query,
 };
 
 type CallbackData<'a> =
@@ -482,12 +485,14 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let error_ty = || Ty::new_error(self.ctx.interner, ErrorGuaranteed);
         let (assoc_type, trait_args) = match res {
             Some(TypeNs::GenericParam(param)) => {
-                let Ok(assoc_type) = super::resolve_type_param_assoc_type_shorthand(
-                    db,
-                    def,
-                    param,
-                    assoc_name.clone(),
-                ) else {
+                let AssocTypeShorthandResolution::Resolved(assoc_type) =
+                    super::resolve_type_param_assoc_type_shorthand(
+                        db,
+                        def,
+                        param,
+                        assoc_name.clone(),
+                    )
+                else {
                     return error_ty();
                 };
                 assoc_type
@@ -500,12 +505,14 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 };
                 let impl_trait = impl_trait.instantiate_identity();
                 // Searching for `Self::Assoc` in `impl Trait for Type` is like searching for `Self::Assoc` in `Trait`.
-                let Ok(assoc_type) = super::resolve_type_param_assoc_type_shorthand(
-                    db,
-                    impl_trait.def_id.0.into(),
-                    TypeParamId::trait_self(impl_trait.def_id.0),
-                    assoc_name.clone(),
-                ) else {
+                let AssocTypeShorthandResolution::Resolved(assoc_type) =
+                    super::resolve_type_param_assoc_type_shorthand(
+                        db,
+                        impl_trait.def_id.0.into(),
+                        TypeParamId::trait_self(impl_trait.def_id.0),
+                        assoc_name.clone(),
+                    )
+                else {
                     return error_ty();
                 };
                 let (assoc_type, trait_args) = assoc_type
@@ -869,7 +876,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
             args_and_bindings.bindings.iter().enumerate().flat_map(move |(binding_idx, binding)| {
-                let found = associated_type_by_name_including_super_traits(
+                let found = associated_type_by_name_including_super_traits_allow_ambiguity(
                     self.ctx.db,
                     trait_ref,
                     binding.name.clone(),
