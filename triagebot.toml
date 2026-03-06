@@ -1620,6 +1620,7 @@ dep-bumps = [
 "/src/tools/rustdoc" =                                   ["rustdoc"]
 "/src/tools/rustdoc-js" =                                ["rustdoc"]
 "/src/tools/rustdoc-themes" =                            ["rustdoc"]
+"/src/tools/rustfmt" =                                   ["rustfmt", "rustfmt-contributors"]
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap"]
