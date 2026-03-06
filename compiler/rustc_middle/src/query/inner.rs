@@ -6,7 +6,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
+use crate::query::{QueryCache, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
 
 /// Checks whether there is already a value for this key in the in-memory
@@ -46,21 +46,19 @@ where
     }
 }
 
-/// Shared implementation of `tcx.ensure_ok().$query(..)` and
-/// `tcx.ensure_done().$query(..)` for all queries.
+/// Implementation of `tcx.ensure_ok().$query(..)` for all queries.
 #[inline]
-pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
+pub(crate) fn query_ensure_ok<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
-    ensure_mode: EnsureMode,
 ) where
     C: QueryCache,
 {
     match try_get_cached(tcx, &query.cache, key) {
         Some(_value) => {}
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::EnsureOk);
         }
     }
 }
@@ -87,12 +85,7 @@ where
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => convert(value),
         None => {
-            match (query.execute_query_fn)(
-                tcx,
-                DUMMY_SP,
-                key,
-                QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
-            ) {
+            match (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::EnsureOk) {
                 // We executed the query. Convert the successful result.
                 Some(res) => convert(res),
 
