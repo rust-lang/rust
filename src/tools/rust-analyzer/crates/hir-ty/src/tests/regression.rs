@@ -2795,3 +2795,23 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn regression_21742() {
+    check_no_mismatches(
+        r#"
+pub trait IntoIterator {
+    type Item;
+}
+
+pub trait Collection: IntoIterator<Item = <Self as Collection>::Item> {
+    type Item;
+    fn contains(&self, item: &<Self as Collection>::Item);
+}
+
+fn contains_0<S: Collection<Item = i32>>(points: &S) {
+    points.contains(&0)
+}
+    "#,
+    );
+}

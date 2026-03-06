@@ -16,7 +16,7 @@ use itertools::Itertools;
 use stdx::never;
 use syntax::{
     SmolStr,
-    SyntaxKind::{BLOCK_EXPR, EXPR_STMT, STMT_LIST},
+    SyntaxKind::{EXPR_STMT, STMT_LIST},
     T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
     format_smolstr, match_ast,
@@ -52,6 +52,7 @@ pub(crate) fn complete_postfix(
         _ => return,
     };
     let expr_ctx = &dot_access.ctx;
+    let receiver_accessor = receiver_accessor(dot_receiver);
 
     let receiver_text =
         get_receiver_text(&ctx.sema, dot_receiver, receiver_is_ambiguous_float_literal);
@@ -90,7 +91,7 @@ pub(crate) fn complete_postfix(
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
 
-    let (dot_receiver_including_refs, prefix) = include_references(dot_receiver);
+    let (dot_receiver_including_refs, prefix) = include_references(&receiver_accessor);
     let mut receiver_text = receiver_text;
     receiver_text.insert_str(0, &prefix);
     let postfix_snippet =
@@ -111,13 +112,8 @@ pub(crate) fn complete_postfix(
         .add_to(acc, ctx.db);
 
     let try_enum = TryEnum::from_ty(&ctx.sema, receiver_ty);
-    let mut is_in_cond = false;
-    if let Some(parent) = dot_receiver_including_refs.syntax().parent()
-        && let Some(second_ancestor) = parent.parent()
-    {
-        if let Some(parent_expr) = ast::Expr::cast(parent) {
-            is_in_cond = is_in_condition(&parent_expr);
-        }
+    let is_in_cond = is_in_condition(&dot_receiver_including_refs);
+    if let Some(parent) = dot_receiver_including_refs.syntax().parent() {
         let placeholder = suggest_receiver_name(dot_receiver, "0", &ctx.sema);
         match &try_enum {
             Some(try_enum) if is_in_cond => match try_enum {
@@ -154,13 +150,13 @@ pub(crate) fn complete_postfix(
                 postfix_snippet("let", "let", &format!("let $1 = {receiver_text}"))
                     .add_to(acc, ctx.db);
             }
-            _ if matches!(second_ancestor.kind(), STMT_LIST | EXPR_STMT | BLOCK_EXPR) => {
+            _ if matches!(parent.kind(), STMT_LIST | EXPR_STMT) => {
                 postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
                     .add_to(acc, ctx.db);
                 postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
                     .add_to(acc, ctx.db);
             }
-            _ if ast::MatchArm::can_cast(second_ancestor.kind()) => {
+            _ if ast::MatchArm::can_cast(parent.kind()) => {
                 postfix_snippet(
                     "let",
                     "let",
@@ -305,7 +301,7 @@ pub(crate) fn complete_postfix(
         postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
     }
 
-    if let ast::Expr::Literal(literal) = dot_receiver_including_refs.clone()
+    if let ast::Expr::Literal(literal) = dot_receiver.clone()
         && let Some(literal_text) = ast::String::cast(literal.token())
     {
         add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
@@ -392,14 +388,22 @@ fn escape_snippet_bits(text: &mut String) {
     stdx::replace(text, '$', "\\$");
 }
 
+fn receiver_accessor(receiver: &ast::Expr) -> ast::Expr {
+    receiver
+        .syntax()
+        .parent()
+        .and_then(ast::Expr::cast)
+        .filter(|it| {
+            matches!(
+                it,
+                ast::Expr::FieldExpr(_) | ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_)
+            )
+        })
+        .unwrap_or_else(|| receiver.clone())
+}
+
 fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
-
-    while let Some(field_expr) = resulting_element.syntax().parent().and_then(ast::FieldExpr::cast)
-    {
-        resulting_element = ast::Expr::from(field_expr);
-    }
-
     let mut prefix = String::new();
 
     let mut found_ref_or_deref = false;
@@ -896,6 +900,30 @@ fn main() {
 fn main() {
     match 2 {
         bar => bar.$0
+    }
+}
+"#,
+            expect![[r#"
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn const      const {}
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn let             let
+                sn letm        let mut
+                sn match match expr {}
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    match 2 {
+        bar => &bar.l$0
     }
 }
 "#,
