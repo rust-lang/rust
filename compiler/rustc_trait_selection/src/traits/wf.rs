@@ -1016,17 +1016,20 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {
-                    let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
-                        ty::ClauseKind::ConstEvaluatable(c),
-                    ));
-                    let cause = self.cause(ObligationCauseCode::WellFormed(None));
-                    self.out.push(traits::Obligation::with_depth(
-                        tcx,
-                        cause,
-                        self.recursion_depth,
-                        self.param_env,
-                        predicate,
-                    ));
+                    // Skip type consts as mGCA doesn't support evaluatable clauses
+                    if !tcx.is_type_const(uv.def) {
+                        let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                            ty::ClauseKind::ConstEvaluatable(c),
+                        ));
+                        let cause = self.cause(ObligationCauseCode::WellFormed(None));
+                        self.out.push(traits::Obligation::with_depth(
+                            tcx,
+                            cause,
+                            self.recursion_depth,
+                            self.param_env,
+                            predicate,
+                        ));
+                    }
 
                     if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
                         && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
