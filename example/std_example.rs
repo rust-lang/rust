@@ -1,7 +1,6 @@
 #![feature(
     core_intrinsics,
     coroutines,
-    stmt_expr_attributes,
     coroutine_trait,
     repr_simd,
     tuple_trait,
