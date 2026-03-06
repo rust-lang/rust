@@ -1169,7 +1169,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
             type_param_span
                 .push_span_label(span, msg!("consider borrowing this type parameter in the trait"));
         }
-        let msg = msg!("the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`");
+        let msg = msg!(
+            "the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`"
+        );
         diag.span_help(type_param_span, msg);
     }
 }

@@ -66,6 +66,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
+use crate::formatting::DiagMessageAddArg;
 pub use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
 
@@ -480,16 +481,6 @@ impl DiagCtxt {
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
         self.inner.borrow_mut().emitter = emitter;
-    }
-
-    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
-    pub fn eagerly_format<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> DiagMessage {
-        let inner = self.inner.borrow();
-        inner.eagerly_format(message, args)
     }
 
     /// Format `message` eagerly with `args` to `String`.
@@ -1417,15 +1408,6 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
-    fn eagerly_format<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> DiagMessage {
-        DiagMessage::Str(Cow::from(self.eagerly_format_to_string(message, args)))
-    }
-
     /// Format `message` eagerly with `args` to `String`.
     fn eagerly_format_to_string<'a>(
         &self,
@@ -1434,14 +1416,6 @@ impl DiagCtxtInner {
     ) -> String {
         let args = args.map(|(name, val)| (name.clone(), val.clone())).collect();
         format_diag_message(&message, &args).to_string()
-    }
-
-    fn eagerly_format_for_subdiag(
-        &self,
-        diag: &DiagInner,
-        msg: impl Into<DiagMessage>,
-    ) -> DiagMessage {
-        self.eagerly_format(msg.into(), diag.args.iter())
     }
 
     fn flush_delayed(&mut self) {
@@ -1493,7 +1467,7 @@ impl DiagCtxtInner {
                 );
             }
 
-            let mut bug = if decorate { bug.decorate(self) } else { bug.inner };
+            let mut bug = if decorate { bug.decorate() } else { bug.inner };
 
             // "Undelay" the delayed bugs into plain bugs.
             if bug.level != DelayedBug {
@@ -1503,11 +1477,9 @@ impl DiagCtxtInner {
                 // We are at the `DiagInner`/`DiagCtxtInner` level rather than
                 // the usual `Diag`/`DiagCtxt` level, so we must augment `bug`
                 // in a lower-level fashion.
-                bug.arg("level", bug.level);
                 let msg = msg!(
                     "`flushed_delayed` got diagnostic with level {$level}, instead of the expected `DelayedBug`"
-                );
-                let msg = self.eagerly_format_for_subdiag(&bug, msg); // after the `arg` call
+                ).arg("level", bug.level).format();
                 bug.sub(Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
@@ -1542,7 +1514,7 @@ impl DelayedDiagInner {
         DelayedDiagInner { inner: diagnostic, note: backtrace }
     }
 
-    fn decorate(self, dcx: &DiagCtxtInner) -> DiagInner {
+    fn decorate(self) -> DiagInner {
         // We are at the `DiagInner`/`DiagCtxtInner` level rather than the
         // usual `Diag`/`DiagCtxt` level, so we must construct `diag` in a
         // lower-level fashion.
@@ -1555,10 +1527,10 @@ impl DelayedDiagInner {
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
             _ => msg!("delayed at {$emitted_at} - {$note}"),
-        };
-        diag.arg("emitted_at", diag.emitted_at.clone());
-        diag.arg("note", self.note);
-        let msg = dcx.eagerly_format_for_subdiag(&diag, msg); // after the `arg` calls
+        }
+        .arg("emitted_at", diag.emitted_at.clone())
+        .arg("note", self.note)
+        .format();
         diag.sub(Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
         diag
     }
