@@ -949,17 +949,14 @@ pub(crate) struct AsmClobberNoReg {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = dcx.eagerly_format_to_string(msg!("clobber_abi"), [].into_iter());
-        let lbl2 = dcx.eagerly_format_to_string(msg!("generic outputs"), [].into_iter());
         Diag::new(
             dcx,
             level,
             msg!("asm with `clobber_abi` must specify explicit registers for outputs"),
         )
         .with_span(self.spans.clone())
-        .with_span_labels(self.clobbers, &lbl1)
-        .with_span_labels(self.spans, &lbl2)
+        .with_span_labels(self.clobbers, "clobber_abi")
+        .with_span_labels(self.spans, "generic outputs")
     }
 }
 

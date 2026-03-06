@@ -483,16 +483,6 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter = emitter;
     }
 
-    /// Format `message` eagerly with `args` to `String`.
-    pub fn eagerly_format_to_string<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> String {
-        let inner = self.inner.borrow();
-        inner.eagerly_format_to_string(message, args)
-    }
-
     // This is here to not allow mutation of flags;
     // as of this writing it's used in Session::consider_optimizing and
     // in tests in rustc_interface.
@@ -1406,16 +1396,6 @@ impl DiagCtxtInner {
 
     fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
-    }
-
-    /// Format `message` eagerly with `args` to `String`.
-    fn eagerly_format_to_string<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> String {
-        let args = args.map(|(name, val)| (name.clone(), val.clone())).collect();
-        format_diag_message(&message, &args).to_string()
     }
 
     fn flush_delayed(&mut self) {
