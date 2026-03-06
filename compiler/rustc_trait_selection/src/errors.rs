@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
@@ -450,28 +451,23 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
-                // `RegionOriginNote` can appear multiple times on one diagnostic with different
-                // `requirement` values. Scope args per-note and eagerly translate to avoid
-                // cross-note arg collisions.
-                // See https://github.com/rust-lang/rust/issues/143872 for details.
-                diag.store_args();
-                diag.arg("requirement", requirement);
-                let msg = diag.eagerly_format(msg!(
+                let msg = msg!(
                     "...so that the {$requirement ->
-                            [method_compat] method type is compatible with trait
-                            [type_compat] associated type is compatible with trait
-                            [const_compat] const is compatible with trait
-                            [expr_assignable] expression is assignable
-                            [if_else_different] `if` and `else` have incompatible types
-                            [no_else] `if` missing an `else` returns `()`
-                            [fn_main_correct_type] `main` function has the correct type
-                            [fn_lang_correct_type] lang item function has the correct type
-                            [intrinsic_correct_type] intrinsic has the correct type
-                            [method_correct_type] method receiver has the correct type
-                            *[other] types are compatible
-                        }"
-                ));
-                diag.restore_args();
+                        [method_compat] method type is compatible with trait
+                        [type_compat] associated type is compatible with trait
+                        [const_compat] const is compatible with trait
+                        [expr_assignable] expression is assignable
+                        [if_else_different] `if` and `else` have incompatible types
+                        [no_else] `if` missing an `else` returns `()`
+                        [fn_main_correct_type] `main` function has the correct type
+                        [fn_lang_correct_type] lang item function has the correct type
+                        [intrinsic_correct_type] intrinsic has the correct type
+                        [method_correct_type] method receiver has the correct type
+                        *[other] types are compatible
+                    }"
+                )
+                .arg("requirement", requirement)
+                .format();
                 label_or_note(diag, span, msg);
 
                 diag.note_expected_found("", expected, "", found);
@@ -480,9 +476,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
-                diag.store_args();
-                diag.arg("requirement", requirement);
-                let msg = diag.eagerly_format(msg!(
+                let msg = msg!(
                     "...so that {$requirement ->
                             [method_compat] method type is compatible with trait
                             [type_compat] associated type is compatible with trait
@@ -496,8 +490,9 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                             [method_correct_type] method receiver has the correct type
                             *[other] types are compatible
                         }"
-                ));
-                diag.restore_args();
+                )
+                .arg("requirement", requirement)
+                .format();
                 label_or_note(diag, span, msg);
             }
         };

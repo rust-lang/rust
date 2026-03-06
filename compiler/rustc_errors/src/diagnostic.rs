@@ -235,9 +235,6 @@ pub struct DiagInner {
     pub suggestions: Suggestions,
     pub args: DiagArgMap,
 
-    // This is used to store args and restore them after a subdiagnostic is rendered.
-    pub reserved_args: DiagArgMap,
-
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
@@ -268,7 +265,6 @@ impl DiagInner {
             children: vec![],
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
-            reserved_args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
             long_ty_path: None,
@@ -331,14 +327,6 @@ impl DiagInner {
 
     pub fn remove_arg(&mut self, name: &str) {
         self.args.swap_remove(name);
-    }
-
-    pub fn store_args(&mut self) {
-        self.reserved_args = self.args.clone();
-    }
-
-    pub fn restore_args(&mut self) {
-        self.args = std::mem::take(&mut self.reserved_args);
     }
 
     pub fn emitted_at_sub_diag(&self) -> Subdiag {
