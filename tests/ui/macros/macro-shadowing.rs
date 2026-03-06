@@ -1,4 +1,5 @@
 //@ aux-build:two_macros.rs
+//@ reference: macro.decl.scope.textual.shadow
 
 #![allow(unused_macros)]
 

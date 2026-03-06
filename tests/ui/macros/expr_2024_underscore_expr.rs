@@ -1,6 +1,7 @@
 //@ revisions: edi2021 edi2024
 //@[edi2024] edition: 2024
 //@[edi2021] edition: 2021
+//@ reference: macro.decl.meta.edition2024
 // This test ensures that the `_` tok is considered an
 // expression on edition 2024.
 macro_rules! m2021 {

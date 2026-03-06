@@ -1,5 +1,7 @@
 //@ edition:2015..2021
-//
+//@ reference: macro.decl.follow-set.token-expr-stmt
+//@ reference: macro.decl.follow-set.token-pat
+//@ reference: macro.decl.follow-set.token-path-ty
 // Check the macro follow sets (see corresponding rpass test).
 
 #![allow(unused_macros)]

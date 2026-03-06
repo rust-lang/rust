@@ -1,3 +1,4 @@
+//@ reference: attributes.derive.behavior
 #![crate_type = "lib"]
 
 macro_rules! sample { () => {} }
