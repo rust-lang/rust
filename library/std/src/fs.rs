@@ -3395,7 +3395,7 @@ impl DirBuilder {
     /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     #[must_use]
-    pub fn new() -> DirBuilder {
+    pub fn new() -> Self {
         DirBuilder { inner: fs_imp::DirBuilder::new(), recursive: false }
     }
 

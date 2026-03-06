@@ -1478,7 +1478,7 @@ impl Stdio {
     ///
     #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn piped() -> Stdio {
+    pub fn piped() -> Self {
         Stdio(imp::Stdio::MakePipe)
     }
 
@@ -1518,7 +1518,7 @@ impl Stdio {
     /// ```
     #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn inherit() -> Stdio {
+    pub fn inherit() -> Self {
         Stdio(imp::Stdio::Inherit)
     }
 
@@ -1558,7 +1558,7 @@ impl Stdio {
     /// ```
     #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio {
+    pub fn null() -> Self {
         Stdio(imp::Stdio::Null)
     }
 

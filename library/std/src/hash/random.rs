@@ -52,7 +52,7 @@ impl RandomState {
     // rand
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn new() -> RandomState {
+    pub fn new() -> Self {
         // Historically this function did not cache keys from the OS and instead
         // simply always called `rand::thread_rng().gen()` twice. In #31356 it
         // was discovered, however, that because we re-seed the thread-local RNG
@@ -103,7 +103,7 @@ impl DefaultHasher {
     #[inline]
     #[rustc_const_unstable(feature = "const_default", issue = "143894")]
     #[must_use]
-    pub const fn new() -> DefaultHasher {
+    pub const fn new() -> Self {
         DefaultHasher(SipHasher13::new_with_keys(0, 0))
     }
 }

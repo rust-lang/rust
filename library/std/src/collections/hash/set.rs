@@ -146,7 +146,7 @@ impl<T> HashSet<T, RandomState> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> HashSet<T, RandomState> {
+    pub fn new() -> Self {
         Default::default()
     }
 
@@ -166,7 +166,7 @@ impl<T> HashSet<T, RandomState> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: usize) -> HashSet<T, RandomState> {
+    pub fn with_capacity(capacity: usize) -> Self {
         HashSet::with_capacity_and_hasher(capacity, Default::default())
     }
 }
@@ -179,7 +179,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn new_in(alloc: A) -> HashSet<T, RandomState, A> {
+    pub fn new_in(alloc: A) -> Self {
         HashSet::with_hasher_in(Default::default(), alloc)
     }
 
@@ -199,7 +199,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> HashSet<T, RandomState, A> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         HashSet::with_capacity_and_hasher_in(capacity, Default::default(), alloc)
     }
 }
@@ -232,7 +232,7 @@ impl<T, S> HashSet<T, S> {
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
-    pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
+    pub const fn with_hasher(hasher: S) -> Self {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
 
@@ -264,7 +264,7 @@ impl<T, S> HashSet<T, S> {
     #[inline]
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
+    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, hasher) }
     }
 }
@@ -285,7 +285,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_hasher_in(hasher: S, alloc: A) -> HashSet<T, S, A> {
+    pub fn with_hasher_in(hasher: S, alloc: A) -> Self {
         HashSet { base: base::HashSet::with_hasher_in(hasher, alloc) }
     }
 
@@ -306,7 +306,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> HashSet<T, S, A> {
+    pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> Self {
         HashSet { base: base::HashSet::with_capacity_and_hasher_in(capacity, hasher, alloc) }
     }
 
