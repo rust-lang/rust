@@ -61,37 +61,31 @@ pub(crate) fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
 }
 
 #[inline]
-pub(crate) fn current_query_job<'tcx>(tcx: TyCtxt<'tcx>) -> Option<QueryJobId> {
-    tls::with_related_context(tcx, |icx| icx.query)
+pub(crate) fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
 
-/// Executes a job by changing the `ImplicitCtxt` to point to the
-/// new query job while it executes.
+/// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
 #[inline(always)]
-pub(crate) fn start_query<'tcx, R>(
-    tcx: TyCtxt<'tcx>,
-    token: QueryJobId,
+pub(crate) fn start_query<R>(
+    job_id: QueryJobId,
     depth_limit: bool,
     compute: impl FnOnce() -> R,
 ) -> R {
-    // The `TyCtxt` stored in TLS has the same global interner lifetime
-    // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
-    // when accessing the `ImplicitCtxt`.
-    tls::with_related_context(tcx, move |current_icx| {
-        if depth_limit && !tcx.recursion_limit().value_within_limit(current_icx.query_depth) {
-            depth_limit_error(tcx, token);
+    tls::with_context(move |icx| {
+        if depth_limit && !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
+            depth_limit_error(icx.tcx, job_id);
         }
 
         // Update the `ImplicitCtxt` to point to our new query job.
-        let new_icx = ImplicitCtxt {
-            tcx,
-            query: Some(token),
-            query_depth: current_icx.query_depth + depth_limit as usize,
-            task_deps: current_icx.task_deps,
+        let icx = ImplicitCtxt {
+            query: Some(job_id),
+            query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
+            ..*icx
         };
 
         // Use the `ImplicitCtxt` while we execute the query.
-        tls::enter_context(&new_icx, compute)
+        tls::enter_context(&icx, compute)
     })
 }
 

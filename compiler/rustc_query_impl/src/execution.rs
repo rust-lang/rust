@@ -224,7 +224,7 @@ fn cycle_error<'tcx, C: QueryCache>(
         .ok()
         .expect("failed to collect active queries");
 
-    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(tcx), span);
+    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
     (mk_cycle(query, tcx, error.lift()), None)
 }
 
@@ -301,7 +301,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
         }
     }
 
-    let current_job_id = current_query_job(tcx);
+    let current_job_id = current_query_job();
 
     match state_lock.entry(key_hash, equivalent_key(&key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
@@ -418,8 +418,7 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
-    let value =
-        start_query(tcx, job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
+    let value = start_query(job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
     let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -454,7 +453,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = start_query(tcx, job_id, false, || try {
+        if let Some(ret) = start_query(job_id, false, || try {
             let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, dep_node)?;
             let value = load_from_disk_or_invoke_provider_green(
                 tcx,
@@ -473,7 +472,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
     let prof_timer = tcx.prof.query_provider();
 
-    let (result, dep_node_index) = start_query(tcx, job_id, query.depth_limit, || {
+    let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
         if query.anon {
             // Call the query provider inside an anon task.
             return dep_graph_data.with_anon_task_inner(tcx, query.dep_kind, || {
