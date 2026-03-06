@@ -237,15 +237,6 @@ pub(crate) struct ReprConflicting {
 }
 
 #[derive(Diagnostic)]
-#[diag("alignment must not be greater than `isize::MAX` bytes", code = E0589)]
-#[note("`isize::MAX` is {$size} for the current target")]
-pub(crate) struct InvalidReprAlignForTarget {
-    #[primary_span]
-    pub span: Span,
-    pub size: u64,
-}
-
-#[derive(Diagnostic)]
 #[diag("conflicting representation hints", code = E0566)]
 pub(crate) struct ReprConflictingLint;
 
