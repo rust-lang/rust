@@ -66,7 +66,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
-use crate::formatting::format_diag_message;
+pub use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
