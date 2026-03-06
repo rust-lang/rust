@@ -28,7 +28,7 @@ use crate::ResolverAstLowering2;
 
 pub(super) struct ItemLowerer<'a, 'b, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'b mut ResolverAstLowering2<'a>,
+    pub(super) resolver: &'b mut ResolverAstLowering2<'a, 'hir>,
     pub(super) ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'b mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }

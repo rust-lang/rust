@@ -814,13 +814,13 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     }
 }
 
-struct SelfResolver<'a, 'b> {
-    resolver: &'b mut ResolverAstLowering2<'a>,
+struct SelfResolver<'a, 'b, 'tcx> {
+    resolver: &'b mut ResolverAstLowering2<'a, 'tcx>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'a, 'b> SelfResolver<'a, 'b> {
+impl SelfResolver<'_, '_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
@@ -832,7 +832,7 @@ impl<'a, 'b> SelfResolver<'a, 'b> {
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_> {
+impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }

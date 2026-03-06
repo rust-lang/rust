@@ -196,7 +196,7 @@ pub struct ResolverGlobalCtxt {
 }
 
 #[derive(Debug, Default)]
-pub struct RealResolver {
+pub struct RealResolver<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -222,8 +222,8 @@ pub struct RealResolver {
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
-pub struct ResolverAstLowering {
-    pub resolver: RealResolver,
+pub struct ResolverAstLowering<'tcx> {
+    pub resolver: RealResolver<'tcx>,
     pub next_node_id: ast::NodeId,
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,

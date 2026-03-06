@@ -97,7 +97,7 @@ struct LoweringContext<'a, 'b, 'hir> {
     // will be in AST index.
     ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
 
-    resolver: &'b mut ResolverAstLowering2<'a>,
+    resolver: &'b mut ResolverAstLowering2<'a, 'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -160,7 +160,7 @@ impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     fn new(
         tcx: TyCtxt<'hir>,
         ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-        resolver: &'b mut ResolverAstLowering2<'a>,
+        resolver: &'b mut ResolverAstLowering2<'a, 'hir>,
     ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
@@ -245,14 +245,13 @@ impl SpanLowerer {
     }
 }
 
-struct ResolverAstLowering2<'a> {
-    trait_map: NodeMap<Vec<hir::TraitCandidate>>,
+struct ResolverAstLowering2<'a, 'tcx> {
     next_node_id: NodeId,
-    base: &'a RealResolver,
-    mut_part: RealResolver,
+    base: &'a RealResolver<'tcx>,
+    mut_part: RealResolver<'tcx>,
 }
 
-impl<'a> ResolverAstLoweringExt for ResolverAstLowering2<'a> {
+impl ResolverAstLoweringExt for ResolverAstLowering2<'_, '_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         self.mut_part
             .legacy_const_generic_args(expr, tcx)
@@ -297,7 +296,7 @@ impl<'a> ResolverAstLoweringExt for ResolverAstLowering2<'a> {
 }
 
 #[extension(trait ResolverAstLoweringExt)]
-impl RealResolver {
+impl RealResolver<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
@@ -510,8 +509,8 @@ enum TryBlockScope {
     Heterogeneous(HirId),
 }
 
-fn index_crate<'a, 'b>(
-    resolver: &'b ResolverAstLowering2<'b>,
+fn index_crate<'a, 'b, 'tcx>(
+    resolver: &'b ResolverAstLowering2<'a, 'tcx>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { resolver, index: IndexVec::new() };
@@ -520,12 +519,12 @@ fn index_crate<'a, 'b>(
     visit::walk_crate(&mut indexer, krate);
     return indexer.index;
 
-    struct Indexer<'s, 'a> {
-        resolver: &'s ResolverAstLowering2<'s>,
+    struct Indexer<'s, 'a, 'tcx> {
+        resolver: &'s ResolverAstLowering2<'a, 'tcx>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
-    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a> {
+    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a, '_> {
         fn visit_attribute(&mut self, _: &'a Attribute) {
             // We do not want to lower expressions that appear in attributes,
             // as they are not accessible to the rest of the HIR.
@@ -585,7 +584,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
 
     let mut resolver = ResolverAstLowering2 {
-        trait_map: resolver.resolver.trait_map.clone(),
         next_node_id: resolver.next_node_id,
         base: &resolver.resolver,
         mut_part: Default::default(),
@@ -819,8 +817,8 @@ impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, traits.clone().into_boxed_slice());
+        if let Some(&traits) = self.resolver.base.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, traits);
         }
 
         // Check whether the same `NodeId` is lowered more than once.
