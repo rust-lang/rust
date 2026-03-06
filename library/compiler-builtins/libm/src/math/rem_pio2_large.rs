@@ -1,4 +1,6 @@
 #![allow(unused_unsafe)]
+// FIXME(clippy): the suggested fix is bad but the code as-written could be better
+#![allow(clippy::explicit_counter_loop)]
 /* origin: FreeBSD /usr/src/lib/msun/src/k_rem_pio2.c */
 /*
  * ====================================================
