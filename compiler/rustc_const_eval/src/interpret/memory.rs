@@ -22,10 +22,10 @@ use rustc_middle::{bug, throw_ub_format};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    AllocBytes, AllocId, AllocInit, AllocMap, AllocRange, Allocation, CheckAlignMsg,
-    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine,
-    MayLeak, Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
-    err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
+    AllocBytes, AllocFailureReporting, AllocId, AllocInit, AllocMap, AllocRange, Allocation,
+    CheckAlignMsg, CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, MPlaceTy,
+    Machine, MayLeak, Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range,
+    err_ub, err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::const_eval::ConstEvalErrKind;
 
@@ -258,10 +258,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         init: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let params = self.machine.get_default_alloc_params();
-        let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::new(size, align, init, params)
-        } else {
-            Allocation::try_new(size, align, init, params)?
+        let alloc = match M::ALLOC_FAILURE_REPORTING {
+            AllocFailureReporting::Emit => Allocation::try_new(size, align, init, params)?,
+            AllocFailureReporting::Suppress => {
+                Allocation::try_new_silent(size, align, init, params)?
+            }
         };
         self.insert_allocation(alloc, kind)
     }

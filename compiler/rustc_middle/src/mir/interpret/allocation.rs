@@ -468,6 +468,20 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         .into()
     }
 
+    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
+    /// available to the compiler to do so, without emitting a bug.
+    pub fn try_new_silent<'tcx>(
+        size: Size,
+        align: Align,
+        init: AllocInit,
+        params: <Bytes as AllocBytes>::AllocParams,
+    ) -> InterpResult<'tcx, Self> {
+        Self::new_inner(size, align, init, params, || {
+            InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
+        })
+        .into()
+    }
+
     /// Try to create an Allocation of `size` bytes, panics if there is not enough memory
     /// available to the compiler to do so.
     ///

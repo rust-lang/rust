@@ -1108,7 +1108,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
 
-    const PANIC_ON_ALLOC_FAIL: bool = false;
+    const ALLOC_FAILURE_REPORTING: interpret::AllocFailureReporting =
+        interpret::AllocFailureReporting::Emit;
 
     #[inline(always)]
     fn enforce_alignment(ecx: &MiriInterpCx<'tcx>) -> bool {

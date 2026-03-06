@@ -396,7 +396,8 @@ impl<'tcx> CompileTimeMachine<'tcx> {
 impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     compile_time_machine!(<'tcx>);
 
-    const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
+    const ALLOC_FAILURE_REPORTING: interpret::AllocFailureReporting =
+        interpret::AllocFailureReporting::Emit;
 
     #[inline(always)]
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool {

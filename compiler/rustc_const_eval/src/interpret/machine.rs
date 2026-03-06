@@ -45,6 +45,11 @@ pub trait MayLeak: Copy {
     fn may_leak(self) -> bool;
 }
 
+pub enum AllocFailureReporting {
+    Emit,
+    Suppress,
+}
+
 /// The functionality needed by memory to manage its allocations
 pub trait AllocMap<K: Hash + Eq, V> {
     /// Tests if the map contains the given key.
@@ -139,8 +144,8 @@ pub trait Machine<'tcx>: Sized {
     /// that is added to the memory so that the work is not done twice.
     const GLOBAL_KIND: Option<Self::MemoryKind>;
 
-    /// Should the machine panic on allocation failures?
-    const PANIC_ON_ALLOC_FAIL: bool;
+    /// How should allocation failures be surfaced?
+    const ALLOC_FAILURE_REPORTING: AllocFailureReporting = AllocFailureReporting::Emit;
 
     /// Determines whether `eval_mir_constant` can never fail because all required consts have
     /// already been checked before.
