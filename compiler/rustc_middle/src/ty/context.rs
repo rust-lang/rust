@@ -564,7 +564,7 @@ impl<'tcx> CommonConsts<'tcx> {
             ))
         };
 
-        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(Box::default()));
+        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(List::empty()));
         let valtree_true = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::TRUE));
         let valtree_false = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::FALSE));
 
