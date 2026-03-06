@@ -1,6 +1,7 @@
 //@ edition:2015
 //@ run-rustfix
 //@ aux-build:or-pattern.rs
+//@ reference: macro.decl.follow-set.edition2021
 
 #![deny(rust_2021_incompatible_or_patterns)]
 #![allow(unused_macros)]

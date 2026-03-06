@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: macro.decl.follow-set.token-pat
 macro_rules! pat_in {
     ($p:pat in $e:expr) => {{
         let mut iter = $e.into_iter();
