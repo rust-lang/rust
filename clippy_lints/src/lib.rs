@@ -211,6 +211,7 @@ mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
 mod manual_option_as_slice;
+mod manual_pop_if;
 mod manual_range_patterns;
 mod manual_rem_euclid;
 mod manual_retain;
@@ -864,6 +865,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),
         Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
         Box::new(|_| Box::new(manual_checked_ops::ManualCheckedOps)),
+        Box::new(move |_| Box::new(manual_pop_if::ManualPopIf::new(conf))),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
