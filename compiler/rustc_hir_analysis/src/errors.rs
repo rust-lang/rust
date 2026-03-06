@@ -791,7 +791,7 @@ pub(crate) struct ReturnTypeNotationEqualityBound {
 
 #[derive(Diagnostic)]
 #[diag("the placeholder `_` is not allowed within types on item signatures for {$kind}", code = E0121)]
-pub(crate) struct PlaceholderNotAllowedItemSignatures {
+pub struct PlaceholderNotAllowedItemSignatures {
     #[primary_span]
     #[label("not allowed in type signatures")]
     pub spans: Vec<Span>,

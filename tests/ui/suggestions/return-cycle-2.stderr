@@ -7,7 +7,7 @@ LL |     fn as_ref(_: i32, _: i32) -> _ {
 help: replace with the correct return type
    |
 LL -     fn as_ref(_: i32, _: i32) -> _ {
-LL +     fn as_ref(_: i32, _: i32) -> Token<&'static T> {
+LL +     fn as_ref(_: i32, _: i32) -> Token<&T> {
    |
 
 error: aborting due to 1 previous error
