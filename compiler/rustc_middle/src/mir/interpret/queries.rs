@@ -1,5 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_macros::Diagnostic;
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
@@ -93,6 +94,10 @@ impl<'tcx> TyCtxt<'tcx> {
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> ConstToValTreeResult<'tcx> {
+        #[derive(Diagnostic)]
+        #[diag("cannot use constants which depend on generic parameters in types")]
+        struct ConstDependingOnGenericParam;
+
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve`
         // would fail otherwise.
@@ -139,15 +144,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mir_body = self.mir_for_ctfe(cid.instance.def_id());
                 if mir_body.is_polymorphic {
                     let Some(local_def_id) = ct.def.as_local() else { return };
-                    self.node_span_lint(
+                    self.emit_node_span_lint(
                         lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(ct.def),
-                        |lint| {
-                            lint.primary_message(
-                                "cannot use constants which depend on generic parameters in types",
-                            );
-                        },
+                        ConstDependingOnGenericParam,
                     )
                 }
             }
