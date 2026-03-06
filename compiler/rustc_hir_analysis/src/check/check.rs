@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{EmissionGuarantee, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -12,6 +12,7 @@ use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
 use rustc_lint_defs::builtin::{REPR_TRANSPARENT_NON_ZST_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -53,6 +54,22 @@ fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T
 }
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    struct UnsupportedCallingConventions {
+        abi: ExternAbi,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for UnsupportedCallingConventions {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { abi } = self;
+            let mut lint = Diag::new(
+                dcx,
+                level,
+                format!("{abi} is not a supported ABI for the current target"),
+            );
+            add_abi_diag_help(abi, &mut lint);
+            lint
+        }
+    }
     // FIXME: This should be checked earlier, e.g. in `rustc_ast_lowering`, as this
     // currently only guards function imports, function definitions, and function pointer types.
     // Functions in trait declarations can still use "deprecated" ABIs without any warning.
@@ -64,12 +81,12 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
             tcx.dcx().span_delayed_bug(span, format!("{abi} should be rejected in ast_lowering"));
         }
         AbiMapping::Deprecated(..) => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "{abi} is not a supported ABI for the current target"
-                ));
-                add_abi_diag_help(abi, lint);
-            });
+            tcx.emit_node_span_lint(
+                UNSUPPORTED_CALLING_CONVENTIONS,
+                hir_id,
+                span,
+                UnsupportedCallingConventions { abi },
+            );
         }
     }
 }
@@ -174,6 +191,11 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
 /// Check that a `static` is inhabited.
 fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    #[derive(Diagnostic)]
+    #[diag("static of uninhabited type")]
+    #[note("uninhabited statics cannot be initialized, and any access would be an immediate error")]
+    struct StaticOfUninhabitedType;
+
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
@@ -204,15 +226,11 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
     };
     if layout.is_uninhabited() {
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
-            |lint| {
-                lint.primary_message("static of uninhabited type");
-                lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
-            },
+            StaticOfUninhabitedType,
         );
     }
 }
@@ -1637,6 +1655,39 @@ pub(super) fn check_packed_inner(
 }
 
 pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
+    struct ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        unsuited: UnsuitedInfo<'tcx>,
+    }
+
+    impl<'a, 'tcx> Diagnostic<'a, ()> for ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { unsuited } = self;
+            let (title, note) = match unsuited.reason {
+                UnsuitedReason::NonExhaustive => (
+                    "external non-exhaustive types",
+                    "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::PrivateField => (
+                    "external types with private fields",
+                    "contains private fields, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::ReprC => (
+                    "`repr(C)` types",
+                    "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
+                ),
+            };
+            Diag::new(
+                dcx,
+                level,
+                format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
+            )
+            .with_note(format!(
+                "this field contains `{field_ty}`, which {note}",
+                field_ty = unsuited.ty,
+            ))
+        }
+    }
+
     if !adt.repr().transparent() {
         return;
     }
@@ -1747,29 +1798,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     field.span,
-                    |lint| {
-                        let title = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "external non-exhaustive types",
-                            UnsuitedReason::PrivateField => "external types with private fields",
-                            UnsuitedReason::ReprC => "`repr(C)` types",
-                        };
-                        lint.primary_message(
-                            format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
-                        );
-                        let note = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::PrivateField => "contains private fields, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::ReprC => "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
-                        };
-                        lint.note(format!(
-                            "this field contains `{field_ty}`, which {note}",
-                            field_ty = unsuited.ty,
-                        ));
-                    },
+                    ZeroSizedFieldReprTransparentIncompatibility { unsuited },
                 );
             } else {
                 prev_unsuited_1zst = true;
