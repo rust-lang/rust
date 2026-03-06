@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -9,55 +10,56 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::dep_graph::DepKind;
 use rustc_middle::query::CycleError;
+use rustc_middle::query::erase::erase_val;
 use rustc_middle::query::plumbing::CyclePlaceholder;
-use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_middle::queries::QueryVTables;
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::job::report_cycle;
 
-pub(crate) trait FromCycleError<'tcx>: Sized {
-    /// Try to produce a `Self` value that represents an error form (e.g. `TyKind::Error`).
-    ///
-    /// Note: the default impl calls `raise_fatal`, ending compilation immediately! Only a few
-    /// types override this with a non-fatal impl.
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self;
+pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
+    vtables.type_of.value_from_cycle_error =
+        |tcx, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
+
+    vtables.type_of_opaque_hir_typeck.value_from_cycle_error =
+        |tcx, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
+
+    vtables.erase_and_anonymize_regions_ty.value_from_cycle_error =
+        |tcx, _, guar| erase_val(Ty::new_error(tcx, guar));
+
+    vtables.type_of_opaque.value_from_cycle_error =
+        |_, _, guar| erase_val(Err(CyclePlaceholder(guar)));
+
+    vtables.fn_sig.value_from_cycle_error = |tcx, cycle, guar| erase_val(fn_sig(tcx, cycle, guar));
+
+    vtables.check_representability.value_from_cycle_error =
+        |tcx, cycle, guar| check_representability(tcx, cycle, guar);
+
+    vtables.check_representability_adt_ty.value_from_cycle_error =
+        |tcx, cycle, guar| check_representability(tcx, cycle, guar);
+
+    vtables.variances_of.value_from_cycle_error =
+        |tcx, cycle, guar| erase_val(variances_of(tcx, cycle, guar));
+
+    vtables.layout_of.value_from_cycle_error =
+        |tcx, cycle, guar| erase_val(layout_of(tcx, cycle, guar));
 }
 
-impl<'tcx, T> FromCycleError<'tcx> for T {
-    default fn from_cycle_error(
-        tcx: TyCtxt<'tcx>,
-        cycle_error: CycleError,
-        _guar: ErrorGuaranteed,
-    ) -> T {
+    pub(crate) fn default<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError, query_name: &str) -> ! {
         let Some(guar) = tcx.sess.dcx().has_errors() else {
             bug!(
-                "<{} as FromCycleError>::from_cycle_error called without errors: {:#?}",
-                std::any::type_name::<T>(),
+                "`from_cycle_error_default` on query `{query_name}` called without errors: {:#?}",
                 cycle_error.cycle,
             );
         };
-        guar.raise_fatal();
+        guar.raise_fatal()
     }
-}
 
-impl<'tcx> FromCycleError<'tcx> for Ty<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: CycleError, guar: ErrorGuaranteed) -> Self {
-        // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
-        // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_error(tcx, guar)) }
-    }
-}
-
-impl<'tcx> FromCycleError<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: CycleError, guar: ErrorGuaranteed) -> Self {
-        Err(CyclePlaceholder(guar))
-    }
-}
-
-impl<'tcx> FromCycleError<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
+    fn fn_sig<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
         let err = Ty::new_error(tcx, guar);
 
         let arity = if let Some(info) = cycle_error.cycle.get(0)
@@ -72,26 +74,20 @@ impl<'tcx> FromCycleError<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
             unreachable!()
         };
 
-        let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        ty::EarlyBinder::bind(ty::Binder::dummy(tcx.mk_fn_sig(
             std::iter::repeat_n(err, arity),
             err,
             false,
             rustc_hir::Safety::Safe,
             rustc_abi::ExternAbi::Rust,
-        ));
-
-        // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.
-        // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<ty::PolyFnSig<'tcx>, ty::Binder<'_, ty::FnSig<'_>>>(fn_sig) }
+        )))
     }
-}
 
-impl<'tcx> FromCycleError<'tcx> for Representability {
-    fn from_cycle_error(
+    fn check_representability<'tcx>(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
         _guar: ErrorGuaranteed,
-    ) -> Self {
+    ) -> ! {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
         for info in &cycle_error.cycle {
@@ -120,28 +116,14 @@ impl<'tcx> FromCycleError<'tcx> for Representability {
         // We used to continue here, but the cycle error printed next is actually less useful than
         // the error produced by `recursive_type_error`.
         let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        guar.raise_fatal();
+        guar.raise_fatal()
     }
-}
 
-impl<'tcx> FromCycleError<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
-        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
-    }
-}
-
-impl<'tcx> FromCycleError<'tcx> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> Self {
-        ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle_error, guar))
-    }
-}
-
-impl<'tcx> FromCycleError<'tcx> for &[ty::Variance] {
-    fn from_cycle_error(
+    fn variances_of<'tcx>(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
         _guar: ErrorGuaranteed,
-    ) -> Self {
+    ) -> &'tcx [ty::Variance] {
         search_for_cycle_permutation(
             &cycle_error.cycle,
             |cycle| {
@@ -150,7 +132,7 @@ impl<'tcx> FromCycleError<'tcx> for &[ty::Variance] {
                     && let Some(def_id) = info.frame.def_id
                 {
                     let n = tcx.generics_of(def_id).own_params.len();
-                    ControlFlow::Break(vec![ty::Bivariant; n].leak())
+                    ControlFlow::Break(tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n)))
                 } else {
                     ControlFlow::Continue(())
                 }
@@ -163,7 +145,6 @@ impl<'tcx> FromCycleError<'tcx> for &[ty::Variance] {
             },
         )
     }
-}
 
 // Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
 fn search_for_cycle_permutation<Q, T>(
@@ -184,12 +165,11 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-impl<'tcx, T> FromCycleError<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
-    fn from_cycle_error(
+    fn layout_of<'tcx>(
         tcx: TyCtxt<'tcx>,
         cycle_error: CycleError,
         _guar: ErrorGuaranteed,
-    ) -> Self {
+    ) -> Result<TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         let diag = search_for_cycle_permutation(
             &cycle_error.cycle,
             |cycle| {
@@ -267,13 +247,8 @@ impl<'tcx, T> FromCycleError<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>
         );
 
         let guar = diag.emit();
-
-        // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
-        // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
-        // tcx.arena.alloc is pretty much equal to leaking).
-        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
+        Err(tcx.arena.alloc(LayoutError::Cycle(guar)))
     }
-}
 
 // item_and_field_ids should form a cycle where each field contains the
 // type in the next element in the list
