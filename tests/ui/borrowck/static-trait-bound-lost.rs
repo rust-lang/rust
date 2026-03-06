@@ -2,6 +2,7 @@
 // The underlying problem is that the 'static bound is lost for a type parameter that is
 // threaded deeply enough, causing an error.
 // The bug was first observed in exr-1.4.1/src/image/read/mod.rs:124:5 during perf test.
+#![allow(todo_macro_uses)]
 
 //@ check-pass
 

@@ -1,4 +1,5 @@
 //@ check-fail
+#![allow(todo_macro_uses)]
 
 enum Either<L, R> {
     Left(L),

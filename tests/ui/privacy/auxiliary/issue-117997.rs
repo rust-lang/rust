@@ -1,5 +1,6 @@
 //@ no-prefer-dynamic
 //@ compile-flags: --crate-type=rlib
+#![allow(todo_macro_uses)]
 
 pub use impl_mod::TraitImplementer as Implementer;
 

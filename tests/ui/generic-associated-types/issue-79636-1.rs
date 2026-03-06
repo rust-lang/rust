@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 trait Monad {
     type Unwrapped;
     type Wrapped<B>;

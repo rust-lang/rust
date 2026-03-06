@@ -5,6 +5,7 @@
 // the suggestion is rejected.
 // e.g. `Ok(Some("hi"))` is type of `Result<Option<&str>, _>`,
 // where `E` is still an unresolved inference variable.
+#![allow(todo_macro_uses)]
 
 fn foo() -> Result<Option<String>, ()> {
     todo!()

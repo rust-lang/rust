@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #![feature(generic_const_items)]
 #![expect(incomplete_features)]
 

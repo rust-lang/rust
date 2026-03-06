@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 mod a {
     use std::fmt::{Debug, Formatter, Result};
     struct Inner<T>(T);

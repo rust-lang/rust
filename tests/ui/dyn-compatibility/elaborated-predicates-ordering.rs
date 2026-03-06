@@ -1,5 +1,6 @@
 //@ check-pass
 // issue: rust-lang/rust#102933
+#![allow(todo_macro_uses)]
 
 use std::future::Future;
 

@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/drop-tracking-unresolved-typeck-results.rs:102:5
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:103:5
    |
 LL | /     send(async {
 LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
@@ -10,7 +10,7 @@ LL | |     });
    = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/drop-tracking-unresolved-typeck-results.rs:102:5
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:103:5
    |
 LL | /     send(async {
 LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await

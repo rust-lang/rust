@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/nested.rs:10:63
+  --> $DIR/nested.rs:11:63
    |
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
    |                                                               ^ expected `(u32) is 1..`, found integer
@@ -8,7 +8,7 @@ LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!(
                       found type `{integer}`
 
 error[E0277]: `(u32) is 1..` is not a valid base type for range patterns
-  --> $DIR/nested.rs:10:34
+  --> $DIR/nested.rs:11:34
    |
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
@@ -26,7 +26,7 @@ LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!(
            and 5 others
 
 error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
-  --> $DIR/nested.rs:15:35
+  --> $DIR/nested.rs:16:35
    |
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
@@ -44,13 +44,13 @@ LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = tod
            and 5 others
 
 error[E0600]: cannot apply unary operator `-` to type `(i32) is 1..`
-  --> $DIR/nested.rs:15:67
+  --> $DIR/nested.rs:16:67
    |
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
    |                                                                   ^^ cannot apply unary operator `-`
 
 error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
-  --> $DIR/nested.rs:19:35
+  --> $DIR/nested.rs:20:35
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
@@ -68,7 +68,7 @@ LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!
            and 5 others
 
 error[E0308]: mismatched types
-  --> $DIR/nested.rs:19:66
+  --> $DIR/nested.rs:20:66
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^
@@ -79,7 +79,7 @@ LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!
    = note: expected pattern type `(i32) is 1..`
                       found type `{integer}`
 help: the return type of this call is `{integer}` due to the type of the argument passed
-  --> $DIR/nested.rs:19:66
+  --> $DIR/nested.rs:20:66
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^ this argument influences the return type of `RangeSub`
@@ -87,7 +87,7 @@ note: method defined here
   --> $SRC_DIR/core/src/pat.rs:LL:COL
 
 error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
-  --> $DIR/nested.rs:19:66
+  --> $DIR/nested.rs:20:66
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^ only integer types and `char` are supported
@@ -105,7 +105,7 @@ LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!
            and 5 others
 
 error[E0277]: `()` is not a valid base type for range patterns
-  --> $DIR/nested.rs:24:35
+  --> $DIR/nested.rs:25:35
    |
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                   ^^ only integer types and `char` are supported
@@ -123,7 +123,7 @@ LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
            and 5 others
 
 error[E0308]: mismatched types
-  --> $DIR/nested.rs:24:43
+  --> $DIR/nested.rs:25:43
    |
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                           ^
@@ -132,7 +132,7 @@ LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                           arguments to this function are incorrect
    |
 help: the return type of this call is `{integer}` due to the type of the argument passed
-  --> $DIR/nested.rs:24:43
+  --> $DIR/nested.rs:25:43
    |
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                           ^ this argument influences the return type of `RangeSub`
@@ -140,7 +140,7 @@ note: method defined here
   --> $SRC_DIR/core/src/pat.rs:LL:COL
 
 error[E0277]: `()` is not a valid base type for range patterns
-  --> $DIR/nested.rs:24:43
+  --> $DIR/nested.rs:25:43
    |
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                           ^ only integer types and `char` are supported
@@ -158,7 +158,7 @@ LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
            and 5 others
 
 error[E0277]: `f32` is not a valid base type for range patterns
-  --> $DIR/nested.rs:29:49
+  --> $DIR/nested.rs:30:49
    |
 LL | const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();
    |                                                 ^^^ only integer types and `char` are supported

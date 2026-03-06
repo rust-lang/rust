@@ -1,4 +1,5 @@
 //@ aux-build:missing-assoc-fn-applicable-suggestions.rs
+#![allow(todo_macro_uses)]
 
 extern crate missing_assoc_fn_applicable_suggestions;
 use missing_assoc_fn_applicable_suggestions::TraitA;

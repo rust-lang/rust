@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 use std::future::Future;
 use std::task::{Context, Poll};
 

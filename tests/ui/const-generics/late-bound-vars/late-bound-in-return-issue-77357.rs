@@ -2,7 +2,7 @@
 // see comment on `tests/ui/const-generics/late-bound-vars/simple.rs`
 
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 trait MyTrait<T> {}
 

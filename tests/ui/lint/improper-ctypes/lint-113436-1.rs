@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #![deny(improper_ctypes_definitions)]
 
 #[repr(C)]

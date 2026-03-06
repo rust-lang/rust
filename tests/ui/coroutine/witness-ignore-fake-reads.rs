@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition: 2021
+#![allow(todo_macro_uses)]
 
 // regression test for #117059
 struct SendNotSync(*const ());

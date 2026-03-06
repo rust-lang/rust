@@ -3,7 +3,7 @@
 //@ edition: 2024
 //@ check-pass
 
-#![allow(irrefutable_let_patterns)]
+#![allow(irrefutable_let_patterns, todo_macro_uses)]
 
 struct Pd;
 

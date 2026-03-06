@@ -4,6 +4,7 @@
 // inference variables when computing implied bounds.
 //
 //@ check-pass
+#![allow(todo_macro_uses)]
 pub trait BuilderFn<'a> {
     type Output;
 }

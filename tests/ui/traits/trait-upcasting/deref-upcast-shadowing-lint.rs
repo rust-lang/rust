@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 #![warn(deref_into_dyn_supertrait)]
 use std::ops::Deref;
 

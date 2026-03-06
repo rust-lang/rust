@@ -1,4 +1,4 @@
-#![allow(warnings)]
+#![allow(warnings, todo_macro_uses)]
 
 fn issue_117846_repro() {
     let (a, _) = if true {

@@ -1,5 +1,6 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // In the next solver, the opaque was previously defined by using the where-bound when checking
 // whether the alias is `Sized`, constraining the opaque. Instead, the alias-bound is now used,

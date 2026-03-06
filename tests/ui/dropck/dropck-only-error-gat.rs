@@ -1,6 +1,7 @@
 // Test that we don't ICE for a typeck error that only shows up in dropck
 // Version that uses a generic associated type
 // Regression test for #91985
+#![allow(todo_macro_uses)]
 
 pub trait Trait1 {
     type Associated: Ord;

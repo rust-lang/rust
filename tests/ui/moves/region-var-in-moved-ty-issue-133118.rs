@@ -1,4 +1,5 @@
 //! regression test for #133118
+#![allow(todo_macro_uses)]
 
 pub trait Alpha {
     fn y(self) -> usize;

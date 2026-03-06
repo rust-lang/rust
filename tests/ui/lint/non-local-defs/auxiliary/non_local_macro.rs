@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #[macro_export]
 macro_rules! non_local_impl {
     ($a:ident) => {

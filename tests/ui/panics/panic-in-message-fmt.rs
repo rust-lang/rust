@@ -1,4 +1,5 @@
 // Checks what happens when formatting the panic message panics.
+#![allow(todo_macro_uses)]
 
 //@ run-crash
 //@ exec-env:RUST_BACKTRACE=0

@@ -1,4 +1,5 @@
 // Regression test for issue #83190, triggering an ICE in borrowck.
+#![allow(todo_macro_uses)]
 
 //@ check-pass
 

@@ -1,5 +1,6 @@
 //@ build-fail
 //~^ ERROR cycle detected when computing layout of `Foo<()>`
+#![allow(todo_macro_uses)]
 
 // Regression test for a stack overflow: https://github.com/rust-lang/rust/issues/113197
 

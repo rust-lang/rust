@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 trait Marker {}
 impl<T> Marker for T {}
 

@@ -1,5 +1,6 @@
 //! This test checks that we can resolve the `boxed` method call to `FutureExt`,
 //! because we know that the anonymous future does not implement `StreamExt`.
+#![allow(todo_macro_uses)]
 
 //@ edition: 2021
 //@ check-pass

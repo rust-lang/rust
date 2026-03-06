@@ -1,5 +1,6 @@
 //! Test that coercing between function items of the same function,
 //! but with different generic args works.
+#![allow(todo_macro_uses)]
 
 //@check-pass
 

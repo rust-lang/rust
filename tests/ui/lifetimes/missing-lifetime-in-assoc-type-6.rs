@@ -1,4 +1,5 @@
 //~ NOTE in the trait the associated type is declared without lifetime parameters
+#![allow(todo_macro_uses)]
 struct S;
 struct T;
 

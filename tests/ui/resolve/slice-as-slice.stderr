@@ -1,5 +1,5 @@
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/slice-as-slice.rs:19:12
+  --> $DIR/slice-as-slice.rs:20:12
    |
 LL |     b(data.as_slice());
    |            ^^^^^^^^

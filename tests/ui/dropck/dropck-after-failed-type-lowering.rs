@@ -1,4 +1,5 @@
 // Regression test for #137329
+#![allow(todo_macro_uses)]
 
 trait B {
     type C<'a>;

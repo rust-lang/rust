@@ -1,5 +1,6 @@
 //@ build-pass
 //@ edition:2018
+#![allow(todo_macro_uses)]
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output=T>>>;
 

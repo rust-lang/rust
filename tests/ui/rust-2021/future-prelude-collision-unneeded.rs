@@ -1,6 +1,6 @@
 //@ edition:2018
 //@ check-pass
-#![allow(unused)]
+#![allow(unused, todo_macro_uses)]
 #![deny(rust_2021_prelude_collisions)]
 
 struct S;

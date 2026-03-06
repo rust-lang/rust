@@ -1,5 +1,5 @@
 error: constant of non-structural type `Cow<'_, str>` in a pattern
-  --> $DIR/issue-89088.rs:16:9
+  --> $DIR/issue-89088.rs:17:9
    |
 LL | const FOO: &A = &A::Field(Cow::Borrowed("foo"));
    | ------------- constant defined here

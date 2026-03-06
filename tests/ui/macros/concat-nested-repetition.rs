@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 #![feature(macro_metavar_expr_concat)]
 
 struct A;

@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `Assoc` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:6:12
+  --> $DIR/suggest-assoc-type-from-bounds.rs:8:12
    |
 LL |     let _: Assoc = todo!();
    |            ^^^^^
@@ -12,7 +12,7 @@ LL |     let _: <U as Trait<u32>>::Assoc = todo!();
    |            +++++++++++++++++++
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:20:12
+  --> $DIR/suggest-assoc-type-from-bounds.rs:22:12
    |
 LL |     let _: A = todo!();
    |            ^
@@ -29,7 +29,7 @@ LL | fn g<'a, T: ::Foo<'a> + inner::Foo<'a>, A>() {
    |                                       +++
 
 error[E0425]: cannot find type `Assoc` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:32:12
+  --> $DIR/suggest-assoc-type-from-bounds.rs:34:12
    |
 LL |     let _: Assoc = todo!();
    |            ^^^^^
@@ -42,7 +42,7 @@ LL |     let _: <T as Second>::Assoc = todo!();
    |            +++++++++++++++
 
 error[E0425]: cannot find type `Assoc` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:40:12
+  --> $DIR/suggest-assoc-type-from-bounds.rs:42:12
    |
 LL |     let _: Assoc = todo!();
    |            ^^^^^
@@ -54,7 +54,7 @@ LL +     let _: T::Assoc<'_> = todo!();
    |
 
 error[E0425]: cannot find type `Assoc` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:47:20
+  --> $DIR/suggest-assoc-type-from-bounds.rs:49:20
    |
 LL |             let _: Assoc = todo!();
    |                    ^^^^^
@@ -65,7 +65,7 @@ LL |             let _: U::Assoc = todo!();
    |                    +++
 
 error[E0425]: cannot find type `Assoc` in this scope
-  --> $DIR/suggest-assoc-type-from-bounds.rs:58:20
+  --> $DIR/suggest-assoc-type-from-bounds.rs:60:20
    |
 LL |             let _: Assoc = todo!();
    |                    ^^^^^ not found in this scope

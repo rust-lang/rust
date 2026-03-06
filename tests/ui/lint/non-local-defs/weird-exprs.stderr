@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:8:5
+  --> $DIR/weird-exprs.rs:9:5
    |
 LL |   type A = [u32; {
    |  ________________-
@@ -16,7 +16,7 @@ LL | | }];
    = note: `#[warn(non_local_definitions)]` on by default
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:16:9
+  --> $DIR/weird-exprs.rs:17:9
    |
 LL |       Discr = {
    |  _____________-
@@ -32,7 +32,7 @@ LL | |     }
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:25:9
+  --> $DIR/weird-exprs.rs:26:9
    |
 LL |       let _array = [0i32; {
    |  _________________________-
@@ -50,7 +50,7 @@ LL | |     }];
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:34:9
+  --> $DIR/weird-exprs.rs:35:9
    |
 LL |       type A = [u32; {
    |  ____________________-
@@ -66,7 +66,7 @@ LL | |     }];
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:41:9
+  --> $DIR/weird-exprs.rs:42:9
    |
 LL |       fn a(_: [u32; {
    |  ___________________-
@@ -82,7 +82,7 @@ LL | |     }]) {}
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/weird-exprs.rs:48:9
+  --> $DIR/weird-exprs.rs:49:9
    |
 LL |       fn b() -> [u32; {
    |  _____________________-

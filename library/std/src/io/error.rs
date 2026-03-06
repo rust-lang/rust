@@ -912,6 +912,7 @@ impl Error {
     ///
     /// impl fmt::Display for E {
     ///    // ...
+    /// #    #[allow(todo_macro_uses)]
     /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     /// #        todo!()
     /// #    }

@@ -1,4 +1,5 @@
 //@ check-fail
+#![allow(todo_macro_uses)]
 
 fn main() {
     let mut v = vec![(1,)];

@@ -580,11 +580,17 @@ pub mod impls {
             let mut helper = [0x00; u64!(4)];
 
             if mid >= u64!(4) {
-                Self::copy_nonoverlapping(self.buffer.split_at(mid - u64!(4)).1.split_at(u64!(4)).0, &mut helper);
+                Self::copy_nonoverlapping(
+                    self.buffer.split_at(mid - u64!(4)).1.split_at(u64!(4)).0,
+                    &mut helper,
+                );
             } else {
                 let (older, newer) = helper.split_at_mut(u64!(4) - mid);
                 Self::copy_nonoverlapping(self.buffer.split_at(mid).0, newer);
-                Self::copy_nonoverlapping(self.buffer.split_at(u64!(12) - (u64!(4) - mid)).1, older);
+                Self::copy_nonoverlapping(
+                    self.buffer.split_at(u64!(12) - (u64!(4) - mid)).1,
+                    older,
+                );
             }
 
             [
@@ -610,11 +616,7 @@ pub mod impls {
             debug_assert!(self.buffered_len + bytes.len() <= self.buffer.len());
             Self::copy_nonoverlapping(
                 bytes,
-                self.buffer
-                    .split_at_mut(self.buffered_len)
-                    .1
-                    .split_at_mut(bytes.len())
-                    .0,
+                self.buffer.split_at_mut(self.buffered_len).1.split_at_mut(bytes.len()).0,
             );
             self.buffered_len += bytes.len();
         }

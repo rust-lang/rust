@@ -1,5 +1,6 @@
 // This is the auxiliary crate for the regression test for issue #89119, minimized
 // from `zvariant-2.8.0`.
+#![allow(todo_macro_uses)]
 
 use std::convert::TryFrom;
 use std::borrow::Cow;

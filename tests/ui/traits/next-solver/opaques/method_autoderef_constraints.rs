@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // Regression test for trait-system-refactor-initiative/issues/263
 // Previously `method_auto_deref_steps` would also return opaque

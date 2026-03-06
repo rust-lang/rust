@@ -1,4 +1,5 @@
 //@ dont-require-annotations: SUGGESTION
+#![allow(todo_macro_uses)]
 
 fn main() {
     let u = 5 as bool; //~ ERROR cannot cast `i32` as `bool`

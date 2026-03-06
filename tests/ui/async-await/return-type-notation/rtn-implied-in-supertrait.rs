@@ -1,5 +1,6 @@
 //@ edition:2021
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 #![feature(return_type_notation)]
 

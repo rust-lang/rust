@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 // Test that we use `sup` not `eq` during method probe, since this has an effect
 // on the leak check. This is (conceptually) minimized from a crater run for

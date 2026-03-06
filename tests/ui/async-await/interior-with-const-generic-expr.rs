@@ -1,7 +1,7 @@
 //@ edition:2018
 //@ run-pass
 
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 #![feature(generic_const_exprs)]
 #![allow(unused)]
 

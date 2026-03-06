@@ -1,4 +1,5 @@
 //@ aux-build: rpitit.rs
+#![allow(todo_macro_uses)]
 
 extern crate rpitit;
 
