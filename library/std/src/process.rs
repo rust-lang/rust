@@ -617,13 +617,31 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     ///
-    /// If `program` is not an absolute path, the `PATH` will be searched in
-    /// an OS-defined way.
+    /// If `program` is not an absolute path, the `PATH` environment variable
+    /// will be searched in an OS-defined way.
     ///
-    /// The search path to be used may be controlled by setting the
-    /// `PATH` environment variable on the Command,
-    /// but this has some implementation limitations on Windows
+    /// On Unix, the `PATH` searched comes from the child's environment:
+    ///
+    /// - If the environment is unmodified, the child inherits the parent's
+    ///   `PATH` and that is what is searched.
+    /// - If `PATH` is explicitly set via [`env`], that new value is searched.
+    /// - If [`env_clear`] or [`env_remove`] removes `PATH` without a
+    ///   replacement, `execvp` falls back to an OS-defined default (typically
+    ///   `/bin:/usr/bin`), **not** the parent's `PATH`. This may fail to find
+    ///   programs that rely on the parent's `PATH`.
+    ///
+    /// To avoid surprises, use an absolute path or explicitly set `PATH` on
+    /// the `Command` when modifying the child's environment.
+    ///
+    /// On Windows, Rust resolves the executable path before spawning. It
+    /// searches the child's `PATH` (if explicitly set via [`env`]) first,
+    /// followed by system-defined directories, and finally the parent
+    /// process's `PATH`. Note that this has some implementation limitations
     /// (see issue #37519).
+    ///
+    /// [`env`]: Self::env
+    /// [`env_remove`]: Self::env_remove
+    /// [`env_clear`]: Self::env_clear
     ///
     /// # Platform-specific behavior
     ///
