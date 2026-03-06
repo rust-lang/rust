@@ -696,7 +696,7 @@ class RustBuild(object):
             for download_info in tarballs_download_info:
                 download_component(download_info)
 
-            # Unpack the tarballs in parallle.
+            # Unpack the tarballs in parallel.
             # In Python 2.7, Pool cannot be used as a context manager.
             pool_size = min(len(tarballs_download_info), get_cpus())
             if self.verbose:
