@@ -807,7 +807,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     user_ty: None,
                 };
                 let mk_usize_kind = |val: u64| ExprKind::NonHirLiteral {
-                    lit: ScalarInt::try_from_uint(val, tcx.data_layout.pointer_size()).unwrap(),
+                    lit: ScalarInt::try_from_target_usize(val, tcx).unwrap(),
                     user_ty: None,
                 };
                 let mk_call =
