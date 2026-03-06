@@ -1,11 +1,4 @@
-#![feature(
-    core_intrinsics,
-    coroutines,
-    coroutine_trait,
-    repr_simd,
-    tuple_trait,
-    unboxed_closures
-)]
+#![feature(core_intrinsics, coroutines, coroutine_trait, repr_simd, tuple_trait, unboxed_closures)]
 #![allow(internal_features)]
 
 #[cfg(target_arch = "x86_64")]
