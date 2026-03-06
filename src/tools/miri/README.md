@@ -158,11 +158,13 @@ endian-sensitive code.
 
 Controlling target features works similar to regular rustc invocations:
 `RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
-only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. Unlike regular
-rustc, this command has *two* effects: it builds the code with that target feature available (which
-affects `cfg(target_feature)`), and it tells Miri to consider the "virtual CPU" that the interpreted
-program runs on as having the feature available (meaning the code is allowed to invoke the
-corresponding intrinsics).
+only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. If target
+features are also relevant for doctests, you have to also set `RUSTDOCFLAGS`.
+
+Unlike regular rustc, this flag has *two* effects: it builds the code with that target feature
+available (which affects `cfg(target_feature)`), and it tells Miri to consider the "virtual CPU"
+that the interpreted program runs on as having the feature available (meaning the code is allowed to
+invoke the corresponding intrinsics).
 
 ### Testing multiple different executions
 
