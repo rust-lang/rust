@@ -27,7 +27,7 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxtHandle, LintBuffer};
+use rustc_errors::{Diag, DiagCtxtHandle, LintBuffer, StashKey, Subdiagnostic as _};
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
@@ -1559,14 +1559,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
-
-        for predicate in &generics.where_clause.predicates {
-            let span = predicate.span;
-            if let WherePredicateKind::EqPredicate(predicate) = &predicate.kind {
-                deny_equality_constraints(self, predicate, span, generics);
-            }
-        }
         walk_list!(self, visit_generic_param, &generics.params);
+
         for predicate in &generics.where_clause.predicates {
             match &predicate.kind {
                 WherePredicateKind::BoundPredicate(bound_pred) => {
@@ -1590,7 +1584,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
-                _ => {}
+                WherePredicateKind::RegionPredicate(_) => {}
+                WherePredicateKind::EqPredicate(eq_predicate) => {
+                    // NOTE: We compute and attach the suggestion here instead of in the parser as
+                    //       it needs access to `generics.params`. While those could be passed to
+                    //       the where-clause parser, it would worsen its many callsites!
+                    self.dcx().try_steal_modify_and_emit_err(
+                        eq_predicate.lhs_ty.span,
+                        StashKey::EqualityPredicate,
+                        |diag| {
+                            suggest_replacing_eq_pred_with_assoc_ty_binding(
+                                eq_predicate,
+                                predicate.span,
+                                generics,
+                                diag,
+                            )
+                        },
+                    );
+                }
             }
             self.visit_where_predicate(predicate);
         }
@@ -1880,24 +1891,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-/// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
-/// like it's setting an associated type, provide an appropriate suggestion.
-fn deny_equality_constraints(
-    this: &AstValidator<'_>,
+fn suggest_replacing_eq_pred_with_assoc_ty_binding(
     predicate: &WhereEqPredicate,
     predicate_span: Span,
     generics: &Generics,
+    diag: &mut Diag<'_>,
 ) {
-    let mut err = errors::EqualityInWhere { span: predicate_span, assoc: None, assoc2: None };
-
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
         && let TyKind::Path(None, path) = &qself.ty.kind
-        && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
+        && let [PathSegment { ident, args: None, .. }] = path.segments[..]
     {
         for param in &generics.params {
-            if param.ident == *ident
-                && let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..]
+            if param.ident == ident
+                && let [PathSegment { ident, ref args, .. }] = full_path.segments[qself.position..]
             {
                 // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
                 let mut assoc_path = full_path.clone();
@@ -1908,7 +1915,7 @@ fn deny_equality_constraints(
                 // Build `<Bar = RhsTy>`.
                 let arg = AngleBracketedArg::Constraint(AssocItemConstraint {
                     id: rustc_ast::node_id::DUMMY_NODE_ID,
-                    ident: *ident,
+                    ident,
                     gen_args,
                     kind: AssocItemConstraintKind::Equality {
                         term: predicate.rhs_ty.clone().into(),
@@ -1931,12 +1938,13 @@ fn deny_equality_constraints(
                         );
                     }
                 }
-                err.assoc = Some(errors::AssociatedSuggestion {
+                errors::UseAssocTypeBindingSyntaxSugg {
                     span: predicate_span,
-                    ident: *ident,
+                    ident,
                     param: param.ident,
                     path: pprust::path_to_string(&assoc_path),
-                })
+                }
+                .add_to_diag(diag);
             }
         }
     }
@@ -1959,7 +1967,7 @@ fn deny_equality_constraints(
                     None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
                 };
                 let removal_span = if generics.where_clause.predicates.len() == 1 {
-                    // We're removing th eonly where bound left, remove the whole thing.
+                    // We're removing the only where bound left, remove the whole thing.
                     generics.where_clause.span
                 } else {
                     let mut span = predicate_span;
@@ -1982,13 +1990,14 @@ fn deny_equality_constraints(
                     }
                     span
                 };
-                err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                errors::UseAssocTypeBindingSyntaxMultipartSugg {
                     span,
                     args,
                     predicate: removal_span,
                     trait_segment: trait_segment.ident,
                     potential_assoc: potential_assoc.ident,
-                });
+                }
+                .add_to_diag(diag);
             }
         };
 
@@ -2041,7 +2050,6 @@ fn deny_equality_constraints(
             }
         }
     }
-    this.dcx().emit_err(err);
 }
 
 pub fn check_crate(

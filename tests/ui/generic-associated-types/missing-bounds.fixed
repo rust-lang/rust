@@ -37,7 +37,7 @@ impl<B: std::ops::Add<Output = B>> Add for D<B> {
 struct E<B>(B);
 
 impl<B: Add<Output = B>> Add for E<B> where B: Add<Output = B> {
-    //~^ ERROR equality constraints are not yet supported in `where` clauses
+    //~^ ERROR equality constraints are not supported in where-clauses
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
