@@ -317,7 +317,7 @@ impl NotifyActor {
 
     fn watch(&mut self, path: &Path) {
         if let Some((watcher, _)) = &mut self.watcher {
-            log_notify_error(watcher.watch(path, RecursiveMode::NonRecursive));
+            log_notify_error(watcher.watch(path, RecursiveMode::Recursive));
         }
     }
 
