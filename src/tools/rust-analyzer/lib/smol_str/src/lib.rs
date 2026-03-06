@@ -34,13 +34,17 @@ use core::{
 pub struct SmolStr(Repr);
 
 impl SmolStr {
+    /// The maximum byte length of a string that can be stored inline
+    /// without heap allocation.
+    pub const INLINE_CAP: usize = INLINE_CAP;
+
     /// Constructs an inline variant of `SmolStr`.
     ///
     /// This never allocates.
     ///
     /// # Panics
     ///
-    /// Panics if `text.len() > 23`.
+    /// Panics if `text.len() > `[`SmolStr::INLINE_CAP`].
     #[inline]
     pub const fn new_inline(text: &str) -> SmolStr {
         assert!(text.len() <= INLINE_CAP); // avoids bounds checks in loop
@@ -241,6 +245,48 @@ impl PartialOrd for SmolStr {
     }
 }
 
+impl PartialOrd<str> for SmolStr {
+    fn partial_cmp(&self, other: &str) -> Option<Ordering> {
+        Some(self.as_str().cmp(other))
+    }
+}
+
+impl<'a> PartialOrd<&'a str> for SmolStr {
+    fn partial_cmp(&self, other: &&'a str) -> Option<Ordering> {
+        Some(self.as_str().cmp(*other))
+    }
+}
+
+impl PartialOrd<SmolStr> for &str {
+    fn partial_cmp(&self, other: &SmolStr) -> Option<Ordering> {
+        Some((*self).cmp(other.as_str()))
+    }
+}
+
+impl PartialOrd<String> for SmolStr {
+    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
+        Some(self.as_str().cmp(other.as_str()))
+    }
+}
+
+impl PartialOrd<SmolStr> for String {
+    fn partial_cmp(&self, other: &SmolStr) -> Option<Ordering> {
+        Some(self.as_str().cmp(other.as_str()))
+    }
+}
+
+impl<'a> PartialOrd<&'a String> for SmolStr {
+    fn partial_cmp(&self, other: &&'a String) -> Option<Ordering> {
+        Some(self.as_str().cmp(other.as_str()))
+    }
+}
+
+impl PartialOrd<SmolStr> for &String {
+    fn partial_cmp(&self, other: &SmolStr) -> Option<Ordering> {
+        Some(self.as_str().cmp(other.as_str()))
+    }
+}
+
 impl hash::Hash for SmolStr {
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         self.as_str().hash(hasher);
@@ -382,6 +428,20 @@ impl AsRef<std::path::Path> for SmolStr {
     #[inline(always)]
     fn as_ref(&self) -> &std::path::Path {
         AsRef::<std::path::Path>::as_ref(self.as_str())
+    }
+}
+
+impl From<char> for SmolStr {
+    #[inline]
+    fn from(c: char) -> SmolStr {
+        let mut buf = [0; INLINE_CAP];
+        let len = c.len_utf8();
+        c.encode_utf8(&mut buf);
+        SmolStr(Repr::Inline {
+            // SAFETY: A char is at most 4 bytes, which is always <= INLINE_CAP (23).
+            len: unsafe { InlineSize::transmute_from_u8(len as u8) },
+            buf,
+        })
     }
 }
 
@@ -888,10 +948,18 @@ macro_rules! format_smolstr {
 /// A builder that can be used to efficiently build a [`SmolStr`].
 ///
 /// This won't allocate if the final string fits into the inline buffer.
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Clone, Default, Debug)]
 pub struct SmolStrBuilder(SmolStrBuilderRepr);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+impl PartialEq for SmolStrBuilder {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for SmolStrBuilder {}
+
+#[derive(Clone, Debug)]
 enum SmolStrBuilderRepr {
     Inline { len: usize, buf: [u8; INLINE_CAP] },
     Heap(String),
@@ -909,6 +977,52 @@ impl SmolStrBuilder {
     #[must_use]
     pub const fn new() -> Self {
         Self(SmolStrBuilderRepr::Inline { buf: [0; INLINE_CAP], len: 0 })
+    }
+
+    /// Creates a new empty [`SmolStrBuilder`] with at least the specified capacity.
+    ///
+    /// If `capacity` is less than or equal to [`SmolStr::INLINE_CAP`], the builder
+    /// will use inline storage and not allocate. Otherwise, it will pre-allocate a
+    /// heap buffer of the requested capacity.
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        if capacity <= INLINE_CAP {
+            Self::new()
+        } else {
+            Self(SmolStrBuilderRepr::Heap(String::with_capacity(capacity)))
+        }
+    }
+
+    /// Returns the number of bytes accumulated in the builder so far.
+    #[inline]
+    pub fn len(&self) -> usize {
+        match &self.0 {
+            SmolStrBuilderRepr::Inline { len, .. } => *len,
+            SmolStrBuilderRepr::Heap(heap) => heap.len(),
+        }
+    }
+
+    /// Returns `true` if the builder has a length of zero bytes.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match &self.0 {
+            SmolStrBuilderRepr::Inline { len, .. } => *len == 0,
+            SmolStrBuilderRepr::Heap(heap) => heap.is_empty(),
+        }
+    }
+
+    /// Returns a `&str` slice of the builder's current contents.
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        match &self.0 {
+            SmolStrBuilderRepr::Inline { len, buf } => {
+                // SAFETY: `buf[..*len]` was built by prior `push`/`push_str` calls
+                // that only wrote valid UTF-8, and `*len <= INLINE_CAP` is maintained
+                // by the inline branch logic.
+                unsafe { core::str::from_utf8_unchecked(&buf[..*len]) }
+            }
+            SmolStrBuilderRepr::Heap(heap) => heap.as_str(),
+        }
     }
 
     /// Builds a [`SmolStr`] from `self`.
