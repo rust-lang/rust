@@ -140,7 +140,7 @@ fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) ->
                 }
                 Ok(())
             }
-            clean::WherePredicate::EqPredicate { lhs, rhs } => {
+            clean::WherePredicate::ProjectionPredicate { lhs, rhs } => {
                 let opts = WithOpts::from(f);
                 write!(
                     f,

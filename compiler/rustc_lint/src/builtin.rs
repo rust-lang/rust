@@ -2143,7 +2143,6 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 }
                             }
                         }
-                        _ => continue,
                     };
                 if relevant_lifetimes.is_empty() {
                     continue;

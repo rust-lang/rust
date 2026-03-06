@@ -2052,18 +2052,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     in_where_clause: true,
                 })
             }
-            WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
-                hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
-                    lhs_ty: self.lower_ty_alloc(
-                        lhs_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                    ),
-                    rhs_ty: self.lower_ty_alloc(
-                        rhs_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                    ),
-                })
-            }
         });
         hir::WherePredicate { hir_id, span, kind }
     }

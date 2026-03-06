@@ -997,12 +997,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.visit_lifetime(lifetime);
                 walk_list!(self, visit_param_bound, bounds);
             }
-            &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
-                lhs_ty, rhs_ty, ..
-            }) => {
-                self.visit_ty_unambig(lhs_ty);
-                self.visit_ty_unambig(rhs_ty);
-            }
         }
     }
 

@@ -581,25 +581,38 @@ impl<'a> Parser<'a> {
         // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
         let (bound_vars, _) = self.parse_higher_ranked_binder()?;
 
-        // Parse type with mandatory colon and (possibly empty) bounds,
-        // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
+
         if self.eat(exp!(Colon)) {
+            // The bounds may be empty; we intentionally accept predicates like  `Ty:`.
             let bounds = self.parse_generic_bounds()?;
-            Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+
+            return Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
-            }))
-        // FIXME: Decide what should be used here, `=` or `==`.
-        // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-        } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
-            let rhs_ty = self.parse_ty()?;
-            Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
-        } else {
-            self.maybe_recover_bounds_doubled_colon(&ty)?;
-            self.unexpected_any()
+            }));
         }
+
+        // NOTE: If we ever end up impl'ing and stabilizing equality predicates,
+        //       we need to pick between `=` and `==`, both is not an option!
+        if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
+            let rhs_ty = self.parse_ty()?;
+
+            // NOTE: If we ever end up impl'ing equality predicates,
+            //       we ought to track the binder in the AST node!
+            let _ = bound_vars;
+
+            let span = ty.span.to(rhs_ty.span);
+            let diag = self.dcx().create_err(errors::EqualityConstraintInWhereClause { span });
+            // FIXME(fmease): Register a gated span instead that always leads to a hard error?
+            //                Is that necessary for ensuring that it never gets treated as a
+            //                "soft failure" when it comes to MBE matching?
+            return Err(diag);
+        }
+
+        self.maybe_recover_bounds_doubled_colon(&ty)?;
+        self.unexpected_any()
     }
 
     pub(super) fn choose_generics_over_qpath(&self, start: usize) -> bool {
