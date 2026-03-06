@@ -56,6 +56,8 @@ declare_clippy_lint! {
     "unnecessary structure name repetition whereas `Self` is applicable"
 }
 
+impl_lint_pass!(UseSelf => [USE_SELF]);
+
 pub struct UseSelf {
     msrv: Msrv,
     stack: Vec<StackItem>,
@@ -80,8 +82,6 @@ enum StackItem {
     },
     NoCheck,
 }
-
-impl_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 

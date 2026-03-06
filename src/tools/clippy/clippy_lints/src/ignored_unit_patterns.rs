@@ -33,6 +33,7 @@ declare_clippy_lint! {
     pedantic,
     "suggest replacing `_` by `()` in patterns where appropriate"
 }
+
 declare_lint_pass!(IgnoredUnitPatterns => [IGNORED_UNIT_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {

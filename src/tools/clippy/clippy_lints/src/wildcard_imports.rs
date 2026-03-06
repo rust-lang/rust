@@ -100,6 +100,8 @@ declare_clippy_lint! {
     "lint `use _::*` statements"
 }
 
+impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
+
 pub struct WildcardImports {
     warn_on_all: bool,
     allowed_segments: FxHashSet<String>,
@@ -113,8 +115,6 @@ impl WildcardImports {
         }
     }
 }
-
-impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {

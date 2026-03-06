@@ -13,6 +13,62 @@ mod same_functions_in_if_cond;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks if the `if` and `else` block contain shared code that can be
+    /// moved out of the blocks.
+    ///
+    /// ### Why is this bad?
+    /// Duplicate code is less maintainable.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// let foo = if … {
+    ///     println!("Hello World");
+    ///     13
+    /// } else {
+    ///     println!("Hello World");
+    ///     42
+    /// };
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// println!("Hello World");
+    /// let foo = if … {
+    ///     13
+    /// } else {
+    ///     42
+    /// };
+    /// ```
+    #[clippy::version = "1.53.0"]
+    pub BRANCHES_SHARING_CODE,
+    nursery,
+    "`if` statement with shared code in all blocks"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `if/else` with the same body as the *then* part
+    /// and the *else* part.
+    ///
+    /// ### Why is this bad?
+    /// This is probably a copy & paste error.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// let foo = if … {
+    ///     42
+    /// } else {
+    ///     42
+    /// };
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub IF_SAME_THEN_ELSE,
+    style,
+    "`if` with the same `then` and `else` blocks"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for consecutive `if`s with the same condition.
     ///
     /// ### Why is this bad?
@@ -91,61 +147,12 @@ declare_clippy_lint! {
     "consecutive `if`s with the same function call"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `if/else` with the same body as the *then* part
-    /// and the *else* part.
-    ///
-    /// ### Why is this bad?
-    /// This is probably a copy & paste error.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// let foo = if … {
-    ///     42
-    /// } else {
-    ///     42
-    /// };
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub IF_SAME_THEN_ELSE,
-    style,
-    "`if` with the same `then` and `else` blocks"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks if the `if` and `else` block contain shared code that can be
-    /// moved out of the blocks.
-    ///
-    /// ### Why is this bad?
-    /// Duplicate code is less maintainable.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// let foo = if … {
-    ///     println!("Hello World");
-    ///     13
-    /// } else {
-    ///     println!("Hello World");
-    ///     42
-    /// };
-    /// ```
-    ///
-    /// Use instead:
-    /// ```ignore
-    /// println!("Hello World");
-    /// let foo = if … {
-    ///     13
-    /// } else {
-    ///     42
-    /// };
-    /// ```
-    #[clippy::version = "1.53.0"]
-    pub BRANCHES_SHARING_CODE,
-    nursery,
-    "`if` statement with shared code in all blocks"
-}
+impl_lint_pass!(CopyAndPaste<'_> => [
+    BRANCHES_SHARING_CODE,
+    IFS_SAME_COND,
+    IF_SAME_THEN_ELSE,
+    SAME_FUNCTIONS_IN_IF_CONDITION,
+]);
 
 pub struct CopyAndPaste<'tcx> {
     interior_mut: InteriorMut<'tcx>,
@@ -158,13 +165,6 @@ impl<'tcx> CopyAndPaste<'tcx> {
         }
     }
 }
-
-impl_lint_pass!(CopyAndPaste<'_> => [
-    IFS_SAME_COND,
-    SAME_FUNCTIONS_IN_IF_CONDITION,
-    IF_SAME_THEN_ELSE,
-    BRANCHES_SHARING_CODE
-]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

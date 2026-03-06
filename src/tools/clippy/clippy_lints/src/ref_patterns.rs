@@ -26,6 +26,7 @@ declare_clippy_lint! {
     restriction,
     "use of a ref pattern, e.g. Some(ref value)"
 }
+
 declare_lint_pass!(RefPatterns => [REF_PATTERNS]);
 
 impl EarlyLintPass for RefPatterns {

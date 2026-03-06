@@ -109,5 +109,17 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = 1.0 * 2.0 + 0.5;
    |             ^^^^^^^^^^^^^^^ help: consider using: `1.0f64.mul_add(2.0, 0.5)`
 
-error: aborting due to 18 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:122:5
+   |
+LL |     a += b * c;
+   |     ^^^^^^^^^^ help: consider using: `a = b.mul_add(c, a)`
+
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> tests/ui/floating_point_mul_add.rs:125:5
+   |
+LL |     a -= b * c;
+   |     ^^^^^^^^^^ help: consider using: `a = b.mul_add(-c, a)`
+
+error: aborting due to 20 previous errors
 

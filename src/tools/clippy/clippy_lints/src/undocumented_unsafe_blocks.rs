@@ -63,6 +63,7 @@ declare_clippy_lint! {
     restriction,
     "creating an unsafe block without explaining why it is safe"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `// SAFETY: ` comments on safe code.
@@ -92,6 +93,11 @@ declare_clippy_lint! {
     "annotating safe code with a safety comment"
 }
 
+impl_lint_pass!(UndocumentedUnsafeBlocks => [
+    UNDOCUMENTED_UNSAFE_BLOCKS,
+    UNNECESSARY_SAFETY_COMMENT,
+]);
+
 pub struct UndocumentedUnsafeBlocks {
     accept_comment_above_statement: bool,
     accept_comment_above_attributes: bool,
@@ -105,8 +111,6 @@ impl UndocumentedUnsafeBlocks {
         }
     }
 }
-
-impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
 
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
