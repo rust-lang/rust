@@ -17,10 +17,7 @@ mod on_enter;
 
 use either::Either;
 use hir::EditionedFileId;
-use ide_db::{
-    FilePosition, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase},
-};
+use ide_db::{FilePosition, RootDatabase, base_db::RootQueryDb};
 use span::Edition;
 use std::iter;
 
@@ -73,15 +70,16 @@ pub(crate) fn on_char_typed(
     if !TRIGGER_CHARS.contains(&char_typed) {
         return None;
     }
-    let edition = db
-        .source_root_crates(db.file_source_root(position.file_id).source_root_id(db))
+    let krate = db
+        .relevant_crates(position.file_id)
         .first()
-        .map_or(Edition::CURRENT, |crates| crates.data(db).edition);
-    // FIXME: We are hitting the database here, if we are unlucky this call might block momentarily
-    // causing the editor to feel sluggish! We need to make this bail if it would block too long?
-    let editioned_file_id_wrapper = EditionedFileId::from_span_guess_origin(
+        .copied()
+        .unwrap_or_else(|| *db.all_crates().first().unwrap());
+    let edition = krate.data(db).edition;
+    let editioned_file_id_wrapper = EditionedFileId::from_span(
         db,
         span::EditionedFileId::new(position.file_id, edition),
+        krate,
     );
     let file = &db.parse(editioned_file_id_wrapper);
     let char_matches_position =

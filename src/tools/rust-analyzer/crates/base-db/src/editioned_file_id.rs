@@ -20,7 +20,7 @@ const _: () = {
     use zalsa_::interned as zalsa_struct_;
     type Configuration_ = EditionedFileId;
 
-    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[derive(Debug, Clone, Eq)]
     pub struct EditionedFileIdData {
         editioned_file_id: span::EditionedFileId,
         krate: Crate,
@@ -50,6 +50,14 @@ const _: () = {
     #[derive(Hash, PartialEq, Eq)]
     struct WithoutCrate {
         editioned_file_id: span::EditionedFileId,
+    }
+
+    impl PartialEq for EditionedFileIdData {
+        fn eq(&self, other: &Self) -> bool {
+            let Self { editioned_file_id, krate: _ } = self;
+            let Self { editioned_file_id: other_editioned_file_id, krate: _ } = other;
+            editioned_file_id == other_editioned_file_id
+        }
     }
 
     impl Hash for EditionedFileIdData {
@@ -210,6 +218,8 @@ const _: () = {
         ///  1. The file is not in the module tree.
         ///  2. You are latency sensitive and cannot afford calling the def map to precisely compute the origin
         ///     (e.g. on enter feature, folding, etc.).
+        // FIXME: Remove this and all the weird crate ignoring plumbing around this
+        // This can cause a variety of weird bugs https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/Broken.20token.20mapping/with/577739887
         pub fn from_span_guess_origin(
             db: &dyn RootQueryDb,
             editioned_file_id: span::EditionedFileId,
@@ -281,6 +291,8 @@ impl EditionedFileId {
     ///  1. The file is not in the module tree.
     ///  2. You are latency sensitive and cannot afford calling the def map to precisely compute the origin
     ///     (e.g. on enter feature, folding, etc.).
+    // FIXME: Remove this and all the weird crate ignoring plumbing around this
+    // This can cause a variety of weird bugs https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/Broken.20token.20mapping/with/577739887
     #[inline]
     pub fn current_edition_guess_origin(db: &dyn RootQueryDb, file_id: FileId) -> Self {
         Self::from_span_guess_origin(db, span::EditionedFileId::current_edition(file_id))

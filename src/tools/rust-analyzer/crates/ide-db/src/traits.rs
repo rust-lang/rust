@@ -113,6 +113,7 @@ fn assoc_item_of_trait(
 
 #[cfg(test)]
 mod tests {
+    use base_db::RootQueryDb;
     use expect_test::{Expect, expect};
     use hir::{EditionedFileId, FilePosition, Semantics};
     use span::Edition;
@@ -130,7 +131,9 @@ mod tests {
         database.apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
-        let file_id = EditionedFileId::from_span_guess_origin(&database, file_id);
+
+        let &krate = database.relevant_crates(file_id.file_id()).first().unwrap();
+        let file_id = EditionedFileId::from_span(&database, file_id, krate);
         let offset = range_or_offset.expect_offset();
         (database, FilePosition { file_id, offset })
     }
