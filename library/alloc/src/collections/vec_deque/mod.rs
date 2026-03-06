@@ -12,6 +12,7 @@ use core::clone::TrivialClone;
 use core::cmp::{self, Ordering};
 use core::hash::{Hash, Hasher};
 use core::iter::{ByRefSized, repeat_n, repeat_with};
+use core::marker::Destruct;
 // This is used in a bunch of intra-doc links.
 // FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
 // failures in linkchecker even though rustdoc built the docs just fine.
@@ -134,13 +135,15 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+unsafe impl<#[may_dangle] T: [const] Destruct, A: Allocator> const Drop for VecDeque<T, A> {
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
         struct Dropper<'a, T>(&'a mut [T]);
 
-        impl<'a, T> Drop for Dropper<'a, T> {
+        #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+        impl<'a, T: [const] Destruct> const Drop for Dropper<'a, T> {
             fn drop(&mut self) {
                 unsafe {
                     ptr::drop_in_place(self.0);
@@ -159,7 +162,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for VecDeque<T> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T> const Default for VecDeque<T> {
     /// Creates an empty deque.
     #[inline]
     fn default() -> VecDeque<T> {
@@ -170,7 +174,7 @@ impl<T> Default for VecDeque<T> {
 impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
-    fn ptr(&self) -> *mut T {
+    const fn ptr(&self) -> *mut T {
         self.buf.ptr()
     }
 
@@ -205,7 +209,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Moves an element out of the buffer
     #[inline]
-    unsafe fn buffer_read(&mut self, off: usize) -> T {
+    const unsafe fn buffer_read(&mut self, off: usize) -> T {
         unsafe { ptr::read(self.ptr().add(off)) }
     }
 
@@ -214,7 +218,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// May only be called if `off < self.capacity()`.
     #[inline]
-    unsafe fn buffer_write(&mut self, off: usize, value: T) -> &mut T {
+    const unsafe fn buffer_write(&mut self, off: usize, value: T) -> &mut T {
         unsafe {
             let ptr = self.ptr().add(off);
             ptr::write(ptr, value);
@@ -225,7 +229,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Returns a slice pointer into the buffer.
     /// `range` must lie inside `0..self.capacity()`.
     #[inline]
-    unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
         unsafe {
             ptr::slice_from_raw_parts_mut(self.ptr().add(range.start), range.end - range.start)
         }
@@ -233,26 +238,30 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Returns `true` if the buffer is at full capacity.
     #[inline]
-    fn is_full(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn is_full(&self) -> bool {
         self.len == self.capacity()
     }
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index + addend.
     #[inline]
-    fn wrap_add(&self, idx: usize, addend: usize) -> usize {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn wrap_add(&self, idx: usize, addend: usize) -> usize {
         wrap_index(idx.wrapping_add(addend), self.capacity())
     }
 
     #[inline]
-    fn to_physical_idx(&self, idx: usize) -> usize {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn to_physical_idx(&self, idx: usize) -> usize {
         self.wrap_add(self.head, idx)
     }
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index - subtrahend.
     #[inline]
-    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
         wrap_index(idx.wrapping_sub(subtrahend).wrapping_add(self.capacity()), self.capacity())
     }
 
@@ -330,23 +339,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy(&mut self, src: usize, dst: usize, len: usize) {
-        debug_assert!(
-            dst + len <= self.capacity(),
-            "cpy dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.capacity()
-        );
-        debug_assert!(
-            src + len <= self.capacity(),
-            "cpy dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.capacity()
-        );
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn copy(&mut self, src: usize, dst: usize, len: usize) {
+        debug_assert!(dst + len <= self.capacity(),);
+        debug_assert!(src + len <= self.capacity(),);
         unsafe {
             ptr::copy(self.ptr().add(src), self.ptr().add(dst), len);
         }
@@ -354,23 +350,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy_nonoverlapping(&mut self, src: usize, dst: usize, len: usize) {
-        debug_assert!(
-            dst + len <= self.capacity(),
-            "cno dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.capacity()
-        );
-        debug_assert!(
-            src + len <= self.capacity(),
-            "cno dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.capacity()
-        );
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn copy_nonoverlapping(&mut self, src: usize, dst: usize, len: usize) {
+        debug_assert!(dst + len <= self.capacity(),);
+        debug_assert!(src + len <= self.capacity(),);
         unsafe {
             ptr::copy_nonoverlapping(self.ptr().add(src), self.ptr().add(dst), len);
         }
@@ -379,15 +362,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than capacity() (There must be at
     /// most one continuous overlapping region between src and dest).
-    unsafe fn wrap_copy(&mut self, src: usize, dst: usize, len: usize) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn wrap_copy(&mut self, src: usize, dst: usize, len: usize) {
         debug_assert!(
             cmp::min(src.abs_diff(dst), self.capacity() - src.abs_diff(dst)) + len
                 <= self.capacity(),
-            "wrc dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.capacity()
         );
 
         // If T is a ZST, don't do any copying.
@@ -625,7 +604,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
-    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {
         let new_capacity = self.capacity();
         debug_assert!(new_capacity >= old_capacity);
 
@@ -794,8 +774,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
+    pub const fn with_capacity(capacity: usize) -> VecDeque<T> {
         Self::with_capacity_in(capacity, Global)
     }
 
@@ -840,20 +821,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
     }
 
-    /// Creates an empty deque with space for at least `capacity` elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
-        VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
-    }
-
     /// Creates a `VecDeque` from a raw allocation, when the initialized
     /// part of that allocation forms a *contiguous* subslice thereof.
     ///
@@ -867,7 +834,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// `initialized.start` ≤ `initialized.end` ≤ `capacity`.
     #[inline]
     #[cfg(not(test))]
-    pub(crate) unsafe fn from_contiguous_raw_parts_in(
+    pub(crate) const unsafe fn from_contiguous_raw_parts_in(
         ptr: *mut T,
         initialized: Range<usize>,
         capacity: usize,
@@ -904,7 +871,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self, index: usize) -> Option<&T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn get(&self, index: usize) -> Option<&T> {
         if index < self.len {
             let idx = self.to_physical_idx(index);
             unsafe { Some(&*self.ptr().add(idx)) }
@@ -934,7 +902,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf[1], 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len {
             let idx = self.to_physical_idx(index);
             unsafe { Some(&mut *self.ptr().add(idx)) }
@@ -967,7 +936,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap(&mut self, i: usize, j: usize) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn swap(&mut self, i: usize, j: usize) {
         assert!(i < self.len());
         assert!(j < self.len());
         let ri = self.to_physical_idx(i);
@@ -988,7 +958,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn capacity(&self) -> usize {
         if T::IS_ZST { usize::MAX } else { self.buf.capacity() }
     }
 
@@ -1473,9 +1444,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn allocator(&self) -> &A {
         self.buf.allocator()
     }
 
@@ -1609,7 +1581,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         let (a_range, b_range) = self.slice_ranges(.., self.len);
         // SAFETY: `slice_ranges` always returns valid ranges into
         // the physical buffer.
@@ -1629,8 +1602,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[rustc_confusables("length", "size")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -1647,7 +1621,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(!deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
@@ -1663,9 +1638,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ranges into the physical buffer, the caller must ensure that the result of
     /// calling `slice::range(range, ..len)` represents a valid range into the
     /// logical buffer, and that all elements in that range are initialized.
-    fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
     where
-        R: RangeBounds<usize>,
+        R: [const] RangeBounds<usize> + [const] Destruct,
     {
         let Range { start, end } = slice::range(range, ..len);
         let len = end - start;
@@ -1995,7 +1971,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn front_mut(&mut self) -> Option<&mut T> {
         self.get_mut(0)
     }
 
@@ -2040,7 +2017,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len.wrapping_sub(1))
     }
 
@@ -2061,7 +2039,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
         } else {
@@ -2090,7 +2069,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
             None
         } else {
@@ -2119,7 +2099,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
     #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
-    pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn pop_front_if(
+        &mut self,
+        predicate: impl [const] FnOnce(&mut T) -> bool + [const] Destruct,
+    ) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
     }
@@ -2141,93 +2125,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
     #[stable(feature = "vec_deque_pop_if", since = "1.93.0")]
-    pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn pop_back_if(
+        &mut self,
+        predicate: impl [const] FnOnce(&mut T) -> bool + [const] Destruct,
+    ) -> Option<T> {
         let last = self.back_mut()?;
         if predicate(last) { self.pop_back() } else { None }
-    }
-
-    /// Prepends an element to the deque.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut d = VecDeque::new();
-    /// d.push_front(1);
-    /// d.push_front(2);
-    /// assert_eq!(d.front(), Some(&2));
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, value: T) {
-        let _ = self.push_front_mut(value);
-    }
-
-    /// Prepends an element to the deque, returning a reference to it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut d = VecDeque::from([1, 2, 3]);
-    /// let x = d.push_front_mut(8);
-    /// *x -= 1;
-    /// assert_eq!(d.front(), Some(&7));
-    /// ```
-    #[stable(feature = "push_mut", since = "1.95.0")]
-    #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
-    pub fn push_front_mut(&mut self, value: T) -> &mut T {
-        if self.is_full() {
-            self.grow();
-        }
-
-        self.head = self.wrap_sub(self.head, 1);
-        self.len += 1;
-        // SAFETY: We know that self.head is within range of the deque.
-        unsafe { self.buffer_write(self.head, value) }
-    }
-
-    /// Appends an element to the back of the deque.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut buf = VecDeque::new();
-    /// buf.push_back(1);
-    /// buf.push_back(3);
-    /// assert_eq!(3, *buf.back().unwrap());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_confusables("push", "put", "append")]
-    pub fn push_back(&mut self, value: T) {
-        let _ = self.push_back_mut(value);
-    }
-
-    /// Appends an element to the back of the deque, returning a reference to it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut d = VecDeque::from([1, 2, 3]);
-    /// let x = d.push_back_mut(9);
-    /// *x += 1;
-    /// assert_eq!(d.back(), Some(&10));
-    /// ```
-    #[stable(feature = "push_mut", since = "1.95.0")]
-    #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
-    pub fn push_back_mut(&mut self, value: T) -> &mut T {
-        if self.is_full() {
-            self.grow();
-        }
-
-        let len = self.len;
-        self.len += 1;
-        unsafe { self.buffer_write(self.to_physical_idx(len), value) }
     }
 
     /// Prepends all contents of the iterator to the front of the deque.
@@ -2298,7 +2202,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     #[inline]
-    fn is_contiguous(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn is_contiguous(&self) -> bool {
         // Do the calculation like this to avoid overflowing if len + head > usize::MAX
         self.head <= self.capacity() - self.len
     }
@@ -2328,7 +2233,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [2, 1]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn swap_remove_front(&mut self, index: usize) -> Option<T> {
         let length = self.len;
         if index < length && index != 0 {
             self.swap(index, 0);
@@ -2363,7 +2269,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [3, 2]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn swap_remove_back(&mut self, index: usize) -> Option<T> {
         let length = self.len;
         if length > 0 && index < length - 1 {
             self.swap(index, length - 1);
@@ -2371,89 +2278,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
             return None;
         }
         self.pop_back()
-    }
-
-    /// Inserts an element at `index` within the deque, shifting all elements
-    /// with indices greater than or equal to `index` towards the back.
-    ///
-    /// Element at index 0 is the front of the queue.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `index` is strictly greater than the deque's length.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut vec_deque = VecDeque::new();
-    /// vec_deque.push_back('a');
-    /// vec_deque.push_back('b');
-    /// vec_deque.push_back('c');
-    /// assert_eq!(vec_deque, &['a', 'b', 'c']);
-    ///
-    /// vec_deque.insert(1, 'd');
-    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
-    ///
-    /// vec_deque.insert(4, 'e');
-    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
-    /// ```
-    #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn insert(&mut self, index: usize, value: T) {
-        let _ = self.insert_mut(index, value);
-    }
-
-    /// Inserts an element at `index` within the deque, shifting all elements
-    /// with indices greater than or equal to `index` towards the back, and
-    /// returning a reference to it.
-    ///
-    /// Element at index 0 is the front of the queue.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `index` is strictly greater than the deque's length.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut vec_deque = VecDeque::from([1, 2, 3]);
-    ///
-    /// let x = vec_deque.insert_mut(1, 5);
-    /// *x += 7;
-    /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
-    /// ```
-    #[stable(feature = "push_mut", since = "1.95.0")]
-    #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
-    pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
-        assert!(index <= self.len(), "index out of bounds");
-
-        if self.is_full() {
-            self.grow();
-        }
-
-        let k = self.len - index;
-        if k < index {
-            // `index + 1` can't overflow, because if index was usize::MAX, then either the
-            // assert would've failed, or the deque would've tried to grow past usize::MAX
-            // and panicked.
-            unsafe {
-                // see `remove()` for explanation why this wrap_copy() call is safe.
-                self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
-                self.len += 1;
-                self.buffer_write(self.to_physical_idx(index), value)
-            }
-        } else {
-            let old_head = self.head;
-            self.head = self.wrap_sub(self.head, 1);
-            unsafe {
-                self.wrap_copy(old_head, self.head, index);
-                self.len += 1;
-                self.buffer_write(self.to_physical_idx(index), value)
-            }
-        }
     }
 
     /// Removes and returns the element at `index` from the deque.
@@ -2715,22 +2539,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    // Double the buffer size. This method is inline(never), so we expect it to only
-    // be called in cold paths.
-    // This may panic or abort
-    #[inline(never)]
-    fn grow(&mut self) {
-        // Extend or possibly remove this assertion when valid use-cases for growing the
-        // buffer without it being full emerge
-        debug_assert!(self.is_full());
-        let old_cap = self.capacity();
-        self.buf.grow_one();
-        unsafe {
-            self.handle_capacity_increase(old_cap);
-        }
-        debug_assert!(!self.is_full());
-    }
-
     /// Modifies the deque in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
     /// elements generated by calling `generator` to the back.
@@ -2823,7 +2631,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// ```
     #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
-    pub fn make_contiguous(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn make_contiguous(&mut self) -> &mut [T] {
         if T::IS_ZST {
             self.head = 0;
         }
@@ -3280,6 +3089,206 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+const impl<T, A: [const] Allocator + [const] Destruct> VecDeque<T, A> {
+    /// Prepends an element to the deque.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut d = VecDeque::new();
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// assert_eq!(d.front(), Some(&2));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn push_front(&mut self, value: T) {
+        let _ = self.push_front_mut(value);
+    }
+
+    /// Prepends an element to the deque, returning a reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut d = VecDeque::from([1, 2, 3]);
+    /// let x = d.push_front_mut(8);
+    /// *x -= 1;
+    /// assert_eq!(d.front(), Some(&7));
+    /// ```
+    #[stable(feature = "push_mut", since = "1.95.0")]
+    #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
+    pub fn push_front_mut(&mut self, value: T) -> &mut T {
+        if self.is_full() {
+            self.grow();
+        }
+
+        self.head = self.wrap_sub(self.head, 1);
+        self.len += 1;
+        // SAFETY: We know that self.head is within range of the deque.
+        unsafe { self.buffer_write(self.head, value) }
+    }
+
+    /// Appends an element to the back of the deque.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.push_back(1);
+    /// buf.push_back(3);
+    /// assert_eq!(3, *buf.back().unwrap());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push", "put", "append")]
+    pub fn push_back(&mut self, value: T) {
+        let _ = self.push_back_mut(value);
+    }
+
+    /// Appends an element to the back of the deque, returning a reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut d = VecDeque::from([1, 2, 3]);
+    /// let x = d.push_back_mut(9);
+    /// *x += 1;
+    /// assert_eq!(d.back(), Some(&10));
+    /// ```
+    #[stable(feature = "push_mut", since = "1.95.0")]
+    #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
+    pub fn push_back_mut(&mut self, value: T) -> &mut T {
+        if self.is_full() {
+            self.grow();
+        }
+
+        let len = self.len;
+        self.len += 1;
+        unsafe { self.buffer_write(self.to_physical_idx(len), value) }
+    }
+
+    // Double the buffer size. This method is inline(never), so we expect it to only
+    // be called in cold paths.
+    // This may panic or abort
+    #[inline(never)]
+    fn grow(&mut self) {
+        // Extend or possibly remove this assertion when valid use-cases for growing the
+        // buffer without it being full emerge
+        debug_assert!(self.is_full());
+        let old_cap = self.capacity();
+        self.buf.grow_one();
+        unsafe {
+            self.handle_capacity_increase(old_cap);
+        }
+        debug_assert!(!self.is_full());
+    }
+
+    /// Creates an empty deque with space for at least `capacity` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
+        VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
+    }
+
+    /// Inserts an element at `index` within the deque, shifting all elements
+    /// with indices greater than or equal to `index` towards the back.
+    ///
+    /// Element at index 0 is the front of the queue.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is strictly greater than the deque's length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vec_deque = VecDeque::new();
+    /// vec_deque.push_back('a');
+    /// vec_deque.push_back('b');
+    /// vec_deque.push_back('c');
+    /// assert_eq!(vec_deque, &['a', 'b', 'c']);
+    ///
+    /// vec_deque.insert(1, 'd');
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
+    ///
+    /// vec_deque.insert(4, 'e');
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
+    /// ```
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
+    pub fn insert(&mut self, index: usize, value: T) {
+        let _ = self.insert_mut(index, value);
+    }
+
+    /// Inserts an element at `index` within the deque, shifting all elements
+    /// with indices greater than or equal to `index` towards the back, and
+    /// returning a reference to it.
+    ///
+    /// Element at index 0 is the front of the queue.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is strictly greater than the deque's length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vec_deque = VecDeque::from([1, 2, 3]);
+    ///
+    /// let x = vec_deque.insert_mut(1, 5);
+    /// *x += 7;
+    /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
+    /// ```
+    #[stable(feature = "push_mut", since = "1.95.0")]
+    #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
+    pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
+        assert!(index <= self.len(), "index out of bounds");
+
+        if self.is_full() {
+            self.grow();
+        }
+
+        let k = self.len - index;
+        if k < index {
+            // `index + 1` can't overflow, because if index was usize::MAX, then either the
+            // assert would've failed, or the deque would've tried to grow past usize::MAX
+            // and panicked.
+            unsafe {
+                // see `remove()` for explanation why this wrap_copy() call is safe.
+                self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
+                self.len += 1;
+                self.buffer_write(self.to_physical_idx(index), value)
+            }
+        } else {
+            let old_head = self.head;
+            self.head = self.wrap_sub(self.head, 1);
+            unsafe {
+                self.wrap_copy(old_head, self.head, index);
+                self.len += 1;
+                self.buffer_write(self.to_physical_idx(index), value)
+            }
+        }
+    }
+}
+
 impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// Modifies the deque in-place so that `len()` is equal to new_len,
     /// either by removing excess elements from the back or by appending clones of `value`
@@ -3531,7 +3540,8 @@ impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
 
 /// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
-fn wrap_index(logical_index: usize, capacity: usize) -> usize {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+const fn wrap_index(logical_index: usize, capacity: usize) -> usize {
     debug_assert!(
         (logical_index == 0 && capacity == 0)
             || logical_index < capacity
@@ -3619,7 +3629,8 @@ impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T, A: Allocator> const Index<usize> for VecDeque<T, A> {
     type Output = T;
 
     #[inline]
@@ -3629,7 +3640,8 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T, A: Allocator> const IndexMut<usize> for VecDeque<T, A> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
         self.get_mut(index).expect("Out of bounds access")
@@ -3733,7 +3745,8 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T, A: [const] Allocator + [const] Destruct> const From<Vec<T, A>> for VecDeque<T, A> {
     /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -3750,7 +3763,8 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T, A: [const] Allocator> const From<VecDeque<T, A>> for Vec<T, A> {
     /// Turn a [`VecDeque<T>`] into a [`Vec<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -3799,7 +3813,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
-impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+impl<T, const N: usize> const From<[T; N]> for VecDeque<T> {
     /// Converts a `[T; N]` into a `VecDeque<T>`.
     ///
     /// ```
