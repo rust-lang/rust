@@ -104,6 +104,7 @@ pub fn files_modified(
 pub mod alphabetical;
 pub mod arg_parser;
 pub mod bins;
+pub mod codegen;
 pub mod debug_artifacts;
 pub mod deps;
 pub mod diagnostics;
