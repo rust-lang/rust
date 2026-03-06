@@ -35,7 +35,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use self::CandidateKind::*;
@@ -98,7 +98,7 @@ impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
 pub(crate) struct Candidate<'tcx> {
     pub(crate) item: ty::AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
-    pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
+    pub(crate) import_ids: &'tcx [LocalDefId],
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +205,7 @@ impl PickConstraintsForShadowed {
 pub(crate) struct Pick<'tcx> {
     pub item: ty::AssocItem,
     pub kind: PickKind<'tcx>,
-    pub import_ids: SmallVec<[LocalDefId; 1]>,
+    pub import_ids: &'tcx [LocalDefId],
 
     /// Indicates that the source expression should be autoderef'd N times
     /// ```ignore (not-rust)
@@ -571,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::Binder::dummy(trait_ref),
                                 false,
                             ),
-                            import_ids: smallvec![],
+                            import_ids: &[],
                         },
                         false,
                     );
@@ -943,7 +943,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 Candidate {
                     item,
                     kind: InherentImplCandidate { impl_def_id, receiver_steps },
-                    import_ids: smallvec![],
+                    import_ids: &[],
                 },
                 true,
             );
@@ -976,11 +976,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             traits::supertraits(self.tcx, trait_ref),
             |this, new_trait_ref, item| {
                 this.push_candidate(
-                    Candidate {
-                        item,
-                        kind: ObjectCandidate(new_trait_ref),
-                        import_ids: smallvec![],
-                    },
+                    Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: &[] },
                     true,
                 );
             },
@@ -1015,11 +1011,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
-                Candidate {
-                    item,
-                    kind: WhereClauseCandidate(poly_trait_ref),
-                    import_ids: smallvec![],
-                },
+                Candidate { item, kind: WhereClauseCandidate(poly_trait_ref), import_ids: &[] },
                 true,
             );
         });
@@ -1069,11 +1061,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(
-                    &smallvec![],
-                    trait_info.def_id,
-                    false,
-                );
+                self.assemble_extension_candidates_for_trait(&[], trait_info.def_id, false);
             }
         }
     }
@@ -1097,7 +1085,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: &SmallVec<[LocalDefId; 1]>,
+        import_ids: &'tcx [LocalDefId],
         trait_def_id: DefId,
         lint_ambiguous: bool,
     ) {
@@ -1120,7 +1108,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         self.push_candidate(
                             Candidate {
                                 item,
-                                import_ids: import_ids.clone(),
+                                import_ids,
                                 kind: TraitCandidate(bound_trait_ref, lint_ambiguous),
                             },
                             false,
@@ -1143,7 +1131,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.push_candidate(
                     Candidate {
                         item,
-                        import_ids: import_ids.clone(),
+                        import_ids,
                         kind: TraitCandidate(ty::Binder::dummy(trait_ref), lint_ambiguous),
                     },
                     false,
@@ -2329,7 +2317,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Some(Pick {
             item: probes[0].0.item,
             kind: TraitPick(lint_ambiguous),
-            import_ids: probes[0].0.import_ids.clone(),
+            import_ids: probes[0].0.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2406,7 +2394,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Some(Pick {
             item: child_candidate.item,
             kind: TraitPick(lint_ambiguous),
-            import_ids: child_candidate.import_ids.clone(),
+            import_ids: child_candidate.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2683,7 +2671,7 @@ impl<'tcx> Candidate<'tcx> {
                     WhereClausePick(trait_ref)
                 }
             },
-            import_ids: self.import_ids.clone(),
+            import_ids: self.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,

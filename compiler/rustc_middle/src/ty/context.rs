@@ -2614,7 +2614,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_level(self.sess, lint, level, None, decorate);
     }
 
-    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
+    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
         let map = self.in_scope_traits_map(id.owner)?;
         let candidates = map.get(&id.local_id)?;
         Some(candidates)
@@ -2777,7 +2777,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).extern_crate_map.get(&def_id).copied()
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
+    pub fn resolver_for_lowering(
+        self,
+    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 
