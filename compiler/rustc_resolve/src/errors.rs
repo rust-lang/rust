@@ -52,6 +52,7 @@ pub(crate) struct GenericParamsFromOuterItemInnerItem {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) descr: String,
+    pub(crate) is_self: bool,
 }
 
 #[derive(Subdiagnostic)]

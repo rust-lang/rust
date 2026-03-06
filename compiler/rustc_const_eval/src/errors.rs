@@ -533,7 +533,7 @@ pub enum NonConstClosureNote {
             *[other] {""}
         }s"#
     )]
-    FnPtr,
+    FnPtr { kind: ConstContext },
     #[note(
         r#"closures need an RFC before allowed to be called in {$kind ->
             [const] constant
@@ -542,7 +542,7 @@ pub enum NonConstClosureNote {
             *[other] {""}
         }s"#
     )]
-    Closure,
+    Closure { kind: ConstContext },
 }
 
 #[derive(Subdiagnostic)]

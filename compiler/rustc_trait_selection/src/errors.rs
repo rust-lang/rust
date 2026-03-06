@@ -1227,38 +1227,6 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
     }
 }
 
-#[derive(Diagnostic)]
-#[diag("{$has_param_name ->
-    [true] `{$param_name}`
-    *[false] `fn` parameter
-} has {$lifetime_kind ->
-    [true] lifetime `{$lifetime}`
-    *[false] an anonymous lifetime `'_`
-} but calling `{$assoc_item}` introduces an implicit `'static` lifetime requirement", code = E0772)]
-pub struct ButCallingIntroduces {
-    #[label(
-        "{$has_lifetime ->
-        [true] lifetime `{$lifetime}`
-        *[false] an anonymous lifetime `'_`
-    }"
-    )]
-    pub param_ty_span: Span,
-    #[primary_span]
-    #[label("...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
-        [true] `impl` of `{$impl_path}`
-        *[false] inherent `impl`
-    }")]
-    pub cause_span: Span,
-
-    pub has_param_name: bool,
-    pub param_name: String,
-    pub has_lifetime: bool,
-    pub lifetime: String,
-    pub assoc_item: Symbol,
-    pub has_impl_path: bool,
-    pub impl_path: String,
-}
-
 pub struct ReqIntroducedLocations {
     pub span: MultiSpan,
     pub spans: Vec<Span>,

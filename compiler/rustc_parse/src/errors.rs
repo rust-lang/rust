@@ -1179,6 +1179,7 @@ pub(crate) enum MatchArmBodyWithoutBracesSugg {
         left: Span,
         #[suggestion_part(code = " }}")]
         right: Span,
+        num_statements: usize,
     },
     #[suggestion(
         "replace `;` with `,` to end a `match` arm expression",
