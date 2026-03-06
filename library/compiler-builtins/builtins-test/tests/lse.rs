@@ -1,3 +1,4 @@
+#![allow(unused_features)]
 #![feature(decl_macro)] // so we can use pub(super)
 #![feature(macro_metavar_expr_concat)]
 #![cfg(all(target_arch = "aarch64", feature = "mangled-names"))]

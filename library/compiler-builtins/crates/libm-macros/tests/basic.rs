@@ -1,3 +1,4 @@
+#![allow(unused_features)]
 #![feature(f16)]
 #![feature(f128)]
 // `STATUS_DLL_NOT_FOUND` on i686 MinGW, not worth looking into.
