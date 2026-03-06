@@ -40,8 +40,7 @@ use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind,
-    TyKind,
-    TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
+    TyKind, TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
     inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };
 use smallvec::SmallVec;
@@ -1681,10 +1680,16 @@ impl SupertraitsInfo {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum TypeParamAssocTypeShorthandError {
-    AssocTypeNotFound,
-    AmbiguousAssocType,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum AssocTypeShorthandResolution {
+    Resolved(StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>),
+    Ambiguous {
+        /// If one resolution belongs to a sub-trait and one to a supertrait, this contains
+        /// the sub-trait's resolution. This can be `None` if there is no trait inheritance
+        /// relationship between the resolutions.
+        sub_trait_resolution: Option<StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>>,
+    },
+    NotFound,
     Cycle,
 }
 
@@ -1708,7 +1713,7 @@ fn resolve_type_param_assoc_type_shorthand(
     def: GenericDefId,
     param: TypeParamId,
     assoc_name: Name,
-) -> Result<StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>, TypeParamAssocTypeShorthandError> {
+) -> AssocTypeShorthandResolution {
     let generics = generics(db, def);
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
@@ -1719,13 +1724,13 @@ fn resolve_type_param_assoc_type_shorthand(
         LifetimeElisionKind::AnonymousReportError,
     );
     let interner = ctx.interner;
-    let mut result = None;
     let param_ty = Ty::new_param(
         interner,
         param,
         generics.type_or_const_param_idx(param.into()).unwrap() as u32,
     );
 
+    let mut this_trait_resolution = None;
     if let GenericDefId::TraitId(containing_trait) = param.parent()
         && param.local_id() == GenericParams::SELF_PARAM_ID_IN_SELF
     {
@@ -1734,10 +1739,11 @@ fn resolve_type_param_assoc_type_shorthand(
             containing_trait.trait_items(db).associated_type_by_name(&assoc_name)
         {
             let args = GenericArgs::identity_for_item(interner, containing_trait.into());
-            result = Some(StoredEarlyBinder::bind((assoc_type, args.store())));
+            this_trait_resolution = Some(StoredEarlyBinder::bind((assoc_type, args.store())));
         }
     }
 
+    let mut supertraits_resolution = None;
     for maybe_parent_generics in
         std::iter::successors(Some(&generics), |generics| generics.parent_generics())
     {
@@ -1783,34 +1789,53 @@ fn resolve_type_param_assoc_type_shorthand(
                 TypeParamId::trait_self(bounded_trait),
                 assoc_name.clone(),
             );
-            let lookup_on_bounded_trait = match lookup_on_bounded_trait {
-                Ok(it) => it,
-                Err(
-                    err @ (TypeParamAssocTypeShorthandError::AmbiguousAssocType
-                    | TypeParamAssocTypeShorthandError::Cycle),
-                ) => return Err(*err),
-                Err(TypeParamAssocTypeShorthandError::AssocTypeNotFound) => {
+            let assoc_type_and_args = match &lookup_on_bounded_trait {
+                AssocTypeShorthandResolution::Resolved(trait_ref) => trait_ref,
+                AssocTypeShorthandResolution::Ambiguous {
+                    sub_trait_resolution: Some(trait_ref),
+                } => trait_ref,
+                AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None } => {
+                    return AssocTypeShorthandResolution::Ambiguous {
+                        sub_trait_resolution: this_trait_resolution,
+                    };
+                }
+                AssocTypeShorthandResolution::NotFound => {
                     never!("we checked that the trait defines this assoc type");
                     continue;
                 }
+                AssocTypeShorthandResolution::Cycle => return AssocTypeShorthandResolution::Cycle,
             };
-            let (assoc_type, args) = lookup_on_bounded_trait
-                .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
-                .skip_binder();
-            let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
-            let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
-            // If we already have a result, this is an ambiguity - unless this is the same result, then we are fine
-            // (e.g. rustc allows to write the same bound twice without ambiguity).
-            if let Some(existing_result) = result
-                && existing_result != current_result
-            {
-                return Err(TypeParamAssocTypeShorthandError::AmbiguousAssocType);
+            if let Some(this_trait_resolution) = this_trait_resolution {
+                return AssocTypeShorthandResolution::Ambiguous {
+                    sub_trait_resolution: Some(this_trait_resolution),
+                };
+            } else if supertraits_resolution.is_some() {
+                return AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None };
+            } else {
+                let (assoc_type, args) = assoc_type_and_args
+                    .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
+                    .skip_binder();
+                let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
+                let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
+                supertraits_resolution = Some(match lookup_on_bounded_trait {
+                    AssocTypeShorthandResolution::Resolved(_) => {
+                        AssocTypeShorthandResolution::Resolved(current_result)
+                    }
+                    AssocTypeShorthandResolution::Ambiguous { .. } => {
+                        AssocTypeShorthandResolution::Ambiguous {
+                            sub_trait_resolution: Some(current_result),
+                        }
+                    }
+                    AssocTypeShorthandResolution::NotFound
+                    | AssocTypeShorthandResolution::Cycle => unreachable!(),
+                });
             }
-            result = Some(current_result);
         }
     }
 
-    result.ok_or(TypeParamAssocTypeShorthandError::AssocTypeNotFound)
+    supertraits_resolution
+        .or_else(|| this_trait_resolution.map(AssocTypeShorthandResolution::Resolved))
+        .unwrap_or(AssocTypeShorthandResolution::NotFound)
 }
 
 fn resolve_type_param_assoc_type_shorthand_cycle_result(
@@ -1819,8 +1844,8 @@ fn resolve_type_param_assoc_type_shorthand_cycle_result(
     _def: GenericDefId,
     _param: TypeParamId,
     _assoc_name: Name,
-) -> Result<StoredEarlyBinder<(TypeAliasId, StoredGenericArgs)>, TypeParamAssocTypeShorthandError> {
-    Err(TypeParamAssocTypeShorthandError::Cycle)
+) -> AssocTypeShorthandResolution {
+    AssocTypeShorthandResolution::Cycle
 }
 
 #[inline]
@@ -2468,7 +2493,7 @@ fn fn_sig_for_struct_constructor(
     let inputs_and_output =
         Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
     StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
-        abi: FnAbi::RustCall,
+        abi: FnAbi::Rust,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
@@ -2487,7 +2512,7 @@ fn fn_sig_for_enum_variant_constructor(
     let inputs_and_output =
         Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret.as_ref())));
     StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
-        abi: FnAbi::RustCall,
+        abi: FnAbi::Rust,
         c_variadic: false,
         safety: Safety::Safe,
         inputs_and_output,
@@ -2569,19 +2594,22 @@ pub(crate) fn associated_ty_item_bounds<'db>(
     EarlyBinder::bind(BoundExistentialPredicates::new_from_slice(&bounds))
 }
 
-pub(crate) fn associated_type_by_name_including_super_traits<'db>(
+pub(crate) fn associated_type_by_name_including_super_traits_allow_ambiguity<'db>(
     db: &'db dyn HirDatabase,
     trait_ref: TraitRef<'db>,
     name: Name,
 ) -> Option<(TypeAliasId, GenericArgs<'db>)> {
-    let assoc_type = resolve_type_param_assoc_type_shorthand(
-        db,
-        trait_ref.def_id.0.into(),
-        TypeParamId::trait_self(trait_ref.def_id.0),
-        name.clone(),
-    )
-    .as_ref()
-    .ok()?;
+    let (AssocTypeShorthandResolution::Resolved(assoc_type)
+    | AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: Some(assoc_type) }) =
+        resolve_type_param_assoc_type_shorthand(
+            db,
+            trait_ref.def_id.0.into(),
+            TypeParamId::trait_self(trait_ref.def_id.0),
+            name.clone(),
+        )
+    else {
+        return None;
+    };
     let (assoc_type, trait_args) = assoc_type
         .get_with(|(assoc_type, trait_args)| (*assoc_type, trait_args.as_ref()))
         .skip_binder();

@@ -658,7 +658,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                 }
                 if let RecordSpread::Expr(expr) = *spread {
-                    self.infer_expr(expr, &Expectation::has_type(ty), ExprIsRead::Yes);
+                    self.infer_expr_coerce_never(expr, &Expectation::has_type(ty), ExprIsRead::Yes);
                 }
                 ty
             }
