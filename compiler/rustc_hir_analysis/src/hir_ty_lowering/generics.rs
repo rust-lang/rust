@@ -1,6 +1,9 @@
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
+    struct_span_code_err,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
@@ -625,6 +628,17 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     args: &hir::GenericArgs<'_>,
     position: GenericArgPosition,
 ) -> ExplicitLateBound {
+    struct LifetimeArgsIssue {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+        }
+    }
+
     let param_counts = def.own_counts();
 
     if let Some(span_late) = def.has_late_bound_regions
@@ -644,13 +658,11 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         } else {
             let mut multispan = MultiSpan::from_span(span);
             multispan.push_span_label(span_late, note);
-            cx.tcx().node_span_lint(
+            cx.tcx().emit_node_span_lint(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,
-                |lint| {
-                    lint.primary_message(msg);
-                },
+                LifetimeArgsIssue { msg },
             );
         }
 
