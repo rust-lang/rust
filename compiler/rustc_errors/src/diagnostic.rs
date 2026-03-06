@@ -140,7 +140,7 @@ where
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub(crate) struct DiagLocation {
+pub struct DiagLocation {
     file: Cow<'static, str>,
     line: u32,
     col: u32,
@@ -148,7 +148,7 @@ pub(crate) struct DiagLocation {
 
 impl DiagLocation {
     #[track_caller]
-    fn caller() -> Self {
+    pub fn caller() -> Self {
         let loc = panic::Location::caller();
         DiagLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
     }
@@ -249,7 +249,7 @@ pub struct DiagInner {
     pub long_ty_path: Option<PathBuf>,
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
-    pub(crate) emitted_at: DiagLocation,
+    pub emitted_at: DiagLocation,
 }
 
 impl DiagInner {
