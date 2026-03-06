@@ -537,10 +537,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
 
-        // Check supertraits hold. This is so that their associated type bounds
-        // will be checked in the code below.
+        // Check supertraits hold, including their associated type bounds.
+        // For example, `trait Sub: Super<Assoc: Copy>` expands to both
+        // `Self: Super` and `<Self as Super>::Assoc: Copy`. We need to check
+        // both for the trait object to be well-formed.
         for (supertrait, _) in tcx
-            .explicit_super_predicates_of(trait_predicate.def_id())
+            .explicit_implied_predicates_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
         {
             let normalized_supertrait = normalize_with_depth_to(
