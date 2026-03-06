@@ -328,7 +328,7 @@ const fn hex_digit(c: u8) -> Option<u8> {
 mod hex_fmt {
     use core::fmt;
 
-    use crate::support::Float;
+    use crate::support::{Float, Int};
 
     /// Format a floating point number as its IEEE hex (`%a`) representation.
     pub struct Hexf<F>(pub F);
@@ -444,6 +444,53 @@ mod hex_fmt {
     impl<T> fmt::Display for Hexf<T>
     where
         Hexf<T>: fmt::LowerHex,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    fmt::LowerHex::fmt(self, f)
+                }
+            }
+        }
+    }
+
+    pub struct Hexi<F>(pub F);
+
+    impl<I: Int> fmt::LowerHex for Hexi<I> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    write!(f, "{:#0width$x}", self.0, width = ((I::BITS / 4) + 2) as usize)
+                }
+            }
+        }
+    }
+
+    impl<T> fmt::Debug for Hexi<T>
+    where
+        Hexi<T>: fmt::LowerHex,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    fmt::LowerHex::fmt(self, f)
+                }
+            }
+        }
+    }
+
+    impl<T> fmt::Display for Hexi<T>
+    where
+        Hexi<T>: fmt::LowerHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             cfg_if! {
