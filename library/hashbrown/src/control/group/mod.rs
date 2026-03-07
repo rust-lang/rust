@@ -1,3 +1,10 @@
+// TESTING NOTE:
+//
+// Because this module uses `cfg(..)` to select an implementation, it will not
+// be linted without being run on targets that actually load each of these
+// modules. Be sure to edit `ci/tools.sh` to add in the necessary cfgs if you
+// change these, so that your implementation gets properly linted.
+
 cfg_if! {
     // Use the SSE2 implementation if possible: it allows us to scan 16 buckets
     // at once instead of 8. We don't bother with AVX since it would require
