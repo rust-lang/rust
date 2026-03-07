@@ -382,6 +382,10 @@ pub struct CommonConsts<'tcx> {
     pub(crate) valtree_zst: ValTree<'tcx>,
 }
 
+pub struct CommonLayouts<'tcx> {
+    pub usize: Layout<'tcx>,
+}
+
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_ty(ty);
@@ -450,6 +454,31 @@ impl<'tcx> CommonTypes<'tcx> {
             anon_bound_tys,
             anon_canonical_bound_tys,
         }
+    }
+}
+
+impl<'tcx> CommonLayouts<'tcx> {
+    fn new(interners: &CtxtInterners<'tcx>, dl: &TargetDataLayout) -> CommonLayouts<'tcx> {
+        use rustc_abi::{Integer, Primitive, Scalar, WrappingRange};
+
+        let mk_int = |int: Integer, signed: bool| {
+            let primitive = Primitive::Int(int, signed);
+            let size = int.size();
+            Scalar::Initialized { value: primitive, valid_range: WrappingRange::full(size) }
+        };
+
+        let mk_scalar = |scalar: Scalar| {
+            Layout(Interned::new_unchecked(
+                interners
+                    .layout
+                    .intern(LayoutData::scalar(dl, scalar), |v| {
+                        InternedInSet(interners.arena.alloc(v))
+                    })
+                    .0,
+            ))
+        };
+
+        CommonLayouts { usize: mk_scalar(mk_int(dl.ptr_sized_integer(), false)) }
     }
 }
 
@@ -697,6 +726,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
+    /// Common layouts, pre-computed for MIR convenience.
+    pub layouts: CommonLayouts<'tcx>,
+
     /// Common lifetimes, pre-interned for your convenience.
     pub lifetimes: CommonLifetimes<'tcx>,
 
@@ -930,6 +962,7 @@ impl<'tcx> TyCtxt<'tcx> {
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
+        let common_layouts = CommonLayouts::new(&interners, &data_layout);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -944,6 +977,7 @@ impl<'tcx> TyCtxt<'tcx> {
             hooks,
             prof: sess.prof.clone(),
             types: common_types,
+            layouts: common_layouts,
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
