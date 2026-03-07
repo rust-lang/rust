@@ -377,12 +377,11 @@ fn suggest_to_remove_or_use_generic(
     }
     let is_param_used = visitor.found;
 
-    // Build Suggestions
     let mut suggestions = vec![];
 
     // Option A: Remove (Only if not used in body)
     if !is_param_used {
-        suggestions.push(vec![(hir_impl.generics.span_for_param_removal(index), String::new())]);
+        suggestions.push((hir_impl.generics.span_for_param_removal(index), String::new()));
     }
     // todo: there could be a case where the parameter is used in the body, but the self type is still missing the generic argument, so we want to suggest adding it in that case as well
     // e.g.
@@ -396,7 +395,7 @@ fn suggest_to_remove_or_use_generic(
     // ```
     // in such a case we could make the suggestion to add 'a to S in the `struct S` definition and the `impl S` definition
     // but finding out whether the parameter is used as a generic argument in a function which doesnt have the generic parameter set for itself is not trivial
-    // such a case can be seen here:
+    // such an edge case can be seen here:
     // ```
     // struct S;
     // impl<T> S {
@@ -406,17 +405,17 @@ fn suggest_to_remove_or_use_generic(
     // }
     // ```
     // where it would be a good suggestion to remove the generic parameter `T` from the `impl` definition as the function `foo` can work without it.
+    // The test case `tests/ui/associated-types/unconstrained-lifetime-assoc-type.rs` for example would benefit from such a suggestion.
 
     // Option B: Suggest adding only if there's an available slot
     if provided_slots < total_slots {
         if let Some(args) = last_segment_args {
             // Struct already has <...>, append to it
-            suggestions
-                .push(vec![(args.span().unwrap().shrink_to_hi(), format!(", {}", param.name))]);
+            suggestions.push((args.span().unwrap().shrink_to_hi(), format!(", {}", param.name)));
         } else if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind {
             // Struct has no <...> yet, add it
             let seg = path.segments.last().unwrap();
-            suggestions.push(vec![(seg.ident.span.shrink_to_hi(), format!("<{}>", param.name))]);
+            suggestions.push((seg.ident.span.shrink_to_hi(), format!("<{}>", param.name)));
         }
     }
 
@@ -424,23 +423,37 @@ fn suggest_to_remove_or_use_generic(
         return;
     }
 
-    let msg = if is_param_used {
-        format!("make use of the {} parameter `{}` in the `self` type", parameter_type, param.name)
-    } else {
-        format!(
-            "either remove the unused {} parameter `{}`, or make use of it",
+    if is_param_used {
+        let msg = format!(
+            "make use of the {} parameter `{}` in the `self` type",
             parameter_type, param.name
-        )
+        );
+        diag.span_suggestion(
+            suggestions[0].0,
+            msg,
+            suggestions[0].1.clone(),
+            Applicability::MaybeIncorrect,
+        );
+    } else {
+        let msg = if suggestions.len() == 2 {
+            format!("either remove the unused {} parameter `{}`", parameter_type, param.name)
+        } else {
+            format!("remove the unused {} parameter `{}`", parameter_type, param.name)
+        };
+        diag.span_suggestion(
+            suggestions[0].0,
+            msg,
+            suggestions[0].1.clone(),
+            Applicability::MaybeIncorrect,
+        );
+        if suggestions.len() == 2 {
+            let msg = format!("or make use of it");
+            diag.span_suggestion(
+                suggestions[1].0,
+                msg,
+                suggestions[1].1.clone(),
+                Applicability::MaybeIncorrect,
+            );
+        }
     };
-
-    diag.multipart_suggestions(msg, suggestions, Applicability::MaybeIncorrect);
 }
-
-// fn extract_ty_as_path<'hir>(ty: &Ty<'hir>) -> Option<&'hir Path<'hir>> {
-//     match ty.kind {
-//         TyKind::Path(QPath::Resolved(_, path)) => Some(path),
-//         TyKind::Slice(ty) | TyKind::Array(ty, _) => extract_ty_as_path(ty),
-//         TyKind::Ptr(ty) | TyKind::Ref(_, ty) => extract_ty_as_path(ty.ty),
-//         _ => None,
-//     }
-// }
