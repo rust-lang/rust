@@ -184,6 +184,10 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         return Ok(());
     }
 
+    if tcx.features().const_param_ty_unchecked() {
+        return Ok(());
+    }
+
     if !tcx.features().adt_const_params() {
         match *self_type.kind() {
             ty::Adt(adt, _) if adt.is_struct() => {
