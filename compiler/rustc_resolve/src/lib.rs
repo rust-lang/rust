@@ -1241,6 +1241,7 @@ pub struct Resolver<'ra, 'tcx> {
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed> = None,
     visibilities_for_hashing: Vec<(LocalDefId, Visibility)> = Vec::new(),
+    impl_restrictions: FxIndexMap<LocalDefId, ty::Restriction>,
     used_imports: FxHashSet<NodeId> = default::fx_hash_set(),
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1681,6 +1682,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_module_map: Default::default(),
 
             glob_map: Default::default(),
+            impl_restrictions: Default::default(),
             maybe_unused_trait_imports: Default::default(),
 
             arenas,
@@ -1826,6 +1828,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
+            impl_restrictions: self.impl_restrictions,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
