@@ -199,7 +199,7 @@ pub struct ResolverGlobalCtxt {
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
-pub struct ResolverAstLowering {
+pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -215,7 +215,7 @@ pub struct ResolverAstLowering {
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
 
-    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
