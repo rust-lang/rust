@@ -1,8 +1,6 @@
 //@ run-pass
 //@ compile-flags: -C overflow-checks=yes
 
-#![feature(new_range_api)]
-
 use std::{iter, range};
 
 fn main() {
