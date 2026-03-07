@@ -229,6 +229,8 @@ declare_features! (
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
+    /// Allows skipping `ConstParamTy_` trait implementation checks
+    (internal, const_param_ty_unchecked, "CURRENT_RUSTC_VERSION", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items

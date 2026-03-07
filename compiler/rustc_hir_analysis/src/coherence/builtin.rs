@@ -184,6 +184,10 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
         return Ok(());
     }
 
+    if tcx.features().const_param_ty_unchecked() {
+        return Ok(());
+    }
+
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),

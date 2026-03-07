@@ -676,6 +676,7 @@ symbols! {
         const_panic,
         const_panic_fmt,
         const_param_ty,
+        const_param_ty_unchecked,
         const_precise_live_drops,
         const_ptr_cast,
         const_raw_ptr_deref,

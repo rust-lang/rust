@@ -1,0 +1,12 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const_param_ty_unchecked_fail.rs:16:24
+   |
+LL | struct Meoww(Miow);
+   |              ---- this field does not implement `ConstParamTy_`
+LL |
+LL | impl ConstParamTy_ for Meoww {}
+   |                        ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.
