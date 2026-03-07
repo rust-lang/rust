@@ -70,15 +70,14 @@ RUN sh /scripts/sccache.sh
 
 ENV HOSTS=i686-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-full-tools \
+ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --enable-sanitizers \
       --enable-profiler \
       --set target.i686-unknown-linux-gnu.linker=clang \
       --build=i686-unknown-linux-gnu \
       --set llvm.ninja=false \
-      --set rust.jemalloc
-ENV SCRIPT python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
+      --set rust.jemalloc"
+ENV SCRIPT="python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS"
 ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This was added when we switched from gcc to clang. It's not clear why this is
@@ -89,17 +88,17 @@ ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 # misaligned stack access.
 #
 # Added in #50200 there's some more logs there
-ENV CFLAGS -mstackrealign
+ENV CFLAGS="-mstackrealign"
 
 # When we build cargo in this container, we don't want it to use the system
 # libcurl, instead it should compile its own.
-ENV LIBCURL_NO_PKG_CONFIG 1
+ENV LIBCURL_NO_PKG_CONFIG="1"
 
 # There was a bad interaction between "old" 32-bit binaries on current 64-bit
 # kernels with selinux enabled, where ASLR mmap would sometimes choose a low
 # address and then block it for being below `vm.mmap_min_addr` -> `EACCES`.
 # This is probably a kernel bug, but setting `ulimit -Hs` works around it.
 # See also `src/ci/run.sh` where this takes effect.
-ENV SET_HARD_RLIMIT_STACK 1
+ENV SET_HARD_RLIMIT_STACK="1"
 
-ENV DIST_REQUIRE_ALL_TOOLS 1
+ENV DIST_REQUIRE_ALL_TOOLS="1"
