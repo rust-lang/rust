@@ -1,0 +1,8 @@
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+  --> $DIR/rustc-in-attr-path.rs:5:10
+   |
+LL | #[crate::rustc::test]
+   |          ^^^^^
+
+error: aborting due to 1 previous error
+
