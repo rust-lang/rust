@@ -102,11 +102,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
             };
-            let cond = if invert_cond {
-                invert_boolean_expression(&make, cond)
-            } else {
-                cond.clone_for_update()
-            };
+            let cond = if invert_cond { invert_boolean_expression(&make, cond) } else { cond };
 
             let parenthesize = matches!(
                 cond,
