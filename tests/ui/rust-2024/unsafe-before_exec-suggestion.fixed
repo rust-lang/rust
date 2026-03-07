@@ -10,7 +10,7 @@ use std::os::unix::process::CommandExt;
 #[allow(deprecated)]
 fn main() {
     let mut cmd = Command::new("sleep");
-    // TODO: Audit that the closure is async-signal-safe.
+    // FIXME: Audit that the closure is async-signal-safe.
     unsafe { cmd.before_exec(|| Ok(())) };
     //~^ ERROR call to deprecated safe function
     //~| WARN this is accepted in the current edition
