@@ -3,16 +3,11 @@
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 
-// This test checks that we annotate alignment loads from vtables with nonzero range metadata,
-// and that this allows LLVM to eliminate redundant `align >= 1` checks.
+// This test checks that we annotate alignment loads from vtables with nonzero range metadata.
+// The companion LLVM-21-only fold check lives in `dst-vtable-align-1-elide-check.rs`.
 
 pub trait Trait {
     fn f(&self);
-}
-
-pub struct WrapperWithAlign1<T: ?Sized> {
-    x: u8,
-    y: T,
 }
 
 pub struct WrapperWithAlign2<T: ?Sized> {
@@ -25,25 +20,11 @@ pub struct Struct<W: ?Sized> {
     dst: W,
 }
 
-// CHECK-LABEL: @eliminates_runtime_check_when_align_1
-#[no_mangle]
-pub fn eliminates_runtime_check_when_align_1(
-    x: &Struct<WrapperWithAlign1<dyn Trait>>,
-) -> &WrapperWithAlign1<dyn Trait> {
-    // CHECK: load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
-    // CHECK-NOT: llvm.umax
-    // CHECK-NOT: icmp
-    // CHECK-NOT: select
-    // CHECK: ret
-    &x.dst
-}
-
 // CHECK-LABEL: @does_not_eliminate_runtime_check_when_align_2
 #[no_mangle]
 pub fn does_not_eliminate_runtime_check_when_align_2(
     x: &Struct<WrapperWithAlign2<dyn Trait>>,
 ) -> &WrapperWithAlign2<dyn Trait> {
-    // CHECK: [[X0:%[0-9]+]] = load [[USIZE]], {{.+}} !range [[RANGE_META]]
     // CHECK: {{icmp|llvm.umax}}
     // CHECK: ret
     &x.dst
@@ -52,7 +33,7 @@ pub fn does_not_eliminate_runtime_check_when_align_2(
 // CHECK-LABEL: @align_load_from_align_of_val
 #[no_mangle]
 pub fn align_load_from_align_of_val(x: &dyn Trait) -> usize {
-    // CHECK: {{%[0-9]+}} = load [[USIZE]], {{.+}} !range [[RANGE_META]]
+    // CHECK: {{%[0-9]+}} = load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
     core::mem::align_of_val(x)
 }
 
