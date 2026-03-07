@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_target::spec::{
-    Abi, Arch, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
+    Abi, Arch, Env, MergeFunctions, Os, PanicStrategy, SanitizerSet, SmallDataThresholdSupport,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -122,6 +122,16 @@ unsafe fn configure_llvm(sess: &Session) {
 
         if sess.print_llvm_stats() {
             add("-stats", false);
+        }
+
+        // KHWASAN: In LLVM versions prior to 21.1.0, the HWAddressSanitizer pass incorrectly
+        // ignores the pass-specific `CompileKernel` flag and only looks at the global command-line
+        // flag `-hwasan-kernel`. To work around this, pass `-hwasan-kernel` on the relevant LLVM
+        // versions.
+        //
+        // Fixed by: [HWASan][bugfix] Fix kernel check in ShadowMapping::init (#142226).
+        if sess.sanitizers().contains(SanitizerSet::KERNELHWADDRESS) && get_version() < (21, 1, 0) {
+            add("-hwasan-kernel", false);
         }
 
         for arg in sess_args {
