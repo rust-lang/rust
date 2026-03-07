@@ -620,9 +620,9 @@ impl Session {
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
                 if !self.thin_lto_supported {
-                    // Backend doesn't support ThinLTO, disable LTO.
+                    // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
-                    return config::Lto::No;
+                    return config::Lto::Fat;
                 }
                 return config::Lto::Thin;
             }
