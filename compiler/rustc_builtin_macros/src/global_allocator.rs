@@ -180,7 +180,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
-        let path = self.cx.std_path(&[sym::ptr, sym::Alignment]);
+        let path = self.cx.std_path(&[sym::mem, sym::Alignment]);
         let path = self.cx.path(self.span, path);
         self.cx.ty_path(path)
     }
