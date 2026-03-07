@@ -1,3 +1,5 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/52443>
+
 fn main() {
     [(); & { loop { continue } } ]; //~ ERROR mismatched types
 

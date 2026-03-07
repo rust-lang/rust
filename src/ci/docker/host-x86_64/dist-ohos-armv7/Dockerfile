@@ -40,14 +40,13 @@ ENV \
     AR_armv7_unknown_linux_ohos=/opt/ohos-sdk/native/llvm/bin/llvm-ar \
     CXX_armv7_unknown_linux_ohos=/usr/local/bin/armv7-unknown-linux-ohos-clang++.sh
 
-ENV RUST_CONFIGURE_ARGS \
-    --enable-profiler \
+ENV RUST_CONFIGURE_ARGS="--enable-profiler \
     --disable-docs \
     --tools=cargo,clippy,rustdocs,rustfmt,rust-analyzer,rust-analyzer-proc-macro-srv,analysis,src,wasm-component-ld \
     --enable-extended \
-    --enable-sanitizers
+    --enable-sanitizers"
 
-ENV SCRIPT python3 ../x.py dist --host=$TARGETS --target $TARGETS
+ENV SCRIPT="python3 ../x.py dist --host=$TARGETS --target $TARGETS"
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

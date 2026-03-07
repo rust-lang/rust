@@ -1,4 +1,5 @@
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
@@ -51,6 +52,7 @@ pub(crate) struct GenericParamsFromOuterItemInnerItem {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) descr: String,
+    pub(crate) is_self: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -1364,12 +1366,10 @@ impl Subdiagnostic for FoundItemConfigureOut {
         let mut multispan: MultiSpan = self.span.into();
         match self.item_was {
             ItemWas::BehindFeature { feature, span } => {
-                let key = "feature".into();
                 let value = feature.into_diag_arg(&mut None);
-                let msg = diag.dcx.eagerly_format_to_string(
-                    msg!("the item is gated behind the `{$feature}` feature"),
-                    [(&key, &value)].into_iter(),
-                );
+                let msg = msg!("the item is gated behind the `{$feature}` feature")
+                    .arg("feature", value)
+                    .format();
                 multispan.push_span_label(span, msg);
             }
             ItemWas::CfgOut { span } => {

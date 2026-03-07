@@ -987,13 +987,17 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_format(msg!("needs more type information"));
+                let msg = msg!("needs more type information");
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_format(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_format(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.span_label(span, msg);
             }
         }

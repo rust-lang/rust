@@ -236,9 +236,6 @@ pub struct DiagInner {
     pub suggestions: Suggestions,
     pub args: DiagArgMap,
 
-    // This is used to store args and restore them after a subdiagnostic is rendered.
-    pub reserved_args: DiagArgMap,
-
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
@@ -269,7 +266,6 @@ impl DiagInner {
             children: vec![],
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
-            reserved_args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
             long_ty_path: None,
@@ -332,14 +328,6 @@ impl DiagInner {
 
     pub fn remove_arg(&mut self, name: &str) {
         self.args.swap_remove(name);
-    }
-
-    pub fn store_args(&mut self) {
-        self.reserved_args = self.args.clone();
-    }
-
-    pub fn restore_args(&mut self) {
-        self.args = std::mem::take(&mut self.reserved_args);
     }
 
     pub fn emitted_at_sub_diag(&self) -> Subdiag {
@@ -1144,16 +1132,6 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
-    /// Fluent variables are not namespaced from each other, so when
-    /// `Diagnostic`s and `Subdiagnostic`s use the same variable name,
-    /// one value will clobber the other. Eagerly formatting the
-    /// diagnostic uses the variables defined right then, before the
-    /// clobbering occurs.
-    pub fn eagerly_format(&self, msg: impl Into<DiagMessage>) -> DiagMessage {
-        let args = self.args.iter();
-        self.dcx.eagerly_format(msg.into(), args)
-    }
-
     with_fn! { with_span,
     /// Add a span.
     pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self {
@@ -1340,12 +1318,6 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn delay_as_bug(mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
-    }
-
-    pub fn remove_arg(&mut self, name: &str) {
-        if let Some(diag) = self.diag.as_mut() {
-            diag.remove_arg(name);
-        }
     }
 }
 
