@@ -1,5 +1,5 @@
 error: incorrect function inside `extern` block
-  --> $DIR/function-definition-in-extern-block-75283.rs:3:8
+  --> $DIR/function-definition-in-extern-block-75283.rs:4:8
    |
 LL |   extern "C" {
    |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
