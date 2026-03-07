@@ -425,6 +425,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[cfg(not($anon))]
                 pub fn $name(
                     self,
                     key: query_helper_param_ty!($($K)*),
@@ -449,6 +450,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
+                #[cfg(not($anon))]
                 pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                     crate::query::inner::query_ensure(
                         self.tcx,
