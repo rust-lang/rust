@@ -77,7 +77,6 @@
 //! containing both `C` and `packed` annotations.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(decl_macro)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]

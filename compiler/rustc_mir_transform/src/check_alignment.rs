@@ -82,7 +82,6 @@ fn insert_alignment_check<'tcx>(
 
     // If this target does not have reliable alignment, further limit the mask by anding it with
     // the mask for the highest reliable alignment.
-    #[cfg_attr(bootstrap, expect(irrefutable_let_patterns))]
     if let max_align = tcx.sess.target.max_reliable_alignment()
         && max_align < Align::MAX
     {

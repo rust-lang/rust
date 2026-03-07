@@ -862,7 +862,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// *ptr += 4;
     /// assert_eq!(dl.front().unwrap(), &6);
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_front` instead"]
     pub fn push_front_mut(&mut self, elt: T) -> &mut T {
         let mut node =
@@ -933,7 +933,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// *ptr += 4;
     /// assert_eq!(dl.back().unwrap(), &6);
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_back` instead"]
     pub fn push_back_mut(&mut self, elt: T) -> &mut T {
         let mut node =

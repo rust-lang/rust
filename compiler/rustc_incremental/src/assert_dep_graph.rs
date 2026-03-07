@@ -39,6 +39,8 @@ use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_graphviz as dot;
+use rustc_hir as hir;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -49,7 +51,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
 
