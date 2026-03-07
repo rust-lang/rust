@@ -1,8 +1,7 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/5500>,
+// check that you can take a reference to the never type.
+//
 //@ edition:2015..2021
-// MIR doesn't generate an error because the assignment isn't reachable. This
-// is OK because the test is here to check that the compiler doesn't ICE (cf.
-// #5500).
-
 //@ check-pass
 
 struct TrieMapIterator<'a> {
