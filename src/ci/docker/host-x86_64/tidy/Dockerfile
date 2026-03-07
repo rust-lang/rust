@@ -39,5 +39,5 @@ COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
 
 # NOTE: intentionally uses python2 for x.py so we can test it still works.
 # validate-toolstate only runs in our CI, so it's ok for it to only support python3.
-ENV SCRIPT TIDY_PRINT_DIFF=1 python2.7 ../x.py test \
-  src/tools/tidy tidyselftest --extra-checks=py,cpp,js,spellcheck
+ENV SCRIPT="TIDY_PRINT_DIFF=1 python2.7 ../x.py test \
+  src/tools/tidy tidyselftest --extra-checks=py,cpp,js,spellcheck"

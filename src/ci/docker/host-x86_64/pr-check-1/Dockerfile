@@ -39,7 +39,7 @@ COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
 # Check library crates on all tier 1 targets.
 # We disable optimized compiler built-ins because that requires a C toolchain for the target.
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
-ENV SCRIPT \
+ENV SCRIPT=" \
   # Check some tools that aren't included in `x check` by default, to
   # ensure that maintainers can still do check builds locally.
   python3 ../x.py check \
@@ -58,4 +58,4 @@ ENV SCRIPT \
   python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
-  python3 ../x.py test collect-license-metadata
+  python3 ../x.py test collect-license-metadata"
