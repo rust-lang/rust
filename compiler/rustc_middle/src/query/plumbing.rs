@@ -114,13 +114,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
-    /// Function pointer that calls `tcx.$query(key)` for this query and
-    /// discards the returned value.
-    ///
-    /// This is a weird thing to be doing, and probably not what you want.
-    /// It is used for loading query results from disk-cache in some cases.
-    pub call_query_method_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key),
-
     /// Function pointer that actually calls this query's provider.
     /// Also performs some associated secondary tasks; see the macro-defined
     /// implementation in `mod invoke_provider_fn` for more details.
