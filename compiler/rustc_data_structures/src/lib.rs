@@ -10,9 +10,6 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(cfg_select))]
-#![cfg_attr(bootstrap, feature(cold_path))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
@@ -41,10 +38,7 @@
 // have to worry about it being moved to a different module in std during stabilization.
 // FIXME(#151359): Remove this when `feature(assert_matches)` is stable in stage0.
 // (This doesn't necessarily need to be fixed during the beta bump itself.)
-#[cfg(bootstrap)]
-pub use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::fmt;
-#[cfg(not(bootstrap))]
 pub use std::{assert_matches, debug_assert_matches};
 
 // This allows derive macros to reference this crate

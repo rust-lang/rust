@@ -1382,7 +1382,7 @@ impl AtomicBool {
     /// assert_eq!(x.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
-    #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_try_update", since = "1.95.0")]
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
@@ -1445,7 +1445,7 @@ impl AtomicBool {
     /// assert_eq!(x.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
-    #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_try_update", since = "1.95.0")]
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
@@ -2067,7 +2067,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(some_ptr.load(Ordering::SeqCst), new);
     /// ```
     #[inline]
-    #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_try_update", since = "1.95.0")]
     #[cfg(target_has_atomic = "ptr")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
@@ -2135,7 +2135,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(some_ptr.load(Ordering::SeqCst), new);
     /// ```
     #[inline]
-    #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "atomic_try_update", since = "1.95.0")]
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
@@ -3398,7 +3398,7 @@ macro_rules! atomic_int {
             /// assert_eq!(x.load(Ordering::SeqCst), 9);
             /// ```
             #[inline]
-            #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_try_update", since = "1.95.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             #[rustc_should_not_be_called_on_const_items]
@@ -3464,7 +3464,7 @@ macro_rules! atomic_int {
             /// assert_eq!(x.load(Ordering::SeqCst), 9);
             /// ```
             #[inline]
-            #[stable(feature = "atomic_try_update", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "atomic_try_update", since = "1.95.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             #[rustc_should_not_be_called_on_const_items]
