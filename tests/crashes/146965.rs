@@ -1,5 +1,5 @@
 //@ known-bug: #146965
-//@ compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib -C opt-level=3
 
 fn conjure<T>() -> T {
     panic!()

@@ -1,5 +1,5 @@
 //@ known-bug: #150263
-//@ compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib -C opt-level=3
 
 pub trait Scope {
     type Timestamp;
