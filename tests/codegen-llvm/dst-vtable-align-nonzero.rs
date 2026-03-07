@@ -1,4 +1,7 @@
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
+//@ revisions: LLVM20 CURRENT
+//@ [LLVM20] max-llvm-major-version: 20
+//@ [CURRENT] min-llvm-version: 21
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
@@ -30,10 +33,18 @@ pub struct Struct<W: ?Sized> {
 pub fn eliminates_runtime_check_when_align_1(
     x: &Struct<WrapperWithAlign1<dyn Trait>>,
 ) -> &WrapperWithAlign1<dyn Trait> {
-    // CHECK: load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
+    // LLVM20: load [[USIZE:i[0-9]+]], {{.+}} !range {{![0-9]+}}
+    // LLVM20: load [[USIZE]], {{.+}} !range [[RANGE_META:![0-9]+]]
+    // CURRENT: load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
     // CHECK-NOT: llvm.umax
-    // CHECK-NOT: icmp
     // CHECK-NOT: select
+    // CURRENT-NOT: icmp
+    // LLVM20-NOT: icmp
+    // LLVM20: [[DOES_NOT_SHRINK:%.+]] = icmp ug{{[et]}}
+    // LLVM20-NEXT: call void @llvm.assume(i1 [[DOES_NOT_SHRINK]])
+    // LLVM20-NOT: llvm.umax
+    // LLVM20-NOT: icmp
+    // LLVM20-NOT: select
     // CHECK: ret
     &x.dst
 }
