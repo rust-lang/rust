@@ -88,6 +88,9 @@ jobs:
     - name: Check formatting
       run: ./y.sh fmt --check
 
+    - name: Check todo
+      run: ./y.sh check-todo
+
     - name: clippy
       run: |
         cargo clippy --all-targets -- -D warnings
