@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
-  --> $DIR/find-param-recursion-issue-152716.rs:12:9
+  --> $DIR/find-param-recursion-issue-152716.rs:16:9
    |
 LL |     (): Trait<<T as Proj<'static>>::Assoc>
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

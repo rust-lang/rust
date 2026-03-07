@@ -1261,6 +1261,10 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    // - `Continue(())`: no generic parameter was found, the type is global
+    // - `Break(Ok(Certainty::Yes))`: a generic parameter was found, the type is non-global
+    // - `Break(Ok(Certainty::Maybe(_)))`: the recursion limit reached, assume that the type is non-global
+    // - `Break(Err(NoSolution))`: normalization failed
     type Result = ControlFlow<Result<Certainty, NoSolution>>;
 
     fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
