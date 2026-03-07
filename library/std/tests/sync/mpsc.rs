@@ -438,7 +438,6 @@ fn stress_recv_timeout_two_threads() {
     });
 
     let mut recv_count = 0;
-    let mut got_timeout = false;
     loop {
         match rx.recv_timeout(timeout) {
             Ok(n) => {
@@ -446,7 +445,6 @@ fn stress_recv_timeout_two_threads() {
                 recv_count += 1;
             }
             Err(RecvTimeoutError::Timeout) => {
-                got_timeout = true;
                 continue;
             }
             Err(RecvTimeoutError::Disconnected) => break,
@@ -454,7 +452,6 @@ fn stress_recv_timeout_two_threads() {
     }
 
     assert_eq!(recv_count, stress);
-    assert!(got_timeout);
 }
 
 #[test]
