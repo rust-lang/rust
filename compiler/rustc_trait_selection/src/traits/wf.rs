@@ -575,6 +575,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         if self.tcx().is_lang_item(def_id, LangItem::Sized) {
             return Default::default();
         }
+        if self.tcx().is_lang_item(def_id, LangItem::ConstParamTy)
+            && self.tcx().features().const_param_ty_unchecked()
+        {
+            return Default::default();
+        }
 
         let predicates = self.tcx().predicates_of(def_id);
         let mut origins = vec![def_id; predicates.predicates.len()];
