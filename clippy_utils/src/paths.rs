@@ -133,6 +133,8 @@ path_macros! {
     macro_path: PathNS::Macro,
 }
 
+// Paths in the standard library missing a diagnostic item
+
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
 pub static FUTURES_IO_ASYNCWRITEEXT: PathLookup = type_path!(futures_util::AsyncWriteExt);
