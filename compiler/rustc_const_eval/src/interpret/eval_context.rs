@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_hir::def_id::DefId;
@@ -44,6 +46,8 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
 
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
+
+    pub(super) usize_layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 impl<'tcx, M: Machine<'tcx>> HasDataLayout for InterpCx<'tcx, M> {
@@ -135,6 +139,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
         let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
         LayoutOf::layout_of(self, ty)
+    }
+
+    pub fn layout_of_usize(&self) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
+        if let Some(layout) = self.usize_layout.get() {
+            return Ok(layout);
+        };
+
+        let layout = self.layout_of(self.tcx.types.usize)?;
+        self.usize_layout.set(Some(layout));
+        Ok(layout)
     }
 
     /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
@@ -260,6 +274,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             typing_env,
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
+            usize_layout: Cell::new(None),
         }
     }
 

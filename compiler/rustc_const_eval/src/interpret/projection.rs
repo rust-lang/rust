@@ -416,7 +416,7 @@ where
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),
             Index(local) => {
-                let layout = self.layout_of(self.tcx.types.usize)?;
+                let layout = self.layout_of_usize()?;
                 let n = self.local_to_op(local, Some(layout))?;
                 let n = self.read_target_usize(&n)?;
                 self.project_index(base, n)?
