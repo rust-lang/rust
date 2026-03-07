@@ -13,6 +13,18 @@ pub struct RangeIter<A>(legacy::Range<A>);
 impl<A> RangeIter<A> {
     #[unstable(feature = "new_range_api", issue = "125687")]
     /// Returns the remainder of the range being iterated over.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(new_range_api)]
+    /// let range = core::range::Range::from(3..11);
+    /// let mut iter = range.into_iter();
+    /// assert_eq!(iter.clone().remainder(), range);
+    /// iter.next();
+    /// assert_eq!(iter.clone().remainder(), core::range::Range::from(4..11));
+    /// iter.by_ref().for_each(drop);
+    /// assert!(iter.remainder().is_empty());
+    /// ```
     pub fn remainder(self) -> Range<A> {
         Range { start: self.0.start, end: self.0.end }
     }
@@ -161,6 +173,17 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// If the iterator is exhausted or empty, returns `None`.
+    ///
+    /// # Examples
+    /// ```
+    /// let range = core::range::RangeInclusive::from(3..=11);
+    /// let mut iter = range.into_iter();
+    /// assert_eq!(iter.clone().remainder().unwrap(), range);
+    /// iter.next();
+    /// assert_eq!(iter.clone().remainder().unwrap(), core::range::RangeInclusive::from(4..=11));
+    /// iter.by_ref().for_each(drop);
+    /// assert!(iter.remainder().is_none());
+    /// ```
     #[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
@@ -305,6 +328,15 @@ pub struct RangeFromIter<A> {
 
 impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
+    ///
+    /// # Examples
+    /// ```
+    /// let range = core::range::RangeFrom::from(3..);
+    /// let mut iter = range.into_iter();
+    /// assert_eq!(iter.clone().remainder(), range);
+    /// iter.next();
+    /// assert_eq!(iter.remainder(), core::range::RangeFrom::from(4..));
+    /// ```
     #[inline]
     #[rustc_inherit_overflow_checks]
     #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
