@@ -13,15 +13,12 @@
 #![cfg_attr(
     feature = "nightly",
     feature(
-        test,
         core_intrinsics,
         dropck_eyepatch,
         min_specialization,
         trivial_clone,
         extend_one,
         allocator_api,
-        slice_ptr_get,
-        maybe_uninit_array_assume_init,
         strict_provenance_lints
     )
 )]

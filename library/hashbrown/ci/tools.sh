@@ -93,6 +93,11 @@ if retry rustup component add clippy ; then
     fi
 
     cargo clippy --all --tests --features serde,rayon "${TARGETS[@]}" -- -D warnings
+
+    # check nightly too
+    if rustc --version | grep --quiet nightly ; then
+        cargo +nightly clippy --all --tests --features serde,rayon,nightly "${TARGETS[@]}" -- -D warnings
+    fi
 fi
 
 if command -v taplo ; then

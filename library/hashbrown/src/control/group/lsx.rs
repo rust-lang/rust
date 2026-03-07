@@ -27,7 +27,6 @@ impl Group {
     ///
     /// This is guaranteed to be aligned to the group size.
     #[inline]
-    #[expect(clippy::items_after_statements)]
     pub(crate) const fn static_empty() -> &'static [Tag; Group::WIDTH] {
         #[repr(C)]
         struct AlignedTags {
@@ -43,7 +42,6 @@ impl Group {
 
     /// Loads a group of tags starting at the given address.
     #[inline]
-    #[expect(clippy::cast_ptr_alignment)] // unaligned load
     pub(crate) unsafe fn load(ptr: *const Tag) -> Self {
         unsafe { Group(lsx_vld::<0>(ptr.cast())) }
     }
@@ -51,7 +49,6 @@ impl Group {
     /// Loads a group of tags starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe { Group(lsx_vld::<0>(ptr.cast())) }
@@ -60,7 +57,6 @@ impl Group {
     /// Stores the group of tags to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
         debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         unsafe {
