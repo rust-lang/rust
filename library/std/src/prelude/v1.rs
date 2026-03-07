@@ -79,7 +79,7 @@ mod ambiguous_macros_only {
 #[doc(no_inline)]
 pub use self::ambiguous_macros_only::{vec, panic};
 
-#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cfg_select", since = "1.95.0")]
 #[doc(no_inline)]
 pub use core::prelude::v1::cfg_select;
 

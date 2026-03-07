@@ -865,7 +865,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![cfg_attr(bootstrap, feature(cfg_select))]
     /// cfg_select! {
     ///     _ => (),
     ///     windows => (),

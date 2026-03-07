@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(once_cell_get_mut)]

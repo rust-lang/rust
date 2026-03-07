@@ -8,9 +8,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
-#![cfg_attr(bootstrap, feature(ptr_as_ref_unchecked))]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(const_default)]

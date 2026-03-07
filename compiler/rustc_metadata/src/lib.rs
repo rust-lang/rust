@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(error_iter)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
