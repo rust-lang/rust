@@ -347,7 +347,13 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     // option causes bugs in the LLVM WebAssembly backend. You should be able to
     // remove this check when Rust's minimum supported LLVM version is >= 18
     // https://github.com/llvm/llvm-project/pull/65876
-    if (!Trip.isWasm()) {
+    //
+    // Also keep traps after noreturn calls on Windows, because the trap is
+    // needed to keep the return address within the calling function's
+    // .pdata range. Without it, RtlLookupFunctionEntry resolves the wrong
+    // function and SEH unwinding (used for backtraces) terminates early.
+    // See https://github.com/rust-lang/rust/issues/140489
+    if (!Trip.isWasm() && !Trip.isOSWindows()) {
       Options.NoTrapAfterNoreturn = true;
     }
   }
