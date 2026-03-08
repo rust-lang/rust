@@ -1,5 +1,5 @@
 error[E0599]: no associated function or constant named `SomeType` found for type `bool` in the current scope
-  --> $DIR/associated-type-as-value-in-impl-issue-142797.rs:18:24
+  --> $DIR/associated-type-as-value-in-impl-issue-142797.rs:16:24
    |
 LL |         let ss = Self::SomeType;
    |                        ^^^^^^^^ associated function or constant not found in `bool`

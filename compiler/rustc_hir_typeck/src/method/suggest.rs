@@ -1175,31 +1175,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ty_file = None;
         let mode = no_match_data.mode;
         let is_method = mode == Mode::MethodCall;
-        let has_self_assoc_type = if let SelfSource::QPath(ty) = source
-            && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
-            && let Res::SelfTyAlias { alias_to: impl_def_id, .. } = path.res
-            && let DefKind::Impl { .. } = self.tcx.def_kind(impl_def_id)
-        {
-            self.tcx
-                .associated_items(impl_def_id)
-                .find_by_ident_and_kind(self.tcx, item_ident, ty::AssocTag::Type, impl_def_id)
-                .is_some()
-        } else {
-            false
-        };
         let item_kind = if is_method {
             "method"
-        } else if rcvr_ty.is_enum() {
-            "variant or associated item"
-        } else if has_self_assoc_type {
-            "associated function or constant"
+        } else if rcvr_ty.is_enum() || rcvr_ty.is_fresh_ty() {
+            "variant, associated function, or constant"
         } else {
-            match (item_ident.as_str().chars().next(), rcvr_ty.is_fresh_ty()) {
-                (Some(name), false) if name.is_lowercase() => "function or associated item",
-                (Some(_), false) => "associated item",
-                (Some(_), true) | (None, false) => "variant or associated item",
-                (None, true) => "variant",
-            }
+            "associated function or constant"
         };
 
         if let Err(guar) = self.report_failed_method_call_on_numerical_infer_var(
