@@ -1777,6 +1777,7 @@ symbols! {
         rustc_objc_selector,
         rustc_offload_kernel,
         rustc_on_unimplemented,
+        rustc_panics_when_zero,
         rustc_paren_sugar,
         rustc_partition_codegened,
         rustc_partition_reused,

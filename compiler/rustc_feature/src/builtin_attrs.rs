@@ -628,6 +628,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"
     ),
     rustc_attr!(
+        rustc_panics_when_zero,
+        "`#[rustc_panics_when_zero]` is used to mark a const generic argument which makes the function panic when it is zero"
+    ),
+    rustc_attr!(
         rustc_coinductive,
         "`#[rustc_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver"
     ),
