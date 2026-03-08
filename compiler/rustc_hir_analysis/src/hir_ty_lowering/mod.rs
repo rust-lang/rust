@@ -2874,6 +2874,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
+
+        if ty.has_infer() {
+            let e = self.dcx().span_err(span, "inference variables are not supported in constants");
+            return ty::Const::new_error(tcx, e);
+        }
+
         if let LitKind::Err(guar) = *kind {
             return ty::Const::new_error(tcx, guar);
         }
