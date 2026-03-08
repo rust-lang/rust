@@ -351,7 +351,7 @@ pub(crate) fn run_global_ctxt(
     // (see `override_queries` in the `config`)
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
-    let _ = tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
+    tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
 
     tcx.dcx().abort_if_errors();
 

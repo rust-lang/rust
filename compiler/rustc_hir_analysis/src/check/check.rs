@@ -825,7 +825,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
-                    tcx.ensure_ok()
+                    tcx.ensure_result()
                         .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),
                 );
 
@@ -1256,8 +1256,7 @@ fn check_impl_items_against_trait<'tcx>(
             Err(ErrorGuaranteed { .. }) => continue,
         };
 
-        let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());
-
+        let res = tcx.ensure_result().compare_impl_item(impl_item.expect_local());
         if res.is_ok() {
             match ty_impl_item.kind {
                 ty::AssocKind::Fn { .. } => {

@@ -294,7 +294,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Avoid bogus move errors because of an incoherent `Copy` impl.
         self.infcx.type_implements_trait(copy_def_id, [ty], self.infcx.param_env).may_apply()
-            && self.infcx.tcx.coherent_trait(copy_def_id).is_err()
+            && self.infcx.tcx.ensure_result().coherent_trait(copy_def_id).is_err()
     }
 
     fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
