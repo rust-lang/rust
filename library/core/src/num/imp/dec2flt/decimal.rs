@@ -1,7 +1,9 @@
 //! Representation of a float as the significant digits and exponent.
 
-use crate::num::dec2flt::float::RawFloat;
-use crate::num::dec2flt::fpu::set_precision;
+use dec2flt::float::RawFloat;
+use dec2flt::fpu::set_precision;
+
+use crate::num::imp::dec2flt;
 
 const INT_POW10: [u64; 16] = [
     1,
