@@ -292,6 +292,7 @@ impl<'tcx> Region<'tcx> {
             ty::ReError(_) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_ERROR;
+                flags = flags | TypeFlags::HAS_REGION_ERROR;
             }
         }
 

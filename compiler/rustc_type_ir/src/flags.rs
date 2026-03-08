@@ -136,6 +136,9 @@ bitflags::bitflags! {
 
         /// Does this have have a `Bound(BoundVarIndexKind::Canonical, _)`?
         const HAS_CANONICAL_BOUND         = 1 << 25;
+
+        /// Does this value have a region error?
+        const HAS_REGION_ERROR            = 1 << 26;
     }
 }
 

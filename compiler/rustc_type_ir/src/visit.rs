@@ -352,6 +352,11 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
+
+    /// True if there is no region error
+    fn has_non_region_error(&self) -> bool {
+        !self.has_type_flags(TypeFlags::HAS_REGION_ERROR)
+    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
