@@ -24,7 +24,7 @@ use std::io::Write;
 use std::num::NonZero;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
-use std::{fmt, panic};
+use std::{assert_matches, fmt, panic};
 
 use Level::*;
 // Used by external projects such as `rust-gpu`.
@@ -45,10 +45,10 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter};
+use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
-use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
     DiagArg, DiagArgFromDisplay, DiagArgMap, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
     LanguageIdentifier, MultiSpan, SpanLabel, fluent_bundle, into_diag_arg_using_display,

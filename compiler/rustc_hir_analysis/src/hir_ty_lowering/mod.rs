@@ -19,11 +19,10 @@ mod dyn_trait;
 pub mod errors;
 pub mod generics;
 
-use std::slice;
+use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
