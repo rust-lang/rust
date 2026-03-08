@@ -9,11 +9,10 @@
 use std::borrow::{Borrow, Cow};
 use std::cell::Cell;
 use std::collections::VecDeque;
-use std::{fmt, ptr};
+use std::{assert_matches, fmt, ptr};
 
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::msg;
 use rustc_middle::mir::display_allocation;

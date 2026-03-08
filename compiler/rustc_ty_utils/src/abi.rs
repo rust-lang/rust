@@ -1,8 +1,7 @@
-use std::iter;
+use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;

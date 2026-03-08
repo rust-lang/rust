@@ -15,12 +15,11 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::iter;
 use std::ops::{Bound, ControlFlow};
+use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,

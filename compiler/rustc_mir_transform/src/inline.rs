@@ -1,10 +1,9 @@
 //! Inlining pass for MIR functions.
 
-use std::iter;
 use std::ops::{Range, RangeFrom};
+use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_data_structures::debug_assert_matches;
 use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
