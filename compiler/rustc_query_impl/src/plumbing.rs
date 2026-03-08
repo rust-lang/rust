@@ -90,10 +90,6 @@ pub(crate) fn start_query<R>(
     })
 }
 
-pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
-    tcx.dep_graph.try_mark_green(tcx, dep_node).is_some()
-}
-
 /// The deferred part of a deferred query stack frame.
 fn mk_query_stack_frame_extra<'tcx, Cache>(
     (tcx, vtable, key): (TyCtxt<'tcx>, &'tcx QueryVTable<'tcx, Cache>, Cache::Key),
