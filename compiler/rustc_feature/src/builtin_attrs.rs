@@ -1279,6 +1279,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument"
     ),
     rustc_attr!(
+        rustc_panics_when_zero, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_panics_when_zero]` is used to mark a const generic argument who makes the function panics when it is zero"
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`"
     ),
