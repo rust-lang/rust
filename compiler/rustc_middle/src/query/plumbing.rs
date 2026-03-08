@@ -121,17 +121,17 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
+    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> bool,
 
     pub try_load_from_disk_fn: fn(
         tcx: TyCtxt<'tcx>,
-        key: &C::Key,
+        key: C::Key,
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<C::Value>,
 
     pub is_loadable_from_disk_fn:
-        fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
+        fn(tcx: TyCtxt<'tcx>, key: C::Key, index: SerializedDepNodeIndex) -> bool,
 
     /// Function pointer that hashes this query's result values.
     ///

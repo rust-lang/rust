@@ -2391,7 +2391,7 @@ rustc_queries! {
     ///   sets of different crates do not intersect.
     query exported_non_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         desc { "collecting exported non-generic symbols for crate `{}`", cnum}
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 
@@ -2404,7 +2404,7 @@ rustc_queries! {
     ///   sets of different crates do not intersect.
     query exported_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         desc { "collecting exported generic symbols for crate `{}`", cnum}
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 
@@ -2771,7 +2771,7 @@ rustc_queries! {
     query externally_implementable_items(cnum: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
         arena_cache
         desc { "looking up the externally implementable items of a crate" }
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 

@@ -15,11 +15,11 @@ use crate::ty::TyCtxt;
 ///
 /// (Also performs some associated bookkeeping, if a value was found.)
 #[inline(always)]
-fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: &C::Key) -> Option<C::Value>
+fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: C::Key) -> Option<C::Value>
 where
     C: QueryCache,
 {
-    match cache.lookup(key) {
+    match cache.lookup(&key) {
         Some((value, index)) => {
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
@@ -41,7 +41,7 @@ pub(crate) fn query_get_at<'tcx, C>(
 where
     C: QueryCache,
 {
-    match try_get_cached(tcx, &query.cache, &key) {
+    match try_get_cached(tcx, &query.cache, key) {
         Some(value) => value,
         None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
     }
@@ -58,7 +58,7 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
 ) where
     C: QueryCache,
 {
-    match try_get_cached(tcx, &query.cache, &key) {
+    match try_get_cached(tcx, &query.cache, key) {
         Some(_value) => {}
         None => {
             (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
@@ -78,7 +78,7 @@ where
     C: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
     Result<T, ErrorGuaranteed>: Erasable,
 {
-    match try_get_cached(tcx, &query.cache, &key) {
+    match try_get_cached(tcx, &query.cache, key) {
         Some(value) => erase::restore_val(value).map(drop),
         None => (query.execute_query_fn)(
             tcx,
@@ -112,7 +112,7 @@ pub(crate) fn query_feed<'tcx, C>(
     let format_value = query_vtable.format_value;
 
     // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query_vtable.cache, &key) {
+    match try_get_cached(tcx, &query_vtable.cache, key) {
         Some(old) => {
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
