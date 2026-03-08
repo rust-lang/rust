@@ -341,7 +341,7 @@ impl<T> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
-    pub const fn new() -> BTreeSet<T> {
+    pub const fn new() -> Self {
         BTreeSet { map: BTreeMap::new() }
     }
 }
@@ -362,7 +362,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     #[must_use]
-    pub const fn new_in(alloc: A) -> BTreeSet<T, A> {
+    pub const fn new_in(alloc: A) -> Self {
         BTreeSet { map: BTreeMap::new_in(alloc) }
     }
 

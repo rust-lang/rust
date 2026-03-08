@@ -780,7 +780,7 @@ impl<T: ?Sized + CloneToUninit> Box<T> {
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     #[must_use]
     #[inline]
-    pub fn clone_from_ref(src: &T) -> Box<T> {
+    pub fn clone_from_ref(src: &T) -> Self {
         Box::clone_from_ref_in(src, Global)
     }
 
@@ -826,7 +826,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
     //#[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     #[inline]
-    pub fn clone_from_ref_in(src: &T, alloc: A) -> Box<T, A> {
+    pub fn clone_from_ref_in(src: &T, alloc: A) -> Self {
         let layout = Layout::for_value::<T>(src);
         match Box::try_clone_from_ref_in(src, alloc) {
             Ok(bx) => bx,

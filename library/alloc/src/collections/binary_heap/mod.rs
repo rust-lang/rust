@@ -511,7 +511,7 @@ impl<T> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_binary_heap_constructor", since = "1.80.0")]
     #[must_use]
-    pub const fn new() -> BinaryHeap<T> {
+    pub const fn new() -> Self {
         BinaryHeap { data: vec![] }
     }
 
@@ -532,7 +532,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
+    pub fn with_capacity(capacity: usize) -> Self {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }
 }
@@ -554,7 +554,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
-    pub const fn new_in(alloc: A) -> BinaryHeap<T, A> {
+    pub const fn new_in(alloc: A) -> Self {
         BinaryHeap { data: Vec::new_in(alloc) }
     }
 
@@ -578,7 +578,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> BinaryHeap<T, A> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
 
@@ -612,7 +612,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[unstable(feature = "binary_heap_from_raw_vec", issue = "152500")]
     #[must_use]
-    pub unsafe fn from_raw_vec(vec: Vec<T, A>) -> BinaryHeap<T, A> {
+    pub unsafe fn from_raw_vec(vec: Vec<T, A>) -> Self {
         BinaryHeap { data: vec }
     }
 }
