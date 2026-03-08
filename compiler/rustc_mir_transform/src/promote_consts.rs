@@ -11,11 +11,10 @@
 //! MIR.
 
 use std::cell::Cell;
-use std::{cmp, iter, mem};
+use std::{assert_matches, cmp, iter, mem};
 
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

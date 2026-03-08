@@ -1,6 +1,7 @@
+use std::debug_assert_matches;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc_data_structures::debug_assert_matches;
 use rustc_errors::{DiagCtxtHandle, format_diag_message, msg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
