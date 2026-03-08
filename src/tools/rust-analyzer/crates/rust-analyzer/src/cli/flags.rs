@@ -40,6 +40,8 @@ xflags::xflags! {
         cmd parse {
             /// Suppress printing.
             optional --no-dump
+            /// Output as JSON.
+            optional --json
         }
 
         /// Parse stdin and print the list of symbols.
@@ -233,6 +235,7 @@ pub struct LspServer {
 #[derive(Debug)]
 pub struct Parse {
     pub no_dump: bool,
+    pub json: bool,
 }
 
 #[derive(Debug)]
@@ -257,8 +260,8 @@ pub struct AnalysisStats {
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
-    pub skip_lowering: bool,
     pub skip_lang_items: bool,
+    pub skip_lowering: bool,
     pub skip_inference: bool,
     pub skip_mir_stats: bool,
     pub skip_data_layout: bool,
