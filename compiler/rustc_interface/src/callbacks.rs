@@ -43,7 +43,7 @@ fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R)
             icx.tcx.dep_graph.record_diagnostic(icx.tcx, &diagnostic);
 
             // Diagnostics are tracked, we can ignore the dependency.
-            let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..icx.clone() };
+            let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..*icx };
             tls::enter_context(&icx, move || (*f)(diagnostic))
         } else {
             // In any other case, invoke diagnostics anyway.

@@ -1,5 +1,4 @@
-#![cfg_attr(bootstrap, feature(if_let_guard))]
-#![cfg_attr(bootstrap, feature(cfg_select))]
+#![cfg_attr(all(feature = "native-lib", unix), feature(iter_advance_by))]
 #![cfg_attr(
     all(
         feature = "native-lib",
@@ -9,7 +8,6 @@
     ),
     feature(abort_unwind)
 )]
-#![cfg_attr(all(feature = "native-lib", unix), feature(iter_advance_by))]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]

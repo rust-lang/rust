@@ -361,7 +361,7 @@ pub(crate) fn rewrite_range_pat<T: Rewrite>(
     shape: Shape,
     lhs: &Option<Box<T>>,
     rhs: &Option<Box<T>>,
-    end_kind: &rustc_span::source_map::Spanned<RangeEnd>,
+    end_kind: &rustc_span::Spanned<RangeEnd>,
     span: Span,
 ) -> RewriteResult {
     let infix = match end_kind.node {

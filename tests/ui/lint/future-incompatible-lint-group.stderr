@@ -14,8 +14,6 @@ error: ambiguous associated item
 LL |     fn foo() -> Self::V { 0 }
    |                 ^^^^^^^ help: use fully-qualified syntax: `<E as Tr1>::V`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
 note: `V` could refer to the variant defined here
   --> $DIR/future-incompatible-lint-group.rs:8:10
    |
@@ -26,6 +24,8 @@ note: `V` could also refer to the associated type defined here
    |
 LL |     type V;
    |     ^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
 note: the lint level is defined here
   --> $DIR/future-incompatible-lint-group.rs:6:9
    |

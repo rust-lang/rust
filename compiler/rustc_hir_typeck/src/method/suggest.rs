@@ -199,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // NOTE: Reporting a method error should also suppress any unused trait errors,
         // since the method error is very possibly the reason why the trait wasn't used.
         for &import_id in
-            self.tcx.in_scope_traits(call_id).into_iter().flatten().flat_map(|c| &c.import_ids)
+            self.tcx.in_scope_traits(call_id).into_iter().flatten().flat_map(|c| c.import_ids)
         {
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
         }

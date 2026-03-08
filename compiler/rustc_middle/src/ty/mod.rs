@@ -16,7 +16,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;
-use std::{fmt, iter, str};
+use std::{assert_matches, fmt, iter, str};
 
 pub use adt::*;
 pub use assoc::*;
@@ -26,17 +26,18 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
+use rustc_ast as ast;
 use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
+use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
@@ -68,7 +69,6 @@ pub use rustc_type_ir::*;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -198,7 +198,7 @@ pub struct ResolverGlobalCtxt {
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
-pub struct ResolverAstLowering {
+pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -214,7 +214,7 @@ pub struct ResolverAstLowering {
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
 
-    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 

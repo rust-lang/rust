@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::ffi::c_uint;
-use std::ptr;
+use std::{assert_matches, ptr};
 
 use rustc_abi::{
     Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
@@ -11,7 +11,6 @@ use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphizati
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;

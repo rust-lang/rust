@@ -1,7 +1,8 @@
+use std::debug_assert_matches;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc_data_structures::debug_assert_matches;
-use rustc_errors::{DiagCtxtHandle, msg};
+use rustc_errors::{DiagCtxtHandle, format_diag_message, msg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -235,9 +236,9 @@ pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tc
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
     e.add_args(&mut diag);
-    let s = dcx.eagerly_format_to_string(msg, diag.args.iter());
+    let msg = format_diag_message(&msg, &diag.args).into_owned();
     diag.cancel();
-    s
+    msg
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {

@@ -1,9 +1,8 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
-use std::fmt;
+use std::{debug_assert_matches, fmt};
 
 use rustc_abi::ExternAbi;
-use rustc_data_structures::debug_assert_matches;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -95,6 +94,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
+    type Consts = &'tcx List<Self::Const>;
 
     type ParamConst = ty::ParamConst;
     type ValueConst = ty::Value<'tcx>;

@@ -32,8 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};

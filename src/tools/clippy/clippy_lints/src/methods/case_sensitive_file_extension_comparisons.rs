@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS;
 

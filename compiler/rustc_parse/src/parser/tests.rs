@@ -3,14 +3,13 @@ use std::io::prelude::*;
 use std::iter::Peekable;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::{io, str};
+use std::{assert_matches, io, str};
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::assert_matches;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::OutputTheme;
 use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};

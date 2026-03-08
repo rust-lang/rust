@@ -1,7 +1,6 @@
-use std::{fmt, iter};
+use std::{assert_matches, fmt, iter};
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -13,8 +12,7 @@ use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::{Spanned, dummy_spanned};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;

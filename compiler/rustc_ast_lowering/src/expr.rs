@@ -13,8 +13,7 @@ use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
