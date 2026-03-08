@@ -277,10 +277,9 @@ impl<'tcx> Visitor<'tcx> for ParamUsageVisitor<'tcx> {
         if let Some(res_def_id) = path.res.opt_def_id() {
             if res_def_id == self.param_def_id {
                 self.found = true;
-                return ControlFlow::Break(()); // Found it, stop visiting.
+                return ControlFlow::Break(());
             }
         }
-        // If not found, continue walking down the HIR tree.
         intravisit::walk_path(self, path)
     }
 
@@ -289,7 +288,7 @@ impl<'tcx> Visitor<'tcx> for ParamUsageVisitor<'tcx> {
             if let Some(local_def_id) = self.param_def_id.as_local() {
                 if id == local_def_id {
                     self.found = true;
-                    return ControlFlow::Break(()); // Found it, stop visiting.
+                    return ControlFlow::Break(());
                 }
             }
         }
@@ -330,7 +329,7 @@ fn suggest_to_remove_or_use_generic(
         return;
     };
 
-    // Count how many slots are DEFINED in the struct (N)
+    // Count how many slots are defined in the struct defintion
     let generics = tcx.generics_of(struct_def_id);
     let total_slots = generics
         .own_params
@@ -344,7 +343,7 @@ fn suggest_to_remove_or_use_generic(
         })
         .count();
 
-    // Count how many arguments are CURRENTLY PROVIDED in the impl (J)
+    // Count how many arguments are currently provided in the impl
     let mut provided_slots = 0;
     let mut last_segment_args = None;
 
@@ -367,7 +366,6 @@ fn suggest_to_remove_or_use_generic(
         }
     }
 
-    // Determine if the parameter is used in the impl body
     let mut visitor = ParamUsageVisitor { tcx, param_def_id: param.def_id, found: false };
     for item_ref in hir_impl.items {
         let _ = visitor.visit_impl_item_ref(item_ref);
