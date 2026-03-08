@@ -97,8 +97,14 @@ pub struct DllImport {
     pub calling_convention: DllCallingConvention,
     /// Span of import's "extern" declaration; used for diagnostics.
     pub span: Span,
-    /// Is this for a function (rather than a static variable).
-    pub is_fn: bool,
+    pub symbol_type: DllImportSymbolType,
+}
+
+#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq)]
+pub enum DllImportSymbolType {
+    Function,
+    Static,
+    ThreadLocal,
 }
 
 impl DllImport {

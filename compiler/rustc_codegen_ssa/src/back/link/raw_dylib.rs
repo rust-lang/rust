@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
-use rustc_session::cstore::DllImport;
+use rustc_session::cstore::{DllImport, DllImportSymbolType};
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
 
@@ -95,14 +95,14 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
                                     true,
                                 )
                             }),
-                            is_data: !import.is_fn,
+                            is_data: import.symbol_type != DllImportSymbolType::Function,
                         }
                     } else {
                         ImportLibraryItem {
                             name: import.name.to_string(),
                             ordinal: import.ordinal(),
                             symbol_name: None,
-                            is_data: !import.is_fn,
+                            is_data: import.symbol_type != DllImportSymbolType::Function,
                         }
                     }
                 })
@@ -271,10 +271,10 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
                 vers.push((version_name, dynstr));
                 id
             };
-            syms.push((name, dynstr, Some(ver), symbol.is_fn));
+            syms.push((name, dynstr, Some(ver), symbol.symbol_type));
         } else {
             let dynstr = stub.add_dynamic_string(symbol_name.as_bytes());
-            syms.push((symbol_name, dynstr, None, symbol.is_fn));
+            syms.push((symbol_name, dynstr, None, symbol.symbol_type));
         }
     }
 
@@ -398,8 +398,12 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
 
     // .dynsym
     stub.write_null_dynamic_symbol();
-    for (_name, dynstr, _ver, is_fn) in syms.iter().copied() {
-        let sym_type = if is_fn { elf::STT_FUNC } else { elf::STT_NOTYPE };
+    for (_name, dynstr, _ver, symbol_type) in syms.iter().copied() {
+        let sym_type = match symbol_type {
+            DllImportSymbolType::Function => elf::STT_FUNC,
+            DllImportSymbolType::Static => elf::STT_OBJECT,
+            DllImportSymbolType::ThreadLocal => elf::STT_TLS,
+        };
         stub.write_dynamic_symbol(&write::Sym {
             name: Some(dynstr),
             st_info: (elf::STB_GLOBAL << 4) | sym_type,
@@ -418,7 +422,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     if !vers.is_empty() {
         // .gnu_version
         stub.write_null_gnu_versym();
-        for (_name, _dynstr, ver, _is_fn) in syms.iter().copied() {
+        for (_name, _dynstr, ver, _symbol_type) in syms.iter().copied() {
             stub.write_gnu_versym(if let Some(ver) = ver {
                 assert!((2 + ver as u16) < elf::VERSYM_HIDDEN);
                 elf::VERSYM_HIDDEN | (2 + ver as u16)

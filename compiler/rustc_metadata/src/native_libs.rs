@@ -10,7 +10,9 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, NativeLib};
+use rustc_session::cstore::{
+    DllCallingConvention, DllImport, DllImportSymbolType, ForeignModule, NativeLib,
+};
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -451,12 +453,12 @@ impl<'tcx> Collector<'tcx> {
             }
         }
 
-        DllImport {
-            name,
-            import_name_type,
-            calling_convention,
-            span,
-            is_fn: self.tcx.def_kind(item).is_fn_like(),
-        }
+        let symbol_type = if self.tcx.def_kind(item).is_fn_like() {
+            DllImportSymbolType::Function
+        } else {
+            bug!("Unexpected type for raw-dylib: {}", def_kind.descr(item));
+        };
+
+        DllImport { name, import_name_type, calling_convention, span, symbol_type }
     }
 }
