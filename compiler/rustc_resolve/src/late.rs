@@ -8,6 +8,7 @@
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
+use std::debug_assert_matches;
 use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
 
@@ -15,7 +16,6 @@ use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
 use rustc_ast::*;
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -37,8 +37,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, kw, respan, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -5258,7 +5257,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn traits_in_scope(&mut self, ident: Ident, ns: Namespace) -> Vec<TraitCandidate> {
+    fn traits_in_scope(&mut self, ident: Ident, ns: Namespace) -> &'tcx [TraitCandidate<'tcx>] {
         self.r.traits_in_scope(
             self.current_trait_ref.as_ref().map(|(module, _)| *module),
             &self.parent_scope,

@@ -539,5 +539,5 @@ pub(crate) struct UnexpectedBuiltinCfg {
 }
 
 #[derive(Diagnostic)]
-#[diag("ThinLTO is not supported by the codegen backend")]
+#[diag("ThinLTO is not supported by the codegen backend, using fat LTO instead")]
 pub(crate) struct ThinLtoNotSupportedByBackend;

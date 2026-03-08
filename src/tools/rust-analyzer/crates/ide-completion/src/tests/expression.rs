@@ -3659,3 +3659,38 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn rpitit_with_reference() {
+    check(
+        r#"
+trait Foo {
+    fn foo(&self);
+}
+
+trait Bar {
+    fn bar(&self) -> &impl Foo;
+}
+
+fn baz(v: impl Bar) {
+    v.bar().$0
+}
+    "#,
+        expect![[r#"
+            me foo() (as Foo) fn(&self)
+            sn box       Box::new(expr)
+            sn call      function(expr)
+            sn const           const {}
+            sn dbg           dbg!(expr)
+            sn dbgr         dbg!(&expr)
+            sn deref              *expr
+            sn let                  let
+            sn letm             let mut
+            sn match      match expr {}
+            sn ref                &expr
+            sn refm           &mut expr
+            sn return       return expr
+            sn unsafe         unsafe {}
+        "#]],
+    );
+}

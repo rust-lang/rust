@@ -28,72 +28,77 @@ pub(super) fn check<'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    if let Some(block) = get_enclosing_block(cx, expr.hir_id) {
-        for id in increment_visitor.into_results() {
-            let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
-            walk_block(&mut initialize_visitor, block);
+    let Some(block) = get_enclosing_block(cx, expr.hir_id) else {
+        return;
+    };
 
-            if let Some((name, ty, initializer)) = initialize_visitor.get_result() {
-                let is_zero = is_integer_const(cx, initializer, 0);
-                let mut applicability = Applicability::MaybeIncorrect;
-                let span = expr.span.with_hi(arg.span.hi());
-                let loop_label = label.map_or(String::new(), |l| format!("{}: ", l.ident.name));
+    for id in increment_visitor.into_results() {
+        let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
+        walk_block(&mut initialize_visitor, block);
 
-                span_lint_and_then(
-                    cx,
-                    EXPLICIT_COUNTER_LOOP,
-                    span,
-                    format!("the variable `{name}` is used as a loop counter"),
-                    |diag| {
-                        let pat_snippet = snippet_with_applicability(cx, pat.span, "item", &mut applicability);
-                        let iter_snippet = make_iterator_snippet(cx, arg, &mut applicability);
-                        let int_name = match ty.map(Ty::kind) {
-                            Some(ty::Uint(UintTy::Usize)) | None => {
-                                if is_zero {
-                                    diag.span_suggestion(
-                                        span,
-                                        "consider using",
-                                        format!(
-                                            "{loop_label}for ({name}, {pat_snippet}) in {iter_snippet}.enumerate()",
-                                        ),
-                                        applicability,
-                                    );
-                                    return;
-                                }
-                                None
-                            },
-                            Some(ty::Int(int_ty)) => Some(int_ty.name_str()),
-                            Some(ty::Uint(uint_ty)) => Some(uint_ty.name_str()),
-                            _ => None,
-                        }
-                        .filter(|_| is_integer_literal_untyped(initializer));
-
-                        let initializer = Sugg::hir_from_snippet(cx, initializer, |span| {
-                            let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
-                            if let Some(int_name) = int_name {
-                                return Cow::Owned(format!("{snippet}_{int_name}"));
-                            }
-                            snippet
-                        });
-
-                        diag.span_suggestion(
-                            span,
-                            "consider using",
-                            format!(
-                                "{loop_label}for ({name}, {pat_snippet}) in ({}).zip({iter_snippet})",
-                                initializer.range(&EMPTY, RangeLimits::HalfOpen)
-                            ),
-                            applicability,
-                        );
-
-                        if is_zero && let Some(int_name) = int_name {
-                            diag.note(format!(
-                                "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
-                            ));
-                        }
-                    },
-                );
-            }
+        let Some((name, ty, initializer)) = initialize_visitor.get_result() else {
+            continue;
+        };
+        if !cx.typeck_results().expr_ty(initializer).is_integral() {
+            continue;
         }
+
+        let is_zero = is_integer_const(cx, initializer, 0);
+        let mut applicability = Applicability::MaybeIncorrect;
+        let span = expr.span.with_hi(arg.span.hi());
+        let loop_label = label.map_or(String::new(), |l| format!("{}: ", l.ident.name));
+
+        span_lint_and_then(
+            cx,
+            EXPLICIT_COUNTER_LOOP,
+            span,
+            format!("the variable `{name}` is used as a loop counter"),
+            |diag| {
+                let pat_snippet = snippet_with_applicability(cx, pat.span, "item", &mut applicability);
+                let iter_snippet = make_iterator_snippet(cx, arg, &mut applicability);
+                let int_name = match ty.map(Ty::kind) {
+                    Some(ty::Uint(UintTy::Usize)) | None => {
+                        if is_zero {
+                            diag.span_suggestion(
+                                span,
+                                "consider using",
+                                format!("{loop_label}for ({name}, {pat_snippet}) in {iter_snippet}.enumerate()"),
+                                applicability,
+                            );
+                            return;
+                        }
+                        None
+                    },
+                    Some(ty::Int(int_ty)) => Some(int_ty.name_str()),
+                    Some(ty::Uint(uint_ty)) => Some(uint_ty.name_str()),
+                    _ => None,
+                }
+                .filter(|_| is_integer_literal_untyped(initializer));
+
+                let initializer = Sugg::hir_from_snippet(cx, initializer, |span| {
+                    let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
+                    if let Some(int_name) = int_name {
+                        return Cow::Owned(format!("{snippet}_{int_name}"));
+                    }
+                    snippet
+                });
+
+                diag.span_suggestion(
+                    span,
+                    "consider using",
+                    format!(
+                        "{loop_label}for ({name}, {pat_snippet}) in ({}).zip({iter_snippet})",
+                        initializer.range(&EMPTY, RangeLimits::HalfOpen)
+                    ),
+                    applicability,
+                );
+
+                if is_zero && let Some(int_name) = int_name {
+                    diag.note(format!(
+                        "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
+                    ));
+                }
+            },
+        );
     }
 }

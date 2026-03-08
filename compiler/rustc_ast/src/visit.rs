@@ -15,8 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
@@ -762,8 +761,7 @@ macro_rules! common_visitor_and_walkers {
         // This is only used by the MutVisitor. We include this symmetry here to make writing other
         // functions easier.
         $(${ignore($lt)}
-            #[cfg_attr(not(bootstrap), expect(unused, rustc::disallowed_pass_by_ref))]
-            #[cfg_attr(bootstrap, expect(unused, rustc::pass_by_value))]
+            #[expect(unused, rustc::disallowed_pass_by_ref)]
             #[inline]
         )?
         fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, span: &$($lt)? $($mut)? Span) -> V::Result {

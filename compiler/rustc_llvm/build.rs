@@ -5,7 +5,8 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::str::SplitWhitespace;
-use std::vec::IntoIter;
+
+use shlex::Shlex;
 
 const OPTIONAL_COMPONENTS: &[&str] = &[
     "x86",
@@ -121,9 +122,8 @@ enum LlvmConfigOutput {
     UnquotedPaths(String),
 }
 
-#[derive(Clone)]
 enum SplitLlvmConfigOutput<'a> {
-    QuotedPaths(IntoIter<String>),
+    QuotedPaths(Shlex<'a>),
     UnquotedPaths(SplitWhitespace<'a>),
 }
 
@@ -137,14 +137,22 @@ impl<'a> Iterator for SplitLlvmConfigOutput<'a> {
     }
 }
 
+impl Drop for SplitLlvmConfigOutput<'_> {
+    fn drop(&mut self) {
+        if let Self::QuotedPaths(shlex) = self {
+            assert!(!shlex.had_error, "error parsing llvm-config output");
+        }
+    }
+}
+
 impl<'a> IntoIterator for &'a LlvmConfigOutput {
     type Item = Cow<'a, str>;
     type IntoIter = SplitLlvmConfigOutput<'a>;
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            LlvmConfigOutput::QuotedPaths(output) => SplitLlvmConfigOutput::QuotedPaths(
-                shell_words::split(&output).expect("matched quotes").into_iter(),
-            ),
+            LlvmConfigOutput::QuotedPaths(output) => {
+                SplitLlvmConfigOutput::QuotedPaths(Shlex::new(output))
+            }
             LlvmConfigOutput::UnquotedPaths(output) => {
                 SplitLlvmConfigOutput::UnquotedPaths(output.split_whitespace())
             }
@@ -229,7 +237,6 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--cxxflags");
     let cxxflags = quoted_split(cmd);
-    let mut cxxflags_iter = cxxflags.into_iter();
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
 
@@ -242,7 +249,7 @@ fn main() {
     if std::env::var_os("CI").is_some() && !target.contains("msvc") {
         cfg.warnings_into_errors(true);
     }
-    for flag in cxxflags_iter.clone() {
+    for flag in &cxxflags {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
             continue;
@@ -435,13 +442,16 @@ fn main() {
     // dependencies.
     let llvm_linker_flags = tracked_env_var_os("LLVM_LINKER_FLAGS");
     if let Some(s) = llvm_linker_flags {
-        for lib in shell_words::split(&s.into_string().unwrap()).expect("matched quotes") {
+        let linker_flags = s.into_string().unwrap();
+        let mut shlex = Shlex::new(&linker_flags);
+        for lib in shlex.by_ref() {
             if let Some(stripped) = lib.strip_prefix("-l") {
                 println!("cargo:rustc-link-lib={stripped}");
             } else if let Some(stripped) = lib.strip_prefix("-L") {
                 println!("cargo:rustc-link-search=native={stripped}");
             }
         }
+        assert!(!shlex.had_error, "error parsing LLVM_LINKER_FLAGS");
     }
 
     let llvm_static_stdcpp = tracked_env_var_os("LLVM_STATIC_STDCPP");
@@ -476,7 +486,7 @@ fn main() {
     // C++ runtime library
     if !target.contains("msvc") {
         if let Some(s) = llvm_static_stdcpp {
-            assert!(cxxflags_iter.all(|flag| flag != "stdlib=libc++"));
+            assert!(cxxflags.into_iter().all(|flag| flag != "-stdlib=libc++"));
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
             if target.contains("windows") {
@@ -484,7 +494,7 @@ fn main() {
             } else {
                 println!("cargo:rustc-link-lib=static={stdcppname}");
             }
-        } else if cxxflags_iter.any(|flag| flag == "stdlib=libc++") {
+        } else if cxxflags.into_iter().any(|flag| flag == "-stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");
         } else {
             println!("cargo:rustc-link-lib={stdcppname}");

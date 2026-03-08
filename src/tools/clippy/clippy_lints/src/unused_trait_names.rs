@@ -45,6 +45,8 @@ declare_clippy_lint! {
     "use items that import a trait but only use it anonymously"
 }
 
+impl_lint_pass!(UnusedTraitNames => [UNUSED_TRAIT_NAMES]);
+
 pub struct UnusedTraitNames {
     msrv: Msrv,
 }
@@ -54,8 +56,6 @@ impl UnusedTraitNames {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(UnusedTraitNames => [UNUSED_TRAIT_NAMES]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

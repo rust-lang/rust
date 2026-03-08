@@ -715,7 +715,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     }
 
                     if let Some(pointee) = layout.pointee_info_at(bx, offset)
-                        && let Some(_) = pointee.safe
+                        && pointee.align > Align::ONE
                     {
                         bx.align_metadata(load, pointee.align);
                     }

@@ -6,6 +6,7 @@
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -15,6 +16,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -32,12 +34,10 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Spanned, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::coercion::CoerceMany;
@@ -2203,7 +2203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
             }
-            rustc_hir::StructTailExpr::NoneWithError(ErrorGuaranteed { .. }) => {
+            rustc_hir::StructTailExpr::NoneWithError(guaranteed) => {
                 // If parsing the struct recovered from a syntax error, do not report missing
                 // fields. This prevents spurious errors when a field is intended to be present
                 // but a preceding syntax error caused it not to be parsed. For example, if a
@@ -2211,6 +2211,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //     StructName { foo(), bar: 2 }
                 // will not successfully parse a field `foo`, but we will not mention that,
                 // since the syntax error has already been reported.
+
+                // Signal that type checking has failed, even though we haven’t emitted a diagnostic
+                // about it ourselves.
+                self.infcx.set_tainted_by_errors(guaranteed);
             }
             rustc_hir::StructTailExpr::None => {
                 if adt_kind != AdtKind::Union

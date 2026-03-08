@@ -1,6 +1,7 @@
 //! Print diagnostics to explain why values are borrowed.
 
-use rustc_data_structures::assert_matches;
+use std::assert_matches;
+
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;

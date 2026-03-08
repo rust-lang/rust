@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(associated_type_defaults)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]

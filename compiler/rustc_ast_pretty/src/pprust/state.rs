@@ -20,9 +20,11 @@ use rustc_ast::{
     RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::IdentPrinter;
-use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{
+    BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Spanned, Symbol, kw, sym,
+};
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, BoxMarker, Breaks};
@@ -1415,6 +1417,9 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) {
+        if let ast::Parens::Yes = t.parens {
+            self.popen();
+        }
         self.print_formal_generic_params(&t.bound_generic_params);
 
         let ast::TraitBoundModifiers { constness, asyncness, polarity } = t.modifiers;
@@ -1437,7 +1442,10 @@ impl<'a> State<'a> {
             }
         }
 
-        self.print_trait_ref(&t.trait_ref)
+        self.print_trait_ref(&t.trait_ref);
+        if let ast::Parens::Yes = t.parens {
+            self.pclose();
+        }
     }
 
     fn print_stmt(&mut self, st: &ast::Stmt) {

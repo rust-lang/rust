@@ -61,6 +61,7 @@ declare_clippy_lint! {
     complexity,
     "checks for blocks nested beyond a certain threshold"
 }
+
 impl_lint_pass!(ExcessiveNesting => [EXCESSIVE_NESTING]);
 
 pub struct ExcessiveNesting {

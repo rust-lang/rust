@@ -13,9 +13,9 @@ use std::marker::{DiscriminantKind, PointeeSized};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, SpanDecoder, SpanEncoder};
+use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
 
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
@@ -497,6 +497,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
+    &'tcx ty::List<Const<'tcx>>,
 }
 
 #[macro_export]

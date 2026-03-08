@@ -2443,7 +2443,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if tcx.dep_graph.is_fully_enabled()
         && let work_product_id = WorkProductId::from_cgu_name("metadata")
         && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
-        && tcx.try_mark_green(&dep_node)
+        && tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some()
     {
         let saved_path = &work_product.saved_files["rmeta"];
         let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().unwrap();

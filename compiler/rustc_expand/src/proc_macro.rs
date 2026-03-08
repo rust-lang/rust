@@ -1,12 +1,13 @@
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_proc_macro as pm;
 use rustc_session::Session;
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{LocalExpnId, Span};
-use {rustc_ast as ast, rustc_proc_macro as pm};
 
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};

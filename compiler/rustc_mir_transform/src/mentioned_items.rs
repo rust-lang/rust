@@ -3,7 +3,7 @@ use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 pub(super) struct MentionedItems;
 

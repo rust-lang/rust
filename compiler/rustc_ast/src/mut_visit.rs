@@ -11,8 +11,7 @@ use std::ops::DerefMut;
 use std::panic;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 

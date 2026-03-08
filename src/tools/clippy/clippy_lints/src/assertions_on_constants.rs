@@ -33,6 +33,7 @@ declare_clippy_lint! {
 }
 
 impl_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
+
 pub struct AssertionsOnConstants {
     msrv: Msrv,
 }

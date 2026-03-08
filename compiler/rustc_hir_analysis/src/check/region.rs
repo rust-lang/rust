@@ -18,7 +18,7 @@ use rustc_index::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
-use rustc_span::source_map;
+use rustc_span::Spanned;
 use tracing::debug;
 
 #[derive(Debug, Copy, Clone)]
@@ -181,7 +181,7 @@ fn resolve_cond<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, cond: &'tcx hi
         // operands will be terminated). Any temporaries that would need to be dropped will be
         // dropped before we leave this operator's scope; terminating them here would be redundant.
         hir::ExprKind::Binary(
-            source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
             _,
             _,
         ) => false,
@@ -264,7 +264,7 @@ fn resolve_expr<'tcx>(
         // scopes, meaning that temporaries cannot outlive them.
         // This ensures fixed size stacks.
         hir::ExprKind::Binary(
-            source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
             left,
             right,
         ) => {
@@ -293,7 +293,7 @@ fn resolve_expr<'tcx>(
                 // This is purely an optimization to reduce the number of
                 // terminating scopes.
                 hir::ExprKind::Binary(
-                    source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+                    Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                     ..,
                 ) => false,
                 // otherwise: mark it as terminating

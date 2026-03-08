@@ -36,6 +36,7 @@ declare_clippy_lint! {
     suspicious,
     "call to `mem::swap` using pointer derived references"
 }
+
 declare_lint_pass!(SwapPtrToRef => [SWAP_PTR_TO_REF]);
 
 impl LateLintPass<'_> for SwapPtrToRef {

@@ -5,7 +5,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
@@ -25,7 +24,7 @@ use std::io::Write;
 use std::num::NonZero;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
-use std::{fmt, panic};
+use std::{assert_matches, fmt, panic};
 
 use Level::*;
 // Used by external projects such as `rust-gpu`.
@@ -37,8 +36,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee, FatalAbort,
-    StringPart, Subdiag, Subdiagnostic,
+    BugAbort, Diag, DiagInner, DiagLocation, DiagStyledString, Diagnostic, EmissionGuarantee,
+    FatalAbort, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -46,10 +45,10 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter};
+use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
-use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
     DiagArg, DiagArgFromDisplay, DiagArgMap, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
     LanguageIdentifier, MultiSpan, SpanLabel, fluent_bundle, into_diag_arg_using_display,
@@ -66,7 +65,8 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
-use crate::formatting::format_diag_message;
+use crate::formatting::DiagMessageAddArg;
+pub use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
@@ -480,26 +480,6 @@ impl DiagCtxt {
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
         self.inner.borrow_mut().emitter = emitter;
-    }
-
-    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
-    pub fn eagerly_format<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> DiagMessage {
-        let inner = self.inner.borrow();
-        inner.eagerly_format(message, args)
-    }
-
-    /// Format `message` eagerly with `args` to `String`.
-    pub fn eagerly_format_to_string<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> String {
-        let inner = self.inner.borrow();
-        inner.eagerly_format_to_string(message, args)
     }
 
     // This is here to not allow mutation of flags;
@@ -1417,33 +1397,6 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Format `message` eagerly with `args` to `DiagMessage::Eager`.
-    fn eagerly_format<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> DiagMessage {
-        DiagMessage::Str(Cow::from(self.eagerly_format_to_string(message, args)))
-    }
-
-    /// Format `message` eagerly with `args` to `String`.
-    fn eagerly_format_to_string<'a>(
-        &self,
-        message: DiagMessage,
-        args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> String {
-        let args = args.map(|(name, val)| (name.clone(), val.clone())).collect();
-        format_diag_message(&message, &args).to_string()
-    }
-
-    fn eagerly_format_for_subdiag(
-        &self,
-        diag: &DiagInner,
-        msg: impl Into<DiagMessage>,
-    ) -> DiagMessage {
-        self.eagerly_format(msg.into(), diag.args.iter())
-    }
-
     fn flush_delayed(&mut self) {
         // Stashed diagnostics must be emitted before delayed bugs are flushed.
         // Otherwise, we might ICE prematurely when errors would have
@@ -1493,7 +1446,7 @@ impl DiagCtxtInner {
                 );
             }
 
-            let mut bug = if decorate { bug.decorate(self) } else { bug.inner };
+            let mut bug = if decorate { bug.decorate() } else { bug.inner };
 
             // "Undelay" the delayed bugs into plain bugs.
             if bug.level != DelayedBug {
@@ -1503,11 +1456,9 @@ impl DiagCtxtInner {
                 // We are at the `DiagInner`/`DiagCtxtInner` level rather than
                 // the usual `Diag`/`DiagCtxt` level, so we must augment `bug`
                 // in a lower-level fashion.
-                bug.arg("level", bug.level);
                 let msg = msg!(
                     "`flushed_delayed` got diagnostic with level {$level}, instead of the expected `DelayedBug`"
-                );
-                let msg = self.eagerly_format_for_subdiag(&bug, msg); // after the `arg` call
+                ).arg("level", bug.level).format();
                 bug.sub(Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
@@ -1542,7 +1493,7 @@ impl DelayedDiagInner {
         DelayedDiagInner { inner: diagnostic, note: backtrace }
     }
 
-    fn decorate(self, dcx: &DiagCtxtInner) -> DiagInner {
+    fn decorate(self) -> DiagInner {
         // We are at the `DiagInner`/`DiagCtxtInner` level rather than the
         // usual `Diag`/`DiagCtxt` level, so we must construct `diag` in a
         // lower-level fashion.
@@ -1555,10 +1506,10 @@ impl DelayedDiagInner {
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
             _ => msg!("delayed at {$emitted_at} - {$note}"),
-        };
-        diag.arg("emitted_at", diag.emitted_at.clone());
-        diag.arg("note", self.note);
-        let msg = dcx.eagerly_format_for_subdiag(&diag, msg); // after the `arg` calls
+        }
+        .arg("emitted_at", diag.emitted_at.clone())
+        .arg("note", self.note)
+        .format();
         diag.sub(Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
         diag
     }

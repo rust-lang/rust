@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diag, Diagnostic, MultiSpan};
+use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::EditionFcw;
 use rustc_macros::{Decodable, Encodable, HashStable};
@@ -602,6 +602,9 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
         } else {
             Diag::new(sess.dcx(), err_level, "")
         };
+        // FIXME: Find a nicer way to expose the `DiagLocation`
+        err.emitted_at = DiagLocation::caller();
+
         if let Some(span) = span
             && err.span.primary_span().is_none()
         {

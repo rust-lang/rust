@@ -1,17 +1,17 @@
+use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
 use rustc_data_structures::unord::UnordMap;
-use rustc_data_structures::{assert_matches, outline};
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
@@ -882,7 +882,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx>,
         dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        self.data().and_then(|data| data.try_mark_green(tcx, dep_node))
+        self.data()?.try_mark_green(tcx, dep_node)
     }
 }
 
@@ -1377,8 +1377,6 @@ pub struct TaskDeps {
     /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
     /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
     read_set: FxHashSet<DepNodeIndex>,
-
-    phantom_data: PhantomData<DepNode>,
 }
 
 impl TaskDeps {
@@ -1392,7 +1390,6 @@ impl TaskDeps {
             node,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
-            phantom_data: PhantomData,
         }
     }
 }

@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::MANUAL_DIV_CEIL;
 

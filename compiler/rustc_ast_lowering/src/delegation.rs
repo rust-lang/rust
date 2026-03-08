@@ -42,10 +42,12 @@ use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::span_bug;
@@ -53,7 +55,6 @@ use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs, Resolve
 use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
@@ -815,13 +816,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a> {
-    resolver: &'a mut ResolverAstLowering,
+struct SelfResolver<'a, 'tcx> {
+    resolver: &'a mut ResolverAstLowering<'tcx>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'a> SelfResolver<'a> {
+impl SelfResolver<'_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.partial_res_map.get(&id)
             && let Some(Res::Local(sig_id)) = res.full_res()
@@ -833,7 +834,7 @@ impl<'a> SelfResolver<'a> {
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a> {
+impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }

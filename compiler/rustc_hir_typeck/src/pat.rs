@@ -1,13 +1,13 @@
-use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::{assert_matches, cmp};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -2436,10 +2436,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
+            let tail_span = field.span.shrink_to_hi().to(pat.span.shrink_to_hi());
+            let comma_hi_offset =
+                self.tcx.sess.source_map().span_to_snippet(tail_span).ok().and_then(|snippet| {
+                    let trimmed = snippet.trim_start();
+                    trimmed.starts_with(',').then(|| (snippet.len() - trimmed.len() + 1) as u32)
+                });
             err.span_suggestion_verbose(
-                field.span.shrink_to_hi(),
+                if let Some(comma_hi_offset) = comma_hi_offset {
+                    tail_span.with_hi(tail_span.lo() + BytePos(comma_hi_offset)).shrink_to_hi()
+                } else {
+                    field.span.shrink_to_hi()
+                },
                 "ignore the inaccessible and unused fields",
-                ", ..",
+                if comma_hi_offset.is_some() { " .." } else { ", .." },
                 Applicability::MachineApplicable,
             );
         } else {
@@ -2471,6 +2481,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         ty: Ty<'tcx>,
     ) {
+        struct FieldsNotListed<'a, 'b, 'tcx> {
+            pat_span: Span,
+            unmentioned_fields: &'a [(&'b ty::FieldDef, Ident)],
+            joined_patterns: String,
+            ty: Ty<'tcx>,
+        }
+
+        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for FieldsNotListed<'b, 'c, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { pat_span, unmentioned_fields, joined_patterns, ty } = self;
+                Diag::new(dcx, level, "some fields are not explicitly listed")
+                    .with_span_label(pat_span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns))
+                    .with_help(
+                        "ensure that all fields are mentioned explicitly by adding the suggested fields",
+                    )
+                    .with_note(format!(
+                        "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
+                    ))
+            }
+        }
+
         fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
             const LIMIT: usize = 3;
             match witnesses {
@@ -2495,16 +2526,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |lint| {
-            lint.primary_message("some fields are not explicitly listed");
-            lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
-            lint.help(
-                "ensure that all fields are mentioned explicitly by adding the suggested fields",
-            );
-            lint.note(format!(
-                "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            ));
-        });
+        self.tcx.emit_node_span_lint(
+            NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            pat.hir_id,
+            pat.span,
+            FieldsNotListed { pat_span: pat.span, unmentioned_fields, joined_patterns, ty },
+        );
     }
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.

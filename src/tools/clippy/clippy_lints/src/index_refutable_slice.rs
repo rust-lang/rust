@@ -53,6 +53,8 @@ declare_clippy_lint! {
     "avoid indexing on slices which could be destructed"
 }
 
+impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
+
 pub struct IndexRefutableSlice {
     max_suggested_slice: u64,
     msrv: Msrv,
@@ -66,8 +68,6 @@ impl IndexRefutableSlice {
         }
     }
 }
-
-impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
 
 impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {

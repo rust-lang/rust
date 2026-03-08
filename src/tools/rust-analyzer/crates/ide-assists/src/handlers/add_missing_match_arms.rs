@@ -44,8 +44,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     let arm_list_range = ctx.sema.original_range_opt(match_arm_list.syntax())?;
 
     if cursor_at_trivial_match_arm_list(ctx, &match_expr, &match_arm_list).is_none() {
-        let arm_list_range = ctx.sema.original_range(match_arm_list.syntax()).range;
-        let cursor_in_range = arm_list_range.contains_range(ctx.selection_trimmed());
+        let cursor_in_range = arm_list_range.range.contains_range(ctx.selection_trimmed());
         if cursor_in_range {
             cov_mark::hit!(not_applicable_outside_of_range_right);
             return None;
@@ -348,8 +347,8 @@ fn cursor_at_trivial_match_arm_list(
     //     $0
     // }
     if let Some(last_arm) = match_arm_list.arms().last() {
-        let last_arm_range = last_arm.syntax().text_range();
-        let match_expr_range = match_expr.syntax().text_range();
+        let last_arm_range = ctx.sema.original_range_opt(last_arm.syntax())?.range;
+        let match_expr_range = ctx.sema.original_range_opt(match_expr.syntax())?.range;
         if last_arm_range.end() <= ctx.offset() && ctx.offset() < match_expr_range.end() {
             cov_mark::hit!(add_missing_match_arms_end_of_last_arm);
             return Some(());
@@ -1611,6 +1610,38 @@ fn foo(t: Test) {
         Test::A => ${1:todo!()},
         Test::B => ${2:todo!()},
         Test::C => ${3:todo!()},$0
+    });
+}"#,
+        );
+
+        check_assist(
+            add_missing_match_arms,
+            r#"
+macro_rules! m { ($expr:expr) => {$expr}}
+enum Test {
+    A,
+    B,
+    C,
+}
+
+fn foo(t: Test) {
+    m!(match t {
+        Test::A => (),
+    $0});
+}"#,
+            r#"
+macro_rules! m { ($expr:expr) => {$expr}}
+enum Test {
+    A,
+    B,
+    C,
+}
+
+fn foo(t: Test) {
+    m!(match t {
+        Test::A=>(),
+        Test::B => ${1:todo!()},
+        Test::C => ${2:todo!()},$0
     });
 }"#,
         );
