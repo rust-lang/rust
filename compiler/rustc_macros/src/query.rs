@@ -355,11 +355,10 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
 
     // Generate a function to check whether we should cache the query to disk, for some key.
     if let Some(CacheOnDiskIf { block, .. }) = modifiers.cache_on_disk_if.as_ref() {
-        // `disallowed_pass_by_ref` is needed because some keys are `rustc_pass_by_value`.
         streams.cache_on_disk_if_fns_stream.extend(quote! {
-            #[allow(unused_variables, rustc::disallowed_pass_by_ref)]
+            #[allow(unused_variables)]
             #[inline]
-            pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: &#key_ty) -> bool
+            pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: #key_ty) -> bool
             #block
         });
     }

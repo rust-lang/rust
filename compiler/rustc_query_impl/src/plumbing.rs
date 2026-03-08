@@ -163,7 +163,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
 
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
-        if (query.will_cache_on_disk_for_key_fn)(tcx, key) {
+        if (query.will_cache_on_disk_for_key_fn)(tcx, *key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -219,7 +219,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
 
     // If the recovered key isn't eligible for cache-on-disk, then there's no
     // value on disk to promote.
-    if !(query.will_cache_on_disk_for_key_fn)(tcx, &key) {
+    if !(query.will_cache_on_disk_for_key_fn)(tcx, key) {
         return;
     }
 
