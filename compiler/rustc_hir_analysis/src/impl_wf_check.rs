@@ -329,7 +329,7 @@ fn suggest_to_remove_or_use_generic(
         return;
     };
 
-    // Count how many slots are defined in the struct defintion
+    // Count how many slots are defined in the struct definition
     let generics = tcx.generics_of(struct_def_id);
     let total_slots = generics
         .own_params
