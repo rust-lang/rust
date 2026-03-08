@@ -160,6 +160,14 @@ impl AssertLintKind {
 }
 
 #[derive(Diagnostic)]
+#[diag("this operation will panic at runtime")]
+pub(crate) struct ConstNIsZero {
+    #[label("const parameter `{$const_param_name}` is zero")]
+    pub const_param_span: Span,
+    pub const_param_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("call to inline assembly that may unwind")]
 pub(crate) struct AsmUnwindCall {
     #[label("call to inline assembly that may unwind")]
