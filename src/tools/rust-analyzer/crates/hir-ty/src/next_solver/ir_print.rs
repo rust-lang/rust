@@ -188,7 +188,7 @@ impl<'db> IrPrint<ty::NormalizesTo<Self>> for DbInterner<'db> {
         t: &ty::NormalizesTo<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        write!(fmt, "{} -> {:?}", t.alias, t.term)
+        write!(fmt, "NormalizesTo({} -> {:?})", t.alias, t.term)
     }
 }
 impl<'db> IrPrint<ty::SubtypePredicate<Self>> for DbInterner<'db> {
@@ -215,7 +215,7 @@ impl<'db> IrPrint<ty::CoercePredicate<Self>> for DbInterner<'db> {
         t: &ty::CoercePredicate<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        write!(fmt, "{:?} -> {:?}", t.a, t.b)
+        write!(fmt, "CoercePredicate({:?} -> {:?})", t.a, t.b)
     }
 }
 impl<'db> IrPrint<ty::FnSig<Self>> for DbInterner<'db> {
