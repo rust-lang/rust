@@ -12,8 +12,8 @@ fn main() {
     let _ = root_function();
     let _ = my_api::root_function();
     let _ = my_api::utils::utils_helper();
-    //~^ ERROR E0433
+    //~^ ERROR cannot find `utils` in `my_api` [E0433]
     let _ = util::util_mod_helper();
     let _ = my_api::core::core_fn();
-    //~^ ERROR E0433
+    //~^ ERROR cannot find `core` in `my_api` [E0433]
 }

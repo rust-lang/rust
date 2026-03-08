@@ -3,7 +3,7 @@
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
 //@ compile-flags: -Z namespaced-crates
 //@ edition: 2024
-//@ build-pass
+//@ check-pass
 
 macro_rules! import_and_call {
     ($import_path:path, $fn_name:ident) => {{

@@ -6,9 +6,9 @@
 //@ edition: 2024
 
 use my_api::utils::utils_helper;
-//~^ ERROR E0432
+//~^ ERROR unresolved import `my_api::utils` [E0432]
 
 fn main() {
     let _ = my_api::utils::utils_helper();
-    //~^ ERROR E0433
+    //~^ ERROR cannot find `utils` in `my_api` [E0433]
 }

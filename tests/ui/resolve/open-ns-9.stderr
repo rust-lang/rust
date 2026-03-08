@@ -1,5 +1,5 @@
 error[E0659]: `my_api` is ambiguous
-  --> $DIR/open-ns-10.rs:5:5
+  --> $DIR/open-ns-9.rs:5:5
    |
 LL | use my_api::utils::get_u32;
    |     ^^^^^^ ambiguous name
@@ -7,7 +7,7 @@ LL | use my_api::utils::get_u32;
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `my_api` could refer to a namespaced crate passed with `--extern`
 note: `my_api` could also refer to the module defined here
-  --> $DIR/open-ns-10.rs:10:9
+  --> $DIR/open-ns-9.rs:10:9
    |
 LL | /         pub mod my_api {
 LL | |             pub mod utils {

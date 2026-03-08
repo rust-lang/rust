@@ -1,8 +1,9 @@
-// Tests that namespaced crate names work inside macros.
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
 //@ compile-flags: -Z namespaced-crates
 //@ edition: 2024
-//@ build-pass
+
+use my_api::utils::get_u32;
+//~^ ERROR `my_api` is ambiguous [E0659]
 
 macro_rules! define {
     () => {
@@ -12,18 +13,13 @@ macro_rules! define {
                     2
                 }
             }
-
-            pub mod unique {
-                pub fn get_u32() -> u32 {
-                    2
-                }
-            }
         }
     };
 }
 
+define!();
+
 fn main() {
-    define!();
-    let res1 = my_api::unique::get_u32();
-    assert_eq!(res1, 2);
+    let val = get_u32();
+    assert_eq!(val, 2);
 }

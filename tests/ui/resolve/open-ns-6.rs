@@ -3,7 +3,7 @@
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
 //@ compile-flags: -Z namespaced-crates
 //@ edition: 2024
-//@ build-pass
+//@ check-pass
 
 use my_api;
 use my_api::utils::utils_helper;

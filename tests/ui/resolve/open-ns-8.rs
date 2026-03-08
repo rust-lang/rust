@@ -1,8 +1,8 @@
-// Tests that namespaced crate names work inside macros.
+// Tests that a macro-generated item has higher precendence than a namespaced crate
 //@ aux-crate: my_api::utils=open-ns-my_api_utils.rs
 //@ compile-flags: -Z namespaced-crates
 //@ edition: 2024
-//@ build-pass
+//@ check-pass
 
 macro_rules! define {
     () => {

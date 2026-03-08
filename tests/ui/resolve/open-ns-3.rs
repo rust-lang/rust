@@ -10,5 +10,5 @@
 fn main() {
     let _ = my_api::utils::root_helper();
     let _ = my_api::utils::utils_helper();
-    //~^ ERROR E0425
+    //~^ ERROR cannot find function `utils_helper` in module `my_api::utils` [E0425]
 }

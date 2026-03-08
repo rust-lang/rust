@@ -5,9 +5,9 @@
 //@ edition: 2024
 
 use my_api::core::{core_fn, core_fn2};
-//~^ ERROR E0432
+//~^ ERROR unresolved import `my_api::core` [E0432]
 use my_api::utils::*;
-//~^ ERROR E0432
+//~^ ERROR unresolved import `my_api::utils` [E0432]
 use my_api::*;
 
 fn main() {

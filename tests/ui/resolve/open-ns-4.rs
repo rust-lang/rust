@@ -8,5 +8,5 @@
 fn main() {
     let _ = my_api::root_function();
     let _ = my_api::utils::utils_helper();
-    //~^ ERROR E0433
+    //~^ ERROR cannot find `utils` in `my_api` [E0433]
 }
