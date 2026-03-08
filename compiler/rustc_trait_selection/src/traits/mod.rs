@@ -308,11 +308,10 @@ fn do_normalize_predicates<'tcx>(
             //
             // @lcnr: Let's still ICE here for now. I want a test case
             // for that.
-            span_bug!(
+            Err(tcx.dcx().span_delayed_bug(
                 span,
-                "inference variables in normalized parameter environment: {}",
-                fixup_err
-            );
+                format!("inference variables in normalized parameter environment: {fixup_err}"),
+            ))
         }
     }
 }
