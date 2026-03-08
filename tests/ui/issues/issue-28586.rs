@@ -2,6 +2,6 @@
 
 pub trait Foo {}
 impl Foo for [u8; usize::BYTES] {}
-//~^ ERROR no associated item named `BYTES` found
+//~^ ERROR no associated function or constant named `BYTES` found
 
 fn main() { }

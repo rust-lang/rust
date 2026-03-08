@@ -15,5 +15,5 @@ impl Wrapper<{ bar() }> {
 
 fn main() {
     Wrapper::<function>::call;
-    //~^ ERROR: the function or associated item `call` exists for struct `Wrapper<function>`,
+    //~^ ERROR: the associated function or constant `call` exists for struct `Wrapper<function>`,
 }

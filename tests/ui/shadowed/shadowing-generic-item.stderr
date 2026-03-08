@@ -8,13 +8,13 @@ LL | fn f<T>() {
 LL |     let t = T { i: 0 };
    |             ^ not a struct, variant or union type
 
-error[E0599]: no function or associated item named `f` found for type parameter `Foo` in the current scope
+error[E0599]: no associated function or constant named `f` found for type parameter `Foo` in the current scope
   --> $DIR/shadowing-generic-item.rs:12:10
    |
 LL | fn g<Foo>() {
-   |      --- function or associated item `f` not found for this type parameter
+   |      --- associated function or constant `f` not found for this type parameter
 LL |     Foo::f();
-   |          ^ function or associated item not found in `Foo`
+   |          ^ associated function or constant not found in `Foo`
 
 error: aborting due to 2 previous errors
 

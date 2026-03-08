@@ -15,14 +15,14 @@ error[E0741]: using function pointers as const generic parameters is forbidden
 LL | struct Wrapper<const F: fn()>;
    |                         ^^^^
 
-error[E0599]: the function or associated item `call` exists for struct `Wrapper<function>`, but its trait bounds were not satisfied
+error[E0599]: the associated function or constant `call` exists for struct `Wrapper<function>`, but its trait bounds were not satisfied
   --> $DIR/non_valtreeable_const_arg-2.rs:17:26
    |
 LL | struct Wrapper<const F: fn()>;
-   | ----------------------------- function or associated item `call` not found for this struct because it doesn't satisfy `Wrapper<function>: Fn<_>`
+   | ----------------------------- associated function or constant `call` not found for this struct because it doesn't satisfy `Wrapper<function>: Fn<_>`
 ...
 LL |     Wrapper::<function>::call;
-   |                          ^^^^ function or associated item cannot be called on `Wrapper<function>` due to unsatisfied trait bounds
+   |                          ^^^^ associated function or constant cannot be called on `Wrapper<function>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `Wrapper<function>: Fn<_>`

@@ -1,7 +1,5 @@
 // issue: <https://github.com/rust-lang/rust/issues/142797>
 
-#![allow(dead_code, unused_variables)]
-
 struct SomeStruct {
     some_field: u64,
 }

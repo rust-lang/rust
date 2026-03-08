@@ -9,7 +9,7 @@ impl Bool<true> {
 }
 fn f<T>() {
     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
-    //~^ ERROR no function or associated item named `assert` found
+    //~^ ERROR no associated function or constant named `assert` found
     //~| ERROR unconstrained generic constant
 }
 fn main() {

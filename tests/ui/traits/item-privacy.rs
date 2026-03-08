@@ -77,9 +77,9 @@ fn check_method() {
     // Methods, UFCS
     // a, b, c are resolved as trait items, their traits need to be in scope
     S::a(&S);
-    //~^ ERROR no function or associated item named `a` found
+    //~^ ERROR no associated function or constant named `a` found
     S::b(&S);
-    //~^ ERROR no function or associated item named `b` found
+    //~^ ERROR no associated function or constant named `b` found
     S::c(&S); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
     <dyn C>::a(&S); //~ ERROR method `a` is private
@@ -95,8 +95,8 @@ fn check_assoc_const() {
 
     // Associated constants
     // A, B, C are resolved as trait items, their traits need to be in scope
-    S::A; //~ ERROR no associated item named `A` found
-    S::B; //~ ERROR no associated item named `B` found
+    S::A; //~ ERROR no associated function or constant named `A` found
+    S::B; //~ ERROR no associated function or constant named `B` found
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     <dyn C>::A;
