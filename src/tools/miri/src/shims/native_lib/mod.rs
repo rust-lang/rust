@@ -245,7 +245,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This should go first so that we emit unsupported before doing a bunch
         // of extra work for types that aren't supported yet.
-        let ty = this.ty_to_ffitype(v.layout)?;
+        let ty = this
+            .ty_to_ffitype(v.layout)
+            .map_err(|ty| err_unsup_format!("unsupported argument type for native call: {ty}"))?;
 
         // Helper to print a warning when a pointer is shared with the native code.
         let expose = |prov: Provenance| -> InterpResult<'tcx> {
@@ -363,31 +365,31 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Parses an ADT to construct the matching libffi type.
     fn adt_to_ffitype(
         &self,
-        orig_ty: Ty<'_>,
+        orig_ty: Ty<'tcx>,
         adt_def: ty::AdtDef<'tcx>,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
-    ) -> InterpResult<'tcx, FfiType> {
+    ) -> Result<FfiType, Ty<'tcx>> {
         let this = self.eval_context_ref();
         // TODO: unions, etc.
         if !adt_def.is_struct() {
-            throw_unsup_format!("passing an enum or union over FFI: {orig_ty}");
+            return Err(orig_ty);
         }
         // TODO: Certain non-C reprs should be okay also.
         if !adt_def.repr().c() {
-            throw_unsup_format!("passing a non-#[repr(C)] {} over FFI: {orig_ty}", adt_def.descr())
+            return Err(orig_ty);
         }
 
         let mut fields = vec![];
         for field in &adt_def.non_enum_variant().fields {
-            let layout = this.layout_of(field.ty(*this.tcx, args))?;
+            let layout = this.layout_of(field.ty(*this.tcx, args)).map_err(|_err| orig_ty)?;
             fields.push(this.ty_to_ffitype(layout)?);
         }
 
-        interp_ok(FfiType::structure(fields))
+        Ok(FfiType::structure(fields))
     }
 
     /// Gets the matching libffi type for a given Ty.
-    fn ty_to_ffitype(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, FfiType> {
+    fn ty_to_ffitype(&self, layout: TyAndLayout<'tcx>) -> Result<FfiType, Ty<'tcx>> {
         use rustc_abi::{AddressSpace, BackendRepr, Float, Integer, Primitive};
 
         // `BackendRepr::Scalar` is also a signal to pass this type as a scalar in the ABI. This
@@ -396,7 +398,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let BackendRepr::Scalar(s) = layout.backend_repr {
             // Simple sanity-check: this cannot be `repr(C)`.
             assert!(!layout.ty.ty_adt_def().is_some_and(|adt| adt.repr().c()));
-            return interp_ok(match s.primitive() {
+            return Ok(match s.primitive() {
                 Primitive::Int(Integer::I8, /* signed */ true) => FfiType::i8(),
                 Primitive::Int(Integer::I16, /* signed */ true) => FfiType::i16(),
                 Primitive::Int(Integer::I32, /* signed */ true) => FfiType::i32(),
@@ -408,17 +410,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Primitive::Float(Float::F32) => FfiType::f32(),
                 Primitive::Float(Float::F64) => FfiType::f64(),
                 Primitive::Pointer(AddressSpace::ZERO) => FfiType::pointer(),
-                _ => throw_unsup_format!("unsupported scalar type for native call: {}", layout.ty),
+                _ => return Err(layout.ty),
             });
         }
-        interp_ok(match layout.ty.kind() {
+        Ok(match layout.ty.kind() {
             // Scalar types have already been handled above.
             ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, *adt_def, args)?,
             // Rust uses `()` as return type for `void` function, which becomes `Tuple([])`.
             ty::Tuple(t_list) if t_list.len() == 0 => FfiType::void(),
-            _ => {
-                throw_unsup_format!("unsupported type for native call: {}", layout.ty)
-            }
+            _ => return Err(layout.ty),
         })
     }
 }
@@ -427,6 +427,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// native code.
 struct LibffiClosureData<'tcx> {
     ecx_interchange: &'static Cell<usize>,
+    unsupported: bool,
     marker: PhantomData<MiriInterpCx<'tcx>>,
 }
 
@@ -441,22 +442,32 @@ pub fn build_libffi_closure<'tcx, 'this>(
     fn_sig: rustc_middle::ty::FnSig<'tcx>,
 ) -> InterpResult<'tcx, unsafe extern "C" fn()> {
     // Compute argument and return types in libffi representation.
-    let mut args = Vec::new();
-    for input in fn_sig.inputs().iter() {
-        let layout = this.layout_of(*input)?;
-        let ty = this.ty_to_ffitype(layout)?;
-        args.push(ty);
-    }
-    let res_type = fn_sig.output();
-    let res_type = {
-        let layout = this.layout_of(res_type)?;
-        this.ty_to_ffitype(layout)?
+    let closure_builder = try {
+        let mut closure_builder = libffi::middle::Builder::new();
+        for &input in fn_sig.inputs().iter() {
+            let layout = this.layout_of(input).map_err(|_| input)?;
+            let ty = this.ty_to_ffitype(layout)?;
+            closure_builder = closure_builder.arg(ty);
+        }
+        let res_type = fn_sig.output();
+        let res_type = {
+            let layout = this.layout_of(res_type).map_err(|_| res_type)?;
+            this.ty_to_ffitype(layout)?
+        };
+        closure_builder.res(res_type)
     };
+    let mut unsupported = false;
+    let closure_builder = closure_builder.unwrap_or_else(|_| {
+        unsupported = true;
+        // We hope that a closure which aborts execution is works correctly even if we don't
+        // set its signature.
+        libffi::middle::Builder::new()
+    });
 
     // Build the actual closure.
-    let closure_builder = libffi::middle::Builder::new().args(args).res(res_type);
     let data = LibffiClosureData {
         ecx_interchange: this.machine.native_lib_ecx_interchange,
+        unsupported,
         marker: PhantomData,
     };
     let data = Box::leak(Box::new(data));
@@ -486,7 +497,13 @@ unsafe extern "C" fn libffi_closure_callback<'tcx>(
             .as_mut()
             .expect("libffi closure called while no FFI call is active")
     };
-    let err = err_unsup_format!("calling a function pointer through the FFI boundary");
+    let err = if data.unsupported {
+        err_unsup_format!(
+            "calling a function pointer with unsupported argument/return type through the FFI boundary"
+        )
+    } else {
+        err_unsup_format!("calling a function pointer through the FFI boundary")
+    };
 
     crate::diagnostics::report_result(ecx, err.into());
     // We abort the execution at this point as we cannot return the
@@ -524,7 +541,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         for arg in args.iter() {
             libffi_args.push(this.op_to_ffi_arg(arg, tracing)?);
         }
-        let ret_ty = this.ty_to_ffitype(dest.layout)?;
+        let ret_ty = this
+            .ty_to_ffitype(dest.layout)
+            .map_err(|ty| err_unsup_format!("unsupported return type for native call: {ty}"))?;
 
         // Prepare all exposed memory (both previously exposed, and just newly exposed since a
         // pointer was passed as argument). Uninitialised memory is left as-is, but any data
