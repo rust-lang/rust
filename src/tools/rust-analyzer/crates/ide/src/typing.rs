@@ -76,11 +76,7 @@ pub(crate) fn on_char_typed(
         .copied()
         .unwrap_or_else(|| *db.all_crates().first().unwrap());
     let edition = krate.data(db).edition;
-    let editioned_file_id_wrapper = EditionedFileId::from_span(
-        db,
-        span::EditionedFileId::new(position.file_id, edition),
-        krate,
-    );
+    let editioned_file_id_wrapper = EditionedFileId::new(db, position.file_id, edition);
     let file = &db.parse(editioned_file_id_wrapper);
     let char_matches_position =
         file.tree().syntax().text().char_at(position.offset) == Some(char_typed);

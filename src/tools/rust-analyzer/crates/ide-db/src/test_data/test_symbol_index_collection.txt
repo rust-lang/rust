@@ -2,7 +2,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3800),
+                [salsa id]: Id(3400),
             },
         },
         [
@@ -671,7 +671,7 @@
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(3801),
+                            [salsa id]: Id(3401),
                         },
                     },
                 ),
@@ -706,7 +706,7 @@
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(3802),
+                            [salsa id]: Id(3402),
                         },
                     },
                 ),
@@ -998,7 +998,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3801),
+                [salsa id]: Id(3401),
             },
         },
         [
@@ -1044,7 +1044,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3802),
+                [salsa id]: Id(3402),
             },
         },
         [

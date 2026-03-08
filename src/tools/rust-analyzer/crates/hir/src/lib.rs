@@ -1091,7 +1091,7 @@ fn macro_call_diagnostics<'db>(
         let file_id = loc.kind.file_id();
         let mut range = precise_macro_call_location(&loc.kind, db, loc.krate);
         let RenderedExpandError { message, error, kind } = err.render_to_string(db);
-        if Some(err.span().anchor.file_id) == file_id.file_id().map(|it| it.editioned_file_id(db)) {
+        if Some(err.span().anchor.file_id) == file_id.file_id().map(|it| it.span_file_id(db)) {
             range.value = err.span().range
                 + db.ast_id_map(file_id).get_erased(err.span().anchor.ast_id).text_range().start();
         }

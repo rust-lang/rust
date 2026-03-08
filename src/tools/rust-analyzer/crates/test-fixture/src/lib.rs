@@ -149,8 +149,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
         let fixture = ChangeFixture::parse(ra_fixture);
         fixture.change.apply(&mut db);
         assert_eq!(fixture.files.len(), 1, "Multiple file found in the fixture");
-        let &krate = db.relevant_crates(fixture.files[0].file_id()).first().unwrap();
-        let file_id = EditionedFileId::from_span(&db, fixture.files[0], krate);
+        let file_id = EditionedFileId::from_span_file_id(&db, fixture.files[0]);
         (db, file_id)
     }
 
@@ -166,10 +165,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
         let files = fixture
             .files
             .into_iter()
-            .map(|file| {
-                let &krate = db.relevant_crates(file.file_id()).first().unwrap();
-                EditionedFileId::from_span(&db, file, krate)
-            })
+            .map(|file| EditionedFileId::from_span_file_id(&db, file))
             .collect();
         (db, files)
     }
@@ -226,8 +222,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
         let (file_id, range_or_offset) = fixture
             .file_position
             .expect("Could not find file position in fixture. Did you forget to add an `$0`?");
-        let &krate = db.relevant_crates(file_id.file_id()).first().unwrap();
-        let file_id = EditionedFileId::from_span(&db, file_id, krate);
+        let file_id = EditionedFileId::from_span_file_id(&db, file_id);
         (db, file_id, range_or_offset)
     }
 
