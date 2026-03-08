@@ -122,8 +122,13 @@ pub(crate) struct UnknownPassName<'a> {
 
 pub(crate) struct AssertLint<P> {
     pub span: Span,
-    pub assert_kind: AssertKind<P>,
+    pub message: AssertLintMessage<P>,
     pub lint_kind: AssertLintKind,
+}
+
+pub(crate) enum AssertLintMessage<P> {
+    AssertKind(AssertKind<P>),
+    Message(&'static str),
 }
 
 pub(crate) enum AssertLintKind {
@@ -145,7 +150,14 @@ impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
                 }
             },
         );
-        diag.span_label(self.span, self.assert_kind.to_string());
+        match self.message {
+            AssertLintMessage::AssertKind(assert_kind) => {
+                diag.span_label(self.span, assert_kind.to_string());
+            }
+            AssertLintMessage::Message(msg) => {
+                diag.span_label(self.span, msg);
+            }
+        }
         diag
     }
 }
