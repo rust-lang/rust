@@ -5,7 +5,9 @@ use rustc_abi::ExternAbi;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{NativeLibKind, PeImportNameType};
+use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
@@ -453,8 +455,15 @@ impl<'tcx> Collector<'tcx> {
             }
         }
 
-        let symbol_type = if self.tcx.def_kind(item).is_fn_like() {
+        let def_kind = self.tcx.def_kind(item);
+        let symbol_type = if def_kind.is_fn_like() {
             DllImportSymbolType::Function
+        } else if matches!(def_kind, DefKind::Static { .. }) {
+            if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                DllImportSymbolType::ThreadLocal
+            } else {
+                DllImportSymbolType::Static
+            }
         } else {
             bug!("Unexpected type for raw-dylib: {}", def_kind.descr(item));
         };
