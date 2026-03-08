@@ -1,0 +1,60 @@
+error[E0405]: cannot find trait `AutoTrait` in this scope
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:13:20
+   |
+LL | pub struct Bar<T: ?AutoTrait> {}
+   |                    ^^^^^^^^^ not found in this scope
+
+warning: unknown lint: `sized_hierarchy_migration`
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:6:10
+   |
+LL | #![allow(sized_hierarchy_migration)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:5:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0107]: missing generics for associated type `Foo::Bar`
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:17:27
+   |
+LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
+   |                           ^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `K`
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:10:10
+   |
+LL |     type Bar<K: std::marker::PointeeSized>;
+   |          ^^^ -
+help: add missing generic argument
+   |
+LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
+   |                              +++
+
+error[E0107]: missing generics for associated type `Foo::Bar`
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:17:27
+   |
+LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
+   |                           ^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `K`
+  --> $DIR/normalized-param-env-unconstrained-type-120033.rs:10:10
+   |
+LL |     type Bar<K: std::marker::PointeeSized>;
+   |          ^^^ -
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing generic argument
+   |
+LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
+   |                              +++
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0107, E0405.
+For more information about an error, try `rustc --explain E0107`.
