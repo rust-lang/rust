@@ -103,6 +103,8 @@ pub struct DllImport {
 #[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq)]
 pub enum DllImportSymbolType {
     Function,
+    Static,
+    ThreadLocal,
     Unknown,
 }
 

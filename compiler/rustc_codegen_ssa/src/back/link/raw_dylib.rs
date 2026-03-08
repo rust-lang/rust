@@ -401,6 +401,8 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     for (_name, dynstr, _ver, symbol_type) in syms.iter().copied() {
         let sym_type = match symbol_type {
             DllImportSymbolType::Function => elf::STT_FUNC,
+            DllImportSymbolType::Static => elf::STT_OBJECT,
+            DllImportSymbolType::ThreadLocal => elf::STT_TLS,
             DllImportSymbolType::Unknown => elf::STT_NOTYPE,
         };
         stub.write_dynamic_symbol(&write::Sym {
