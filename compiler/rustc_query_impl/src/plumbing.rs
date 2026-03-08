@@ -90,10 +90,6 @@ pub(crate) fn start_query<R>(
     })
 }
 
-pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
-    tcx.dep_graph.try_mark_green(tcx, dep_node).is_some()
-}
-
 /// The deferred part of a deferred query stack frame.
 fn mk_query_stack_frame_extra<'tcx, Cache>(
     (tcx, vtable, key): (TyCtxt<'tcx>, &'tcx QueryVTable<'tcx, Cache>, Cache::Key),
@@ -163,7 +159,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
 
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
-        if (query.will_cache_on_disk_for_key_fn)(tcx, key) {
+        if (query.will_cache_on_disk_for_key_fn)(tcx, *key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -219,7 +215,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
 
     // If the recovered key isn't eligible for cache-on-disk, then there's no
     // value on disk to promote.
-    if !(query.will_cache_on_disk_for_key_fn)(tcx, &key) {
+    if !(query.will_cache_on_disk_for_key_fn)(tcx, key) {
         return;
     }
 

@@ -8,6 +8,7 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
+use std::debug_assert_matches;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::Range;
@@ -15,7 +16,6 @@ use std::ops::Range;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::{debug, instrument, trace};
 
-use crate::debug_assert_matches;
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, NumEdges, Successors};

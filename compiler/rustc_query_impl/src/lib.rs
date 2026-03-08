@@ -20,7 +20,6 @@ use rustc_span::Span;
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 use crate::from_cycle_error::FromCycleError;
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
-use crate::plumbing::try_mark_green;
 use crate::profiling_support::QueryKeyStringCache;
 
 #[macro_use]
@@ -69,5 +68,4 @@ pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
     providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
     providers.hooks.encode_all_query_results = encode_all_query_results;
-    providers.hooks.try_mark_green = try_mark_green;
 }

@@ -1,6 +1,5 @@
-use std::fmt;
+use std::{assert_matches, fmt};
 
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;

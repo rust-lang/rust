@@ -22,8 +22,8 @@ use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 
 #[inline]
-fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
-    move |x| x.0 == *k
+fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
+    move |x| x.0 == k
 }
 
 /// Obtains the enclosed [`QueryJob`], or panics if this query evaluation
@@ -173,7 +173,7 @@ where
             // since unwinding also wants to look at this map, this can also prevent a double
             // panic.
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&key)) {
+            match shard.find_entry(key_hash, equivalent_key(key)) {
                 Err(_) => None,
                 Ok(occupied) => Some(occupied.remove().0.1),
             }
@@ -195,7 +195,7 @@ where
         let Self { state, key, key_hash } = *self;
         let job = {
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&key)) {
+            match shard.find_entry(key_hash, equivalent_key(key)) {
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
@@ -254,7 +254,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
                     // poisoned due to a panic instead.
                     let key_hash = sharded::make_hash(&key);
                     let shard = query.state.active.lock_shard_by_hash(key_hash);
-                    match shard.find(key_hash, equivalent_key(&key)) {
+                    match shard.find(key_hash, equivalent_key(key)) {
                         // The query we waited on panicked. Continue unwinding here.
                         Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
                         _ => panic!(
@@ -303,7 +303,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
     let current_job_id = current_query_job();
 
-    match state_lock.entry(key_hash, equivalent_key(&key), |(k, _)| sharded::make_hash(k)) {
+    match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
@@ -459,7 +459,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
                 tcx,
                 dep_graph_data,
                 query,
-                &key,
+                key,
                 dep_node,
                 prev_index,
                 dep_node_index,
@@ -507,7 +507,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
     query: &'tcx QueryVTable<'tcx, C>,
-    key: &C::Key,
+    key: C::Key,
     dep_node: &DepNode,
     prev_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
@@ -570,7 +570,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     // The dep-graph for this computation is already in-place.
     // Call the query provider.
-    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, *key));
+    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -615,7 +615,7 @@ struct EnsureCanSkip {
 fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    key: &C::Key,
+    key: C::Key,
     ensure_mode: EnsureMode,
 ) -> EnsureCanSkip {
     // Queries with `eval_always` should never skip execution.
@@ -626,10 +626,9 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = DepNode::construct(tcx, query.dep_kind, key);
+    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
-    let dep_graph = &tcx.dep_graph;
-    let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
+    let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -640,7 +639,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
+            tcx.dep_graph.read_index(dep_node_index);
             tcx.prof.query_cache_hit(dep_node_index.into());
             serialized_dep_node_index
         }
@@ -695,7 +694,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     let dep_node: Option<DepNode> = match mode {
         QueryMode::Ensure { ensure_mode } => {
             let EnsureCanSkip { skip_execution, dep_node } =
-                check_if_ensure_can_skip_execution(query, tcx, &key, ensure_mode);
+                check_if_ensure_can_skip_execution(query, tcx, key, ensure_mode);
             if skip_execution {
                 // Return early to skip execution.
                 return None;
