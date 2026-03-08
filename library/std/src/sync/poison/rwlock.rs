@@ -16,7 +16,7 @@ use crate::sys::sync as sys;
 ///
 /// In comparison, a [`Mutex`] does not distinguish between readers or writers
 /// that acquire the lock, therefore blocking any threads waiting for the lock to
-/// become available. An `RwLock` will allow any number of readers to acquire the
+/// become available. An `RwLock` will allow multiple readers to acquire the
 /// lock as long as a writer is not holding the lock.
 ///
 /// The priority policy of the lock is dependent on the underlying operating
