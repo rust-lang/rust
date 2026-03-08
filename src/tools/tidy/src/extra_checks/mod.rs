@@ -17,7 +17,7 @@
 //! 3. Print the output of the given command. If it fails and `TIDY_PRINT_DIFF`
 //!    is set, rerun the tool to print a suggestion diff (for e.g. CI)
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -113,6 +113,7 @@ pub fn check(
         .partition(|arg| arg.to_str().is_some_and(|s| s.starts_with('-')));
 
     if python_lint || python_fmt || cpp_fmt {
+        // Since python lint, format and cpp format share python env, we need to ensure python env is installed before running those checks.
         match py_prepare(root_path, outdir, &tidy_ctx) {
             Ok(p) => py_path = Some(p),
             Err(_) => return,
@@ -154,6 +155,7 @@ pub fn check(
     }
 
     if js_lint || js_typecheck {
+        // Since js lint and format share node env, we need to ensure node env is installed before running those checks.
         if js_prepare(root_path, outdir, npm, &tidy_ctx).is_err() {
             return;
         }
@@ -168,41 +170,46 @@ pub fn check(
     }
 }
 
-/// Since python lint, format and cpp format share python env, we need to ensure python env is installed before running those checks.
-fn py_prepare(root_path: &Path, outdir: &Path, tidy_ctx: &TidyCtx) -> Result<PathBuf, Error> {
+// It is used by prepare functions because they handle errors themselves, so the caller doesn't need to handle errors.
+struct ErrorGuaranteed(());
+
+fn py_prepare(
+    root_path: &Path,
+    outdir: &Path,
+    tidy_ctx: &TidyCtx,
+) -> Result<PathBuf, ErrorGuaranteed> {
     let mut check = tidy_ctx.start_check("extra_checks:py_prepare");
 
     let venv_path = outdir.join("venv");
     let mut reqs_path = root_path.to_owned();
     reqs_path.extend(PIP_REQ_PATH);
 
-    let res = get_or_create_venv(&venv_path, &reqs_path);
-    if let Err(e) = res {
-        check.error(e.to_string());
-        return Err(e);
+    match get_or_create_venv(&venv_path, &reqs_path) {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            check.error(e);
+            Err(ErrorGuaranteed(()))
+        }
     }
-
-    res
 }
 
-/// Since js lint and format share node env, we need to ensure node env is installed before running those checks.
 fn js_prepare(
     root_path: &Path,
     outdir: &Path,
     npm: &Path,
     tidy_ctx: &TidyCtx,
-) -> Result<(), Error> {
+) -> Result<(), ErrorGuaranteed> {
     let mut check = tidy_ctx.start_check("extra_checks:js_prepare");
 
     if let Err(e) = rustdoc_js::npm_install(root_path, outdir, npm) {
         check.error(e.to_string());
-        return Err(e);
+        return Err(ErrorGuaranteed(()));
     }
 
     Ok(())
 }
 
-fn rerun_with_bless(mode: &str, action: &str, bless: bool) {
+fn show_bless_help(mode: &str, action: &str, bless: bool) {
     if !bless {
         eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
     }
@@ -231,7 +238,7 @@ fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &Ti
     if let Err(e) =
         spellcheck_runner(root_path, &outdir, &cargo, &args, tidy_ctx.is_running_on_ci())
     {
-        rerun_with_bless("spellcheck", "fix typos", bless);
+        show_bless_help("spellcheck", "fix typos", bless);
         check.error(e);
     }
 }
@@ -248,7 +255,7 @@ fn check_js_lint(outdir: &Path, librustdoc_path: &Path, tools_path: &Path, tidy_
     }
 
     if let Err(e) = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless) {
-        rerun_with_bless("js:lint", "apply esplint suggestion", bless);
+        show_bless_help("js:lint", "apply esplint suggestion", bless);
         check.error(e);
         return;
     }
@@ -318,7 +325,7 @@ fn check_python_lint(
 
     let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
 
-    if res.is_err() && show_diff() && !bless {
+    if res.is_err() && !bless && show_diff() {
         eprintln!("\npython linting failed! Printing diff suggestions:");
 
         let diff_res = run_ruff(
@@ -331,7 +338,7 @@ fn check_python_lint(
         );
         // `ruff check --diff` will return status 0 if there are no suggestions.
         if diff_res.is_err() {
-            rerun_with_bless("py:lint", "apply ruff suggestions", bless);
+            show_bless_help("py:lint", "apply ruff suggestions", bless);
         }
     }
     if let Err(e) = res {
@@ -374,7 +381,7 @@ fn check_python_fmt(
                 &["format".as_ref(), "--diff".as_ref()],
             );
         }
-        rerun_with_bless("py:fmt", "reformat Python code", bless);
+        show_bless_help("py:fmt", "reformat Python code", bless);
     }
 
     if let Err(e) = res {
@@ -396,7 +403,8 @@ fn check_cpp_fmt(
     let mut cfg_args_clang_format = cfg_args.clone();
     let mut file_args_clang_format = file_args.clone();
     let config_path = root_path.join(".clang-format");
-    let config_file_arg = format!("file:{}", config_path.display());
+    let mut config_file_arg = OsString::from("file:");
+    config_file_arg.push(&config_path);
     cfg_args_clang_format.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
     if bless {
         eprintln!("formatting C++ files");
@@ -424,7 +432,7 @@ fn check_cpp_fmt(
     let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
     let res = py_runner(py_path, false, None, "clang-format", &args);
 
-    if res.is_err() && show_diff() && !bless {
+    if res.is_err() && !bless && show_diff() {
         eprintln!("\nclang-format linting failed! Printing diff suggestions:");
 
         let mut cfg_args_diff = cfg_args.clone();
@@ -455,7 +463,7 @@ fn check_cpp_fmt(
                 );
             }
         }
-        rerun_with_bless("cpp:fmt", "reformat C++ code", bless);
+        show_bless_help("cpp:fmt", "reformat C++ code", bless);
     }
 
     if let Err(e) = res {
