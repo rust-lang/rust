@@ -628,8 +628,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
 
     let dep_node = DepNode::construct(tcx, query.dep_kind, key);
 
-    let dep_graph = &tcx.dep_graph;
-    let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
+    let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -640,7 +639,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
+            tcx.dep_graph.read_index(dep_node_index);
             tcx.prof.query_cache_hit(dep_node_index.into());
             serialized_dep_node_index
         }

@@ -881,7 +881,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx>,
         dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        self.data().and_then(|data| data.try_mark_green(tcx, dep_node))
+        self.data()?.try_mark_green(tcx, dep_node)
     }
 }
 
