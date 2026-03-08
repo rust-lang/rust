@@ -1508,6 +1508,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
 
+    /// Represents `#[rustc_panics_when_n_is_zero]` (used for linting).
+    RustcPanicsWhenNIsZero,
+
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),
 
