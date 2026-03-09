@@ -38,7 +38,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -1493,10 +1492,6 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl FnOnce(StableHashingContext<'_>) -> R,
     ) -> R {
         f(StableHashingContext::new(self.sess, &self.untracked))
-    }
-
-    pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
-        self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
 
     #[inline]

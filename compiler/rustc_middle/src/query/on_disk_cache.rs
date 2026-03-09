@@ -202,20 +202,9 @@ impl OnDiskCache {
         }
     }
 
-    /// Execute all cache promotions and release the serialized backing Mmap.
-    ///
-    /// Cache promotions require invoking queries, which needs to read the serialized data.
-    /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
-    /// deleted, hence we won't be able to refer to its memmapped data.
-    pub fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
-        // Load everything into memory so we can write it out to the on-disk
-        // cache. The vast majority of cacheable query results should already
-        // be in memory, so this should be a cheap operation.
-        // Do this *before* we clone 'latest_foreign_def_path_hashes', since
-        // loading existing queries may cause us to create new DepNodes, which
-        // may in turn end up invoking `store_foreign_def_id_hash`
-        tcx.dep_graph.exec_cache_promotions(tcx);
-
+    /// Release the serialized backing `Mmap`.
+    pub fn close_serialized_data_mmap(&self) {
+        // Obtain a write lock, and replace the mmap with None to drop it.
         *self.serialized_data.write() = None;
     }
 

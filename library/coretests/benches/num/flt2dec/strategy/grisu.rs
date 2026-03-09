@@ -1,4 +1,4 @@
-use core::num::flt2dec::strategy::grisu::*;
+use core::num::imp::flt2dec::strategy::grisu::*;
 use std::mem::MaybeUninit;
 
 use super::super::*;
