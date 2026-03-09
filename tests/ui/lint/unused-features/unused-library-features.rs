@@ -5,8 +5,7 @@
 #![feature(step_trait)]
 //~^ ERROR feature `step_trait` is declared but not used
 #![feature(is_sorted)]
-//~^ ERROR feature `is_sorted` is declared but not used
-//~^^ WARN the feature `is_sorted` has been stable since 1.82.0 and no longer requires an attribute to enable
+//~^ WARN the feature `is_sorted` has been stable since 1.82.0 and no longer requires an attribute to enable
 
 // Enabled via cfg_attr, unused
 #![cfg_attr(all(), feature(slice_ptr_get))]
