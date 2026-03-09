@@ -1,7 +1,6 @@
 //@ run-pass
 //! Test that implicit deref patterns interact as expected with `Cow` constructor patterns.
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 use std::borrow::Cow;
 use std::rc::Rc;

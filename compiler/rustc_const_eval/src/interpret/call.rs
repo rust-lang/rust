@@ -12,7 +12,7 @@ use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
@@ -284,7 +284,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         'tcx: 'y,
     {
         assert_eq!(callee_ty, callee_abi.layout.ty);
-        if callee_abi.mode == PassMode::Ignore {
+        if callee_abi.is_ignore() {
             // This one is skipped. Still must be made live though!
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
@@ -450,7 +450,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let mut caller_args = args
                 .iter()
                 .zip(caller_fn_abi.args.iter())
-                .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
+                .filter(|arg_and_abi| !arg_and_abi.1.is_ignore());
 
             // Now we have to spread them out across the callee's locals,
             // taking into account the `spread_arg`. If we could write
@@ -480,7 +480,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     // Consume the remaining arguments by putting them into the variable argument
                     // list.
-                    let varargs = self.allocate_varargs(&mut caller_args, &mut callee_args_abis)?;
+                    let varargs = self.allocate_varargs(
+                        &mut caller_args,
+                        // "Ignored" arguments aren't actually passed, so the callee should also
+                        // ignore them. (`pass_argument` does this for regular arguments.)
+                        (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
+                    )?;
                     // When the frame is dropped, these variable arguments are deallocated.
                     self.frame_mut().va_list = varargs.clone();
                     let key = self.va_list_ptr(varargs.into());

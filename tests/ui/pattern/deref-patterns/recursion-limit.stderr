@@ -1,5 +1,5 @@
 error[E0055]: reached the recursion limit while auto-dereferencing `Cyclic`
-  --> $DIR/recursion-limit.rs:18:9
+  --> $DIR/recursion-limit.rs:17:9
    |
 LL |         () => {}
    |         ^^ deref recursion limit reached
@@ -7,13 +7,13 @@ LL |         () => {}
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`recursion_limit`)
 
 error[E0277]: the trait bound `Cyclic: DerefPure` is not satisfied
-  --> $DIR/recursion-limit.rs:18:9
+  --> $DIR/recursion-limit.rs:17:9
    |
 LL |         () => {}
    |         ^^ unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `DerefPure` is not implemented for `Cyclic`
-  --> $DIR/recursion-limit.rs:8:1
+  --> $DIR/recursion-limit.rs:7:1
    |
 LL | struct Cyclic;
    | ^^^^^^^^^^^^^

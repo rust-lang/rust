@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[Struct]`, a non-copy slice
-  --> $DIR/cant_move_out_of_pattern.rs:9:11
+  --> $DIR/cant_move_out_of_pattern.rs:8:11
    |
 LL |     match b {
    |           ^ cannot move out of here
@@ -16,7 +16,7 @@ LL |         deref!([ref x]) => x,
    |                 +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/cant_move_out_of_pattern.rs:17:11
+  --> $DIR/cant_move_out_of_pattern.rs:16:11
    |
 LL |     match rc {
    |           ^^
@@ -33,7 +33,7 @@ LL |         deref!(ref x) => x,
    |                +++
 
 error[E0508]: cannot move out of type `[Struct]`, a non-copy slice
-  --> $DIR/cant_move_out_of_pattern.rs:25:11
+  --> $DIR/cant_move_out_of_pattern.rs:24:11
    |
 LL |     match b {
    |           ^ cannot move out of here
@@ -50,7 +50,7 @@ LL |         [ref x] => x,
    |          +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/cant_move_out_of_pattern.rs:35:11
+  --> $DIR/cant_move_out_of_pattern.rs:34:11
    |
 LL |     match rc {
    |           ^^

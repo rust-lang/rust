@@ -6,8 +6,7 @@ The tracking issue for this feature is: [#87121]
 
 ------------------------
 
-> **Note**: This feature is incomplete. In the future, it is meant to supersede
-> [`box_patterns`].
+> **Note**: This feature supersedes [`box_patterns`].
 
 This feature permits pattern matching on [smart pointers in the standard library] through their
 `Deref` target types, either implicitly or with explicit `deref!(_)` patterns (the syntax of which
@@ -15,7 +14,6 @@ is currently a placeholder).
 
 ```rust
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 let mut v = vec![Box::new(Some(0))];
 
@@ -58,7 +56,6 @@ Like [`box_patterns`], deref patterns may move out of boxes:
 
 ```rust
 # #![feature(deref_patterns)]
-# #![allow(incomplete_features)]
 struct NoCopy;
 let deref!(x) = Box::new(NoCopy);
 drop::<NoCopy>(x);
@@ -69,7 +66,6 @@ allowing then to be used in deref patterns:
 
 ```rust
 # #![feature(deref_patterns)]
-# #![allow(incomplete_features)]
 match ("test".to_string(), Box::from("test"), b"test".to_vec()) {
     ("test", "test", b"test") => {}
     _ => panic!(),

@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `deref!(true)` not covered
-  --> $DIR/non-exhaustive.rs:7:11
+  --> $DIR/non-exhaustive.rs:6:11
    |
 LL |     match Box::new(false) {
    |           ^^^^^^^^^^^^^^^ pattern `deref!(true)` not covered
@@ -14,7 +14,7 @@ LL +         deref!(true) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `deref!(deref!(false))` not covered
-  --> $DIR/non-exhaustive.rs:12:11
+  --> $DIR/non-exhaustive.rs:11:11
    |
 LL |     match Box::new(Box::new(false)) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `deref!(deref!(false))` not covered
@@ -29,7 +29,7 @@ LL +         deref!(deref!(false)) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `deref!((true, deref!(true)))` and `deref!((false, deref!(false)))` not covered
-  --> $DIR/non-exhaustive.rs:17:11
+  --> $DIR/non-exhaustive.rs:16:11
    |
 LL |     match Box::new((true, Box::new(false))) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ patterns `deref!((true, deref!(true)))` and `deref!((false, deref!(false)))` not covered
@@ -44,7 +44,7 @@ LL +         deref!((true, deref!(true))) | deref!((false, deref!(false))) => to
    |
 
 error[E0004]: non-exhaustive patterns: `deref!((deref!(T::C), _))` not covered
-  --> $DIR/non-exhaustive.rs:24:11
+  --> $DIR/non-exhaustive.rs:23:11
    |
 LL |     match Box::new((Box::new(T::A), Box::new(T::A))) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `deref!((deref!(T::C), _))` not covered
