@@ -1,6 +1,9 @@
 use crate::sys::pal::{api, c};
 use crate::{io, ptr};
 
+#[cfg(test)]
+mod tests;
+
 pub fn errno() -> i32 {
     api::get_last_error().code as i32
 }
