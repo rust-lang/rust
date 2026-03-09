@@ -1,5 +1,5 @@
 error: cannot find macro `macro_two` in this scope
-  --> $DIR/empty-macro-use.rs:8:5
+  --> $DIR/macro-use-empty.rs:8:5
    |
 LL |     macro_two!();
    |     ^^^^^^^^^
@@ -10,7 +10,7 @@ LL + use two_macros::macro_two;
    |
 
 warning: unused attribute
-  --> $DIR/empty-macro-use.rs:3:12
+  --> $DIR/macro-use-empty.rs:3:12
    |
 LL | #[macro_use()]
    |            ^^ help: remove these parentheses

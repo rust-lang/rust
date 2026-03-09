@@ -5,5 +5,5 @@
 extern crate empty_struct;
 
 fn main() {
-    empty_struct::XEmpty1 {};
+    empty_struct::XEmpty {};
 }
