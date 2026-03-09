@@ -1012,6 +1012,13 @@ cc = ["@lcnr"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
 
+[mentions."compiler/rustc_parse"]
+message = """
+The parser was modified, potentially altering the grammar of (stable) Rust
+which would be a breaking change.
+"""
+cc = ["@fmease"]
+
 [mentions."library/core/src/mem/type_info.rs"]
 message = """
 The reflection data structures are tied exactly to the implementation
