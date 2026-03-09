@@ -15,5 +15,5 @@ extern "C" {
 
 fn main() {
     let pass_me = PassMe { value: 42, other_value: 1337 };
-    unsafe { pass_struct(pass_me) }; //~ ERROR: unsupported operation: passing a non-#[repr(C)] struct over FFI
+    unsafe { pass_struct(pass_me) }; //~ ERROR: unsupported operation: unsupported argument type for native call
 }
