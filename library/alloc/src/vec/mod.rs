@@ -898,6 +898,20 @@ impl<T> Vec<T> {
     where
         T: Freeze,
     {
+        // const_make_global requires the pointer to point to the beginning of a heap allocation,
+        // which is not the case when `self.capacity()` is 0, which is why we instead return a new slice.
+        if self.capacity() == 0 {
+            _ = ManuallyDrop::new(self);
+            return &[];
+        }
+
+        // if `T::IS_ZST`, the pointer we give to `const_make_global` would again not
+        // point to the start of a heap allocation
+        if T::IS_ZST {
+            let me = ManuallyDrop::new(self);
+            return unsafe { slice::from_raw_parts(NonNull::<T>::dangling().as_ptr(), me.len) };
+        }
+
         unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
         let me = ManuallyDrop::new(self);
         unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
