@@ -13,11 +13,12 @@ use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
+use rustc_span::symbol::used_keywords;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
-use super::diagnostics::{ConsumeClosingDelim, dummy_arg};
+use super::diagnostics::{ConsumeClosingDelim, dummy_arg, find_similar_kw};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
@@ -192,7 +193,16 @@ impl<'a> Parser<'a> {
 
             // At this point, we have failed to parse an item.
             if !matches!(vis.kind, VisibilityKind::Inherited) {
-                this.dcx().emit_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+                let mut err = this.dcx().create_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+                if let Some((ident, _)) = this.token.ident()
+                    && !ident.is_used_keyword()
+                {
+                    let all_keywords = used_keywords(|| ident.span.edition());
+                    if let Some(misspelled_kw) = find_similar_kw(ident, &all_keywords) {
+                        err.subdiagnostic(misspelled_kw);
+                    }
+                }
+                err.emit();
             }
 
             if let Defaultness::Default(span) = def {

@@ -216,7 +216,7 @@ impl std::fmt::Display for UnaryFixity {
 ///
 /// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
 /// candidate is found.
-fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw> {
+pub(super) fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw> {
     lookup.name.find_similar(candidates).map(|(similar_kw, is_incorrect_case)| MisspelledKw {
         similar_kw: similar_kw.to_string(),
         is_incorrect_case,

@@ -1,0 +1,24 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/pub-const-fn.rs:6:5
+   |
+LL |     pub contst fn octets(&self) -> [u8; 8] {
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+help: there is a keyword `const` with a similar name
+   |
+LL |     pub const fn octets(&self) -> [u8; 8] {
+   |         ~~~~~
+
+error: non-item in item list
+  --> $DIR/pub-const-fn.rs:6:9
+   |
+LL | impl Thing {
+   |            - item list starts here
+LL |     pub contst fn octets(&self) -> [u8; 8] {
+   |         ^^^^^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error: aborting due to 2 previous errors
