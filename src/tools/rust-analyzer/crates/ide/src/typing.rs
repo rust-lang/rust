@@ -70,12 +70,11 @@ pub(crate) fn on_char_typed(
     if !TRIGGER_CHARS.contains(&char_typed) {
         return None;
     }
-    let krate = db
+    let edition = db
         .relevant_crates(position.file_id)
         .first()
         .copied()
-        .unwrap_or_else(|| *db.all_crates().first().unwrap());
-    let edition = krate.data(db).edition;
+        .map_or(Edition::CURRENT, |krate| krate.data(db).edition);
     let editioned_file_id_wrapper = EditionedFileId::new(db, position.file_id, edition);
     let file = &db.parse(editioned_file_id_wrapper);
     let char_matches_position =
