@@ -3,8 +3,6 @@ CT_EXPERIMENTAL=y
 CT_PREFIX_DIR="/x-tools/${CT_TARGET}"
 CT_USE_MIRROR=y
 CT_MIRROR_BASE_URL="https://ci-mirrors.rust-lang.org/rustc"
-CT_PATCH_BUNDLED_LOCAL=y
-CT_LOCAL_PATCH_DIR="/tmp/patches"
 CT_ARCH_RISCV=y
 # CT_DEMULTILIB is not set
 CT_ARCH_USE_MMU=y
