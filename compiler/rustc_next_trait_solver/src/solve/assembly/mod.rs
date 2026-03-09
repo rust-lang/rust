@@ -1273,16 +1273,19 @@ where
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::Placeholder(p) = ty.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(()))
-            } else {
-                ControlFlow::Continue(())
+        match ty.kind() {
+            ty::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(()))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ty.super_visit_with(self)
-        } else {
-            ControlFlow::Continue(())
+            ty::Infer(_) => ControlFlow::Break(Ok(())),
+            _ if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER) => {
+                ty.super_visit_with(self)
+            }
+            _ => ControlFlow::Continue(()),
         }
     }
 
@@ -1292,16 +1295,19 @@ where
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::ConstKind::Placeholder(p) = ct.kind() {
-            if p.universe() == ty::UniverseIndex::ROOT {
-                ControlFlow::Break(Ok(()))
-            } else {
-                ControlFlow::Continue(())
+        match ct.kind() {
+            ty::ConstKind::Placeholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(()))
+                } else {
+                    ControlFlow::Continue(())
+                }
             }
-        } else if ct.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ct.super_visit_with(self)
-        } else {
-            ControlFlow::Continue(())
+            ty::ConstKind::Infer(_) => ControlFlow::Break(Ok(())),
+            _ if ct.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER) => {
+                ct.super_visit_with(self)
+            }
+            _ => ControlFlow::Continue(()),
         }
     }
 
