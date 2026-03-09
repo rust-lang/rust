@@ -9,6 +9,9 @@
 # x fmt --check
 # ```
 # (if that doesn't work -- do `x clean` first)
+#
+# NOTE: helix doesn't support getting workspace root in configs, for this config
+# to work replace WORKSPACE_ROOT with the path to your rustc checkout
 
 [language-server.rust-analyzer.config]
 linkedProjects = [
@@ -33,7 +36,7 @@ overrideCommand = [
 
 [language-server.rust-analyzer.config.rustfmt]
 overrideCommand = [
-    "build/host/rustfmt/bin/rustfmt",
+    "WORKSPACE_ROOT/build/host/rustfmt/bin/rustfmt",
     "--edition=2024"
 ]
 
@@ -64,7 +67,8 @@ overrideCommand = [
 ]
 
 [language-server.rust-analyzer.environment]
-RUSTUP_TOOLCHAIN = "nightly"
+RUSTC = "WORKSPACE_ROOT/build/host/stage0/bin/rustc"
+CARGO = "WORKSPACE_ROOT/build/host/stage0/bin/cargo"
 
 [[language]]
 name = "rust"
