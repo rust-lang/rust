@@ -357,15 +357,24 @@ fn check_unnecessary_transmute<'tcx>(
         _ => return,
     };
 
-    cx.tcx.node_span_lint(UNNECESSARY_TRANSMUTES, expr.hir_id, expr.span, |diag| {
-        diag.primary_message("unnecessary transmute");
-        if let Some(sugg) = sugg {
-            diag.multipart_suggestion("replace this with", sugg, Applicability::MachineApplicable);
-        }
-        if let Some(help) = help {
-            diag.help(help);
-        }
-    });
+    cx.tcx.emit_node_span_lint(
+        UNNECESSARY_TRANSMUTES,
+        expr.hir_id,
+        expr.span,
+        rustc_errors::DiagDecorator(|diag| {
+            diag.primary_message("unnecessary transmute");
+            if let Some(sugg) = sugg {
+                diag.multipart_suggestion(
+                    "replace this with",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+            if let Some(help) = help {
+                diag.help(help);
+            }
+        }),
+    );
 }
 
 #[derive(Diagnostic)]
