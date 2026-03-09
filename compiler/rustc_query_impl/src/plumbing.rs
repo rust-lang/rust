@@ -351,7 +351,7 @@ macro_rules! define_queries {
     ) => {
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
-            use ::rustc_middle::query::erase::{self, Erased};
+            use rustc_middle::query::erase::{self, Erased};
 
             // It seems to be important that every query has its own monomorphic
             // copy of `execute_query_incr` and `execute_query_non_incr`.
@@ -367,9 +367,9 @@ macro_rules! define_queries {
                 pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: queries::$name::Key<'tcx>,
+                    key: rustc_middle::queries::$name::Key<'tcx>,
                     mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<rustc_middle::queries::$name::Value<'tcx>>> {
                     #[cfg(debug_assertions)]
                     let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                     execution::execute_query_incr_inner(
@@ -389,9 +389,9 @@ macro_rules! define_queries {
                 pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: queries::$name::Key<'tcx>,
+                    key: rustc_middle::queries::$name::Key<'tcx>,
                     __mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<rustc_middle::queries::$name::Value<'tcx>>> {
                     Some(execution::execute_query_non_incr_inner(
                         &tcx.query_system.query_vtables.$name,
                         tcx,
@@ -408,7 +408,7 @@ macro_rules! define_queries {
             /// (after demangling) must be `__rust_begin_short_backtrace`.
             mod invoke_provider_fn {
                 use super::*;
-                use ::rustc_middle::queries::$name::{Key, Value, provided_to_erased};
+                use rustc_middle::queries::$name::{Key, Value, provided_to_erased};
 
                 #[inline(never)]
                 pub(crate) fn __rust_begin_short_backtrace<'tcx>(
@@ -441,7 +441,7 @@ macro_rules! define_queries {
             }
 
             pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
-                -> QueryVTable<'tcx, queries::$name::Cache<'tcx>>
+                -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
             {
                 QueryVTable {
                     name: stringify!($name),
@@ -470,11 +470,11 @@ macro_rules! define_queries {
                             return None;
                         }
 
-                        let value: queries::$name::ProvidedValue<'tcx> =
+                        let value: rustc_middle::queries::$name::ProvidedValue<'tcx> =
                             $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
 
                         // Arena-alloc the value if appropriate, and erase it.
-                        Some(queries::$name::provided_to_erased(tcx, value))
+                        Some(rustc_middle::queries::$name::provided_to_erased(tcx, value))
                     },
                     #[cfg(not($cache_on_disk))]
                     try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
@@ -494,13 +494,19 @@ macro_rules! define_queries {
                     #[cfg($no_hash)]
                     hash_value_fn: None,
                     #[cfg(not($no_hash))]
-                    hash_value_fn: Some(|hcx, erased_value: &erase::Erased<queries::$name::Value<'tcx>>| {
+                    hash_value_fn: Some(|
+                        hcx,
+                        erased_value: &erase::Erased<rustc_middle::queries::$name::Value<'tcx>>
+                    | {
                         let value = erase::restore_val(*erased_value);
                         rustc_middle::dep_graph::hash_result(hcx, &value)
                     }),
 
-                    format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
-                    description_fn: $crate::queries::_description_fns::$name,
+                    format_value: |value| format!(
+                        "{:?}",
+                        erase::restore_val::<rustc_middle::queries::$name::Value<'tcx>>(*value)
+                    ),
+                    description_fn: rustc_middle::queries::_description_fns::$name,
                     execute_query_fn: if incremental {
                         query_impl::$name::execute_query_incr::__rust_end_short_backtrace
                     } else {
@@ -522,8 +528,10 @@ macro_rules! define_queries {
             }
         })*}
 
-        pub fn make_query_vtables<'tcx>(incremental: bool) -> queries::QueryVTables<'tcx> {
-            queries::QueryVTables {
+        pub fn make_query_vtables<'tcx>(incremental: bool)
+            -> rustc_middle::queries::QueryVTables<'tcx>
+        {
+            rustc_middle::queries::QueryVTables {
                 $(
                     $name: query_impl::$name::make_query_vtable(incremental),
                 )*
