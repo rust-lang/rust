@@ -7,6 +7,7 @@
     clippy::double_parens
 )]
 #![warn(clippy::semicolon_inside_block)]
+#![feature(try_blocks)]
 
 macro_rules! m {
     (()) => {
@@ -105,4 +106,12 @@ fn issue15380() {
 pub fn issue15388() {
     #[rustfmt::skip]
     {0; 0};
+}
+
+fn issue_try_blocks() {
+    // try blocks should NOT trigger semicolon_inside_block:
+    // moving `;` inside changes the return type (e.g. `Option<i32>` -> `Option<()>`)
+    // which in turn changes the type constraints on `?` operators inside the block,
+    // causing type errors.
+    try { Some(1)? };
 }
