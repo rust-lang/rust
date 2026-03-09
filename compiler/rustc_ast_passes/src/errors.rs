@@ -1133,3 +1133,10 @@ pub(crate) struct ScalableVectorNotTupleStruct {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("scalable vectors are not supported on this architecture")]
+pub(crate) struct ScalableVectorBadArch {
+    #[primary_span]
+    pub span: Span,
+}

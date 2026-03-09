@@ -1,0 +1,8 @@
+error: scalable vectors are not supported on this architecture
+  --> $DIR/bad-architectures.rs:11:1
+   |
+LL | #[rustc_scalable_vector(4)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
