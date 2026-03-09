@@ -40,7 +40,7 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, TargetConfig};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -200,12 +200,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
         println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+    fn target_cpu(&self, sess: &Session) -> String {
+        // FIXME handle `-Ctarget-cpu=native`
+        match sess.opts.cg.target_cpu {
+            Some(ref name) => name,
+            None => sess.target.cpu.as_ref(),
+        }
+        .to_owned()
+    }
+
+    fn codegen_crate(&self, tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.get().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, config.jit_args.clone());
+            driver::jit::run_jit(tcx, _crate_info, config.jit_args.clone());
 
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -219,7 +228,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }
 }

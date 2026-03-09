@@ -1,11 +1,11 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
 
+use std::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
-use rustc_data_structures::assert_matches;
 use rustc_errors::msg;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
@@ -361,7 +361,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             ty::List::empty()
         };
-        let callee_fn_abi = self.fn_abi_of_instance(instance, extra_tys)?;
+        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_tys)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_custom!(
@@ -899,7 +899,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
             ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
         };
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+        let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
         let arg = self.mplace_to_ref(&place)?;
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);

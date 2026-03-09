@@ -168,7 +168,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if let Some(GlobalAlloc::Function { instance, .. }) =
                         this.tcx.try_get_global_alloc(alloc_id)
                     {
-                        let fn_sig = this.tcx.fn_sig(instance.def_id()).skip_binder().skip_binder();
+                        let fn_sig = this.tcx.instantiate_bound_regions_with_erased(
+                            this.tcx
+                                .fn_sig(instance.def_id())
+                                .instantiate(*this.tcx, instance.args),
+                        );
                         let fn_ptr = crate::shims::native_lib::build_libffi_closure(this, fn_sig)?;
 
                         #[expect(

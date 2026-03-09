@@ -4,9 +4,10 @@ use std::fmt::Write;
 use either::Either;
 use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    Subdiagnostic, msg,
+    Diag, DiagArgMap, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Subdiagnostic, format_diag_message, msg,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -359,14 +360,11 @@ pub struct FrameNote {
 
 impl Subdiagnostic for FrameNote {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.arg("times", self.times);
-        diag.arg("where_", self.where_);
-        diag.arg("instance", self.instance);
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));
         }
-        let msg = diag.eagerly_translate(msg!(
+        let msg = msg!(
             r#"{$times ->
                 [0] inside {$where_ ->
                     [closure] closure
@@ -379,10 +377,11 @@ impl Subdiagnostic for FrameNote {
                     *[other] {""}
                 } ...]
             }"#
-        ));
-        diag.remove_arg("times");
-        diag.remove_arg("where_");
-        diag.remove_arg("instance");
+        )
+        .arg("times", self.times)
+        .arg("where_", self.where_)
+        .arg("instance", self.instance)
+        .format();
         diag.span_note(span, msg);
     }
 }
@@ -534,7 +533,7 @@ pub enum NonConstClosureNote {
             *[other] {""}
         }s"#
     )]
-    FnPtr,
+    FnPtr { kind: ConstContext },
     #[note(
         r#"closures need an RFC before allowed to be called in {$kind ->
             [const] constant
@@ -543,7 +542,7 @@ pub enum NonConstClosureNote {
             *[other] {""}
         }s"#
     )]
-    Closure,
+    Closure { kind: ConstContext },
 }
 
 #[derive(Subdiagnostic)]
@@ -624,7 +623,7 @@ pub trait ReportErrorExt {
             let mut diag = dcx.struct_allow(DiagMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
             self.add_args(&mut diag);
-            let s = dcx.eagerly_translate_to_string(message, diag.args.iter());
+            let s = format_diag_message(&message, &diag.args).into_owned();
             diag.cancel();
             s
         })
@@ -1086,12 +1085,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
 
         let message = if let Some(path) = self.path {
-            err.dcx.eagerly_translate_to_string(
-                msg!("constructing invalid value at {$path}"),
-                [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
+            format_diag_message(
+                &msg!("constructing invalid value at {$path}"),
+                &DiagArgMap::from_iter([("path".into(), DiagArgValue::Str(path.into()))]),
             )
         } else {
-            err.dcx.eagerly_translate_to_string(msg!("constructing invalid value"), [].into_iter())
+            Cow::Borrowed("constructing invalid value")
         };
 
         err.arg("front_matter", message);
@@ -1117,12 +1116,13 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 msg!("in the range {$lo}..={$hi}")
             };
 
-            let args = [
-                ("lo".into(), DiagArgValue::Str(lo.to_string().into())),
-                ("hi".into(), DiagArgValue::Str(hi.to_string().into())),
-            ];
-            let args = args.iter().map(|(a, b)| (a, b));
-            let message = err.dcx.eagerly_translate_to_string(msg, args);
+            let message = format_diag_message(
+                &msg,
+                &DiagArgMap::from_iter([
+                    ("lo".into(), DiagArgValue::Str(lo.to_string().into())),
+                    ("hi".into(), DiagArgValue::Str(hi.to_string().into())),
+                ]),
+            );
             err.arg("in_range", message);
         }
 
@@ -1132,19 +1132,18 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             PointerAsInt { expected } | Uninit { expected } => {
                 let msg = match expected {
-                    ExpectedKind::Reference => msg!("expected a reference"),
-                    ExpectedKind::Box => msg!("expected a box"),
-                    ExpectedKind::RawPtr => msg!("expected a raw pointer"),
-                    ExpectedKind::InitScalar => msg!("expected initialized scalar value"),
-                    ExpectedKind::Bool => msg!("expected a boolean"),
-                    ExpectedKind::Char => msg!("expected a unicode scalar value"),
-                    ExpectedKind::Float => msg!("expected a floating point number"),
-                    ExpectedKind::Int => msg!("expected an integer"),
-                    ExpectedKind::FnPtr => msg!("expected a function pointer"),
-                    ExpectedKind::EnumTag => msg!("expected a valid enum tag"),
-                    ExpectedKind::Str => msg!("expected a string"),
+                    ExpectedKind::Reference => "expected a reference",
+                    ExpectedKind::Box => "expected a box",
+                    ExpectedKind::RawPtr => "expected a raw pointer",
+                    ExpectedKind::InitScalar => "expected initialized scalar value",
+                    ExpectedKind::Bool => "expected a boolean",
+                    ExpectedKind::Char => "expected a unicode scalar value",
+                    ExpectedKind::Float => "expected a floating point number",
+                    ExpectedKind::Int => "expected an integer",
+                    ExpectedKind::FnPtr => "expected a function pointer",
+                    ExpectedKind::EnumTag => "expected a valid enum tag",
+                    ExpectedKind::Str => "expected a string",
                 };
-                let msg = err.dcx.eagerly_translate_to_string(msg, [].into_iter());
                 err.arg("expected", msg);
             }
             InvalidEnumTag { value }

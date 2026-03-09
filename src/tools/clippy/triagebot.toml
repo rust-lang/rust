@@ -60,6 +60,31 @@ labels = ["S-waiting-on-concerns"]
 [view-all-comments-link]
 threshold = 20
 
+[notify-zulip."lint-nominated"]
+zulip_stream = 577190 # #clippy/fcp
+topic = "FCP rust-clippy#{number}: {title}"
+github_comment = """\
+This lint has been nominated for inclusion.
+
+[A FCP topic has been created on Zulip]({zulip_topic_url}).
+"""
+# Zulip polls may not be preceded by any other text and pings & short links inside
+# the title of a poll don't get recognized. Therefore we need to send two messages.
+message_on_add = [
+    """\
+PR rust-clippy#{number} "{title}" has been nominated for lint inclusion.
+""",
+    """\
+/poll Approve lint inclusion of rust-clippy#{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR rust-clippy#{number} lint nomination has been removed."
+message_on_close = "PR rust-clippy#{number} has been closed. Thanks for participating!"
+message_on_reopen = "PR rust-clippy#{number} has been reopened."
+
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [

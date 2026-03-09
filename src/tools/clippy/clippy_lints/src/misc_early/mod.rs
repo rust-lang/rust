@@ -16,6 +16,144 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Warns if a generic shadows a built-in type.
+    ///
+    /// ### Why is this bad?
+    /// This gives surprising type errors.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// impl<u32> Foo<u32> {
+    ///     fn impl_func(&self) -> u32 {
+    ///         42
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub BUILTIN_TYPE_SHADOW,
+    style,
+    "shadowing a builtin type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns on hexadecimal literals with mixed-case letter
+    /// digits.
+    ///
+    /// ### Why is this bad?
+    /// It looks confusing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let _ =
+    /// 0x1a9BAcD
+    /// # ;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let _ =
+    /// 0x1A9BACD
+    /// # ;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MIXED_CASE_HEX_LITERALS,
+    style,
+    "hex literals whose letter digits are not consistently upper- or lowercased"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `[all @ ..]` patterns.
+    ///
+    /// ### Why is this bad?
+    /// In all cases, `all` works fine and can often make code simpler, as you possibly won't need
+    /// to convert from say a `Vec` to a slice by dereferencing.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// if let [all @ ..] = &*v {
+    ///     // NOTE: Type is a slice here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// if let all = v {
+    ///     // NOTE: Type is a `Vec` here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// // or
+    /// println!("all elements: {v:#?}");
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub REDUNDANT_AT_REST_PATTERN,
+    complexity,
+    "checks for `[all @ ..]` where `all` would suffice"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for patterns in the form `name @ _`.
+    ///
+    /// ### Why is this bad?
+    /// It's almost always more readable to just use direct
+    /// bindings.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let v = Some("abc");
+    /// match v {
+    ///     Some(x) => (),
+    ///     y @ _ => (),
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let v = Some("abc");
+    /// match v {
+    ///     Some(x) => (),
+    ///     y => (),
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub REDUNDANT_PATTERN,
+    style,
+    "using `name @ _` in a pattern"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if literal suffixes are separated by an underscore.
+    /// To enforce separated literal suffix style,
+    /// see the `unseparated_literal_suffix` lint.
+    ///
+    /// ### Why restrict this?
+    /// Suffix style should be consistent.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let _ =
+    /// 123832i32
+    /// # ;
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub SEPARATED_LITERAL_SUFFIX,
+    restriction,
+    "literals whose suffix is separated by an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for structure field patterns bound to wildcards.
     ///
     /// ### Why restrict this?
@@ -59,29 +197,41 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns on hexadecimal literals with mixed-case letter
-    /// digits.
+    /// Checks for tuple patterns with a wildcard
+    /// pattern (`_`) is next to a rest pattern (`..`).
+    ///
+    /// _NOTE_: While `_, ..` means there is at least one element left, `..`
+    /// means there are 0 or more elements left. This can make a difference
+    /// when refactoring, but shouldn't result in errors in the refactored code,
+    /// since the wildcard pattern isn't used anyway.
     ///
     /// ### Why is this bad?
-    /// It looks confusing.
+    /// The wildcard pattern is unneeded as the rest pattern
+    /// can match that element as well.
     ///
     /// ### Example
     /// ```no_run
-    /// # let _ =
-    /// 0x1a9BAcD
-    /// # ;
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
+    /// match t {
+    ///     TupleStruct(0, .., _) => (),
+    ///     _ => (),
+    /// }
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # let _ =
-    /// 0x1A9BACD
-    /// # ;
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
+    /// match t {
+    ///     TupleStruct(0, ..) => (),
+    ///     _ => (),
+    /// }
     /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub MIXED_CASE_HEX_LITERALS,
-    style,
-    "hex literals whose letter digits are not consistently upper- or lowercased"
+    #[clippy::version = "1.40.0"]
+    pub UNNEEDED_WILDCARD_PATTERN,
+    complexity,
+    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
 }
 
 declare_clippy_lint! {
@@ -111,34 +261,6 @@ declare_clippy_lint! {
     pub UNSEPARATED_LITERAL_SUFFIX,
     restriction,
     "literals whose suffix is not separated by an underscore"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if literal suffixes are separated by an underscore.
-    /// To enforce separated literal suffix style,
-    /// see the `unseparated_literal_suffix` lint.
-    ///
-    /// ### Why restrict this?
-    /// Suffix style should be consistent.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let _ =
-    /// 123832_i32
-    /// # ;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let _ =
-    /// 123832i32
-    /// # ;
-    /// ```
-    #[clippy::version = "1.58.0"]
-    pub SEPARATED_LITERAL_SUFFIX,
-    restriction,
-    "literals whose suffix is separated by an underscore"
 }
 
 declare_clippy_lint! {
@@ -180,138 +302,16 @@ declare_clippy_lint! {
     "integer literals starting with `0`"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if a generic shadows a built-in type.
-    ///
-    /// ### Why is this bad?
-    /// This gives surprising type errors.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore
-    /// impl<u32> Foo<u32> {
-    ///     fn impl_func(&self) -> u32 {
-    ///         42
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub BUILTIN_TYPE_SHADOW,
-    style,
-    "shadowing a builtin type"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for patterns in the form `name @ _`.
-    ///
-    /// ### Why is this bad?
-    /// It's almost always more readable to just use direct
-    /// bindings.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let v = Some("abc");
-    /// match v {
-    ///     Some(x) => (),
-    ///     y @ _ => (),
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let v = Some("abc");
-    /// match v {
-    ///     Some(x) => (),
-    ///     y => (),
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub REDUNDANT_PATTERN,
-    style,
-    "using `name @ _` in a pattern"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for tuple patterns with a wildcard
-    /// pattern (`_`) is next to a rest pattern (`..`).
-    ///
-    /// _NOTE_: While `_, ..` means there is at least one element left, `..`
-    /// means there are 0 or more elements left. This can make a difference
-    /// when refactoring, but shouldn't result in errors in the refactored code,
-    /// since the wildcard pattern isn't used anyway.
-    ///
-    /// ### Why is this bad?
-    /// The wildcard pattern is unneeded as the rest pattern
-    /// can match that element as well.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # struct TupleStruct(u32, u32, u32);
-    /// # let t = TupleStruct(1, 2, 3);
-    /// match t {
-    ///     TupleStruct(0, .., _) => (),
-    ///     _ => (),
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # struct TupleStruct(u32, u32, u32);
-    /// # let t = TupleStruct(1, 2, 3);
-    /// match t {
-    ///     TupleStruct(0, ..) => (),
-    ///     _ => (),
-    /// }
-    /// ```
-    #[clippy::version = "1.40.0"]
-    pub UNNEEDED_WILDCARD_PATTERN,
-    complexity,
-    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `[all @ ..]` patterns.
-    ///
-    /// ### Why is this bad?
-    /// In all cases, `all` works fine and can often make code simpler, as you possibly won't need
-    /// to convert from say a `Vec` to a slice by dereferencing.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// if let [all @ ..] = &*v {
-    ///     // NOTE: Type is a slice here
-    ///     println!("all elements: {all:#?}");
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```rust,ignore
-    /// if let all = v {
-    ///     // NOTE: Type is a `Vec` here
-    ///     println!("all elements: {all:#?}");
-    /// }
-    /// // or
-    /// println!("all elements: {v:#?}");
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub REDUNDANT_AT_REST_PATTERN,
-    complexity,
-    "checks for `[all @ ..]` where `all` would suffice"
-}
-
 declare_lint_pass!(MiscEarlyLints => [
-    UNNEEDED_FIELD_PATTERN,
-    MIXED_CASE_HEX_LITERALS,
-    UNSEPARATED_LITERAL_SUFFIX,
-    SEPARATED_LITERAL_SUFFIX,
-    ZERO_PREFIXED_LITERAL,
     BUILTIN_TYPE_SHADOW,
-    REDUNDANT_PATTERN,
-    UNNEEDED_WILDCARD_PATTERN,
+    MIXED_CASE_HEX_LITERALS,
     REDUNDANT_AT_REST_PATTERN,
+    REDUNDANT_PATTERN,
+    SEPARATED_LITERAL_SUFFIX,
+    UNNEEDED_FIELD_PATTERN,
+    UNNEEDED_WILDCARD_PATTERN,
+    UNSEPARATED_LITERAL_SUFFIX,
+    ZERO_PREFIXED_LITERAL,
 ]);
 
 impl EarlyLintPass for MiscEarlyLints {

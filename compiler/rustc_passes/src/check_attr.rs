@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::slice;
 
-use rustc_abi::{Align, ExternAbi, Size};
+use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
@@ -184,14 +184,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
                 }
-                Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
-                    self.check_object_lifetime_default(hir_id);
+                Attribute::Parsed(AttributeKind::RustcDumpObjectLifetimeDefaults) => {
+                    self.check_dump_object_lifetime_defaults(hir_id);
                 }
                 &Attribute::Parsed(AttributeKind::RustcPubTransparent(attr_span)) => {
                     self.check_rustc_pub_transparent(attr_span, span, attrs)
                 }
-                Attribute::Parsed(AttributeKind::RustcAlign { align, span: attr_span }) => {
-                    self.check_align(*align, *attr_span)
+                Attribute::Parsed(AttributeKind::RustcAlign {..}) => {
+
                 }
                 Attribute::Parsed(AttributeKind::Naked(..)) => {
                     self.check_naked(hir_id, target)
@@ -319,9 +319,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpUserArgs
+                    | AttributeKind::RustcDumpVariances
+                    | AttributeKind::RustcDumpVariancesOfOpaques
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcEffectiveVisibility
@@ -355,7 +358,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
-                    | AttributeKind::RustcOutlives
                     | AttributeKind::RustcParenSugar(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
@@ -376,8 +378,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
-                    | AttributeKind::RustcVariance
-                    | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal
@@ -781,8 +781,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Debugging aid for `object_lifetime_default` query.
-    fn check_object_lifetime_default(&self, hir_id: HirId) {
+    /// Debugging aid for the `object_lifetime_default` query.
+    fn check_dump_object_lifetime_defaults(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(owner_id) = hir_id.as_owner()
             && let Some(generics) = tcx.hir_get_generics(owner_id.def_id)
@@ -796,7 +796,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
-                tcx.dcx().emit_err(errors::ObjectLifetimeErr { span: p.span, repr });
+                tcx.dcx().span_err(p.span, repr);
             }
         }
     }
@@ -1335,31 +1335,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
                 }
-                ReprAttr::ReprAlign(align) => {
-                    match target {
-                        Target::Struct | Target::Union | Target::Enum => {}
-                        Target::Fn | Target::Method(_) if self.tcx.features().fn_align() => {
-                            self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
-                                span: *repr_span,
-                                item: target.plural_name(),
-                            });
-                        }
-                        Target::Static if self.tcx.features().static_align() => {
-                            self.dcx().emit_err(errors::ReprAlignShouldBeAlignStatic {
-                                span: *repr_span,
-                                item: target.plural_name(),
-                            });
-                        }
-                        _ => {
-                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                                hint_span: *repr_span,
-                                span,
-                            });
-                        }
+                ReprAttr::ReprAlign(..) => match target {
+                    Target::Struct | Target::Union | Target::Enum => {}
+                    Target::Fn | Target::Method(_) if self.tcx.features().fn_align() => {
+                        self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
+                            span: *repr_span,
+                            item: target.plural_name(),
+                        });
                     }
-
-                    self.check_align(*align, *repr_span);
-                }
+                    Target::Static if self.tcx.features().static_align() => {
+                        self.dcx().emit_err(errors::ReprAlignShouldBeAlignStatic {
+                            span: *repr_span,
+                            item: target.plural_name(),
+                        });
+                    }
+                    _ => {
+                        self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                            hint_span: *repr_span,
+                            span,
+                        });
+                    }
+                },
                 ReprAttr::ReprPacked(_) => {
                     if target != Target::Struct && target != Target::Union {
                         self.dcx().emit_err(errors::AttrApplication::StructUnion {
@@ -1472,25 +1468,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
             );
-        }
-    }
-
-    fn check_align(&self, align: Align, span: Span) {
-        if align.bytes() > 2_u64.pow(29) {
-            // for values greater than 2^29, a different error will be emitted, make sure that happens
-            self.dcx().span_delayed_bug(
-                span,
-                "alignment greater than 2^29 should be errored on elsewhere",
-            );
-        } else {
-            // only do this check when <= 2^29 to prevent duplicate errors:
-            // alignment greater than 2^29 not supported
-            // alignment is too large for the current target
-
-            let max = Size::from_bits(self.tcx.sess.target.pointer_width).signed_int_max() as u64;
-            if align.bytes() > max {
-                self.dcx().emit_err(errors::InvalidReprAlignForTarget { span, size: max });
-            }
         }
     }
 
@@ -1621,7 +1598,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 sym::expect,
             ]) && let Some(meta) = attr.meta_item_list()
                 && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
+                    meta.meta_item().map_or(false, |item| {
+                        item.path == sym::linker_messages || item.path == sym::linker_info
+                    })
                 })
             {
                 if hir_id != CRATE_HIR_ID {

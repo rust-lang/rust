@@ -18,7 +18,8 @@
     internal_features,
     clippy::disallowed_types,
     clippy::print_stderr,
-    unused_crate_dependencies
+    unused_crate_dependencies,
+    unused_features
 )]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 

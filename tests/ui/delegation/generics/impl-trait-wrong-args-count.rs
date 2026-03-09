@@ -21,9 +21,10 @@ type XX = X::<'static, 'static, 'static, 'static, i32, i32, 3>;
 
 impl<'a, 'b, 'c, A, B, const N: usize> Trait<'a, 'b, 'c, A, B, N> for XX {
     reuse to_reuse::bar;
-    //~^ ERROR: type annotations needed
+    //~^ ERROR: function takes at most 2 generic arguments but 3 generic arguments were supplied
 
     reuse to_reuse::bar1;
+    //~^ ERROR: function takes 0 generic arguments but 3 generic arguments were supplied
 
     reuse to_reuse::bar2;
     //~^ ERROR: type annotations needed
@@ -32,6 +33,7 @@ impl<'a, 'b, 'c, A, B, const N: usize> Trait<'a, 'b, 'c, A, B, N> for XX {
     reuse to_reuse::bar2::<i32, i32, i32, i32, i32, i32, 123, true> as bar3;
 
     reuse to_reuse::bar2::<i32, i32, i32, i32, i32, i32, 123, true> as bar4;
+    //~^ ERROR: method `bar4` has 0 type parameters but its trait declaration has 3 type parameters
 }
 
 fn main() {

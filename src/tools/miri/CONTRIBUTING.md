@@ -189,6 +189,8 @@ you can visualize in [Perfetto](https://ui.perfetto.dev/). For example:
 MIRI_TRACING=1 ./miri run --features=tracing tests/pass/hello.rs
 ```
 
+See [doc/tracing.md](./doc/tracing.md) for more information.
+
 ### UI testing
 
 We use ui-testing in Miri, meaning we generate `.stderr` and `.stdout` files for the output

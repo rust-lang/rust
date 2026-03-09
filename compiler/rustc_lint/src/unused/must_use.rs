@@ -108,13 +108,6 @@ impl IsTyMustUse {
             _ => self,
         }
     }
-
-    fn yes(self) -> Option<MustUsePath> {
-        match self {
-            Self::Yes(must_use_path) => Some(must_use_path),
-            _ => None,
-        }
-    }
 }
 
 /// A path through a type to a `must_use` source. Contains useful info for the lint.
@@ -254,16 +247,23 @@ pub fn is_ty_must_use<'tcx>(
             // Default to `expr`.
             let elem_exprs = elem_exprs.iter().chain(iter::repeat(expr));
 
-            let nested_must_use = tys
-                .iter()
-                .zip(elem_exprs)
-                .enumerate()
-                .filter_map(|(i, (ty, expr))| {
-                    is_ty_must_use(cx, ty, expr, simplify_uninhabited).yes().map(|path| (i, path))
-                })
-                .collect::<Vec<_>>();
+            let mut all_trivial = true;
+            let mut nested_must_use = Vec::new();
 
-            if !nested_must_use.is_empty() {
+            tys.iter().zip(elem_exprs).enumerate().for_each(|(i, (ty, expr))| {
+                let must_use = is_ty_must_use(cx, ty, expr, simplify_uninhabited);
+
+                all_trivial &= matches!(must_use, IsTyMustUse::Trivial);
+                if let IsTyMustUse::Yes(path) = must_use {
+                    nested_must_use.push((i, path));
+                }
+            });
+
+            if all_trivial {
+                // If all tuple elements are trivial, mark the whole tuple as such.
+                // i.e. don't emit `unused_results` for types such as `((), ())`
+                IsTyMustUse::Trivial
+            } else if !nested_must_use.is_empty() {
                 IsTyMustUse::Yes(MustUsePath::TupleElement(nested_must_use))
             } else {
                 IsTyMustUse::No

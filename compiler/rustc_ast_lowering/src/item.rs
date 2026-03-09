@@ -27,7 +27,7 @@ use super::{
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'a mut ResolverAstLowering,
+    pub(super) resolver: &'a mut ResolverAstLowering<'hir>,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }
@@ -57,7 +57,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
@@ -512,6 +512,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 constness,
                 is_auto,
                 safety,
+                // FIXME(impl_restrictions): lower to HIR
+                impl_restriction: _,
                 ident,
                 generics,
                 bounds,

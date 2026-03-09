@@ -1,6 +1,8 @@
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -12,7 +14,6 @@ use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Ident, Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -461,6 +462,19 @@ declare_lint! {
 
 declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
+struct NonUpperCaseGlobalGenerator<'a, F: FnOnce() -> NonUpperCaseGlobal<'a>> {
+    callback: F,
+}
+
+impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a, ()>
+    for NonUpperCaseGlobalGenerator<'b, F>
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { callback } = self;
+        callback().into_diag(dcx, level)
+    }
+}
+
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, did: Option<LocalDefId>, ident: &Ident) {
         let name = ident.name.as_str();
@@ -517,7 +531,7 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
+            let callback = || {
                 // Compute usages lazily as it can expansive and useless when the lint is allowed.
                 // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
                 let usages = if can_change_usages
@@ -537,7 +551,12 @@ impl NonUpperCaseGlobals {
                 };
 
                 NonUpperCaseGlobal { sort, name, sub, usages }
-            });
+            };
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobalGenerator { callback },
+            );
         }
     }
 }

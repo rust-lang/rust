@@ -489,11 +489,7 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
                 }))
                 .collect();
 
-                diag.multipart_suggestion(
-                    "call `TyCtxt::get_diagnostic_name`, and reuse the results",
-                    sugg,
-                    app,
-                );
+                diag.multipart_suggestion("call `TyCtxt::get_diagnostic_name`, and reuse the results", sugg, app);
             },
         );
     }

@@ -31,8 +31,8 @@
 //! in the HIR, especially for multiple identifiers.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 use std::mem;
@@ -89,7 +89,16 @@ pub mod stability;
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a mut ResolverAstLowering,
+
+    // During lowering of delegation we need to access AST of other functions
+    // in order to properly propagate generics, we could have done it at resolve
+    // stage, however it will require either to firstly identify functions that
+    // are being reused and store their generics, or to store generics of all functions
+    // in resolver. This approach helps with those problems, as functions that are reused
+    // will be in AST index.
+    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+
+    resolver: &'a mut ResolverAstLowering<'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -123,7 +132,7 @@ struct LoweringContext<'a, 'hir> {
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
-    trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
+    trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
@@ -149,11 +158,16 @@ struct LoweringContext<'a, 'hir> {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
+    fn new(
+        tcx: TyCtxt<'hir>,
+        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+        resolver: &'a mut ResolverAstLowering<'hir>,
+    ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             // Pseudo-globals.
             tcx,
+            ast_index,
             resolver,
             disambiguator: DisambiguatorState::new(),
             arena: tcx.hir_arena,
@@ -233,7 +247,7 @@ impl SpanLowerer {
 }
 
 #[extension(trait ResolverAstLoweringExt)]
-impl ResolverAstLowering {
+impl ResolverAstLowering<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
@@ -733,8 +747,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
+        if let Some(&traits) = self.resolver.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, traits);
         }
 
         // Check whether the same `NodeId` is lowered more than once.

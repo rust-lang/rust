@@ -534,7 +534,7 @@ trigger_files = [
 [autolabel."A-translation"]
 trigger_files = [
     "compiler/rustc_error_messages",
-    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_errors/src/formatting.rs",
     "compiler/rustc_macros/src/diagnostics"
 ]
 
@@ -1075,7 +1075,7 @@ gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
-[mentions."library/core/src/num/{dec2flt,flt2dec}"]
+[mentions."library/core/src/num/imp/{dec2flt,flt2dec}"]
 message = "Some changes occurred in float parsing"
 cc = ["@tgross35"]
 
@@ -1180,8 +1180,8 @@ cc = ["@Muscraft"]
 message = "`rustc_errors::emitter` was changed"
 cc = ["@Muscraft"]
 
-[mentions."compiler/rustc_errors/src/translation.rs"]
-message = "`rustc_errors::translation` was changed"
+[mentions."compiler/rustc_errors/src/formatting.rs"]
+message = "`rustc_errors::formatting` was changed"
 cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
@@ -1371,7 +1371,7 @@ cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
-cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
+cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
@@ -1620,6 +1620,7 @@ dep-bumps = [
 "/src/tools/rustdoc" =                                   ["rustdoc"]
 "/src/tools/rustdoc-js" =                                ["rustdoc"]
 "/src/tools/rustdoc-themes" =                            ["rustdoc"]
+"/src/tools/rustfmt" =                                   ["rustfmt", "rustfmt-contributors"]
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap"]

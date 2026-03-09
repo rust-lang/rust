@@ -64,26 +64,46 @@ fn verify_variables_used(msg_span: Span, message_str: &str, variant: Option<&Var
 
 fn variable_references<'a>(msg: &fluent_syntax::ast::Message<&'a str>) -> Vec<&'a str> {
     let mut refs = vec![];
+
     if let Some(Pattern { elements }) = &msg.value {
         for elt in elements {
-            if let PatternElement::Placeable {
-                expression: Expression::Inline(InlineExpression::VariableReference { id }),
-            } = elt
-            {
-                refs.push(id.name);
-            }
+            traverse_pattern(elt, &mut refs);
         }
     }
     for attr in &msg.attributes {
         for elt in &attr.value.elements {
-            if let PatternElement::Placeable {
-                expression: Expression::Inline(InlineExpression::VariableReference { id }),
-            } = elt
-            {
-                refs.push(id.name);
+            traverse_pattern(elt, &mut refs);
+        }
+    }
+
+    fn traverse_pattern<'a>(elem: &PatternElement<&'a str>, refs: &mut Vec<&'a str>) {
+        match elem {
+            PatternElement::TextElement { .. } => {}
+            PatternElement::Placeable { expression } => traverse_expression(expression, refs),
+        }
+    }
+    fn traverse_expression<'a>(expr: &Expression<&'a str>, refs: &mut Vec<&'a str>) {
+        match expr {
+            Expression::Select { selector, variants } => {
+                traverse_inline_expr(selector, refs);
+                for variant in variants {
+                    for pattern in &variant.value.elements {
+                        traverse_pattern(pattern, refs);
+                    }
+                }
+            }
+            Expression::Inline(expr) => {
+                traverse_inline_expr(expr, refs);
             }
         }
     }
+    fn traverse_inline_expr<'a>(elem: &InlineExpression<&'a str>, refs: &mut Vec<&'a str>) {
+        match elem {
+            InlineExpression::VariableReference { id } => refs.push(id.name),
+            _ => {}
+        }
+    }
+
     refs
 }
 

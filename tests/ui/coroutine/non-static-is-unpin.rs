@@ -3,7 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ run-pass
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines)]
 #![allow(dropping_copy_types)]
 
 use std::marker::PhantomPinned;

@@ -35,6 +35,10 @@ fn main() {
         //~^ ERROR invalid register `rsp`: the stack pointer cannot be used as an operand
         asm!("", in("ip") foo);
         //~^ ERROR invalid register `ip`: the instruction pointer cannot be used as an operand
+        asm!("", in("bl") foo);
+        //~^ ERROR cannot use register `bl`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
+        asm!("", in("bh") foo);
+        //~^ ERROR cannot use register `bh`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
 
         asm!("", in("st(2)") foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output

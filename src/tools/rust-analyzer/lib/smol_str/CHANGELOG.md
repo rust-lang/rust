@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.6 - 2026-03-04
+- Fix the `borsh` feature.
+
 ## 0.3.5 - 2026-01-08
 - Optimise `SmolStr::clone` 4-5x speedup inline, 0.5x heap (slow down).
 

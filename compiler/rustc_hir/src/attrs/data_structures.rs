@@ -1366,14 +1366,26 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
+    /// Represents `#[rustc_dump_inferred_outlives]`
+    RustcDumpInferredOutlives,
+
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
+
+    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
+    RustcDumpObjectLifetimeDefaults,
 
     /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
 
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
+
+    /// Represents `#[rustc_dump_variances]`
+    RustcDumpVariances,
+
+    /// Represents `#[rustc_dump_variances_of_opaques]`
+    RustcDumpVariancesOfOpaques,
 
     /// Represents `#[rustc_dump_vtable]`
     RustcDumpVtable(Span),
@@ -1493,14 +1505,8 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[rustc_object_lifetime_default]`.
-    RustcObjectLifetimeDefault,
-
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
-
-    /// Represents `#[rustc_outlives]`
-    RustcOutlives,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),
@@ -1573,12 +1579,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),
-
-    /// Represents `#[rustc_variance]`
-    RustcVariance,
-
-    /// Represents `#[rustc_variance_of_opaques]`
-    RustcVarianceOfOpaques,
 
     /// Represents `#[sanitize]`
     ///

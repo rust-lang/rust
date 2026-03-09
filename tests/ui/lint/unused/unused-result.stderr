@@ -1,5 +1,5 @@
 error: unused `MustUse` that must be used
-  --> $DIR/unused-result.rs:21:5
+  --> $DIR/unused-result.rs:25:5
    |
 LL |     foo::<MustUse>();
    |     ^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     let _ = foo::<MustUse>();
    |     +++++++
 
 error: unused `MustUseMsg` that must be used
-  --> $DIR/unused-result.rs:22:5
+  --> $DIR/unused-result.rs:26:5
    |
 LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     let _ = foo::<MustUseMsg>();
    |     +++++++
 
 error: unused result of type `isize`
-  --> $DIR/unused-result.rs:34:5
+  --> $DIR/unused-result.rs:38:5
    |
 LL |     foo::<isize>();
    |     ^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | #![deny(unused_results, unused_must_use)]
    |         ^^^^^^^^^^^^^^
 
 error: unused `MustUse` that must be used
-  --> $DIR/unused-result.rs:35:5
+  --> $DIR/unused-result.rs:39:5
    |
 LL |     foo::<MustUse>();
    |     ^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL |     let _ = foo::<MustUse>();
    |     +++++++
 
 error: unused `MustUseMsg` that must be used
-  --> $DIR/unused-result.rs:36:5
+  --> $DIR/unused-result.rs:40:5
    |
 LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -61,5 +61,17 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = foo::<MustUseMsg>();
    |     +++++++
 
-error: aborting due to 5 previous errors
+error: unused result of type `((), i32)`
+  --> $DIR/unused-result.rs:55:5
+   |
+LL |     ((), 1);
+   |     ^^^^^^^^
+
+error: unused result of type `(i32, ())`
+  --> $DIR/unused-result.rs:56:5
+   |
+LL |     (1, ());
+   |     ^^^^^^^^
+
+error: aborting due to 7 previous errors
 

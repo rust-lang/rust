@@ -58,6 +58,7 @@ declare_clippy_lint! {
     restriction,
     "checks for functions that are only used once"
 }
+
 impl_lint_pass!(SingleCallFn => [SINGLE_CALL_FN]);
 
 #[derive(Debug, Clone)]

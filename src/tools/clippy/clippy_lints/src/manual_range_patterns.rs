@@ -35,6 +35,7 @@ declare_clippy_lint! {
     complexity,
     "manually writing range patterns using a combined OR pattern (`|`)"
 }
+
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
 fn expr_as_i128(expr: &PatExpr<'_>) -> Option<i128> {

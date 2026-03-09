@@ -285,7 +285,11 @@ pub(crate) fn create_config(
         crate_check_cfg: check_cfgs,
         input,
         output_file: None,
-        output_dir: None,
+        output_dir: if render_options.output_to_stdout {
+            None
+        } else {
+            Some(render_options.output.clone())
+        },
         file_loader: None,
         lint_caps,
         psess_created: None,
@@ -347,7 +351,7 @@ pub(crate) fn run_global_ctxt(
     // (see `override_queries` in the `config`)
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
-    let _ = tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
+    tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
 
     tcx.dcx().abort_if_errors();
 

@@ -1,5 +1,5 @@
-use core::num::bignum::Big32x40 as Big;
-use core::num::flt2dec::strategy::dragon::*;
+use core::num::imp::bignum::Big32x40 as Big;
+use core::num::imp::flt2dec::strategy::dragon::*;
 
 use super::super::*;
 

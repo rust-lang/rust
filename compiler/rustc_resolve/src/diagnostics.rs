@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use std::ops::ControlFlow;
 
 use itertools::Itertools as _;
@@ -136,7 +137,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            let diag = self.ambiguity_diagnostic(ambiguity_error);
+            let mut diag = self.ambiguity_diagnostic(ambiguity_error);
 
             if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
@@ -152,6 +153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 self.lint_buffer.buffer_lint(lint, node_id, diag.ident.span, diag);
             } else {
+                diag.is_error = true;
                 self.dcx().emit_err(diag);
             }
         }
@@ -578,6 +580,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         errs::GenericParamsFromOuterItemInnerItem {
                             span: *span,
                             descr: kind.descr().to_string(),
+                            is_self,
                         }
                     }),
                 };
@@ -2093,6 +2096,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             b1_help_msgs,
             b2_note,
             b2_help_msgs,
+            is_error: false,
         }
     }
 
@@ -2976,7 +2980,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             corrections.push((import.span, format!("{module_name}::{import_snippet}")));
         } else {
             // Find the binding span (and any trailing commas and spaces).
-            //   ie. `use a::b::{c, d, e};`
+            //   i.e. `use a::b::{c, d, e};`
             //                      ^^^
             let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
                 self.tcx.sess,
@@ -2988,11 +2992,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut removal_span = binding_span;
 
             // If the binding span ended with a closing brace, as in the below example:
-            //   ie. `use a::b::{c, d};`
+            //   i.e. `use a::b::{c, d};`
             //                      ^
             // Then expand the span of characters to remove to include the previous
             // binding's trailing comma.
-            //   ie. `use a::b::{c, d};`
+            //   i.e. `use a::b::{c, d};`
             //                    ^^^
             if found_closing_brace
                 && let Some(previous_span) =
@@ -3008,7 +3012,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             // Find the span after the crate name and if it has nested imports immediately
             // after the crate name already.
-            //   ie. `use a::b::{c, d};`
+            //   i.e. `use a::b::{c, d};`
             //               ^^^^^^^^^
             //   or  `use a::{b, c, d}};`
             //               ^^^^^^^^^^^
@@ -3172,16 +3176,16 @@ fn find_span_of_binding_until_next_binding(
     let source_map = sess.source_map();
 
     // Find the span of everything after the binding.
-    //   ie. `a, e};` or `a};`
+    //   i.e. `a, e};` or `a};`
     let binding_until_end = binding_span.with_hi(use_span.hi());
 
     // Find everything after the binding but not including the binding.
-    //   ie. `, e};` or `};`
+    //   i.e. `, e};` or `};`
     let after_binding_until_end = binding_until_end.with_lo(binding_span.hi());
 
     // Keep characters in the span until we encounter something that isn't a comma or
     // whitespace.
-    //   ie. `, ` or ``.
+    //   i.e. `, ` or ``.
     //
     // Also note whether a closing brace character was encountered. If there
     // was, then later go backwards to remove any trailing commas that are left.
@@ -3195,7 +3199,7 @@ fn find_span_of_binding_until_next_binding(
         });
 
     // Combine the two spans.
-    //   ie. `a, ` or `a`.
+    //   i.e. `a, ` or `a`.
     //
     // Removing these would leave `issue_52891::{d, e};` or `issue_52891::{d, e, };`
     let span = binding_span.with_hi(after_binding_until_next_binding.hi());
@@ -3219,7 +3223,7 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
     let source_map = sess.source_map();
 
     // `prev_source` will contain all of the source that came before the span.
-    // Then split based on a command and take the first (ie. closest to our span)
+    // Then split based on a command and take the first (i.e. closest to our span)
     // snippet. In the example, this is a space.
     let prev_source = source_map.span_to_prev_source(binding_span).ok()?;
 

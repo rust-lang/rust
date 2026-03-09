@@ -1,7 +1,7 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
 
-use std::ffi::{CStr, CString, VaList, c_char, c_double, c_int, c_long, c_longlong};
+use core::ffi::{CStr, VaList, c_char, c_double, c_int, c_long, c_longlong};
 
 macro_rules! continue_if {
     ($cond:expr) => {
@@ -11,12 +11,8 @@ macro_rules! continue_if {
     };
 }
 
-unsafe fn compare_c_str(ptr: *const c_char, val: &str) -> bool {
-    let cstr0 = CStr::from_ptr(ptr);
-    match CString::new(val) {
-        Ok(cstr1) => &*cstr1 == cstr0,
-        Err(_) => false,
-    }
+unsafe fn compare_c_str(ptr: *const c_char, val: &CStr) -> bool {
+    val == CStr::from_ptr(ptr)
 }
 
 #[unsafe(no_mangle)]
@@ -35,42 +31,42 @@ pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == ';' as c_int);
     continue_if!(ap.arg::<c_int>() == 0x32);
     continue_if!(ap.arg::<c_int>() == 0x10000001);
-    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Valid!"));
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Valid!"));
     0
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
-    continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
+    continue_if!(ap.arg::<c_double>() == 3.14f64);
     continue_if!(ap.arg::<c_long>() == 12);
     continue_if!(ap.arg::<c_int>() == 'a' as c_int);
-    continue_if!(ap.arg::<c_double>().floor() == 6.18f64.floor());
-    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello"));
+    continue_if!(ap.arg::<c_double>() == 6.28f64);
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Hello"));
     continue_if!(ap.arg::<c_int>() == 42);
-    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "World"));
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"World"));
     0
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
-    continue_if!(ap.arg::<c_double>().floor() == 6.28f64.floor());
+    continue_if!(ap.arg::<c_double>() == 6.28f64);
     continue_if!(ap.arg::<c_int>() == 16);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
-    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Skip Me!"));
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Skip Me!"));
     let mut ap = ap.clone();
-    if compare_c_str(ap.arg::<*const c_char>(), "Correct") { 0 } else { 0xff }
+    if compare_c_str(ap.arg::<*const c_char>(), c"Correct") { 0 } else { 0xff }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_0(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_int>() == 42);
-    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello, World!"));
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Hello, World!"));
     0
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
-    continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
+    continue_if!(ap.arg::<c_double>() == 3.14f64);
     continue_if!(ap.arg::<c_long>() == 12);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(ap.arg::<c_longlong>() == 1);

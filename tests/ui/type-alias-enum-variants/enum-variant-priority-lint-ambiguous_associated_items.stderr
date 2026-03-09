@@ -4,8 +4,6 @@ error: ambiguous associated item
 LL |     fn f() -> Self::V { 0 }
    |               ^^^^^^^ help: use fully-qualified syntax: `<E as Tr>::V`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
 note: `V` could refer to the variant defined here
   --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:22:5
    |
@@ -16,6 +14,8 @@ note: `V` could also refer to the associated type defined here
    |
 LL |     type V;
    |     ^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
    = note: `#[deny(ambiguous_associated_items)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 1 previous error

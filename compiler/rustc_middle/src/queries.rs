@@ -32,7 +32,6 @@
 //! - `arena_cache`: Use an arena for in-memory caching of the query result.
 //! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
 //!   true. The query key identifier is available for use within the block, as is `tcx`.
-//! - `cycle_fatal`: If a dependency cycle is detected, abort compilation with a fatal error.
 //! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
 //! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
 //! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
@@ -41,9 +40,6 @@
 //! - `depth_limit`: Impose a recursion depth limit on the query to prevent stack overflows.
 //! - `separate_provide_extern`: Use separate provider functions for local and external crates.
 //! - `feedable`: Allow the query result to be set from another query ("fed" externally).
-//! - `return_result_from_ensure_ok`: When called via `tcx.ensure_ok()`, return `Result<(), ErrorGuaranteed>` instead of `()`.
-//!   If the query needs to be executed and returns an error, the error is returned to the caller.
-//!   Only valid for queries returning `Result<_, ErrorGuaranteed>`.
 //!
 //! For the up-to-date list, see the `QueryModifiers` struct in
 //! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
@@ -70,8 +66,10 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_abi as abi;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -80,6 +78,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
@@ -100,7 +99,6 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -149,11 +147,11 @@ use crate::{dep_graph, mir, thir};
 // which memoizes and does dep-graph tracking, wrapping around the actual
 // `Providers` that the driver creates (using several `rustc_*` crates).
 //
-// The result type of each query must implement `Clone`, and additionally
-// `ty::query::values::Value`, which produces an appropriate placeholder
-// (error) value if the query resulted in a query cycle.
-// Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise an fatal error on query cycles instead.
+// The result type of each query must implement `Clone`. Additionally
+// `ty::query::from_cycle_error::FromCycleError` can be implemented which produces an appropriate
+// placeholder (error) value if the query resulted in a query cycle.
+// Queries without a `FromCycleError` implementation will raise a fatal error on query
+// cycles instead.
 rustc_queries! {
     /// Caches the expansion of a derive proc macro, e.g. `#[derive(Serialize)]`.
     /// The key is:
@@ -200,7 +198,7 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
@@ -456,7 +454,6 @@ rustc_queries! {
     /// the result of this query for use in UI tests or for debugging purposes.
     query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { "computing predicates of `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
     }
 
     query opaque_types_defined_by(
@@ -587,24 +584,28 @@ rustc_queries! {
     }
 
     query is_panic_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_panic_runtime" }
         separate_provide_extern
     }
 
     /// Checks whether a type is representable or infinitely sized
-    query representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
-        // infinitely sized types will cause a cycle
+        // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
+        // `Representability` will print a custom error about the infinite size and then abort
+        // compilation. (In the past we recovered and continued, but in practice that leads to
+        // confusing subsequent error messages about cycles that then abort.)
         cycle_delay_bug
-        // we don't want recursive representability calls to be forced with
+        // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
-        // entire cycle to be in memory for diagnostics
+        // entire cycle to be in memory for diagnostics. This means we can't
+        // use `ensure_ok()` with this query.
         anon
     }
 
-    /// An implementation detail for the `representability` query
-    query representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    /// An implementation detail for the `check_representability` query. See that query for more
+    /// details, particularly on the modifiers.
+    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
         desc { "checking if `{}` is representable", key }
         cycle_delay_bug
         anon
@@ -713,7 +714,6 @@ rustc_queries! {
 
     query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Used in case `mir_borrowck` fails to prove an obligation. We generally assume that
@@ -838,8 +838,8 @@ rustc_queries! {
     ///
     /// E.g., for `struct Foo<'a, T> { x: &'a T }`, this would return `[T: 'a]`.
     ///
-    /// **Tip**: You can use `#[rustc_outlives]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_inferred_outlives]` on an item to basically
+    /// print the result of this query for use in UI tests or for debugging purposes.
     query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
         desc { "computing inferred outlives-predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -1046,8 +1046,8 @@ rustc_queries! {
     /// The list of variances corresponds to the list of (early-bound) generic
     /// parameters of the item (including its parents).
     ///
-    /// **Tip**: You can use `#[rustc_variance]` on an item to basically print the
-    /// result of this query for use in UI tests or for debugging purposes.
+    /// **Tip**: You can use `#[rustc_dump_variances]` on an item to basically print
+    /// the result of this query for use in UI tests or for debugging purposes.
     query variances_of(def_id: DefId) -> &'tcx [ty::Variance] {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
@@ -1161,9 +1161,8 @@ rustc_queries! {
     }
 
     /// Checks well-formedness of tail calls (`become f()`).
-    query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+    query check_tail_calls(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "tail-call-checking `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Returns the types assumed to be well formed while "inside" of the given item.
@@ -1235,7 +1234,6 @@ rustc_queries! {
 
     query check_type_wf(key: ()) -> Result<(), ErrorGuaranteed> {
         desc { "checking that types are well-formed" }
-        return_result_from_ensure_ok
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
@@ -1243,7 +1241,6 @@ rustc_queries! {
         desc { "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
-        return_result_from_ensure_ok
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
@@ -1258,7 +1255,6 @@ rustc_queries! {
 
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
-        return_result_from_ensure_ok
     }
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
@@ -1290,7 +1286,6 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_validity_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for inherent impls that should not be defined in crate" }
-        return_result_from_ensure_ok
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
@@ -1302,7 +1297,6 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
-        return_result_from_ensure_ok
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1312,13 +1306,11 @@ rustc_queries! {
             "checking whether impl `{}` follows the orphan rules",
             tcx.def_path_str(key),
         }
-        return_result_from_ensure_ok
     }
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
     query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
-        cycle_fatal
         arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",
@@ -1329,7 +1321,6 @@ rustc_queries! {
 
     /// Obtain all the calls into other local functions
     query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
-        cycle_fatal
         desc {
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
@@ -1419,9 +1410,8 @@ rustc_queries! {
         desc { "converting literal to const" }
     }
 
-    query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+    query check_match(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "match-checking `{}`", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     /// Performs part of the privacy check and computes effective visibilities.
@@ -1650,7 +1640,6 @@ rustc_queries! {
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
-        return_result_from_ensure_ok
     }
     query dyn_compatibility_violations(trait_id: DefId) -> &'tcx [DynCompatibilityViolation] {
         desc { "determining dyn-compatibility of trait `{}`", tcx.def_path_str(trait_id) }
@@ -1801,12 +1790,38 @@ rustc_queries! {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI might not include all possible
+    /// codegen optimization attributes (such as `ReadOnly` or `CapturesNone`), as deducing these
+    /// requires inspection of function bodies that can lead to cycles when performed during typeck.
+    /// Post typeck, you should prefer the optimized ABI returned by `TyCtxt::fn_abi_of_instance`.
     ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
-    query fn_abi_of_instance(
+    /// NB: the ABI returned by this query must not differ from that returned by
+    ///     `fn_abi_of_instance_raw` in any other way.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    query fn_abi_of_instance_no_deduced_attrs(
+        key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+        desc { "computing unadjusted call ABI of `{}`", key.value.0 }
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI will include applicable
+    /// codegen optimization attributes, including `ReadOnly` and `CapturesNone` -- deduction of
+    /// which requires inspection of function bodies that can lead to cycles when performed during
+    /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
+    /// `fn_abi_of_instance_no_deduced_attrs`.
+    ///
+    /// For performance reasons, you should prefer to call the inherent `TyCtxt::fn_abi_of_instance`
+    /// method rather than invoke this query: it delegates to this query if necessary, but where
+    /// possible delegates instead to the `fn_abi_of_instance_no_deduced_attrs` query (thus avoiding
+    /// unnecessary query system overhead).
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    query fn_abi_of_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
     ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
@@ -1824,31 +1839,26 @@ rustc_queries! {
     }
 
     query is_compiler_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate is_compiler_builtins" }
         separate_provide_extern
     }
     query has_global_allocator(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
     query has_alloc_error_handler(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
-        cycle_fatal
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
     }
     query has_panic_handler(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if the crate has_panic_handler" }
         separate_provide_extern
     }
     query is_profiler_runtime(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "checking if a crate is `#![profiler_runtime]`" }
         separate_provide_extern
     }
@@ -1857,22 +1867,18 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
     query required_panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
-        cycle_fatal
         desc { "getting a crate's required panic strategy" }
         separate_provide_extern
     }
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
-        cycle_fatal
         desc { "getting a crate's configured panic-in-drop strategy" }
         separate_provide_extern
     }
     query is_no_builtins(_: CrateNum) -> bool {
-        cycle_fatal
         desc { "getting whether a crate has `#![no_builtins]`" }
         separate_provide_extern
     }
     query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
-        cycle_fatal
         desc { "getting a crate's symbol mangling version" }
         separate_provide_extern
     }
@@ -1892,7 +1898,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
+        -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
         desc { "getting traits in scope at a block" }
     }
 
@@ -1912,12 +1918,10 @@ rustc_queries! {
 
     query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking that `{}` is well-formed", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     query enforce_impl_non_lifetime_params_are_constrained(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking that `{}`'s generics are constrained by the impl header", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     // The `DefId`s of all non-generic functions and statics in the given crate
@@ -2119,7 +2123,7 @@ rustc_queries! {
     /// Returns the *default lifetime* to be used if a trait object type were to be passed for
     /// the type parameter given by `DefId`.
     ///
-    /// **Tip**: You can use `#[rustc_object_lifetime_default]` on an item to basically
+    /// **Tip**: You can use `#[rustc_dump_object_lifetime_defaults]` on an item to basically
     /// print the result of this query for use in UI tests or for debugging purposes.
     ///
     /// # Examples
@@ -2387,7 +2391,7 @@ rustc_queries! {
     ///   sets of different crates do not intersect.
     query exported_non_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         desc { "collecting exported non-generic symbols for crate `{}`", cnum}
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 
@@ -2400,7 +2404,7 @@ rustc_queries! {
     ///   sets of different crates do not intersect.
     query exported_generic_symbols(cnum: CrateNum) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         desc { "collecting exported generic symbols for crate `{}`", cnum}
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 
@@ -2679,7 +2683,6 @@ rustc_queries! {
     /// Any other def id will ICE.
     query compare_impl_item(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "checking assoc item `{}` is compatible with trait definition", tcx.def_path_str(key) }
-        return_result_from_ensure_ok
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [DeducedParamAttrs] {
@@ -2768,9 +2771,26 @@ rustc_queries! {
     query externally_implementable_items(cnum: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
         arena_cache
         desc { "looking up the externally implementable items of a crate" }
-        cache_on_disk_if { *cnum == LOCAL_CRATE }
+        cache_on_disk_if { cnum == LOCAL_CRATE }
         separate_provide_extern
     }
+
+    //-----------------------------------------------------------------------------
+    // "Non-queries" are special dep kinds that are not queries.
+    //-----------------------------------------------------------------------------
+
+    /// We use this for most things when incr. comp. is turned off.
+    non_query Null
+    /// We use this to create a forever-red node.
+    non_query Red
+    /// We use this to create a side effect node.
+    non_query SideEffect
+    /// We use this to create the anon node with zero dependencies.
+    non_query AnonZeroDeps
+    non_query TraitSelect
+    non_query CompileCodegenUnit
+    non_query CompileMonoItem
+    non_query Metadata
 }
 
 rustc_with_all_queries! { define_callbacks! }

@@ -19,15 +19,15 @@ mod dyn_trait;
 pub mod errors;
 pub mod generics;
 
-use std::slice;
+use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -321,7 +321,7 @@ pub enum IsMethodCall {
 
 /// Denotes the "position" of a generic argument, indicating if it is a generic type,
 /// generic function or generic method call.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum GenericArgPosition {
     Type,
     Value, // e.g., functions
@@ -556,7 +556,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            def_id,
+            &[],
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
@@ -598,13 +605,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn lower_generic_args_of_path(
+    pub(crate) fn lower_generic_args_of_path(
         &self,
         span: Span,
         def_id: DefId,
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
+        pos: GenericArgPosition,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -627,14 +635,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assert!(self_ty.is_none());
         }
 
-        let arg_count = check_generic_arg_count(
-            self,
-            def_id,
-            segment,
-            generics,
-            GenericArgPosition::Type,
-            self_ty.is_some(),
-        );
+        let arg_count =
+            check_generic_arg_count(self, def_id, segment, generics, pos, self_ty.is_some());
 
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
@@ -797,6 +799,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             infer_args: segment.infer_args,
             incorrect_args: &arg_count.correct,
         };
+
         let args = lower_generic_args(
             self,
             def_id,
@@ -818,8 +821,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) =
-            self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            item_def_id,
+            parent_args,
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
@@ -931,6 +940,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             segment,
             Some(self_ty),
+            GenericArgPosition::Type,
         );
 
         let constraints = segment.args().constraints;
@@ -1106,8 +1116,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ty::TraitRef<'tcx> {
         self.report_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) =
-            self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
+        let (generic_args, _) = self.lower_generic_args_of_path(
+            span,
+            trait_def_id,
+            &[],
+            trait_segment,
+            Some(self_ty),
+            GenericArgPosition::Type,
+        );
         if let Some(c) = trait_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
         }
@@ -1465,6 +1481,54 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         mode: LowerTypeRelativePathMode,
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
+        struct AmbiguousAssocItem<'tcx> {
+            variant_def_id: DefId,
+            item_def_id: DefId,
+            span: Span,
+            segment_ident: Ident,
+            bound_def_id: DefId,
+            self_ty: Ty<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            mode: LowerTypeRelativePathMode,
+        }
+
+        impl<'a, 'tcx> Diagnostic<'a, ()> for AmbiguousAssocItem<'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self {
+                    variant_def_id,
+                    item_def_id,
+                    span,
+                    segment_ident,
+                    bound_def_id,
+                    self_ty,
+                    tcx,
+                    mode,
+                } = self;
+                let mut lint = Diag::new(dcx, level, "ambiguous associated item");
+
+                let mut could_refer_to = |kind: DefKind, def_id, also| {
+                    let note_msg = format!(
+                        "`{}` could{} refer to the {} defined here",
+                        segment_ident,
+                        also,
+                        tcx.def_kind_descr(kind, def_id)
+                    );
+                    lint.span_note(tcx.def_span(def_id), note_msg);
+                };
+
+                could_refer_to(DefKind::Variant, variant_def_id, "");
+                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
+
+                lint.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),
+                    Applicability::MachineApplicable,
+                );
+                lint
+            }
+        }
+
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
 
@@ -1540,33 +1604,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let (item_def_id, args) = self.lower_assoc_item_path(span, item_def_id, segment, bound)?;
 
         if let Some(variant_def_id) = variant_def_id {
-            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, qpath_hir_id, span, |lint| {
-                lint.primary_message("ambiguous associated item");
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        segment.ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
-
-                lint.span_suggestion(
+            tcx.emit_node_span_lint(
+                AMBIGUOUS_ASSOCIATED_ITEMS,
+                qpath_hir_id,
+                span,
+                AmbiguousAssocItem {
+                    variant_def_id,
+                    item_def_id,
                     span,
-                    "use fully-qualified syntax",
-                    format!(
-                        "<{} as {}>::{}",
-                        self_ty,
-                        tcx.item_name(bound.def_id()),
-                        segment.ident
-                    ),
-                    Applicability::MachineApplicable,
-                );
-            });
+                    segment_ident: segment.ident,
+                    bound_def_id: bound.def_id(),
+                    self_ty,
+                    tcx,
+                    mode,
+                },
+            );
         }
 
         Ok(TypeRelativePath::AssocItem(item_def_id, args))
@@ -2400,11 +2452,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let ty::Array(elem_ty, _) = ty.kind() else {
-            let e = tcx
-                .dcx()
-                .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
-            return Const::new_error(tcx, e);
+        let elem_ty = match ty.kind() {
+            ty::Array(elem_ty, _) => elem_ty,
+            ty::Error(e) => return Const::new_error(tcx, *e),
+            _ => {
+                let e = tcx
+                    .dcx()
+                    .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
+                return Const::new_error(tcx, e);
+            }
         };
 
         let elems = array_expr
@@ -2523,9 +2579,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let ty::Tuple(tys) = ty.kind() else {
-            let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
-            return Const::new_error(tcx, e);
+        let tys = match ty.kind() {
+            ty::Tuple(tys) => tys,
+            ty::Error(e) => return Const::new_error(tcx, *e),
+            _ => {
+                let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
+                return Const::new_error(tcx, e);
+            }
         };
 
         let exprs = exprs
@@ -2892,11 +2952,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
+    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind<'tcx>) -> Ty<'tcx> {
         let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
+
         match idx {
             hir::InferDelegationKind::Input(idx) => delegation_sig[idx],
-            hir::InferDelegationKind::Output => *delegation_sig.last().unwrap(),
+            hir::InferDelegationKind::Output { .. } => *delegation_sig.last().unwrap(),
         }
     }
 

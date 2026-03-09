@@ -169,7 +169,7 @@ warning: zero-sized fields in `repr(transparent)` cannot contain `repr(C)` types
 LL | pub struct TransparentCustomZst(i32, ZeroSize);
    |                                      ^^^^^^^^
    |
+   = note: this field contains `ZeroSize`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-   = note: this field contains `ZeroSize`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.
 

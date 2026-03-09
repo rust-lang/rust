@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{Diag, FatalError, StashKey};
+use rustc_errors::{FatalError, StashKey};
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -22,8 +22,8 @@ use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 
 #[inline]
-fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
-    move |x| x.0 == *k
+fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
+    move |x| x.0 == k
 }
 
 /// Obtains the enclosed [`QueryJob`], or panics if this query evaluation
@@ -126,28 +126,14 @@ fn mk_cycle<'tcx, C: QueryCache>(
     cycle_error: CycleError,
 ) -> C::Value {
     let error = report_cycle(tcx.sess, &cycle_error);
-    handle_cycle_error(query, tcx, &cycle_error, error)
-}
-
-fn handle_cycle_error<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    cycle_error: &CycleError,
-    error: Diag<'_>,
-) -> C::Value {
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
-        }
-        CycleErrorHandling::Fatal => {
-            error.emit();
-            tcx.dcx().abort_if_errors();
-            unreachable!()
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
         CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -157,7 +143,7 @@ fn handle_cycle_error<'tcx, C: QueryCache>(
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
     }
 }
@@ -187,7 +173,7 @@ where
             // since unwinding also wants to look at this map, this can also prevent a double
             // panic.
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&key)) {
+            match shard.find_entry(key_hash, equivalent_key(key)) {
                 Err(_) => None,
                 Ok(occupied) => Some(occupied.remove().0.1),
             }
@@ -209,7 +195,7 @@ where
         let Self { state, key, key_hash } = *self;
         let job = {
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&key)) {
+            match shard.find_entry(key_hash, equivalent_key(key)) {
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
@@ -238,7 +224,7 @@ fn cycle_error<'tcx, C: QueryCache>(
         .ok()
         .expect("failed to collect active queries");
 
-    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(tcx), span);
+    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
     (mk_cycle(query, tcx, error.lift()), None)
 }
 
@@ -268,7 +254,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
                     // poisoned due to a panic instead.
                     let key_hash = sharded::make_hash(&key);
                     let shard = query.state.active.lock_shard_by_hash(key_hash);
-                    match shard.find(key_hash, equivalent_key(&key)) {
+                    match shard.find(key_hash, equivalent_key(key)) {
                         // The query we waited on panicked. Continue unwinding here.
                         Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
                         _ => panic!(
@@ -315,9 +301,9 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
         }
     }
 
-    let current_job_id = current_query_job(tcx);
+    let current_job_id = current_query_job();
 
-    match state_lock.entry(key_hash, equivalent_key(&key), |(k, _)| sharded::make_hash(k)) {
+    match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
@@ -340,15 +326,15 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        return wait_for_query(query, tcx, span, key, latch, current_job_id);
+                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                    } else {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        cycle_error(query, tcx, id, span)
                     }
-
-                    let id = job.id;
-                    drop(state_lock);
-
-                    // If we are single-threaded we know that we have cycle error,
-                    // so we just return the error.
-                    cycle_error(query, tcx, id, span)
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
@@ -430,27 +416,20 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 ) -> (C::Value, DepNodeIndex) {
     debug_assert!(!tcx.dep_graph.is_fully_enabled());
 
-    // Fingerprint the key, just to assert that it doesn't
-    // have anything we don't consider hashable
-    if cfg!(debug_assertions) {
-        let _ = key.to_fingerprint(tcx);
-    }
-
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
-    let value =
-        start_query(tcx, job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
+    let value = start_query(job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
     let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    // Similarly, fingerprint the result to assert that
-    // it doesn't have anything not considered hashable.
-    if cfg!(debug_assertions)
-        && let Some(hash_value_fn) = query.hash_value_fn
-    {
-        tcx.with_stable_hashing_context(|mut hcx| {
-            hash_value_fn(&mut hcx, &value);
-        });
+    // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
+    if cfg!(debug_assertions) {
+        let _ = key.to_fingerprint(tcx);
+        if let Some(hash_value_fn) = query.hash_value_fn {
+            tcx.with_stable_hashing_context(|mut hcx| {
+                hash_value_fn(&mut hcx, &value);
+            });
+        }
     }
 
     (value, dep_node_index)
@@ -469,17 +448,18 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
     if !query.anon && !query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.get_or_insert_with(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = start_query(tcx, job_id, false, || try {
+        if let Some(ret) = start_query(job_id, false, || try {
             let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, dep_node)?;
             let value = load_from_disk_or_invoke_provider_green(
                 tcx,
                 dep_graph_data,
                 query,
-                &key,
+                key,
                 dep_node,
                 prev_index,
                 dep_node_index,
@@ -492,7 +472,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 
     let prof_timer = tcx.prof.query_provider();
 
-    let (result, dep_node_index) = start_query(tcx, job_id, query.depth_limit, || {
+    let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
         if query.anon {
             // Call the query provider inside an anon task.
             return dep_graph_data.with_anon_task_inner(tcx, query.dep_kind, || {
@@ -501,7 +481,8 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         }
 
         // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.unwrap_or_else(|| query.construct_dep_node(tcx, &key));
+        let dep_node =
+            dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
 
         // Call the query provider.
         dep_graph_data.with_task(
@@ -526,7 +507,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
     query: &'tcx QueryVTable<'tcx, C>,
-    key: &C::Key,
+    key: C::Key,
     dep_node: &DepNode,
     prev_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
@@ -538,7 +519,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(value) = query.try_load_from_disk(tcx, key, prev_index, dep_node_index) {
+    if let Some(value) = (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
         if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
             dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
@@ -571,7 +552,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // We always expect to find a cached result for things that
     // can be forced from `DepNode`.
     debug_assert!(
-        !query.will_cache_on_disk_for_key(tcx, key)
+        !(query.will_cache_on_disk_for_key_fn)(tcx, key)
             || !tcx.key_fingerprint_style(dep_node.kind).is_maybe_recoverable(),
         "missing on-disk cache entry for {dep_node:?}"
     );
@@ -579,7 +560,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.is_loadable_from_disk(tcx, key, prev_index),
+        !(query.is_loadable_from_disk_fn)(tcx, key, prev_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -589,7 +570,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     // The dep-graph for this computation is already in-place.
     // Call the query provider.
-    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, *key));
+    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -634,7 +615,7 @@ struct EnsureCanSkip {
 fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    key: &C::Key,
+    key: C::Key,
     ensure_mode: EnsureMode,
 ) -> EnsureCanSkip {
     // Queries with `eval_always` should never skip execution.
@@ -645,10 +626,9 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.construct_dep_node(tcx, key);
+    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
-    let dep_graph = &tcx.dep_graph;
-    let serialized_dep_node_index = match dep_graph.try_mark_green(tcx, &dep_node) {
+    let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -659,7 +639,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
+            tcx.dep_graph.read_index(dep_node_index);
             tcx.prof.query_cache_hit(dep_node_index.into());
             serialized_dep_node_index
         }
@@ -676,7 +656,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // In ensure-done mode, we can only skip execution for this key if
             // there's a disk-cached value available to load later if needed,
             // which guarantees the query provider will never run for this key.
-            let is_loadable = query.is_loadable_from_disk(tcx, key, serialized_dep_node_index);
+            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
             EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
         }
     }
@@ -714,7 +694,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     let dep_node: Option<DepNode> = match mode {
         QueryMode::Ensure { ensure_mode } => {
             let EnsureCanSkip { skip_execution, dep_node } =
-                check_if_ensure_can_skip_execution(query, tcx, &key, ensure_mode);
+                check_if_ensure_can_skip_execution(query, tcx, key, ensure_mode);
             if skip_execution {
                 // Return early to skip execution.
                 return None;

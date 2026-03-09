@@ -1,12 +1,11 @@
 // ignore-tidy-filelength
 
 use std::borrow::Cow;
-use std::iter;
 use std::path::PathBuf;
+use std::{debug_assert_matches, iter};
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
@@ -3883,7 +3882,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.span_note(assoc_span, msg);
             }
             ObligationCauseCode::TrivialBound => {
-                err.help("see issue #48214");
                 tcx.disabled_nightly_features(err, [(String::new(), sym::trivial_bounds)]);
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {

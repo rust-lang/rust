@@ -1,4 +1,7 @@
 // Tests output of multiple permutations of `Option::or`
+//@ revisions: LITTLE BIG
+//@ [BIG] only-endian-big
+//@ [LITTLE] ignore-endian-big
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 
 #![crate_type = "lib"]
@@ -70,8 +73,16 @@ pub fn if_some_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
 #[no_mangle]
 pub fn or_match_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // LITTLE-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
+    // LITTLE-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[OPT_A:%.+]] = lshr i16 %0, 8
+    // BIG-NEXT: [[SOME_A:%.+]] = trunc i16 [[OPT_A]] to i1
+    // BIG-NEXT: [[OPT_B:%.+]] = lshr i16 %1, 8
+    // BIG-NEXT: [[A_OR_B:%.+]] = select i1 [[SOME_A]], i16 [[OPT_A]], i16 [[OPT_B]]
+    // BIG-NEXT: [[AGGREGATE:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[R_LOWER:%.+]] = and i16 [[AGGREGATE]], 255
+    // BIG-NEXT: [[R_UPPER:%.+]] = shl nuw i16 [[A_OR_B]], 8
+    // BIG-NEXT: [[R:%.+]] = or disjoint i16 [[R_UPPER]], [[R_LOWER]]
     // CHECK: ret i16 [[R]]
     match opta {
         Some(x) => Some(x),
@@ -84,8 +95,16 @@ pub fn or_match_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option
 #[no_mangle]
 pub fn or_match_slice_alt_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // LITTLE-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
+    // LITTLE-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[OPT_A:%.+]] = lshr i16 %0, 8
+    // BIG-NEXT: [[SOME_A:%.+]] = trunc i16 [[OPT_A]] to i1
+    // BIG-NEXT: [[OPT_B:%.+]] = lshr i16 %1, 8
+    // BIG-NEXT: [[A_OR_B:%.+]] = select i1 [[SOME_A]], i16 [[OPT_A]], i16 [[OPT_B]]
+    // BIG-NEXT: [[AGGREGATE:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[R_LOWER:%.+]] = and i16 [[AGGREGATE]], 255
+    // BIG-NEXT: [[R_UPPER:%.+]] = shl nuw i16 [[A_OR_B]], 8
+    // BIG-NEXT: [[R:%.+]] = or disjoint i16 [[R_UPPER]], [[R_LOWER]]
     // CHECK: ret i16 [[R]]
     match opta {
         Some(_) => opta,
@@ -98,8 +117,16 @@ pub fn or_match_slice_alt_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Op
 #[no_mangle]
 pub fn option_or_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // LITTLE-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
+    // LITTLE-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[OPT_A:%.+]] = lshr i16 %0, 8
+    // BIG-NEXT: [[SOME_A:%.+]] = trunc i16 [[OPT_A]] to i1
+    // BIG-NEXT: [[OPT_B:%.+]] = lshr i16 %1, 8
+    // BIG-NEXT: [[A_OR_B:%.+]] = select i1 [[SOME_A]], i16 [[OPT_A]], i16 [[OPT_B]]
+    // BIG-NEXT: [[AGGREGATE:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[R_LOWER:%.+]] = and i16 [[AGGREGATE]], 255
+    // BIG-NEXT: [[R_UPPER:%.+]] = shl nuw i16 [[A_OR_B]], 8
+    // BIG-NEXT: [[R:%.+]] = or disjoint i16 [[R_UPPER]], [[R_LOWER]]
     // CHECK: ret i16 [[R]]
     opta.or(optb)
 }
@@ -109,8 +136,16 @@ pub fn option_or_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Optio
 #[no_mangle]
 pub fn if_some_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // LITTLE-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
+    // LITTLE-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[OPT_A:%.+]] = lshr i16 %0, 8
+    // BIG-NEXT: [[SOME_A:%.+]] = trunc i16 [[OPT_A]] to i1
+    // BIG-NEXT: [[OPT_B:%.+]] = lshr i16 %1, 8
+    // BIG-NEXT: [[A_OR_B:%.+]] = select i1 [[SOME_A]], i16 [[OPT_A]], i16 [[OPT_B]]
+    // BIG-NEXT: [[AGGREGATE:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
+    // BIG-NEXT: [[R_LOWER:%.+]] = and i16 [[AGGREGATE]], 255
+    // BIG-NEXT: [[R_UPPER:%.+]] = shl nuw i16 [[A_OR_B]], 8
+    // BIG-NEXT: [[R:%.+]] = or disjoint i16 [[R_UPPER]], [[R_LOWER]]
     // CHECK: ret i16 [[R]]
     if opta.is_some() { opta } else { optb }
 }

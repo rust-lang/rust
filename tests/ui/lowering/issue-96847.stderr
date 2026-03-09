@@ -1,5 +1,5 @@
 error[E0522]: definition of an unknown lang item: `foo`
-  --> $DIR/issue-96847.rs:11:9
+  --> $DIR/issue-96847.rs:10:9
    |
 LL |         #![lang="foo"]
    |         ^^^^^^^^^^^^^^ definition of unknown lang item `foo`
