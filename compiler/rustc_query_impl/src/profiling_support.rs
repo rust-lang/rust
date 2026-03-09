@@ -10,7 +10,7 @@ use rustc_middle::query::QueryCache;
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::ty::TyCtxt;
 
-use crate::for_each_query_vtable;
+use crate::query_impl::for_each_query_vtable;
 
 pub(crate) struct QueryKeyStringCache {
     def_id_cache: FxHashMap<DefId, StringId>,

@@ -51,7 +51,7 @@ pub fn query_system<'tcx>(
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
 ) -> QuerySystem<'tcx> {
-    let mut query_vtables = make_query_vtables(incremental);
+    let mut query_vtables = query_impl::make_query_vtables(incremental);
     from_cycle_error::specialize_query_vtables(&mut query_vtables);
     QuerySystem {
         arenas: Default::default(),

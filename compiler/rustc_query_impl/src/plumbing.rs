@@ -33,7 +33,8 @@ use rustc_span::def_id::LOCAL_CRATE;
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::find_dep_kind_root;
-use crate::{GetQueryVTable, collect_active_jobs_from_all_queries, for_each_query_vtable};
+use crate::query_impl::for_each_query_vtable;
+use crate::{GetQueryVTable, collect_active_jobs_from_all_queries};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map =
@@ -350,7 +351,7 @@ macro_rules! define_queries {
         non_queries { $($_:tt)* }
     ) => {
         pub(crate) mod query_impl { $(pub(crate) mod $name {
-            use super::super::*;
+            use super::*;
             use rustc_middle::query::erase::{self, Erased};
 
             // It seems to be important that every query has its own monomorphic
@@ -361,8 +362,9 @@ macro_rules! define_queries {
             pub(crate) mod execute_query_incr {
                 use super::*;
 
-                // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
-                // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
+                // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the
+                // frames when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow
+                // duplicate naming.
                 #[inline(never)]
                 pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
@@ -526,14 +528,16 @@ macro_rules! define_queries {
                     &tcx.query_system.query_vtables.$name
                 }
             }
-        })*}
+        })*
 
-        pub fn make_query_vtables<'tcx>(incremental: bool)
+        use super::*;
+
+        pub(crate) fn make_query_vtables<'tcx>(incremental: bool)
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: query_impl::$name::make_query_vtable(incremental),
+                    $name: $name::make_query_vtable(incremental),
                 )*
             }
         }
@@ -581,5 +585,5 @@ macro_rules! define_queries {
         }
 
         pub(crate) use for_each_query_vtable;
-    }
+    }}
 }
