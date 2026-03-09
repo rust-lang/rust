@@ -1088,7 +1088,7 @@ pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
 #[allow_internal_unstable(const_param_ty_trait)]
-#[unstable(feature = "adt_const_params", issue = "95174")]
+#[unstable(feature = "min_adt_const_params", issue = "154042", implied_by = "adt_const_params")]
 pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
