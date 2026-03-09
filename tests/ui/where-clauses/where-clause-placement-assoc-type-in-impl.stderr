@@ -1,5 +1,5 @@
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:17:16
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:18:16
    |
 LL |     type Assoc where u32: Copy = ();
    |                ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     type Assoc  = () where u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:20:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:21:17
    |
 LL |     type Assoc2 where u32: Copy = () where i32: Copy;
    |                 ^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL +     type Assoc2  = () where i32: Copy, u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:22:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:23:17
    |
 LL |     type Assoc3 where = ();
    |                 ^^^^^
@@ -39,7 +39,7 @@ LL +     type Assoc3  = () where;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:30:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:32:17
    |
 LL |     type Assoc2 where u32: Copy, i32: Copy = ();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,12 +52,25 @@ LL +     type Assoc2  = () where u32: Copy, i32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:32:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:34:17
    |
 LL |     type Assoc3 where = () where;
    |                 ^^^^^ help: remove this `where`
    |
    = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
-warning: 5 warnings emitted
+warning: where clause not allowed here
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:36:17
+   |
+LL |     type Assoc4 where i32: Copy = () where;
+   |                 ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+help: move it to the end of the type declaration
+   |
+LL -     type Assoc4 where i32: Copy = () where;
+LL +     type Assoc4  = () where i32: Copy;
+   |
+
+warning: 6 warnings emitted
 

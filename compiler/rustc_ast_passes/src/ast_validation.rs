@@ -177,6 +177,8 @@ impl<'a> AstValidator<'a> {
             if !ty_alias.after_where_clause.has_where_token {
                 state.space();
                 state.word_space("where");
+            } else if ty_alias.after_where_clause.predicates.is_empty() {
+                state.space();
             }
 
             let mut first = ty_alias.after_where_clause.predicates.is_empty();
