@@ -1,4 +1,5 @@
-use super::cli::Language;
+use itertools::Itertools;
+
 use super::constraint::Constraint;
 use super::gen_rust::PASSES;
 use super::indentation::Indentation;
@@ -73,10 +74,6 @@ where
             format!("{}_vals", self.name.to_lowercase())
         }
     }
-
-    fn as_call_param_c(&self) -> String {
-        self.ty.as_call_param_c(&self.generate_name())
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -88,13 +85,26 @@ impl<T> ArgumentList<T>
 where
     T: IntrinsicTypeDefinition,
 {
-    /// Converts the argument list into the call parameters for a C function call.
-    /// e.g. this would generate something like `a, &b, c`
-    pub fn as_call_param_c(&self) -> String {
+    pub fn as_non_imm_arglist_c(&self) -> String {
         self.iter()
-            .map(|arg| arg.as_call_param_c())
-            .collect::<Vec<String>>()
-            .join(", ")
+            .filter(|arg| !arg.has_constraint())
+            .format_with(", ", |arg, fmt| {
+                fmt(&format_args!("{} {}", arg.to_c_type(), arg.name))
+            })
+            .to_string()
+    }
+
+    pub fn as_call_params_c(&self, imm_args: &[i64]) -> String {
+        let mut imm_args = imm_args.iter();
+        self.iter()
+            .format_with(", ", |arg, fmt| {
+                if arg.has_constraint() {
+                    fmt(&imm_args.next().unwrap())
+                } else {
+                    fmt(&arg.name)
+                }
+            })
+            .to_string()
     }
 
     /// Converts the argument list into the call parameters for a Rust function.
@@ -105,30 +115,6 @@ where
             .map(|arg| arg.generate_name() + " as _")
             .collect::<Vec<String>>()
             .join(", ")
-    }
-
-    /// Creates a line for each argument that initializes an array for C from which `loads` argument
-    /// values can be loaded  as a sliding window.
-    /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
-    pub fn gen_arglists_c(
-        &self,
-        w: &mut impl std::io::Write,
-        indentation: Indentation,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
-            // Setting the variables on an aligned boundary to make it easier to pick
-            // functions (of a specific architecture) that would help load the values.
-            writeln!(
-                w,
-                "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",
-                ty = arg.ty.c_scalar_type(),
-                name = arg.generate_name(),
-                values = arg.ty.populate_random(indentation, loads, &Language::C)
-            )?
-        }
-
-        Ok(())
     }
 
     /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
@@ -164,32 +150,8 @@ where
             name = arg.rust_vals_array_name(),
             ty = arg.ty.rust_scalar_type(),
             load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-            values = arg.ty.populate_random(indentation, loads, &Language::Rust)
+            values = arg.ty.populate_random(indentation, loads)
         )
-    }
-
-    /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
-    /// an offset `i` using a load intrinsic, in C.
-    /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
-    ///
-    /// ARM-specific
-    pub fn load_values_c(&self, indentation: Indentation) -> String {
-        self.iter()
-            .filter(|&arg| !arg.has_constraint())
-            .enumerate()
-            .map(|(idx, arg)| {
-                format!(
-                    "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[(i+{idx}) % {PASSES}]));\n",
-                    ty = arg.to_c_type(),
-                    name = arg.generate_name(),
-                    load = if arg.is_simd() {
-                        arg.ty.get_load_function(Language::C)
-                    } else {
-                        "*".to_string()
-                    }
-                )
-            })
-            .collect()
     }
 
     /// Creates a line for each argument that initializes the argument from array `[ARG]_VALS` at
@@ -205,7 +167,7 @@ where
                         "{indentation}let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
                         name = arg.generate_name(),
                         vals_name = arg.rust_vals_array_name(),
-                        load = arg.ty.get_load_function(Language::Rust),
+                        load = arg.ty.get_load_function(),
                     )
                 } else {
                     format!(

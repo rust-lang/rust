@@ -1,11 +1,8 @@
 use std::str::FromStr;
 
 use itertools::Itertools;
-use regex::Regex;
 
 use super::intrinsic::X86IntrinsicType;
-use crate::common::cli::Language;
-use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 use crate::x86::xml_parser::Parameter;
 
@@ -26,82 +23,8 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             .replace("const ", "")
     }
 
-    fn c_single_vector_type(&self) -> String {
-        // matches __m128, __m256 and similar types
-        let re = Regex::new(r"__m\d+").unwrap();
-        if re.is_match(self.param.type_data.as_str()) {
-            self.param.type_data.clone()
-        } else {
-            unreachable!("Shouldn't be called on this type")
-        }
-    }
-
-    // fn rust_type(&self) -> String {
-    //     // handling edge cases first
-    //     // the general handling is implemented below
-    //     if let Some(val) = self.metadata.get("type") {
-    //         match val.as_str() {
-    //             "__m128 const *" => {
-    //                 return "&__m128".to_string();
-    //             }
-    //             "__m128d const *" => {
-    //                 return "&__m128d".to_string();
-    //             }
-    //             "const void*" => {
-    //                 return "&__m128d".to_string();
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-
-    //     if self.kind() == TypeKind::Void && self.ptr {
-    //         // this has been handled by default settings in
-    //         // the from_param function of X86IntrinsicType
-    //         unreachable!()
-    //     }
-
-    //     // general handling cases
-    //     let core_part = if self.kind() == TypeKind::Mask {
-    //         // all types of __mmask<int> are handled here
-    //         format!("__mask{}", self.bit_len.unwrap())
-    //     } else if self.simd_len.is_some() {
-    //         // all types of __m<int> vector types are handled here
-    //         let re = Regex::new(r"\__m\d+[a-z]*").unwrap();
-    //         let rust_type = self
-    //             .metadata
-    //             .get("type")
-    //             .map(|val| re.find(val).unwrap().as_str());
-    //         rust_type.unwrap().to_string()
-    //     } else {
-    //         format!(
-    //             "{}{}",
-    //             self.kind.rust_prefix().to_string(),
-    //             self.bit_len.unwrap()
-    //         )
-    //     };
-
-    //     // extracting "memsize" so that even vector types can be involved
-    //     let memwidth = self
-    //         .metadata
-    //         .get("memwidth")
-    //         .map(|n| str::parse::<u32>(n).unwrap());
-    //     let prefix_part = if self.ptr && self.constant && self.bit_len.eq(&memwidth) {
-    //         "&"
-    //     } else if self.ptr && self.bit_len.eq(&memwidth) {
-    //         "&mut "
-    //     } else if self.ptr && self.constant {
-    //         "*const "
-    //     } else if self.ptr {
-    //         "*mut "
-    //     } else {
-    //         ""
-    //     };
-
-    //     return prefix_part.to_string() + core_part.as_str();
-    // }
-
     /// Determines the load function for this type.
-    fn get_load_function(&self, _language: Language) -> String {
+    fn get_load_function(&self) -> String {
         let type_value = self.param.type_data.clone();
         if type_value.len() == 0 {
             unimplemented!("the value for key 'type' is not present!");
@@ -165,82 +88,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             // If it is not any of the above type (__int<num>, __bfloat16, unsigned short, etc)
             // then typecast it.
             format!("({type_value})")
-        }
-    }
-
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String {
-        let lanes = if self.num_lanes() > 1 {
-            (0..self.num_lanes())
-                .map(|idx| -> std::string::String {
-                    let cast_type = self.c_promotion();
-                    let lane_fn = self.get_lane_function();
-                    if cast_type.len() > 2 {
-                        format!("cast<{cast_type}>({lane_fn}(__return_value, {idx}))")
-                    } else {
-                        format!("{lane_fn}(__return_value, {idx})")
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(r#" << ", " << "#)
-        } else {
-            format!(
-                "{promote}cast<{cast}>(__return_value)",
-                cast = match self.kind() {
-                    TypeKind::Void => "void".to_string(),
-                    TypeKind::Float if self.inner_size() == 64 => "double".to_string(),
-                    TypeKind::Float if self.inner_size() == 32 => "float".to_string(),
-                    TypeKind::Mask => format!(
-                        "__mmask{}",
-                        self.bit_len.expect(format!("self: {self:#?}").as_str())
-                    ),
-                    TypeKind::Vector => format!(
-                        "__m{}i",
-                        self.bit_len.expect(format!("self: {self:#?}").as_str())
-                    ),
-                    _ => self.c_scalar_type(),
-                },
-                promote = self.generate_final_type_cast(),
-            )
-        };
-
-        format!(
-            r#"{indentation}std::cout << "Result {additional}-" << i+1 << ": {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
-            ty = if self.is_simd() {
-                format!("{}(", self.c_type())
-            } else {
-                String::from("")
-            },
-            close = if self.is_simd() { ")" } else { "" },
-        )
-    }
-
-    /// Determines the get lane function for this type.
-    fn get_lane_function(&self) -> String {
-        let total_vector_bits: Option<u32> = self
-            .simd_len
-            .zip(self.bit_len)
-            .and_then(|(simd_len, bit_len)| Some(simd_len * bit_len));
-
-        match (self.bit_len, total_vector_bits) {
-            (Some(8), Some(128)) => String::from("(uint8_t)_mm_extract_epi8"),
-            (Some(16), Some(128)) => String::from("(uint16_t)_mm_extract_epi16"),
-            (Some(32), Some(128)) => String::from("(uint32_t)_mm_extract_epi32"),
-            (Some(64), Some(128)) => String::from("(uint64_t)_mm_extract_epi64"),
-            (Some(8), Some(256)) => String::from("(uint8_t)_mm256_extract_epi8"),
-            (Some(16), Some(256)) => String::from("(uint16_t)_mm256_extract_epi16"),
-            (Some(32), Some(256)) => String::from("(uint32_t)_mm256_extract_epi32"),
-            (Some(64), Some(256)) => String::from("(uint64_t)_mm256_extract_epi64"),
-            (Some(8), Some(512)) => String::from("(uint8_t)_mm512_extract_intrinsic_test_epi8"),
-            (Some(16), Some(512)) => String::from("(uint16_t)_mm512_extract_intrinsic_test_epi16"),
-            (Some(32), Some(512)) => String::from("(uint32_t)_mm512_extract_intrinsic_test_epi32"),
-            (Some(64), Some(512)) => String::from("(uint64_t)_mm512_extract_intrinsic_test_epi64"),
-            _ => unreachable!(
-                "invalid length for vector argument: {:?}, {:?}",
-                self.bit_len, self.simd_len
-            ),
         }
     }
 

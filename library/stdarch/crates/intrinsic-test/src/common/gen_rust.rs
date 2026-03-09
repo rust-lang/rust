@@ -1,7 +1,5 @@
 use itertools::Itertools;
-use std::process::Command;
 
-use super::compare::INTRINSIC_DELIMITER;
 use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::argument::ArgumentList;
@@ -61,42 +59,6 @@ pub fn write_lib_cargo_toml(w: &mut impl std::io::Write, name: &str) -> std::io:
     Ok(())
 }
 
-pub fn write_main_rs<'a>(
-    w: &mut impl std::io::Write,
-    chunk_count: usize,
-    cfg: &str,
-    definitions: &str,
-    intrinsics: impl Iterator<Item = &'a str> + Clone,
-) -> std::io::Result<()> {
-    writeln!(w, "#![feature(simd_ffi)]")?;
-    writeln!(w, "#![feature(f16)]")?;
-    writeln!(w, "#![allow(unused)]")?;
-
-    // Cargo will spam the logs if these warnings are not silenced.
-    writeln!(w, "#![allow(non_upper_case_globals)]")?;
-    writeln!(w, "#![allow(non_camel_case_types)]")?;
-    writeln!(w, "#![allow(non_snake_case)]")?;
-
-    writeln!(w, "{cfg}")?;
-    writeln!(w, "{definitions}")?;
-
-    for module in 0..chunk_count {
-        writeln!(w, "use mod_{module}::*;")?;
-    }
-
-    writeln!(w, "fn main() {{")?;
-
-    for binary in intrinsics {
-        writeln!(w, "    println!(\"{INTRINSIC_DELIMITER}\");")?;
-        writeln!(w, "    println!(\"{binary}\");")?;
-        writeln!(w, "    run_{binary}();\n")?;
-    }
-
-    writeln!(w, "}}")?;
-
-    Ok(())
-}
-
 pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     notice: &str,
@@ -138,72 +100,6 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     }
 
     Ok(())
-}
-
-pub fn compile_rust_programs(
-    toolchain: Option<&str>,
-    target: &str,
-    profile: &str,
-    linker: Option<&str>,
-) -> bool {
-    /* If there has been a linker explicitly set from the command line then
-     * we want to set it via setting it in the RUSTFLAGS*/
-
-    // This is done because `toolchain` is None when
-    // the --generate-only flag is passed
-    if toolchain.is_none() {
-        return true;
-    }
-
-    trace!("Building cargo command");
-
-    let mut cargo_command = Command::new("cargo");
-    cargo_command.current_dir("rust_programs");
-
-    // Do not use the target directory of the workspace please.
-    cargo_command.env("CARGO_TARGET_DIR", "target");
-
-    if toolchain.is_some_and(|val| !val.is_empty()) {
-        cargo_command.arg(toolchain.unwrap());
-    }
-    cargo_command.args(["build", "--target", target, "--profile", profile]);
-
-    let mut rust_flags = "-Cdebuginfo=0".to_string();
-    if let Some(linker) = linker {
-        rust_flags.push_str(" -C linker=");
-        rust_flags.push_str(linker);
-        rust_flags.push_str(" -C link-args=-static");
-
-        cargo_command.env("CPPFLAGS", "-fuse-ld=lld");
-    }
-
-    cargo_command.env("RUSTFLAGS", rust_flags);
-
-    trace!("running cargo");
-
-    if log::log_enabled!(log::Level::Trace) {
-        cargo_command.stdout(std::process::Stdio::inherit());
-        cargo_command.stderr(std::process::Stdio::inherit());
-    }
-
-    let output = cargo_command.output();
-    trace!("cargo is done");
-
-    if let Ok(output) = output {
-        if output.status.success() {
-            true
-        } else {
-            error!(
-                "Failed to compile code for rust intrinsics\n\nstdout:\n{}\n\nstderr:\n{}",
-                std::str::from_utf8(&output.stdout).unwrap_or(""),
-                std::str::from_utf8(&output.stderr).unwrap_or("")
-            );
-            false
-        }
-    } else {
-        error!("Command failed: {output:#?}");
-        false
-    }
 }
 
 pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(

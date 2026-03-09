@@ -1,4 +1,3 @@
-mod compile;
 mod config;
 mod constraint;
 mod intrinsic;
@@ -7,7 +6,6 @@ mod xml_parser;
 
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
-use crate::common::compile_c::CppCompilation;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::X86IntrinsicType;
@@ -29,15 +27,9 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
         &self.intrinsics
     }
 
-    fn cpp_compilation(&self) -> Option<CppCompilation> {
-        compile::build_cpp_compilation(&self.cli_options)
-    }
-
     const NOTICE: &str = config::NOTICE;
 
     const PLATFORM_C_HEADERS: &[&str] = &["immintrin.h", "cstddef", "cstdint"];
-    const PLATFORM_C_DEFINITIONS: &str = config::PLATFORM_C_DEFINITIONS;
-    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::PLATFORM_C_FORWARD_DECLARATIONS;
 
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;

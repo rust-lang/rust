@@ -1,5 +1,4 @@
 mod argument;
-mod compile;
 mod config;
 mod intrinsic;
 mod json_parser;
@@ -7,7 +6,6 @@ mod types;
 
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
-use crate::common::compile_c::CppCompilation;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::ArmIntrinsicType;
@@ -32,18 +30,12 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     const NOTICE: &str = config::NOTICE;
 
     const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
-    const PLATFORM_C_DEFINITIONS: &str = config::PLATFORM_C_DEFINITIONS;
-    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::PLATFORM_C_FORWARD_DECLARATIONS;
 
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
 
-    fn cpp_compilation(&self) -> Option<CppCompilation> {
-        compile::build_cpp_compilation(&self.cli_options)
-    }
-
     fn create(cli_options: ProcessedCli) -> Self {
-        let a32 = cli_options.target.contains("v7");
+        let a32 = cli_options.target.starts_with("armv7");
         let mut intrinsics = get_neon_intrinsics(&cli_options.filename, &cli_options.target)
             .expect("Error parsing input file");
 
