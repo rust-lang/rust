@@ -114,10 +114,11 @@ pub fn check(
 
     if python_lint || python_fmt || cpp_fmt {
         // Since python lint, format and cpp format share python env, we need to ensure python env is installed before running those checks.
-        match py_prepare(root_path, outdir, &tidy_ctx) {
-            Ok(p) => py_path = Some(p),
-            Err(_) => return,
+        let p = py_prepare(root_path, outdir, &tidy_ctx);
+        if p.is_none() {
+            return;
         }
+        py_path = p;
     }
 
     if python_lint {
@@ -156,7 +157,7 @@ pub fn check(
 
     if js_lint || js_typecheck {
         // Since js lint and format share node env, we need to ensure node env is installed before running those checks.
-        if js_prepare(root_path, outdir, npm, &tidy_ctx).is_err() {
+        if js_prepare(root_path, outdir, npm, &tidy_ctx).is_none() {
             return;
         }
     }
@@ -170,14 +171,7 @@ pub fn check(
     }
 }
 
-// It is used by prepare functions because they handle errors themselves, so the caller doesn't need to handle errors.
-struct ErrorGuaranteed(());
-
-fn py_prepare(
-    root_path: &Path,
-    outdir: &Path,
-    tidy_ctx: &TidyCtx,
-) -> Result<PathBuf, ErrorGuaranteed> {
+fn py_prepare(root_path: &Path, outdir: &Path, tidy_ctx: &TidyCtx) -> Option<PathBuf> {
     let mut check = tidy_ctx.start_check("extra_checks:py_prepare");
 
     let venv_path = outdir.join("venv");
@@ -185,28 +179,23 @@ fn py_prepare(
     reqs_path.extend(PIP_REQ_PATH);
 
     match get_or_create_venv(&venv_path, &reqs_path) {
-        Ok(p) => Ok(p),
+        Ok(p) => Some(p),
         Err(e) => {
             check.error(e);
-            Err(ErrorGuaranteed(()))
+            None
         }
     }
 }
 
-fn js_prepare(
-    root_path: &Path,
-    outdir: &Path,
-    npm: &Path,
-    tidy_ctx: &TidyCtx,
-) -> Result<(), ErrorGuaranteed> {
+fn js_prepare(root_path: &Path, outdir: &Path, npm: &Path, tidy_ctx: &TidyCtx) -> Option<()> {
     let mut check = tidy_ctx.start_check("extra_checks:js_prepare");
 
     if let Err(e) = rustdoc_js::npm_install(root_path, outdir, npm) {
         check.error(e.to_string());
-        return Err(ErrorGuaranteed(()));
+        return None;
     }
 
-    Ok(())
+    Some(())
 }
 
 fn show_bless_help(mode: &str, action: &str, bless: bool) {
