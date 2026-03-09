@@ -127,7 +127,7 @@ impl flags::AnalysisStats {
             .iter()
             .cloned()
             .map(|krate| (db.file_source_root(krate.root_file(db)).source_root_id(db), krate))
-            .unique();
+            .unique_by(|(source_root_id, _)| *source_root_id);
 
         let mut dep_loc = 0;
         let mut workspace_loc = 0;

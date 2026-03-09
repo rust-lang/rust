@@ -1,5 +1,5 @@
 //! Defines [`EditionedFileId`], an interned wrapper around [`span::EditionedFileId`] that
-//! is interned (so queries can take it) and remembers its crate.
+//! is interned (so queries can take it) and stores only the underlying `span::EditionedFileId`.
 
 use std::hash::Hash;
 
