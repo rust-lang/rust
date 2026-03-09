@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 "only a `panic!` in `if`-then statement",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let mut comments = span_extract_comment(cx.sess().source_map(), expr.span);
+                    let mut comments = span_extract_comment(cx, expr.span);
                     if !comments.is_empty() {
                         comments += "\n";
                     }

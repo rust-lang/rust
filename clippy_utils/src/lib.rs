@@ -2764,16 +2764,15 @@ pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, Inn
 
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
-pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
-    let Ok(snippet) = sm.span_to_snippet(span) else {
-        return false;
-    };
-    return tokenize(&snippet, FrontmatterAllowed::No).any(|token| {
-        matches!(
-            token.kind,
-            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
-        )
-    });
+pub fn span_contains_comment(cx: &impl source::HasSession, span: Span) -> bool {
+    span.check_source_text(cx, |snippet| {
+        tokenize(snippet, FrontmatterAllowed::No).any(|token| {
+            matches!(
+                token.kind,
+                TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+            )
+        })
+    })
 }
 
 /// Checks whether a given span has any significant token. A significant token is a non-whitespace
@@ -2781,30 +2780,32 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
 pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
-    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)|
-        match token {
+    span.check_source_text(cx, |snippet| {
+        tokenize_with_text(snippet).any(|(token, _, _)| match token {
             TokenKind::Whitespace => false,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
             _ => true,
-        }
-    ))
+        })
+    })
 }
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters
-pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
-    span_extract_comments(sm, span).join("\n")
+pub fn span_extract_comment(cx: &impl source::HasSession, span: Span) -> String {
+    span_extract_comments(cx, span).join("\n")
 }
 
 /// Returns all the comments a given span contains.
 ///
 /// Comments are returned wrapped with their relevant delimiters.
-pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
-    let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    tokenize_with_text(&snippet)
-        .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s.to_string())
-        .collect::<Vec<_>>()
+pub fn span_extract_comments(cx: &impl source::HasSession, span: Span) -> Vec<String> {
+    span.with_source_text(cx, |snippet| {
+        tokenize_with_text(snippet)
+            .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
+            .map(|(_, s, _)| s.to_string())
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {

@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_
         let closure_snippet = snippet_with_applicability(cx, map_arg.span, "..", &mut applicability);
         let span = expr.span.with_lo(map_span.lo());
         // If the methods are separated with comments, we don't apply suggestion automatically.
-        if span_contains_comment(cx.tcx.sess.source_map(), span) {
+        if span_contains_comment(cx, span) {
             applicability = Applicability::Unspecified;
         }
         span_lint_and_sugg(
