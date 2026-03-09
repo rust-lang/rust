@@ -93,7 +93,6 @@ impl ChildBySource for ModuleId {
 
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let krate = file_id.krate(db);
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
         self.extern_blocks().for_each(|extern_block| {
@@ -123,6 +122,8 @@ impl ChildBySource for ItemScope {
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db);
                 calls.for_each(|(attr_id, call_id, calls)| {
+                    // FIXME: Is this the right crate?
+                    let krate = call_id.lookup(db).krate;
                     // FIXME: Fix cfg_attr handling.
                     let (attr, _, _, _) = attr_id.find_attr_range_with_source(db, krate, &adt);
                     res[keys::DERIVE_MACRO_CALL]

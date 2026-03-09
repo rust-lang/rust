@@ -6,7 +6,7 @@ use crate::{db::DefDatabase, test_db::TestDB};
 
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let item_tree = db.file_item_tree(file_id.into());
+    let item_tree = db.file_item_tree(file_id.into(), db.test_crate());
     let pretty = item_tree.pretty_print(&db, Edition::CURRENT);
     expect.assert_eq(&pretty);
 }
