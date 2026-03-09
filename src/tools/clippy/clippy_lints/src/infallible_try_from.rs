@@ -40,6 +40,7 @@ declare_clippy_lint! {
     suspicious,
     "TryFrom with infallible Error type"
 }
+
 declare_lint_pass!(InfallibleTryFrom => [INFALLIBLE_TRY_FROM]);
 
 impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {

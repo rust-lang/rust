@@ -19,15 +19,15 @@ mod dyn_trait;
 pub mod errors;
 pub mod generics;
 
-use std::slice;
+use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1481,6 +1481,54 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         mode: LowerTypeRelativePathMode,
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
+        struct AmbiguousAssocItem<'tcx> {
+            variant_def_id: DefId,
+            item_def_id: DefId,
+            span: Span,
+            segment_ident: Ident,
+            bound_def_id: DefId,
+            self_ty: Ty<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            mode: LowerTypeRelativePathMode,
+        }
+
+        impl<'a, 'tcx> Diagnostic<'a, ()> for AmbiguousAssocItem<'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self {
+                    variant_def_id,
+                    item_def_id,
+                    span,
+                    segment_ident,
+                    bound_def_id,
+                    self_ty,
+                    tcx,
+                    mode,
+                } = self;
+                let mut lint = Diag::new(dcx, level, "ambiguous associated item");
+
+                let mut could_refer_to = |kind: DefKind, def_id, also| {
+                    let note_msg = format!(
+                        "`{}` could{} refer to the {} defined here",
+                        segment_ident,
+                        also,
+                        tcx.def_kind_descr(kind, def_id)
+                    );
+                    lint.span_note(tcx.def_span(def_id), note_msg);
+                };
+
+                could_refer_to(DefKind::Variant, variant_def_id, "");
+                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
+
+                lint.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),
+                    Applicability::MachineApplicable,
+                );
+                lint
+            }
+        }
+
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
 
@@ -1556,33 +1604,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let (item_def_id, args) = self.lower_assoc_item_path(span, item_def_id, segment, bound)?;
 
         if let Some(variant_def_id) = variant_def_id {
-            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, qpath_hir_id, span, |lint| {
-                lint.primary_message("ambiguous associated item");
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        segment.ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
-
-                lint.span_suggestion(
+            tcx.emit_node_span_lint(
+                AMBIGUOUS_ASSOCIATED_ITEMS,
+                qpath_hir_id,
+                span,
+                AmbiguousAssocItem {
+                    variant_def_id,
+                    item_def_id,
                     span,
-                    "use fully-qualified syntax",
-                    format!(
-                        "<{} as {}>::{}",
-                        self_ty,
-                        tcx.item_name(bound.def_id()),
-                        segment.ident
-                    ),
-                    Applicability::MachineApplicable,
-                );
-            });
+                    segment_ident: segment.ident,
+                    bound_def_id: bound.def_id(),
+                    self_ty,
+                    tcx,
+                    mode,
+                },
+            );
         }
 
         Ok(TypeRelativePath::AssocItem(item_def_id, args))

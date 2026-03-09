@@ -9,25 +9,33 @@ use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `let _ = <expr>` where expr is `#[must_use]`
+    /// Checks for `let _ = <expr>` where the resulting type of expr implements `Future`
     ///
-    /// ### Why restrict this?
-    /// To ensure that all `#[must_use]` types are used rather than ignored.
+    /// ### Why is this bad?
+    /// Futures must be polled for work to be done. The original intention was most likely to await the future
+    /// and ignore the resulting value.
     ///
     /// ### Example
     /// ```no_run
-    /// fn f() -> Result<u32, u32> {
-    ///     Ok(0)
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
     /// }
-    ///
-    /// let _ = f();
-    /// // is_ok() is marked #[must_use]
-    /// let _ = f().is_ok();
+    /// let _ = foo();
     /// ```
-    #[clippy::version = "1.42.0"]
-    pub LET_UNDERSCORE_MUST_USE,
-    restriction,
-    "non-binding `let` on a `#[must_use]` expression"
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # async fn context() {
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
+    /// let _ = foo().await;
+    /// # }
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub LET_UNDERSCORE_FUTURE,
+    suspicious,
+    "non-binding `let` on a future"
 }
 
 declare_clippy_lint! {
@@ -60,33 +68,25 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `let _ = <expr>` where the resulting type of expr implements `Future`
+    /// Checks for `let _ = <expr>` where expr is `#[must_use]`
     ///
-    /// ### Why is this bad?
-    /// Futures must be polled for work to be done. The original intention was most likely to await the future
-    /// and ignore the resulting value.
+    /// ### Why restrict this?
+    /// To ensure that all `#[must_use]` types are used rather than ignored.
     ///
     /// ### Example
     /// ```no_run
-    /// async fn foo() -> Result<(), ()> {
-    ///     Ok(())
+    /// fn f() -> Result<u32, u32> {
+    ///     Ok(0)
     /// }
-    /// let _ = foo();
-    /// ```
     ///
-    /// Use instead:
-    /// ```no_run
-    /// # async fn context() {
-    /// async fn foo() -> Result<(), ()> {
-    ///     Ok(())
-    /// }
-    /// let _ = foo().await;
-    /// # }
+    /// let _ = f();
+    /// // is_ok() is marked #[must_use]
+    /// let _ = f().is_ok();
     /// ```
-    #[clippy::version = "1.67.0"]
-    pub LET_UNDERSCORE_FUTURE,
-    suspicious,
-    "non-binding `let` on a future"
+    #[clippy::version = "1.42.0"]
+    pub LET_UNDERSCORE_MUST_USE,
+    restriction,
+    "non-binding `let` on a `#[must_use]` expression"
 }
 
 declare_clippy_lint! {
@@ -127,7 +127,12 @@ declare_clippy_lint! {
     "non-binding `let` without a type annotation"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE, LET_UNDERSCORE_UNTYPED]);
+declare_lint_pass!(LetUnderscore => [
+    LET_UNDERSCORE_FUTURE,
+    LET_UNDERSCORE_LOCK,
+    LET_UNDERSCORE_MUST_USE,
+    LET_UNDERSCORE_UNTYPED,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {

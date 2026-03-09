@@ -1,4 +1,4 @@
-use rustc_ast::LitKind;
+use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir;
 use rustc_macros::HashStable;
 
@@ -44,10 +44,17 @@ pub fn const_lit_matches_ty<'tcx>(
         {
             true
         }
-        (LitKind::Int(..), ty::Uint(_)) if !neg => true,
-        (LitKind::Int(..), ty::Int(_)) => true,
+        (LitKind::Int(_, LitIntType::Unsigned(lit_ty)), ty::Uint(expect_ty)) if !neg => {
+            lit_ty == *expect_ty
+        }
+        (LitKind::Int(_, LitIntType::Signed(lit_ty)), ty::Int(expect_ty)) => lit_ty == *expect_ty,
+        (LitKind::Int(_, LitIntType::Unsuffixed), ty::Uint(_)) if !neg => true,
+        (LitKind::Int(_, LitIntType::Unsuffixed), ty::Int(_)) => true,
         (LitKind::Bool(..), ty::Bool) => true,
-        (LitKind::Float(..), ty::Float(_)) => true,
+        (LitKind::Float(_, LitFloatType::Suffixed(lit_ty)), ty::Float(expect_ty)) => {
+            lit_ty == *expect_ty
+        }
+        (LitKind::Float(_, LitFloatType::Unsuffixed), ty::Float(_)) => true,
         (LitKind::Char(..), ty::Char) => true,
         (LitKind::Err(..), _) => true,
         _ => false,

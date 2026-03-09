@@ -197,9 +197,6 @@ impl TestContext {
             defaults.set_custom("diagnostic-collector", collector);
         }
         config.with_args(&self.args);
-        let current_exe_path = env::current_exe().unwrap();
-        let deps_path = current_exe_path.parent().unwrap();
-        let profile_path = deps_path.parent().unwrap();
 
         config.program.args.extend(
             [
@@ -224,11 +221,7 @@ impl TestContext {
             config.program.args.push(format!("--sysroot={sysroot}").into());
         }
 
-        config.program.program = profile_path.join(if cfg!(windows) {
-            "clippy-driver.exe"
-        } else {
-            "clippy-driver"
-        });
+        config.program.program = PathBuf::from(env!("CARGO_BIN_EXE_clippy-driver"));
 
         config
     }

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 pub use rustc_error_messages::FluentArgs;
-use rustc_error_messages::{DiagArgMap, langid, register_functions};
+use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg, langid, register_functions};
 use tracing::{debug, trace};
 
 use crate::fluent_bundle::FluentResource;
@@ -33,30 +33,72 @@ pub fn format_diag_messages(
 
 /// Convert a `DiagMessage` to a string
 pub fn format_diag_message<'a>(message: &'a DiagMessage, args: &DiagArgMap) -> Cow<'a, str> {
-    trace!(?message, ?args);
-
     match message {
         DiagMessage::Str(msg) => Cow::Borrowed(msg),
-        DiagMessage::Inline(msg) => {
-            const GENERATED_MSG_ID: &str = "generated_msg";
-            let resource =
-                FluentResource::try_new(format!("{GENERATED_MSG_ID} = {msg}\n")).unwrap();
-            let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
-            bundle.set_use_isolating(false);
-            bundle.add_resource(resource).unwrap();
-            register_functions(&mut bundle);
-            let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
-            let value = message.value().unwrap();
-            let args = to_fluent_args(args.iter());
+        DiagMessage::Inline(msg) => format_fluent_str(msg, args),
+    }
+}
 
-            let mut errs = vec![];
-            let formatted = bundle.format_pattern(value, Some(&args), &mut errs).to_string();
-            debug!(?formatted, ?errs);
-            if errs.is_empty() {
-                Cow::Owned(formatted)
-            } else {
-                panic!("Fluent errors while formatting message: {errs:?}");
-            }
-        }
+fn format_fluent_str(message: &str, args: &DiagArgMap) -> Cow<'static, str> {
+    trace!(?message, ?args);
+    const GENERATED_MSG_ID: &str = "generated_msg";
+    let resource = FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message}\n")).unwrap();
+    let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
+    bundle.set_use_isolating(false);
+    bundle.add_resource(resource).unwrap();
+    register_functions(&mut bundle);
+    let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
+    let value = message.value().unwrap();
+    let args = to_fluent_args(args.iter());
+
+    let mut errs = vec![];
+    let formatted = bundle.format_pattern(value, Some(&args), &mut errs).to_string();
+    debug!(?formatted, ?errs);
+    if errs.is_empty() {
+        Cow::Owned(formatted)
+    } else {
+        panic!("Fluent errors while formatting message: {errs:?}");
+    }
+}
+
+pub trait DiagMessageAddArg {
+    fn arg(self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) -> EagerDiagMessageBuilder;
+}
+
+pub struct EagerDiagMessageBuilder {
+    fluent_str: Cow<'static, str>,
+    args: DiagArgMap,
+}
+
+impl DiagMessageAddArg for EagerDiagMessageBuilder {
+    fn arg(
+        mut self,
+        name: impl Into<DiagArgName>,
+        arg: impl IntoDiagArg,
+    ) -> EagerDiagMessageBuilder {
+        let name = name.into();
+        let value = arg.into_diag_arg(&mut None);
+        debug_assert!(
+            !self.args.contains_key(&name) || self.args.get(&name) == Some(&value),
+            "arg {} already exists",
+            name
+        );
+        self.args.insert(name, value);
+        self
+    }
+}
+
+impl DiagMessageAddArg for DiagMessage {
+    fn arg(self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) -> EagerDiagMessageBuilder {
+        let DiagMessage::Inline(fluent_str) = self else {
+            panic!("Tried to eagerly format an already formatted message")
+        };
+        EagerDiagMessageBuilder { fluent_str, args: Default::default() }.arg(name, arg)
+    }
+}
+
+impl EagerDiagMessageBuilder {
+    pub fn format(self) -> DiagMessage {
+        DiagMessage::Str(format_fluent_str(&self.fluent_str, &self.args))
     }
 }

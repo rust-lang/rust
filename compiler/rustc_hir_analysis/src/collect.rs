@@ -15,14 +15,15 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::iter;
 use std::ops::{Bound, ControlFlow};
+use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
@@ -610,6 +611,19 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    struct ReprCIssue {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+                .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                .with_help("use `repr($int_ty)` instead to explicitly set the size of this enum")
+        }
+    }
+
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -659,15 +673,11 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
                 };
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
                     tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    |d| {
-                        d.primary_message(msg)
-                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
-                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
-                    }
+                    ReprCIssue { msg },
                 );
             }
         }

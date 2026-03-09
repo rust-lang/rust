@@ -150,3 +150,11 @@ fn issue16458() {
         required_version: String, m!().to_string();
     }
 }
+
+fn issue16564(path: std::path::PathBuf) {
+    const ROOT: &str = "root";
+    if path != *ROOT {
+        //~^ cmp_owned
+        todo!()
+    }
+}

@@ -19,14 +19,15 @@ use rustc_middle::query::on_disk_cache::{
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    QueryCache, QueryJobId, QueryKey, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
-    erase,
+    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackDeferred, QueryStackFrame,
+    QueryStackFrameExtra, erase,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
@@ -61,42 +62,32 @@ pub(crate) fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
 }
 
 #[inline]
-pub(crate) fn current_query_job<'tcx>(tcx: TyCtxt<'tcx>) -> Option<QueryJobId> {
-    tls::with_related_context(tcx, |icx| icx.query)
+pub(crate) fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
 
-/// Executes a job by changing the `ImplicitCtxt` to point to the
-/// new query job while it executes.
+/// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
 #[inline(always)]
-pub(crate) fn start_query<'tcx, R>(
-    tcx: TyCtxt<'tcx>,
-    token: QueryJobId,
+pub(crate) fn start_query<R>(
+    job_id: QueryJobId,
     depth_limit: bool,
     compute: impl FnOnce() -> R,
 ) -> R {
-    // The `TyCtxt` stored in TLS has the same global interner lifetime
-    // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
-    // when accessing the `ImplicitCtxt`.
-    tls::with_related_context(tcx, move |current_icx| {
-        if depth_limit && !tcx.recursion_limit().value_within_limit(current_icx.query_depth) {
-            depth_limit_error(tcx, token);
+    tls::with_context(move |icx| {
+        if depth_limit && !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
+            depth_limit_error(icx.tcx, job_id);
         }
 
         // Update the `ImplicitCtxt` to point to our new query job.
-        let new_icx = ImplicitCtxt {
-            tcx,
-            query: Some(token),
-            query_depth: current_icx.query_depth + depth_limit as usize,
-            task_deps: current_icx.task_deps,
+        let icx = ImplicitCtxt {
+            query: Some(job_id),
+            query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
+            ..*icx
         };
 
         // Use the `ImplicitCtxt` while we execute the query.
-        tls::enter_context(&new_icx, compute)
+        tls::enter_context(&icx, compute)
     })
-}
-
-pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
-    tcx.dep_graph.try_mark_green(tcx, dep_node).is_some()
 }
 
 /// The deferred part of a deferred query stack frame.
@@ -167,8 +158,8 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
-    query.cache.iter(&mut |key, value, dep_node| {
-        if query.will_cache_on_disk_for_key(tcx, key) {
+    query.cache.for_each(&mut |key, value, dep_node| {
+        if (query.will_cache_on_disk_for_key_fn)(tcx, *key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -189,7 +180,7 @@ pub(crate) fn query_key_hash_verify<'tcx, C: QueryCache>(
 
     let cache = &query.cache;
     let mut map = UnordMap::with_capacity(cache.len());
-    cache.iter(&mut |key, _, _| {
+    cache.for_each(&mut |key, _, _| {
         let node = DepNode::construct(tcx, query.dep_kind, key);
         if let Some(other_key) = map.insert(node, *key) {
             bug!(
@@ -221,10 +212,27 @@ pub(crate) fn promote_from_disk_inner<'tcx, Q: GetQueryVTable<'tcx>>(
             dep_node.key_fingerprint
         )
     });
-    if query.will_cache_on_disk_for_key(tcx, &key) {
-        // Call `tcx.$query(key)` for its side-effect of loading the disk-cached
-        // value into memory.
-        (query.call_query_method_fn)(tcx, key);
+
+    // If the recovered key isn't eligible for cache-on-disk, then there's no
+    // value on disk to promote.
+    if !(query.will_cache_on_disk_for_key_fn)(tcx, key) {
+        return;
+    }
+
+    match query.cache.lookup(&key) {
+        // If the value is already in memory, then promotion isn't needed.
+        Some(_) => {}
+
+        // "Execute" the query to load its disk-cached value into memory.
+        //
+        // We know that the key is cache-on-disk and its node is green,
+        // so there _must_ be a value on disk to load.
+        //
+        // FIXME(Zalathar): Is there a reasonable way to skip more of the
+        // query bookkeeping when doing this?
+        None => {
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+        }
     }
 }
 
@@ -313,7 +321,7 @@ macro_rules! define_queries {
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
                     no_hash: $no_hash:literal,
-                    return_result_from_ensure_ok: $return_result_from_ensure_ok:literal,
+                    returns_error_guaranteed: $returns_error_guaranteed:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
                 }
             )*
@@ -427,21 +435,16 @@ macro_rules! define_queries {
                     state: Default::default(),
                     cache: Default::default(),
 
-                    #[cfg($cache_on_disk)]
-                    will_cache_on_disk_for_key_fn:
-                        Some(rustc_middle::queries::_cache_on_disk_if_fns::$name),
-                    #[cfg(not($cache_on_disk))]
-                    will_cache_on_disk_for_key_fn: None,
-
-                    call_query_method_fn: |tcx, key| {
-                        // Call the query method for its side-effect of loading a value
-                        // from disk-cache; the caller doesn't need the value.
-                        let _ = tcx.$name(key);
-                    },
                     invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
                     #[cfg($cache_on_disk)]
-                    try_load_from_disk_fn: Some(|tcx, key, prev_index, index| {
+                    will_cache_on_disk_for_key_fn:
+                        rustc_middle::queries::_cache_on_disk_if_fns::$name,
+                    #[cfg(not($cache_on_disk))]
+                    will_cache_on_disk_for_key_fn: |_, _| false,
+
+                    #[cfg($cache_on_disk)]
+                    try_load_from_disk_fn: |tcx, key, prev_index, index| {
                         // Check the `cache_on_disk_if` condition for this key.
                         if !rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) {
                             return None;
@@ -452,17 +455,17 @@ macro_rules! define_queries {
 
                         // Arena-alloc the value if appropriate, and erase it.
                         Some(queries::$name::provided_to_erased(tcx, value))
-                    }),
+                    },
                     #[cfg(not($cache_on_disk))]
-                    try_load_from_disk_fn: None,
+                    try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
 
                     #[cfg($cache_on_disk)]
-                    is_loadable_from_disk_fn: Some(|tcx, key, index| -> bool {
+                    is_loadable_from_disk_fn: |tcx, key, index| -> bool {
                         rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) &&
                             $crate::plumbing::loadable_from_disk(tcx, index)
-                    }),
+                    },
                     #[cfg(not($cache_on_disk))]
-                    is_loadable_from_disk_fn: None,
+                    is_loadable_from_disk_fn: |_tcx, _key, _index| false,
 
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> =

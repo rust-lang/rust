@@ -2242,10 +2242,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
                     BuiltinExplicitOutlives {
-                        count: bound_count,
                         suggestion: BuiltinExplicitOutlivesSuggestion {
                             spans: lint_spans,
                             applicability,
+                            count: bound_count,
                         },
                     },
                 );

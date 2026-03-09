@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_range_full, sym};
 use clippy_utils::res::MaybeDef;
+use clippy_utils::{is_range_full, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::LateContext;

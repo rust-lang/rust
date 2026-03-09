@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
@@ -1309,12 +1310,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && !spans.is_empty()
                     {
                         let mut span: MultiSpan = spans.clone().into();
-                        err.arg("ty", param_ty.to_string());
-                        let msg = err.dcx.eagerly_format_to_string(
-                            msg!("`{$ty}` is made to be an `FnOnce` closure here"),
-                            err.args.iter(),
-                        );
-                        err.remove_arg("ty");
+                        let msg = msg!("`{$ty}` is made to be an `FnOnce` closure here")
+                            .arg("ty", param_ty.to_string())
+                            .format();
                         for sp in spans {
                             span.push_span_label(sp, msg.clone());
                         }

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{fn_def_id, is_from_proc_macro, is_lint_allowed};
+use clippy_utils::{RequiresSemi, fn_def_id, is_from_proc_macro, is_lint_allowed, is_never_expr};
 use hir::intravisit::{Visitor, walk_expr};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
@@ -52,16 +52,20 @@ pub(super) fn check<'tcx>(
 
     if !is_finite_loop {
         span_lint_and_then(cx, INFINITE_LOOP, expr.span, "infinite loop detected", |diag| {
-            if let FnRetTy::DefaultReturn(ret_span) = parent_fn_ret {
+            if let FnRetTy::DefaultReturn(ret_span) = parent_fn_ret
+                && cx
+                    .enclosing_body
+                    .is_some_and(|id| matches!(is_never_expr(cx, cx.tcx.hir_body(id).value), Some(RequiresSemi::No)))
+            {
                 diag.span_suggestion(
                     ret_span,
                     "if this is intentional, consider specifying `!` as function return",
                     " -> !",
                     Applicability::MaybeIncorrect,
                 );
-            } else {
-                diag.help("if this is not intended, try adding a `break` or `return` condition in the loop");
             }
+
+            diag.help("if this is not intended, try adding a `break` or `return` to the loop");
         });
     }
 }

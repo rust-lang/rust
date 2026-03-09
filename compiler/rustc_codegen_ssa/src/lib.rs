@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
@@ -24,6 +22,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
+use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
@@ -364,10 +363,14 @@ impl CompiledModules {
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
 pub struct CodegenLintLevels {
     linker_messages: LevelAndSource,
+    linker_info: LevelAndSource,
 }
 
 impl CodegenLintLevels {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
-        Self { linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID) }
+        Self {
+            linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
+            linker_info: tcx.lint_level_at_node(LINKER_INFO, CRATE_HIR_ID),
+        }
     }
 }
