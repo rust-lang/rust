@@ -75,7 +75,7 @@ pub(crate) fn parse_external_mod(
             Some(span),
         ));
         let (inner_attrs, items, inner_span) =
-            parser.parse_mod(exp!(Eof)).map_err(|err| ModError::ParserError(err))?;
+            parser.parse_mod(exp!(Eof)).map_err(ModError::ParserError)?;
         attrs.extend(inner_attrs);
         (items, inner_span, mp.file_path)
     };

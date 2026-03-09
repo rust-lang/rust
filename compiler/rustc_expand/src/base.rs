@@ -898,7 +898,7 @@ impl SyntaxExtension {
     fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = if let Some(info) = find_attr!(attrs, CollapseDebugInfo(info) => info) {
-            info.clone()
+            *info
         } else if find_attr!(attrs, RustcBuiltinMacro { .. }) {
             CollapseMacroDebuginfo::Yes
         } else {

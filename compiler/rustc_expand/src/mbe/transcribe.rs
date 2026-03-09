@@ -396,7 +396,7 @@ fn transcribe_sequence<'tx, 'itp>(
                 // The first time we encounter the sequence we push it to the stack. It
                 // then gets reused (see the beginning of the loop) until we are done
                 // repeating.
-                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator.clone(), seq.kleene.op));
+                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator, seq.kleene.op));
             }
         }
     }
@@ -629,7 +629,7 @@ fn metavar_expr_concat<'tx>(
 ) -> PResult<'tx, TokenTree> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
-    for element in elements.into_iter() {
+    for element in elements {
         let symbol = match element {
             MetaVarExprConcatElem::Ident(elem) => elem.name,
             MetaVarExprConcatElem::Literal(elem) => *elem,
@@ -747,7 +747,7 @@ fn maybe_use_metavar_location(
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
-            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+            TokenTree::Token(Token { kind: *kind, span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());

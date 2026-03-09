@@ -232,7 +232,7 @@ impl QueryDeriveExpandCtx {
     {
         // We need erasure to get rid of the lifetime
         let ctx = Self { expansion_ctx: ecx as *mut _ as *mut (), client };
-        DERIVE_EXPAND_CTX.set(&ctx, || f())
+        DERIVE_EXPAND_CTX.set(&ctx, f)
     }
 
     /// Accesses the thread local value of the derive expansion context.

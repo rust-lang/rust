@@ -323,9 +323,7 @@ pub(super) fn emit_frag_parse_err(
             } else if bindings_name.contains(&name) {
                 e.span_label(
                     parser.token.span,
-                    format!(
-                        "there is an macro metavariable with this name in another macro matcher"
-                    ),
+                    "there is an macro metavariable with this name in another macro matcher",
                 );
             } else if let Some(matched_name) =
                 rustc_span::edit_distance::find_best_match_for_name(&bindings_name[..], name, None)
@@ -343,7 +341,7 @@ pub(super) fn emit_frag_parse_err(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                e.span_label(parser.token.span, format!("macro metavariable not found"));
+                e.span_label(parser.token.span, "macro metavariable not found");
                 if !matched_rule_bindings_names.is_empty() {
                     e.note(format!("available metavariable names are: {msg}"));
                 }

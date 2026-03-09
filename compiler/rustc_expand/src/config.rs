@@ -285,7 +285,7 @@ impl<'a> StripUnconfigured<'a> {
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
-            &self.sess,
+            self.sess,
             self.features,
             self.lint_node_id,
         ) else {
@@ -422,7 +422,7 @@ impl<'a> StripUnconfigured<'a> {
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
         {
             let mut err = feature_err(
-                &self.sess,
+                self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
                 msg!("attributes on expressions are experimental"),
