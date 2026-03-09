@@ -865,7 +865,7 @@ impl DepGraph {
         dep_node_debug.borrow_mut().insert(dep_node, debug_str);
     }
 
-    pub fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
+    pub(crate) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
         self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 
@@ -1103,7 +1103,7 @@ impl DepGraph {
         }
     }
 
-    pub fn finish_encoding(&self) -> FileEncodeResult {
+    pub(crate) fn finish_encoding(&self) -> FileEncodeResult {
         if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
     }
 
