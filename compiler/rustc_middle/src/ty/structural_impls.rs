@@ -460,7 +460,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 pat.visit_with(visitor)
             }
 
-            ty::Error(guar) => guar.visit_with(visitor),
+            ty::Error(guar) => guar.0.visit_with(visitor),
 
             ty::Bool
             | ty::Char

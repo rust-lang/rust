@@ -2454,7 +2454,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let elem_ty = match ty.kind() {
             ty::Array(elem_ty, _) => elem_ty,
-            ty::Error(e) => return Const::new_error(tcx, *e),
+            ty::Error(e) => return Const::new_error(tcx, e.0),
             _ => {
                 let e = tcx
                     .dcx()
@@ -2581,7 +2581,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let tys = match ty.kind() {
             ty::Tuple(tys) => tys,
-            ty::Error(e) => return Const::new_error(tcx, *e),
+            ty::Error(e) => return Const::new_error(tcx, e.0),
             _ => {
                 let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
                 return Const::new_error(tcx, e);
@@ -3277,7 +3277,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx,
                 dcx.span_err(ty_span, format!("could not resolve fields of `{ty}`")),
             ),
-            ty::Error(err) => Ty::new_error(tcx, *err),
+            ty::Error(err) => Ty::new_error(tcx, err.0),
             ty::Bool
             | ty::Char
             | ty::Int(_)

@@ -643,7 +643,7 @@ where
             | ty::Never
             | ty::Foreign(..) => Ty::new_unit(cx),
 
-            ty::Error(e) => Ty::new_error(cx, e),
+            ty::Error(e) => Ty::new_error(cx, e.0),
 
             ty::Str | ty::Slice(_) => Ty::new_usize(cx),
 

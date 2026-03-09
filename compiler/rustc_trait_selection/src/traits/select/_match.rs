@@ -87,7 +87,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
                 Err(TypeError::Sorts(ExpectedFound::new(a, b)))
             }
 
-            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.cx(), guar)),
+            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(self.cx(), guar.0)),
 
             _ => structurally_relate_tys(self, a, b),
         }

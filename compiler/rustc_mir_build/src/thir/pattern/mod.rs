@@ -548,7 +548,7 @@ impl<'tcx> PatCtxt<'tcx> {
                             return Box::new(Pat {
                                 ty,
                                 span,
-                                kind: PatKind::Error(*e),
+                                kind: PatKind::Error(e.0),
                                 extra: None,
                             });
                         }

@@ -266,7 +266,38 @@ pub enum TyKind<I: Interner> {
     /// A placeholder for a type which could not be computed.
     ///
     /// This is propagated to avoid useless error messages.
-    Error(I::ErrorGuaranteed),
+    Error(Spacer<I::ErrorGuaranteed>),
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq)]
+pub struct Spacer<T>(pub T, [usize; 3]);
+
+impl<T> Spacer<T> {
+    pub fn new(v: T) -> Self {
+        Self(v, [0; _])
+    }
+}
+
+impl<E: rustc_serialize::Encoder, T: rustc_serialize::Encodable<E>> rustc_serialize::Encodable<E>
+    for Spacer<T>
+{
+    fn encode(&self, s: &mut E) {
+        self.0.encode(s);
+    }
+}
+
+impl<E: rustc_serialize::Decoder, T: rustc_serialize::Decodable<E>> rustc_serialize::Decodable<E>
+    for Spacer<T>
+{
+    fn decode(d: &mut E) -> Self {
+        Self::new(T::decode(d))
+    }
+}
+
+impl<CTX, T: HashStable<CTX>> HashStable<CTX> for Spacer<T> {
+    fn hash_stable(&self, ctx: &mut CTX, h: &mut StableHasher) {
+        self.0.hash_stable(ctx, h)
+    }
 }
 
 impl<I: Interner> Eq for TyKind<I> {}
