@@ -5,9 +5,10 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
+use crate::consts::const_alloc_to_gcc;
 use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
@@ -260,11 +261,13 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                             };
                         }
 
-                        let init = self.const_data_from_alloc(alloc);
-                        let alloc = alloc.inner();
-                        let value = match alloc.mutability {
-                            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                            _ => self.static_addr_of(init, alloc.align, None),
+                        let value = match alloc.inner().mutability {
+                            Mutability::Mut => self.static_addr_of_mut(
+                                const_alloc_to_gcc(self, alloc),
+                                alloc.inner().align,
+                                None,
+                            ),
+                            _ => self.static_addr_of(alloc, None),
                         };
                         if !self.sess().fewer_names() {
                             // TODO(antoyo): set value name.
@@ -282,8 +285,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                                 }),
                             )))
                             .unwrap_memory();
-                        let init = self.const_data_from_alloc(alloc);
-                        self.static_addr_of(init, alloc.inner().align, None)
+                        self.static_addr_of(alloc, None)
                     }
                     GlobalAlloc::TypeId { .. } => {
                         let val = self.const_usize(offset.bytes());
@@ -309,22 +311,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                 }
             }
         }
-    }
-
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        // We ignore the alignment for the purpose of deduping RValues
-        // The alignment is not handled / used in any way by `const_alloc_to_gcc`,
-        // so it is OK to overwrite it here.
-        let mut mock_alloc = alloc.inner().clone();
-        mock_alloc.align = rustc_abi::Align::MAX;
-        // Check if the rvalue is already in the cache - if so, just return it directly.
-        if let Some(res) = self.const_cache.borrow().get(&mock_alloc) {
-            return *res;
-        }
-        // Rvalue not in the cache - convert and add it.
-        let res = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
-        self.const_cache.borrow_mut().insert(mock_alloc, res);
-        res
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

@@ -2,14 +2,11 @@ use crate::ffi::OsStr;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::{env, io};
 
-#[inline]
-pub fn is_sep_byte(b: u8) -> bool {
-    b == b'/'
-}
+path_separator_bytes!(b'/');
 
 #[inline]
-pub fn is_verbatim_sep(b: u8) -> bool {
-    b == b'/'
+pub const fn is_verbatim_sep(b: u8) -> bool {
+    is_sep_byte(b)
 }
 
 #[inline]
@@ -18,8 +15,6 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
 }
 
 pub const HAS_PREFIXES: bool = false;
-pub const MAIN_SEP_STR: &str = "/";
-pub const MAIN_SEP: char = '/';
 
 /// Make a POSIX path absolute without changing its semantics.
 pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {

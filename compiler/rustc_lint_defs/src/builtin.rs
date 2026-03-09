@@ -61,6 +61,7 @@ declare_lint_pass! {
         LARGE_ASSIGNMENTS,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         LEGACY_DERIVE_HELPERS,
+        LINKER_INFO,
         LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
         LOSSY_PROVENANCE_CASTS,
@@ -864,7 +865,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// # #![cfg_attr(bootstrap, feature(cfg_select))]
     /// cfg_select! {
     ///     _ => (),
     ///     windows => (),
@@ -1088,11 +1088,6 @@ declare_lint! {
     /// crate-level [`feature` attributes].
     ///
     /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
-    ///
-    /// Note: This lint is currently not functional, see [issue #44232] for
-    /// more details.
-    ///
-    /// [issue #44232]: https://github.com/rust-lang/rust/issues/44232
     pub UNUSED_FEATURES,
     Warn,
     "unused features found in crate-level `#[feature]` directives"
@@ -4065,6 +4060,40 @@ declare_lint! {
     pub LINKER_MESSAGES,
     Allow,
     "warnings emitted at runtime by the target-specific linker program"
+}
+
+declare_lint! {
+    /// The `linker_info` lint forwards warnings from the linker that are known to be informational-only.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// #[warn(linker_info)]
+    /// fn main () {}
+    /// ```
+    ///
+    /// On MacOS, using `-C link-arg=-lc` and the default linker, this will produce
+    ///
+    /// ```text
+    /// warning: linker stderr: ld: ignoring duplicate libraries: '-lc'
+    ///   |
+    /// note: the lint level is defined here
+    ///  --> ex.rs:1:9
+    ///   |
+    /// 1 | #![warn(linker_info)]
+    ///   |         ^^^^^^^^^^^^^^^
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Many linkers are very "chatty" and print lots of information that is not necessarily
+    /// indicative of an issue. This output has been ignored for many years and is often not
+    /// actionable by developers. It is silenced unless the developer specifically requests for it
+    /// to be printed. See this tracking issue for more details:
+    /// <https://github.com/rust-lang/rust/issues/136096>.
+    pub LINKER_INFO,
+    Allow,
+    "linker warnings known to be informational-only and not indicative of a problem"
 }
 
 declare_lint! {

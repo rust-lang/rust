@@ -11,7 +11,7 @@ use rustc_macros::HashStable;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
-use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
 use crate::query::on_disk_cache::OnDiskCache;
@@ -57,22 +57,9 @@ pub enum ActiveKeyStatus<'tcx> {
 #[derive(Copy, Clone)]
 pub enum CycleErrorHandling {
     Error,
-    Fatal,
     DelayBug,
     Stash,
 }
-
-pub type WillCacheOnDiskForKeyFn<'tcx, Key> = fn(tcx: TyCtxt<'tcx>, key: &Key) -> bool;
-
-pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
-    tcx: TyCtxt<'tcx>,
-    key: &Key,
-    prev_index: SerializedDepNodeIndex,
-    index: DepNodeIndex,
-) -> Option<Value>;
-
-pub type IsLoadableFromDiskFn<'tcx, Key> =
-    fn(tcx: TyCtxt<'tcx>, key: &Key, index: SerializedDepNodeIndex) -> bool;
 
 #[derive(Clone, Debug)]
 pub struct CycleError<I = QueryStackFrameExtra> {
@@ -126,14 +113,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub cycle_error_handling: CycleErrorHandling,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
-    pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
-
-    /// Function pointer that calls `tcx.$query(key)` for this query and
-    /// discards the returned value.
-    ///
-    /// This is a weird thing to be doing, and probably not what you want.
-    /// It is used for loading query results from disk-cache in some cases.
-    pub call_query_method_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key),
 
     /// Function pointer that actually calls this query's provider.
     /// Also performs some associated secondary tasks; see the macro-defined
@@ -142,8 +121,17 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
-    pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
+    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> bool,
+
+    pub try_load_from_disk_fn: fn(
+        tcx: TyCtxt<'tcx>,
+        key: C::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<C::Value>,
+
+    pub is_loadable_from_disk_fn:
+        fn(tcx: TyCtxt<'tcx>, key: C::Key, index: SerializedDepNodeIndex) -> bool,
 
     /// Function pointer that hashes this query's result values.
     ///
@@ -151,7 +139,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
 
     pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 
     /// Formats a human-readable description of this query and its key, as
@@ -181,49 +169,6 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
         // If there is need for a more detailed dump of all flags and fields,
         // consider writing a separate dump method and calling it explicitly.
         f.write_str(self.name)
-    }
-}
-
-impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
-    #[inline(always)]
-    pub fn will_cache_on_disk_for_key(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> bool {
-        self.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
-    }
-
-    #[inline(always)]
-    pub fn try_load_from_disk(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-    ) -> Option<C::Value> {
-        // `?` will return None immediately for queries that never cache to disk.
-        self.try_load_from_disk_fn?(tcx, key, prev_index, index)
-    }
-
-    #[inline]
-    pub fn is_loadable_from_disk(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        index: SerializedDepNodeIndex,
-    ) -> bool {
-        self.is_loadable_from_disk_fn.map_or(false, |f| f(tcx, key, index))
-    }
-
-    /// Synthesize an error value to let compilation continue after a cycle.
-    pub fn value_from_cycle_error(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
-        guar: ErrorGuaranteed,
-    ) -> C::Value {
-        (self.value_from_cycle_error)(tcx, cycle_error, guar)
-    }
-
-    pub fn construct_dep_node(&self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
-        DepNode::construct(tcx, self.dep_kind, key)
     }
 }
 
@@ -265,11 +210,19 @@ pub struct TyCtxtEnsureOk<'tcx> {
 
 #[derive(Copy, Clone)]
 #[must_use]
+pub struct TyCtxtEnsureResult<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+}
+
+#[derive(Copy, Clone)]
+#[must_use]
 pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// FIXME: `ensure_ok`'s effects are subtle. Is this comment fully accurate?
+    ///
     /// Wrapper that calls queries in a special "ensure OK" mode, for callers
     /// that don't need the return value and just want to invoke a query for
     /// its potential side-effect of emitting fatal errors.
@@ -290,15 +243,19 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Therefore, this call mode is not appropriate for callers that want to
     /// ensure that the query is _never_ executed in the future.
-    ///
-    /// ## `return_result_from_ensure_ok`
-    /// If a query has the `return_result_from_ensure_ok` modifier, calls via
-    /// `ensure_ok` will instead return `Result<(), ErrorGuaranteed>`. If the
-    /// query needs to be executed, and execution returns an error, that error
-    /// is returned to the caller.
     #[inline(always)]
     pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
         TyCtxtEnsureOk { tcx: self }
+    }
+
+    /// This is a variant of `ensure_ok` only usable with queries that return
+    /// `Result<_, ErrorGuaranteed>`. Queries calls through this function will
+    /// return `Result<(), ErrorGuaranteed>`. I.e. the error status is returned
+    /// but nothing else. As with `ensure_ok`, this can be more efficient than
+    /// a normal query call.
+    #[inline(always)]
+    pub fn ensure_result(self) -> TyCtxtEnsureResult<'tcx> {
+        TyCtxtEnsureResult { tcx: self }
     }
 
     /// Wrapper that calls queries in a special "ensure done" mode, for callers
@@ -336,53 +293,31 @@ macro_rules! query_helper_param_ty {
     ($K:ty) => { $K };
 }
 
-// Expands to `$yes` if the `arena_cache` modifier is present, `$no` otherwise.
-macro_rules! if_arena_cache {
-    ([] $then:tt $no:tt) => { $no };
-    ([(arena_cache) $($modifiers:tt)*] $yes:tt $no:tt) => { $yes };
-    ([$other:tt $($modifiers:tt)*] $yes:tt $no:tt) => {
-        if_arena_cache!([$($modifiers)*] $yes $no)
-    };
-}
-
-// Expands to `$yes` if the `separate_provide_extern` modifier is present, `$no` otherwise.
-macro_rules! if_separate_provide_extern {
-    ([] $then:tt $no:tt) => { $no };
-    ([(separate_provide_extern) $($modifiers:tt)*] $yes:tt $no:tt) => { $yes };
-    ([$other:tt $($modifiers:tt)*] $yes:tt $no:tt) => {
-        if_separate_provide_extern!([$($modifiers)*] $yes $no)
-    };
-}
-
-// Expands to `$yes` if the `return_result_from_ensure_ok` modifier is present, `$no` otherwise.
-macro_rules! if_return_result_from_ensure_ok {
-    ([] $then:tt $no:tt) => { $no };
-    ([(return_result_from_ensure_ok) $($modifiers:tt)*] $yes:tt $no:tt) => { $yes };
-    ([$other:tt $($modifiers:tt)*] $yes:tt $no:tt) => {
-        if_return_result_from_ensure_ok!([$($modifiers)*] $yes $no)
-    };
-}
-
-// Expands to `$item` if the `feedable` modifier is present.
-macro_rules! item_if_feedable {
-    ([] $($item:tt)*) => {};
-    ([(feedable) $($rest:tt)*] $($item:tt)*) => {
-        $($item)*
-    };
-    ([$other:tt $($modifiers:tt)*] $($item:tt)*) => {
-        item_if_feedable! { [$($modifiers)*] $($item)* }
-    };
-}
-
 macro_rules! define_callbacks {
     (
         // You might expect the key to be `$K:ty`, but it needs to be `$($K:tt)*` so that
         // `query_helper_param_ty!` can match on specific type names.
-        $(
-            $(#[$attr:meta])*
-            [$($modifiers:tt)*]
-            fn $name:ident($($K:tt)*) -> $V:ty,
-        )*
+        queries {
+            $(
+                $(#[$attr:meta])*
+                fn $name:ident($($K:tt)*) -> $V:ty
+                {
+                    // Search for (QMODLIST) to find all occurrences of this query modifier list.
+                    anon: $anon:literal,
+                    arena_cache: $arena_cache:literal,
+                    cache_on_disk: $cache_on_disk:literal,
+                    cycle_error_handling: $cycle_error_handling:ident,
+                    depth_limit: $depth_limit:literal,
+                    eval_always: $eval_always:literal,
+                    feedable: $feedable:literal,
+                    no_hash: $no_hash:literal,
+                    returns_error_guaranteed: $returns_error_guaranteed:literal,
+                    separate_provide_extern: $separate_provide_extern:literal,
+                }
+            )*
+        }
+        // Non-queries are unused here.
+        non_queries { $($_:tt)* }
     ) => {
         $(
             #[allow(unused_lifetimes)]
@@ -393,20 +328,22 @@ macro_rules! define_callbacks {
                 pub type Key<'tcx> = $($K)*;
                 pub type Value<'tcx> = $V;
 
-                pub type LocalKey<'tcx> = if_separate_provide_extern!(
-                    [$($modifiers)*]
-                    (<Key<'tcx> as $crate::query::AsLocalQueryKey>::LocalQueryKey)
-                    (Key<'tcx>)
-                );
+                /// Key type used by provider functions in `local_providers`.
+                /// This query has the `separate_provide_extern` modifier.
+                #[cfg($separate_provide_extern)]
+                pub type LocalKey<'tcx> =
+                    <Key<'tcx> as $crate::query::AsLocalQueryKey>::LocalQueryKey;
+                /// Key type used by provider functions in `local_providers`.
+                #[cfg(not($separate_provide_extern))]
+                pub type LocalKey<'tcx> = Key<'tcx>;
 
-                /// This type alias specifies the type returned from query providers and the type
-                /// used for decoding. For regular queries this is the declared returned type `V`,
-                /// but `arena_cache` will use `<V as ArenaCached>::Provided` instead.
-                pub type ProvidedValue<'tcx> = if_arena_cache!(
-                    [$($modifiers)*]
-                    (<Value<'tcx> as $crate::query::arena_cached::ArenaCached<'tcx>>::Provided)
-                    (Value<'tcx>)
-                );
+                /// Type returned from query providers and loaded from disk-cache.
+                #[cfg($arena_cache)]
+                pub type ProvidedValue<'tcx> =
+                    <Value<'tcx> as $crate::query::arena_cached::ArenaCached<'tcx>>::Provided;
+                /// Type returned from query providers and loaded from disk-cache.
+                #[cfg(not($arena_cache))]
+                pub type ProvidedValue<'tcx> = Value<'tcx>;
 
                 /// This helper function takes a value returned by the query provider
                 /// (or loaded from disk, or supplied by query feeding), allocates
@@ -419,23 +356,23 @@ macro_rules! define_callbacks {
                 ) -> Erased<Value<'tcx>> {
                     // For queries with the `arena_cache` modifier, store the
                     // provided value in an arena and get a reference to it.
-                    let value: Value<'tcx> = if_arena_cache!(
-                        [$($modifiers)*]
-                        {
-                            <Value<'tcx> as $crate::query::arena_cached::ArenaCached>::
-                                alloc_in_arena
-                            (
-                                tcx,
-                                &tcx.query_system.arenas.$name,
-                                provided_value,
-                            )
-                        }
-                        {
-                            // Otherwise, the provided value is the value (and `tcx` is unused).
-                            let _ = tcx;
-                            provided_value
-                        }
-                    );
+                    #[cfg($arena_cache)]
+                    let value: Value<'tcx> = {
+                        use $crate::query::arena_cached::ArenaCached;
+                        <Value<'tcx> as ArenaCached>::alloc_in_arena(
+                            tcx,
+                            &tcx.query_system.arenas.$name,
+                            provided_value,
+                        )
+                    };
+
+                    // Otherwise, the provided value is the value (and `tcx` is unused).
+                    #[cfg(not($arena_cache))]
+                    let value: Value<'tcx> = {
+                        let _ = tcx;
+                        provided_value
+                    };
+
                     erase::erase_val(value)
                 }
 
@@ -479,13 +416,11 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryArenas<'tcx> {
             $(
-                pub $name: if_arena_cache!(
-                    [$($modifiers)*]
-                    // Use the `ArenaCached` helper trait to determine the arena's value type.
-                    (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
-                    // No arena for this query, so the field type is `()`.
-                    ()
-                ),
+                // Use the `ArenaCached` helper trait to determine the arena's value type.
+                #[cfg($arena_cache)]
+                pub $name: TypedArena<
+                    <$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated,
+                >,
             )*
         }
 
@@ -493,23 +428,31 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
-                pub fn $name(
-                    self,
-                    key: query_helper_param_ty!($($K)*),
-                ) -> if_return_result_from_ensure_ok!(
-                    [$($modifiers)*]
-                    (Result<(), ErrorGuaranteed>)
-                    ()
-                ) {
-                    if_return_result_from_ensure_ok!(
-                        [$($modifiers)*]
-                        (crate::query::inner::query_ensure_error_guaranteed)
-                        (crate::query::inner::query_ensure)
-                    )(
+                pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                    crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
                         $crate::query::EnsureMode::Ok,
+                    )
+                }
+            )*
+        }
+
+        // Only defined when the `ensure_result` modifier is present.
+        impl<'tcx> $crate::query::TyCtxtEnsureResult<'tcx> {
+            $(
+                #[cfg($returns_error_guaranteed)]
+                $(#[$attr])*
+                #[inline(always)]
+                pub fn $name(
+                    self,
+                    key: query_helper_param_ty!($($K)*),
+                ) -> Result<(), rustc_errors::ErrorGuaranteed> {
+                    crate::query::inner::query_ensure_result(
+                        self.tcx,
+                        &self.tcx.query_system.query_vtables.$name,
+                        $crate::query::IntoQueryParam::into_query_param(key),
                     )
                 }
             )*
@@ -520,7 +463,7 @@ macro_rules! define_callbacks {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                    crate::query::inner::query_ensure(
+                    crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryParam::into_query_param(key),
@@ -559,24 +502,22 @@ macro_rules! define_callbacks {
         }
 
         $(
-            item_if_feedable! {
-                [$($modifiers)*]
-                impl<'tcx, K: $crate::query::IntoQueryParam<$name::Key<'tcx>> + Copy>
-                    TyCtxtFeed<'tcx, K>
-                {
-                    $(#[$attr])*
-                    #[inline(always)]
-                    pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
-                        let key = self.key().into_query_param();
-                        let erased_value = $name::provided_to_erased(self.tcx, value);
-                        $crate::query::inner::query_feed(
-                            self.tcx,
-                            dep_graph::DepKind::$name,
-                            &self.tcx.query_system.query_vtables.$name,
-                            key,
-                            erased_value,
-                        );
-                    }
+            #[cfg($feedable)]
+            impl<'tcx, K: $crate::query::IntoQueryParam<$name::Key<'tcx>> + Copy>
+                TyCtxtFeed<'tcx, K>
+            {
+                $(#[$attr])*
+                #[inline(always)]
+                pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
+                    let key = self.key().into_query_param();
+                    let erased_value = $name::provided_to_erased(self.tcx, value);
+                    $crate::query::inner::query_feed(
+                        self.tcx,
+                        dep_graph::DepKind::$name,
+                        &self.tcx.query_system.query_vtables.$name,
+                        key,
+                        erased_value,
+                    );
                 }
             }
         )*
@@ -601,11 +542,11 @@ macro_rules! define_callbacks {
 
         pub struct ExternProviders {
             $(
-                pub $name: if_separate_provide_extern!(
-                    [$($modifiers)*]
-                    (for<'tcx> fn(TyCtxt<'tcx>, $name::Key<'tcx>) -> $name::ProvidedValue<'tcx>)
-                    ()
-                ),
+                #[cfg($separate_provide_extern)]
+                pub $name: for<'tcx> fn(
+                    TyCtxt<'tcx>,
+                    $name::Key<'tcx>,
+                ) -> $name::ProvidedValue<'tcx>,
             )*
         }
 
@@ -625,13 +566,10 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 ExternProviders {
                     $(
-                        $name: if_separate_provide_extern!(
-                            [$($modifiers)*]
-                            (|_, key| $crate::query::plumbing::default_extern_query(
-                                stringify!($name),
-                                &key
-                            ))
-                            ()
+                        #[cfg($separate_provide_extern)]
+                        $name: |_, key| $crate::query::plumbing::default_extern_query(
+                            stringify!($name),
+                            &key,
                         ),
                     )*
                 }
@@ -649,18 +587,6 @@ macro_rules! define_callbacks {
         }
     };
 }
-
-// Each of these queries corresponds to a function pointer field in the
-// `Providers` struct for requesting a value of that type, and a method
-// on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
-// which memoizes and does dep-graph tracking, wrapping around the actual
-// `Providers` that the driver creates (using several `rustc_*` crates).
-//
-// The result type of each query must implement `Clone`, and additionally
-// `ty::query::values::Value`, which produces an appropriate placeholder
-// (error) value if the query resulted in a query cycle.
-// Queries marked with `cycle_fatal` do not need the latter implementation,
-// as they will raise an fatal error on query cycles instead.
 
 mod sealed {
     use rustc_hir::def_id::{LocalModDefId, ModDefId};

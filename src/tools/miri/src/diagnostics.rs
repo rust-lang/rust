@@ -149,6 +149,7 @@ pub enum NonHaltingDiagnostic {
         failure_ordering: AtomicReadOrd,
         effective_failure_ordering: AtomicReadOrd,
     },
+    FileInProcOpened,
 }
 
 /// Level of Miri specific diagnostics
@@ -655,6 +656,7 @@ impl<'tcx> MiriMachine<'tcx> {
             | ProgressReport { .. }
             | WeakMemoryOutdatedLoad { .. } =>
                 ("tracking was triggered here".to_string(), DiagLevel::Note),
+            FileInProcOpened => ("open a file in `/proc`".to_string(), DiagLevel::Warning),
         };
 
         let title = match &e {
@@ -702,6 +704,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 };
                 format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
             }
+            FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri")
         };
 
         let notes = match &e {

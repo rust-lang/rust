@@ -1,22 +1,23 @@
+use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
 use rustc_data_structures::unord::UnordMap;
-use rustc_data_structures::{assert_matches, outline};
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
+use rustc_span::Symbol;
 use tracing::{debug, instrument};
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -45,6 +46,11 @@ pub enum QuerySideEffect {
     /// the query as green, as that query will have the side
     /// effect dep node as a dependency.
     Diagnostic(DiagInner),
+    /// Records the feature used during query execution.
+    /// This feature will be inserted into `sess.used_features`
+    /// if we mark the query as green, as that query will have
+    /// the side effect dep node as a dependency.
+    CheckFeature { symbol: Symbol },
 }
 #[derive(Clone)]
 pub struct DepGraph {
@@ -514,29 +520,40 @@ impl DepGraph {
         }
     }
 
-    /// This encodes a diagnostic by creating a node with an unique index and associating
-    /// `diagnostic` with it, for use in the next session.
+    /// This encodes a side effect by creating a node with an unique index and associating
+    /// it with the node, for use in the next session.
     #[inline]
     pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
             read_deps(|task_deps| match task_deps {
                 TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
-                    self.read_index(data.encode_diagnostic(tcx, diagnostic));
+                    let dep_node_index = data
+                        .encode_side_effect(tcx, QuerySideEffect::Diagnostic(diagnostic.clone()));
+                    self.read_index(dep_node_index);
                 }
             })
         }
     }
-    /// This forces a diagnostic node green by running its side effect. `prev_index` would
-    /// refer to a node created used `encode_diagnostic` in the previous session.
+    /// This forces a side effect node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_side_effect` in the previous session.
     #[inline]
-    pub fn force_diagnostic_node<'tcx>(
+    pub fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
+        if let Some(ref data) = self.data {
+            data.force_side_effect(tcx, prev_index);
+        }
+    }
+
+    #[inline]
+    pub fn encode_side_effect<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        prev_index: SerializedDepNodeIndex,
-    ) {
+        side_effect: QuerySideEffect,
+    ) -> DepNodeIndex {
         if let Some(ref data) = self.data {
-            data.force_diagnostic_node(tcx, prev_index);
+            data.encode_side_effect(tcx, side_effect)
+        } else {
+            self.next_virtual_depnode_index()
         }
     }
 
@@ -673,10 +690,14 @@ impl DepGraphData {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 
-    /// This encodes a diagnostic by creating a node with an unique index and associating
-    /// `diagnostic` with it, for use in the next session.
+    /// This encodes a side effect by creating a node with an unique index and associating
+    /// it with the node, for use in the next session.
     #[inline]
-    fn encode_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) -> DepNodeIndex {
+    fn encode_side_effect<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        side_effect: QuerySideEffect,
+    ) -> DepNodeIndex {
         // Use `send_new` so we get an unique index, even though the dep node is not.
         let dep_node_index = self.current.encoder.send_new(
             DepNode {
@@ -684,27 +705,20 @@ impl DepGraphData {
                 key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
             },
             Fingerprint::ZERO,
-            // We want the side effect node to always be red so it will be forced and emit the
-            // diagnostic.
+            // We want the side effect node to always be red so it will be forced and run the
+            // side effect.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        let side_effect = QuerySideEffect::Diagnostic(diagnostic.clone());
         tcx.store_side_effect(dep_node_index, side_effect);
         dep_node_index
     }
 
-    /// This forces a diagnostic node green by running its side effect. `prev_index` would
-    /// refer to a node created used `encode_diagnostic` in the previous session.
+    /// This forces a side effect node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_side_effect` in the previous session.
     #[inline]
-    fn force_diagnostic_node<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
+    fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
         with_deps(TaskDepsRef::Ignore, || {
             let side_effect = tcx.load_side_effect(prev_index).unwrap();
-
-            match &side_effect {
-                QuerySideEffect::Diagnostic(diagnostic) => {
-                    tcx.dcx().emit_diagnostic(diagnostic.clone());
-                }
-            }
 
             // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
             // green dependencies. `send_and_color` will also prevent multiple nodes
@@ -720,6 +734,16 @@ impl DepGraphData {
                 std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
                 true,
             );
+
+            match &side_effect {
+                QuerySideEffect::Diagnostic(diagnostic) => {
+                    tcx.dcx().emit_diagnostic(diagnostic.clone());
+                }
+                QuerySideEffect::CheckFeature { symbol } => {
+                    tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
+                }
+            }
+
             // This will just overwrite the same value for concurrent calls.
             tcx.store_side_effect(dep_node_index, side_effect);
         })
@@ -858,7 +882,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx>,
         dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        self.data().and_then(|data| data.try_mark_green(tcx, dep_node))
+        self.data()?.try_mark_green(tcx, dep_node)
     }
 }
 
@@ -1353,8 +1377,6 @@ pub struct TaskDeps {
     /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
     /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
     read_set: FxHashSet<DepNodeIndex>,
-
-    phantom_data: PhantomData<DepNode>,
 }
 
 impl TaskDeps {
@@ -1368,7 +1390,6 @@ impl TaskDeps {
             node,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
-            phantom_data: PhantomData,
         }
     }
 }

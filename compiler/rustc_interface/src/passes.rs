@@ -8,7 +8,7 @@ use std::{env, fs, iter};
 use rustc_ast::{self as ast, CRATE_NODE_ID};
 use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
@@ -781,7 +781,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -963,6 +963,17 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     }
 
     let incremental = dep_graph.is_fully_enabled();
+
+    // Note: this function body is the origin point of the widely-used 'tcx lifetime.
+    //
+    // `gcx_cell` is defined here and `&gcx_cell` is passed to `create_global_ctxt`, which then
+    // actually creates the `GlobalCtxt` with a `gcx_cell.get_or_init(...)` call. This is done so
+    // that the resulting reference has the type `&'tcx GlobalCtxt<'tcx>`, which is what `TyCtxt`
+    // needs. If we defined and created the `GlobalCtxt` within `create_global_ctxt` then its type
+    // would be `&'a GlobalCtxt<'tcx>`, with two lifetimes.
+    //
+    // Similarly, by creating `arena` here and passing in `&arena`, that reference has the type
+    // `&'tcx WorkerLocal<Arena<'tcx>>`, also with one lifetime. And likewise for `hir_arena`.
 
     let gcx_cell = OnceLock::new();
     let arena = WorkerLocal::new(|_| Arena::default());
@@ -1194,7 +1205,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, EncodedMetadata) {
+) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
 
     // Hook for tests.
@@ -1221,19 +1232,17 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || {
+    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
+
+    let codegen = tcx.sess.time("codegen_crate", || {
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
             // Skip crate items and just output metadata in -Z no-codegen mode.
             tcx.sess.dcx().abort_if_errors();
 
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
-            Box::new(CodegenResults {
-                modules: vec![],
-                allocator_module: None,
-                crate_info: CrateInfo::new(tcx, "<dummy cpu>".to_owned()),
-            })
+            Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
-            codegen_backend.codegen_crate(tcx)
+            codegen_backend.codegen_crate(tcx, &crate_info)
         }
     });
 
@@ -1245,7 +1254,7 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    (codegen, metadata)
+    (codegen, crate_info, metadata)
 }
 
 /// Compute and validate the crate name.

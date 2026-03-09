@@ -23,8 +23,8 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, SourceFile, Span};
 use tracing::{debug, warn};
 
+use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
-use crate::translation::format_diag_message;
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, SuggestionStyle,
 };

@@ -778,7 +778,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // for local impls, since upstream impls should be valid.
                     if impl_source.impl_def_id.is_local()
                         && let Err(guar) =
-                            self.tcx.ensure_ok().coerce_unsized_info(impl_source.impl_def_id)
+                            self.tcx.ensure_result().coerce_unsized_info(impl_source.impl_def_id)
                     {
                         self.fcx.set_tainted_by_errors(guar);
                     }

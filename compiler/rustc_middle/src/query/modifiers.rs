@@ -28,11 +28,6 @@ pub(crate) struct cache_on_disk_if;
 /// A cycle error results in a delay_bug call
 pub(crate) struct cycle_delay_bug;
 
-/// # `cycle_fatal` query modifier
-///
-/// A cycle error for this query aborting the compilation with a fatal error.
-pub(crate) struct cycle_fatal;
-
 /// # `cycle_stash` query modifier
 ///
 /// A cycle error results in a stashed cycle error that can be unstashed and canceled later
@@ -62,20 +57,6 @@ pub(crate) struct feedable;
 ///
 /// Don't hash the result, instead just mark a query red if it runs
 pub(crate) struct no_hash;
-
-/// # `return_result_from_ensure_ok` query modifier
-///
-/// When this query is called via `tcx.ensure_ok()`, it returns
-/// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
-/// be executed, and that execution returns an error, the error result is
-/// returned to the caller.
-///
-/// If execution is skipped, a synthetic `Ok(())` is returned, on the
-/// assumption that a query with all-green inputs must have succeeded.
-///
-/// Can only be applied to queries with a return value of
-/// `Result<_, ErrorGuaranteed>`.
-pub(crate) struct return_result_from_ensure_ok;
 
 /// # `separate_provide_extern` query modifier
 ///

@@ -1,6 +1,8 @@
 use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
+use rustc_ast as ast;
+use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
@@ -8,7 +10,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
@@ -1036,31 +1037,13 @@ impl InvalidAtomicOrdering {
         expr: &Expr<'hir>,
         recognized_names: &[Symbol], // used for fast path calculation
     ) -> Option<(Symbol, &'hir [Expr<'hir>])> {
-        const ATOMIC_TYPES: &[Symbol] = &[
-            sym::AtomicBool,
-            sym::AtomicPtr,
-            sym::AtomicUsize,
-            sym::AtomicU8,
-            sym::AtomicU16,
-            sym::AtomicU32,
-            sym::AtomicU64,
-            sym::AtomicU128,
-            sym::AtomicIsize,
-            sym::AtomicI8,
-            sym::AtomicI16,
-            sym::AtomicI32,
-            sym::AtomicI64,
-            sym::AtomicI128,
-        ];
         if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             // skip extension traits, only lint functions from the standard library
             && let Some(impl_did) = cx.tcx.inherent_impl_of_assoc(m_def_id)
             && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
-            && let parent = cx.tcx.parent(adt.did())
-            && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
-            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
+            && cx.tcx.is_diagnostic_item(sym::Atomic, adt.did())
         {
             return Some((method_path.ident.name, args));
         }

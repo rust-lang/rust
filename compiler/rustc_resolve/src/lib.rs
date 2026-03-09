@@ -8,9 +8,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
-#![cfg_attr(bootstrap, feature(ptr_as_ref_unchecked))]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(const_default)]
@@ -1155,9 +1152,9 @@ impl MacroData {
     }
 }
 
-pub struct ResolverOutputs {
+pub struct ResolverOutputs<'tcx> {
     pub global_ctxt: ResolverGlobalCtxt,
-    pub ast_lowering: ResolverAstLowering,
+    pub ast_lowering: ResolverAstLowering<'tcx>,
 }
 
 /// The main resolver class.
@@ -1212,7 +1209,7 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<Vec<TraitCandidate>> = Default::default(),
+    trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1806,7 +1803,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.visibilities_for_hashing.push((feed.def_id(), vis));
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(self) -> ResolverOutputs<'tcx> {
         let proc_macros = self.proc_macros;
         let expn_that_defined = self.expn_that_defined;
         let extern_crate_map = self.extern_crate_map;
@@ -1952,7 +1949,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         sp: Span,
         assoc_item: Option<(Symbol, Namespace)>,
-    ) -> Vec<TraitCandidate> {
+    ) -> &'tcx [TraitCandidate<'tcx>] {
         let mut found_traits = Vec::new();
 
         if let Some(module) = current_trait {
@@ -1960,7 +1957,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let def_id = module.def_id();
                 found_traits.push(TraitCandidate {
                     def_id,
-                    import_ids: smallvec![],
+                    import_ids: &[],
                     lint_ambiguous: false,
                 });
             }
@@ -1990,14 +1987,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ControlFlow::<()>::Continue(())
         });
 
-        found_traits
+        self.tcx.hir_arena.alloc_slice(&found_traits)
     }
 
     fn traits_in_module(
         &mut self,
         module: Module<'ra>,
         assoc_item: Option<(Symbol, Namespace)>,
-        found_traits: &mut Vec<TraitCandidate>,
+        found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
         module.ensure_traits(self);
         let traits = module.traits.borrow();
@@ -2036,8 +2033,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         mut kind: &DeclKind<'_>,
         trait_name: Symbol,
-    ) -> SmallVec<[LocalDefId; 1]> {
-        let mut import_ids = smallvec![];
+    ) -> &'tcx [LocalDefId] {
+        let mut import_ids: SmallVec<[LocalDefId; 1]> = smallvec![];
         while let DeclKind::Import { import, source_decl, .. } = kind {
             if let Some(node_id) = import.id() {
                 let def_id = self.local_def_id(node_id);
@@ -2047,7 +2044,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.add_to_glob_map(*import, trait_name);
             kind = &source_decl.kind;
         }
-        import_ids
+
+        self.tcx.hir_arena.alloc_slice(&import_ids)
     }
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {

@@ -1,5 +1,5 @@
 // This test makes sure that we do not leak paths to the checkout
-// (ie. /checkout in CI) in the distributed `libstd` debuginfo.
+// (i.e. /checkout in CI) in the distributed `libstd` debuginfo.
 //
 // This test only runs on Linux and dist builder (or with `rust.remap-debuginfo = true`
 // set in your `bootstrap.toml`).

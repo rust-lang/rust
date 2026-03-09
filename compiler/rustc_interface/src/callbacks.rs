@@ -12,8 +12,9 @@
 use std::fmt;
 
 use rustc_errors::DiagInner;
-use rustc_middle::dep_graph::TaskDepsRef;
+use rustc_middle::dep_graph::{DepNodeIndex, QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
+use rustc_span::Symbol;
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_context_opt(|icx| {
@@ -42,11 +43,30 @@ fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R)
             icx.tcx.dep_graph.record_diagnostic(icx.tcx, &diagnostic);
 
             // Diagnostics are tracked, we can ignore the dependency.
-            let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..icx.clone() };
+            let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..*icx };
             tls::enter_context(&icx, move || (*f)(diagnostic))
         } else {
             // In any other case, invoke diagnostics anyway.
             (*f)(diagnostic)
+        }
+    })
+}
+
+fn track_feature(feature: Symbol) {
+    tls::with_context_opt(|icx| {
+        let Some(icx) = icx else {
+            return;
+        };
+        let tcx = icx.tcx;
+
+        if let Some(dep_node_index) = tcx.sess.used_features.lock().get(&feature).copied() {
+            tcx.dep_graph.read_index(DepNodeIndex::from_u32(dep_node_index));
+        } else {
+            let dep_node_index = tcx
+                .dep_graph
+                .encode_side_effect(tcx, QuerySideEffect::CheckFeature { symbol: feature });
+            tcx.sess.used_features.lock().insert(feature, dep_node_index.as_u32());
+            tcx.dep_graph.read_index(dep_node_index);
         }
     })
 }
@@ -70,4 +90,5 @@ pub fn setup_callbacks() {
     rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_)));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
+    rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
 }

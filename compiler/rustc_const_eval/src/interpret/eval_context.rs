@@ -1,7 +1,8 @@
+use std::debug_assert_matches;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc_data_structures::debug_assert_matches;
-use rustc_errors::{DiagCtxtHandle, msg};
+use rustc_errors::{DiagCtxtHandle, format_diag_message, msg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -153,16 +154,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
-    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance] with a tracing span.
-    /// See [FnAbiOf::fn_abi_of_instance] for the original documentation.
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance_no_deduced_attrs] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_instance_no_deduced_attrs] for the original documentation.
     #[inline(always)]
-    pub fn fn_abi_of_instance(
+    pub fn fn_abi_of_instance_no_deduced_attrs(
         &self,
         instance: ty::Instance<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
         let _trace = enter_trace_span!(M, layouting::fn_abi_of_instance, ?instance, ?extra_args);
-        FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
+        FnAbiOf::fn_abi_of_instance_no_deduced_attrs(self, instance, extra_args)
     }
 }
 
@@ -235,9 +236,9 @@ pub fn format_interp_error<'tcx>(dcx: DiagCtxtHandle<'_>, e: InterpErrorInfo<'tc
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
     e.add_args(&mut diag);
-    let s = dcx.eagerly_translate_to_string(msg, diag.args.iter());
+    let msg = format_diag_message(&msg, &diag.args).into_owned();
     diag.cancel();
-    s
+    msg
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {

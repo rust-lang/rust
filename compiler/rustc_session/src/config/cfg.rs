@@ -328,7 +328,7 @@ impl CheckCfg {
             return;
         }
 
-        // for `#[cfg(foo)]` (ie. cfg value is none)
+        // for `#[cfg(foo)]` (i.e. cfg value is none)
         let no_values = || {
             let mut values = FxHashSet::default();
             values.insert(None);

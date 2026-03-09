@@ -1726,14 +1726,6 @@ ui/moves/issue-46099-move-in-macro.rs
 ui/moves/issue-72649-uninit-in-loop.rs
 ui/moves/issue-75904-move-closure-loop.rs
 ui/moves/issue-99470-move-out-of-some.rs
-ui/never_type/issue-10176.rs
-ui/never_type/issue-13352.rs
-ui/never_type/issue-2149.rs
-ui/never_type/issue-44402.rs
-ui/never_type/issue-51506.rs
-ui/never_type/issue-52443.rs
-ui/never_type/issue-5500-1.rs
-ui/never_type/issue-96335.rs
 ui/nll/closure-requirements/issue-58127-mutliple-requirements.rs
 ui/nll/issue-112604-closure-output-normalize.rs
 ui/nll/issue-16223.rs

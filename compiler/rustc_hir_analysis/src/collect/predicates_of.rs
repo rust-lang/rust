@@ -1,5 +1,6 @@
+use std::assert_matches;
+
 use hir::Node;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -435,6 +436,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                     //
                     //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //     struct Bar<const N: usize>(Foo<N, 3>);
+                    return;
+                }
+
+                // Skip type consts as mGCA doesn't support evaluatable clauses.
+                if self.tcx.is_type_const(uv.def) {
                     return;
                 }
 

@@ -31,12 +31,6 @@ impl<'tcx> ty::ValTreeKind<TyCtxt<'tcx>> {
 // recurses through
 pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>);
 
-impl<'tcx> rustc_type_ir::inherent::ValTree<TyCtxt<'tcx>> for ValTree<'tcx> {
-    fn kind(&self) -> &ty::ValTreeKind<TyCtxt<'tcx>> {
-        &self
-    }
-}
-
 impl<'tcx> ValTree<'tcx> {
     /// Returns the zero-sized valtree: `Branch([])`.
     pub fn zst(tcx: TyCtxt<'tcx>) -> Self {
@@ -44,7 +38,7 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn is_zst(self) -> bool {
-        matches!(*self, ty::ValTreeKind::Branch(box []))
+        matches!(*self, ty::ValTreeKind::Branch(consts) if consts.is_empty())
     }
 
     pub fn from_raw_bytes(tcx: TyCtxt<'tcx>, bytes: &[u8]) -> Self {
@@ -58,7 +52,9 @@ impl<'tcx> ValTree<'tcx> {
         tcx: TyCtxt<'tcx>,
         branches: impl IntoIterator<Item = ty::Const<'tcx>>,
     ) -> Self {
-        tcx.intern_valtree(ty::ValTreeKind::Branch(branches.into_iter().collect()))
+        tcx.intern_valtree(ty::ValTreeKind::Branch(
+            tcx.mk_const_list_from_iter(branches.into_iter()),
+        ))
     }
 
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt) -> Self {
@@ -78,6 +74,14 @@ impl<'tcx> Deref for ValTree<'tcx> {
 impl fmt::Debug for ValTree<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for ty::ValTree<'tcx> {
+    type Kind = ty::ValTreeKind<TyCtxt<'tcx>>;
+
+    fn kind(self) -> Self::Kind {
+        *self.0
     }
 }
 

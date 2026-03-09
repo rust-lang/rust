@@ -429,7 +429,7 @@ impl fmt::Display for Display<'_> {
                         "freebsd" => "FreeBSD",
                         "fuchsia" => "Fuchsia",
                         "haiku" => "Haiku",
-                        "hermit" => "HermitCore",
+                        "hermit" => "Hermit",
                         "illumos" => "illumos",
                         "ios" => "iOS",
                         "l4re" => "L4Re",

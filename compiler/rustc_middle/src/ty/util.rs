@@ -402,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
-        self.ensure_ok().coherent_trait(drop_trait).ok()?;
+        self.ensure_result().coherent_trait(drop_trait).ok()?;
 
         let mut dtor_candidate = None;
         // `Drop` impls can only be written in the same crate as the adt, and cannot be blanket impls
@@ -449,7 +449,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
-        self.ensure_ok().coherent_trait(async_drop_trait).ok()?;
+        self.ensure_result().coherent_trait(async_drop_trait).ok()?;
 
         let mut dtor_candidate = None;
         // `AsyncDrop` impls can only be written in the same crate as the adt, and cannot be blanket impls

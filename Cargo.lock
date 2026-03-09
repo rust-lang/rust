@@ -620,7 +620,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clippy"
-version = "0.1.95"
+version = "0.1.96"
 dependencies = [
  "anstream",
  "askama",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.95"
+version = "0.1.96"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.95"
+version = "0.1.96"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.95"
+version = "0.1.96"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1107,7 +1107,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.95"
+version = "0.1.96"
 
 [[package]]
 name = "derive-where"
@@ -1217,9 +1217,9 @@ dependencies = [
 
 [[package]]
 name = "dispatch2"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89a09f22a6c6069a18470eb92d2298acf25463f14256d24778e1230d789a2aec"
+checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
 dependencies = [
  "bitflags",
  "block2",
@@ -4121,6 +4121,7 @@ version = "0.0.0"
 dependencies = [
  "cc",
  "libc",
+ "shlex",
 ]
 
 [[package]]

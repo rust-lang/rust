@@ -300,7 +300,8 @@ pub enum ProvenanceExtra {
 
 #[cfg(target_pointer_width = "64")]
 static_assert_size!(StrictPointer, 24);
-// FIXME: this would with in 24bytes but layout optimizations are not smart enough
+// Pointer does not fit as the layout algorithm isn't smart enough (but also, we tried using
+// pattern types to get a larger niche that makes this fit and it didn't improve performance).
 // #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer, 24);
 #[cfg(target_pointer_width = "64")]

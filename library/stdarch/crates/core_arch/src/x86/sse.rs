@@ -2816,14 +2816,32 @@ mod tests {
         let aa = &[3.0f32, 12.0, 23.0, NAN];
         let bb = &[3.0f32, 47.5, 1.5, NAN];
 
-        let ee = &[1i32, 0, 1, 0];
+        let ee = &[0i32, 0, 1, 0];
 
         for i in 0..4 {
             let a = _mm_setr_ps(aa[i], 1.0, 2.0, 3.0);
             let b = _mm_setr_ps(bb[i], 0.0, 2.0, 4.0);
 
-            let r = _mm_comige_ss(a, b);
+            let r = _mm_comigt_ss(a, b);
 
+            assert_eq!(
+                ee[i], r,
+                "_mm_comigt_ss({:?}, {:?}) = {}, expected: {} (i={})",
+                a, b, r, ee[i], i
+            );
+        }
+    }
+
+    #[simd_test(enable = "sse")]
+    fn test_mm_comige_ss() {
+        let aa = &[3.0f32, 23.0, 12.0, NAN];
+        let bb = &[3.0f32, 1.5, 47.5, NAN];
+        let ee = &[1i32, 1, 0, 0];
+
+        for i in 0..4 {
+            let a = _mm_setr_ps(aa[i], 1.0, 2.0, 3.0);
+            let b = _mm_setr_ps(bb[i], 0.0, 2.0, 4.0);
+            let r = _mm_comige_ss(a, b);
             assert_eq!(
                 ee[i], r,
                 "_mm_comige_ss({:?}, {:?}) = {}, expected: {} (i={})",

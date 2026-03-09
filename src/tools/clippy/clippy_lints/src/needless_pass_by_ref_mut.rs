@@ -51,6 +51,8 @@ declare_clippy_lint! {
     "using a `&mut` argument when it's not mutated"
 }
 
+impl_lint_pass!(NeedlessPassByRefMut<'_> => [NEEDLESS_PASS_BY_REF_MUT]);
+
 pub struct NeedlessPassByRefMut<'tcx> {
     avoid_breaking_exported_api: bool,
     used_fn_def_ids: FxHashSet<LocalDefId>,
@@ -66,8 +68,6 @@ impl NeedlessPassByRefMut<'_> {
         }
     }
 }
-
-impl_lint_pass!(NeedlessPassByRefMut<'_> => [NEEDLESS_PASS_BY_REF_MUT]);
 
 fn should_skip<'tcx>(
     cx: &LateContext<'tcx>,

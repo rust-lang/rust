@@ -1,5 +1,5 @@
-#![feature(f16)]
 #![feature(cfg_target_has_reliable_f16_f128)]
+#![cfg_attr(target_has_reliable_f16, feature(f16))]
 #![expect(internal_features)] // reliable_f16_f128
 
 mod traits;

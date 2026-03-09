@@ -43,6 +43,7 @@ declare_clippy_lint! {
     suspicious,
     "redundant redefinition of a local binding"
 }
+
 declare_lint_pass!(RedundantLocals => [REDUNDANT_LOCALS]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantLocals {

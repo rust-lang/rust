@@ -166,6 +166,11 @@ pub struct Session {
     /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
     /// optimization-pass execution candidate during this compilation.
     pub mir_opt_bisect_eval_count: AtomicUsize,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, u32>>,
 }
 
 #[derive(Clone, Copy)]
@@ -615,9 +620,9 @@ impl Session {
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
                 if !self.thin_lto_supported {
-                    // Backend doesn't support ThinLTO, disable LTO.
+                    // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
-                    return config::Lto::No;
+                    return config::Lto::Fat;
                 }
                 return config::Lto::Thin;
             }
@@ -1096,6 +1101,7 @@ pub fn build_session(
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
+        used_features: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

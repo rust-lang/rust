@@ -1,6 +1,6 @@
 use std::cell::LazyCell;
+use std::debug_assert_matches;
 
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diagnostic, Subdiagnostic, msg};

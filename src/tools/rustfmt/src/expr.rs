@@ -1553,7 +1553,10 @@ pub(crate) fn can_be_overflowed_expr(
         }
 
         // Handle always block-like expressions
-        ast::ExprKind::Gen(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
+        ast::ExprKind::Gen(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Closure(..)
+        | ast::ExprKind::TryBlock(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {
@@ -1809,7 +1812,7 @@ fn rewrite_struct_lit<'a>(
             match struct_rest {
                 ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
                 ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
-                ast::StructRest::None => None,
+                ast::StructRest::None | ast::StructRest::NoneWithError(_) => None,
             }
             .into_iter(),
         );

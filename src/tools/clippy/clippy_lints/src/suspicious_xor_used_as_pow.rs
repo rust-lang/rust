@@ -27,6 +27,7 @@ declare_clippy_lint! {
     restriction,
     "XOR (`^`) operator possibly used as exponentiation operator"
 }
+
 declare_lint_pass!(ConfusingXorAndPow => [SUSPICIOUS_XOR_USED_AS_POW]);
 
 impl LateLintPass<'_> for ConfusingXorAndPow {

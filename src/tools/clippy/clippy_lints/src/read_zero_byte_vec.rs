@@ -46,6 +46,7 @@ declare_clippy_lint! {
     nursery,
     "checks for reads into a zero-length `Vec`"
 }
+
 declare_lint_pass!(ReadZeroByteVec => [READ_ZERO_BYTE_VEC]);
 
 impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
