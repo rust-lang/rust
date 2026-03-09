@@ -1436,7 +1436,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
+                                let is_assoc_item = matches!(rib.kind, RibKind::AssocItem);
+                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem { is_assoc_item }));
                             }
                         }
                         RibKind::ConstantItem(_, item) => {

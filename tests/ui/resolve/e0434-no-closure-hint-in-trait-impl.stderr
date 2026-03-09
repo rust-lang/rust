@@ -1,0 +1,9 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/e0434-no-closure-hint-in-trait-impl.rs:12:28
+   |
+LL |             move || {let _ = x;}
+   |                              ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0434`.

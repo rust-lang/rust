@@ -252,10 +252,11 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 
 #[derive(Diagnostic)]
 #[diag("can't capture dynamic environment in a fn item", code = E0434)]
-#[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
     #[primary_span]
     pub(crate) span: Span,
+    #[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
+    pub(crate) show_closure_help: bool,
 }
 
 #[derive(Diagnostic)]
