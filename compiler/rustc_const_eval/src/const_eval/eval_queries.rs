@@ -11,8 +11,8 @@ use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, throw_inval};
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
@@ -458,32 +458,26 @@ fn report_eval_error<'tcx>(
     let (error, backtrace) = error.into_parts();
     backtrace.print_backtrace();
 
-    super::report(
-        ecx,
-        error,
-        DUMMY_SP,
-        || super::get_span_and_frames(ecx.tcx, ecx.stack()),
-        |diag, span, frames| {
-            let num_frames = frames.len();
-            // FIXME(oli-obk): figure out how to use structured diagnostics again.
-            diag.code(E0080);
-            diag.span_label(
-                span,
-                msg!(
-                    "evaluation of `{$instance}` failed {$num_frames ->
+    super::report(ecx, error, |diag, span, frames| {
+        let num_frames = frames.len();
+        // FIXME(oli-obk): figure out how to use structured diagnostics again.
+        diag.code(E0080);
+        diag.span_label(
+            span,
+            msg!(
+                "evaluation of `{$instance}` failed {$num_frames ->
                         [0] here
                         *[other] inside this call
                     }"
-                ),
-            );
-            for frame in frames {
-                diag.subdiagnostic(frame);
-            }
-            // Add after the frame rendering above, as it adds its own `instance` args.
-            diag.arg("instance", with_no_trimmed_paths!(cid.instance.to_string()));
-            diag.arg("num_frames", num_frames);
-        },
-    )
+            ),
+        );
+        for frame in frames {
+            diag.subdiagnostic(frame);
+        }
+        // Add after the frame rendering above, as it adds its own `instance` args.
+        diag.arg("instance", with_no_trimmed_paths!(cid.instance.to_string()));
+        diag.arg("num_frames", num_frames);
+    })
 }
 
 #[inline(never)]
@@ -506,20 +500,14 @@ fn report_validation_error<'tcx>(
     let raw_bytes =
         errors::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
 
-    crate::const_eval::report(
-        ecx,
-        error,
-        DUMMY_SP,
-        || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
-        move |diag, span, frames| {
-            // FIXME(oli-obk): figure out how to use structured diagnostics again.
-            diag.code(E0080);
-            diag.span_label(span, "it is undefined behavior to use this value");
-            diag.note("the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.");
-            for frame in frames {
-                diag.subdiagnostic(frame);
-            }
-            diag.subdiagnostic(raw_bytes);
-        },
-    )
+    crate::const_eval::report(ecx, error, move |diag, span, frames| {
+        // FIXME(oli-obk): figure out how to use structured diagnostics again.
+        diag.code(E0080);
+        diag.span_label(span, "it is undefined behavior to use this value");
+        diag.note("the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.");
+        for frame in frames {
+            diag.subdiagnostic(frame);
+        }
+        diag.subdiagnostic(raw_bytes);
+    })
 }
