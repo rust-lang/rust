@@ -2819,6 +2819,8 @@ impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
             );
             return;
         }
+
+        self.annotate_alternative_method_deref(err, self.call_expr, None);
     }
 
     /// A "softer" version of the `demand_compatible`, which checks types without persisting them,
