@@ -1446,9 +1446,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         matches!(rib.kind, RibKind::Item(_, DefKind::Fn));
                                     res_err = Some((
                                         span,
-                                        CannotCaptureDynamicEnvironmentInFnItem {
-                                            is_nested_fn,
-                                        },
+                                        CannotCaptureDynamicEnvironmentInFnItem { is_nested_fn },
                                     ));
                                 }
                             }

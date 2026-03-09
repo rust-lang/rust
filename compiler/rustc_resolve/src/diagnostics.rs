@@ -927,8 +927,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 } else {
                     Some(errs::CannotCaptureDynamicEnvironmentInFnItemHelp::PassAsParameter)
                 };
-                self.dcx()
-                    .create_err(errs::CannotCaptureDynamicEnvironmentInFnItem { span, help })
+                self.dcx().create_err(errs::CannotCaptureDynamicEnvironmentInFnItem { span, help })
             }
             ResolutionError::AttemptToUseNonConstantValueInConstant {
                 ident,
