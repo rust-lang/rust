@@ -292,7 +292,7 @@ impl DepGraph {
 
     pub fn with_anon_task<'tcx, OP, R>(
         &self,
-        cx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
         op: OP,
     ) -> (R, DepNodeIndex)
@@ -301,7 +301,7 @@ impl DepGraph {
     {
         match self.data() {
             Some(data) => {
-                let (result, index) = data.with_anon_task_inner(cx, dep_kind, op);
+                let (result, index) = data.with_anon_task_inner(tcx, dep_kind, op);
                 self.read_index(index);
                 (result, index)
             }
@@ -379,14 +379,14 @@ impl DepGraphData {
     /// how to make that work with `anon` in `execute_job_incr`, though.
     pub fn with_anon_task_inner<'tcx, OP, R>(
         &self,
-        cx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
         op: OP,
     ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
-        debug_assert!(!cx.is_eval_always(dep_kind));
+        debug_assert!(!tcx.is_eval_always(dep_kind));
 
         // Large numbers of reads are common enough here that pre-sizing `read_set`
         // to 128 actually helps perf on some benchmarks.
