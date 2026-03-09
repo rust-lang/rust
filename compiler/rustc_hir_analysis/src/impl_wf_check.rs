@@ -9,7 +9,6 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use std::debug_assert_matches;
-
 use std::ops::ControlFlow;
 
 use min_specialization::check_min_specialization;
