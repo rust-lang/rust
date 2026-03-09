@@ -1,5 +1,5 @@
 error: `test` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-test.rs:4:1
+  --> $DIR/issue-43106-gating-of-test.rs:3:1
    |
 LL | #![test                    = "4200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
