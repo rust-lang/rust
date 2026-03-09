@@ -1437,7 +1437,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
                                 let is_assoc_item = matches!(rib.kind, RibKind::AssocItem);
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem { is_assoc_item }));
+                                res_err = Some((
+                                    span,
+                                    CannotCaptureDynamicEnvironmentInFnItem { is_assoc_item },
+                                ));
                             }
                         }
                         RibKind::ConstantItem(_, item) => {
