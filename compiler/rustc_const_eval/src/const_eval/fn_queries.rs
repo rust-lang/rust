@@ -37,7 +37,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
             }
         }
         Node::TraitItem(ti @ TraitItem { kind: TraitItemKind::Fn(..), .. }) => {
-            if find_attr!(tcx.hir_attrs(ti.hir_id()), RustcNonConstTraitMethod) {
+            if find_attr!(tcx, ti.hir_id(), RustcNonConstTraitMethod) {
                 Constness::NotConst
             } else {
                 tcx.trait_def(tcx.local_parent(def_id)).constness

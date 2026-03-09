@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         .then_some((v.def_id, v.span))
                 });
                 if let Ok((id, span)) = iter.exactly_one()
-                    && !find_attr!(cx.tcx.hir_attrs(item.hir_id()), NonExhaustive(..))
+                    && !find_attr!(cx.tcx, item.hir_id(), NonExhaustive(..))
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         "this seems like a manual implementation of the non-exhaustive pattern",
                         |diag| {
                             if let Some(non_exhaustive_span) =
-                                find_attr!(cx.tcx.hir_attrs(item.hir_id()), NonExhaustive(span) => *span)
+                                find_attr!(cx.tcx, item.hir_id(), NonExhaustive(span) => *span)
                             {
                                 diag.span_note(non_exhaustive_span, "the struct is already non-exhaustive");
                             } else {

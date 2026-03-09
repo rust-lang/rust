@@ -13,6 +13,15 @@ pub mod diagnostic;
 mod encode_cross_crate;
 mod pretty_printing;
 
+/// A trait for types that can provide a list of attributes given a `TyCtxt`.
+///
+/// It allows `find_attr!` to accept either a `DefId`, `LocalDefId`, `OwnerId`, or `HirId`.
+/// It is defined here with a generic `Tcx` because `rustc_hir` can't depend on `rustc_middle`.
+/// The concrete implementations are in `rustc_middle`.
+pub trait HasAttrs<'tcx, Tcx> {
+    fn get_attrs(self, tcx: &Tcx) -> &'tcx [crate::Attribute];
+}
+
 /// Finds attributes in sequences of attributes by pattern matching.
 ///
 /// A little like `matches` but for attributes.
@@ -34,10 +43,12 @@ mod pretty_printing;
 ///
 /// As a convenience, this macro can do that for you!
 ///
-/// Instead of providing an attribute list, provide the `tcx` and a `DefId`.
+/// Instead of providing an attribute list, provide the `tcx` and an id
+/// (a `DefId`, `LocalDefId`, `OwnerId` or `HirId`).
 ///
 /// ```rust,ignore (illustrative)
 /// find_attr!(tcx, def_id, <pattern>)
+/// find_attr!(tcx, hir_id, <pattern>)
 /// ```
 ///
 /// Another common case is finding attributes applied to the root of the current crate.
@@ -55,13 +66,14 @@ macro_rules! find_attr {
         $crate::find_attr!($tcx.hir_krate_attrs(), $pattern $(if $guard)? => $e)
     };
 
-    ($tcx: expr, $def_id: expr, $pattern: pat $(if $guard: expr)?) => {
-        $crate::find_attr!($tcx, $def_id, $pattern $(if $guard)? => ()).is_some()
+    ($tcx: expr, $id: expr, $pattern: pat $(if $guard: expr)?) => {
+        $crate::find_attr!($tcx, $id, $pattern $(if $guard)? => ()).is_some()
     };
-    ($tcx: expr, $def_id: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
-        #[allow(deprecated)] {
-            $crate::find_attr!($tcx.get_all_attrs($def_id), $pattern $(if $guard)? => $e)
-        }
+    ($tcx: expr, $id: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
+        $crate::find_attr!(
+            $crate::attrs::HasAttrs::get_attrs($id, &$tcx),
+            $pattern $(if $guard)? => $e
+        )
     }};
 
 

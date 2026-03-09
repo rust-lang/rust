@@ -491,7 +491,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some((dialect, phase)) =
-        find_attr!(tcx.hir_attrs(fn_id), CustomMir(dialect, phase, _) => (dialect, phase))
+        find_attr!(tcx, fn_id, CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,
