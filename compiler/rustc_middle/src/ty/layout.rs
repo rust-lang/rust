@@ -264,30 +264,6 @@ pub enum LayoutError<'tcx> {
     Cycle(ErrorGuaranteed),
 }
 
-impl<'tcx> LayoutError<'tcx> {
-    pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
-        use LayoutError::*;
-
-        use crate::error::LayoutError as E;
-        match self {
-            Unknown(ty) => E::Unknown { ty },
-            SizeOverflow(ty) => E::Overflow { ty },
-            InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) } => {
-                E::SimdTooManyLanes { ty, max_lanes }
-            }
-            InvalidSimd { ty, kind: SimdLayoutError::ZeroLength } => E::SimdZeroLength { ty },
-            TooGeneric(ty) => E::TooGeneric { ty },
-            NormalizationFailure(ty, e) => {
-                E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
-            }
-            Cycle(_) => E::Cycle,
-            ReferencesError(_) => E::ReferencesError,
-        }
-    }
-}
-
-// FIXME: Once the other errors that embed this error have been converted to translatable
-// diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -1309,7 +1285,7 @@ pub enum FnAbiError<'tcx> {
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
-            Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
+            Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
         }
     }
 }

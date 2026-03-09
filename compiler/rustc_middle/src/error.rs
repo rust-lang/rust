@@ -114,33 +114,6 @@ pub(super) struct ConstNotUsedTraitAlias {
 }
 
 #[derive(Diagnostic)]
-pub enum LayoutError<'tcx> {
-    #[diag("the type `{$ty}` has an unknown layout")]
-    Unknown { ty: Ty<'tcx> },
-
-    #[diag("the type `{$ty}` does not have a fixed layout")]
-    TooGeneric { ty: Ty<'tcx> },
-
-    #[diag("values of the type `{$ty}` are too big for the target architecture")]
-    Overflow { ty: Ty<'tcx> },
-
-    #[diag("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")]
-    SimdTooManyLanes { ty: Ty<'tcx>, max_lanes: u64 },
-
-    #[diag("the SIMD type `{$ty}` has zero elements")]
-    SimdZeroLength { ty: Ty<'tcx> },
-
-    #[diag("unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized")]
-    NormalizationFailure { ty: Ty<'tcx>, failure_ty: String },
-
-    #[diag("a cycle occurred during layout computation")]
-    Cycle,
-
-    #[diag("the type has an unknown layout")]
-    ReferencesError,
-}
-
-#[derive(Diagnostic)]
 #[diag("erroneous constant encountered")]
 pub(crate) struct ErroneousConstant {
     #[primary_span]
