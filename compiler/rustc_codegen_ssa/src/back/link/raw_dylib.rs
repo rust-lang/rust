@@ -271,10 +271,10 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
                 vers.push((version_name, dynstr));
                 id
             };
-            syms.push((name, dynstr, Some(ver), symbol.symbol_type));
+            syms.push((name, dynstr, Some(ver), symbol.symbol_type, symbol.size));
         } else {
             let dynstr = stub.add_dynamic_string(symbol_name.as_bytes());
-            syms.push((symbol_name, dynstr, None, symbol.symbol_type));
+            syms.push((symbol_name, dynstr, None, symbol.symbol_type, symbol.size));
         }
     }
 
@@ -398,7 +398,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
 
     // .dynsym
     stub.write_null_dynamic_symbol();
-    for (_name, dynstr, _ver, symbol_type) in syms.iter().copied() {
+    for (_name, dynstr, _ver, symbol_type, size) in syms.iter().copied() {
         let sym_type = match symbol_type {
             DllImportSymbolType::Function => elf::STT_FUNC,
             DllImportSymbolType::Static => elf::STT_OBJECT,
@@ -412,7 +412,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
             section: Some(text_section),
             st_shndx: 0, // ignored by object in favor of the `section` field
             st_value: 0,
-            st_size: 0,
+            st_size: size.bytes(),
         });
     }
 
@@ -423,7 +423,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     if !vers.is_empty() {
         // .gnu_version
         stub.write_null_gnu_versym();
-        for (_name, _dynstr, ver, _symbol_type) in syms.iter().copied() {
+        for (_name, _dynstr, ver, _symbol_type, _size) in syms.iter().copied() {
             stub.write_gnu_versym(if let Some(ver) = ver {
                 assert!((2 + ver as u16) < elf::VERSYM_HIDDEN);
                 elf::VERSYM_HIDDEN | (2 + ver as u16)
