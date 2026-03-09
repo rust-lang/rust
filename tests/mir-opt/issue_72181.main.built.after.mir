@@ -7,7 +7,6 @@ fn main() -> () {
     let mut _4: Foo;
     let mut _5: u64;
     let _6: usize;
-    let mut _7: bool;
     scope 1 {
         let _2: [Foo; 2];
         scope 2 {
@@ -19,7 +18,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb5];
+        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb4];
     }
 
     bb1: {
@@ -38,16 +37,6 @@ fn main() -> () {
         StorageLive(_6);
         _6 = const 0_usize;
         FakeRead(ForIndex, _2);
-        _7 = Lt(copy _6, const 2_usize);
-        assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb3, unwind: bb5];
-    }
-
-    bb2: {
-        FakeRead(ForMatchedPlace(None), _1);
-        unreachable;
-    }
-
-    bb3: {
         _5 = copy (_2[_6].0: u64);
         PlaceMention(_5);
         StorageDead(_6);
@@ -57,12 +46,17 @@ fn main() -> () {
         return;
     }
 
-    bb4: {
+    bb2: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb3: {
         FakeRead(ForMatchedPlace(None), _5);
         unreachable;
     }
 
-    bb5 (cleanup): {
+    bb4 (cleanup): {
         resume;
     }
 }
