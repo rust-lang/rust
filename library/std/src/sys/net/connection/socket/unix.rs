@@ -684,7 +684,7 @@ fn on_resolver_failure() {
     use crate::sys;
 
     // If the version fails to parse, we treat it the same as "not glibc".
-    if let Some(version) = sys::os::glibc_version() {
+    if let Some(version) = sys::pal::conf::glibc_version() {
         if version < (2, 26) {
             unsafe { libc::res_init() };
         }

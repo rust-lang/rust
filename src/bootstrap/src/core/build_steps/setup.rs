@@ -607,6 +607,7 @@ Select which editor you would like to set up [default: None]: ";
                 "1c43ead340b20792b91d02b08494ee68708e7e09f56b6766629b4b72079208f1",
                 "eec09a09452682060afd23dd5d3536ccac5615b3cdbf427366446901215fb9f6",
                 "cb653043852d9d5ff4a5be56407b859ff9928be055ad3f307eb309aad04765e6",
+                "e28b1930d16d3d8bbdeed7bd4a995613e648b49e08c9b6f5271880f520637fed",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
@@ -626,6 +627,7 @@ Select which editor you would like to set up [default: None]: ";
                 "02a49ac2d31f00ef6e4531c44e00dac51cea895112e480553f1ba060b3942a47",
                 "0aa4748848de0d1cb7ece92a0123c8897fef6de2f58aff8fda1426f098b7a798",
                 "e5e357862e5d6d0d9da335e9823c07b8a7dc42bbf18d72cc5206ad1049cd8fcc",
+                "a68fd5828e75f3e921f265e29ce1e9efa554083c3773fdb4b8e1ab3b2d9dc6cd",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
@@ -636,6 +638,7 @@ Select which editor you would like to set up [default: None]: ";
                 "5ef83292111d9a8bb63b6afc3abf42d0bc78fe24985f0d2e039e73258b5dab8f",
                 "74420c13094b530a986b37c4f1d23cb58c0e8e2295f5858ded129fb1574e66f9",
                 "2d3b592c089b2ad2c528686a1e371af49922edad1c59accd5d5f31612a441568",
+                "0767a2398ccc253274b184adbb9e018ce931bd0ef45baad06dad19b652c52951",
             ],
         }
     }

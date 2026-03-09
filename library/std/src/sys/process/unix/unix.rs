@@ -537,7 +537,7 @@ impl Command {
         // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
         #[cfg(all(target_os = "linux", target_env = "gnu"))]
         {
-            if let Some(version) = sys::os::glibc_version() {
+            if let Some(version) = sys::pal::conf::glibc_version() {
                 if version < (2, 24) {
                     return Ok(None);
                 }

@@ -38,6 +38,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
+use rustc_macros::Diagnostic;
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -1685,6 +1686,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn report_unused_features(self) {
+        #[derive(Diagnostic)]
+        #[diag("feature `{$feature}` is declared but not used")]
+        struct UnusedFeature {
+            feature: Symbol,
+        }
+
         // Collect first to avoid holding the lock while linting.
         let used_features = self.sess.used_features.lock();
         let unused_features = self
@@ -1703,13 +1710,11 @@ impl<'tcx> TyCtxt<'tcx> {
             .collect::<Vec<_>>();
 
         for (feature, span) in unused_features {
-            self.node_span_lint(
+            self.emit_node_span_lint(
                 rustc_session::lint::builtin::UNUSED_FEATURES,
                 CRATE_HIR_ID,
                 span,
-                |lint| {
-                    lint.primary_message(format!("feature `{}` is declared but not used", feature));
-                },
+                UnusedFeature { feature },
             );
         }
     }

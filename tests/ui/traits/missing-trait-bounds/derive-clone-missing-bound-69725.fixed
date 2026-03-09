@@ -1,9 +1,9 @@
 //@ run-rustfix
-//@ aux-build:issue-69725.rs
+//@ aux-build:struct-69725.rs
 #![allow(dead_code)]
 
-extern crate issue_69725;
-use issue_69725::Struct;
+extern crate struct_69725;
+use struct_69725::Struct;
 
 fn crash<A>() where A: Clone {
     let _ = Struct::<A>::new().clone();
