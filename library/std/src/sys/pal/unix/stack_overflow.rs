@@ -70,7 +70,7 @@ mod imp {
     use super::thread_info::{delete_current_info, set_current_info, with_current_info};
     use crate::ops::Range;
     use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
-    use crate::sys::pal::unix::os;
+    use crate::sys::pal::unix::conf;
     use crate::{io, mem, ptr};
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
@@ -150,7 +150,7 @@ mod imp {
     /// Must be called only once
     #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn init() {
-        PAGE_SIZE.store(os::page_size(), Ordering::Relaxed);
+        PAGE_SIZE.store(conf::page_size(), Ordering::Relaxed);
 
         let mut guard_page_range = unsafe { install_main_guard() };
 
