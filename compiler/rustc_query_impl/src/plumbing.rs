@@ -350,7 +350,8 @@ macro_rules! define_queries {
         // Non-queries are unused here.
         non_queries { $($_:tt)* }
     ) => {
-        pub(crate) mod query_impl { $(pub(crate) mod $name {
+        // This macro expects to be expanded into `mod query_impl` in the crate root.
+        $(pub(crate) mod $name {
             use super::*;
             use rustc_middle::query::erase::{self, Erased};
 
@@ -585,5 +586,5 @@ macro_rules! define_queries {
         }
 
         pub(crate) use for_each_query_vtable;
-    }}
+    }
 }

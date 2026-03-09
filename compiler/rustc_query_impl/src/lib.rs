@@ -63,7 +63,9 @@ pub fn query_system<'tcx>(
     }
 }
 
-rustc_middle::rustc_with_all_queries! { define_queries! }
+mod query_impl {
+    rustc_middle::rustc_with_all_queries! { define_queries! }
+}
 
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings =
