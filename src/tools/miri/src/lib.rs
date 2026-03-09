@@ -22,6 +22,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(macro_metavar_expr)]
+#![feature(uint_carryless_mul)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
