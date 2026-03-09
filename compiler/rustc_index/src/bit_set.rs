@@ -127,10 +127,12 @@ pub struct DenseBitSet<T> {
 }
 
 impl<T> Clone for DenseBitSet<T> {
+    #[inline]
     fn clone(&self) -> Self {
         DenseBitSet { raw: self.raw.clone(), marker: PhantomData }
     }
 
+    #[inline]
     fn clone_from(&mut self, other: &Self) {
         self.raw.clone_from(&other.raw);
     }
@@ -268,6 +270,7 @@ pub struct BitIter<'a, T: Idx> {
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
+    #[inline]
     fn from_raw(raw: RawBitIter<'a>) -> Self {
         Self { raw, marker: PhantomData }
     }
@@ -276,6 +279,7 @@ impl<'a, T: Idx> BitIter<'a, T> {
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.raw.next().map(T::new)
     }
