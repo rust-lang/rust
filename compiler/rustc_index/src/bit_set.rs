@@ -373,42 +373,6 @@ impl<T: Idx> fmt::Debug for DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> ToString for DenseBitSet<T> {
-    fn to_string(&self) -> String {
-        let mut result = String::new();
-        let mut sep = '[';
-
-        // Note: this is a little endian printout of bytes.
-
-        // i tracks how many bits we have printed so far.
-        let mut i = 0;
-        for word in &self.words {
-            let mut word = *word;
-            for _ in 0..WORD_BYTES {
-                // for each byte in `word`:
-                let remain = self.domain_size - i;
-                // If less than a byte remains, then mask just that many bits.
-                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
-                assert!(mask <= 0xFF);
-                let byte = word & mask;
-
-                result.push_str(&format!("{sep}{byte:02x}"));
-
-                if remain <= 8 {
-                    break;
-                }
-                word >>= 8;
-                i += 8;
-                sep = '-';
-            }
-            sep = '|';
-        }
-        result.push(']');
-
-        result
-    }
-}
-
 pub struct BitIter<'a, T: Idx> {
     /// A copy of the current word, but with any already-visited bits cleared.
     /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
