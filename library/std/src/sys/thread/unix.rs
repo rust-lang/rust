@@ -155,6 +155,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
+            all(target_os = "wasi", target_feature = "atomics"),
         ) => {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
@@ -313,6 +314,10 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 let set = libc::vxCpuEnabledGet();
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
+        }
+        all(target_os = "wasi", not(target_feature = "atomics")) => {
+            // Single-threaded WASM always has exactly one thread of execution.
+            Ok(NonZero::new(1).unwrap())
         }
         _ => {
             // FIXME: implement on Redox, l4re
