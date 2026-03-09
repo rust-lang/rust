@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_default_equivalent, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::ty::expr_sig;
+use clippy_utils::{is_default_equivalent, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};

@@ -5,7 +5,7 @@ pub use self::job::{QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, IntoQueryParam, QueryMode,
-    QueryState, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
+    QueryState, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
 pub use self::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
 pub use crate::queries::Providers;

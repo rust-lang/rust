@@ -3207,6 +3207,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::AddBraces {
                         left: span.shrink_to_lo(),
                         right: span.shrink_to_hi(),
+                        num_statements: stmts.len(),
                     }
                 } else {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }

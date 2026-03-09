@@ -185,9 +185,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return e;
                 }
 
-                if let Err(guar) = self.tcx.ensure_ok().coherent_trait(trait_pred.def_id()) {
-                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
-                    // other `Foo` impls are incoherent.
+                if let Err(guar) = self.tcx.ensure_result().coherent_trait(trait_pred.def_id()) {
+                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for
+                    // Foo` in case other `Foo` impls are incoherent.
                     return guar;
                 }
 
@@ -522,7 +522,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 if let Err(guar) = self
                     .tcx
-                    .ensure_ok()
+                    .ensure_result()
                     .coherent_trait(self.tcx.parent(data.projection_term.def_id))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case

@@ -2,7 +2,8 @@
 //!
 //! For more information about delegation design, see the tracking issue #118212.
 
-use rustc_data_structures::debug_assert_matches;
+use std::debug_assert_matches;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -572,17 +573,15 @@ fn get_delegation_user_specified_args<'tcx>(
         .opt_delegation_generics()
         .expect("Lowering delegation");
 
-    let get_segment = |hir_id: HirId| -> (&'tcx PathSegment<'tcx>, DefId) {
+    let get_segment = |hir_id: HirId| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
         let segment = tcx.hir_node(hir_id).expect_path_segment();
-        let def_id = segment.res.def_id();
-
-        (segment, def_id)
+        segment.res.opt_def_id().map(|def_id| (segment, def_id))
     };
 
     let ctx = ItemCtxt::new(tcx, delegation_id);
     let lowerer = ctx.lowerer();
 
-    let parent_args = info.parent_args_segment_id.map(get_segment).map(|(segment, def_id)| {
+    let parent_args = info.parent_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {
         let self_ty = get_delegation_self_ty(tcx, delegation_id);
 
         lowerer
@@ -598,7 +597,7 @@ fn get_delegation_user_specified_args<'tcx>(
             .as_slice()
     });
 
-    let child_args = info.child_args_segment_id.map(get_segment).map(|(segment, def_id)| {
+    let child_args = info.child_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {
         let parent_args = if let Some(parent_args) = parent_args {
             parent_args
         } else {

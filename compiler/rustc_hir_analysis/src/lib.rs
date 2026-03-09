@@ -56,8 +56,6 @@ This API is completely unstable and subject to change.
 */
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(default_field_values)]
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
@@ -174,14 +172,14 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        let _: R = tcx.ensure_ok().check_type_wf(());
+        let _: R = tcx.ensure_result().check_type_wf(());
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
+            let _: R = tcx.ensure_result().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
-        let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
-        let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
+        let _: R = tcx.ensure_result().crate_inherent_impls_validity_check(());
+        let _: R = tcx.ensure_result().crate_inherent_impls_overlap_check(());
     });
 
     tcx.sess.time("emit_ast_lowering_delayed_lints", || {

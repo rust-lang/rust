@@ -15,29 +15,6 @@ use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for manual `is_infinite` reimplementations
-    /// (i.e., `x == <float>::INFINITY || x == <float>::NEG_INFINITY`).
-    ///
-    /// ### Why is this bad?
-    /// The method `is_infinite` is shorter and more readable.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let x = 1.0f32;
-    /// if x == f32::INFINITY || x == f32::NEG_INFINITY {}
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let x = 1.0f32;
-    /// if x.is_infinite() {}
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub MANUAL_IS_INFINITE,
-    style,
-    "use dedicated method to check if a float is infinite"
-}
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for manual `is_finite` reimplementations
     /// (i.e., `x != <float>::INFINITY && x != <float>::NEG_INFINITY`).
     ///
@@ -61,7 +38,32 @@ declare_clippy_lint! {
     style,
     "use dedicated method to check if a float is finite"
 }
-impl_lint_pass!(ManualFloatMethods => [MANUAL_IS_INFINITE, MANUAL_IS_FINITE]);
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual `is_infinite` reimplementations
+    /// (i.e., `x == <float>::INFINITY || x == <float>::NEG_INFINITY`).
+    ///
+    /// ### Why is this bad?
+    /// The method `is_infinite` is shorter and more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let x = 1.0f32;
+    /// if x == f32::INFINITY || x == f32::NEG_INFINITY {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let x = 1.0f32;
+    /// if x.is_infinite() {}
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub MANUAL_IS_INFINITE,
+    style,
+    "use dedicated method to check if a float is infinite"
+}
+
+impl_lint_pass!(ManualFloatMethods => [MANUAL_IS_FINITE, MANUAL_IS_INFINITE]);
 
 #[derive(Clone, Copy)]
 enum Variant {

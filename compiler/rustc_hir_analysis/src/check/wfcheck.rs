@@ -3,9 +3,11 @@ use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
 use rustc_abi::{ExternAbi, ScalableElt};
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -37,7 +39,6 @@ use rustc_trait_selection::traits::{
     WellFormedLoc,
 };
 use tracing::{debug, instrument};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::compare_eii::compare_eii_function_types;
 use crate::autoderef::Autoderef;
@@ -935,7 +936,7 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
+        tcx.ensure_result().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
             ty::AssocContainer::Trait => tcx.types.self_param,
@@ -1327,9 +1328,9 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
-                // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
-                // other `Foo` impls are incoherent.
-                tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
+                // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in
+                // case other `Foo` impls are incoherent.
+                tcx.ensure_result().coherent_trait(trait_ref.def_id)?;
                 let trait_span = of_trait.trait_ref.path.span;
                 let trait_ref = wfcx.deeply_normalize(
                     trait_span,
@@ -2333,15 +2334,22 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_crate_items(());
-    let res = items
-        .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
-        .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_trait_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(
-            items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
-        )
-        .and(items.par_nested_bodies(|item| tcx.ensure_ok().check_well_formed(item)))
-        .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
+    let res =
+        items
+            .par_items(|item| tcx.ensure_result().check_well_formed(item.owner_id.def_id))
+            .and(
+                items.par_impl_items(|item| {
+                    tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+                }),
+            )
+            .and(items.par_trait_items(|item| {
+                tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.par_foreign_items(|item| {
+                tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.par_nested_bodies(|item| tcx.ensure_result().check_well_formed(item)))
+            .and(items.par_opaques(|item| tcx.ensure_result().check_well_formed(item)));
     super::entry::check_for_entry_fn(tcx);
 
     res
