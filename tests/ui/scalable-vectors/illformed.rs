@@ -1,4 +1,5 @@
 //@ compile-flags: --crate-type=lib
+//@ only-aarch64
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
 

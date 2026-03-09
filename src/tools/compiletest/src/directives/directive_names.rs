@@ -105,6 +105,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-powerpc",
     "ignore-powerpc64",
     "ignore-remote",
+    "ignore-riscv32",
     "ignore-riscv64",
     "ignore-rustc-debug-assertions",
     "ignore-rustc_abi-x86-sse2",
