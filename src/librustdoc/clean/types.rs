@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::hash::Hash;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock as OnceCell};
+use std::sync::{Arc, OnceLock};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
@@ -491,7 +491,7 @@ impl Item {
             .iter()
             .filter_map(|attr| attr.deprecation_note().map(|note| note.span));
 
-        span_of_fragments(&self.attrs.doc_strings)
+        span_of_fragments(&self.attrs.doc_strings())
             .into_iter()
             .chain(deprecation_notes)
             .reduce(|a, b| a.to(b))
@@ -499,14 +499,14 @@ impl Item {
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
-    pub(crate) fn doc_value(&self) -> String {
+    pub(crate) fn doc_value(&self) -> &str {
         self.attrs.doc_value()
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
     /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
     /// documentation but it is empty (e.g. `#[doc = ""]`).
-    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+    pub(crate) fn opt_doc_value(&self) -> Option<&str> {
         self.attrs.opt_doc_value()
     }
 
@@ -558,7 +558,7 @@ impl Item {
     pub(crate) fn item_or_reexport_id(&self) -> ItemId {
         // added documentation on a reexport is always prepended.
         self.attrs
-            .doc_strings
+            .doc_strings()
             .first()
             .map(|x| x.item_id)
             .flatten()
@@ -1012,11 +1012,21 @@ pub struct RenderedLink {
 /// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
-    pub(crate) doc_strings: Vec<DocFragment>,
+    /// IMPORTANT! This should not be mutated since then `doc_value_cache` will be invalid.
+    doc_strings: ThinVec<DocFragment>,
     pub(crate) other_attrs: ThinVec<hir::Attribute>,
+    doc_value_cache: Box<OnceLock<Option<Box<str>>>>,
 }
 
 impl Attributes {
+    fn new(doc_strings: ThinVec<DocFragment>, other_attrs: ThinVec<hir::Attribute>) -> Self {
+        Self { doc_strings, other_attrs, doc_value_cache: Box::new(OnceLock::new()) }
+    }
+
+    pub(crate) fn doc_strings(&self) -> &[DocFragment] {
+        &self.doc_strings
+    }
+
     pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(&self, callback: F) -> bool {
         find_attr!(&self.other_attrs, Doc(d) if callback(d))
     }
@@ -1044,26 +1054,30 @@ impl Attributes {
         doc_only: bool,
     ) -> Attributes {
         let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
-        Attributes { doc_strings, other_attrs }
+        Attributes::new(doc_strings, other_attrs)
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
-    pub(crate) fn doc_value(&self) -> String {
+    pub(crate) fn doc_value(&self) -> &str {
         self.opt_doc_value().unwrap_or_default()
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
     /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
     /// documentation but it is empty (e.g. `#[doc = ""]`).
-    pub(crate) fn opt_doc_value(&self) -> Option<String> {
-        (!self.doc_strings.is_empty()).then(|| {
-            let mut res = String::new();
-            for frag in &self.doc_strings {
-                add_doc_fragment(&mut res, frag);
-            }
-            res.pop();
-            res
-        })
+    pub(crate) fn opt_doc_value(&self) -> Option<&str> {
+        self.doc_value_cache
+            .get_or_init(|| {
+                (!self.doc_strings.is_empty()).then(|| {
+                    let mut res = String::new();
+                    for frag in &self.doc_strings {
+                        add_doc_fragment(&mut res, frag);
+                    }
+                    res.pop();
+                    res.into_boxed_str()
+                })
+            })
+            .as_deref()
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
@@ -1684,7 +1698,7 @@ impl PrimitiveType {
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
         use PrimitiveType::*;
         use ty::{FloatTy, IntTy, UintTy};
-        static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
+        static CELL: OnceLock<SimplifiedTypes> = OnceLock::new();
 
         let single = |x| iter::once(x).collect();
         CELL.get_or_init(move || {
@@ -1791,7 +1805,7 @@ impl PrimitiveType {
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
-        static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
+        static PRIMITIVE_LOCATIONS: OnceLock<FxIndexMap<PrimitiveType, DefId>> = OnceLock::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
             let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
@@ -2430,7 +2444,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 144);
+    static_assert_size!(ItemInner, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

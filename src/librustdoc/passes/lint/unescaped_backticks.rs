@@ -46,7 +46,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     tcx,
                     dox,
                     &(backtick_index..backtick_index + 1),
-                    &item.attrs.doc_strings,
+                    &item.attrs.doc_strings(),
                 ) {
                     Some((sp, _)) => sp,
                     None => item.attr_span(tcx),
@@ -425,7 +425,7 @@ fn suggest_insertion(
         cx.tcx,
         dox,
         &(insert_index..insert_index),
-        &item.attrs.doc_strings,
+        &item.attrs.doc_strings(),
     ) {
         lint.span_suggestion(span, message, suggestion, Applicability::MaybeIncorrect);
     } else {

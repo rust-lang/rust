@@ -181,7 +181,7 @@ impl HirCollector<'_> {
         // anything else, this will combine them for us.
         let attrs = Attributes::from_hir(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
-            let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
+            let span = span_of_fragments(&attrs.doc_strings()).unwrap_or(sp);
             self.collector.position = if span.edition().at_least_rust_2024() {
                 span
             } else {

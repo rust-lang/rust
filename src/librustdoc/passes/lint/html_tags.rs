@@ -17,7 +17,7 @@ use crate::html::markdown::main_body_opts;
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let tcx = cx.tcx;
     let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
-        let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings) {
+        let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings()) {
             Some((sp, _)) => sp,
             None => item.attr_span(tcx),
         };
@@ -55,7 +55,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     tcx,
                     dox,
                     &(generics_start..generics_end),
-                    &item.attrs.doc_strings,
+                    &item.attrs.doc_strings(),
                 ) {
                     Some((sp, _)) => sp,
                     None => item.attr_span(tcx),

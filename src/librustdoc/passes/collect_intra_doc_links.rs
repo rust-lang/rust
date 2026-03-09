@@ -1099,7 +1099,7 @@ impl LinkCollector<'_, '_> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings()) {
             if !may_have_doc_links(&doc) {
                 continue;
             }
@@ -1474,7 +1474,7 @@ impl LinkCollector<'_, '_> {
             self.cx.tcx,
             dox,
             ori_link.inner_range(),
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         ) {
             Some((sp, _)) => sp,
             None => item.attr_span(self.cx.tcx),
@@ -1921,7 +1921,7 @@ fn report_diagnostic(
             MarkdownLinkRange::Destination(md_range) => {
                 let mut md_range = md_range.clone();
                 let sp =
-                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
+                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings())
                         .map(|(mut sp, _)| {
                             while dox.as_bytes().get(md_range.start) == Some(&b' ')
                                 || dox.as_bytes().get(md_range.start) == Some(&b'`')
@@ -1940,7 +1940,7 @@ fn report_diagnostic(
                 (sp, MarkdownLinkRange::Destination(md_range))
             }
             MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings())
                     .map(|(sp, _)| sp),
                 link_range.clone(),
             ),

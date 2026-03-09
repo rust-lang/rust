@@ -200,10 +200,10 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
 pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
     doc_only: bool,
-) -> (Vec<DocFragment>, ThinVec<A>) {
+) -> (ThinVec<DocFragment>, ThinVec<A>) {
     let (min_size, max_size) = attrs.size_hint();
     let size_hint = max_size.unwrap_or(min_size);
-    let mut doc_fragments = Vec::with_capacity(size_hint);
+    let mut doc_fragments = ThinVec::with_capacity(size_hint);
     let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
         if let Some((doc_str, fragment_kind)) = attr.doc_str_and_fragment_kind() {

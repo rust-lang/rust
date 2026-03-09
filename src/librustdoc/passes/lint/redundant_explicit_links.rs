@@ -25,7 +25,7 @@ struct LinkData {
 }
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
-    let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
+    let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings());
     for (item_id, doc) in hunks {
         if let Some(item_id) = item_id.or(item.def_id())
             && !doc.is_empty()
@@ -160,22 +160,25 @@ fn check_inline_or_reference_unknown_redundancy(
         (find_resolution(resolutions, &dest)?, find_resolution(resolutions, resolvable_link)?);
 
     if dest_res == display_res {
-        let link_span =
-            match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
-            {
-                Some((sp, from_expansion)) => {
-                    if from_expansion {
-                        return None;
-                    }
-                    sp
+        let link_span = match source_span_for_markdown_range(
+            cx.tcx,
+            doc,
+            &link_range,
+            &item.attrs.doc_strings(),
+        ) {
+            Some((sp, from_expansion)) => {
+                if from_expansion {
+                    return None;
                 }
-                None => item.attr_span(cx.tcx),
-            };
+                sp
+            }
+            None => item.attr_span(cx.tcx),
+        };
         let (explicit_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range, open, close),
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         )?
         else {
             // This `span` comes from macro expansion so skipping it.
@@ -185,7 +188,7 @@ fn check_inline_or_reference_unknown_redundancy(
             cx.tcx,
             doc,
             resolvable_link_range,
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         )?
         else {
             // This `span` comes from macro expansion so skipping it.
@@ -221,22 +224,25 @@ fn check_reference_redundancy(
         (find_resolution(resolutions, dest)?, find_resolution(resolutions, resolvable_link)?);
 
     if dest_res == display_res {
-        let link_span =
-            match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
-            {
-                Some((sp, from_expansion)) => {
-                    if from_expansion {
-                        return None;
-                    }
-                    sp
+        let link_span = match source_span_for_markdown_range(
+            cx.tcx,
+            doc,
+            &link_range,
+            &item.attrs.doc_strings(),
+        ) {
+            Some((sp, from_expansion)) => {
+                if from_expansion {
+                    return None;
                 }
-                None => item.attr_span(cx.tcx),
-            };
+                sp
+            }
+            None => item.attr_span(cx.tcx),
+        };
         let (explicit_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range.clone(), b'[', b']'),
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         )?
         else {
             // This `span` comes from macro expansion so skipping it.
@@ -246,7 +252,7 @@ fn check_reference_redundancy(
             cx.tcx,
             doc,
             resolvable_link_range,
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         )?
         else {
             // This `span` comes from macro expansion so skipping it.
@@ -256,7 +262,7 @@ fn check_reference_redundancy(
             cx.tcx,
             doc,
             &offset_reference_def_range(doc, dest, link_range),
-            &item.attrs.doc_strings,
+            &item.attrs.doc_strings(),
         )?;
 
         cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, |lint| {
