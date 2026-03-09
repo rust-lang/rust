@@ -4,8 +4,7 @@
 // in the objc crate, where changing the fallback from `!` to `()`
 // resulted in unsoundness.
 //
-//@ revisions: e2021 e2024
-//@[e2024] edition: 2024
+//@ edition: 2018..2024
 
 #![expect(unit_bindings)]
 
@@ -24,9 +23,6 @@ fn unconstrained_return<T: UnitReturn>() -> T {
 }
 
 fn main() {
-    //[e2021]~^ error: this function depends on never type fallback being `()`
-    //[e2021]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-
     // In Ye Olde Days, the `T` parameter of `unconstrained_return`
     // winds up "entangled" with the `!` type that results from
     // `panic!`, and hence falls back to `()`. This is kind of unfortunate
@@ -34,5 +30,5 @@ fn main() {
     // idea was to change that fallback to `!`, but that would have resulted
     // in this code no longer compiling (or worse, in some cases it injected
     // unsound results).
-    let _ = if true { unconstrained_return() } else { panic!() }; //[e2024]~ error: the trait bound `!: UnitReturn` is not satisfied
+    let _ = if true { unconstrained_return() } else { panic!() }; //~ error: the trait bound `!: UnitReturn` is not satisfied
 }
