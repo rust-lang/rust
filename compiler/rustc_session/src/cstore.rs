@@ -98,6 +98,7 @@ pub struct DllImport {
     /// Span of import's "extern" declaration; used for diagnostics.
     pub span: Span,
     pub symbol_type: DllImportSymbolType,
+    pub size: rustc_abi::Size,
 }
 
 #[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq)]
