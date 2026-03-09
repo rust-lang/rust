@@ -1809,8 +1809,12 @@ fn resolve_type_param_assoc_type_shorthand(
                 return AssocTypeShorthandResolution::Ambiguous {
                     sub_trait_resolution: Some(this_trait_resolution),
                 };
-            } else if supertraits_resolution.is_some() {
-                return AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None };
+            } else if let Some(prev_resolution) = &supertraits_resolution {
+                if prev_resolution == lookup_on_bounded_trait {
+                    return AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None };
+                } else {
+                    continue;
+                }
             } else {
                 let (assoc_type, args) = assoc_type_and_args
                     .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
