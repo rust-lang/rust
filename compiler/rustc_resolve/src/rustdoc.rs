@@ -254,6 +254,7 @@ pub fn main_body_opts() -> Options {
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_SMART_PUNCTUATION
+        | Options::ENABLE_MATH
 }
 
 fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<Symbol, MalformedGenerics> {
@@ -403,7 +404,7 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
         | LinkType::CollapsedUnknown
         | LinkType::Shortcut
         | LinkType::ShortcutUnknown => true,
-        LinkType::Autolink | LinkType::Email => false,
+        LinkType::Autolink | LinkType::Email | LinkType::WikiLink { .. } => false,
     }
 }
 
