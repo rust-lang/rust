@@ -19,7 +19,6 @@ pub mod itron {
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`
 pub(crate) mod error;
-pub mod os;
 pub use self::itron::thread_parking;
 
 // SAFETY: must be called only once during runtime initialization.

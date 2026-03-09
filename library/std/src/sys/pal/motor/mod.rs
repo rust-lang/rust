@@ -1,7 +1,5 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
-pub mod os;
-
 pub use moto_rt::futex;
 
 use crate::io;

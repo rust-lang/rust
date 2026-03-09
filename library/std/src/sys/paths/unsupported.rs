@@ -1,7 +1,7 @@
-use super::unsupported;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
+use crate::sys::pal::unsupported;
 use crate::{fmt, io};
 
 pub fn getcwd() -> io::Result<PathBuf> {

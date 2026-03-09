@@ -1,9 +1,9 @@
 use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
-use super::{helpers, unsupported_err};
 use crate::ffi::{OsStr, OsString};
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
+use crate::sys::pal::{helpers, unsupported_err};
 use crate::{fmt, io};
 
 const PATHS_SEP: u16 = b';' as u16;
@@ -115,7 +115,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 
 pub fn temp_dir() -> PathBuf {
-    panic!("no filesystem on this platform")
+    panic!("UEFI doesn't have a dedicated temp directory")
 }
 
 pub fn home_dir() -> Option<PathBuf> {

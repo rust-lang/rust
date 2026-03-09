@@ -10,7 +10,6 @@ use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 pub mod abi;
 mod libunwind_integration;
-pub mod os;
 pub mod thread_parking;
 pub mod waitqueue;
 

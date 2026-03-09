@@ -18,7 +18,6 @@ pub mod c;
 #[cfg(not(target_vendor = "win7"))]
 pub mod futex;
 pub mod handle;
-pub mod os;
 pub mod time;
 cfg_select! {
     // We don't care about printing nice error messages for panic=immediate-abort
