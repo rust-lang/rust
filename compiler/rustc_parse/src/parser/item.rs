@@ -193,7 +193,9 @@ impl<'a> Parser<'a> {
 
             // At this point, we have failed to parse an item.
             if !matches!(vis.kind, VisibilityKind::Inherited) {
-                let mut err = this.dcx().create_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
+                let mut err = this
+                    .dcx()
+                    .create_err(errors::VisibilityNotFollowedByItem { span: vis.span, vis });
                 if let Some((ident, _)) = this.token.ident()
                     && !ident.is_used_keyword()
                 {
