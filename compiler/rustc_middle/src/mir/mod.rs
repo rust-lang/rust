@@ -14,7 +14,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::{Mutability, Pinnedness};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{

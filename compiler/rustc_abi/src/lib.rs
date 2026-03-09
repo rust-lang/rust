@@ -1000,20 +1000,6 @@ pub enum AlignFromBytesError {
     TooLarge(u64),
 }
 
-impl AlignFromBytesError {
-    pub fn diag_ident(self) -> &'static str {
-        match self {
-            Self::NotPowerOfTwo(_) => "not_power_of_two",
-            Self::TooLarge(_) => "too_large",
-        }
-    }
-
-    pub fn align(self) -> u64 {
-        let (Self::NotPowerOfTwo(align) | Self::TooLarge(align)) = self;
-        align
-    }
-}
-
 impl fmt::Debug for AlignFromBytesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
@@ -1023,8 +1009,8 @@ impl fmt::Debug for AlignFromBytesError {
 impl fmt::Display for AlignFromBytesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "`{align}` is not a power of 2"),
-            AlignFromBytesError::TooLarge(align) => write!(f, "`{align}` is too large"),
+            AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "{align} is not a power of 2"),
+            AlignFromBytesError::TooLarge(align) => write!(f, "{align} is too large"),
         }
     }
 }
