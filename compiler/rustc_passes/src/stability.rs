@@ -964,6 +964,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let mut lang_features = UnordSet::default();
     for EnabledLangFeature { gate_name, attr_sp, stable_since } in enabled_lang_features {
         if let Some(version) = stable_since {
+            // Mark the feature as enabled, to ensure that it is not marked as unused.
+            let _ = tcx.features().enabled(*gate_name);
+
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, *attr_sp, *gate_name, *version);
         }
@@ -1021,6 +1024,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             if let FeatureStability::AcceptedSince(since) = stability
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
+                // Mark the feature as enabled, to ensure that it is not marked as unused.
+                let _ = tcx.features().enabled(feature);
+
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = all_implications.get(&feature) {
                     unnecessary_partially_stable_feature_lint(tcx, *span, feature, *implies, since);
