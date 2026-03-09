@@ -1,8 +1,7 @@
+use std::io;
 use std::path::Path;
-use std::{fmt, io};
 
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -112,29 +111,6 @@ pub(super) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]
     pub span: Span,
-}
-
-pub struct CustomSubdiagnostic<'a> {
-    pub msg: fn() -> DiagMessage,
-    pub add_args: Box<dyn FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>,
-}
-
-impl<'a> CustomSubdiagnostic<'a> {
-    pub fn label(x: fn() -> DiagMessage) -> Self {
-        Self::label_and_then(x, |_| {})
-    }
-    pub fn label_and_then<F: FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>(
-        msg: fn() -> DiagMessage,
-        f: F,
-    ) -> Self {
-        Self { msg, add_args: Box::new(move |x| f(x)) }
-    }
-}
-
-impl fmt::Debug for CustomSubdiagnostic<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CustomSubdiagnostic").finish_non_exhaustive()
-    }
 }
 
 #[derive(Diagnostic)]

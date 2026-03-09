@@ -383,8 +383,6 @@ pub struct RawBytesNote {
     pub bytes: String,
 }
 
-// FIXME(fee1-dead) do not use stringly typed `ConstContext`
-
 #[derive(Diagnostic)]
 #[diag(
     r#"cannot match on `{$ty}` in {$kind ->
