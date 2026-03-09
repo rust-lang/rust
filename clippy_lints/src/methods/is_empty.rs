@@ -39,7 +39,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
 fn is_under_cfg(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx
         .hir_parent_id_iter(id)
-        .any(|id| find_attr!(cx.tcx.hir_attrs(id), CfgTrace(..)))
+        .any(|id| find_attr!(cx.tcx, id, CfgTrace(..)))
 }
 
 /// Similar to [`clippy_utils::expr_or_init`], but does not go up the chain if the initialization
