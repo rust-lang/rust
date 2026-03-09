@@ -64,6 +64,7 @@ use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
+use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
@@ -76,7 +77,7 @@ use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 type Res = def::Res<NodeId>;
 
@@ -127,8 +128,6 @@ enum Scope<'ra> {
     /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     /// lint if it should be reported.
     ModuleGlobs(Module<'ra>, Option<NodeId>),
-    // Crate names of the form `foo::bar`.
-    NamespacedCrates(Symbol),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -159,8 +158,6 @@ enum ScopeSet<'ra> {
     ExternPrelude,
     /// Same as `All(MacroNS)`, but with the given macro kind restriction.
     Macro(MacroKind),
-    /// Only `Scope::NamespacedCrates`
-    NamespacedCrate(Namespace, Symbol),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -456,7 +453,7 @@ enum ModuleOrUniformRoot<'ra> {
     /// Virtual module for the resolution of base names of namespaced crates,
     /// where the base name doesn't correspond to a module in the extern prelude.
     /// E.g. `my_api::utils` is in the prelude, but `my_api` is not.
-    VirtualNamespacedCrate(Symbol),
+    OpenModule(Symbol),
 }
 
 #[derive(Debug)]
@@ -1405,11 +1402,6 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
-
-    // Extern crates with names of the form `foo::bar`
-    namespaced_crate_names: FxHashMap<&'tcx str, Vec<&'tcx str>>,
-
-    def_id_to_namespaced_crate_names: CacheRefCell<FxHashMap<DefId, Symbol>>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1632,7 +1624,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        attrs: &'ra [ast::Attribute],
+        attrs: &[ast::Attribute],
         crate_span: Span,
         current_crate_outer_attr_insert_span: Span,
         arenas: &'ra ResolverArenas<'ra>,
@@ -1665,7 +1657,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let namespaced_crate_names = get_namespaced_crate_names(tcx);
         let extern_prelude = build_extern_prelude(tcx, attrs);
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
@@ -1734,8 +1725,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
-            namespaced_crate_names,
-            def_id_to_namespaced_crate_names: Default::default(),
             ..
         };
 
@@ -1987,8 +1976,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ExternPreludeItems
                 | Scope::ExternPreludeFlags
                 | Scope::ToolPrelude
-                | Scope::BuiltinTypes
-                | Scope::NamespacedCrates(..) => {}
+                | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
             ControlFlow::<()>::Continue(())
@@ -2316,6 +2304,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn extern_prelude_get_flag(
         &self,
         ident: IdentKey,
@@ -2325,6 +2314,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
             let (pending_decl, finalized, is_virtual) = flag_decl.get();
+            debug!(?pending_decl, ?is_virtual);
             let decl = match pending_decl {
                 PendingDecl::Ready(decl) => {
                     if finalize && !finalized && !is_virtual {
@@ -2339,7 +2329,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PendingDecl::Pending => {
                     debug_assert!(!finalized);
                     if is_virtual {
-                        let res = Res::VirtualMod(ident.name);
+                        let res = Res::OpenMod(ident.name);
                         Some(self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT))
                     } else {
                         let crate_id = if finalize {
@@ -2354,7 +2344,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         crate_id.map(|crate_id| {
                             let def_id = crate_id.as_def_id();
                             let res = Res::Def(DefKind::Mod, def_id);
-                            self.try_add_def_id_for_namespaced_crate(def_id, ident);
                             self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
                         })
                     }
@@ -2404,7 +2393,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None
             }
             PathResult::Module(..) | PathResult::Indeterminate => {
-                panic!("got invalid path_result: {:?}", path_result)
+                bug!("got invalid path_result: {path_result:?}")
             }
         }
     }
@@ -2521,22 +2510,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
-
-    fn try_add_def_id_for_namespaced_crate(&self, def_id: DefId, ident: IdentKey) {
-        let crate_name = ident.name;
-        if self.namespaced_crate_names.contains_key(crate_name.as_str()) {
-            self.def_id_to_namespaced_crate_names.borrow_mut().insert(def_id, crate_name);
-        }
-    }
-}
-
-pub(crate) fn is_namespaced_crate(crate_name: &str) -> bool {
-    crate_name.contains("::")
 }
 
 fn build_extern_prelude<'tcx, 'ra>(
     tcx: TyCtxt<'tcx>,
-    attrs: &'ra [ast::Attribute],
+    attrs: &[ast::Attribute],
 ) -> FxIndexMap<IdentKey, ExternPreludeEntry<'ra>> {
     let mut extern_prelude: FxIndexMap<IdentKey, ExternPreludeEntry<'ra>> = tcx
         .sess
@@ -2559,6 +2537,9 @@ fn build_extern_prelude<'tcx, 'ra>(
 
     // Add virtual base entries for namespaced crates whose base segment
     // is missing from the prelude (e.g. `foo::bar` without `foo`).
+    // These are necessary in order to resolve the open modules, whereas
+    // the namespaced names are necessary in `extern_prelude` for actually
+    // resolving the namespaced crates.
     let missing_virtual_bases: Vec<IdentKey> = extern_prelude
         .keys()
         .filter_map(|ident| {
@@ -2573,6 +2554,8 @@ fn build_extern_prelude<'tcx, 'ra>(
         missing_virtual_bases.into_iter().map(|ident| (ident, ExternPreludeEntry::virtual_flag())),
     );
 
+    debug!(?extern_prelude);
+
     // Inject `core` / `std` unless suppressed by attributes.
     if !attr::contains_name(attrs, sym::no_core) {
         extern_prelude.insert(IdentKey::with_root_ctxt(sym::core), ExternPreludeEntry::flag());
@@ -2583,26 +2566,6 @@ fn build_extern_prelude<'tcx, 'ra>(
     }
 
     extern_prelude
-}
-
-// Creates a map for base path segment -> full path of all namespaced crates.
-fn get_namespaced_crate_names(tcx: TyCtxt<'_>) -> FxHashMap<&str, Vec<&str>> {
-    tcx.sess
-        .opts
-        .externs
-        .iter()
-        .filter(|(name, _)| is_namespaced_crate(name))
-        .map(|(name, _)| {
-            let main_crate_name = name
-                .split("::")
-                .nth(0)
-                .expect(&format!("namespaced crate name has unexpected form {}", name));
-            (main_crate_name, name.as_str())
-        })
-        .fold(FxHashMap::default(), |mut acc_map, (main_name, full_name)| {
-            acc_map.entry(main_name).or_insert_with(Vec::new).push(full_name);
-            acc_map
-        })
 }
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {

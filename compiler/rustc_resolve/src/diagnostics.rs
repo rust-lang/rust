@@ -1206,7 +1206,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs`.
                 }
-                Scope::NamespacedCrates(..) => {}
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
@@ -1737,7 +1736,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Res::Def(DefKind::Macro(kinds), _) => {
                     format!("{} {}", kinds.article(), kinds.descr())
                 }
-                Res::ToolMod | Res::VirtualMod(..) => {
+                Res::ToolMod | Res::OpenMod(..) => {
                     // Don't confuse the user with tool modules or virtual modules.
                     continue;
                 }
@@ -1976,11 +1975,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let (built_in, from) = match scope {
                 Scope::StdLibPrelude | Scope::MacroUsePrelude => ("", " from prelude"),
                 Scope::ExternPreludeFlags
-                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some() =>
+                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some()
+                        || matches!(res, Res::OpenMod(..)) =>
                 {
-                    ("", " passed with `--extern`")
-                }
-                Scope::ExternPreludeFlags if matches!(res, Res::VirtualMod(..)) => {
                     ("", " passed with `--extern`")
                 }
                 _ => {

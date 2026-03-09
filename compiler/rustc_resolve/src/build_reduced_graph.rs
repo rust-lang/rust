@@ -326,7 +326,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::VirtualMod(..)
             | Res::ToolMod => define_extern(TypeNS),
             Res::Def(
                 DefKind::Fn
@@ -358,6 +357,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
+            | Res::OpenMod(..)
             | Res::Err => bug!("unexpected resolution: {:?}", res),
         }
     }

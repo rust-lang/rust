@@ -46,7 +46,7 @@ pub(crate) fn split_extern_opt<'a>(
     // Reject paths with more than two segments.
     if unstable_opts.namespaced_crates && crate_name.split("::").count() > 2 {
         return Err(early_dcx.early_struct_fatal(format!(
-            "crate name `{crate_name}` passed to `--extern` has too many segments; namespaced crates currently support at most two segments"
+            "crate name `{crate_name}` passed to `--extern` can have at most two segments."
         )));
     }
 
