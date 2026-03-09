@@ -1282,7 +1282,10 @@ where
                 }
             }
             ty::Infer(_) => ControlFlow::Break(Ok(())),
-            _ if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER) => {
+            _ if ty.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
                 ty.super_visit_with(self)
             }
             _ => ControlFlow::Continue(()),
@@ -1304,7 +1307,10 @@ where
                 }
             }
             ty::ConstKind::Infer(_) => ControlFlow::Break(Ok(())),
-            _ if ct.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER) => {
+            _ if ct.has_type_flags(
+                TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_INFER | TypeFlags::HAS_ALIAS,
+            ) =>
+            {
                 ct.super_visit_with(self)
             }
             _ => ControlFlow::Continue(()),
