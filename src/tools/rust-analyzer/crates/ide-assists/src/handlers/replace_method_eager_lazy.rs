@@ -2,10 +2,10 @@ use hir::Semantics;
 use ide_db::{RootDatabase, assists::AssistId, defs::Definition};
 use syntax::{
     AstNode,
-    ast::{self, Expr, HasArgList, make},
+    ast::{self, Expr, HasArgList, make, syntax_factory::SyntaxFactory},
 };
 
-use crate::{AssistContext, Assists};
+use crate::{AssistContext, Assists, utils::wrap_paren_in_call};
 
 // Assist: replace_with_lazy_method
 //
@@ -177,11 +177,7 @@ fn into_call(param: &Expr, sema: &Semantics<'_, RootDatabase>) -> Expr {
         }
     })()
     .unwrap_or_else(|| {
-        let callable = if needs_parens_in_call(param) {
-            make::expr_paren(param.clone()).into()
-        } else {
-            param.clone()
-        };
+        let callable = wrap_paren_in_call(param.clone(), &SyntaxFactory::without_mappings());
         make::expr_call(callable, make::arg_list(Vec::new())).into()
     })
 }
@@ -198,12 +194,6 @@ fn eager_method_name(name: &str) -> Option<&str> {
 
 fn ends_is(name: &str, end: &str) -> bool {
     name.strip_suffix(end).is_some_and(|s| s.is_empty() || s.ends_with('_'))
-}
-
-fn needs_parens_in_call(param: &Expr) -> bool {
-    let call = make::expr_call(make::ext::expr_unit(), make::arg_list(Vec::new()));
-    let callable = call.expr().expect("invalid make call");
-    param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
 #[cfg(test)]
