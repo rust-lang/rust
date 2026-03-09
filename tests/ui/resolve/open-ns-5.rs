@@ -13,5 +13,6 @@ macro_rules! import_and_call {
 }
 
 fn main() {
-    import_and_call!(my_api::utils::utils_helper, utils_helper)
+    import_and_call!(my_api::utils::utils_helper, utils_helper);
+    let _x = 4 + 5;
 }
