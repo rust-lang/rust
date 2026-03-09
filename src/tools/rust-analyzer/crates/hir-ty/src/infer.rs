@@ -1584,7 +1584,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 return (self.err_ty(), None);
             };
             match res {
-                ResolveValueResult::ValueNs(value, _) => match value {
+                ResolveValueResult::ValueNs(value) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let args = path_ctx.substs_from_path(var.into(), true, false);
                         drop(ctx);
@@ -1608,7 +1608,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                         return (self.err_ty(), None);
                     }
                 },
-                ResolveValueResult::Partial(typens, unresolved, _) => (typens, Some(unresolved)),
+                ResolveValueResult::Partial(typens, unresolved) => (typens, Some(unresolved)),
             }
         } else {
             match path_ctx.resolve_path_in_type_ns() {

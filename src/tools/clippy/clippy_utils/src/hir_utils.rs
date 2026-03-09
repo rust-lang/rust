@@ -1,7 +1,7 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
 use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
-use crate::tokenize_with_text;
+use crate::{sym, tokenize_with_text};
 use rustc_ast::ast;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::{FxHasher, FxIndexMap};
@@ -14,12 +14,12 @@ use rustc_hir::{
     GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
     LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
     Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
+    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::slice;
@@ -505,7 +505,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Block(l, _), ExprKind::Block(r, _)) => self.eq_block(l, r),
             (ExprKind::Binary(l_op, ll, lr), ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(self.inner.cx, l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
+                    || self.swap_binop(l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -799,7 +799,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
             (Res::Def(l_kind, l), Res::Def(r_kind, r))
                 if l_kind == r_kind
-                    && let DefKind::Const
+                    && let DefKind::Const { .. }
                     | DefKind::Static { .. }
                     | DefKind::Fn
                     | DefKind::TyAlias
@@ -921,6 +921,40 @@ impl HirEqInterExpr<'_, '_, '_> {
         self.right_ctxt = right;
         true
     }
+
+    fn swap_binop<'a>(
+        &self,
+        binop: BinOpKind,
+        lhs: &'a Expr<'a>,
+        rhs: &'a Expr<'a>,
+    ) -> Option<(BinOpKind, &'a Expr<'a>, &'a Expr<'a>)> {
+        match binop {
+            // `==` and `!=`, are commutative
+            BinOpKind::Eq | BinOpKind::Ne => Some((binop, rhs, lhs)),
+            // Comparisons can be reversed
+            BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
+            BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
+            BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
+            BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
+            // Non-commutative operators
+            BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Rem | BinOpKind::Sub | BinOpKind::Div => None,
+            // We know that those operators are commutative for primitive types,
+            // and we don't assume anything for other types
+            BinOpKind::Mul
+            | BinOpKind::Add
+            | BinOpKind::And
+            | BinOpKind::Or
+            | BinOpKind::BitAnd
+            | BinOpKind::BitXor
+            | BinOpKind::BitOr => self.inner.maybe_typeck_results.and_then(|(typeck_lhs, _)| {
+                typeck_lhs
+                    .expr_ty_adjusted(lhs)
+                    .peel_refs()
+                    .is_primitive()
+                    .then_some((binop, rhs, lhs))
+            }),
+        }
+    }
 }
 
 /// Some simple reductions like `{ return }` => `return`
@@ -966,39 +1000,6 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
     }
 }
 
-fn swap_binop<'a>(
-    cx: &LateContext<'_>,
-    binop: BinOpKind,
-    lhs: &'a Expr<'a>,
-    rhs: &'a Expr<'a>,
-) -> Option<(BinOpKind, &'a Expr<'a>, &'a Expr<'a>)> {
-    match binop {
-        // `==` and `!=`, are commutative
-        BinOpKind::Eq | BinOpKind::Ne => Some((binop, rhs, lhs)),
-        // Comparisons can be reversed
-        BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
-        BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
-        BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
-        BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
-        // Non-commutative operators
-        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Rem | BinOpKind::Sub | BinOpKind::Div => None,
-        // We know that those operators are commutative for primitive types,
-        // and we don't assume anything for other types
-        BinOpKind::Mul
-        | BinOpKind::Add
-        | BinOpKind::And
-        | BinOpKind::Or
-        | BinOpKind::BitAnd
-        | BinOpKind::BitXor
-        | BinOpKind::BitOr => cx
-            .typeck_results()
-            .expr_ty_adjusted(lhs)
-            .peel_refs()
-            .is_primitive()
-            .then_some((binop, rhs, lhs)),
-    }
-}
-
 /// Checks if the two `Option`s are both `None` or some equal values as per
 /// `eq_fn`.
 pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
@@ -1035,7 +1036,7 @@ pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) ->
 /// item, in which case it is the last two
 fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'tcx [PathSegment<'tcx>]> {
     match segments.last()?.res {
-        Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => {
+        Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _) => {
             // <Ty as module::Trait<T>>::assoc::<U>
             //        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^ segments: [module, Trait<T>, assoc<U>]
             Some(&segments[segments.len().checked_sub(2)?..])
@@ -1528,6 +1529,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Pat(ty, pat) => {
                 self.hash_ty(ty);
                 self.hash_ty_pat(pat);
+            },
+            TyKind::FieldOf(base, TyFieldPath { variant, field }) => {
+                self.hash_ty(base);
+                if let Some(variant) = variant {
+                    self.hash_name(variant.name);
+                }
+                self.hash_name(field.name);
             },
             TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);

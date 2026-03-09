@@ -4,8 +4,9 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, NodeId, attr};
+use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -15,12 +16,14 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_hir::StabilityLevel;
-use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
+use rustc_feature::Features;
+use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_session::Session;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
@@ -122,35 +125,38 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs)
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, tcx.features())
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
+    sess: &Session,
+    features: &Features,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
-    for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
-        for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
-            match meta_item_inner.ident() {
-                Some(ident) => {
-                    if let Some(old_ident) = registered_tools.replace(ident) {
-                        dcx.emit_err(errors::ToolWasAlreadyRegistered {
-                            span: ident.span,
-                            tool: ident,
-                            old_ident_span: old_ident.span,
-                        });
-                    }
-                }
-                None => {
-                    dcx.emit_err(errors::ToolOnlyAcceptsIdentifiers {
-                        span: meta_item_inner.span(),
-                        tool: sym::register_tool,
-                    });
-                }
+
+    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools, _))) =
+        AttributeParser::parse_limited(
+            sess,
+            pre_configured_attrs,
+            sym::register_tool,
+            DUMMY_SP,
+            DUMMY_NODE_ID,
+            Some(features),
+        )
+    {
+        for tool in tools {
+            if let Some(old_tool) = registered_tools.replace(tool) {
+                dcx.emit_err(errors::ToolWasAlreadyRegistered {
+                    span: tool.span,
+                    tool,
+                    old_ident_span: old_tool.span,
+                });
             }
         }
     }
+
     // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
     // tools, but it's not an error to register them explicitly.
     let predefined_tools =
@@ -908,10 +914,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module, segment) =
-                        if let PathResult::Failed { span, label, module, segment_name, .. } =
-                            path_res
-                        {
+                    let (span, message, label, module, segment) = match path_res {
+                        PathResult::Failed {
+                            span, label, module, segment_name, message, ..
+                        } => {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) = self
                                 .cm()
@@ -930,26 +936,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, label, module, segment_name)
-                        } else {
+                            (span, message, label, module, segment_name)
+                        }
+                        PathResult::NonModule(partial_res) => {
+                            let found_an = partial_res.base_res().article();
+                            let found_descr = partial_res.base_res().descr();
+                            let scope = match &path[..partial_res.unresolved_segments()] {
+                                [.., prev] => {
+                                    format!("{found_descr} `{}`", prev.ident)
+                                }
+                                _ => found_descr.to_string(),
+                            };
+                            let expected_an = kind.article();
+                            let expected_descr = kind.descr();
+                            let expected_name = path[partial_res.unresolved_segments()].ident;
+
                             (
                                 path_span,
                                 format!(
-                                    "partially resolved path in {} {}",
-                                    kind.article(),
-                                    kind.descr()
+                                    "cannot find {expected_descr} `{expected_name}` in {scope}"
                                 ),
+                                match partial_res.base_res() {
+                                    Res::Def(
+                                        DefKind::Mod | DefKind::Macro(..) | DefKind::ExternCrate,
+                                        _,
+                                    ) => format!(
+                                        "partially resolved path in {expected_an} {expected_descr}",
+                                    ),
+                                    _ => format!(
+                                        "{expected_an} {expected_descr} can't exist within \
+                                         {found_an} {found_descr}"
+                                    ),
+                                },
                                 None,
                                 path.last().map(|segment| segment.ident.name).unwrap(),
                             )
-                        };
+                        }
+                        _ => unreachable!(),
+                    };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            message,
                         },
                     );
                 }

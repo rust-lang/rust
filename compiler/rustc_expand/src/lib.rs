@@ -1,7 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]

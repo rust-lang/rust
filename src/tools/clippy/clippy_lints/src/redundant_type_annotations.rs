@@ -36,6 +36,7 @@ declare_clippy_lint! {
     restriction,
     "warns about needless / redundant type annotations."
 }
+
 declare_lint_pass!(RedundantTypeAnnotations => [REDUNDANT_TYPE_ANNOTATIONS]);
 
 fn is_same_type<'tcx>(cx: &LateContext<'tcx>, ty_resolved_path: hir::def::Res, func_return_type: Ty<'tcx>) -> bool {

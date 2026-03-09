@@ -40,6 +40,7 @@ declare_clippy_lint! {
     nursery,
     "checks for tuple<=>array conversions that are not done with `.into()`"
 }
+
 impl_lint_pass!(TupleArrayConversions => [TUPLE_ARRAY_CONVERSIONS]);
 
 pub struct TupleArrayConversions {

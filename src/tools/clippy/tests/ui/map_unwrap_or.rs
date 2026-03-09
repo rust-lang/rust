@@ -92,10 +92,7 @@ fn result_methods() {
     let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|_e| 0); // should not lint
 }
 
-fn main() {
-    option_methods();
-    result_methods();
-}
+fn main() {}
 
 #[clippy::msrv = "1.40"]
 fn msrv_1_40() {

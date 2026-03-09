@@ -1,6 +1,5 @@
-use std::fmt;
+use std::{assert_matches, fmt};
 
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -10,7 +9,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use crate::error;
@@ -286,15 +285,6 @@ impl<'tcx> InstanceKind<'tcx> {
         }
     }
 
-    #[inline]
-    pub fn get_attrs(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        tcx.get_attrs(self.def_id(), attr)
-    }
-
     /// Returns `true` if the LLVM version of this instance is unconditionally
     /// marked with `inline`. This implies that a copy of this instance is
     /// generated in every codegen unit.
@@ -517,8 +507,8 @@ impl<'tcx> Instance<'tcx> {
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const
-                | DefKind::AssocConst
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
                 | DefKind::AnonConst
                 | DefKind::InlineConst
                 | DefKind::Static { .. }

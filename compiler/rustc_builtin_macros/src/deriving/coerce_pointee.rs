@@ -136,7 +136,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     of_trait: Some(Box::new(ast::TraitImplHeader {
                         safety: ast::Safety::Default,
                         polarity: ast::ImplPolarity::Positive,
-                        defaultness: ast::Defaultness::Final,
+                        defaultness: ast::Defaultness::Implicit,
                         trait_ref,
                     })),
                     constness: ast::Const::No,
@@ -159,7 +159,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 of_trait: Some(Box::new(ast::TraitImplHeader {
                     safety: ast::Safety::Default,
                     polarity: ast::ImplPolarity::Positive,
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     trait_ref,
                 })),
                 constness: ast::Const::No,

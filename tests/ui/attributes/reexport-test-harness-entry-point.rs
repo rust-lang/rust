@@ -4,6 +4,7 @@
 //@ run-pass
 //@ compile-flags:--test
 
+#![feature(custom_test_frameworks)]
 #![reexport_test_harness_main = "test_main"]
 
 #[cfg(test)]

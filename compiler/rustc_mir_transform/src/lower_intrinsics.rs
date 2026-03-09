@@ -177,30 +177,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             Some(target) => TerminatorKind::Goto { target },
                         }
                     }
-                    sym::write_via_move => {
-                        let target = target.unwrap();
-                        let Ok([ptr, val]) = take_array(args) else {
-                            span_bug!(
-                                terminator.source_info.span,
-                                "Wrong number of arguments for write_via_move intrinsic",
-                            );
-                        };
-                        let derefed_place = if let Some(place) = ptr.node.place()
-                            && let Some(local) = place.as_local()
-                        {
-                            tcx.mk_place_deref(local.into())
-                        } else {
-                            span_bug!(
-                                terminator.source_info.span,
-                                "Only passing a local is supported"
-                            );
-                        };
-                        block.statements.push(Statement::new(
-                            terminator.source_info,
-                            StatementKind::Assign(Box::new((derefed_place, Rvalue::Use(val.node)))),
-                        ));
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
+                    // `write_via_move` is already lowered during MIR building.
                     sym::discriminant_value => {
                         let target = target.unwrap();
                         let Ok([arg]) = take_array(args) else {

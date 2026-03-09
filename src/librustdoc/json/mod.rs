@@ -280,7 +280,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         types::ExternalCrate {
                             name: e.name(self.tcx).to_string(),
                             html_root_url: match external_location {
-                                ExternalLocation::Remote(s) => Some(s.clone()),
+                                // FIXME: relative extern URLs are not resolved here
+                                ExternalLocation::Remote { url, .. } => Some(url.clone()),
                                 _ => None,
                             },
                             path: self

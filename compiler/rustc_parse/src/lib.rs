@@ -1,12 +1,10 @@
 //! The main parser interface.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![cfg_attr(test, feature(iter_order_by))]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(default_field_values)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -118,21 +116,14 @@ pub fn new_parser_from_file<'a>(
         let msg = format!("couldn't read `{}`: {}", path.display(), e);
         let mut err = psess.dcx().struct_fatal(msg);
         if let Ok(contents) = std::fs::read(path)
-            && let Err(utf8err) = String::from_utf8(contents.clone())
+            && let Err(utf8err) = std::str::from_utf8(&contents)
         {
-            utf8_error(
-                sm,
-                &path.display().to_string(),
-                sp,
-                &mut err,
-                utf8err.utf8_error(),
-                &contents,
-            );
+            utf8_error(sm, &path.display().to_string(), sp, &mut err, utf8err, &contents);
         }
         if let Some(sp) = sp {
             err.span(sp);
         }
-        err.emit();
+        err.emit()
     });
     new_parser_from_source_file(psess, source_file, strip_tokens)
 }

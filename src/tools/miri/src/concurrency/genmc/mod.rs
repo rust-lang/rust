@@ -252,7 +252,7 @@ impl GenmcCtx {
     /// Inform GenMC about an atomic load.
     /// Returns that value that the load should read.
     ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
+    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
     pub(crate) fn atomic_load<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
@@ -275,7 +275,7 @@ impl GenmcCtx {
     /// Inform GenMC about an atomic store.
     /// Returns `true` if the stored value should be reflected in Miri's memory.
     ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
+    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
     pub(crate) fn atomic_store<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
@@ -320,7 +320,7 @@ impl GenmcCtx {
     ///
     /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
     ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
+    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
     pub(crate) fn atomic_rmw_op<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
@@ -345,7 +345,7 @@ impl GenmcCtx {
 
     /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
     ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
+    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
     pub(crate) fn atomic_exchange<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
@@ -370,7 +370,7 @@ impl GenmcCtx {
     ///
     /// Returns the old value read by the compare exchange, optionally the value that Miri should write back to its memory, and whether the compare-exchange was a success or not.
     ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
+    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
     pub(crate) fn atomic_compare_exchange<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,

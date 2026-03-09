@@ -54,6 +54,8 @@ declare_clippy_lint! {
     "there is a field that is not safe to be sent to another thread in a `Send` struct"
 }
 
+impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
+
 pub struct NonSendFieldInSendTy {
     enable_raw_pointer_heuristic: bool,
 }
@@ -65,8 +67,6 @@ impl NonSendFieldInSendTy {
         }
     }
 }
-
-impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -205,17 +205,13 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
             .iter()
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
         ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, *ty, send_trait),
-        ty::Adt(_, args) => {
-            if contains_pointer_like(cx, ty) {
-                // descends only if ADT contains any raw pointers
-                args.iter().all(|generic_arg| match generic_arg.kind() {
-                    GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
-                    // Lifetimes and const generics are not solid part of ADT and ignored
-                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
-                })
-            } else {
-                false
-            }
+        ty::Adt(_, args) if contains_pointer_like(cx, ty) => {
+            // descends only if ADT contains any raw pointers
+            args.iter().all(|generic_arg| match generic_arg.kind() {
+                GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+                // Lifetimes and const generics are not solid part of ADT and ignored
+                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
+            })
         },
         // Raw pointers are `!Send` but allowed by the heuristic
         ty::RawPtr(_, _) => true,
@@ -231,10 +227,8 @@ fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> b
                 ty::RawPtr(_, _) => {
                     return true;
                 },
-                ty::Adt(adt_def, _) => {
-                    if cx.tcx.is_diagnostic_item(sym::NonNull, adt_def.did()) {
-                        return true;
-                    }
+                ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::NonNull, adt_def.did()) => {
+                    return true;
                 },
                 _ => (),
             }

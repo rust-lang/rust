@@ -2,7 +2,6 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
 use rustc_middle::query::Providers;
@@ -183,11 +182,7 @@ fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> SymbolName {
             // information, we could have codegen_fn_attrs also give span information back for
             // where the attribute was defined. However, until this is found to be a
             // bottleneck, this does just fine.
-            (
-                overridden_link_name,
-                find_attr!(tcx.get_all_attrs(fi), AttributeKind::LinkName {span, ..} => *span)
-                    .unwrap(),
-            )
+            (overridden_link_name, find_attr!(tcx, fi, LinkName {span, ..} => *span).unwrap())
         })
     {
         SymbolName::Link(overridden_link_name, overridden_link_name_span)

@@ -1,11 +1,12 @@
-use ide_db::FxHashSet;
+use ide_db::{FileId, FxHashSet};
 use syntax::{
-    AstNode, TextRange,
-    ast::{self, HasGenericParams, edit_in_place::GenericParamsOwnerEdit, make},
-    ted::{self, Position},
+    AstNode, SmolStr, T, TextRange, ToSmolStr,
+    ast::{self, HasGenericParams, HasName, syntax_factory::SyntaxFactory},
+    format_smolstr,
+    syntax_editor::{Element, Position, SyntaxEditor},
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{AssistContext, AssistId, Assists};
 
 static ASSIST_NAME: &str = "introduce_named_lifetime";
 static ASSIST_LABEL: &str = "Introduce named lifetime";
@@ -38,100 +39,108 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext<'_
     // FIXME: should also add support for the case fun(f: &Foo) -> &$0Foo
     let lifetime =
         ctx.find_node_at_offset::<ast::Lifetime>().filter(|lifetime| lifetime.text() == "'_")?;
+    let file_id = ctx.vfs_file_id();
     let lifetime_loc = lifetime.lifetime_ident_token()?.text_range();
 
     if let Some(fn_def) = lifetime.syntax().ancestors().find_map(ast::Fn::cast) {
-        generate_fn_def_assist(acc, fn_def, lifetime_loc, lifetime)
+        generate_fn_def_assist(acc, fn_def, lifetime_loc, lifetime, file_id)
     } else if let Some(impl_def) = lifetime.syntax().ancestors().find_map(ast::Impl::cast) {
-        generate_impl_def_assist(acc, impl_def, lifetime_loc, lifetime)
+        generate_impl_def_assist(acc, impl_def, lifetime_loc, lifetime, file_id)
     } else {
         None
     }
 }
 
-/// Generate the assist for the fn def case
+/// Given a type parameter list, generate a unique lifetime parameter name
+/// which is not in the list
+fn generate_unique_lifetime_param_name(
+    existing_params: Option<ast::GenericParamList>,
+) -> Option<SmolStr> {
+    let used_lifetime_param: FxHashSet<SmolStr> = existing_params
+        .iter()
+        .flat_map(|params| params.lifetime_params())
+        .map(|p| p.syntax().text().to_smolstr())
+        .collect();
+    ('a'..='z').map(|c| format_smolstr!("'{c}")).find(|lt| !used_lifetime_param.contains(lt))
+}
+
 fn generate_fn_def_assist(
     acc: &mut Assists,
     fn_def: ast::Fn,
     lifetime_loc: TextRange,
     lifetime: ast::Lifetime,
+    file_id: FileId,
 ) -> Option<()> {
-    let param_list: ast::ParamList = fn_def.param_list()?;
-    let new_lifetime_param = generate_unique_lifetime_param_name(fn_def.generic_param_list())?;
+    let param_list = fn_def.param_list()?;
+    let new_lifetime_name = generate_unique_lifetime_param_name(fn_def.generic_param_list())?;
     let self_param =
-        // use the self if it's a reference and has no explicit lifetime
         param_list.self_param().filter(|p| p.lifetime().is_none() && p.amp_token().is_some());
-    // compute the location which implicitly has the same lifetime as the anonymous lifetime
+
     let loc_needing_lifetime = if let Some(self_param) = self_param {
-        // if we have a self reference, use that
         Some(NeedsLifetime::SelfParam(self_param))
     } else {
-        // otherwise, if there's a single reference parameter without a named lifetime, use that
-        let fn_params_without_lifetime: Vec<_> = param_list
+        let unnamed_refs: Vec<_> = param_list
             .params()
             .filter_map(|param| match param.ty() {
-                Some(ast::Type::RefType(ascribed_type)) if ascribed_type.lifetime().is_none() => {
-                    Some(NeedsLifetime::RefType(ascribed_type))
+                Some(ast::Type::RefType(ref_type)) if ref_type.lifetime().is_none() => {
+                    Some(NeedsLifetime::RefType(ref_type))
                 }
                 _ => None,
             })
             .collect();
-        match fn_params_without_lifetime.len() {
-            1 => Some(fn_params_without_lifetime.into_iter().next()?),
+
+        match unnamed_refs.len() {
+            1 => Some(unnamed_refs.into_iter().next()?),
             0 => None,
-            // multiple unnamed is invalid. assist is not applicable
             _ => return None,
         }
     };
-    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
-        let fn_def = builder.make_mut(fn_def);
-        let lifetime = builder.make_mut(lifetime);
-        let loc_needing_lifetime =
-            loc_needing_lifetime.and_then(|it| it.make_mut(builder).to_position());
 
-        fn_def.get_or_create_generic_param_list().add_generic_param(
-            make::lifetime_param(new_lifetime_param.clone()).clone_for_update().into(),
-        );
-        ted::replace(lifetime.syntax(), new_lifetime_param.clone_for_update().syntax());
-        if let Some(position) = loc_needing_lifetime {
-            ted::insert(position, new_lifetime_param.clone_for_update().syntax());
+    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
+        let root = fn_def.syntax().ancestors().last().unwrap().clone();
+        let mut editor = SyntaxEditor::new(root);
+        let factory = SyntaxFactory::with_mappings();
+
+        if let Some(generic_list) = fn_def.generic_param_list() {
+            insert_lifetime_param(&mut editor, &factory, &generic_list, &new_lifetime_name);
+        } else {
+            insert_new_generic_param_list_fn(&mut editor, &factory, &fn_def, &new_lifetime_name);
         }
+
+        editor.replace(lifetime.syntax(), factory.lifetime(&new_lifetime_name).syntax());
+
+        if let Some(pos) = loc_needing_lifetime.and_then(|l| l.to_position()) {
+            editor.insert_all(
+                pos,
+                vec![
+                    factory.lifetime(&new_lifetime_name).syntax().clone().into(),
+                    factory.whitespace(" ").into(),
+                ],
+            );
+        }
+
+        edit.add_file_edits(file_id, editor);
     })
 }
 
-/// Generate the assist for the impl def case
-fn generate_impl_def_assist(
-    acc: &mut Assists,
-    impl_def: ast::Impl,
-    lifetime_loc: TextRange,
-    lifetime: ast::Lifetime,
+fn insert_new_generic_param_list_fn(
+    editor: &mut SyntaxEditor,
+    factory: &SyntaxFactory,
+    fn_def: &ast::Fn,
+    lifetime_name: &str,
 ) -> Option<()> {
-    let new_lifetime_param = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
-    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
-        let impl_def = builder.make_mut(impl_def);
-        let lifetime = builder.make_mut(lifetime);
+    let name = fn_def.name()?;
 
-        impl_def.get_or_create_generic_param_list().add_generic_param(
-            make::lifetime_param(new_lifetime_param.clone()).clone_for_update().into(),
-        );
-        ted::replace(lifetime.syntax(), new_lifetime_param.clone_for_update().syntax());
-    })
-}
+    editor.insert_all(
+        Position::after(name.syntax()),
+        vec![
+            factory.token(T![<]).syntax_element(),
+            factory.lifetime(lifetime_name).syntax().syntax_element(),
+            factory.token(T![>]).syntax_element(),
+        ],
+    );
 
-/// Given a type parameter list, generate a unique lifetime parameter name
-/// which is not in the list
-fn generate_unique_lifetime_param_name(
-    existing_type_param_list: Option<ast::GenericParamList>,
-) -> Option<ast::Lifetime> {
-    match existing_type_param_list {
-        Some(type_params) => {
-            let used_lifetime_params: FxHashSet<_> =
-                type_params.lifetime_params().map(|p| p.syntax().text().to_string()).collect();
-            ('a'..='z').map(|it| format!("'{it}")).find(|it| !used_lifetime_params.contains(it))
-        }
-        None => Some("'a".to_owned()),
-    }
-    .map(|it| make::lifetime(&it))
+    Some(())
 }
 
 enum NeedsLifetime {
@@ -140,19 +149,81 @@ enum NeedsLifetime {
 }
 
 impl NeedsLifetime {
-    fn make_mut(self, builder: &mut SourceChangeBuilder) -> Self {
-        match self {
-            Self::SelfParam(it) => Self::SelfParam(builder.make_mut(it)),
-            Self::RefType(it) => Self::RefType(builder.make_mut(it)),
-        }
-    }
-
     fn to_position(self) -> Option<Position> {
         match self {
             Self::SelfParam(it) => Some(Position::after(it.amp_token()?)),
             Self::RefType(it) => Some(Position::after(it.amp_token()?)),
         }
     }
+}
+
+fn generate_impl_def_assist(
+    acc: &mut Assists,
+    impl_def: ast::Impl,
+    lifetime_loc: TextRange,
+    lifetime: ast::Lifetime,
+    file_id: FileId,
+) -> Option<()> {
+    let new_lifetime_name = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
+
+    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
+        let root = impl_def.syntax().ancestors().last().unwrap().clone();
+        let mut editor = SyntaxEditor::new(root);
+        let factory = SyntaxFactory::without_mappings();
+
+        if let Some(generic_list) = impl_def.generic_param_list() {
+            insert_lifetime_param(&mut editor, &factory, &generic_list, &new_lifetime_name);
+        } else {
+            insert_new_generic_param_list_imp(&mut editor, &factory, &impl_def, &new_lifetime_name);
+        }
+
+        editor.replace(lifetime.syntax(), factory.lifetime(&new_lifetime_name).syntax());
+
+        edit.add_file_edits(file_id, editor);
+    })
+}
+
+fn insert_new_generic_param_list_imp(
+    editor: &mut SyntaxEditor,
+    factory: &SyntaxFactory,
+    impl_: &ast::Impl,
+    lifetime_name: &str,
+) -> Option<()> {
+    let impl_kw = impl_.impl_token()?;
+
+    editor.insert_all(
+        Position::after(impl_kw),
+        vec![
+            factory.token(T![<]).syntax_element(),
+            factory.lifetime(lifetime_name).syntax().syntax_element(),
+            factory.token(T![>]).syntax_element(),
+        ],
+    );
+
+    Some(())
+}
+
+fn insert_lifetime_param(
+    editor: &mut SyntaxEditor,
+    factory: &SyntaxFactory,
+    generic_list: &ast::GenericParamList,
+    lifetime_name: &str,
+) -> Option<()> {
+    let r_angle = generic_list.r_angle_token()?;
+    let needs_comma = generic_list.generic_params().next().is_some();
+
+    let mut elements = Vec::new();
+
+    if needs_comma {
+        elements.push(factory.token(T![,]).syntax_element());
+        elements.push(factory.whitespace(" ").syntax_element());
+    }
+
+    let lifetime = factory.lifetime(lifetime_name);
+    elements.push(lifetime.syntax().clone().into());
+
+    editor.insert_all(Position::before(r_angle), elements);
+    Some(())
 }
 
 #[cfg(test)]

@@ -8,7 +8,6 @@
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
 use std::borrow::Cow;
-use std::error::Report;
 use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
@@ -18,14 +17,14 @@ use anstream::{AutoStream, ColorChoice};
 use anstyle::{AnsiColor, Effects};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sync::DynSend;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::DiagArgMap;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, SourceFile, Span};
 use tracing::{debug, warn};
 
+use crate::formatting::format_diag_message;
 use crate::timings::TimingRecord;
-use crate::translation::Translator;
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, SuggestionStyle,
 };
@@ -88,8 +87,6 @@ pub trait Emitter {
 
     fn source_map(&self) -> Option<&SourceMap>;
 
-    fn translator(&self) -> &Translator;
-
     /// Formats the substitutions of the primary_span
     ///
     /// There are a lot of conditions to this method, but in short:
@@ -105,14 +102,10 @@ pub trait Emitter {
         &self,
         primary_span: &mut MultiSpan,
         suggestions: &mut Vec<CodeSuggestion>,
-        fluent_args: &FluentArgs<'_>,
+        fluent_args: &DiagArgMap,
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self
-                .translator()
-                .translate_message(&sugg.msg, fluent_args)
-                .map_err(Report::new)
-                .unwrap();
+            let msg = format_diag_message(&sugg.msg, fluent_args);
             if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -383,15 +376,9 @@ impl Emitter for EmitterWithNote {
         diag.sub(Level::Note, self.note.clone(), MultiSpan::new());
         self.emitter.emit_diagnostic(diag);
     }
-
-    fn translator(&self) -> &Translator {
-        self.emitter.translator()
-    }
 }
 
-pub struct SilentEmitter {
-    pub translator: Translator,
-}
+pub struct SilentEmitter;
 
 impl Emitter for SilentEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
@@ -399,10 +386,6 @@ impl Emitter for SilentEmitter {
     }
 
     fn emit_diagnostic(&mut self, _diag: DiagInner) {}
-
-    fn translator(&self) -> &Translator {
-        &self.translator
-    }
 }
 
 /// Maximum number of suggestions to be shown

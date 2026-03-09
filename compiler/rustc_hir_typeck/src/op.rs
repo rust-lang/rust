@@ -1,8 +1,10 @@
 //! Code related to processing overloaded binary and unary operators.
 
+use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
@@ -16,7 +18,6 @@ use rustc_span::{Span, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::FnCtxt;
 use super::method::MethodCallee;
@@ -380,8 +381,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx
                                 .associated_item_def_ids(def_id)
                                 .iter()
-                                .find(|item_def_id| {
-                                    self.tcx.associated_item(*item_def_id).name() == sym::Output
+                                .find(|&&item_def_id| {
+                                    self.tcx.associated_item(item_def_id).name() == sym::Output
                                 })
                                 .cloned()
                         });
@@ -465,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 && lhs_new_mutbl.is_not()
                                 && rhs_new_mutbl.is_not()
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                     "consider reborrowing both sides",
                                     vec![
                                         (lhs_expr.span.shrink_to_lo(), "&*".to_string()),
@@ -826,7 +827,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_sugg,
                             (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
                         ];
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             sugg_msg,
                             suggestions,
                             Applicability::MachineApplicable,

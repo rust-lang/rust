@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `foo`
+error[E0433]: cannot find module or crate `foo` in this scope
   --> $DIR/bad-module.rs:5:15
    |
 LL |     let foo = foo::bar::baz();
@@ -6,7 +6,7 @@ LL |     let foo = foo::bar::baz();
    |
    = help: you might be missing a crate named `foo`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `thing`
+error[E0433]: cannot find module or crate `thing` in this scope
   --> $DIR/bad-module.rs:2:15
    |
 LL |     let foo = thing::len(Vec::new());

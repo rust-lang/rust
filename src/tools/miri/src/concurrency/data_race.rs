@@ -371,7 +371,7 @@ impl AccessType {
 
         if let Some(size) = size {
             if size == Size::ZERO {
-                // In this case there were multiple read accesss with different sizes and then a write.
+                // In this case there were multiple read accesses with different sizes and then a write.
                 // We will be reporting *one* of the other reads, but we don't have enough information
                 // to determine which one had which size.
                 assert!(self == AccessType::AtomicLoad);

@@ -1,6 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast};
+use rustc_ast as ast;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -227,12 +227,12 @@ pub(crate) struct InvalidReprAlignNeedArg {
 
 #[derive(Diagnostic)]
 #[diag("invalid `repr({$repr_arg})` attribute: {$error_part}", code = E0589)]
-pub(crate) struct InvalidReprGeneric<'a> {
+pub(crate) struct InvalidReprGeneric {
     #[primary_span]
     pub span: Span,
 
     pub repr_arg: String,
-    pub error_part: &'a str,
+    pub error_part: String,
 }
 
 #[derive(Diagnostic)]
@@ -479,7 +479,7 @@ pub(crate) struct InvalidTarget {
 pub(crate) struct InvalidAlignmentValue {
     #[primary_span]
     pub span: Span,
-    pub error_part: &'static str,
+    pub error_part: String,
 }
 
 #[derive(Diagnostic)]

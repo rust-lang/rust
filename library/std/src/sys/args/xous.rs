@@ -1,9 +1,8 @@
 pub use super::common::Args;
-use crate::sys::pal::os::get_application_parameters;
-use crate::sys::pal::os::params::ArgumentList;
+use crate::sys::pal::params::{self, ArgumentList};
 
 pub fn args() -> Args {
-    let Some(params) = get_application_parameters() else {
+    let Some(params) = params::get() else {
         return Args::new(vec![]);
     };
 

@@ -238,7 +238,7 @@ pub fn suggest_new_region_bound(
                             format!("you can use the named lifetime parameter `{name}`")
                         };
                         spans_suggs.push((fn_return.span.shrink_to_hi(), format!(" + {name} ")));
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             format!("{declare} `{ty}` {captures}, {use_lt}"),
                             spans_suggs,
                             Applicability::MaybeIncorrect,

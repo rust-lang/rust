@@ -1,34 +1,44 @@
 //! Integration tests for rustfmt.
 
 use std::env;
-use std::fs::remove_file;
+use std::fs::{File, remove_file};
 use std::path::Path;
 use std::process::Command;
 
 use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test};
 
-/// Run the rustfmt executable and return its output.
-fn rustfmt(args: &[&str]) -> (String, String) {
-    let mut bin_dir = env::current_exe().unwrap();
-    bin_dir.pop(); // chop off test exe name
-    if bin_dir.ends_with("deps") {
-        bin_dir.pop();
-    }
-    let cmd = bin_dir.join(format!("rustfmt{}", env::consts::EXE_SUFFIX));
+/// Run the rustfmt executable with environment vars set and return its output.
+fn rustfmt_with_extra(
+    args: &[&str],
+    working_dir: Option<&str>,
+    envs: &[(&str, &str)],
+) -> (String, String) {
+    let rustfmt_exe = env!("CARGO_BIN_EXE_rustfmt");
+    let bin_dir = Path::new(rustfmt_exe).parent().unwrap();
 
     // Ensure the rustfmt binary runs from the local target dir.
     let path = env::var_os("PATH").unwrap_or_default();
     let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-    paths.insert(0, bin_dir);
+    paths.insert(0, bin_dir.to_owned());
     let new_path = env::join_paths(paths).unwrap();
-
-    match Command::new(&cmd).args(args).env("PATH", new_path).output() {
+    let mut cmd = Command::new(rustfmt_exe);
+    cmd.args(args)
+        .env("PATH", new_path)
+        .envs(envs.iter().copied());
+    if let Some(working_dir) = working_dir {
+        cmd.current_dir(working_dir);
+    }
+    match cmd.output() {
         Ok(output) => (
             String::from_utf8(output.stdout).expect("utf-8"),
             String::from_utf8(output.stderr).expect("utf-8"),
         ),
         Err(e) => panic!("failed to run `{cmd:?} {args:?}`: {e}"),
     }
+}
+
+fn rustfmt(args: &[&str]) -> (String, String) {
+    rustfmt_with_extra(args, None, &[])
 }
 
 macro_rules! assert_that {
@@ -232,4 +242,35 @@ fn rustfmt_error_improvement_regarding_invalid_toml() {
     let expected_error_message = format!("The file `{}` failed to parse", toml_path.display());
 
     assert!(stderr.contains(&expected_error_message));
+}
+
+#[test]
+fn rustfmt_allow_not_a_dir_errors() {
+    // See also https://github.com/rust-lang/rustfmt/pull/6624
+
+    // To get a proper test, we need to make sure that neither the working dir
+    // nor the input file have a "rustfmt.toml" file in any ancestor dirs. Since
+    // this project has a "rustfmt.toml" in the root dir, we can't use a temp
+    // dir in the target/ dir, which includes the directory given by
+    // CARGO_TARGET_TMPDIR. Thus, we need the OS-specific temp dir which is
+    // closer to the "root" directory which is less likely to have a
+    // "rustfmt.toml".
+    let fake_home = tempfile::tempdir().unwrap();
+    let fake_home_str = fake_home.path().to_str().unwrap();
+
+    // create .config file
+    let dot_config_file = fake_home.path().join(".config");
+    let _ = File::create(dot_config_file).unwrap();
+
+    // create empty.rs
+    let empty_rs = fake_home.path().join("empty.rs");
+    let _ = File::create(&empty_rs).unwrap();
+
+    let args = [empty_rs.to_str().unwrap()];
+    let envs = &[("HOME", fake_home_str)];
+    let (stdout, stderr) = rustfmt_with_extra(&args, Some(fake_home_str), envs);
+
+    // Should pass without any errors
+    assert_eq!(stdout, "");
+    assert_eq!(stderr, "");
 }

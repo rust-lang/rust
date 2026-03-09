@@ -37,6 +37,7 @@ declare_clippy_lint! {
     restriction,
     "partial fields of a struct are public"
 }
+
 declare_lint_pass!(PartialPubFields => [PARTIAL_PUB_FIELDS]);
 
 impl EarlyLintPass for PartialPubFields {

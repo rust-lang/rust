@@ -934,7 +934,11 @@ impl<'input> Parser<'input> {
                             0,
                             ParseError {
                                 description: "field access isn't supported".to_string(),
-                                note: None,
+                                note: Some(
+                                    "consider moving this expression to a local variable and then \
+                                     using the local here instead"
+                                        .to_owned(),
+                                ),
                                 label: "not supported".to_string(),
                                 span: arg.position_span.start..field.position_span.end,
                                 secondary_label: None,
@@ -947,7 +951,11 @@ impl<'input> Parser<'input> {
                             0,
                             ParseError {
                                 description: "tuple index access isn't supported".to_string(),
-                                note: None,
+                                note: Some(
+                                    "consider moving this expression to a local variable and then \
+                                     using the local here instead"
+                                        .to_owned(),
+                                ),
                                 label: "not supported".to_string(),
                                 span: arg.position_span.start..field.position_span.end,
                                 secondary_label: None,

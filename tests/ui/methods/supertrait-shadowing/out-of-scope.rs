@@ -1,7 +1,6 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
 
 mod out_of_scope {

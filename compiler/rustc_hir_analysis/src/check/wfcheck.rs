@@ -3,10 +3,12 @@ use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
 use rustc_abi::{ExternAbi, ScalableElt};
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
+use rustc_hir as hir;
+use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -14,7 +16,7 @@ use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -37,7 +39,6 @@ use rustc_trait_selection::traits::{
     WellFormedLoc,
 };
 use tracing::{debug, instrument};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::compare_eii::compare_eii_function_types;
 use crate::autoderef::Autoderef;
@@ -935,7 +936,7 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
+        tcx.ensure_result().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
             ty::AssocContainer::Trait => tcx.types.self_param,
@@ -997,7 +998,7 @@ fn check_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     all_sized: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let _ = tcx.representability(item.owner_id.def_id);
+    let _ = tcx.check_representability(item.owner_id.def_id);
     let adt_def = tcx.adt_def(item.owner_id);
 
     enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
@@ -1197,15 +1198,14 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
     for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
-            .into_iter()
-            .flatten()
+        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_iter().flatten()
     {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {
                 // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
                 // signature that we'd like to compare the function we're currently checking with
-                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
+                if let Some(foreign_item) =
+                    find_attr!(tcx, *def_id, EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
                 {
                     (foreign_item, tcx.item_name(*def_id))
                 } else {
@@ -1328,9 +1328,9 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
-                // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
-                // other `Foo` impls are incoherent.
-                tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
+                // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in
+                // case other `Foo` impls are incoherent.
+                tcx.ensure_result().coherent_trait(trait_ref.def_id)?;
                 let trait_span = of_trait.trait_ref.path.span;
                 let trait_ref = wfcx.deeply_normalize(
                     trait_span,
@@ -2334,15 +2334,22 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_crate_items(());
-    let res = items
-        .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
-        .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_trait_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
-        .and(
-            items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
-        )
-        .and(items.par_nested_bodies(|item| tcx.ensure_ok().check_well_formed(item)))
-        .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
+    let res =
+        items
+            .par_items(|item| tcx.ensure_result().check_well_formed(item.owner_id.def_id))
+            .and(
+                items.par_impl_items(|item| {
+                    tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+                }),
+            )
+            .and(items.par_trait_items(|item| {
+                tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.par_foreign_items(|item| {
+                tcx.ensure_result().check_well_formed(item.owner_id.def_id)
+            }))
+            .and(items.par_nested_bodies(|item| tcx.ensure_result().check_well_formed(item)))
+            .and(items.par_opaques(|item| tcx.ensure_result().check_well_formed(item)));
     super::entry::check_for_entry_fn(tcx);
 
     res
@@ -2361,11 +2368,11 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Fn
-        | DefKind::Const
+        | DefKind::Const { .. }
         | DefKind::Impl { of_trait: _ } => {
             // Proceed
         }
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
             if tcx.trait_impl_of_assoc(owner_id.to_def_id()).is_some() {
                 // Don't check for redundant lifetimes for associated items of trait
                 // implementations, since the signature is required to be compatible
@@ -2470,7 +2477,7 @@ fn lint_redundant_lifetimes<'tcx>(
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unnecessary lifetime parameter `{$victim}`")]
 #[note("you can use the `{$candidate}` lifetime directly, in place of `{$victim}`")]
 struct RedundantLifetimeArgsLint<'tcx> {

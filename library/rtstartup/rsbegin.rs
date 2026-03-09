@@ -90,12 +90,12 @@ pub mod eh_frames {
 
     unsafe extern "C" fn init() {
         // register unwind info on module startup
-        __register_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
+        __register_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &raw mut OBJ as *mut u8);
     }
 
     unsafe extern "C" fn uninit() {
         // unregister on shutdown
-        __deregister_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
+        __deregister_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &raw mut OBJ as *mut u8);
     }
 
     // MinGW-specific init/uninit routine registration

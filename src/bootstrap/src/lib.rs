@@ -340,13 +340,6 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn is_tool(&self) -> bool {
-        match self {
-            Mode::ToolBootstrap | Mode::ToolRustcPrivate | Mode::ToolStd | Mode::ToolTarget => true,
-            Mode::Std | Mode::Codegen | Mode::Rustc => false,
-        }
-    }
-
     pub fn must_support_dlopen(&self) -> bool {
         match self {
             Mode::Std | Mode::Codegen => true,
@@ -542,9 +535,7 @@ impl Build {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
-            initial_rustdoc: config
-                .initial_rustc
-                .with_file_name(exe("rustdoc", config.host_target)),
+            initial_rustdoc: config.initial_rustdoc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,

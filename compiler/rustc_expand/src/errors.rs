@@ -3,10 +3,10 @@ use std::borrow::Cow;
 use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_hir::limit::Limit;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`#[cfg_attr]` does not expand to any attributes")]
 pub(crate) struct CfgAttrNoAttributes;
 
@@ -15,6 +15,59 @@ pub(crate) struct CfgAttrNoAttributes;
     "attempted to repeat an expression containing no syntax variables matched as repeating at this depth"
 )]
 pub(crate) struct NoSyntaxVarsExprRepeat {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub typo_repeatable: Option<VarTypoSuggestionRepeatable>,
+    #[subdiagnostic]
+    pub typo_unrepeatable: Option<VarTypoSuggestionUnrepeatable>,
+    #[subdiagnostic]
+    pub typo_unrepeatable_label: Option<VarTypoSuggestionUnrepeatableLabel>,
+    #[subdiagnostic]
+    pub var_no_typo: Option<VarNoTypo>,
+    #[subdiagnostic]
+    pub no_repeatable_var: Option<NoRepeatableVar>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "there's a macro metavariable with a similar name",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct VarTypoSuggestionRepeatable {
+    #[suggestion_part(code = "{name}")]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[label("argument not found")]
+pub(crate) struct VarTypoSuggestionUnrepeatable {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[label("this similarly named macro metavariable is unrepeatable")]
+pub(crate) struct VarTypoSuggestionUnrepeatableLabel {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[label("expected a repeatable metavariable: {$msg}")]
+pub(crate) struct VarNoTypo {
+    #[primary_span]
+    pub span: Span,
+    pub msg: String,
+}
+
+#[derive(Subdiagnostic)]
+#[label(
+    "this macro metavariable is not repeatable and there are no other repeatable metavariables"
+)]
+pub(crate) struct NoRepeatableVar {
     #[primary_span]
     pub span: Span,
 }
@@ -41,7 +94,7 @@ pub(crate) struct MacroVarStillRepeating {
     pub ident: MacroRulesNormalizedIdent,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("variable `{$ident}` is still repeating at this depth")]
 pub(crate) struct MetaVarStillRepeatingLint {
     #[label("expected repetition")]
@@ -49,7 +102,7 @@ pub(crate) struct MetaVarStillRepeatingLint {
     pub ident: MacroRulesNormalizedIdent,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("meta-variable repeats with different Kleene operator")]
 pub(crate) struct MetaVariableWrongOperator {
     #[label("expected repetition")]
@@ -66,7 +119,7 @@ pub(crate) struct MetaVarsDifSeqMatchers {
     pub msg: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unknown macro variable `{$name}`")]
 pub(crate) struct UnknownMacroVariable {
     pub name: MacroRulesNormalizedIdent,
@@ -128,34 +181,6 @@ pub(crate) struct RecursionLimitReached {
     pub descr: String,
     pub suggested_limit: Limit,
     pub crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `feature` attribute input", code = E0556)]
-pub(crate) struct MalformedFeatureAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub help: MalformedFeatureAttributeHelp,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedFeatureAttributeHelp {
-    #[label("expected just one word")]
-    Label {
-        #[primary_span]
-        span: Span,
-    },
-    #[suggestion(
-        "expected just one word",
-        code = "{suggestion}",
-        applicability = "maybe-incorrect"
-    )]
-    Suggestion {
-        #[primary_span]
-        span: Span,
-        suggestion: Symbol,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -366,7 +391,7 @@ pub(crate) struct DuplicateMatcherBinding {
     pub prev: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("duplicate matcher binding")]
 pub(crate) struct DuplicateMatcherBindingLint {
     #[label("duplicate binding")]
@@ -444,18 +469,6 @@ pub(crate) struct CrateTypeInCfgAttr {
 pub(crate) struct GlobDelegationTraitlessQpath {
     #[primary_span]
     pub span: Span,
-}
-
-// This used to be the `proc_macro_back_compat` lint (#83125). It was later
-// turned into a hard error.
-#[derive(Diagnostic)]
-#[diag("using an old version of `{$crate_name}`")]
-#[note(
-    "older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives"
-)]
-pub(crate) struct ProcMacroBackCompat {
-    pub crate_name: String,
-    pub fixed_version: String,
 }
 
 pub(crate) use metavar_exprs::*;
@@ -556,7 +569,7 @@ pub(crate) struct MacroArgsBadDelimSugg {
     pub close: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused doc comment")]
 #[help(
     "to document an item produced by a macro, the macro must produce the documentation as part of its expansion"
@@ -566,7 +579,7 @@ pub(crate) struct MacroCallUnusedDocComment {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro"
 )]
@@ -580,7 +593,7 @@ pub(crate) struct OrPatternsBackCompat {
     pub suggestion: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("trailing semicolon in macro used in expression position")]
 pub(crate) struct TrailingMacro {
     #[note("macro invocations at the end of a block are treated as expressions")]
@@ -591,7 +604,7 @@ pub(crate) struct TrailingMacro {
     pub name: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused attribute `{$attr_name}`")]
 pub(crate) struct UnusedBuiltinAttribute {
     #[note(

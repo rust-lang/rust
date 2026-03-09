@@ -1,7 +1,5 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
@@ -452,7 +450,7 @@ fn report_unexpected_variant_res(
                 }
             }
 
-            err.multipart_suggestion_verbose(descr, suggestion, Applicability::HasPlaceholders);
+            err.multipart_suggestion(descr, suggestion, Applicability::HasPlaceholders);
             err
         }
         Res::Def(DefKind::Variant, _) if expr.is_none() => {

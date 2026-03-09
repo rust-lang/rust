@@ -2,22 +2,7 @@
 #![allow(unused, clippy::needless_borrowed_reference, clippy::redundant_clone)]
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 
-fn main() {
-    binary_heap_retain();
-    btree_set_retain();
-    btree_map_retain();
-    hash_set_retain();
-    hash_map_retain();
-    string_retain();
-    vec_deque_retain();
-    vec_retain();
-    _msrv_153();
-    _msrv_126();
-    _msrv_118();
-
-    issue_10393();
-    issue_12081();
-}
+fn main() {}
 
 fn binary_heap_retain() {
     let mut binary_heap = BinaryHeap::from([1, 2, 3]);

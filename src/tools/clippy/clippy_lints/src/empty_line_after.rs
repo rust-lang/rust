@@ -14,41 +14,6 @@ use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for empty lines after doc comments.
     ///
     /// ### Why is this bad?
@@ -88,6 +53,46 @@ declare_clippy_lint! {
     "empty line after doc comments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after outer attributes
+    ///
+    /// ### Why is this bad?
+    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
+    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
+    /// should be removed
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// // Good (as inner attribute)
+    /// #![allow(dead_code)]
+    ///
+    /// fn this_is_fine() {}
+    ///
+    /// // or
+    ///
+    /// // Good (as outer attribute)
+    /// #[allow(dead_code)]
+    /// fn this_is_fine_too() {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EMPTY_LINE_AFTER_OUTER_ATTR,
+    suspicious,
+    "empty line after outer attribute"
+}
+
+impl_lint_pass!(EmptyLineAfter => [
+    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+]);
+
 #[derive(Debug)]
 struct ItemInfo {
     kind: &'static str,
@@ -99,11 +104,6 @@ struct ItemInfo {
 pub struct EmptyLineAfter {
     items: Vec<ItemInfo>,
 }
-
-impl_lint_pass!(EmptyLineAfter => [
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
-]);
 
 impl EmptyLineAfter {
     pub fn new() -> Self {
@@ -367,7 +367,7 @@ impl EmptyLineAfter {
                         Some(name) => format!("{} `{name}`", info.kind).into(),
                         None => Cow::from("the following item"),
                     };
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("if the doc comment should not document {name} then comment it out"),
                         suggestions,
                         Applicability::MaybeIncorrect,
@@ -384,7 +384,7 @@ impl EmptyLineAfter {
                     // Commentless empty gaps between line doc comments, possibly intended to be part of the markdown
 
                     let indent = snippet_indent(cx, first_gap.prev_stop.span).unwrap_or_default();
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("if the documentation should include the empty {lines} include {them} in the comment"),
                         empty_lines()
                             .map(|empty_line| (empty_line, format!("{indent}///")))
@@ -414,7 +414,7 @@ impl EmptyLineAfter {
             } else {
                 parent.kind
             };
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 match kind {
                     StopKind::Attr => format!("if the attribute should apply to the {desc} use an inner attribute"),
                     StopKind::Doc(_) => format!("if the comment should document the {desc} use an inner doc comment"),

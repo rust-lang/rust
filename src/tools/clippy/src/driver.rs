@@ -126,6 +126,7 @@ impl rustc_driver::Callbacks for RustcCallbacks {
         config.psess_created = Some(Box::new(move |psess| {
             track_clippy_args(psess, clippy_args_var.as_deref());
         }));
+        config.extra_symbols = sym::EXTRA_SYMBOLS.into();
     }
 }
 

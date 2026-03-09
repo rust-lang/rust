@@ -11,7 +11,6 @@ use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
@@ -447,8 +446,7 @@ pub(crate) fn encode_ty<'tcx>(
         ty::Adt(adt_def, args) => {
             let mut s = String::new();
             let def_id = adt_def.did();
-            if let Some(encoding) = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::CfiEncoding { encoding } => encoding)
-            {
+            if let Some(encoding) = find_attr!(tcx, def_id, CfiEncoding { encoding } => encoding) {
                 let encoding = encoding.as_str().trim();
                 // Use user-defined CFI encoding for type
                 s.push_str(&encoding);
@@ -494,8 +492,7 @@ pub(crate) fn encode_ty<'tcx>(
             // <length><name>, where <name> is <unscoped-name>
             let mut s = String::new();
 
-            if let Some(encoding) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::CfiEncoding {encoding} => encoding)
-            {
+            if let Some(encoding) = find_attr!(tcx, *def_id, CfiEncoding {encoding} => encoding) {
                 // Use user-defined CFI encoding for type
                 s.push_str(encoding.as_str().trim());
             } else {

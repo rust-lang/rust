@@ -63,7 +63,6 @@ expression: fix
     - Set({fix::compiler/rustc_public})
     - Set({fix::compiler/rustc_public_bridge})
     - Set({fix::compiler/rustc_query_impl})
-    - Set({fix::compiler/rustc_query_system})
     - Set({fix::compiler/rustc_resolve})
     - Set({fix::compiler/rustc_sanitizers})
     - Set({fix::compiler/rustc_serialize})

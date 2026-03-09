@@ -52,6 +52,8 @@ declare_clippy_lint! {
     "Warns on implementations of `Into<..>` to use `From<..>`"
 }
 
+impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
+
 pub struct FromOverInto {
     msrv: Msrv,
 }
@@ -61,8 +63,6 @@ impl FromOverInto {
         FromOverInto { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {

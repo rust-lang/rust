@@ -4,7 +4,7 @@ use std::str::FromStr as _;
 
 use crate::command::Command;
 use crate::env::env_var;
-use crate::path_helpers::cwd;
+use crate::path_helpers::{cwd, source_root};
 use crate::util::set_host_compiler_dylib_path;
 use crate::{is_aix, is_darwin, is_windows, is_windows_msvc, target, uname};
 
@@ -20,6 +20,37 @@ pub fn rustc() -> Rustc {
 #[track_caller]
 pub fn bare_rustc() -> Rustc {
     Rustc::bare()
+}
+
+/// Construct a `rustc` invocation for building `minicore`.
+///
+/// This function:
+///
+/// - adds `tests/auxiliary/minicore.rs` as an input
+/// - sets the crate name to `"minicore"`
+/// - sets the crate type to `rlib`
+///
+/// # Example
+///
+/// ```ignore (illustrative)
+/// rustc_minicore().target("wasm32-wasip1").target_cpu("mvp").output("libminicore.rlib").run();
+///
+/// rustc()
+///     .input("foo.rs")
+///     .target("wasm32-wasip1")
+///     .target_cpu("mvp")
+///     .extern_("minicore", path("libminicore.rlib"))
+///     // ...
+///     .run()
+/// ```
+#[track_caller]
+pub fn rustc_minicore() -> Rustc {
+    let mut builder = rustc();
+
+    let minicore_path = source_root().join("tests/auxiliary/minicore.rs");
+    builder.input(minicore_path).crate_name("minicore").crate_type("rlib");
+
+    builder
 }
 
 /// A `rustc` invocation builder.

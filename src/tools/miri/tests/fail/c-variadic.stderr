@@ -1,0 +1,22 @@
+error: Undefined Behavior: more C-variadic arguments read than were passed
+  --> RUSTLIB/core/src/ffi/va_list.rs:LL:CC
+   |
+LL |         unsafe { va_arg(self) }
+   |                  ^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: stack backtrace:
+           0: std::ffi::VaList::<'_>::arg
+               at RUSTLIB/core/src/ffi/va_list.rs:LL:CC
+           1: read_too_many::variadic
+               at tests/fail/c-variadic.rs:LL:CC
+           2: read_too_many
+               at tests/fail/c-variadic.rs:LL:CC
+           3: main
+               at tests/fail/c-variadic.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

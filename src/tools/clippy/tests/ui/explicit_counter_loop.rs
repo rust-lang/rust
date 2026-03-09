@@ -33,10 +33,10 @@ fn main() {
     }
 
     let vec = [1, 2, 3, 4];
-    // Potential false positives
     let mut _index = 0;
     _index = 1;
     for _v in &vec {
+        //~^ explicit_counter_loop
         _index += 1
     }
 
@@ -297,5 +297,38 @@ mod issue_13123 {
                 break 'label;
             }
         }
+    }
+}
+
+fn issue16612(v: Vec<u8>, s: i64) {
+    use std::hint::black_box;
+
+    let mut i = 1;
+    for item in &v {
+        //~^ explicit_counter_loop
+        black_box((i, *item));
+        i += 1;
+    }
+
+    let mut j = s + 1;
+    for item in &v {
+        //~^ explicit_counter_loop
+        black_box((j, *item));
+        j += 1;
+    }
+}
+
+fn issue16640(x: &[u8]) {
+    struct Priority(u8);
+
+    impl core::ops::AddAssign<u8> for Priority {
+        fn add_assign(&mut self, rhs: u8) {
+            self.0 += rhs
+        }
+    }
+
+    let mut priority = Priority(1);
+    for _val in x {
+        priority += 1;
     }
 }

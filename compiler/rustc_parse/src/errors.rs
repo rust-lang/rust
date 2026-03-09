@@ -11,7 +11,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
     Level, Subdiagnostic, SuggestionStyle, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
@@ -1016,7 +1016,6 @@ pub(crate) struct LeadingPlusNotSupported {
 pub(crate) struct ParenthesesWithStructFields {
     #[primary_span]
     pub span: Span,
-    pub r#type: Path,
     #[subdiagnostic]
     pub braces_for_struct: BracesForStructLiteral,
     #[subdiagnostic]
@@ -1029,6 +1028,7 @@ pub(crate) struct ParenthesesWithStructFields {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct BracesForStructLiteral {
+    pub r#type: Path,
     #[suggestion_part(code = " {{ ")]
     pub first: Span,
     #[suggestion_part(code = " }}")]
@@ -1041,6 +1041,7 @@ pub(crate) struct BracesForStructLiteral {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct NoFieldsForFnCall {
+    pub r#type: Path,
     #[suggestion_part(code = "")]
     pub fields: Vec<Span>,
 }
@@ -1178,6 +1179,7 @@ pub(crate) enum MatchArmBodyWithoutBracesSugg {
         left: Span,
         #[suggestion_part(code = " }}")]
         right: Span,
+        num_statements: usize,
     },
     #[suggestion(
         "replace `;` with `,` to end a `match` arm expression",
@@ -1263,6 +1265,26 @@ pub(crate) struct IncorrectVisibilityRestriction {
         code = "in {inner_str}",
         applicability = "machine-applicable",
         style = "verbose"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("incorrect `impl` restriction")]
+#[help(
+    "some possible `impl` restrictions are:
+    `impl(crate)`: can only be implemented in the current crate
+    `impl(super)`: can only be implemented in the parent module
+    `impl(self)`: can only be implemented in current module
+    `impl(in path::to::module)`: can only be implemented in the specified path"
+)]
+pub(crate) struct IncorrectImplRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict implementations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
     )]
     pub span: Span,
     pub inner_str: String,
@@ -1514,7 +1536,6 @@ pub(crate) struct HelpIdentifierStartsWithNumber {
 pub(crate) struct ExpectedSemi {
     pub span: Span,
     pub token: Token,
-
     pub unexpected_token_label: Option<Span>,
     pub sugg: ExpectedSemiSugg,
 }
@@ -2204,6 +2225,15 @@ pub(crate) struct DefaultNotFollowedByItem {
 }
 
 #[derive(Diagnostic)]
+#[diag("`final` is not followed by an item")]
+#[note("only associated functions in traits may be prefixed by `final`")]
+pub(crate) struct FinalNotFollowedByItem {
+    #[primary_span]
+    #[label("the `final` qualifier")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 pub(crate) enum MissingKeywordForItemDefinition {
     #[diag("missing `enum` for enum definition")]
     Enum {
@@ -2391,6 +2421,14 @@ pub(crate) struct TraitAliasCannotBeAuto {
 pub(crate) struct TraitAliasCannotBeUnsafe {
     #[primary_span]
     #[label("trait aliases cannot be `unsafe`")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("trait aliases cannot be `impl`-restricted")]
+pub(crate) struct TraitAliasCannotBeImplRestricted {
+    #[primary_span]
+    #[label("trait aliases cannot be `impl`-restricted")]
     pub span: Span,
 }
 
@@ -3168,6 +3206,7 @@ pub(crate) struct UnexpectedVertVertInPattern {
 pub(crate) struct TrailingVertSuggestion {
     #[primary_span]
     pub span: Span,
+    pub token: Token,
 }
 
 #[derive(Diagnostic)]
@@ -3788,6 +3827,17 @@ pub(crate) struct RecoverImportAsUse {
 }
 
 #[derive(Diagnostic)]
+#[diag("{$article} {$descr} cannot be `final`")]
+#[note("only associated functions in traits can be `final`")]
+pub(crate) struct InappropriateFinal {
+    #[primary_span]
+    #[label("`final` because of this")]
+    pub span: Span,
+    pub article: &'static str,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected `::`, found `:`")]
 #[note("import paths are delimited using `::`")]
 pub(crate) struct SingleColonImportPath {
@@ -4256,7 +4306,7 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     pub(crate) span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unicode codepoint changing visible direction of text present in {$label}")]
 #[note(
     "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
@@ -4339,7 +4389,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("missing pattern for `...` argument")]
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(

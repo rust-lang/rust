@@ -36,12 +36,12 @@ declare_clippy_lint! {
     "Using `pub(crate)` visibility on items that are not crate visible due to the visibility of the module that contains them."
 }
 
+impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
+
 #[derive(Default)]
 pub struct RedundantPubCrate {
     is_exported: Vec<bool>,
 }
-
-impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

@@ -373,7 +373,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
 
                     if let (
                         MatchingMode::Assign,
-                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding), _),
+                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding)),
                     ) = (mode, &pr)
                     {
                         let local = self.binding_local(*binding)?;
@@ -398,7 +398,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         {
                             break 'b (c, x.1);
                         }
-                        if let ResolveValueResult::ValueNs(ValueNs::ConstId(c), _) = pr {
+                        if let ResolveValueResult::ValueNs(ValueNs::ConstId(c)) = pr {
                             break 'b (c, GenericArgs::empty(self.interner()));
                         }
                         not_supported!("path in pattern position that is not const or variant")

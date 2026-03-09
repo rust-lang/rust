@@ -1,7 +1,6 @@
 //! See docs in `build/expr/mod.rs`.
 
 use rustc_abi::FieldIdx;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::middle::region::{self, TempLifetime};
@@ -123,65 +122,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
-            }
-            ExprKind::Box { value } => {
-                let value_ty = this.thir[value].ty;
-                let tcx = this.tcx;
-                let source_info = this.source_info(expr_span);
-
-                let size = tcx.require_lang_item(LangItem::SizeOf, expr_span);
-                let size = Operand::unevaluated_constant(tcx, size, &[value_ty.into()], expr_span);
-
-                let align = tcx.require_lang_item(LangItem::AlignOf, expr_span);
-                let align =
-                    Operand::unevaluated_constant(tcx, align, &[value_ty.into()], expr_span);
-
-                // malloc some memory of suitable size and align:
-                let exchange_malloc = Operand::function_handle(
-                    tcx,
-                    tcx.require_lang_item(LangItem::ExchangeMalloc, expr_span),
-                    [],
-                    expr_span,
-                );
-                let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
-                let success = this.cfg.start_new_block();
-                this.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Call {
-                        func: exchange_malloc,
-                        args: [
-                            Spanned { node: size, span: DUMMY_SP },
-                            Spanned { node: align, span: DUMMY_SP },
-                        ]
-                        .into(),
-                        destination: storage,
-                        target: Some(success),
-                        unwind: UnwindAction::Continue,
-                        call_source: CallSource::Misc,
-                        fn_span: expr_span,
-                    },
-                );
-                this.diverge_from(block);
-                block = success;
-
-                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
-                this.cfg
-                    .push(block, Statement::new(source_info, StatementKind::StorageLive(result)));
-                if let Some(scope) = scope.temp_lifetime {
-                    // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_drop_storage_and_value(expr_span, scope, result);
-                }
-
-                // Transmute `*mut u8` to the box (thus far, uninitialized):
-                let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value_ty);
-                this.cfg.push_assign(block, source_info, Place::from(result), box_);
-
-                // initialize the box contents:
-                block = this
-                    .expr_into_dest(this.tcx.mk_place_deref(Place::from(result)), block, value)
-                    .into_block();
-                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
                 let source_expr = &this.thir[source];

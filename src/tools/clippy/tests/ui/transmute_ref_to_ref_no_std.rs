@@ -1,7 +1,5 @@
-//@no-rustfix
-
 #![deny(clippy::transmute_ptr_to_ptr)]
-#![allow(dead_code, clippy::missing_transmute_annotations)]
+#![allow(dead_code, clippy::missing_transmute_annotations, clippy::cast_slice_different_sizes)]
 #![feature(lang_items)]
 #![no_std]
 

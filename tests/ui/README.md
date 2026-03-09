@@ -440,10 +440,6 @@ Everything to do with `--diagnostic-width`.
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
-## `tests/ui/diagnostics-infra`
-
-This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
-
 ## `tests/ui/did_you_mean/`
 
 Tests for miscellaneous suggestions.
@@ -601,6 +597,12 @@ See:
 - [`ffi_const` | The Unstable book](https://doc.rust-lang.org/unstable-book/language-features/ffi-const.html)
 - [`ffi_pure` | The Unstable book](https://doc.rust-lang.org/beta/unstable-book/language-features/ffi-pure.html)
 
+## `tests/ui/field_representing_types`: `#![feature(field_projections)]`
+
+Tests for field representing types `field_of!(Struct, field)`.
+
+See: [Tracking Issue for Field Projections #145383](https://github.com/rust-lang/rust/issues/145383)
+
 ## `tests/ui/float`
 
 See: [Tracking Issue for `f16` and `f128` float types #116909](https://github.com/rust-lang/rust/issues/116909)
@@ -702,6 +704,11 @@ This test category revolves around trait objects with `Sized` having illegal ope
 ## `tests/ui/impl-header-lifetime-elision/`
 
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
+
+## `tests/ui/impl-restriction/`
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
+](https://github.com/rust-lang/rust/issues/105077).
+
 
 ## `tests/ui/impl-trait/`
 

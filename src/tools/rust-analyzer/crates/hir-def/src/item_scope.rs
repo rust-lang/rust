@@ -483,6 +483,11 @@ impl ItemScope {
         self.declarations.push(def)
     }
 
+    pub(crate) fn remove_from_value_ns(&mut self, name: &Name, def: ModuleDefId) {
+        let entry = self.values.shift_remove(name);
+        assert!(entry.is_some_and(|entry| entry.def == def))
+    }
+
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<&[MacroId]> {
         self.legacy_macros.get(name).map(|it| &**it)
     }

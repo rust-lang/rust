@@ -573,7 +573,8 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(target_vendor = "win7", doc = "```no_run")]
+    #[cfg_attr(not(target_vendor = "win7"), doc = "```")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::ffi::c_void;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};

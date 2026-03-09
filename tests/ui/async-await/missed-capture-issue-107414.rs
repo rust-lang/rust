@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition:2018
 
-#![feature(if_let_guard)]
-
 fn main() {}
 
 struct StructA {}

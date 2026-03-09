@@ -543,28 +543,32 @@ warning: bounds on generic parameters in type aliases are not enforced
   --> $DIR/private-in-public-warn.rs:42:23
    |
 LL |     pub type Alias<T: PrivTr> = T;
-   |                     --^^^^^^
-   |                     | |
-   |                     | will not be checked at usage sites of the type alias
-   |                     help: remove this bound
+   |                       ^^^^^^ will not be checked at usage sites of the type alias
    |
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
    = note: `#[warn(type_alias_bounds)]` on by default
+help: remove this bound
+   |
+LL -     pub type Alias<T: PrivTr> = T;
+LL +     pub type Alias<T> = T;
+   |
 
 warning: where clauses on type aliases are not enforced
   --> $DIR/private-in-public-warn.rs:67:29
    |
 LL |     pub type Alias<T> where T: PrivTr = T;
-   |                       ------^^^^^^^^^
-   |                       |     |
-   |                       |     will not be checked at usage sites of the type alias
-   |                       help: remove this where clause
+   |                             ^^^^^^^^^ will not be checked at usage sites of the type alias
    |
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+help: remove this where clause
+   |
+LL -     pub type Alias<T> where T: PrivTr = T;
+LL +     pub type Alias<T>  = T;
+   |
 
 error: aborting due to 46 previous errors; 2 warnings emitted
 

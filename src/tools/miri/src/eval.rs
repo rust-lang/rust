@@ -113,7 +113,7 @@ pub struct MiriConfig {
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
-    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    /// Whether Miri artificially introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
     /// A list of crates that are considered user-relevant.
     pub user_relevant_crates: Vec<String>,

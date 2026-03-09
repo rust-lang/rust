@@ -82,7 +82,7 @@ RUN sh /scripts/sccache.sh
 
 COPY static/gitconfig /etc/gitconfig
 
-ENV RUST_CONFIGURE_ARGS --qemu-armhf-rootfs=/tmp/rootfs
-ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target arm-unknown-linux-gnueabihf
+ENV RUST_CONFIGURE_ARGS="--qemu-armhf-rootfs=/tmp/rootfs"
+ENV SCRIPT="python3 ../x.py --stage 2 test --host= --target arm-unknown-linux-gnueabihf"
 
 ENV NO_CHANGE_USER=1

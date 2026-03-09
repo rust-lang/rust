@@ -69,7 +69,9 @@ declare_clippy_lint! {
     "ensures that the semantics of `Borrow` for `Hash` are satisfied when `Borrow<str>` and `Borrow<[u8]>` are implemented"
 }
 
-declare_lint_pass!(ImplHashWithBorrowStrBytes => [IMPL_HASH_BORROW_WITH_STR_AND_BYTES]);
+declare_lint_pass!(ImplHashWithBorrowStrBytes => [
+    IMPL_HASH_BORROW_WITH_STR_AND_BYTES,
+]);
 
 impl LateLintPass<'_> for ImplHashWithBorrowStrBytes {
     /// We are emitting this lint at the Hash impl of a type that implements all

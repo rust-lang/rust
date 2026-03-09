@@ -11,7 +11,6 @@ LL | impl Bar for [u16; 4] {}
    | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
 LL | impl Bar for [[u16; 3]; 3] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -30,7 +29,6 @@ LL | impl Bar for [u16; 4] {}
    | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
 LL | impl Bar for [[u16; 3]; 3] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]

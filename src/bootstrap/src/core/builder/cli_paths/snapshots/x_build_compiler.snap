@@ -61,7 +61,6 @@ expression: build compiler
     - Set({build::compiler/rustc_public})
     - Set({build::compiler/rustc_public_bridge})
     - Set({build::compiler/rustc_query_impl})
-    - Set({build::compiler/rustc_query_system})
     - Set({build::compiler/rustc_resolve})
     - Set({build::compiler/rustc_sanitizers})
     - Set({build::compiler/rustc_serialize})

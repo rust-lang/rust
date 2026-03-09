@@ -2,6 +2,7 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
+use std::assert_matches;
 use std::cell::RefCell;
 use std::fmt::Formatter;
 
@@ -10,7 +11,6 @@ use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable, interp_ok,
 };
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
@@ -467,7 +467,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
-            Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in runtime MIR"),
             Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
                 return ValueOrPlace::TOP;

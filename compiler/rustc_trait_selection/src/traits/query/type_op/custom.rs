@@ -92,7 +92,40 @@ where
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(infcx);
         let value = op(&ocx).map_err(|_| {
-            infcx.dcx().span_delayed_bug(span, format!("error performing operation: {name}"))
+            infcx.tcx.check_potentially_region_dependent_goals(root_def_id).err().unwrap_or_else(
+                // FIXME: In this region-dependent context, `type_op` should only fail due to
+                // region-dependent goals. Any other kind of failure indicates a bug and we
+                // should ICE.
+                //
+                // In principle, all non-region errors are expected to be emitted before
+                // borrowck. Such errors should taint the body and prevent borrowck from
+                // running at all. However, this invariant does not currently hold.
+                //
+                // Consider:
+                //
+                // ```ignore (illustrative)
+                // struct Foo<T>(T)
+                // where
+                //     T: Iterator,
+                //     <T as Iterator>::Item: Default;
+                //
+                // fn foo<T>() -> Foo<T> {
+                //     loop {}
+                // }
+                // ```
+                //
+                // Here, `fn foo` ought to error and taint the body before MIR build, since
+                // `Foo<T>` is not well-formed. However, we currently avoid checking this
+                // during HIR typeck to prevent duplicate diagnostics.
+                //
+                // If we ICE here on any non-region-dependent failure, we would trigger ICEs
+                // too often for such cases. For now, we emit a delayed bug instead.
+                || {
+                    infcx
+                        .dcx()
+                        .span_delayed_bug(span, format!("error performing operation: {name}"))
+                },
+            )
         })?;
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {

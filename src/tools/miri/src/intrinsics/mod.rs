@@ -10,7 +10,7 @@ pub use self::atomic::AtomicRmwOp;
 use rand::Rng;
 use rustc_abi::Size;
 use rustc_middle::{mir, ty};
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use self::atomic::EvalContextExt as _;
 use self::math::EvalContextExt as _;

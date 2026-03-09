@@ -430,7 +430,19 @@ fn push_debuginfo_type_name<'tcx>(
                 push_closure_or_coroutine_name(tcx, def_id, args, qualified, output, visited);
             }
         }
-        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binders)"),
+        ty::UnsafeBinder(inner) => {
+            if cpp_like_debuginfo {
+                output.push_str("unsafe$<");
+            } else {
+                output.push_str("unsafe ");
+            }
+
+            push_debuginfo_type_name(tcx, inner.skip_binder(), qualified, output, visited);
+
+            if cpp_like_debuginfo {
+                push_close_angle_bracket(cpp_like_debuginfo, output);
+            }
+        }
         ty::Param(_)
         | ty::Error(_)
         | ty::Infer(_)
