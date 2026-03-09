@@ -478,8 +478,11 @@ fn env_empty() {
 #[cfg(not(windows))]
 #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
 fn debug_print() {
-    const PIDFD: &'static str =
-        if cfg!(target_os = "linux") { "    create_pidfd: false,\n" } else { "" };
+    const PIDFD: &'static str = if cfg!(any(target_os = "freebsd", target_os = "linux")) {
+        "    create_pidfd: false,\n"
+    } else {
+        ""
+    };
 
     let mut command = Command::new("some-boring-name");
 
