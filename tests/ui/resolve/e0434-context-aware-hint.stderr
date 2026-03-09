@@ -1,0 +1,35 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/e0434-context-aware-hint.rs:7:17
+   |
+LL |         let _ = x;
+   |                 ^
+   |
+   = help: consider converting this fn item to a closure to capture the dynamic environment
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/e0434-context-aware-hint.rs:14:27
+   |
+LL |         move || { let _ = x; }
+   |                           ^
+   |
+   = help: consider converting this fn item to a closure to capture the dynamic environment
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/e0434-context-aware-hint.rs:27:31
+   |
+LL |             move || { let _ = x; }
+   |                               ^
+   |
+   = help: consider passing the value as a function parameter instead of capturing it
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/e0434-context-aware-hint.rs:37:21
+   |
+LL |             let _ = x;
+   |                     ^
+   |
+   = help: consider passing the value as a function parameter instead of capturing it
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0434`.

@@ -4,7 +4,7 @@ error[E0434]: can't capture dynamic environment in a fn item
 LL |         fn bar() { log(debug, x); }
    |                               ^
    |
-   = help: use the `|| { ... }` closure form instead
+   = help: consider converting this fn item to a closure to capture the dynamic environment
 
 error[E0425]: cannot find value `debug` in this scope
   --> $DIR/bad-env-capture3.rs:3:24

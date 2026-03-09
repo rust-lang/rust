@@ -1436,7 +1436,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
+                                //
+                                // Use the first (innermost) blocking rib to determine
+                                // the context for the help message: a nested fn item
+                                // can be converted to a closure, but associated items
+                                // and other item kinds cannot.
+                                if res_err.is_none() {
+                                    let is_nested_fn =
+                                        matches!(rib.kind, RibKind::Item(_, DefKind::Fn));
+                                    res_err = Some((
+                                        span,
+                                        CannotCaptureDynamicEnvironmentInFnItem {
+                                            is_nested_fn,
+                                        },
+                                    ));
+                                }
                             }
                         }
                         RibKind::ConstantItem(_, item) => {
