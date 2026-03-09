@@ -2,7 +2,6 @@
 //! doesn't support this, so make sure we catch it beforehand. As a consequence, it takes priority
 //! over non-exhaustive match and unreachable pattern errors.
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 #![deny(unreachable_patterns)]
 
 use std::borrow::Cow;

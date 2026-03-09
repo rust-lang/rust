@@ -1,5 +1,4 @@
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 #[rustfmt::skip]
 fn main() {
