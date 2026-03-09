@@ -7,5 +7,5 @@ use suggest_trait_reexported_as_not_doc_visible_b::Bar;
 
 fn main() {
     Bar::foo();
-    //~^ ERROR: no function or associated item named `foo` found for struct `Bar` in the current scope [E0599]
+    //~^ ERROR: no associated function or constant named `foo` found for struct `Bar` in the current scope [E0599]
 }

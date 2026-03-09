@@ -1,10 +1,10 @@
-error[E0599]: no function or associated item named `try_from` found for type parameter `T` in the current scope
+error[E0599]: no associated function or constant named `try_from` found for type parameter `T` in the current scope
   --> $DIR/missing-method-on-type-parameter.rs:4:8
    |
 LL | fn x<T: Copy>() {
-   |      - function or associated item `try_from` not found for this type parameter
+   |      - associated function or constant `try_from` not found for this type parameter
 LL |     T::try_from();
-   |        ^^^^^^^^ function or associated item not found in `T`
+   |        ^^^^^^^^ associated function or constant not found in `T`
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is an associated function `from` with a similar name

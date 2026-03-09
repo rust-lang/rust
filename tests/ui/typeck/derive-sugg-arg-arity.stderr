@@ -1,11 +1,11 @@
-error[E0599]: the function or associated item `partial_cmp` exists for struct `A`, but its trait bounds were not satisfied
+error[E0599]: the associated function or constant `partial_cmp` exists for struct `A`, but its trait bounds were not satisfied
   --> $DIR/derive-sugg-arg-arity.rs:5:23
    |
 LL | pub struct A;
-   | ------------ function or associated item `partial_cmp` not found for this struct because it doesn't satisfy `A: Iterator` or `A: PartialOrd<_>`
+   | ------------ associated function or constant `partial_cmp` not found for this struct because it doesn't satisfy `A: Iterator` or `A: PartialOrd<_>`
 ...
 LL |         _ => match A::partial_cmp() {},
-   |                       ^^^^^^^^^^^ function or associated item cannot be called on `A` due to unsatisfied trait bounds
+   |                       ^^^^^^^^^^^ associated function or constant cannot be called on `A` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `A: PartialOrd<_>`

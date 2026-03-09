@@ -1,11 +1,11 @@
-error[E0599]: no function or associated item named `bar` found for struct `Foo` in the current scope
+error[E0599]: no associated function or constant named `bar` found for struct `Foo` in the current scope
   --> $DIR/issue-7950.rs:6:10
    |
 LL | struct Foo;
-   | ---------- function or associated item `bar` not found for this struct
+   | ---------- associated function or constant `bar` not found for this struct
 ...
 LL |     Foo::bar();
-   |          ^^^ function or associated item not found in `Foo`
+   |          ^^^ associated function or constant not found in `Foo`
 
 error: aborting due to 1 previous error
 

@@ -1,10 +1,10 @@
-error[E0599]: no variant or associated item named `A` found for enum `SomeEnum` in the current scope
+error[E0599]: no variant, associated function, or constant named `A` found for enum `SomeEnum` in the current scope
   --> $DIR/enum-discriminant-missing-variant.rs:3:19
    |
 LL | pub enum SomeEnum {
-   | ----------------- variant or associated item `A` not found for this enum
+   | ----------------- variant, associated function, or constant `A` not found for this enum
 LL |     B = SomeEnum::A,
-   |                   ^ variant or associated item not found in `SomeEnum`
+   |                   ^ variant, associated function, or constant not found in `SomeEnum`
    |
 help: there is a variant with a similar name
    |

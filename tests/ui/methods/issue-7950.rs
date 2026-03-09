@@ -4,5 +4,5 @@ struct Foo;
 
 fn main() {
     Foo::bar();
-    //~^ ERROR no function or associated item named `bar` found for struct `Foo`
+    //~^ ERROR no associated function or constant named `bar` found for struct `Foo`
 }

@@ -7,14 +7,14 @@ LL | |         Point { x: x, y: y }
 LL | |     }
    | |_____^ not a member of trait `ToString_`
 
-error[E0599]: no function or associated item named `new` found for struct `Point` in the current scope
+error[E0599]: no associated function or constant named `new` found for struct `Point` in the current scope
   --> $DIR/issue-3973.rs:22:20
    |
 LL | struct Point {
-   | ------------ function or associated item `new` not found for this struct
+   | ------------ associated function or constant `new` not found for this struct
 ...
 LL |     let p = Point::new(0.0, 0.0);
-   |                    ^^^ function or associated item not found in `Point`
+   |                    ^^^ associated function or constant not found in `Point`
 
 error: aborting due to 2 previous errors
 

@@ -36,14 +36,14 @@ LL | enum Shape {
 LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
    |                                         ^^^^^^ variant not found in `Shape`
 
-error[E0599]: no variant or associated item named `Squareee` found for enum `Shape` in the current scope
+error[E0599]: no variant, associated function, or constant named `Squareee` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:15:12
    |
 LL | enum Shape {
-   | ---------- variant or associated item `Squareee` not found for this enum
+   | ---------- variant, associated function, or constant `Squareee` not found for this enum
 ...
 LL |     Shape::Squareee;
-   |            ^^^^^^^^ variant or associated item not found in `Shape`
+   |            ^^^^^^^^ variant, associated function, or constant not found in `Shape`
    |
 help: there is a variant with a similar name
    |
@@ -51,37 +51,37 @@ LL -     Shape::Squareee;
 LL +     Shape::Square { size: /* value */ };
    |
 
-error[E0599]: no variant or associated item named `Circl` found for enum `Shape` in the current scope
+error[E0599]: no variant, associated function, or constant named `Circl` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:16:12
    |
 LL | enum Shape {
-   | ---------- variant or associated item `Circl` not found for this enum
+   | ---------- variant, associated function, or constant `Circl` not found for this enum
 ...
 LL |     Shape::Circl;
-   |            ^^^^^ variant or associated item not found in `Shape`
+   |            ^^^^^ variant, associated function, or constant not found in `Shape`
    |
 help: there is a variant with a similar name
    |
 LL |     Shape::Circle { radius: /* value */ };
    |                 +++++++++++++++++++++++++
 
-error[E0599]: no variant or associated item named `Rombus` found for enum `Shape` in the current scope
+error[E0599]: no variant, associated function, or constant named `Rombus` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:17:12
    |
 LL | enum Shape {
-   | ---------- variant or associated item `Rombus` not found for this enum
+   | ---------- variant, associated function, or constant `Rombus` not found for this enum
 ...
 LL |     Shape::Rombus;
-   |            ^^^^^^ variant or associated item not found in `Shape`
+   |            ^^^^^^ variant, associated function, or constant not found in `Shape`
 
-error[E0599]: no variant or associated item named `Redd` found for enum `Color` in the current scope
+error[E0599]: no variant, associated function, or constant named `Redd` found for enum `Color` in the current scope
   --> $DIR/suggest-variants.rs:28:13
    |
 LL | enum Color {
-   | ---------- variant or associated item `Redd` not found for this enum
+   | ---------- variant, associated function, or constant `Redd` not found for this enum
 ...
 LL |   Ok(Color::Redd)
-   |             ^^^^ variant or associated item not found in `Color`
+   |             ^^^^ variant, associated function, or constant not found in `Color`
    |
 help: there is a variant with a similar name
    |
@@ -89,14 +89,14 @@ LL -   Ok(Color::Redd)
 LL +   Ok(Color::Red)
    |
 
-error[E0599]: no variant or associated item named `Greenn` found for enum `Color` in the current scope
+error[E0599]: no variant, associated function, or constant named `Greenn` found for enum `Color` in the current scope
   --> $DIR/suggest-variants.rs:32:13
    |
 LL | enum Color {
-   | ---------- variant or associated item `Greenn` not found for this enum
+   | ---------- variant, associated function, or constant `Greenn` not found for this enum
 ...
 LL |   Ok(Color::Greenn(()))
-   |             ^^^^^^ variant or associated item not found in `Color`
+   |             ^^^^^^ variant, associated function, or constant not found in `Color`
    |
 help: there is a variant with a similar name
    |
@@ -104,14 +104,14 @@ LL -   Ok(Color::Greenn(()))
 LL +   Ok(Color::Green(()))
    |
 
-error[E0599]: no variant or associated item named `Blu` found for enum `Color` in the current scope
+error[E0599]: no variant, associated function, or constant named `Blu` found for enum `Color` in the current scope
   --> $DIR/suggest-variants.rs:36:13
    |
 LL | enum Color {
-   | ---------- variant or associated item `Blu` not found for this enum
+   | ---------- variant, associated function, or constant `Blu` not found for this enum
 ...
 LL |   Ok(Color::Blu)
-   |             ^^^ variant or associated item not found in `Color`
+   |             ^^^ variant, associated function, or constant not found in `Color`
    |
 help: there is a variant with a similar name
    |

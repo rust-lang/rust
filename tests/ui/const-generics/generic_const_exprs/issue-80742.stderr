@@ -15,14 +15,14 @@ help: consider relaxing the implicit `Sized` restriction
 LL | struct Inline<T: ?Sized>
    |                ++++++++
 
-error[E0599]: the function or associated item `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
+error[E0599]: the associated function or constant `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
   --> $DIR/issue-80742.rs:28:36
    |
 LL | struct Inline<T>
-   | ---------------- function or associated item `new` not found for this struct
+   | ---------------- associated function or constant `new` not found for this struct
 ...
 LL |     let dst = Inline::<dyn Debug>::new(0);
-   |                                    ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
+   |                                    ^^^ associated function or constant cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
    |
 note: trait bound `dyn Debug: Sized` was not satisfied
   --> $DIR/issue-80742.rs:18:6

@@ -65,14 +65,14 @@ LL |     let 🦀 = 1;
 LL |     dbg!(🦀);
    |          ^^
 
-error[E0599]: no function or associated item named `full_of✨` found for struct `👀` in the current scope
+error[E0599]: no associated function or constant named `full_of✨` found for struct `👀` in the current scope
   --> $DIR/emoji-identifiers.rs:9:8
    |
 LL | struct 👀;
-   | --------- function or associated item `full_of✨` not found for this struct
+   | --------- associated function or constant `full_of✨` not found for this struct
 ...
 LL |     👀::full_of✨()
-   |         ^^^^^^^^^ function or associated item not found in `👀`
+   |         ^^^^^^^^^ associated function or constant not found in `👀`
    |
 note: if you're trying to build a new `👀`, consider using `👀::full_of_✨` which returns `👀`
   --> $DIR/emoji-identifiers.rs:4:5

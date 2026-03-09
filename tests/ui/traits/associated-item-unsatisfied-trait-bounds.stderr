@@ -1,11 +1,11 @@
-error[E0599]: the function or associated item `bat` exists for struct `Foo`, but its trait bounds were not satisfied
+error[E0599]: the associated function or constant `bat` exists for struct `Foo`, but its trait bounds were not satisfied
   --> $DIR/associated-item-unsatisfied-trait-bounds.rs:8:10
    |
 LL | struct Foo;
-   | ---------- function or associated item `bat` not found for this struct because `Foo` doesn't implement `Bar` or `Baz`
+   | ---------- associated function or constant `bat` not found for this struct because `Foo` doesn't implement `Bar` or `Baz`
 ...
 LL |     Foo::bat(());
-   |          ^^^ function or associated item cannot be called on `Foo` due to unsatisfied trait bounds
+   |          ^^^ associated function or constant cannot be called on `Foo` due to unsatisfied trait bounds
    |
 note: for `bat` to be available, `Foo` must implement `Bar` and `Baz`
   --> $DIR/associated-item-unsatisfied-trait-bounds.rs:5:38
