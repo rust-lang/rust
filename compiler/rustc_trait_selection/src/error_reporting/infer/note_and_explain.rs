@@ -22,11 +22,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err: TypeError<'tcx>,
         cause: &ObligationCause<'tcx>,
         sp: Span,
-        body_owner_def_id: DefId,
+        body_owner_def_id: Option<DefId>,
     ) {
         debug!("note_and_explain_type_err err={:?} cause={:?}", err, cause);
 
         let tcx = self.tcx;
+
+        let body_generics = body_owner_def_id.map(|def_id| tcx.generics_of(def_id));
 
         match err {
             TypeError::ArgumentSorts(values, _) | TypeError::Sorts(values) => {
@@ -64,14 +66,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         }
                     }
                     (ty::Param(expected), ty::Param(found)) => {
-                        let generics = tcx.generics_of(body_owner_def_id);
-                        let e_span = tcx.def_span(generics.type_param(expected, tcx).def_id);
-                        if !sp.contains(e_span) {
-                            diag.span_label(e_span, "expected type parameter");
-                        }
-                        let f_span = tcx.def_span(generics.type_param(found, tcx).def_id);
-                        if !sp.contains(f_span) {
-                            diag.span_label(f_span, "found type parameter");
+                        if let Some(generics) = body_generics {
+                            let e_span = tcx.def_span(generics.type_param(expected, tcx).def_id);
+                            if !sp.contains(e_span) {
+                                diag.span_label(e_span, "expected type parameter");
+                            }
+                            let f_span = tcx.def_span(generics.type_param(found, tcx).def_id);
+                            if !sp.contains(f_span) {
+                                diag.span_label(f_span, "found type parameter");
+                            }
                         }
                         diag.note(
                             "a type parameter was expected, but a different one was found; \
@@ -92,9 +95,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     (ty::Param(p), ty::Alias(ty::Projection, proj))
                     | (ty::Alias(ty::Projection, proj), ty::Param(p))
-                        if !tcx.is_impl_trait_in_trait(proj.def_id) =>
+                        if !tcx.is_impl_trait_in_trait(proj.def_id)
+                            && let Some(generics) = body_generics =>
                     {
-                        let param = tcx.generics_of(body_owner_def_id).type_param(p, tcx);
+                        let param = generics.type_param(p, tcx);
                         let p_def_id = param.def_id;
                         let p_span = tcx.def_span(p_def_id);
                         let expected = match (values.expected.kind(), values.found.kind()) {
@@ -106,9 +110,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             diag.span_label(p_span, format!("{expected}this type parameter"));
                         }
                         let param_def_id = match *proj.self_ty().kind() {
-                            ty::Param(param) => {
-                                tcx.generics_of(body_owner_def_id).type_param(param, tcx).def_id
-                            }
+                            ty::Param(param) => generics.type_param(param, tcx).def_id,
                             _ => p_def_id,
                         };
                         let parent = param_def_id.as_local().and_then(|id| {
@@ -188,15 +190,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (ty::Param(p), ty::Dynamic(..) | ty::Alias(ty::Opaque, ..))
                     | (ty::Dynamic(..) | ty::Alias(ty::Opaque, ..), ty::Param(p)) => {
-                        let generics = tcx.generics_of(body_owner_def_id);
-                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
-                        let expected = match (values.expected.kind(), values.found.kind()) {
-                            (ty::Param(_), _) => "expected ",
-                            (_, ty::Param(_)) => "found ",
-                            _ => "",
-                        };
-                        if !sp.contains(p_span) {
-                            diag.span_label(p_span, format!("{expected}this type parameter"));
+                        if let Some(generics) = body_generics {
+                            let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                            let expected = match (values.expected.kind(), values.found.kind()) {
+                                (ty::Param(_), _) => "expected ",
+                                (_, ty::Param(_)) => "found ",
+                                _ => "",
+                            };
+                            if !sp.contains(p_span) {
+                                diag.span_label(p_span, format!("{expected}this type parameter"));
+                            }
                         }
                         diag.help("type parameters must be constrained to match other types");
                         if diag.code.is_some_and(|code| tcx.sess.teach(code)) {
@@ -236,18 +239,18 @@ impl<T> Trait<T> for X {
                         ty::Param(p),
                         ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..),
                     ) => {
-                        let generics = tcx.generics_of(body_owner_def_id);
-                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
-                        if !sp.contains(p_span) {
-                            diag.span_label(p_span, "expected this type parameter");
+                        if let Some(generics) = body_generics {
+                            let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
+                            if !sp.contains(p_span) {
+                                diag.span_label(p_span, "expected this type parameter");
+                            }
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
                              caller-chosen type of parameter `{p}`"
                         ));
                     }
-                    (ty::Param(p), _) | (_, ty::Param(p)) => {
-                        let generics = tcx.generics_of(body_owner_def_id);
+                    (ty::Param(p), _) | (_, ty::Param(p)) if let Some(generics) = body_generics => {
                         let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
                         let expected = match (values.expected.kind(), values.found.kind()) {
                             (ty::Param(_), _) => "expected ",
@@ -366,7 +369,8 @@ impl<T> Trait<T> for X {
                     }
                     (_, ty::Alias(ty::Opaque, opaque_ty))
                     | (ty::Alias(ty::Opaque, opaque_ty), _) => {
-                        if opaque_ty.def_id.is_local()
+                        if let Some(body_owner_def_id) = body_owner_def_id
+                            && opaque_ty.def_id.is_local()
                             && matches!(
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
@@ -560,11 +564,14 @@ impl<T> Trait<T> for X {
         &self,
         diag: &mut Diag<'_>,
         msg: impl Fn() -> String,
-        body_owner_def_id: DefId,
+        body_owner_def_id: Option<DefId>,
         proj_ty: ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
+        let Some(body_owner_def_id) = body_owner_def_id else {
+            return false;
+        };
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
         let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {
@@ -611,7 +618,7 @@ impl<T> Trait<T> for X {
             _ => return false,
         };
         let parent = tcx.hir_get_parent_item(hir_id).def_id;
-        self.suggest_constraint(diag, msg, parent.into(), proj_ty, ty)
+        self.suggest_constraint(diag, msg, Some(parent.into()), proj_ty, ty)
     }
 
     /// An associated type was expected and a different type was found.
@@ -632,7 +639,7 @@ impl<T> Trait<T> for X {
         diag: &mut Diag<'_>,
         proj_ty: ty::AliasTy<'tcx>,
         values: ExpectedFound<Ty<'tcx>>,
-        body_owner_def_id: DefId,
+        body_owner_def_id: Option<DefId>,
         cause_code: &ObligationCauseCode<'_>,
     ) {
         let tcx = self.tcx;
@@ -653,7 +660,7 @@ impl<T> Trait<T> for X {
             )
         };
 
-        let body_owner = tcx.hir_get_if_local(body_owner_def_id);
+        let body_owner = body_owner_def_id.and_then(|id| tcx.hir_get_if_local(id));
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
@@ -835,12 +842,12 @@ fn foo(&self) -> Self::T { String::new() }
     fn point_at_associated_type(
         &self,
         diag: &mut Diag<'_>,
-        body_owner_def_id: DefId,
+        body_owner_def_id: Option<DefId>,
         found: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
 
-        let Some(def_id) = body_owner_def_id.as_local() else {
+        let Some(def_id) = body_owner_def_id.and_then(|id| id.as_local()) else {
             return false;
         };
 
@@ -852,7 +859,7 @@ fn foo(&self) -> Self::T { String::new() }
 
         debug!("expected_projection parent item {:?}", item);
 
-        let param_env = tcx.param_env(body_owner_def_id);
+        let param_env = tcx.param_env(def_id);
 
         if let DefKind::Trait | DefKind::Impl { .. } = tcx.def_kind(parent_id) {
             let assoc_items = tcx.associated_items(parent_id);
