@@ -10,15 +10,15 @@
 //! Move a value from the stack to the heap by creating a [`Box`]:
 //!
 //! ```
-//! let val: u8 = 5;
-//! let boxed: Box<u8> = Box::new(val);
+//! let val: String = String::from("hello");
+//! let boxed: Box<String> = Box::new(val);
 //! ```
 //!
 //! Move a value from a [`Box`] back to the stack by [dereferencing]:
 //!
 //! ```
-//! let boxed: Box<u8> = Box::new(5);
-//! let val: u8 = *boxed;
+//! let boxed: Box<String> = Box::new(String::from("hello"));
+//! let val: String = *boxed;
 //! ```
 //!
 //! Creating a recursive data structure:
