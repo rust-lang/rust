@@ -6,5 +6,11 @@ note: missing optimized MIR for this item (was the crate `missing_mir_priv_bound
 LL |         pub fn generic<T>() {}
    |         ^^^^^^^^^^^^^^^^^^^
 
+note: the above error was encountered while instantiating `fn <Handler as PubTrHandler>::handle::<dep::Dummy>`
+  --> $DIR/auxiliary/missing-mir-priv-bounds-extern-2.rs:26:5
+   |
+LL |     T::handle::<Dummy>();
+   |     ^^^^^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 

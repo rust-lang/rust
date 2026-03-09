@@ -6,5 +6,11 @@ note: missing optimized MIR for this item (was the crate `missing_mir_priv_bound
 LL |         pub fn generic<T>() {}
    |         ^^^^^^^^^^^^^^^^^^^
 
+note: the above error was encountered while instantiating `fn wut::<dep::Dummy>`
+  --> $DIR/missing-mir-priv-bounds.rs:11:5
+   |
+LL |     wut(get_dummy());
+   |     ^^^^^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 

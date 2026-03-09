@@ -10,5 +10,11 @@ note: `A::matches` defined here
 LL |     pub fn matches<F: Fn()>(&self, f: &F) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+note: the above error was encountered while instantiating `fn A::matches::<{closure@$DIR/issue-22638.rs:42:23: 42:25}>`
+  --> $DIR/issue-22638.rs:54:9
+   |
+LL |         a.matches(f)
+   |         ^^^^^^^^^^^^
+
 error: aborting due to 1 previous error
 

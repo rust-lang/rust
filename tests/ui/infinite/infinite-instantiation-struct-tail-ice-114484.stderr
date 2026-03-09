@@ -92,5 +92,10 @@ LL |     fn virtualize(&self) -> &dyn MyTrait {
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
+note: the above error was encountered while instantiating `fn <VirtualWrapper<..., 1> as MyTrait>::virtualize`
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/infinite-instantiation-struct-tail-ice-114484.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
 error: aborting due to 13 previous errors
 

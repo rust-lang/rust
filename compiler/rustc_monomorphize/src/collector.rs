@@ -210,6 +210,7 @@ mod autodiff;
 use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -419,153 +420,165 @@ fn collect_items_rec<'tcx>(
     // current step of mono items collection.
     //
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
+    // FIXME: This detection can have false positives with the parallel compiler.
+    // FIXME: The notes may not be right after the original error with the parallel compiler.
     let error_count = tcx.dcx().err_count();
 
-    // In `mentioned_items` we collect items that were mentioned in this MIR but possibly do not
-    // need to be monomorphized. This is done to ensure that optimizing away function calls does not
-    // hide const-eval errors that those calls would otherwise have triggered.
-    match starting_item.node {
-        MonoItem::Static(def_id) => {
-            recursion_depth_reset = None;
+    {
+        // Use `defer` so detection works with fatal errors too.
+        let _guard = defer(|| {
+            // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
+            // mono item graph.
+            if tcx.dcx().err_count() > error_count
+                && starting_item.node.is_generic_fn()
+                && starting_item.node.is_user_defined()
+            {
+                match starting_item.node {
+                    MonoItem::Fn(instance) => {
+                        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
+                            span: starting_item.span,
+                            kind: "fn",
+                            instance,
+                        })
+                    }
+                    MonoItem::Static(def_id) => {
+                        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
+                            span: starting_item.span,
+                            kind: "static",
+                            instance: Instance::new_raw(def_id, GenericArgs::empty()),
+                        })
+                    }
+                    MonoItem::GlobalAsm(_) => {
+                        tcx.dcx().emit_note(EncounteredErrorWhileInstantiatingGlobalAsm {
+                            span: starting_item.span,
+                        })
+                    }
+                }
+            }
+        });
 
-            // Statics always get evaluated (which is possible because they can't be generic), so for
-            // `MentionedItems` collection there's nothing to do here.
-            if mode == CollectionMode::UsedItems {
-                let instance = Instance::mono(tcx, def_id);
+        // In `mentioned_items` we collect items that were mentioned in this MIR but possibly do not
+        // need to be monomorphized. This is done to ensure that optimizing away function calls does not
+        // hide const-eval errors that those calls would otherwise have triggered.
+        match starting_item.node {
+            MonoItem::Static(def_id) => {
+                recursion_depth_reset = None;
 
+                // Statics always get evaluated (which is possible because they can't be generic), so for
+                // `MentionedItems` collection there's nothing to do here.
+                if mode == CollectionMode::UsedItems {
+                    let instance = Instance::mono(tcx, def_id);
+
+                    // Sanity check whether this ended up being collected accidentally
+                    debug_assert!(tcx.should_codegen_locally(instance));
+
+                    let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
+                    // Nested statics have no type.
+                    if !nested {
+                        let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+                        visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
+                    }
+
+                    if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
+                        for &prov in alloc.inner().provenance().ptrs().values() {
+                            collect_alloc(tcx, prov.alloc_id(), &mut used_items);
+                        }
+                    }
+
+                    if tcx.needs_thread_local_shim(def_id) {
+                        used_items.push(respan(
+                            starting_item.span,
+                            MonoItem::Fn(Instance {
+                                def: InstanceKind::ThreadLocalShim(def_id),
+                                args: GenericArgs::empty(),
+                            }),
+                        ));
+                    }
+                }
+
+                // mentioned_items stays empty since there's no codegen for statics. statics don't get
+                // optimized, and if they did then the const-eval interpreter would have to worry about
+                // mentioned_items.
+            }
+            MonoItem::Fn(instance) => {
                 // Sanity check whether this ended up being collected accidentally
                 debug_assert!(tcx.should_codegen_locally(instance));
 
-                let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
-                // Nested statics have no type.
-                if !nested {
-                    let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
-                    visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
-                }
+                // Keep track of the monomorphization recursion depth
+                recursion_depth_reset = Some(check_recursion_limit(
+                    tcx,
+                    instance,
+                    starting_item.span,
+                    recursion_depths,
+                    recursion_limit,
+                ));
 
-                if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                    for &prov in alloc.inner().provenance().ptrs().values() {
-                        collect_alloc(tcx, prov.alloc_id(), &mut used_items);
-                    }
-                }
-
-                if tcx.needs_thread_local_shim(def_id) {
-                    used_items.push(respan(
-                        starting_item.span,
-                        MonoItem::Fn(Instance {
-                            def: InstanceKind::ThreadLocalShim(def_id),
-                            args: GenericArgs::empty(),
-                        }),
-                    ));
-                }
+                rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                    let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                        // Normalization errors here are usually due to trait solving overflow.
+                        // FIXME: I assume that there are few type errors at post-analysis stage, but not
+                        // entirely sure.
+                        // We have to emit the error outside of `items_of_instance` to access the
+                        // span of the `starting_item`.
+                        let def_id = instance.def_id();
+                        let def_span = tcx.def_span(def_id);
+                        let def_path_str = tcx.def_path_str(def_id);
+                        tcx.dcx().emit_fatal(RecursionLimit {
+                            span: starting_item.span,
+                            instance,
+                            def_span,
+                            def_path_str,
+                        });
+                    };
+                    used_items.extend(used.into_iter().copied());
+                    mentioned_items.extend(mentioned.into_iter().copied());
+                });
             }
+            MonoItem::GlobalAsm(item_id) => {
+                assert!(
+                    mode == CollectionMode::UsedItems,
+                    "should never encounter global_asm when collecting mentioned items"
+                );
+                recursion_depth_reset = None;
 
-            // mentioned_items stays empty since there's no codegen for statics. statics don't get
-            // optimized, and if they did then the const-eval interpreter would have to worry about
-            // mentioned_items.
-        }
-        MonoItem::Fn(instance) => {
-            // Sanity check whether this ended up being collected accidentally
-            debug_assert!(tcx.should_codegen_locally(instance));
-
-            // Keep track of the monomorphization recursion depth
-            recursion_depth_reset = Some(check_recursion_limit(
-                tcx,
-                instance,
-                starting_item.span,
-                recursion_depths,
-                recursion_limit,
-            ));
-
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
-                    // Normalization errors here are usually due to trait solving overflow.
-                    // FIXME: I assume that there are few type errors at post-analysis stage, but not
-                    // entirely sure.
-                    // We have to emit the error outside of `items_of_instance` to access the
-                    // span of the `starting_item`.
-                    let def_id = instance.def_id();
-                    let def_span = tcx.def_span(def_id);
-                    let def_path_str = tcx.def_path_str(def_id);
-                    tcx.dcx().emit_fatal(RecursionLimit {
-                        span: starting_item.span,
-                        instance,
-                        def_span,
-                        def_path_str,
-                    });
-                };
-                used_items.extend(used.into_iter().copied());
-                mentioned_items.extend(mentioned.into_iter().copied());
-            });
-        }
-        MonoItem::GlobalAsm(item_id) => {
-            assert!(
-                mode == CollectionMode::UsedItems,
-                "should never encounter global_asm when collecting mentioned items"
-            );
-            recursion_depth_reset = None;
-
-            let item = tcx.hir_item(item_id);
-            if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
-                for (op, op_sp) in asm.operands {
-                    match *op {
-                        hir::InlineAsmOperand::Const { .. } => {
-                            // Only constants which resolve to a plain integer
-                            // are supported. Therefore the value should not
-                            // depend on any other items.
-                        }
-                        hir::InlineAsmOperand::SymFn { expr } => {
-                            let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
-                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
-                        }
-                        hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                            let instance = Instance::mono(tcx, def_id);
-                            if tcx.should_codegen_locally(instance) {
-                                trace!("collecting static {:?}", def_id);
-                                used_items.push(dummy_spanned(MonoItem::Static(def_id)));
+                let item = tcx.hir_item(item_id);
+                if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
+                    for (op, op_sp) in asm.operands {
+                        match *op {
+                            hir::InlineAsmOperand::Const { .. } => {
+                                // Only constants which resolve to a plain integer
+                                // are supported. Therefore the value should not
+                                // depend on any other items.
+                            }
+                            hir::InlineAsmOperand::SymFn { expr } => {
+                                let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
+                                visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
+                            }
+                            hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                                let instance = Instance::mono(tcx, def_id);
+                                if tcx.should_codegen_locally(instance) {
+                                    trace!("collecting static {:?}", def_id);
+                                    used_items.push(dummy_spanned(MonoItem::Static(def_id)));
+                                }
+                            }
+                            hir::InlineAsmOperand::In { .. }
+                            | hir::InlineAsmOperand::Out { .. }
+                            | hir::InlineAsmOperand::InOut { .. }
+                            | hir::InlineAsmOperand::SplitInOut { .. }
+                            | hir::InlineAsmOperand::Label { .. } => {
+                                span_bug!(*op_sp, "invalid operand type for global_asm!")
                             }
                         }
-                        hir::InlineAsmOperand::In { .. }
-                        | hir::InlineAsmOperand::Out { .. }
-                        | hir::InlineAsmOperand::InOut { .. }
-                        | hir::InlineAsmOperand::SplitInOut { .. }
-                        | hir::InlineAsmOperand::Label { .. } => {
-                            span_bug!(*op_sp, "invalid operand type for global_asm!")
-                        }
                     }
+                } else {
+                    span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
                 }
-            } else {
-                span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
-            }
 
-            // mention_items stays empty as nothing gets optimized here.
-        }
-    };
-
-    // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
-    // mono item graph.
-    if tcx.dcx().err_count() > error_count
-        && starting_item.node.is_generic_fn()
-        && starting_item.node.is_user_defined()
-    {
-        match starting_item.node {
-            MonoItem::Fn(instance) => tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
-                span: starting_item.span,
-                kind: "fn",
-                instance,
-            }),
-            MonoItem::Static(def_id) => tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
-                span: starting_item.span,
-                kind: "static",
-                instance: Instance::new_raw(def_id, GenericArgs::empty()),
-            }),
-            MonoItem::GlobalAsm(_) => {
-                tcx.dcx().emit_note(EncounteredErrorWhileInstantiatingGlobalAsm {
-                    span: starting_item.span,
-                })
+                // mention_items stays empty as nothing gets optimized here.
             }
-        }
+        };
     }
+
     // Only updating `usage_map` for used items as otherwise we may be inserting the same item
     // multiple times (if it is first 'mentioned' and then later actually used), and the usage map
     // logic does not like that.
