@@ -498,10 +498,6 @@ See:
 
 Previously known as "object safety".
 
-## `tests/ui/dyn-drop/`: `dyn Drop`
-
-**FIXME**: Contains a single test, used only to check the `dyn_drop` lint (which is normally `warn` level).
-
 ## `tests/ui/dyn-keyword/`: `dyn` and Dynamic Dispatch
 
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
@@ -517,10 +513,6 @@ These tests run in specific Rust editions, such as Rust 2015 or Rust 2018, and c
 ## `tests/ui/eii`: Externally Implementable Items
 
 Exercises `eii` keyword.
-
-## `tests/ui/empty/`: Various tests related to the concept of "empty"
-
-**FIXME**: These tests need better homes, this is not very informative.
 
 ## `tests/ui/entry-point/`: `main` function
 
@@ -940,12 +932,6 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
 
-## `tests/ui/missing-trait-bounds/`
-
-Tests for checking missing trait bounds, and their diagnostics.
-
-**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
-
 ## `tests/ui/modules/`
 
 Tests on the module system.
@@ -1172,12 +1158,6 @@ See [Tracking Issue for Reborrow trait lang experiment #145612](https://github.c
 Broad category of tests exercising recursions (compile test and run time), in functions, macros, `type` definitions, and more.
 
 Also exercises the `#![recursion_limit = ""]` attribute.
-
-## `tests/ui/recursion_limit/`: `#![recursion_limit = ""]`
-
-Sets a recursion limit on recursive code.
-
-**FIXME**: Should be merged with `tests/ui/recursion/`.
 
 ## `tests/ui/reflection/`
 
@@ -1600,10 +1580,6 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
-
-## `tests/ui/version/`
-
-**FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
 
 ## `tests/ui/wasm/`
 
