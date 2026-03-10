@@ -428,6 +428,11 @@ pub enum Subcommand {
         #[arg(long)]
         /// Ignore `//@ ignore-backends` directives.
         bypass_ignore_backends: bool,
+
+        /// Deprecated. Use `--all-targets` or `--tests` instead.
+        #[arg(long)]
+        #[doc(hidden)]
+        no_doc: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -447,6 +452,11 @@ pub enum Subcommand {
         /// Only run unit and integration tests
         #[arg(long)]
         tests: bool,
+
+        /// Deprecated. Use `--all-targets` or `--tests` instead.
+        #[arg(long)]
+        #[doc(hidden)]
+        no_doc: bool,
     },
     /// Build and run some benchmarks
     Bench {
@@ -571,6 +581,13 @@ impl Subcommand {
                 (false, false, false) => TestTarget::Default,
             },
             _ => TestTarget::Default,
+        }
+    }
+
+    pub fn no_doc(&self) -> bool {
+        match *self {
+            Subcommand::Test { no_doc, .. } | Subcommand::Miri { no_doc, .. } => no_doc,
+            _ => false,
         }
     }
 

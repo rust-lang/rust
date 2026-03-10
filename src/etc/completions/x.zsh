@@ -385,6 +385,7 @@ _arguments "${_arguments_options[@]}" : \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
 '--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
+'--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -434,6 +435,7 @@ _arguments "${_arguments_options[@]}" : \
 '--all-targets[Run all test targets (no doc tests)]' \
 '--doc[Only run doc tests]' \
 '--tests[Only run unit and integration tests]' \
+'--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

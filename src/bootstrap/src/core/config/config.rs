@@ -415,6 +415,12 @@ impl Config {
             "flags.exclude" = ?flags_exclude
         );
 
+        if flags_cmd.no_doc() {
+            eprintln!(
+                "WARN: `x.py test --no-doc` is renamed to `--all-targets`. `--no-doc` will be removed in the near future. Additionally `--tests` is added which only executes unit and integration tests."
+            )
+        }
+
         // Set config values based on flags.
         let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
         exec_ctx.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
