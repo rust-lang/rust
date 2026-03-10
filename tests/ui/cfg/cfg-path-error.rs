@@ -1,4 +1,5 @@
 //@ check-fail
+//@ reference: cfg.option-spec
 
 #![allow(unexpected_cfgs)] // invalid cfgs
 
