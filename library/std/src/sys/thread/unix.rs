@@ -49,7 +49,10 @@ impl Thread {
         // WASI does not support threading via pthreads. While wasi-libc provides
         // pthread stubs, pthread_create returns EAGAIN, which causes confusing
         // errors. We return UNSUPPORTED_PLATFORM directly instead.
-        if cfg!(target_os = "wasi") {
+
+        // NOTE: exempt `wasm32-wasip1-threads` from this check as `emnapi` has a working pthread
+        // implementation. See <https://github.com/rust-lang/rust/issues/153475>.
+        if cfg!(all(target_os = "wasi", not(all(target_env = "p1", target_feature = "atomics")))) {
             return Err(io::Error::UNSUPPORTED_PLATFORM);
         }
 
