@@ -743,6 +743,39 @@ impl<T: Idx> ChunkedBitSet<T> {
     bit_relations_inherent_impls! {}
 }
 
+/// Behaves like [`Rc::make_mut`], except that if an inner clone would be
+/// required but `would_change` returns false, then no inner clone occurs and
+/// None is returned instead.
+///
+/// This function assumes that `would_change` is cheaper than an inner clone,
+/// but expensive enough to be worth avoiding if an inner clone isn't required.
+///
+/// In other words, this function returns:
+/// - Some (without cloning) if [`Rc::get_mut`] succeeds
+/// - None (without cloning) if `would_change` returns false
+/// - Some (after cloning) otherwise
+fn make_chunk_words_mut_for_change<'a>(
+    self_words: &'a mut Rc<[Word; CHUNK_WORDS]>,
+    would_change: impl Fn(&[Word; CHUNK_WORDS]) -> bool,
+) -> Option<&'a mut [Word; CHUNK_WORDS]> {
+    // If the Rc is already unique, we can skip the would-change check entirely.
+    if let Some(words) = Rc::get_mut(self_words) {
+        // Round-trip through a raw pointer to work around a well-known limitation of the
+        // non-Polonius borrow checker <https://github.com/rust-lang/rust/issues/54663>.
+        // SAFETY: Equivalent to `Some(words)`, which is sound but only accepted by Polonius;
+        // see `tests/ui/nll/polonius/nll-problem-case-3-issue-54663.rs`.
+        return Some(unsafe { &mut *(words as *mut _) });
+    };
+
+    // At this point we would need to clone the chunk if we wanted to return `&mut`,
+    // so first check if the intended operation would actually modify the words.
+    if !would_change(self_words) {
+        return None;
+    }
+
+    Some(Rc::make_mut(self_words))
+}
+
 impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
     fn union(&mut self, other: &ChunkedBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
@@ -780,33 +813,28 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // performance win. Also, we only need to operate on the
                     // in-use words, hence the slicing.
                     let num_words = num_words(chunk_domain_size as usize);
-
-                    // If both sides are the same, nothing will change. This
-                    // case is very common and it's a pretty fast check, so
-                    // it's a performance win to do it.
-                    if self_chunk_words[0..num_words] == other_chunk_words[0..num_words] {
-                        continue;
-                    }
-
-                    // Do a more precise "will anything change?" test. Also a
-                    // performance win.
                     let op = |a, b| a | b;
-                    if !bitwise_changes(
-                        &self_chunk_words[0..num_words],
-                        &other_chunk_words[0..num_words],
-                        op,
-                    ) {
-                        continue;
-                    }
 
-                    // If we reach here, `self_chunk_words` is definitely changing.
-                    let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    // Try to get a mutable reference to our words, but only if doing so is
+                    // cheap, or if we're definitely going to modify the words.
+                    let Some(self_chunk_words) =
+                        make_chunk_words_mut_for_change(self_chunk_words, |self_chunk_words| {
+                            let lhs = &self_chunk_words[0..num_words];
+                            let rhs = &other_chunk_words[0..num_words];
+                            // If both sides are the same, nothing will change. That case is very
+                            // common, so it's a performance win to do an extremely fast equality
+                            // check before the full would-change check.
+                            (lhs != rhs) && bitwise_changes(lhs, rhs, op)
+                        })
+                    else {
+                        continue;
+                    };
+
+                    bitwise(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     );
-                    debug_assert!(has_changed);
                     *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
                     if *self_chunk_count == chunk_domain_size {
                         *self_chunk = Ones;
@@ -868,21 +896,24 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
                     let op = |a: Word, b: Word| a & !b;
-                    if !bitwise_changes(
-                        &self_chunk_words[0..num_words],
-                        &other_chunk_words[0..num_words],
-                        op,
-                    ) {
-                        continue;
-                    }
 
-                    let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    let Some(self_chunk_words) =
+                        make_chunk_words_mut_for_change(self_chunk_words, |self_chunk_words| {
+                            bitwise_changes(
+                                &self_chunk_words[0..num_words],
+                                &other_chunk_words[0..num_words],
+                                op,
+                            )
+                        })
+                    else {
+                        continue;
+                    };
+
+                    bitwise(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     );
-                    debug_assert!(has_changed);
                     *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
                     if *self_chunk_count == 0 {
                         *self_chunk = Zeros;
@@ -926,21 +957,24 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
                     let op = |a, b| a & b;
-                    if !bitwise_changes(
-                        &self_chunk_words[0..num_words],
-                        &other_chunk_words[0..num_words],
-                        op,
-                    ) {
-                        continue;
-                    }
 
-                    let self_chunk_words = Rc::make_mut(self_chunk_words);
-                    let has_changed = bitwise(
+                    let Some(self_chunk_words) =
+                        make_chunk_words_mut_for_change(self_chunk_words, |self_chunk_words| {
+                            bitwise_changes(
+                                &self_chunk_words[0..num_words],
+                                &other_chunk_words[0..num_words],
+                                op,
+                            )
+                        })
+                    else {
+                        continue;
+                    };
+
+                    bitwise(
                         &mut self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     );
-                    debug_assert!(has_changed);
                     *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
                     if *self_chunk_count == 0 {
                         *self_chunk = Zeros;
