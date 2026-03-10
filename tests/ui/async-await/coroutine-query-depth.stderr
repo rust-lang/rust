@@ -1,0 +1,7 @@
+error: queries overflow the depth limit!
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`coroutine_query_depth`)
+   = note: query depth increased by 10 when computing layout of `{async fn body of deep()}`
+
+error: aborting due to 1 previous error
+
