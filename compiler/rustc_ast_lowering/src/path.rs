@@ -19,7 +19,7 @@ use super::{
     LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,

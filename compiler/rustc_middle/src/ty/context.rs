@@ -658,6 +658,10 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
         TyCtxtFeed { tcx: self, key }.type_of(value)
     }
+
+    pub fn feed_child_delayed_hir_owner(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        TyCtxtFeed { tcx: self, key }
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
@@ -2750,7 +2754,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
+    ) -> &'tcx Steal<(ty::AstLoweringResolutionContext<'tcx>, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 

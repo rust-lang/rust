@@ -42,6 +42,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
+use rustc_thread_pool::spawn;
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
@@ -781,7 +782,10 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (
+    &'tcx Steal<(ty::AstLoweringResolutionContext<'tcx>, Arc<ast::Crate>)>,
+    &'tcx ty::ResolverGlobalCtxt,
+) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -878,6 +882,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
     providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
+    providers.queries.lower_to_hir_delayed = rustc_ast_lowering::lower_to_hir_delayed;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
@@ -1021,9 +1026,27 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     )
 }
 
+fn lower_delayed_hir(tcx: TyCtxt<'_>) {
+    let krate = tcx.hir_crate(());
+    for id in krate.delayed_ids.iter().copied() {
+        let _ = tcx.lower_to_hir_delayed(id);
+    }
+
+    let (_, krate) = tcx.resolver_for_lowering().steal();
+    let prof = tcx.sess.prof.clone();
+
+    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+    spawn(move || {
+        let _timer = prof.verbose_generic_activity("drop_ast");
+        drop(krate);
+    });
+}
+
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
+    lower_delayed_hir(tcx);
+
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }

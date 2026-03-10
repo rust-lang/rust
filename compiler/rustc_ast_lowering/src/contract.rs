@@ -4,7 +4,7 @@ use thin_vec::thin_vec;
 
 use crate::LoweringContext;
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     /// Lowered contracts are guarded with the `contract_checks` compiler flag,
     /// i.e. the flag turns into a boolean guard in the lowered HIR. The reason
     /// for not eliminating the contract code entirely when the `contract_checks`
