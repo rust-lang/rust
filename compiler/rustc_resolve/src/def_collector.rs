@@ -38,7 +38,7 @@ pub(crate) struct DefCollector<'a, 'ra, 'tcx> {
 }
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
-    fn create_def(
+    pub(super) fn create_def(
         &mut self,
         node_id: NodeId,
         name: Option<Symbol>,
@@ -595,9 +595,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_attribute(&mut self, attr: &'a Attribute) -> Self::Result {
+    fn visit_attribute(&mut self, attr: &'a Attribute) {
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
-        visit::walk_attribute(self, attr);
+        self.brg_visit_attribute(attr);
         self.invocation_parent.in_attr = orig_in_attr;
     }
 
