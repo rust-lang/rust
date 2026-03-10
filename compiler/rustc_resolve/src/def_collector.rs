@@ -271,11 +271,6 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
-        self.create_def(id, None, DefKind::Use, use_tree.span());
-        visit::walk_use_tree(self, use_tree);
-    }
-
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let (ident, def_kind) = match fi.kind {
             ForeignItemKind::Static(box StaticItem {
