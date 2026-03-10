@@ -2005,11 +2005,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if self.trait_may_have_item(trait_module, assoc_item) {
                 let def_id = trait_binding.res().def_id();
                 let import_ids = self.find_transitive_imports(&trait_binding.kind, trait_name);
-                found_traits.push(TraitCandidate {
-                    def_id,
-                    import_ids,
-                    lint_ambiguous,
-                });
+                found_traits.push(TraitCandidate { def_id, import_ids, lint_ambiguous });
             }
         }
     }
