@@ -263,6 +263,48 @@ struct SomeStruct { SomeField: u8 }
     }
 
     #[test]
+    fn incorrect_union_names() {
+        check_diagnostics(
+            r#"
+union non_camel_case_name { field: u8 }
+   // ^^^^^^^^^^^^^^^^^^^ 💡 warn: Union `non_camel_case_name` should have UpperCamelCase name, e.g. `NonCamelCaseName`
+
+union SCREAMING_CASE { field: u8 }
+   // ^^^^^^^^^^^^^^ 💡 warn: Union `SCREAMING_CASE` should have UpperCamelCase name, e.g. `ScreamingCase`
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_for_camel_cased_acronyms_in_union_name() {
+        check_diagnostics(
+            r#"
+union AABB { field: u8 }
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_for_repr_c_union() {
+        check_diagnostics(
+            r#"
+#[repr(C)]
+union my_union { field: u8 }
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_union_field() {
+        check_diagnostics(
+            r#"
+union SomeUnion { SomeField: u8 }
+               // ^^^^^^^^^ 💡 warn: Field `SomeField` should have snake_case name, e.g. `some_field`
+"#,
+        );
+    }
+
+    #[test]
     fn incorrect_enum_names() {
         check_diagnostics(
             r#"
