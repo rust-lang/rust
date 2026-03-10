@@ -995,7 +995,11 @@ pub trait TryAsDynCompatible<T>: ptr::Pointee<Metadata = ptr::DynMetadata<Self>>
 /// * `T`'s impl for `Trait` is not fully generic,
 /// * `T`'s impl for `Trait` is a builtin impl (e.g. `dyn Debug` implements `Debug`)
 ///
-/// ## Fully generic impls
+/// There is some detailed documentation about this feature at
+/// https://doc.rust-lang.org/unstable-book/language-features/try_as_dyn.html
+/// But the gist is summarized below:
+///
+/// ## Lifetime-independent impls
 ///
 /// `try_as_dyn` does not have access to lifetime information, thus it cannot differentiate between
 /// `'static`, other lifetimes, and can't reason about outlives bounds on impls. Thus we can only accept
