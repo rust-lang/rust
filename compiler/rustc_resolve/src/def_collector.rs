@@ -379,7 +379,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ),
             AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
             AssocItemKind::MacCall(..) => {
-                return self.visit_macro_invoc(i.id);
+                self.visit_macro_invoc(i.id);
+                self.brg_visit_assoc_item(i, ctxt);
+                return;
             }
             AssocItemKind::DelegationMac(..) => {
                 span_bug!(i.span, "degation mac invoc should have already been handled")
@@ -387,7 +389,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
 
         let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
-        self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
+        self.with_parent(def, |this| this.brg_visit_assoc_item(i, ctxt));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
