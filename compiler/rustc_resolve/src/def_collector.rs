@@ -329,7 +329,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_where_predicate(&mut self, pred: &'a WherePredicate) {
         if pred.is_placeholder {
-            self.visit_macro_invoc(pred.id)
+            self.visit_macro_invoc(pred.id);
+            self.visit_invoc(pred.id);
         } else {
             visit::walk_where_predicate(self, pred)
         }
