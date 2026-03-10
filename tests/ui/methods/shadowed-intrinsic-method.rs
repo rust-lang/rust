@@ -1,3 +1,5 @@
+// Can't use rustfix because we provide two suggestions:
+// to remove the arg for `Borrow::borrow` or to call `Type::borrow`.
 use std::borrow::Borrow;
 
 struct A;
