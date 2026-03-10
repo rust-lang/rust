@@ -13745,14 +13745,7 @@ pub fn vmaxvq_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxv))]
 pub fn vmaxv_s8(a: int8x8_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i8.v8i8"
-        )]
-        fn _vmaxv_s8(a: int8x8_t) -> i8;
-    }
-    unsafe { _vmaxv_s8(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_s8)"]
@@ -13761,14 +13754,7 @@ pub fn vmaxv_s8(a: int8x8_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxv))]
 pub fn vmaxvq_s8(a: int8x16_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i8.v16i8"
-        )]
-        fn _vmaxvq_s8(a: int8x16_t) -> i8;
-    }
-    unsafe { _vmaxvq_s8(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_s16)"]
@@ -13777,14 +13763,7 @@ pub fn vmaxvq_s8(a: int8x16_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxv))]
 pub fn vmaxv_s16(a: int16x4_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i16.v4i16"
-        )]
-        fn _vmaxv_s16(a: int16x4_t) -> i16;
-    }
-    unsafe { _vmaxv_s16(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_s16)"]
@@ -13793,14 +13772,7 @@ pub fn vmaxv_s16(a: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxv))]
 pub fn vmaxvq_s16(a: int16x8_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i16.v8i16"
-        )]
-        fn _vmaxvq_s16(a: int16x8_t) -> i16;
-    }
-    unsafe { _vmaxvq_s16(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_s32)"]
@@ -13809,14 +13781,7 @@ pub fn vmaxvq_s16(a: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxp))]
 pub fn vmaxv_s32(a: int32x2_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i32.v2i32"
-        )]
-        fn _vmaxv_s32(a: int32x2_t) -> i32;
-    }
-    unsafe { _vmaxv_s32(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_s32)"]
@@ -13825,14 +13790,7 @@ pub fn vmaxv_s32(a: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(smaxv))]
 pub fn vmaxvq_s32(a: int32x4_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.smaxv.i32.v4i32"
-        )]
-        fn _vmaxvq_s32(a: int32x4_t) -> i32;
-    }
-    unsafe { _vmaxvq_s32(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_u8)"]
@@ -13841,14 +13799,7 @@ pub fn vmaxvq_s32(a: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxv))]
 pub fn vmaxv_u8(a: uint8x8_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i8.v8i8"
-        )]
-        fn _vmaxv_u8(a: uint8x8_t) -> u8;
-    }
-    unsafe { _vmaxv_u8(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u8)"]
@@ -13857,14 +13808,7 @@ pub fn vmaxv_u8(a: uint8x8_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxv))]
 pub fn vmaxvq_u8(a: uint8x16_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i8.v16i8"
-        )]
-        fn _vmaxvq_u8(a: uint8x16_t) -> u8;
-    }
-    unsafe { _vmaxvq_u8(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_u16)"]
@@ -13873,14 +13817,7 @@ pub fn vmaxvq_u8(a: uint8x16_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxv))]
 pub fn vmaxv_u16(a: uint16x4_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i16.v4i16"
-        )]
-        fn _vmaxv_u16(a: uint16x4_t) -> u16;
-    }
-    unsafe { _vmaxv_u16(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u16)"]
@@ -13889,14 +13826,7 @@ pub fn vmaxv_u16(a: uint16x4_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxv))]
 pub fn vmaxvq_u16(a: uint16x8_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i16.v8i16"
-        )]
-        fn _vmaxvq_u16(a: uint16x8_t) -> u16;
-    }
-    unsafe { _vmaxvq_u16(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_u32)"]
@@ -13905,14 +13835,7 @@ pub fn vmaxvq_u16(a: uint16x8_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxp))]
 pub fn vmaxv_u32(a: uint32x2_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i32.v2i32"
-        )]
-        fn _vmaxv_u32(a: uint32x2_t) -> u32;
-    }
-    unsafe { _vmaxv_u32(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u32)"]
@@ -13921,14 +13844,7 @@ pub fn vmaxv_u32(a: uint32x2_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(umaxv))]
 pub fn vmaxvq_u32(a: uint32x4_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.umaxv.i32.v4i32"
-        )]
-        fn _vmaxvq_u32(a: uint32x4_t) -> u32;
-    }
-    unsafe { _vmaxvq_u32(a) }
+    unsafe { simd_reduce_max(a) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_f64)"]
@@ -14199,14 +14115,7 @@ pub fn vminvq_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminv))]
 pub fn vminv_s8(a: int8x8_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i8.v8i8"
-        )]
-        fn _vminv_s8(a: int8x8_t) -> i8;
-    }
-    unsafe { _vminv_s8(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_s8)"]
@@ -14215,14 +14124,7 @@ pub fn vminv_s8(a: int8x8_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminv))]
 pub fn vminvq_s8(a: int8x16_t) -> i8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i8.v16i8"
-        )]
-        fn _vminvq_s8(a: int8x16_t) -> i8;
-    }
-    unsafe { _vminvq_s8(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_s16)"]
@@ -14231,14 +14133,7 @@ pub fn vminvq_s8(a: int8x16_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminv))]
 pub fn vminv_s16(a: int16x4_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i16.v4i16"
-        )]
-        fn _vminv_s16(a: int16x4_t) -> i16;
-    }
-    unsafe { _vminv_s16(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_s16)"]
@@ -14247,14 +14142,7 @@ pub fn vminv_s16(a: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminv))]
 pub fn vminvq_s16(a: int16x8_t) -> i16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i16.v8i16"
-        )]
-        fn _vminvq_s16(a: int16x8_t) -> i16;
-    }
-    unsafe { _vminvq_s16(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_s32)"]
@@ -14263,14 +14151,7 @@ pub fn vminvq_s16(a: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminp))]
 pub fn vminv_s32(a: int32x2_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i32.v2i32"
-        )]
-        fn _vminv_s32(a: int32x2_t) -> i32;
-    }
-    unsafe { _vminv_s32(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_s32)"]
@@ -14279,14 +14160,7 @@ pub fn vminv_s32(a: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sminv))]
 pub fn vminvq_s32(a: int32x4_t) -> i32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.sminv.i32.v4i32"
-        )]
-        fn _vminvq_s32(a: int32x4_t) -> i32;
-    }
-    unsafe { _vminvq_s32(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_u8)"]
@@ -14295,14 +14169,7 @@ pub fn vminvq_s32(a: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminv))]
 pub fn vminv_u8(a: uint8x8_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i8.v8i8"
-        )]
-        fn _vminv_u8(a: uint8x8_t) -> u8;
-    }
-    unsafe { _vminv_u8(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u8)"]
@@ -14311,14 +14178,7 @@ pub fn vminv_u8(a: uint8x8_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminv))]
 pub fn vminvq_u8(a: uint8x16_t) -> u8 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i8.v16i8"
-        )]
-        fn _vminvq_u8(a: uint8x16_t) -> u8;
-    }
-    unsafe { _vminvq_u8(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_u16)"]
@@ -14327,14 +14187,7 @@ pub fn vminvq_u8(a: uint8x16_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminv))]
 pub fn vminv_u16(a: uint16x4_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i16.v4i16"
-        )]
-        fn _vminv_u16(a: uint16x4_t) -> u16;
-    }
-    unsafe { _vminv_u16(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u16)"]
@@ -14343,14 +14196,7 @@ pub fn vminv_u16(a: uint16x4_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminv))]
 pub fn vminvq_u16(a: uint16x8_t) -> u16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i16.v8i16"
-        )]
-        fn _vminvq_u16(a: uint16x8_t) -> u16;
-    }
-    unsafe { _vminvq_u16(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_u32)"]
@@ -14359,14 +14205,7 @@ pub fn vminvq_u16(a: uint16x8_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminp))]
 pub fn vminv_u32(a: uint32x2_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i32.v2i32"
-        )]
-        fn _vminv_u32(a: uint32x2_t) -> u32;
-    }
-    unsafe { _vminv_u32(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u32)"]
@@ -14375,14 +14214,7 @@ pub fn vminv_u32(a: uint32x2_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(uminv))]
 pub fn vminvq_u32(a: uint32x4_t) -> u32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uminv.i32.v4i32"
-        )]
-        fn _vminvq_u32(a: uint32x4_t) -> u32;
-    }
-    unsafe { _vminvq_u32(a) }
+    unsafe { simd_reduce_min(a) }
 }
 #[doc = "Floating-point multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_f64)"]
