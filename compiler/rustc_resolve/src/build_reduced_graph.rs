@@ -1505,14 +1505,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         visit::walk_attribute(self, attr);
     }
 
-    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        if param.is_placeholder {
-            self.visit_invoc(param.id);
-        } else {
-            visit::walk_generic_param(self, param);
-        }
-    }
-
     fn visit_field_def(&mut self, sf: &'a ast::FieldDef) {
         if sf.is_placeholder {
             self.visit_invoc(sf.id);

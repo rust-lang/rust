@@ -348,6 +348,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
         if param.is_placeholder {
             self.visit_macro_invoc(param.id);
+            self.visit_invoc(param.id);
             return;
         }
         let def_kind = match param.kind {
