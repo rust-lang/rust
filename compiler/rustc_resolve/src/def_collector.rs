@@ -291,12 +291,19 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             ForeignItemKind::Fn(box Fn { ident, .. }) => (ident, DefKind::Fn),
             ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => (ident, DefKind::ForeignTy),
-            ForeignItemKind::MacCall(_) => return self.visit_macro_invoc(fi.id),
+            ForeignItemKind::MacCall(_) => {
+                self.visit_invoc_in_module(fi.id);
+                self.visit_macro_invoc(fi.id);
+                return;
+            }
         };
 
         let def = self.create_def(fi.id, Some(ident.name), def_kind, fi.span);
 
-        self.with_parent(def, |this| visit::walk_item(this, fi));
+        self.with_parent(def, |this| {
+            this.build_reduced_graph_for_foreign_item(fi, ident);
+            visit::walk_item(this, fi)
+        });
     }
 
     fn visit_variant(&mut self, v: &'a Variant) {

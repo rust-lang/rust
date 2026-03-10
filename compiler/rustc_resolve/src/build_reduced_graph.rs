@@ -1069,7 +1069,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, ident: Ident) {
+    pub(crate) fn build_reduced_graph_for_foreign_item(
+        &mut self,
+        item: &ForeignItem,
+        ident: Ident,
+    ) {
         let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
@@ -1230,7 +1234,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     /// Visit invocation in context in which it can emit a named item (possibly `macro_rules`)
     /// directly into its parent scope's module.
-    fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
+    pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
         self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
@@ -1425,20 +1429,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        let ident = match foreign_item.kind {
-            ForeignItemKind::Static(box StaticItem { ident, .. })
-            | ForeignItemKind::Fn(box Fn { ident, .. })
-            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => ident,
-            ForeignItemKind::MacCall(_) => {
-                self.visit_invoc_in_module(foreign_item.id);
-                return;
-            }
-        };
-
-        self.build_reduced_graph_for_foreign_item(foreign_item, ident);
-        visit::walk_item(self, foreign_item);
-    }
 
     fn visit_block(&mut self, block: &'a Block) {
         let orig_current_module = self.parent_scope.module;
