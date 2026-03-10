@@ -13,7 +13,7 @@ use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -3557,7 +3557,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
+        let eself = respan(eself_lo.to(eself_hi), eself);
         Ok(Some(Param::from_self(AttrVec::default(), eself, eself_ident)))
     }
 

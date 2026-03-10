@@ -6,8 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span};
+use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,

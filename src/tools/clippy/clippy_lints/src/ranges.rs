@@ -14,8 +14,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, Spanned};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
