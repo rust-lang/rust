@@ -514,7 +514,7 @@ pub trait LintContext {
     // set the span in their `decorate` function (preferably using set_span).
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
+    /// [`diag_lint_level`]: rustc_middle::lint::diag_lint_level#decorate-signature
     #[track_caller]
     fn opt_span_diag_lint<S: Into<MultiSpan>>(
         &self,
