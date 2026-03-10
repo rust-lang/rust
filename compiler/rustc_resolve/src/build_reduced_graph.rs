@@ -1517,12 +1517,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and value namespaces.
-    fn visit_variant(&mut self, variant: &'a ast::Variant) {
-        if variant.is_placeholder {
-            self.visit_invoc_in_module(variant.id);
-            return;
-        }
-
+    pub(crate) fn brg_visit_variant(&mut self, variant: &'a ast::Variant) {
         let parent = self.parent_scope.module.expect_local();
         let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;

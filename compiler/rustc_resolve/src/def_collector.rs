@@ -312,7 +312,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_variant(&mut self, v: &'a Variant) {
         if v.is_placeholder {
-            return self.visit_macro_invoc(v.id);
+            self.visit_macro_invoc(v.id);
+            self.visit_invoc_in_module(v.id);
+            return;
         }
         let def = self.create_def(v.id, Some(v.ident.name), DefKind::Variant, v.span);
         self.with_parent(def, |this| {
@@ -324,7 +326,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     v.span,
                 );
             }
-            visit::walk_variant(this, v)
+            this.brg_visit_variant(v);
         });
     }
 
