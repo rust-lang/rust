@@ -7506,6 +7506,19 @@ mod tests {
         [0, !0, !0, !0]
     }
 
+    // f32 is the tricky case for max/min as that needs a fallback on z13
+    test_vec_2! { test_vec_max, vec_max, f32x4, f32x4 -> f32x4,
+        [1.0,   f32::NAN, f32::INFINITY, 2.0],
+        [-10.0, -10.0,    5.0,           f32::NAN],
+        [1.0,   -10.0,    f32::INFINITY, 2.0]
+    }
+
+    test_vec_2! { test_vec_min, vec_min, f32x4, f32x4 -> f32x4,
+        [1.0,   f32::NAN, f32::INFINITY, 2.0],
+        [-10.0, -10.0,    5.0,           f32::NAN],
+        [-10.0, -10.0,    5.0,           2.0]
+    }
+
     #[simd_test(enable = "vector")]
     fn test_vec_meadd() {
         let a = vector_unsigned_short([1, 0, 2, 0, 3, 0, 4, 0]);
