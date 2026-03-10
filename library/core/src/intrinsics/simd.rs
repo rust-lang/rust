@@ -62,6 +62,7 @@ pub const unsafe fn simd_splat<T, U>(value: U) -> T;
 /// Adds two simd vectors elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_add<T>(x: T, y: T) -> T;
@@ -69,6 +70,7 @@ pub const unsafe fn simd_add<T>(x: T, y: T) -> T;
 /// Subtracts `rhs` from `lhs` elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_sub<T>(lhs: T, rhs: T) -> T;
@@ -76,6 +78,7 @@ pub const unsafe fn simd_sub<T>(lhs: T, rhs: T) -> T;
 /// Multiplies two simd vectors elementwise.
 ///
 /// `T` must be a vector of integers or floats.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_mul<T>(x: T, y: T) -> T;
@@ -233,8 +236,7 @@ pub const unsafe fn simd_as<T, U>(x: T) -> U;
 /// Negates a vector elementwise.
 ///
 /// `T` must be a vector of integers or floats.
-///
-/// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
+/// For integers, wrapping arithmetic is used.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_neg<T>(x: T) -> T;
