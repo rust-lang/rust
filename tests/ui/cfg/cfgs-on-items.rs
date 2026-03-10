@@ -1,5 +1,8 @@
 //@ run-pass
 //@ compile-flags: --cfg fooA --cfg fooB --check-cfg=cfg(fooA,fooB,fooC,bar)
+//@ reference: cfg.predicate.all
+//@ reference: cfg.predicate.any
+//@ reference: cfg.predicate.not
 
 // fooA AND !bar
 #[cfg(all(fooA, not(bar)))]
