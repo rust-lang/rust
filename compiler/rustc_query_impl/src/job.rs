@@ -46,7 +46,7 @@ impl<'tcx> QueryJobMap<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct QueryJobInfo<'tcx> {
     pub(crate) frame: QueryStackFrame<'tcx>,
     pub(crate) job: QueryJob<'tcx>,
@@ -88,26 +88,28 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
     panic!("did not find a cycle")
 }
 
-/// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id`.
+/// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id` and returns
+/// information about it.
 #[cold]
 #[inline(never)]
 pub(crate) fn find_dep_kind_root<'tcx>(
+    tcx: TyCtxt<'tcx>,
     id: QueryJobId,
     job_map: QueryJobMap<'tcx>,
-) -> (QueryJobInfo<'tcx>, usize) {
+) -> (Span, String, usize) {
     let mut depth = 1;
     let mut info = &job_map.map[&id];
     let dep_kind = info.frame.dep_kind;
-    let mut last_layout = (info.clone(), depth);
+    let mut last_info = info;
 
     while let Some(id) = info.job.parent {
         info = &job_map.map[&id];
         if info.frame.dep_kind == dep_kind {
             depth += 1;
-            last_layout = (info.clone(), depth);
+            last_info = info;
         }
     }
-    last_layout
+    (last_info.job.span, last_info.frame.tagged_key.description(tcx), depth)
 }
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch

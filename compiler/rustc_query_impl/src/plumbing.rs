@@ -36,16 +36,16 @@ use crate::{
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::Full);
-    let (info, depth) = find_dep_kind_root(job, job_map);
+    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
 
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
 
-    tcx.sess.dcx().emit_fatal(QueryOverflow {
-        span: info.job.span,
-        note: QueryOverflowNote { desc: info.frame.tagged_key.description(tcx), depth },
+    tcx.dcx().emit_fatal(QueryOverflow {
+        span,
+        note: QueryOverflowNote { desc, depth },
         suggested_limit,
         crate_name: tcx.crate_name(LOCAL_CRATE),
     });
