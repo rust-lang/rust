@@ -683,7 +683,13 @@ pub enum ItemEnum {
 }
 
 impl ItemEnum {
-    /// Returns the [`ItemKind`] of this item.
+    /// Get just the kind of this item, but with no further data.
+    ///
+    /// ```rust
+    /// # use rustdoc_json_types::{ItemKind, ItemEnum};
+    /// let item = ItemEnum::ExternCrate { name: "libc".to_owned(), rename: None };
+    /// assert_eq!(item.item_kind(), ItemKind::ExternCrate);
+    /// ```
     pub fn item_kind(&self) -> ItemKind {
         match self {
             ItemEnum::Module(_) => ItemKind::Module,
