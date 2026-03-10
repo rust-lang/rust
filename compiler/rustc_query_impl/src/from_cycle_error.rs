@@ -76,11 +76,11 @@ fn fn_sig<'tcx>(
 fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> ! {
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
-    for info in &cycle_error.cycle {
-        if info.frame.dep_kind == DepKind::check_representability
-            && let Some(field_id) = info.frame.def_id
+    for frame in &cycle_error.cycle {
+        if frame.node.dep_kind == DepKind::check_representability
+            && let Some(field_id) = frame.node.def_id
             && let Some(field_id) = field_id.as_local()
-            && let Some(DefKind::Field) = info.frame.tagged_key.def_kind(tcx)
+            && let Some(DefKind::Field) = frame.node.tagged_key.def_kind(tcx)
         {
             let parent_id = tcx.parent(field_id.to_def_id());
             let item_id = match tcx.def_kind(parent_id) {
@@ -90,8 +90,8 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
             item_and_field_ids.push((item_id.expect_local(), field_id));
         }
     }
-    for info in &cycle_error.cycle {
-        if let TaggedQueryKey::check_representability_adt_ty(key) = info.frame.tagged_key
+    for frame in &cycle_error.cycle {
+        if let TaggedQueryKey::check_representability_adt_ty(key) = frame.node.tagged_key
             && let Some(adt) = key.ty_adt_def()
             && let Some(def_id) = adt.did().as_local()
             && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
@@ -109,9 +109,9 @@ fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> &'tcx
     search_for_cycle_permutation(
         &cycle_error.cycle,
         |cycle| {
-            if let Some(info) = cycle.get(0)
-                && info.frame.dep_kind == DepKind::variances_of
-                && let Some(def_id) = info.frame.def_id
+            if let Some(frame) = cycle.get(0)
+                && frame.node.dep_kind == DepKind::variances_of
+                && let Some(def_id) = frame.node.def_id
             {
                 let n = tcx.generics_of(def_id).own_params.len();
                 ControlFlow::Break(tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n)))
@@ -121,7 +121,7 @@ fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> &'tcx
         },
         || {
             span_bug!(
-                cycle_error.usage.as_ref().unwrap().0,
+                cycle_error.usage.as_ref().unwrap().span,
                 "only `variances_of` returns `&[ty::Variance]`"
             )
         },
@@ -154,7 +154,7 @@ fn layout_of<'tcx>(
     let diag = search_for_cycle_permutation(
         &cycle_error.cycle,
         |cycle| {
-            if let TaggedQueryKey::layout_of(key) = cycle[0].frame.tagged_key
+            if let TaggedQueryKey::layout_of(key) = cycle[0].node.tagged_key
                 && let ty::Coroutine(def_id, _) = key.value.kind()
                 && let Some(def_id) = def_id.as_local()
                 && let def_kind = tcx.def_kind(def_id)
@@ -178,8 +178,8 @@ fn layout_of<'tcx>(
                     tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
                     tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                 );
-                for (i, info) in cycle.iter().enumerate() {
-                    let TaggedQueryKey::layout_of(frame_key) = info.frame.tagged_key else {
+                for (i, frame) in cycle.iter().enumerate() {
+                    let TaggedQueryKey::layout_of(frame_key) = frame.node.tagged_key else {
                         continue;
                     };
                     let &ty::Coroutine(frame_def_id, _) = frame_key.value.kind() else {
@@ -189,7 +189,7 @@ fn layout_of<'tcx>(
                         continue;
                     };
                     let frame_span =
-                        info.frame.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
+                        frame.node.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
                     if frame_span.is_dummy() {
                         continue;
                     }
