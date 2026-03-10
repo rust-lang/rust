@@ -1471,7 +1471,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         visit::walk_assoc_item(self, item, ctxt);
     }
 
-    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+    pub(crate) fn brg_visit_attribute(&mut self, attr: &'a ast::Attribute) {
         if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
             self.r
                 .builtin_attrs
