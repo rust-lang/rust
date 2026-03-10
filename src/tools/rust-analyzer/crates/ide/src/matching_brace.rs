@@ -17,10 +17,9 @@ use syntax::{
 pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>], T![|], T![|]];
-
-    if let Some((brace_token, brace_idx)) = file
-        .syntax()
-        .token_at_offset(offset)
+    let current = file.syntax().token_at_offset(offset);
+    if let Some((brace_token, brace_idx)) = current
+        .clone()
         .filter_map(|node| {
             let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
             Some((node, idx))
@@ -39,10 +38,8 @@ pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<Text
             .find(|node| node.kind() == matching_kind && node != &brace_token)?;
         Some(matching_node.text_range().start())
     } else {
-        // when the offset is not at a brace
-        let thingy = file.syntax().token_at_offset(offset).last()?;
-        // find first parent
-        thingy.parent_ancestors().find_map(|x| {
+        // when the offset is not at a brace, find first parent
+        current.last()?.parent_ancestors().find_map(|x| {
             x.children_with_tokens()
                 .filter_map(|it| it.into_token())
                 // with ending brace
@@ -78,6 +75,14 @@ mod tests {
         do_check(
             "fn func(x) { return (2 * (x + 3)$0) + 5;}",
             "fn func(x) { return $0(2 * (x + 3)) + 5;}",
+        );
+        do_check(
+            "fn func(x) { return (2 * (x $0+ 3)) + 5;}",
+            "fn func(x) { return (2 * (x + 3$0)) + 5;}",
+        );
+        do_check(
+            "fn func(x) { re$0turn (2 * (x + 3)) + 5;}",
+            "fn func(x) { return (2 * (x + 3)) + 5;$0}",
         );
 
         {
