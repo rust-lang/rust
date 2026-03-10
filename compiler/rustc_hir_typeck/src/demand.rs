@@ -1,5 +1,5 @@
 use rustc_errors::{Applicability, Diag, MultiSpan, listify};
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -723,8 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path {
                             res:
                                 hir::def::Res::Def(
-                                    hir::def::DefKind::Static { .. }
-                                    | hir::def::DefKind::Const { .. },
+                                    DefKind::Static { .. } | DefKind::Const { .. },
                                     def_id,
                                 ),
                             ..
@@ -987,22 +986,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if fn_sig.skip_binder().inputs().skip_binder().len() != args.len() + 1 {
                     return None;
                 }
-                let mutability = match fn_sig.skip_binder().input(0).skip_binder().kind() {
-                    ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
-                    ty::Ref(_, _, _) => "&",
-                    _ => "",
+                let rcvr_ty = fn_sig.skip_binder().input(0).skip_binder();
+                let (mutability, ty) = match rcvr_ty.kind() {
+                    ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
+                    ty::Ref(_, ty, _) => ("&", ty),
+                    _ => ("", &rcvr_ty),
+                };
+                let path = match self.tcx.assoc_parent(m.def_id) {
+                    Some((_, DefKind::Impl { of_trait: true })) => with_no_trimmed_paths!(
+                        // We have `impl Trait for T {}`, suggest `<T as Trait>::method`.
+                        self.tcx.def_path_str_with_args(m.def_id, generic_args)
+                    )
+                    .to_string(),
+                    Some((_, DefKind::Impl { of_trait: false })) => {
+                        with_no_trimmed_paths!(if let ty::Adt(def, _) = ty.kind() {
+                            // We have `impl T {}`, suggest `T::method`.
+                            format!("{}::{}", self.tcx.def_path_str(def.did()), path.ident)
+                        } else {
+                            // This should be unreachable, as `impl &'a T {}` is invalid.
+                            format!("{ty}::{}", path.ident)
+                        })
+                    }
+                    // Fallback for arbitrary self types.
+                    _ => with_no_trimmed_paths!(
+                        self.tcx.def_path_str_with_args(m.def_id, generic_args)
+                    )
+                    .to_string(),
                 };
                 Some(vec![
-                    (
-                        expr.span.until(base.span),
-                        format!(
-                            "{}({}",
-                            with_no_trimmed_paths!(
-                                self.tcx.def_path_str_with_args(m.def_id, generic_args,)
-                            ),
-                            mutability,
-                        ),
-                    ),
+                    (expr.span.until(base.span), format!("{path}({}", mutability,)),
                     match &args {
                         [] => (base.span.shrink_to_hi().with_hi(expr.span.hi()), ")".to_string()),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
@@ -1278,7 +1290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let hir::def::Res::Def(kind, def_id) = path.res else {
                     return;
                 };
-                let callable_kind = if matches!(kind, hir::def::DefKind::Ctor(_, _)) {
+                let callable_kind = if matches!(kind, DefKind::Ctor(_, _)) {
                     CallableKind::Constructor
                 } else {
                     CallableKind::Function

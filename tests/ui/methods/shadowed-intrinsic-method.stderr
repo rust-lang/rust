@@ -44,7 +44,7 @@ note: method defined here
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     b.borrow(());
-LL +     main::<impl B>::borrow(&mut b, ());
+LL +     B::borrow(&mut b, ());
    |
 help: remove the extra argument
    |
@@ -98,7 +98,7 @@ note: method defined here
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     b.borrow(());
-LL +     main::<impl B>::borrow(&mut b, ());
+LL +     B::borrow(&mut b, ());
    |
 help: remove the extra argument
    |
