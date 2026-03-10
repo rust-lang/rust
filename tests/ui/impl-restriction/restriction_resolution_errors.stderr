@@ -1,0 +1,99 @@
+error[E0433]: cannot find `core` in the crate root
+  --> $DIR/restriction_resolution_errors.rs:14:23
+   |
+LL |         pub impl(in ::core) trait T2 {}
+   |                       ^^^^ you might be missing crate `core`
+   |
+help: try using `std` instead of `core`
+   |
+LL -         pub impl(in ::core) trait T2 {}
+LL +         pub impl(in ::std) trait T2 {}
+   |
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:16:21
+   |
+LL |         pub impl(in self::c) trait T3 {}
+   |                     ^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:18:21
+   |
+LL |         pub impl(in super::d) trait T4 {}
+   |                     ^^^^^^^^
+
+error[E0433]: cannot find module or crate `c` in `crate`
+  --> $DIR/restriction_resolution_errors.rs:20:28
+   |
+LL |         pub impl(in crate::c) trait T5 {}
+   |                            ^ use of unresolved module or unlinked crate `c`
+   |
+help: you might be missing a crate named `c`, add it to your project and import it in your code
+   |
+LL + extern crate c;
+   |
+
+error[E0577]: expected module, found enum `super::E`
+  --> $DIR/restriction_resolution_errors.rs:22:21
+   |
+LL |         pub impl(in super::E) trait T6 {}
+   |                     ^^^^^^^^ not a module
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/restriction_resolution_errors.rs:24:35
+   |
+LL |         pub impl(in super::super::super) trait T7 {}
+   |                                   ^^^^^ there are too many leading `super` keywords
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:34:21
+   |
+LL |         pub impl(in self::f) trait L1 {}
+   |                     ^^^^^^^
+
+error[E0577]: expected module, found enum `super::G`
+  --> $DIR/restriction_resolution_errors.rs:36:21
+   |
+LL |         pub impl(in super::G) trait L2 {}
+   |                     ^^^^^^^^ not a module
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:38:21
+   |
+LL |         pub impl(in super::h) trait L3 {}
+   |                     ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:47:13
+   |
+LL | pub impl(in crate::a) trait T13 {}
+   |             ^^^^^^^^
+
+error[E0577]: expected module, found enum `crate::a::E`
+  --> $DIR/restriction_resolution_errors.rs:49:13
+   |
+LL | pub impl(in crate::a::E) trait T14 {}
+   |             ^^^^^^^^^^^ not a module
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/restriction_resolution_errors.rs:54:10
+   |
+LL | pub impl(super) trait T17 {}
+   |          ^^^^^ there are too many leading `super` keywords
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:57:13
+   |
+LL | pub impl(in crate::j) trait L4 {}
+   |             ^^^^^^^^
+
+error[E0577]: expected module, found enum `crate::I`
+  --> $DIR/restriction_resolution_errors.rs:59:13
+   |
+LL | pub impl(in crate::I) trait L5 {}
+   |             ^^^^^^^^ not a module
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0433, E0577.
+For more information about an error, try `rustc --explain E0433`.

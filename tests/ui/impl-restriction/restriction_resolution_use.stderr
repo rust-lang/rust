@@ -1,0 +1,21 @@
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_use.rs:15:21
+   |
+LL |         pub impl(in crate::m2) trait T2 {}
+   |                     ^^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_use.rs:17:21
+   |
+LL |         pub impl(in m6::m5) trait T4 {}
+   |                     ^^^^^^
+
+error[E0577]: expected module, found enum `::m7`
+  --> $DIR/restriction_resolution_use.rs:18:21
+   |
+LL |         pub impl(in m7) trait T5 {}
+   |                     ^^ not a module
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0577`.
