@@ -119,7 +119,7 @@ fn check_validity_requirement_lax<'tcx>(
             }
             BackendRepr::SimdVector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
             BackendRepr::Memory { .. } => true, // Fields are checked below.
-            BackendRepr::ScalableVector { element, .. } => scalar_allows_raw_init(element),
+            BackendRepr::SimdScalableVector { element, .. } => scalar_allows_raw_init(element),
         };
 
     if !valid {

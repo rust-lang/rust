@@ -24,7 +24,7 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        BackendRepr::ScalableVector { ref element, count } => {
+        BackendRepr::SimdScalableVector { ref element, count } => {
             let element = if element.is_bool() {
                 cx.type_i1()
             } else {
@@ -187,7 +187,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. } => true,
+            | BackendRepr::SimdScalableVector { .. } => true,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
@@ -197,7 +197,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair(..) => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }
