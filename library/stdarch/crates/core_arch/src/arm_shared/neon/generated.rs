@@ -25891,7 +25891,15 @@ pub fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v4f16")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v4f16"
+        )]
+        fn _vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    unsafe { _vmaxnm_f16(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f16)"]
@@ -25913,7 +25921,15 @@ pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v8f16")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v8f16"
+        )]
+        fn _vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    unsafe { _vmaxnmq_f16(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnm_f32)"]
@@ -25934,7 +25950,15 @@ pub fn vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v2f32")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v2f32"
+        )]
+        fn _vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
+    }
+    unsafe { _vmaxnm_f32(a, b) }
 }
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f32)"]
@@ -25955,7 +25979,15 @@ pub fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe { simd_fmax(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxnm.v4f32")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.v4f32"
+        )]
+        fn _vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    }
+    unsafe { _vmaxnmq_f32(a, b) }
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_f16)"]
@@ -26383,7 +26415,15 @@ pub fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v4f16")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v4f16"
+        )]
+        fn _vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    unsafe { _vminnm_f16(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f16)"]
@@ -26405,7 +26445,15 @@ pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v8f16")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v8f16"
+        )]
+        fn _vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    unsafe { _vminnmq_f16(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnm_f32)"]
@@ -26426,7 +26474,15 @@ pub fn vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v2f32")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v2f32"
+        )]
+        fn _vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
+    }
+    unsafe { _vminnm_f32(a, b) }
 }
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f32)"]
@@ -26447,7 +26503,15 @@ pub fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    unsafe { simd_fmin(a, b) }
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vminnm.v4f32")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.v4f32"
+        )]
+        fn _vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    }
+    unsafe { _vminnmq_f32(a, b) }
 }
 #[doc = "Floating-point multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_f32)"]
