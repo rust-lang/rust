@@ -358,8 +358,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 },
             ),
             AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
-            AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
+            AssocItemKind::MacCall(..) => {
                 return self.visit_macro_invoc(i.id);
+            }
+            AssocItemKind::DelegationMac(..) => {
+                span_bug!(i.span, "degation mac invoc should have already been handled")
             }
         };
 
