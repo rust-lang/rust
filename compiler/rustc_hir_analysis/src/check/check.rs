@@ -24,7 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;

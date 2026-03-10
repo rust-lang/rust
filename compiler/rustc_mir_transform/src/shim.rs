@@ -12,8 +12,7 @@ use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::{Spanned, dummy_spanned};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
