@@ -47,7 +47,7 @@ impl<'hir> Crate<'hir> {
 
     pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
         if let Some(owner) = self.owners.get(def_id)
-            && !matches!(owner, MaybeOwner::Phantom)
+            && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
         {
             return *owner;
         }
