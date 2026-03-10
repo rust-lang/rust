@@ -1220,7 +1220,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         false
     }
 
-    fn visit_invoc(&mut self, id: NodeId) -> LocalExpnId {
+    pub(crate) fn visit_invoc(&mut self, id: NodeId) -> LocalExpnId {
         let invoc_id = id.placeholder_to_expn_id();
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
@@ -1496,43 +1496,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         visit::walk_attribute(self, attr);
     }
 
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        if arm.is_placeholder {
-            self.visit_invoc(arm.id);
-        } else {
-            visit::walk_arm(self, arm);
-        }
-    }
-
-    fn visit_expr_field(&mut self, f: &'a ast::ExprField) {
-        if f.is_placeholder {
-            self.visit_invoc(f.id);
-        } else {
-            visit::walk_expr_field(self, f);
-        }
-    }
-
-    fn visit_pat_field(&mut self, fp: &'a ast::PatField) {
-        if fp.is_placeholder {
-            self.visit_invoc(fp.id);
-        } else {
-            visit::walk_pat_field(self, fp);
-        }
-    }
-
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         if param.is_placeholder {
             self.visit_invoc(param.id);
         } else {
             visit::walk_generic_param(self, param);
-        }
-    }
-
-    fn visit_param(&mut self, p: &'a ast::Param) {
-        if p.is_placeholder {
-            self.visit_invoc(p.id);
-        } else {
-            visit::walk_param(self, p);
         }
     }
 

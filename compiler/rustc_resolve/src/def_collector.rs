@@ -525,12 +525,18 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'a Arm) {
-        if arm.is_placeholder { self.visit_macro_invoc(arm.id) } else { visit::walk_arm(self, arm) }
+        if arm.is_placeholder {
+            self.visit_macro_invoc(arm.id);
+            self.visit_invoc(arm.id);
+        } else {
+            visit::walk_arm(self, arm)
+        }
     }
 
     fn visit_expr_field(&mut self, f: &'a ExprField) {
         if f.is_placeholder {
-            self.visit_macro_invoc(f.id)
+            self.visit_macro_invoc(f.id);
+            self.visit_invoc(f.id);
         } else {
             visit::walk_expr_field(self, f)
         }
@@ -538,7 +544,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_pat_field(&mut self, fp: &'a PatField) {
         if fp.is_placeholder {
-            self.visit_macro_invoc(fp.id)
+            self.visit_macro_invoc(fp.id);
+            self.visit_invoc(fp.id);
         } else {
             visit::walk_pat_field(self, fp)
         }
@@ -546,7 +553,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_param(&mut self, p: &'a Param) {
         if p.is_placeholder {
-            self.visit_macro_invoc(p.id)
+            self.visit_macro_invoc(p.id);
+            self.visit_invoc(p.id);
         } else {
             self.with_impl_trait(ImplTraitContext::Universal, |this| visit::walk_param(this, p))
         }
