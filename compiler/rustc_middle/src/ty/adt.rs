@@ -751,8 +751,3 @@ impl<'tcx> AdtDef<'tcx> {
         if self.is_struct() { tcx.adt_sizedness_constraint((self.did(), sizedness)) } else { None }
     }
 }
-
-/// This type exists just so a `FromCycleError` impl can be made for the `check_representability`
-/// query.
-#[derive(Clone, Copy, Debug, HashStable)]
-pub struct Representability;

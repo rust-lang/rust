@@ -10,7 +10,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::dep_graph::DepKind;
 use rustc_middle::query::CycleError;
 use rustc_middle::query::plumbing::CyclePlaceholder;
-use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -86,42 +86,51 @@ impl<'tcx> FromCycleError<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
     }
 }
 
-impl<'tcx> FromCycleError<'tcx> for Representability {
-    fn from_cycle_error(
-        tcx: TyCtxt<'tcx>,
-        cycle_error: CycleError,
-        _guar: ErrorGuaranteed,
-    ) -> Self {
-        let mut item_and_field_ids = Vec::new();
-        let mut representable_ids = FxHashSet::default();
-        for info in &cycle_error.cycle {
-            if info.frame.dep_kind == DepKind::check_representability
-                && let Some(field_id) = info.frame.def_id
-                && let Some(field_id) = field_id.as_local()
-                && let Some(DefKind::Field) = info.frame.info.def_kind
-            {
-                let parent_id = tcx.parent(field_id.to_def_id());
-                let item_id = match tcx.def_kind(parent_id) {
-                    DefKind::Variant => tcx.parent(parent_id),
-                    _ => parent_id,
-                };
-                item_and_field_ids.push((item_id.expect_local(), field_id));
-            }
-        }
-        for info in &cycle_error.cycle {
-            if info.frame.dep_kind == DepKind::check_representability_adt_ty
-                && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
-                && let Some(def_id) = def_id.as_local()
-                && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
-            {
-                representable_ids.insert(def_id);
-            }
-        }
-        // We used to continue here, but the cycle error printed next is actually less useful than
-        // the error produced by `recursive_type_error`.
-        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        guar.raise_fatal();
+pub(super) fn representability_cycle_handler(tcx: TyCtxt<'_>, cycle_error: &CycleError) {
+    // We only handle cycle errors where `check_representability` is present and
+    // `check_representability_adt_ty` is the only potential additional query
+    let applies = cycle_error.cycle.iter().all(|query| {
+        matches!(
+            query.frame.dep_kind,
+            DepKind::check_representability | DepKind::check_representability_adt_ty
+        )
+    }) && cycle_error
+        .cycle
+        .iter()
+        .find(|query| query.frame.dep_kind == DepKind::check_representability)
+        .is_some();
+    if !applies {
+        return;
     }
+
+    let mut item_and_field_ids = Vec::new();
+    let mut representable_ids = FxHashSet::default();
+    for info in &cycle_error.cycle {
+        if info.frame.dep_kind == DepKind::check_representability
+            && let Some(field_id) = info.frame.def_id
+            && let Some(field_id) = field_id.as_local()
+            && let Some(DefKind::Field) = info.frame.info.def_kind
+        {
+            let parent_id = tcx.parent(field_id.to_def_id());
+            let item_id = match tcx.def_kind(parent_id) {
+                DefKind::Variant => tcx.parent(parent_id),
+                _ => parent_id,
+            };
+            item_and_field_ids.push((item_id.expect_local(), field_id));
+        }
+    }
+    for info in &cycle_error.cycle {
+        if info.frame.dep_kind == DepKind::check_representability_adt_ty
+            && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
+            && let Some(def_id) = def_id.as_local()
+            && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
+        {
+            representable_ids.insert(def_id);
+        }
+    }
+    // We used to continue here, but the cycle error printed next is actually less useful than
+    // the error produced by `recursive_type_error`.
+    recursive_type_error(tcx, item_and_field_ids, &representable_ids).raise_fatal()
 }
 
 impl<'tcx> FromCycleError<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
