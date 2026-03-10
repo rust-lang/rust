@@ -1138,3 +1138,14 @@ pub(crate) struct UnstableAttrForAlreadyStableFeature {
     #[label("the stability attribute annotates this item")]
     pub item_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$full_lint_name}`", code = E0710)]
+pub(crate) struct UnknownToolInScopedLint {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub tool_name: Symbol,
+    pub full_lint_name: Symbol,
+    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
+    pub is_nightly_build: bool,
+}

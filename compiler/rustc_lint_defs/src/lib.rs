@@ -802,6 +802,29 @@ pub enum AttributeLintKind {
         name: Symbol,
     },
     OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    RenamedLint {
+        name: Symbol,
+        replace: Symbol,
+        suggestion: Span,
+    },
+    DeprecatedLintName {
+        name: Symbol,
+        suggestion: Span,
+        replace: Symbol,
+    },
+    RemovedLint {
+        name: Symbol,
+        reason: String,
+    },
+    UnknownLint {
+        name: Symbol,
+        span: Span,
+        suggestion: Option<(Symbol, bool)>,
+    },
+    IgnoredUnlessCrateSpecified {
+        level: Symbol,
+        name: Symbol,
+    },
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]
