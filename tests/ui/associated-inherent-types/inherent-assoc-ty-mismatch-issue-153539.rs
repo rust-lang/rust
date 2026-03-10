@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver=globally
 #![feature(inherent_associated_types)]
-//~^ WARN the feature `inherent_associated_types` is incomplete
+#![expect(incomplete_features)]
 
 // Regression test for https://github.com/rust-lang/rust/issues/153539:
 
