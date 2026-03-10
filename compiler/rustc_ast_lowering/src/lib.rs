@@ -236,8 +236,8 @@ impl SpanLowerer {
 
 #[derive(Default)]
 struct MutableResolverAstLowering {
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
-    pub partial_res_map: NodeMap<hir::def::PartialRes>,
+    node_id_to_def_id: NodeMap<LocalDefId>,
+    partial_res_map: NodeMap<hir::def::PartialRes>,
 }
 
 struct CombinedResolverAstLowering<'a, 'tcx> {
