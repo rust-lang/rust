@@ -11,18 +11,18 @@
       let mut _7: isize;
       let mut _9: &mut std::fmt::Formatter<'_>;
       let mut _10: &T;
-      let mut _11: core::num::flt2dec::Sign;
+      let mut _11: core::num::imp::flt2dec::Sign;
       let mut _12: u32;
       let mut _13: u32;
       let mut _14: usize;
       let mut _15: bool;
       let mut _16: &mut std::fmt::Formatter<'_>;
       let mut _17: &T;
-      let mut _18: core::num::flt2dec::Sign;
+      let mut _18: core::num::imp::flt2dec::Sign;
       let mut _19: bool;
       scope 1 {
           debug force_sign => _4;
-          let _5: core::num::flt2dec::Sign;
+          let _5: core::num::imp::flt2dec::Sign;
           scope 2 {
               debug sign => _5;
               scope 3 {
@@ -56,14 +56,14 @@
       }
   
       bb1: {
--         _5 = core::num::flt2dec::Sign::MinusPlus;
-+         _5 = const core::num::flt2dec::Sign::MinusPlus;
+-         _5 = core::num::imp::flt2dec::Sign::MinusPlus;
++         _5 = const core::num::imp::flt2dec::Sign::MinusPlus;
           goto -> bb3;
       }
   
       bb2: {
--         _5 = core::num::flt2dec::Sign::Minus;
-+         _5 = const core::num::flt2dec::Sign::Minus;
+-         _5 = core::num::imp::flt2dec::Sign::Minus;
++         _5 = const core::num::imp::flt2dec::Sign::Minus;
           goto -> bb3;
       }
   

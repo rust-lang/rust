@@ -5,7 +5,6 @@
 //@ dont-require-annotations: NOTE
 
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 
 fn main() {
     // Baseline 1: under normal circumstances, byte string literal patterns have type `&[u8; N]`,

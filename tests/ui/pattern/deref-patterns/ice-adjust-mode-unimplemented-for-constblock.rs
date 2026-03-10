@@ -1,5 +1,4 @@
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 
 fn main() {
     let vec![const { vec![] }]: Vec<usize> = vec![];

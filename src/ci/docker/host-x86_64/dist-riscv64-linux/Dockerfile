@@ -11,7 +11,6 @@ RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
 COPY scripts/crosstool-ng-build.sh /scripts/
-COPY host-x86_64/dist-riscv64-linux/patches/ /tmp/patches/
 COPY host-x86_64/dist-riscv64-linux/riscv64-unknown-linux-gnu.defconfig /tmp/crosstool.defconfig
 RUN /scripts/crosstool-ng-build.sh
 

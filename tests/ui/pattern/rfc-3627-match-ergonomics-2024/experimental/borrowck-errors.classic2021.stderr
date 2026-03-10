@@ -4,8 +4,7 @@ error[E0507]: cannot move out of a shared reference
 LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
    |                       -     ^^^^^^^^^^^^^^^^^^^
    |                       |
-   |                       data moved here
-   |                       move occurs because `x` has type `&mut u32`, which does not implement the `Copy` trait
+   |                       data moved here because `x` has type `&mut u32`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
