@@ -134,7 +134,7 @@ impl DelegationIds {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'_, '_, 'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
@@ -814,13 +814,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a, 'tcx> {
-    resolver: &'a mut CombinedResolverAstLowering<'tcx>,
+struct SelfResolver<'a, 'b, 'tcx> {
+    resolver: &'a mut CombinedResolverAstLowering<'b, 'tcx>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl SelfResolver<'_, '_> {
+impl SelfResolver<'_, '_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
@@ -832,7 +832,7 @@ impl SelfResolver<'_, '_> {
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_,> {
+impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }

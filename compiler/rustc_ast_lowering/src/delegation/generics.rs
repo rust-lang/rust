@@ -60,7 +60,7 @@ impl<T> DelegationGenerics<T> {
 impl<'hir> HirOrAstGenerics<'hir> {
     pub(super) fn into_hir_generics(
         &mut self,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'_, '_, 'hir>,
         item_id: NodeId,
         span: Span,
     ) -> &mut HirOrAstGenerics<'hir> {
@@ -100,7 +100,7 @@ impl<'hir> HirOrAstGenerics<'hir> {
 
     pub(super) fn into_generic_args(
         &self,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'_, '_, 'hir>,
         add_lifetimes: bool,
         span: Span,
     ) -> Option<&'hir hir::GenericArgs<'hir>> {
@@ -140,7 +140,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
         &mut self,
         item_id: NodeId,
         span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'_, '_, 'hir>,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -182,7 +182,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
         &mut self,
         item_id: NodeId,
         span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'_, '_, 'hir>,
     ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -207,7 +207,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'_, '_, 'hir> {
     pub(super) fn lower_delegation_generics(
         &mut self,
         delegation: &Delegation,

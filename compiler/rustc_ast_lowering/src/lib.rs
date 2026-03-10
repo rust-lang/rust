@@ -87,7 +87,7 @@ mod pat;
 mod path;
 pub mod stability;
 
-struct LoweringContext<'a, 'hir> {
+struct LoweringContext<'a, 'b, 'hir> {
     tcx: TyCtxt<'hir>,
 
     // During lowering of delegation we need to access AST of other functions
@@ -98,7 +98,7 @@ struct LoweringContext<'a, 'hir> {
     // will be in AST index.
     ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 
-    resolver: &'a mut CombinedResolverAstLowering<'hir>,
+    resolver: &'a mut CombinedResolverAstLowering<'b, 'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -157,11 +157,11 @@ struct LoweringContext<'a, 'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     fn new(
         tcx: TyCtxt<'hir>,
         ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-        resolver: &'a mut CombinedResolverAstLowering<'hir>,
+        resolver: &'a mut CombinedResolverAstLowering<'b, 'hir>,
     ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
@@ -251,13 +251,13 @@ struct MutableResolverAstLowering {
     partial_res_map: NodeMap<hir::def::PartialRes>,
 }
 
-struct CombinedResolverAstLowering<'tcx> {
+struct CombinedResolverAstLowering<'a, 'tcx> {
     next_node_id: NodeId,
-    base: ResolverAstLowering<'tcx>,
+    base: &'a ResolverAstLowering<'tcx>,
     mut_part: MutableResolverAstLowering,
 }
 
-impl ResolverAstLoweringExt for CombinedResolverAstLowering<'_> {
+impl ResolverAstLoweringExt for CombinedResolverAstLowering<'_, '_> {
     #[inline]
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         self.base.legacy_const_generic_args(expr, tcx)
@@ -590,7 +590,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
 
     let mut resolver = CombinedResolverAstLowering {
         next_node_id: resolver.next_node_id,
-        base: resolver.resolver,
+        base: &resolver.resolver,
         mut_part: Default::default(),
     };
 
@@ -651,7 +651,7 @@ enum GenericArgsMode {
     Silence,
 }
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'_, '_, 'hir> {
     fn create_def(
         &mut self,
         node_id: ast::NodeId,
@@ -3026,7 +3026,10 @@ impl<'hir> GenericArgsCtor<'hir> {
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
-    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
+    fn into_generic_args(
+        self,
+        this: &LoweringContext<'_, '_, 'hir>,
+    ) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
             constraints: self.constraints,
