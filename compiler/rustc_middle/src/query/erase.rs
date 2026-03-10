@@ -10,8 +10,7 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
-use rustc_span::ErrorGuaranteed;
-use rustc_span::source_map::Spanned;
+use rustc_span::{ErrorGuaranteed, Spanned};
 
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
