@@ -467,10 +467,8 @@ macro_rules! define_queries {
                     #[cfg(not($cache_on_disk))]
                     is_loadable_from_disk_fn: |_tcx, _key, _index| false,
 
-                    value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> =
-                            FromCycleError::from_cycle_error(tcx, cycle, guar);
-                        erase::erase_val(result)
+                    value_from_cycle_error: |tcx, cycle, _| {
+                        $crate::from_cycle_error::default(tcx, cycle, stringify!($name))
                     },
 
                     #[cfg($no_hash)]
