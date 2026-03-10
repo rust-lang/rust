@@ -841,7 +841,8 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id) =>
+                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id)
+                    && self.tcx.inherent_impl_of_assoc(did).is_some() =>
             {
                 did
             },
