@@ -5,8 +5,7 @@ use rustc_hir::find_attr;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;

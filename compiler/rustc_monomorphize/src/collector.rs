@@ -236,8 +236,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{DebugInfo, EntryFnType};
-use rustc_span::source_map::{Spanned, dummy_spanned, respan};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
 use crate::collector::autodiff::collect_autodiff_fn;
