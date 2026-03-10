@@ -1,5 +1,5 @@
 warning: unused variable: `this_should_not_fulfill_the_expectation`
-  --> $DIR/force_warn_expected_lints_unfulfilled.rs:38:9
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:128:9
    |
 LL |     let this_should_not_fulfill_the_expectation = "maybe";
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_should_not_fulfill_the_expectation`
@@ -29,10 +29,362 @@ LL | #[expect(unused)]
    |          ^^^^^^
 
 warning: this lint expectation is unfulfilled
-  --> $DIR/force_warn_expected_lints_unfulfilled.rs:34:10
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
    |
 LL | #[expect(unused)]
    |          ^^^^^^
 
-warning: 5 warnings emitted
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:79:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 49 warnings emitted
 

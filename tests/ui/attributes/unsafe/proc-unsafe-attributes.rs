@@ -26,13 +26,10 @@ pub fn e() {}
 
 #[unsafe(allow(unsafe(dead_code)))]
 //~^ ERROR: is not an unsafe attribute
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
+//~| ERROR: malformed
 //~| ERROR: expected identifier, found keyword `unsafe`
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
+//~| ERROR: expected identifier, found keyword `unsafe`
+//~| ERROR: expected identifier, found keyword `unsafe`
 pub fn f() {}
 
 fn main() {}
