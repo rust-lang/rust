@@ -8,7 +8,7 @@ const BENCH_N: usize = 1000;
 fn main() {
     if cfg!(miri) {
         // Don't benchmark Miri...
-        // (Due to bootstrap quirks, this gets picked up by `x.py miri library/alloc --no-doc`.)
+        // (Due to bootstrap quirks, this gets picked up by `x.py miri library/alloc --all-targets`.)
         return;
     }
     let a: VecDeque<i32> = (0..VECDEQUE_LEN).collect();
