@@ -1101,13 +1101,32 @@ where
     Op: Fn(Word, Word) -> Word,
 {
     assert_eq!(lhs.len(), rhs.len());
-    for (&old_val, &rhs_val) in iter::zip(lhs, rhs) {
-        let new_val = op(old_val, rhs_val);
-        if old_val != new_val {
+
+    // To make codegen more vectorizer-friendly, we traverse each slice in larger
+    // "subchunks", and only consider an early return at subchunk boundaries.
+    // These subchunks are smaller than full `ChunkedBitSet` chunks, so that
+    // we still have some chance of stopping early.
+    const SUBCHUNK_LEN: usize = 64 / size_of::<Word>();
+    let (lhs_chunks, lhs_tail) = lhs.as_chunks::<SUBCHUNK_LEN>();
+    let (rhs_chunks, rhs_tail) = rhs.as_chunks::<SUBCHUNK_LEN>();
+
+    let would_modify_subchunk = |lhs_chunk: &[Word], rhs_chunk: &[Word]| {
+        let mut changed = 0;
+        for (&old_val, &rhs_val) in iter::zip(lhs_chunk, rhs_chunk) {
+            let new_val = op(old_val, rhs_val);
+            // Set `changed` to a non-zero value if any bits changed.
+            // This gives better SIMD codegen than using an actual boolean.
+            changed |= old_val ^ new_val;
+        }
+        changed != 0
+    };
+
+    for (lhs_chunk, rhs_chunk) in iter::zip(lhs_chunks, rhs_chunks) {
+        if would_modify_subchunk(lhs_chunk, rhs_chunk) {
             return true;
         }
     }
-    false
+    would_modify_subchunk(lhs_tail, rhs_tail)
 }
 
 /// A bitset with a mixed representation, using `DenseBitSet` for small and
