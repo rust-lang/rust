@@ -2091,6 +2091,32 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         }
     }
 
+    /// Removes all niches from this layout.
+    ///
+    /// This would
+    ///
+    /// * expand scalar valid ranges to their full range
+    /// * clear the largest niche
+    pub fn hide_niches(&mut self, dl: &TargetDataLayout) {
+        let hide = |scalar: &mut Scalar| match scalar {
+            Scalar::Initialized { value, valid_range } => {
+                *valid_range = WrappingRange::full(value.size(dl))
+            }
+            Scalar::Union { .. } => {}
+        };
+        match &mut self.backend_repr {
+            BackendRepr::Scalar(s) => hide(s),
+            BackendRepr::ScalarPair(a, b) => {
+                hide(a);
+                hide(b);
+            }
+            BackendRepr::SimdVector { element, .. }
+            | BackendRepr::ScalableVector { element, .. } => hide(element),
+            BackendRepr::Memory { .. } => {}
+        }
+        self.largest_niche = None;
+    }
+
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited

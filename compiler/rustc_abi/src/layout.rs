@@ -543,24 +543,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         st.variants = Variants::Single { index: v };
 
         if is_special_no_niche {
-            let hide_niches = |scalar: &mut _| match scalar {
-                Scalar::Initialized { value, valid_range } => {
-                    *valid_range = WrappingRange::full(value.size(dl))
-                }
-                // Already doesn't have any niches
-                Scalar::Union { .. } => {}
-            };
-            match &mut st.backend_repr {
-                BackendRepr::Scalar(scalar) => hide_niches(scalar),
-                BackendRepr::ScalarPair(a, b) => {
-                    hide_niches(a);
-                    hide_niches(b);
-                }
-                BackendRepr::SimdVector { element, .. }
-                | BackendRepr::ScalableVector { element, .. } => hide_niches(element),
-                BackendRepr::Memory { sized: _ } => {}
-            }
-            st.largest_niche = None;
+            st.hide_niches(dl);
             return Ok(st);
         }
 
