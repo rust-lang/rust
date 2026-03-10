@@ -1699,7 +1699,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
             BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }

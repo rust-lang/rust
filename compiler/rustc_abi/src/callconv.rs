@@ -83,7 +83,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
-            BackendRepr::ScalableVector { .. } => {
+            BackendRepr::SimdScalableVector { .. } => {
                 unreachable!("`homogeneous_aggregate` should not be called for scalable vectors")
             }
 

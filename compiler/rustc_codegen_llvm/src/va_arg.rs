@@ -551,7 +551,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
             registers_for_primitive(scalar1.primitive());
             registers_for_primitive(scalar2.primitive());
         }
-        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
             // Because no instance of VaArgSafe uses a non-scalar `BackendRepr`.
             unreachable!(
                 "No x86-64 SysV va_arg implementation for {:?}",
@@ -692,7 +692,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         }
         // The Previous match on `BackendRepr` means control flow already escaped.
         BackendRepr::SimdVector { .. }
-        | BackendRepr::ScalableVector { .. }
+        | BackendRepr::SimdScalableVector { .. }
         | BackendRepr::Memory { .. } => unreachable!(),
     };
 
