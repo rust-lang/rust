@@ -45,6 +45,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
@@ -663,6 +664,22 @@ pub fn lower_to_hir_delayed<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir:
     }
 
     map.get(&def_id).cloned().unwrap()
+}
+
+pub fn force_delayed_hir_lowering(tcx: TyCtxt<'_>, _: ()) {
+    let krate = tcx.hir_crate(());
+    for id in krate.delayed_ids.iter().copied() {
+        let _ = tcx.lower_to_hir_delayed(id);
+    }
+
+    let (_, krate) = tcx.resolver_for_lowering().steal();
+    let prof = tcx.sess.prof.clone();
+
+    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+    spawn(move || {
+        let _timer = prof.verbose_generic_activity("drop_ast");
+        drop(krate);
+    });
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

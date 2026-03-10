@@ -221,6 +221,11 @@ rustc_queries! {
         desc { "getting delayed owner" }
     }
 
+    query force_delayed_hir_lowering(_: ()) {
+        eval_always
+        desc { "forcing lowering of delayed HIR" }
+    }
+
     /// All items in the crate.
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
