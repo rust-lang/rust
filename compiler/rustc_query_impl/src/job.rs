@@ -88,6 +88,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
     panic!("did not find a cycle")
 }
 
+/// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id`.
 #[cold]
 #[inline(never)]
 pub(crate) fn find_dep_kind_root<'tcx>(
@@ -95,18 +96,16 @@ pub(crate) fn find_dep_kind_root<'tcx>(
     job_map: QueryJobMap<'tcx>,
 ) -> (QueryJobInfo<'tcx>, usize) {
     let mut depth = 1;
-    let info = &job_map.map[&id];
+    let mut info = &job_map.map[&id];
     let dep_kind = info.frame.dep_kind;
-    let mut current_id = info.job.parent;
     let mut last_layout = (info.clone(), depth);
 
-    while let Some(id) = current_id {
-        let info = &job_map.map[&id];
+    while let Some(id) = info.job.parent {
+        info = &job_map.map[&id];
         if info.frame.dep_kind == dep_kind {
             depth += 1;
             last_layout = (info.clone(), depth);
         }
-        current_id = info.job.parent;
     }
     last_layout
 }
