@@ -97,10 +97,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let old_index = self.r.placeholder_field_indices.insert(field.id, index(self));
             assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
             self.visit_macro_invoc(field.id);
+            self.visit_invoc(field.id);
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
             let def = self.create_def(field.id, Some(name), DefKind::Field, field.span);
-            self.with_parent(def, |this| visit::walk_field_def(this, field));
+            self.with_parent(def, |this| this.brg_visit_field_def(field));
         }
     }
 
