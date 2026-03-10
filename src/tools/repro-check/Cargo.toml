@@ -1,0 +1,23 @@
+[package]
+name = "repro-check"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+chrono = { version = "0.4", features = ["clock"] }
+env_logger = "0.11"
+hex = "0.4"
+ignore = "0.4"
+log = "0.4"
+num_cpus = "1.16"
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+toml = "0.8"
+walkdir = "2.5"
+
+[dev-dependencies]
+assert_fs = "1.1"
+tempfile = "3.12"
