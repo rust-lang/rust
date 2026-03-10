@@ -40,7 +40,7 @@ fn advance_filled() {
     let buf: &mut [_] = &mut [0; 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
-    rbuf.unfilled().advance(1);
+    rbuf.unfilled().advance_checked(1);
 
     assert_eq!(rbuf.filled().len(), 1);
     assert_eq!(rbuf.unfilled().capacity(), 15);
@@ -51,7 +51,7 @@ fn clear() {
     let buf: &mut [_] = &mut [255; 16];
     let mut rbuf: BorrowedBuf<'_> = buf.into();
 
-    rbuf.unfilled().advance(16);
+    rbuf.unfilled().advance_checked(16);
 
     assert_eq!(rbuf.filled().len(), 16);
     assert_eq!(rbuf.unfilled().capacity(), 0);
@@ -131,7 +131,7 @@ fn cursor_set_init() {
     assert!(cursor.is_init());
     assert_eq!(unsafe { cursor.as_mut().len() }, 16);
 
-    cursor.advance(4);
+    cursor.advance_checked(4);
 
     assert_eq!(unsafe { cursor.as_mut().len() }, 12);
 
@@ -157,7 +157,7 @@ fn cursor_with_unfilled_buf() {
         assert!(!buf.is_init());
 
         buf.unfilled().ensure_init();
-        buf.unfilled().advance(4);
+        buf.unfilled().advance_checked(4);
     });
 
     assert!(cursor.is_init());
