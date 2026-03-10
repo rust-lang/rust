@@ -1371,23 +1371,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 }
 
-macro_rules! method {
-    ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &'a $ty) {
-            if let $invoc(..) = node.kind {
-                self.visit_invoc(node.id);
-            } else {
-                visit::$walk(self, node);
-            }
-        }
-    };
-}
-
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
-    method!(visit_expr: ast::Expr, ast::ExprKind::MacCall, walk_expr);
-    method!(visit_pat: ast::Pat, ast::PatKind::MacCall, walk_pat);
-    method!(visit_ty: ast::Ty, ast::TyKind::MacCall, walk_ty);
-
     pub(crate) fn brg_visit_item(&mut self, item: &'a Item) {
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
