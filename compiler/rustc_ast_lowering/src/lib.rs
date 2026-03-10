@@ -98,7 +98,7 @@ struct LoweringContext<'a, 'b, 'hir> {
     // will be in AST index.
     ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
 
-    resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
+    resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -161,11 +161,10 @@ impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
     fn new(
         tcx: TyCtxt<'hir>,
         ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-        resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
+        resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
     ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
-            // Pseudo-globals.
             tcx,
             ast_index,
             resolver,
@@ -246,53 +245,58 @@ impl SpanLowerer {
     }
 }
 
-struct CombinedResolverForLowering<'a, 'tcx> {
-    next_node_id: NodeId,
-    base: &'a ResolverAstLowering<'tcx>,
-    mut_part: ResolverAstLowering<'tcx>,
+#[derive(Default)]
+struct MutableResolverAstLowering {
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub partial_res_map: NodeMap<hir::def::PartialRes>,
 }
 
-impl ResolverAstLoweringExt for CombinedResolverForLowering<'_, '_> {
+struct CombinedResolverAstLowering<'a, 'tcx> {
+    next_node_id: NodeId,
+    base: &'a ResolverAstLowering<'tcx>,
+    mut_part: MutableResolverAstLowering,
+}
+
+impl<'a, 'tcx> ResolverAstLoweringExt for CombinedResolverAstLowering<'a, 'tcx> {
+    #[inline]
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
-        self.mut_part
-            .legacy_const_generic_args(expr, tcx)
-            .or_else(|| self.base.legacy_const_generic_args(expr, tcx))
+        self.base.legacy_const_generic_args(expr, tcx)
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.mut_part.get_partial_res(id).or_else(|| self.base.get_partial_res(id))
+        self.mut_part.partial_res_map.get(&id).cloned().or_else(|| self.base.get_partial_res(id))
     }
 
     fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
-        self.mut_part.get_import_res(id).or_else(|| self.base.get_import_res(id))
+        self.base.get_import_res(id)
     }
 
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.mut_part.get_label_res(id).or_else(|| self.base.get_label_res(id))
+        self.base.get_label_res(id)
     }
 
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.mut_part.get_lifetime_res(id).or_else(|| self.base.get_lifetime_res(id))
+        self.base.get_lifetime_res(id)
     }
 
     fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
-        self.mut_part.extra_lifetime_params(id).or_else(|| self.base.extra_lifetime_params(id))
+        self.base.extra_lifetime_params(id)
     }
 
     fn delegation_fn_sig(&self, id: LocalDefId) -> Option<&DelegationFnSig> {
-        self.mut_part.delegation_fn_sig(id).or_else(|| self.base.delegation_fn_sig(id))
+        self.base.delegation_fn_sig(id)
     }
 
     fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
-        self.mut_part.delegation_info(id).or_else(|| self.base.delegation_info(id))
+        self.base.delegation_info(id)
     }
 
     fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
-        self.mut_part.def_id(id).or_else(|| self.base.def_id(id))
+        self.mut_part.node_id_to_def_id.get(&id).copied().or_else(|| self.base.def_id(id))
     }
 
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.mut_part.lifetime_elision_allowed(id) || self.base.lifetime_elision_allowed(id)
+        self.base.lifetime_elision_allowed(id)
     }
 }
 
@@ -511,7 +515,7 @@ enum TryBlockScope {
 }
 
 fn index_crate<'a, 'b, 'tcx>(
-    resolver: &'b CombinedResolverForLowering<'a, 'tcx>,
+    resolver: &'b CombinedResolverAstLowering<'a, 'tcx>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { resolver, index: IndexVec::new() };
@@ -521,7 +525,7 @@ fn index_crate<'a, 'b, 'tcx>(
     return indexer.index;
 
     struct Indexer<'s, 'a, 'tcx> {
-        resolver: &'s CombinedResolverForLowering<'a, 'tcx>,
+        resolver: &'s CombinedResolverAstLowering<'a, 'tcx>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -584,7 +588,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     tcx.ensure_done().get_lang_items(());
     let (resolver, krate) = tcx.resolver_for_lowering().steal();
 
-    let mut resolver = CombinedResolverForLowering {
+    let mut resolver = CombinedResolverAstLowering {
         next_node_id: resolver.next_node_id,
         base: &resolver.resolver,
         mut_part: Default::default(),
