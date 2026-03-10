@@ -629,6 +629,8 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
         lowerer.lower_node(def_id);
     }
 
+    drop(ast_index);
+
     // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
     let prof = tcx.sess.prof.clone();
     spawn(move || {
