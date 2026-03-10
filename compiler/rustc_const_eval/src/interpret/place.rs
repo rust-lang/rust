@@ -904,7 +904,7 @@ where
             }
             // Everything else can only exist in memory anyway, so it doesn't matter.
             BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => true,
         };
 

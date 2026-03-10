@@ -404,7 +404,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 }
                 BackendRepr::ScalarPair(_, _)
                 | BackendRepr::Memory { .. }
-                | BackendRepr::ScalableVector { .. } => bug!(),
+                | BackendRepr::SimdScalableVector { .. } => bug!(),
             })
         };
 
@@ -691,7 +691,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
             BackendRepr::ScalarPair(a, b) => {
                 OperandValueBuilder::Pair(Either::Right(a), Either::Right(b))
             }
-            BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+            BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
                 OperandValueBuilder::Vector(Either::Right(()))
             }
             BackendRepr::Memory { .. } => {

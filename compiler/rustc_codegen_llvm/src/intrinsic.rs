@@ -493,7 +493,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
-                    ScalableVector { .. } => {
+                    SimdScalableVector { .. } => {
                         tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
                             span,
                             name: sym::raw_eq,
