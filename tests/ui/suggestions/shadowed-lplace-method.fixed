@@ -6,5 +6,5 @@ use std::rc::Rc;
 
 fn main() {
     let rc = Rc::new(RefCell::new(true));
-    *std::cell::RefCell::borrow_mut(&rc) = false; //~ ERROR E0308
+    *RefCell::borrow_mut(&rc) = false; //~ ERROR E0308
 }
