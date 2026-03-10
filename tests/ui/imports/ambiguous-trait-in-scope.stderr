@@ -7,9 +7,9 @@ LL |     use m2::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
    = note: `#[warn(ambiguous_glob_imported_traits)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
@@ -49,9 +49,9 @@ LL |     use m2::*;
 LL |     0u8.method2();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 warning: Use of ambiguously glob imported trait `Trait`
   --> $DIR/ambiguous-trait-in-scope.rs:49:9
@@ -62,9 +62,9 @@ LL |     use m2_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
   --> $DIR/ambiguous-trait-in-scope.rs:51:9
@@ -88,9 +88,9 @@ LL |     use ambig_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
   --> $DIR/ambiguous-trait-in-scope.rs:58:9
@@ -115,9 +115,9 @@ LL |     use external::m2::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
   --> $DIR/ambiguous-trait-in-scope.rs:66:9
@@ -142,9 +142,9 @@ LL |     use external::m2_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
   --> $DIR/ambiguous-trait-in-scope.rs:74:9
@@ -168,9 +168,9 @@ LL |     use external::ambig_reexport::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = help: Import `Trait` explicitly
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
-   = help: Import `Trait` explicitly
 
 error[E0599]: no method named `method2` found for type `u8` in the current scope
   --> $DIR/ambiguous-trait-in-scope.rs:81:9
