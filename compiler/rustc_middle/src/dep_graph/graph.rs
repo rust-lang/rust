@@ -1021,6 +1021,7 @@ impl DepGraphData {
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
+        eprintln!("e {}", prev_deps.clone().count());
         for dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(tcx, dep_dep_node_index, &frame)?;
         }
