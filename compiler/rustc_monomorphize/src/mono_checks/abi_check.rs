@@ -36,7 +36,7 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
             UsesVectorRegisters::FixedVector
         }
         PassMode::Direct(..) | PassMode::Pair(..)
-            if matches!(repr, BackendRepr::ScalableVector { .. }) =>
+            if matches!(repr, BackendRepr::SimdScalableVector { .. }) =>
         {
             UsesVectorRegisters::ScalableVector
         }

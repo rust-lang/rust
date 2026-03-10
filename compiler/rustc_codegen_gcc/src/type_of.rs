@@ -85,7 +85,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
             );
         }
         BackendRepr::Memory { .. } => {}
-        BackendRepr::ScalableVector { .. } => todo!(),
+        BackendRepr::SimdScalableVector { .. } => todo!(),
     }
 
     let name = match *layout.ty.kind() {
@@ -181,7 +181,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         match self.backend_repr {
             BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
             // FIXME(rustc_scalable_vector): Not yet implemented in rustc_codegen_gcc.
-            BackendRepr::ScalableVector { .. } => todo!(),
+            BackendRepr::SimdScalableVector { .. } => todo!(),
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
@@ -191,7 +191,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair(..) => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }
