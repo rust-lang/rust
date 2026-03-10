@@ -5,8 +5,7 @@ use rustc_errors::{
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
 use crate::late::PatternSource;

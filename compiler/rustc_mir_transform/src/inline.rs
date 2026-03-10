@@ -15,7 +15,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_session::config::{DebugInfo, OptLevel};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
