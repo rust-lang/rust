@@ -1421,14 +1421,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.parent_scope.module = orig_module_scope;
     }
 
-    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
-        if let ast::StmtKind::MacCall(..) = stmt.kind {
-            self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
-        } else {
-            visit::walk_stmt(self, stmt);
-        }
+    pub(crate) fn brg_visit_stmt_mac_call(&mut self, stmt: &'a ast::Stmt) {
+        self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
     }
-
 
     fn visit_block(&mut self, block: &'a Block) {
         let orig_current_module = self.parent_scope.module;
