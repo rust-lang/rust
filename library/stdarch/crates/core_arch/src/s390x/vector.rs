@@ -335,6 +335,11 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vcfn"] fn vcfn(a: vector_signed_short, immarg: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vcnf"] fn vcnf(a: vector_signed_short, immarg: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vcrnfs"] fn vcrnfs(a: vector_float, b: vector_float, immarg: i32) -> vector_signed_short;
+
+    #[link_name = "llvm.s390.vfmaxsb"] fn vfmaxsb(a: vector_float, b: vector_float, mode: i32) -> vector_float;
+    #[link_name = "llvm.s390.vfmaxdb"] fn vfmaxdb(a: vector_double, b: vector_double, mode: i32) -> vector_double;
+    #[link_name = "llvm.s390.vfminsb"] fn vfminsb(a: vector_float, b: vector_float, mode: i32) -> vector_float;
+    #[link_name = "llvm.s390.vfmindb"] fn vfmindb(a: vector_double, b: vector_double, mode: i32) -> vector_double;
 }
 
 #[repr(simd)]
@@ -780,8 +785,20 @@ mod sealed {
         impl_max!(vec_vmxslg, vector_unsigned_long_long, vmxlg);
     }
 
-    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, "vector-enhancements-1" vfmaxsb ] }
-    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, "vector-enhancements-1" vfmaxdb] }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vfmaxsb_m0(a: vector_float, b: vector_float) -> vector_float {
+        // clang uses mode 0 for `vec_max`, so we do the same.
+        vfmaxsb(a, b, const { 0 })
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vfmaxdb_m0(a: vector_double, b: vector_double) -> vector_double {
+        vfmaxdb(a, b, const { 0 })
+    }
+
+    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [vfmaxsb_m0, "vector-enhancements-1" vfmaxsb ] }
+    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [vfmaxdb_m0, "vector-enhancements-1" vfmaxdb] }
 
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxdb (vector_double, vector_double) -> vector_double);
@@ -827,8 +844,20 @@ mod sealed {
         impl_min!(vec_vmnslg, vector_unsigned_long_long, vmnlg);
     }
 
-    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, "vector-enhancements-1" vfminsb]  }
-    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, "vector-enhancements-1" vfmindb]  }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vfminsb_m0(a: vector_float, b: vector_float) -> vector_float {
+        // clang uses mode 0 for `vec_min`, so we do the same.
+        vfminsb(a, b, const { 0 })
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn vfmindb_m0(a: vector_double, b: vector_double) -> vector_double {
+        vfmindb(a, b, const { 0 })
+    }
+
+    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [vfminsb_m0, "vector-enhancements-1" vfminsb]  }
+    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [vfmindb_m0, "vector-enhancements-1" vfmindb]  }
 
     impl_vec_trait!([VectorMin vec_min] vec_vfminsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMin vec_min] vec_vfmindb (vector_double, vector_double) -> vector_double);
