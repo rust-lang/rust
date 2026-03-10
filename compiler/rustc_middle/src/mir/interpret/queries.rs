@@ -139,15 +139,15 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mir_body = self.mir_for_ctfe(cid.instance.def_id());
                 if mir_body.is_polymorphic {
                     let Some(local_def_id) = ct.def.as_local() else { return };
-                    self.node_span_lint(
+                    self.emit_node_span_lint(
                         lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(ct.def),
-                        |lint| {
+                        rustc_errors::DiagDecorator(|lint| {
                             lint.primary_message(
                                 "cannot use constants which depend on generic parameters in types",
                             );
-                        },
+                        }),
                     )
                 }
             }

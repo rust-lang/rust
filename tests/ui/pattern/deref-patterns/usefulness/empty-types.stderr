@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `deref!(Some(_))` not covered
-  --> $DIR/empty-types.rs:21:11
+  --> $DIR/empty-types.rs:20:11
    |
 LL |     match box_opt_void {
    |           ^^^^^^^^^^^^ pattern `deref!(Some(_))` not covered
@@ -15,7 +15,7 @@ LL +         deref!(Some(_)) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/empty-types.rs:35:11
+  --> $DIR/empty-types.rs:34:11
    |
 LL |     match *box_opt_void {
    |           ^^^^^^^^^^^^^ pattern `Some(_)` not covered

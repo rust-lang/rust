@@ -1,5 +1,5 @@
 error[E0532]: expected a pattern, found a function call
-  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:5:9
+  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:4:9
    |
 LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    |         ^^^^^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
@@ -7,7 +7,7 @@ LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error[E0532]: expected a pattern, found a function call
-  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:5:9
+  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:4:9
    |
 LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    |         ^^^^^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
@@ -15,7 +15,7 @@ LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:5:14
+  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:4:14
    |
 LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    |              ^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
 error[E0164]: expected tuple struct or tuple variant, found associated function `::alloc::boxed::Box::new_uninit`
-  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:5:9
+  --> $DIR/ice-adjust-mode-unimplemented-for-constblock.rs:4:9
    |
 LL |     let vec![const { vec![] }]: Vec<usize> = vec![];
    |         ^^^^^^^^^^^^^^^^^^^^^^ `fn` calls are not allowed in patterns

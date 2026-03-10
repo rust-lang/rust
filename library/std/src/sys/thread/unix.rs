@@ -76,7 +76,7 @@ impl Thread {
                     // multiple of the system page size. Because it's definitely
                     // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                     // Round up to the nearest page and try again.
-                    let page_size = sys::os::page_size();
+                    let page_size = sys::pal::conf::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
 

@@ -1,5 +1,5 @@
 error: constant of non-structural type `Vec<()>` in a pattern
-  --> $DIR/implicit-const-deref.rs:15:9
+  --> $DIR/implicit-const-deref.rs:14:9
    |
 LL | const EMPTY: Vec<()> = Vec::new();
    | -------------------- constant defined here

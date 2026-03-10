@@ -1,6 +1,8 @@
-use core::num::dec2flt::decimal::Decimal;
-use core::num::dec2flt::parse::parse_number;
-use core::num::dec2flt::{dec2flt, pfe_invalid};
+use core::num::imp::dec2flt;
+
+use dec2flt::decimal::Decimal;
+use dec2flt::parse::parse_number;
+use dec2flt::{dec2flt, pfe_invalid};
 
 fn new_dec(e: i64, m: u64) -> Decimal {
     Decimal { exponent: e, mantissa: m, negative: false, many_digits: false }

@@ -2,7 +2,6 @@
 //! Test deref patterns using string and bytestring literals.
 
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 fn main() {
     for (test_in, test_expect) in [("zero", 0), ("one", 1), ("two", 2)] {

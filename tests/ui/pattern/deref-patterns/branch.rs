@@ -2,7 +2,6 @@
 //@ run-pass
 // Test the execution of deref patterns.
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 #[cfg(explicit)]
 fn branch(vec: Vec<u32>) -> u32 {

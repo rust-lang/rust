@@ -3,7 +3,6 @@
 //! inside a deref pattern inside a closure: rust-lang/rust#125059
 
 #![feature(deref_patterns)]
-#![allow(incomplete_features, unused)]
 
 fn simple_vec(vec: Vec<u32>) -> u32 {
    (|| match Vec::<u32>::new() {
