@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-54663.rs:20:9
+  --> $DIR/nll-problem-case-3-issue-54663.rs:22:9
    |
 LL | fn foo(x: &mut u8) -> Option<&u8> {
    |           - let's call the lifetime of this reference `'1`
@@ -11,6 +11,35 @@ LL |     }
 LL |     bar(x)
    |         ^ second mutable borrow occurs here
 
-error: aborting due to 1 previous error
+error[E0502]: cannot borrow `*self_words` as immutable because it is also borrowed as mutable
+  --> $DIR/nll-problem-case-3-issue-54663.rs:38:22
+   |
+LL | fn make_chunk_words_mut_for_change<'a>(
+   |                                    -- lifetime `'a` defined here
+...
+LL |     if let Some(words) = Rc::get_mut(self_words) {
+   |                                      ---------- mutable borrow occurs here
+LL |         return Some(words);
+   |                ----------- returning this value requires that `*self_words` is borrowed for `'a`
+...
+LL |     if !would_change(self_words) {
+   |                      ^^^^^^^^^^ immutable borrow occurs here
 
-For more information about this error, try `rustc --explain E0499`.
+error[E0499]: cannot borrow `*self_words` as mutable more than once at a time
+  --> $DIR/nll-problem-case-3-issue-54663.rs:42:23
+   |
+LL | fn make_chunk_words_mut_for_change<'a>(
+   |                                    -- lifetime `'a` defined here
+...
+LL |     if let Some(words) = Rc::get_mut(self_words) {
+   |                                      ---------- first mutable borrow occurs here
+LL |         return Some(words);
+   |                ----------- returning this value requires that `*self_words` is borrowed for `'a`
+...
+LL |     Some(Rc::make_mut(self_words))
+   |                       ^^^^^^^^^^ second mutable borrow occurs here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.
