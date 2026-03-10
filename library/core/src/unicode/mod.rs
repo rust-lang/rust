@@ -12,14 +12,15 @@ pub use unicode_data::conversions;
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
-pub(crate) use unicode_data::n::lookup as N;
+pub(crate) use unicode_data::numeric::lookup as N;
 pub(crate) use unicode_data::uppercase::lookup as Uppercase;
 pub(crate) use unicode_data::white_space::lookup as White_Space;
 
 pub(crate) mod printable;
 
+mod rt;
 #[allow(unreachable_pub)]
-mod unicode_data;
+pub mod unicode_data;
 
 /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
