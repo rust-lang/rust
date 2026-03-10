@@ -1425,7 +1425,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
     }
 
-    fn visit_block(&mut self, block: &'a Block) {
+    pub(crate) fn brg_visit_block(&mut self, block: &'a Block) {
         let orig_current_module = self.parent_scope.module;
         let orig_current_macro_rules_scope = self.parent_scope.macro_rules;
         self.build_reduced_graph_for_block(block);
