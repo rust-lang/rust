@@ -270,7 +270,16 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, tcx, cycle.lift()), None),
+        Err(mut cycle) => {
+            if let Some(def_id) = key.key_as_def_id() {
+                if let Some(pos) = cycle.cycle.iter().position(|entry| {
+                    entry.frame.dep_kind == query.dep_kind && entry.frame.def_id == Some(def_id)
+                }) {
+                    cycle.cycle.rotate_left(pos);
+                }
+            }
+            (mk_cycle(query, tcx, cycle.lift()), None)
+        }
     }
 }
 
