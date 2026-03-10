@@ -47,7 +47,7 @@ help: provide the argument
 LL |      .two(0, /* isize */);
    |            +++++++++++++
 
-error[E0599]: `Foo` is not an iterator
+error[E0599]: no method named `take` found for struct `Foo` in the current scope
   --> $DIR/method-call-err-msg.rs:19:7
    |
 LL |   pub struct Foo;
