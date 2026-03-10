@@ -3,7 +3,7 @@
 //@ revisions: reva revb
 //@ only-x86_64
 //@ run-pass
-#![feature(cfg_select)]
+//@ reference: asm.attributes.supported-attributes
 
 use std::arch::{asm, naked_asm};
 

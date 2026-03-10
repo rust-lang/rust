@@ -52,7 +52,7 @@ pub(crate) fn check_drop_impl(
         }
     }
 
-    tcx.ensure_ok().orphan_check_impl(drop_impl_did)?;
+    tcx.ensure_result().orphan_check_impl(drop_impl_did)?;
 
     let self_ty = tcx.type_of(drop_impl_did).instantiate_identity();
 
@@ -96,7 +96,7 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
         tcx.dcx().span_delayed_bug(tcx.def_span(impl_def_id), "default impl cannot be negative");
     }
 
-    tcx.ensure_ok().orphan_check_impl(impl_def_id)?;
+    tcx.ensure_result().orphan_check_impl(impl_def_id)?;
 
     match impl_trait_ref.self_ty().kind() {
         ty::Adt(adt_def, adt_to_impl_args) => {

@@ -89,6 +89,28 @@ impl Replacement {
     }
 }
 
+fn get_triggered_expr_span(
+    left_expr: &hir::Expr<'_>,
+    right_expr: &hir::Expr<'_>,
+    first_arg_id: hir::HirId,
+    second_arg_id: hir::HirId,
+    replacement: Replacement,
+) -> Option<Span> {
+    if left_expr.res_local_id() == Some(first_arg_id)
+        && (replacement.has_args || right_expr.res_local_id() == Some(second_arg_id))
+    {
+        right_expr.span.into()
+    }
+    // https://github.com/rust-lang/rust-clippy/issues/16581
+    else if right_expr.res_local_id() == Some(first_arg_id)
+        && (replacement.has_args || left_expr.res_local_id() == Some(second_arg_id))
+    {
+        left_expr.span.into()
+    } else {
+        None
+    }
+}
+
 fn check_fold_with_op(
     cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
@@ -111,8 +133,13 @@ fn check_fold_with_op(
         && let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind
         && let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind
 
-        && left_expr.res_local_id() == Some(first_arg_id)
-        && (replacement.has_args || right_expr.res_local_id() == Some(second_arg_id))
+        && let Some(triggered_expr_span) = get_triggered_expr_span(
+            left_expr,
+            right_expr,
+            first_arg_id,
+            second_arg_id,
+            replacement
+        )
     {
         let span = fold_span.with_hi(expr.span.hi());
         span_lint_and_then(
@@ -125,7 +152,7 @@ fn check_fold_with_op(
                 let turbofish =
                     replacement.maybe_turbofish(cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs());
                 let (r_snippet, _) =
-                    snippet_with_context(cx, right_expr.span, expr.span.ctxt(), "EXPR", &mut applicability);
+                    snippet_with_context(cx, triggered_expr_span, expr.span.ctxt(), "EXPR", &mut applicability);
                 let sugg = if replacement.has_args {
                     format!(
                         "{method}{turbofish}(|{second_arg_ident}| {r_snippet})",

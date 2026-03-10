@@ -214,6 +214,23 @@ Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 * [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
 
 
+## `allow-unwrap-types`
+List of types to allow `unwrap()` and `expect()` on.
+
+#### Example
+
+```toml
+allow-unwrap-types = [ "std::sync::LockResult" ]
+```
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
+* [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
+
+
 ## `allow-useless-vec-in-tests`
 Whether `useless_vec` should ignore test functions or `#[cfg(test)]`
 
@@ -503,6 +520,23 @@ The minimum digits a const float literal must have to supress the `excessive_pre
 ---
 **Affected lints:**
 * [`excessive_precision`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision)
+
+
+## `disallowed-fields`
+The list of disallowed fields, written as fully qualified paths.
+
+**Fields:**
+- `path` (required): the fully qualified path to the field that should be disallowed
+- `reason` (optional): explanation why this field is disallowed
+- `replacement` (optional): suggested alternative method
+- `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+  if the path doesn't exist, instead of emitting an error
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`disallowed_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_fields)
 
 
 ## `disallowed-macros`

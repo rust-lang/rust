@@ -53,15 +53,14 @@ use std::{cmp, fmt, iter};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::DepContext;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
@@ -300,7 +299,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let trait_def_id = alias.trait_def_id(tcx);
                 let rebased_args = alias.args.rebase_onto(tcx, trait_def_id, impl_substs);
 
+                // The impl is erroneous missing a definition for the associated type.
+                // Skipping it since calling `TyCtxt::type_of` on its assoc ty will trigger an ICE.
+                if !leaf_def.item.defaultness(tcx).has_value() {
+                    return false;
+                }
+
                 let impl_item_def_id = leaf_def.item.def_id;
+                if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
+                    return false;
+                }
                 let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
 
                 self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
@@ -1837,7 +1845,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // containing a single ASCII character, perhaps the user meant to write `b'c'` to
                 // specify a byte literal
                 (ty::Uint(ty::UintTy::U8), ty::Char) => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_circumfix('\'', '\'')
                         // forbid all Unicode escapes
                         && !code.starts_with("\\u")
@@ -1854,7 +1862,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // containing a single character, perhaps the user meant to write `'c'` to
                 // specify a character literal (issue #92479)
                 (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_circumfix('"', '"')
                         && code.chars().count() == 1
                     {
@@ -1867,7 +1875,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // If a string was expected and the found expression is a character literal,
                 // perhaps the user meant to write `"s"` to specify a string literal.
                 (ty::Ref(_, r, _), ty::Char) if r.is_str() => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && code.starts_with("'")
                         && code.ends_with("'")
                     {
@@ -2008,7 +2016,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         }
 
-        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) else { return None };
+        let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span) else { return None };
 
         let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);
@@ -2085,7 +2093,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Use the terminal width as the basis to determine when to compress the printed
                 // out type, but give ourselves some leeway to avoid ending up creating a file for
                 // a type that is somewhat shorter than the path we'd write to.
-                let len = self.tcx.sess().diagnostic_width() + 40;
+                let len = self.tcx.sess.diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
                 if exp_s.len() > len {

@@ -1501,7 +1501,7 @@ fn classify_name_ref<'db>(
                         | SyntaxKind::RECORD_FIELD
                 )
             })
-            .and_then(|_| nameref.as_ref()?.syntax().ancestors().find_map(ast::Adt::cast))
+            .and_then(|_| find_node_at_offset::<ast::Adt>(original_file, original_offset))
             .and_then(|adt| sema.derive_helpers_in_scope(&adt))
             .unwrap_or_default();
         Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind, derive_helpers } })

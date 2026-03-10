@@ -1,7 +1,11 @@
 use ide_db::ty_filter::TryEnum;
 use syntax::{
     AstNode, T,
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        syntax_factory::SyntaxFactory,
+    },
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -64,7 +68,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                 if let_expr_needs_paren(&init) { make.expr_paren(init).into() } else { init };
 
             let block = make.block_expr([], None);
-            block.indent(IndentLevel::from_node(let_stmt.syntax()));
+            let block = block.indent(IndentLevel::from_node(let_stmt.syntax()));
             let if_expr = make.expr_if(
                 make.expr_let(pat, init_expr).into(),
                 block,
@@ -96,6 +100,29 @@ mod tests {
     use crate::tests::check_assist;
 
     use super::*;
+
+    #[test]
+    fn replace_let_try_enum_ref() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+//- minicore: option
+fn main(action: Action) {
+    $0let x = compute();
+}
+
+fn compute() -> &'static Option<i32> { &None }
+            ",
+            r"
+fn main(action: Action) {
+    if let Some(x) = compute() {
+    }
+}
+
+fn compute() -> &'static Option<i32> { &None }
+            ",
+        )
+    }
 
     #[test]
     fn replace_let_unknown_enum() {

@@ -4,8 +4,6 @@
 //@ check-pass
 //@ edition: 2024
 
-#![feature(if_let_guard)]
-
 fn get_temp() -> Option<String> {
     None
 }

@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sym;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::source_map::Spanned;
-use rustc_span::sym;
 
 use super::GET_FIRST;
 

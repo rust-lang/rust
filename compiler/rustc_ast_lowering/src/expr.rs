@@ -7,7 +7,6 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
@@ -341,12 +340,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
                 ExprKind::Struct(se) => {
-                    let rest = match &se.rest {
-                        StructRest::Base(e) => hir::StructTailExpr::Base(self.lower_expr(e)),
+                    let rest = match se.rest {
+                        StructRest::Base(ref e) => hir::StructTailExpr::Base(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            hir::StructTailExpr::DefaultFields(self.lower_span(*sp))
+                            hir::StructTailExpr::DefaultFields(self.lower_span(sp))
                         }
                         StructRest::None => hir::StructTailExpr::None,
+                        StructRest::NoneWithError(guar) => hir::StructTailExpr::NoneWithError(guar),
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -805,7 +805,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) {
         if self.tcx.features().async_fn_track_caller()
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
-            && find_attr!(*attrs, AttributeKind::TrackCaller(_))
+            && find_attr!(*attrs, TrackCaller(_))
         {
             let unstable_span = self.mark_span_with_reason(
                 DesugaringKind::Async,
@@ -1072,8 +1072,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
-
-            let mut coroutine_kind = find_attr!(attrs, AttributeKind::Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
+            let mut coroutine_kind = find_attr!(attrs, Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
 
             // FIXME(contracts): Support contracts on closures?
             let body_id = this.lower_fn_body(decl, None, |this| {
@@ -1437,7 +1436,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(self.lower_span(e.span))
                     }
                     StructRest::Rest(span) => Some(self.lower_span(*span)),
-                    StructRest::None => None,
+                    StructRest::None | StructRest::NoneWithError(_) => None,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat_without_dbm(lhs.span, struct_pat);

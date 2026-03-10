@@ -14,7 +14,7 @@ where
 
 fn bar<T>()
 where
-    T: Trait2<3>, //~ ERROR: mismatched types
+    T: Trait2<3>, //~ ERROR: type annotations needed for the literal
 {
 }
 

@@ -432,6 +432,22 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().project_deeper(more_projections, tcx)
     }
 
+    /// Return a place that projects to a field of the current place.
+    ///
+    /// The type of the current place must be an ADT.
+    pub fn project_to_field(
+        self,
+        idx: FieldIdx,
+        local_decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        let ty = self.ty(local_decls, tcx).ty;
+        let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
+        let field = &adt.non_enum_variant().fields[idx];
+        let field_ty = field.ty(tcx, args);
+        self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+    }
+
     pub fn ty_from<D>(
         local: Local,
         projection: &[PlaceElem<'tcx>],
@@ -731,11 +747,6 @@ impl<'tcx> ConstOperand<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Rvalues
 
-pub enum RvalueInitializationState {
-    Shallow,
-    Deep,
-}
-
 impl<'tcx> Rvalue<'tcx> {
     /// Returns true if rvalue can be safely removed when the result is unused.
     #[inline]
@@ -770,7 +781,6 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
-            | Rvalue::ShallowInitBox(_, _)
             | Rvalue::WrapUnsafeBinder(_, _) => true,
         }
     }
@@ -817,19 +827,8 @@ impl<'tcx> Rvalue<'tcx> {
                 }
                 AggregateKind::RawPtr(ty, mutability) => Ty::new_ptr(tcx, ty, mutability),
             },
-            Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
             Rvalue::WrapUnsafeBinder(_, ty) => ty,
-        }
-    }
-
-    #[inline]
-    /// Returns `true` if this rvalue is deeply initialized (most rvalues) or
-    /// whether its only shallowly initialized (`Rvalue::Box`).
-    pub fn initialization_state(&self) -> RvalueInitializationState {
-        match *self {
-            Rvalue::ShallowInitBox(_, _) => RvalueInitializationState::Shallow,
-            _ => RvalueInitializationState::Deep,
         }
     }
 }

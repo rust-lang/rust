@@ -1329,7 +1329,9 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_associated_item(self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(tcx, id) {
-            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
+            DefKind::AssocConst { is_type_const } => {
+                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
+            }
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),

@@ -488,7 +488,7 @@ impl TopSubtree {
                 unreachable!()
             };
             *open_span = S::new(span.open.range, 0);
-            *close_span = S::new(span.close.range, 0);
+            *close_span = S::new(span.close.range, 1);
         }
         dispatch! {
             match &mut self.repr => tt => do_it(tt, span)

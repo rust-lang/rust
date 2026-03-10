@@ -96,7 +96,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
     }
 }
 
-pub(super) fn exit_with_code(code: isize) -> ! {
+pub fn exit_with_code(code: isize) -> ! {
     if code != 0 {
         if let Some(mut out) = panic::SgxPanicOutput::new() {
             let _ = write!(out, "Exited with status code {code}");

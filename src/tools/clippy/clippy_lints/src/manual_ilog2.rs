@@ -37,6 +37,8 @@ declare_clippy_lint! {
     "manually reimplementing `ilog2`"
 }
 
+impl_lint_pass!(ManualIlog2 => [MANUAL_ILOG2]);
+
 pub struct ManualIlog2 {
     msrv: Msrv,
 }
@@ -46,8 +48,6 @@ impl ManualIlog2 {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualIlog2 => [MANUAL_ILOG2]);
 
 impl LateLintPass<'_> for ManualIlog2 {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {

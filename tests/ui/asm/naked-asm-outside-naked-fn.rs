@@ -2,6 +2,7 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
+//@ reference: asm.scope.naked_asm
 
 #![crate_type = "lib"]
 

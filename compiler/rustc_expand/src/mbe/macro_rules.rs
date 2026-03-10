@@ -14,7 +14,6 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::MacroKinds;
 use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::{
@@ -819,7 +818,7 @@ pub fn compile_declarative_macro(
     }
     assert!(!kinds.is_empty());
 
-    let transparency = find_attr!(attrs, AttributeKind::RustcMacroTransparency(x) => *x)
+    let transparency = find_attr!(attrs, RustcMacroTransparency(x) => *x)
         .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {

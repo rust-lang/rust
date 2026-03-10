@@ -77,7 +77,7 @@ use std::num::NonZero;
 pub use check::{check_abi, check_custom_abi};
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -133,7 +133,12 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor>
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl)
+    let result = tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl);
+    // Async drop in libstd/libcore would become insta-stable — catch that mistake.
+    if result.is_some() && tcx.features().staged_api() {
+        span_bug!(tcx.def_span(def_id), "don't use async drop in libstd, it becomes insta-stable");
+    }
+    result
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -195,18 +200,6 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
                         extra levels of indirection such as references";
         tcx.dcx().span_err(tcx.def_span(id), msg);
     }
-}
-
-fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
-    let span = tcx.def_span(impl_item);
-    let ident = tcx.item_ident(impl_item);
-
-    let err = match tcx.span_of_impl(parent_impl) {
-        Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
-        Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
-    };
-
-    tcx.dcx().emit_err(err);
 }
 
 fn missing_items_err(
@@ -557,7 +550,7 @@ fn suggestion_signature<'tcx>(
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
-        ty::AssocKind::Const { name } => {
+        ty::AssocKind::Const { name, .. } => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
             let val = tcx
                 .infer_ctxt()

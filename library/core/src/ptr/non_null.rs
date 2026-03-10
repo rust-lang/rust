@@ -1,7 +1,7 @@
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::marker::{Destruct, PointeeSized, Unsize};
-use crate::mem::{MaybeUninit, SizedTypeProperties};
+use crate::mem::{MaybeUninit, SizedTypeProperties, transmute};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::pin::PinCoerceUnsized;
@@ -100,9 +100,8 @@ impl<T: Sized> NonNull<T> {
     #[must_use]
     #[inline]
     pub const fn without_provenance(addr: NonZero<usize>) -> Self {
-        let pointer = crate::ptr::without_provenance(addr.get());
-        // SAFETY: we know `addr` is non-zero.
-        unsafe { NonNull { pointer } }
+        // SAFETY: we know `addr` is non-zero and all nonzero integers are valid raw pointers.
+        unsafe { transmute(addr) }
     }
 
     /// Creates a new `NonNull` that is dangling, but well-aligned.
@@ -239,7 +238,7 @@ impl<T: PointeeSized> NonNull<T> {
                 "NonNull::new_unchecked requires that the pointer is non-null",
                 (ptr: *mut () = ptr as *mut ()) => !ptr.is_null()
             );
-            NonNull { pointer: ptr as _ }
+            transmute(ptr)
         }
     }
 
@@ -282,7 +281,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     pub const fn from_ref(r: &T) -> Self {
         // SAFETY: A reference cannot be null.
-        unsafe { NonNull { pointer: r as *const T } }
+        unsafe { transmute(r as *const T) }
     }
 
     /// Converts a mutable reference to a `NonNull` pointer.
@@ -291,7 +290,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     pub const fn from_mut(r: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
-        unsafe { NonNull { pointer: r as *mut T } }
+        unsafe { transmute(r as *mut T) }
     }
 
     /// Performs the same functionality as [`std::ptr::from_raw_parts`], except that a
@@ -502,7 +501,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
-        unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
+        unsafe { transmute(self.as_ptr() as *mut U) }
     }
 
     /// Try to cast to a pointer of another type by checking alignment.
@@ -581,7 +580,7 @@ impl<T: PointeeSized> NonNull<T> {
         // Additionally safety contract of `offset` guarantees that the resulting pointer is
         // pointing to an allocation, there can't be an allocation at null, thus it's safe to
         // construct `NonNull`.
-        unsafe { NonNull { pointer: intrinsics::offset(self.as_ptr(), count) } }
+        unsafe { transmute(intrinsics::offset(self.as_ptr(), count)) }
     }
 
     /// Calculates the offset from a pointer in bytes.
@@ -605,7 +604,7 @@ impl<T: PointeeSized> NonNull<T> {
         // Additionally safety contract of `offset` guarantees that the resulting pointer is
         // pointing to an allocation, there can't be an allocation at null, thus it's safe to
         // construct `NonNull`.
-        unsafe { NonNull { pointer: self.as_ptr().byte_offset(count) } }
+        unsafe { transmute(self.as_ptr().byte_offset(count)) }
     }
 
     /// Adds an offset to a pointer (convenience for `.offset(count as isize)`).
@@ -657,7 +656,7 @@ impl<T: PointeeSized> NonNull<T> {
         // Additionally safety contract of `offset` guarantees that the resulting pointer is
         // pointing to an allocation, there can't be an allocation at null, thus it's safe to
         // construct `NonNull`.
-        unsafe { NonNull { pointer: intrinsics::offset(self.as_ptr(), count) } }
+        unsafe { transmute(intrinsics::offset(self.as_ptr(), count)) }
     }
 
     /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
@@ -681,7 +680,7 @@ impl<T: PointeeSized> NonNull<T> {
         // Additionally safety contract of `add` guarantees that the resulting pointer is pointing
         // to an allocation, there can't be an allocation at null, thus it's safe to construct
         // `NonNull`.
-        unsafe { NonNull { pointer: self.as_ptr().byte_add(count) } }
+        unsafe { transmute(self.as_ptr().byte_add(count)) }
     }
 
     /// Subtracts an offset from a pointer (convenience for
@@ -763,7 +762,7 @@ impl<T: PointeeSized> NonNull<T> {
         // Additionally safety contract of `sub` guarantees that the resulting pointer is pointing
         // to an allocation, there can't be an allocation at null, thus it's safe to construct
         // `NonNull`.
-        unsafe { NonNull { pointer: self.as_ptr().byte_sub(count) } }
+        unsafe { transmute(self.as_ptr().byte_sub(count)) }
     }
 
     /// Calculates the distance between two pointers within the same allocation. The returned value is in

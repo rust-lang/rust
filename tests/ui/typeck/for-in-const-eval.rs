@@ -2,4 +2,6 @@
 fn main() {
     Vec::<[(); 1 + for x in 0..1 {}]>::new();
     //~^ ERROR cannot add
+    //~| ERROR const Iterator` is not satisfied
+    //~| ERROR const Iterator` is not satisfied
 }

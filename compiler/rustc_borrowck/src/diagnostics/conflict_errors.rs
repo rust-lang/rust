@@ -28,7 +28,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
@@ -535,7 +535,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(pat) = finder.parent_pat {
                     sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "borrow this binding in the pattern to avoid moving the value",
                     sugg,
                     Applicability::MachineApplicable,
@@ -1157,7 +1157,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = base.kind else { return };
         let (hir::def::Res::Local(_)
         | hir::def::Res::Def(
-            DefKind::Const | DefKind::ConstParam | DefKind::Static { .. } | DefKind::AssocConst,
+            DefKind::Const { .. }
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::AssocConst { .. },
             _,
         )) = path.res
         else {
@@ -1435,6 +1438,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         expr: &hir::Expr<'_>,
     ) -> bool {
         let tcx = self.infcx.tcx;
+
+        // Don't suggest `.clone()` in a derive macro expansion.
+        if let ExpnKind::Macro(MacroKind::Derive, _) = self.body.span.ctxt().outer_expn_data().kind
+        {
+            return false;
+        }
         if let Some(_) = self.clone_on_reference(expr) {
             // Avoid redundant clone suggestion already suggested in `explain_captures`.
             // See `tests/ui/moves/needs-clone-through-deref.rs`
@@ -1509,7 +1518,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         } else {
             "consider cloning the value if the performance cost is acceptable"
         };
-        err.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        err.multipart_suggestion(msg, sugg, Applicability::MachineApplicable);
         true
     }
 
@@ -2759,7 +2768,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .chain(finder.closure_call_changes)
                 .collect();
 
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "try explicitly passing `&Self` into the closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
@@ -3347,7 +3356,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                             let addition =
                                 format!("let {}binding = {};\n{}", mutability, s, " ".repeat(p));
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 msg,
                                 vec![
                                     (stmt.span.shrink_to_lo(), addition),

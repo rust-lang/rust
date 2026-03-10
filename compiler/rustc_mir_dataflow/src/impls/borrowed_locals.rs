@@ -86,7 +86,6 @@ where
 
             Rvalue::Cast(..)
             | Rvalue::Ref(_, BorrowKind::Fake(_), _)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::Use(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)

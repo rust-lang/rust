@@ -303,11 +303,11 @@ pub(crate) enum IsTuple {
 }
 
 /// Fields for a static method
-pub(crate) enum StaticFields {
+pub(crate) enum StaticFields<'a> {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span, Option<AnonConst>)>),
+    Named(Vec<(Ident, Span, Option<&'a AnonConst>)>),
 }
 
 /// A summary of the possible sets of fields.
@@ -331,7 +331,7 @@ pub(crate) enum SubstructureFields<'a> {
     EnumDiscr(FieldInfo, Option<Box<Expr>>),
 
     /// A static method where `Self` is a struct.
-    StaticStruct(&'a ast::VariantData, StaticFields),
+    StaticStruct(&'a ast::VariantData, StaticFields<'a>),
 
     /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef),
@@ -540,7 +540,6 @@ impl<'a> TraitDef<'a> {
                         .filter(|a| {
                             a.has_any_name(&[
                                 sym::allow,
-                                sym::expect,
                                 sym::warn,
                                 sym::deny,
                                 sym::forbid,
@@ -596,7 +595,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: Vec<Box<ast::Ty>>,
+        field_tys: Vec<&ast::Ty>,
         methods: Vec<Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
@@ -614,7 +613,7 @@ impl<'a> TraitDef<'a> {
                 },
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     ident,
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
@@ -851,7 +850,7 @@ impl<'a> TraitDef<'a> {
                 of_trait: Some(Box::new(ast::TraitImplHeader {
                     safety: self.safety,
                     polarity: ast::ImplPolarity::Positive,
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     trait_ref,
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
@@ -870,8 +869,7 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let field_tys: Vec<Box<ast::Ty>> =
-            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
+        let field_tys = Vec::from_iter(struct_def.fields().iter().map(|field| &*field.ty));
 
         let methods = self
             .methods
@@ -923,11 +921,13 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         from_scratch: bool,
     ) -> Box<ast::Item> {
-        let mut field_tys = Vec::new();
-
-        for variant in &enum_def.variants {
-            field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
-        }
+        let field_tys = Vec::from_iter(
+            enum_def
+                .variants
+                .iter()
+                .flat_map(|variant| variant.data.fields())
+                .map(|field| &*field.ty),
+        );
 
         let methods = self
             .methods
@@ -1073,7 +1073,7 @@ impl<'a> MethodDef<'a> {
         let trait_lo_sp = span.shrink_to_lo();
 
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
-        let defaultness = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
         Box::new(ast::AssocItem {
@@ -1160,8 +1160,8 @@ impl<'a> MethodDef<'a> {
     fn expand_static_struct_method_body(
         &self,
         cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
-        struct_def: &VariantData,
+        trait_: &TraitDef<'a>,
+        struct_def: &'a VariantData,
         type_ident: Ident,
         nonselflike_args: &[Box<Expr>],
     ) -> BlockOrExpr {
@@ -1480,13 +1480,13 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
+    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &'a VariantData) -> StaticFields<'a> {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp, field.default.clone())),
+                Some(ident) => named_idents.push((ident, sp, field.default.as_ref())),
                 _ => just_spans.push(sp),
             }
         }

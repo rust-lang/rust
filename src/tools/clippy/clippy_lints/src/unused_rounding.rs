@@ -30,6 +30,7 @@ declare_clippy_lint! {
     nursery,
     "Uselessly rounding a whole number floating-point literal"
 }
+
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
 fn is_useless_rounding(cx: &EarlyContext<'_>, expr: &Expr) -> Option<(Symbol, String)> {

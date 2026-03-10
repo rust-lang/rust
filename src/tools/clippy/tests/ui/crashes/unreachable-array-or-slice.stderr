@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+error[E0433]: cannot find `Self` in this scope
   --> tests/ui/crashes/unreachable-array-or-slice.rs:4:9
    |
 LL |     let Self::anything_here_kills_it(a, b, ..) = Foo(5, 5, 5, 5);

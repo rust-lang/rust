@@ -62,7 +62,6 @@ impl<'db> rustc_type_ir::inherent::Abi<DbInterner<'db>> for FnAbi {
     }
 
     fn is_rust(self) -> bool {
-        // TODO: rustc does not consider `RustCall` to be true here, but Chalk does
-        matches!(self, FnAbi::Rust | FnAbi::RustCall)
+        matches!(self, FnAbi::Rust)
     }
 }

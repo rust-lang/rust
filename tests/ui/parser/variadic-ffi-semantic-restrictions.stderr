@@ -80,17 +80,25 @@ error: `...` must be the last argument of a C-variadic function
 LL | extern "C" fn f3_3(_: ..., x: isize) {}
    |                    ^^^^^^
 
-error: functions cannot be both `const` and C-variadic
+error[E0658]: c-variadic const function definitions are unstable
   --> $DIR/variadic-ffi-semantic-restrictions.rs:33:1
    |
 LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
-   | ^^^^^ `const` because of this             ^^^^^^ C-variadic because of this
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: functions cannot be both `const` and C-variadic
+error[E0658]: c-variadic const function definitions are unstable
   --> $DIR/variadic-ffi-semantic-restrictions.rs:37:1
    |
 LL | const extern "C" fn f4_2(x: isize, _: ...) {}
-   | ^^^^^ `const` because of this      ^^^^^^ C-variadic because of this
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: functions with a C variable argument list must be unsafe
   --> $DIR/variadic-ffi-semantic-restrictions.rs:37:36
@@ -109,11 +117,15 @@ error: `...` must be the last argument of a C-variadic function
 LL | const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
    |                          ^^^^^^
 
-error: functions cannot be both `const` and C-variadic
+error[E0658]: c-variadic const function definitions are unstable
   --> $DIR/variadic-ffi-semantic-restrictions.rs:42:1
    |
 LL | const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
-   | ^^^^^ `const` because of this              ^^^^^^ C-variadic because of this
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: functions with a C variable argument list must be unsafe
   --> $DIR/variadic-ffi-semantic-restrictions.rs:42:44
@@ -176,13 +188,15 @@ LL |     fn i_f4(_: ..., x: isize, _: ...) {}
    |
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: functions cannot be both `const` and C-variadic
+error[E0658]: c-variadic const function definitions are unstable
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:5
    |
 LL |     const fn i_f5(x: isize, _: ...) {}
-   |     ^^^^^                   ^^^^^^ C-variadic because of this
-   |     |
-   |     `const` because of this
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
@@ -243,6 +257,10 @@ LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
    |                                           ^        - value is dropped here
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:37:36
@@ -251,6 +269,10 @@ LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    |                                    ^        - value is dropped here
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
@@ -259,7 +281,12 @@ LL |     const fn i_f5(x: isize, _: ...) {}
    |                             ^        - value is dropped here
    |                             |
    |                             the destructor for this type cannot be evaluated in constant functions
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 33 previous errors
 
-For more information about this error, try `rustc --explain E0493`.
+Some errors have detailed explanations: E0493, E0658.
+For more information about an error, try `rustc --explain E0493`.

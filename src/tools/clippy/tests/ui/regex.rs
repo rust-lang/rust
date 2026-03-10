@@ -152,8 +152,4 @@ fn regex_creation_in_loops() {
     }
 }
 
-fn main() {
-    syntax_error();
-    trivial_regex();
-    regex_creation_in_loops();
-}
+fn main() {}

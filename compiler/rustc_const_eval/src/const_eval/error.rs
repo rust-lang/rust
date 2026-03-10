@@ -110,7 +110,7 @@ pub fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
 ) -> (Span, Vec<errors::FrameNote>) {
-    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
+    let mut stacktrace = Frame::generate_stacktrace_from_stack(stack, *tcx);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
     let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
@@ -252,7 +252,7 @@ pub(super) fn lint<'tcx, L>(
     lint: &'static rustc_session::lint::Lint,
     decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
+    L: for<'a> rustc_errors::Diagnostic<'a, ()>,
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 

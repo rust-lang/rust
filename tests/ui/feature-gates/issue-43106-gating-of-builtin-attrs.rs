@@ -55,7 +55,6 @@
 //~| HELP can only be applied to
 //~| HELP remove the attribute
 #![no_implicit_prelude]
-#![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
 // see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
 // (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
@@ -465,30 +464,6 @@ mod no_implicit_prelude {
     //~| HELP remove the attribute
 }
 
-#[reexport_test_harness_main = "2900"]
-//~^ WARN crate-level attribute should be
-mod reexport_test_harness_main {
-//~^ NOTE this attribute does not have an `!`, which means it is applied to this module
-    mod inner { #![reexport_test_harness_main="2900"] }
-    //~^ WARN the `#![reexport_test_harness_main]` attribute can only be used at the crate root
-
-    #[reexport_test_harness_main = "2900"] fn f() { }
-    //~^ WARN crate-level attribute should be
-    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
-
-    #[reexport_test_harness_main = "2900"] struct S;
-    //~^ WARN crate-level attribute should be
-    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
-
-    #[reexport_test_harness_main = "2900"] type T = S;
-    //~^ WARN crate-level attribute should be
-    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
-
-    #[reexport_test_harness_main = "2900"] impl S { }
-    //~^ WARN crate-level attribute should be
-    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
-}
-
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
 #[macro_escape]
 //~^ WARN `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
@@ -859,26 +834,26 @@ mod crate_type {
 
 #[feature(x0600)]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod feature {
+//~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![feature(x0600)] }
-//~^ WARN crate-level attribute should be in the root module
+    //~^ WARN the `#![feature]` attribute can only be used at the crate root
 
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[feature(x0600)] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[feature(x0600)] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[feature(x0600)] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 

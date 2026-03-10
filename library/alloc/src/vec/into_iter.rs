@@ -9,8 +9,7 @@ use core::num::NonZero;
 use core::ops::Deref;
 use core::panic::UnwindSafe;
 use core::ptr::{self, NonNull};
-use core::slice::{self};
-use core::{array, fmt};
+use core::{array, fmt, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;

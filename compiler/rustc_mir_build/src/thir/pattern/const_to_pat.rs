@@ -5,7 +5,6 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -75,13 +74,14 @@ impl<'tcx> ConstToPat<'tcx> {
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
             let def_kind = self.tcx.def_kind(uv.def);
-            if let hir::def::DefKind::AssocConst = def_kind
+            if let hir::def::DefKind::AssocConst { .. } = def_kind
                 && let Some(def_id) = uv.def.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
-            if let hir::def::DefKind::Const | hir::def::DefKind::AssocConst = def_kind {
+            if let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } = def_kind
+            {
                 err.span_label(self.tcx.def_span(uv.def), msg!("constant defined here"));
             }
         }
@@ -117,7 +117,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // We've emitted an error on the original const, it would be redundant to complain
                 // on its use as well.
                 if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
-                    && let hir::def::DefKind::Const | hir::def::DefKind::AssocConst =
+                    && let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } =
                         self.tcx.def_kind(uv.def)
                 {
                     err.downgrade_to_delayed_bug();
@@ -488,8 +488,7 @@ fn type_has_partial_eq_impl<'tcx>(
     let mut structural_peq = false;
     let mut impl_def_id = None;
     for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, ty) {
-        automatically_derived =
-            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..));
+        automatically_derived = find_attr!(tcx, def_id, AutomaticallyDerived(..));
         impl_def_id = Some(def_id);
     }
     for _ in tcx.non_blanket_impls_for_ty(structural_partial_eq_trait_id, ty) {

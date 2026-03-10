@@ -88,6 +88,7 @@ declare_clippy_lint! {
     complexity,
     "using a clamp pattern instead of the clamp function"
 }
+
 impl_lint_pass!(ManualClamp => [MANUAL_CLAMP]);
 
 pub struct ManualClamp {

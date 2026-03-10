@@ -8,8 +8,7 @@ mod llvm_enzyme {
     use std::string::String;
 
     use rustc_ast::expand::autodiff_attrs::{
-        AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
-        valid_ty_for_activity,
+        DiffActivity, DiffMode, valid_input_activity, valid_ret_activity, valid_ty_for_activity,
     };
     use rustc_ast::token::{Lit, LitKind, Token, TokenKind};
     use rustc_ast::tokenstream::*;
@@ -20,6 +19,7 @@ mod llvm_enzyme {
         MetaItemInner, MgcaDisambiguation, PatKind, Path, PathSegment, TyKind, Visibility,
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
+    use rustc_hir::attrs::RustcAutodiff;
     use rustc_span::{Ident, Span, Symbol, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
@@ -87,7 +87,7 @@ mod llvm_enzyme {
         meta_item: &ThinVec<MetaItemInner>,
         has_ret: bool,
         mode: DiffMode,
-    ) -> AutoDiffAttrs {
+    ) -> RustcAutodiff {
         let dcx = ecx.sess.dcx();
 
         // Now we check, whether the user wants autodiff in batch/vector mode, or scalar mode.
@@ -105,7 +105,7 @@ mod llvm_enzyme {
                         span: meta_item[1].span(),
                         width: x,
                     });
-                    return AutoDiffAttrs::error();
+                    return RustcAutodiff::error();
                 }
             }
         } else {
@@ -129,7 +129,7 @@ mod llvm_enzyme {
             };
         }
         if errors {
-            return AutoDiffAttrs::error();
+            return RustcAutodiff::error();
         }
 
         // If a return type exist, we need to split the last activity,
@@ -145,11 +145,11 @@ mod llvm_enzyme {
             (&DiffActivity::None, activities.as_slice())
         };
 
-        AutoDiffAttrs {
+        RustcAutodiff {
             mode,
             width,
             ret_activity: *ret_activity,
-            input_activity: input_activity.to_vec(),
+            input_activity: input_activity.iter().cloned().collect(),
         }
     }
 
@@ -214,7 +214,7 @@ mod llvm_enzyme {
         // first get information about the annotable item: visibility, signature, name and generic
         // parameters.
         // these will be used to generate the differentiated version of the function
-        let Some((vis, sig, primal, generics, impl_of_trait)) = (match &item {
+        let Some((vis, sig, primal, generics, is_impl)) = (match &item {
             Annotatable::Item(iitem) => {
                 extract_item_info(iitem).map(|(v, s, p, g)| (v, s, p, g, false))
             }
@@ -224,13 +224,13 @@ mod llvm_enzyme {
                 }
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { of_trait }) => match &assoc_item.kind {
+            Annotatable::AssocItem(assoc_item, Impl { of_trait: _ }) => match &assoc_item.kind {
                 ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => Some((
                     assoc_item.vis.clone(),
                     sig.clone(),
                     ident.clone(),
                     generics.clone(),
-                    *of_trait,
+                    true,
                 )),
                 _ => None,
             },
@@ -309,7 +309,7 @@ mod llvm_enzyme {
         ts.pop();
         let ts: TokenStream = TokenStream::from_iter(ts);
 
-        let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret, mode);
+        let x: RustcAutodiff = from_ast(ecx, &meta_item_vec, has_ret, mode);
         if !x.is_active() {
             // We encountered an error, so we return the original item.
             // This allows us to potentially parse other attributes.
@@ -328,13 +328,13 @@ mod llvm_enzyme {
                 span,
                 &d_sig,
                 &generics,
-                impl_of_trait,
+                is_impl,
             )],
         );
 
         // The first element of it is the name of the function to be generated
         let d_fn = Box::new(ast::Fn {
-            defaultness: ast::Defaultness::Final,
+            defaultness: ast::Defaultness::Implicit,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
             generics,
@@ -603,7 +603,7 @@ mod llvm_enzyme {
     fn gen_enzyme_decl(
         ecx: &ExtCtxt<'_>,
         sig: &ast::FnSig,
-        x: &AutoDiffAttrs,
+        x: &RustcAutodiff,
         span: Span,
     ) -> ast::FnSig {
         let dcx = ecx.sess.dcx();

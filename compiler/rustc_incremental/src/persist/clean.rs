@@ -9,7 +9,7 @@
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
 //!
-//! - `#[rustc_clean(cfg="rev2", loaded_from_disk='typeck")]` asserts that
+//! - `#[rustc_clean(cfg="rev2", loaded_from_disk="typeck")]` asserts that
 //!   the query result for `DepNode::typeck(X)` was actually
 //!   loaded from disk (not just marked green). This can be useful
 //!   to ensure that a test is actually exercising the deserialization
@@ -27,7 +27,7 @@ use rustc_hir::{
     Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, find_attr,
     intravisit,
 };
-use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
+use rustc_middle::dep_graph::{DepNode, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol};
@@ -322,7 +322,7 @@ impl<'tcx> CleanVisitor<'tcx> {
         if let Some(def_id) = dep_node.extract_def_id(self.tcx) {
             format!("{:?}({})", dep_node.kind, self.tcx.def_path_str(def_id))
         } else {
-            format!("{:?}({:?})", dep_node.kind, dep_node.hash)
+            format!("{:?}({:?})", dep_node.kind, dep_node.key_fingerprint)
         }
     }
 
@@ -352,13 +352,11 @@ impl<'tcx> CleanVisitor<'tcx> {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
 
-        let Some(attr) =
-            find_attr!(self.tcx.get_all_attrs(item_id), AttributeKind::RustcClean(attr) => attr)
-        else {
+        let Some(clean_attrs) = find_attr!(self.tcx, item_id, RustcClean(attr) => attr) else {
             return;
         };
 
-        for attr in attr {
+        for attr in clean_attrs {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };

@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::get_enclosing_block;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::visitors::{Visitable, for_each_expr};
+use clippy_utils::{get_enclosing_block, sym};
 use core::ops::ControlFlow;
 use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -41,6 +40,7 @@ declare_clippy_lint! {
     nursery,
     "a collection is never queried"
 }
+
 declare_lint_pass!(CollectionIsNeverRead => [COLLECTION_IS_NEVER_READ]);
 
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {

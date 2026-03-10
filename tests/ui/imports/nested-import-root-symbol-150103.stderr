@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `Iuse`
+error[E0433]: cannot find module or crate `Iuse` in the crate root
   --> $DIR/nested-import-root-symbol-150103.rs:6:9
    |
 LL |     use Iuse::{ ::Fish };
@@ -9,11 +9,11 @@ help: you might be missing a crate named `Iuse`, add it to your project and impo
 LL + extern crate Iuse;
    |
 
-error[E0433]: failed to resolve: crate root in paths can only be used in start position
+error[E0433]: the crate root in paths can only be used in start position
   --> $DIR/nested-import-root-symbol-150103.rs:10:13
    |
 LL |     use A::{::Fish};
-   |             ^ crate root in paths can only be used in start position
+   |             ^ can only be used in path start position
 
 error: aborting due to 2 previous errors
 

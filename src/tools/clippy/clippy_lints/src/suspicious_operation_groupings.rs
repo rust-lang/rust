@@ -64,7 +64,9 @@ declare_clippy_lint! {
     "groupings of binary operations that look suspiciously like typos"
 }
 
-declare_lint_pass!(SuspiciousOperationGroupings => [SUSPICIOUS_OPERATION_GROUPINGS]);
+declare_lint_pass!(SuspiciousOperationGroupings => [
+    SUSPICIOUS_OPERATION_GROUPINGS,
+]);
 
 impl EarlyLintPass for SuspiciousOperationGroupings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {

@@ -15,15 +15,15 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::iter;
 use std::ops::{Bound, ControlFlow};
+use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
-use rustc_hir::attrs::AttributeKind;
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
@@ -93,7 +93,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         const_param_default,
         anon_const_kind,
         const_of_item,
-        is_rhs_type_const,
         ..*providers
     };
 }
@@ -612,6 +611,19 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    struct ReprCIssue {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+                .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                .with_help("use `repr($int_ty)` instead to explicitly set the size of this enum")
+        }
+    }
+
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -661,15 +673,11 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
                 };
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
                     tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    |d| {
-                        d.primary_message(msg)
-                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
-                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
-                    }
+                    ReprCIssue { msg },
                 );
             }
         }
@@ -816,11 +824,9 @@ fn lower_variant<'tcx>(
         fields,
         parent_did.to_def_id(),
         recovered,
-        adt_kind == AdtKind::Struct
-            && find_attr!(tcx.get_all_attrs(parent_did), AttributeKind::NonExhaustive(..))
-            || variant_did.is_some_and(|variant_did| {
-                find_attr!(tcx.get_all_attrs(variant_did), AttributeKind::NonExhaustive(..))
-            }),
+        adt_kind == AdtKind::Struct && find_attr!(tcx, parent_did, NonExhaustive(..))
+            || variant_did
+                .is_some_and(|variant_did| find_attr!(tcx, variant_did, NonExhaustive(..))),
     )
 }
 
@@ -895,46 +901,46 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
+    // we do a bunch of find_attr calls here, probably faster to get them from the tcx just once.
+    #[allow(deprecated)]
     let attrs = tcx.get_all_attrs(def_id);
 
-    let paren_sugar = find_attr!(attrs, AttributeKind::RustcParenSugar(_));
+    let paren_sugar = find_attr!(attrs, RustcParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
-    let is_marker = !is_alias && find_attr!(attrs, AttributeKind::Marker(_));
+    let is_marker = !is_alias && find_attr!(attrs, Marker(_));
 
-    let rustc_coinductive = find_attr!(attrs, AttributeKind::RustcCoinductive(_));
-    let is_fundamental = find_attr!(attrs, AttributeKind::Fundamental);
+    let rustc_coinductive = find_attr!(attrs, RustcCoinductive(_));
+    let is_fundamental = find_attr!(attrs, Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
-        AttributeKind::RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
+        RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind =
-        if find_attr!(attrs, AttributeKind::RustcUnsafeSpecializationMarker(_)) {
-            ty::trait_def::TraitSpecializationKind::Marker
-        } else if find_attr!(attrs, AttributeKind::RustcSpecializationTrait(_)) {
-            ty::trait_def::TraitSpecializationKind::AlwaysApplicable
-        } else {
-            ty::trait_def::TraitSpecializationKind::None
-        };
+    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker(_)) {
+        ty::trait_def::TraitSpecializationKind::Marker
+    } else if find_attr!(attrs, RustcSpecializationTrait(_)) {
+        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+    } else {
+        ty::trait_def::TraitSpecializationKind::None
+    };
 
     let must_implement_one_of = find_attr!(
         attrs,
-        AttributeKind::RustcMustImplementOneOf { fn_names, .. } =>
+        RustcMustImplementOneOf { fn_names, .. } =>
             fn_names
                 .iter()
                 .cloned()
                 .collect::<Box<[_]>>()
     );
 
-    let deny_explicit_impl = find_attr!(attrs, AttributeKind::RustcDenyExplicitImpl(_));
-    let force_dyn_incompatible =
-        find_attr!(attrs, AttributeKind::RustcDynIncompatibleTrait(span) => *span);
+    let deny_explicit_impl = find_attr!(attrs, RustcDenyExplicitImpl(_));
+    let force_dyn_incompatible = find_attr!(attrs, RustcDynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -1355,8 +1361,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity();
-    let is_rustc_reservation =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(..));
+    let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
@@ -1704,24 +1709,5 @@ fn const_of_item<'tcx>(
         ty::EarlyBinder::bind(Const::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(ct)
-    }
-}
-
-/// Check if a Const or AssocConst is a type const (mgca)
-fn is_rhs_type_const<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> bool {
-    match tcx.hir_node_by_def_id(def) {
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Const(_, _, _, hir::ConstItemRhs::TypeConst(_)),
-            ..
-        })
-        | hir::Node::ImplItem(hir::ImplItem {
-            kind: hir::ImplItemKind::Const(_, hir::ConstItemRhs::TypeConst(_)),
-            ..
-        })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(_, _, hir::IsTypeConst::Yes),
-            ..
-        }) => return true,
-        _ => return false,
     }
 }

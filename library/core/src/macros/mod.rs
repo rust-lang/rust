@@ -164,7 +164,7 @@ macro_rules! assert_ne {
 /// assert_matches!(a, Some(x) if x > 100);
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
@@ -206,8 +206,6 @@ pub macro assert_matches {
 /// # Example
 ///
 /// ```
-/// #![feature(cfg_select)]
-///
 /// cfg_select! {
 ///     unix => {
 ///         fn foo() { /* unix specific functionality */ }
@@ -225,14 +223,12 @@ pub macro assert_matches {
 /// right-hand side:
 ///
 /// ```
-/// #![feature(cfg_select)]
-///
 /// let _some_string = cfg_select! {
 ///     unix => "With great power comes great electricity bills",
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// };
 /// ```
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "1.95.0")]
 #[rustc_diagnostic_item = "cfg_select"]
 #[rustc_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
@@ -395,7 +391,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(a, Some(x) if x > 100);
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -445,7 +441,7 @@ macro_rules! matches {
 /// [raw-identifier syntax][ris]: `r#try`.
 ///
 /// [propagating-errors]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
-/// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
+/// [ris]: ../rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
 /// expression has the value of the wrapped value.

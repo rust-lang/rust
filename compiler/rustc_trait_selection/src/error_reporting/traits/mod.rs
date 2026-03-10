@@ -2,8 +2,6 @@ pub mod ambiguity;
 pub mod call_kind;
 pub mod fulfillment_errors;
 pub mod on_unimplemented;
-pub mod on_unimplemented_condition;
-pub mod on_unimplemented_format;
 mod overflow;
 pub mod suggestions;
 
@@ -373,12 +371,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.tcx.extern_crate(trait_def_id.krate),
         ) {
             (
-                Some(ExternCrate {
+                Some(&ExternCrate {
                     src: ExternCrateSource::Extern(expected_def_id),
                     dependency_of: LOCAL_CRATE,
                     ..
                 }),
-                Some(ExternCrate {
+                Some(&ExternCrate {
                     src: ExternCrateSource::Extern(trait_def_id),
                     dependency_of: LOCAL_CRATE,
                     ..
@@ -402,9 +400,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let krate = self.tcx.crate_name(expected_did.krate);
         let name = self.tcx.item_name(expected_did);
         let definitions_with_same_path: UnordSet<_> = found_dids
-            .filter(|def_id| {
+            .filter(|&def_id| {
                 def_id.krate != expected_did.krate
-                    && (self.extern_crates_with_the_same_name(expected_did, *def_id)
+                    && (self.extern_crates_with_the_same_name(expected_did, def_id)
                         || self.tcx.crate_name(def_id.krate) == krate)
                     && self.tcx.item_name(def_id) == name
             })

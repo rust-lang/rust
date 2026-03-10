@@ -741,7 +741,7 @@ mod spurious_read {
                     );
                     eprintln!("  (arbitrary code instanciated with '{opaque}')");
                     err += 1;
-                    // We found an instanciation of the opaque code that makes this Pattern
+                    // We found an instantiation of the opaque code that makes this Pattern
                     // fail, we don't really need to check the rest.
                     break;
                 }

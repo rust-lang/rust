@@ -1,3 +1,22 @@
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/for-in-const-eval.rs:3:29
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                             ^^^^ required by a bound introduced by this call
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::Range<{integer}>` to implement `const IntoIterator`
+
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/for-in-const-eval.rs:3:29
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                             ^^^^
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+
 error[E0277]: cannot add `()` to `{integer}`
   --> $DIR/for-in-const-eval.rs:3:18
    |
@@ -16,6 +35,6 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
              `&f64` implements `Add`
            and 56 others
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

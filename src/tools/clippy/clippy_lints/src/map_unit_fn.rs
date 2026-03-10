@@ -193,8 +193,10 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 }
 
 #[must_use]
-fn suggestion_msg(function_type: &str, map_type: &str) -> String {
-    format!("called `map(f)` on an `{map_type}` value where `f` is a {function_type} that returns the unit type `()`")
+fn suggestion_msg(function_type: &str, article: &str, map_type: &str) -> String {
+    format!(
+        "called `map(f)` on {article} `{map_type}` value where `f` is a {function_type} that returns the unit type `()`"
+    )
 }
 
 fn lint_map_unit_fn(
@@ -205,10 +207,10 @@ fn lint_map_unit_fn(
 ) {
     let var_arg = &map_args.0;
 
-    let (map_type, variant, lint) = if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Option) {
-        ("Option", "Some", OPTION_MAP_UNIT_FN)
+    let (article, map_type, variant, lint) = if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Option) {
+        ("an", "Option", "Some", OPTION_MAP_UNIT_FN)
     } else if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Result) {
-        ("Result", "Ok", RESULT_MAP_UNIT_FN)
+        ("a", "Result", "Ok", RESULT_MAP_UNIT_FN)
     } else {
         return;
     };
@@ -219,7 +221,7 @@ fn lint_map_unit_fn(
 
     if is_unit_function(cx, fn_arg) {
         let mut applicability = Applicability::MachineApplicable;
-        let msg = suggestion_msg("function", map_type);
+        let msg = suggestion_msg("function", article, map_type);
         let suggestion = format!(
             "if let {0}({binding}) = {1} {{ {2}({binding}) }}",
             variant,
@@ -232,7 +234,7 @@ fn lint_map_unit_fn(
             diag.span_suggestion_verbose(stmt.span, SUGG_MSG, suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
-        let msg = suggestion_msg("closure", map_type);
+        let msg = suggestion_msg("closure", article, map_type);
 
         span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             if let Some((reduced_expr_span, is_unsafe)) = reduce_unit_expression(cx, closure_expr) {

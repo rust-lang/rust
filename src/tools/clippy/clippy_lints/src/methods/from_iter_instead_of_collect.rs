@@ -3,15 +3,14 @@ use std::fmt::Write as _;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::sugg;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{sugg, sym};
 use rustc_ast::join_path_idents;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_span::sym;
 
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 

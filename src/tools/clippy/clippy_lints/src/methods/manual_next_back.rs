@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

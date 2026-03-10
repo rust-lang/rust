@@ -31,10 +31,10 @@ fn main() {
     let output_bt_full = &concat_stderr_stdout(&rustc_bt_full);
 
     // Count how many lines of output mention symbols or paths in
-    // `rustc_query_system` or `rustc_query_impl`, which are the kinds of
+    // `rustc_query_impl`, which are the kinds of
     // stack frames we want to be omitting in short backtraces.
-    let rustc_query_count_short = count_lines_with(output_bt_short, "rustc_query_");
-    let rustc_query_count_full = count_lines_with(output_bt_full, "rustc_query_");
+    let rustc_query_count_short = count_lines_with(output_bt_short, "rustc_query_impl");
+    let rustc_query_count_full = count_lines_with(output_bt_full, "rustc_query_impl");
 
     // Dump both outputs in full to make debugging easier, especially on CI.
     // Use `--no-capture --force-rerun` to view output even when the test is passing.

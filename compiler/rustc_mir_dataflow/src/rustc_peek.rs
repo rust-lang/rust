@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{AttributeKind, RustcMirKind};
+use rustc_hir::attrs::RustcMirKind;
 use rustc_hir::find_attr;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -16,8 +16,7 @@ use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
 pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id();
-    let attrs = tcx.get_all_attrs(def_id);
-    if let Some(kind) = find_attr!(attrs, AttributeKind::RustcMir(kind) => kind) {
+    if let Some(kind) = find_attr!(tcx, def_id, RustcMir(kind) => kind) {
         let move_data = MoveData::gather_moves(body, tcx, |_| true);
         debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
         if kind.contains(&RustcMirKind::PeekMaybeInit) {

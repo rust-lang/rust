@@ -134,7 +134,4 @@ fn no_false_positives() {}
 /// ```
 fn issue_6022() {}
 
-fn main() {
-    bad_doctests();
-    no_false_positives();
-}
+fn main() {}

@@ -4,7 +4,6 @@
 //! to help with the tedium.
 
 use std::fmt::{self, Debug};
-use std::marker::PhantomData;
 
 use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
@@ -269,13 +268,6 @@ TrivialTypeTraversalAndLiftImpls! {
 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
-
-impl<'tcx> Lift<TyCtxt<'tcx>> for PhantomData<&()> {
-    type Lifted = PhantomData<&'tcx ()>;
-    fn lift_to_interner(self, _: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some(PhantomData)
-    }
-}
 
 impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
     type Lifted = Option<T::Lifted>;
@@ -805,4 +797,5 @@ list_fold! {
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
+    &'tcx ty::List<ty::Const<'tcx>> : mk_const_list,
 }

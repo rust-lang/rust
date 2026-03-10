@@ -1,0 +1,22 @@
+error: used `unwrap()` on an `Option` value
+  --> tests/ui-toml/unwrap_used_allowed/unwrap_used_allowed.rs:13:16
+   |
+LL |     let _opt = optional.unwrap();
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
+
+error: used `unwrap()` on a `Result` value
+  --> tests/ui-toml/unwrap_used_allowed/unwrap_used_allowed.rs:18:16
+   |
+LL |     let _res = result.unwrap();
+   |                ^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: aborting due to 2 previous errors
+

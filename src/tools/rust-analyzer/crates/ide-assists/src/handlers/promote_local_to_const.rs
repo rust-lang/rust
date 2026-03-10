@@ -8,7 +8,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{self},
+    utils,
 };
 
 // Assist: promote_local_to_const

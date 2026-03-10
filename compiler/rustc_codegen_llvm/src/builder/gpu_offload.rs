@@ -3,11 +3,12 @@ use std::ffi::CString;
 use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata};
+use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -450,7 +451,15 @@ pub(crate) fn gen_define_handling<'ll>(
     // FIXME(offload): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
     let transfer_kernel = vec![MappingFlags::TARGET_PARAM.bits(); transfer_to.len()];
 
-    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
+    let actual_sizes = sizes
+        .iter()
+        .map(|s| match s {
+            OffloadSize::Static(sz) => *sz,
+            OffloadSize::Dynamic => 0,
+        })
+        .collect::<Vec<_>>();
+    let offload_sizes =
+        add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &actual_sizes);
     let memtransfer_begin =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
     let memtransfer_kernel =
@@ -499,9 +508,6 @@ pub(crate) fn gen_define_handling<'ll>(
         region_id,
     };
 
-    // FIXME(Sa4dUs): use this global for constant offload sizes
-    cx.add_compiler_used_global(result.offload_sizes);
-
     cx.offload_kernel_cache.borrow_mut().insert(symbol, result);
 
     result
@@ -535,6 +541,15 @@ pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
     }
 }
 
+fn get_runtime_size<'ll, 'tcx>(
+    _cx: &CodegenCx<'ll, 'tcx>,
+    _val: &'ll Value,
+    _meta: &OffloadMetadata,
+) -> &'ll Value {
+    // FIXME(Sa4dUs): handle dynamic-size data (e.g. slices)
+    bug!("offload does not support dynamic sizes yet");
+}
+
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
 // the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
@@ -564,14 +579,16 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals {
+        offload_sizes,
         memtransfer_begin,
         memtransfer_kernel,
         memtransfer_end,
         region_id,
-        ..
     } = offload_data;
     let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
+
+    let has_dynamic = metadata.iter().any(|m| matches!(m.payload_size, OffloadSize::Dynamic));
 
     let tgt_decl = offload_globals.launcher_fn;
     let tgt_target_kernel_ty = offload_globals.launcher_ty;
@@ -596,7 +613,24 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let a2 = builder.direct_alloca(ty, Align::EIGHT, ".offload_ptrs");
     // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
     let ty2 = cx.type_array(cx.type_i64(), num_args);
-    let a4 = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
+
+    let a4 = if has_dynamic {
+        let alloc = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
+
+        builder.memcpy(
+            alloc,
+            Align::EIGHT,
+            offload_sizes,
+            Align::EIGHT,
+            cx.get_const_i64(8 * args.len() as u64),
+            MemFlags::empty(),
+            None,
+        );
+
+        alloc
+    } else {
+        offload_sizes
+    };
 
     //%kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
     let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
@@ -648,9 +682,12 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         builder.store(vals[i as usize], gep1, Align::EIGHT);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
         builder.store(geps[i as usize], gep2, Align::EIGHT);
-        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
-        // FIXME(offload): write an offload frontend and handle arbitrary types.
-        builder.store(cx.get_const_i64(metadata[i as usize].payload_size), gep3, Align::EIGHT);
+
+        if matches!(metadata[i as usize].payload_size, OffloadSize::Dynamic) {
+            let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
+            let size_val = get_runtime_size(cx, args[i as usize], &metadata[i as usize]);
+            builder.store(size_val, gep3, Align::EIGHT);
+        }
     }
 
     // For now we have a very simplistic indexing scheme into our
@@ -662,13 +699,14 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         a1: &'ll Value,
         a2: &'ll Value,
         a4: &'ll Value,
+        is_dynamic: bool,
     ) -> [&'ll Value; 3] {
         let cx = builder.cx;
         let i32_0 = cx.get_const_i32(0);
 
         let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+        let gep3 = if is_dynamic { builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]) } else { a4 };
         [gep1, gep2, gep3]
     }
 
@@ -692,7 +730,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 2)
     let s_ident_t = offload_globals.ident_t_global;
-    let geps = get_geps(builder, ty, ty2, a1, a2, a4);
+    let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
     generate_mapper_call(
         builder,
         geps,
@@ -725,7 +763,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 
     // Step 4)
-    let geps = get_geps(builder, ty, ty2, a1, a2, a4);
+    let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
     generate_mapper_call(
         builder,
         geps,

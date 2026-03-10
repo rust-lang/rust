@@ -3,8 +3,10 @@
 // For let guards temporaries live until the end of the arm.
 
 //@ run-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 use std::sync::Mutex;

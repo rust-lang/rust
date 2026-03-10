@@ -12,8 +12,8 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Ty, TyCtxt};
 use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::CodegenCx;
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
+use crate::llvm;
 use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
-use crate::llvm::{self};
 
 mod private {
     use rustc_macros::HashStable;

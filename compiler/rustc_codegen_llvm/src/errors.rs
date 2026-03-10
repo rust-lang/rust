@@ -2,7 +2,9 @@ use std::ffi::CString;
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
+use rustc_errors::{
+    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, format_diag_message, msg,
+};
 use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
@@ -24,7 +26,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let diag: Diag<'_, G> = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
-        let message = dcx.eagerly_translate_to_string(message.clone(), diag.args.iter());
+        let message = format_diag_message(message, &diag.args);
         Diag::new(
             dcx,
             level,

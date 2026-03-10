@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.8.0"
+version = "1.9.0"
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
 readme = "README.md"
@@ -30,12 +30,15 @@ path = "src/git-rustfmt/main.rs"
 default = ["cargo-fmt", "rustfmt-format-diff"]
 cargo-fmt = []
 rustfmt-format-diff = []
-generic-simd = ["bytecount/generic-simd"]
+# FIXME(ytmimi) re-enable "bytecount/generic-simd" to the `generic-simd` features
+# once bytecount releases a fix. rustfmt's `generic-simd` features is breaking CI
+# and interfering with the next subtree-sync
+generic-simd = []
 
 [dependencies]
-annotate-snippets = { version = "0.9", features = ["color"] }
+annotate-snippets = { version = "0.11" }
 anyhow = "1.0"
-bytecount = "0.6.8"
+bytecount = "0.6.9"
 cargo_metadata = "0.18"
 clap = { version = "4.4.2", features = ["derive"] }
 clap-cargo = "0.12.0"
@@ -47,9 +50,9 @@ itertools = "0.12"
 regex = "1.7"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
-term = "0.7"
+term = "1.1"
 thiserror = "1.0.40"
-toml = "0.7.4"
+toml = "0.9.5"
 tracing = { version = "0.1.37", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 unicode-segmentation = "1.9"
@@ -57,6 +60,10 @@ unicode-width = "0.1"
 unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
 
 rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
+semver = "1.0.21"
+
+[dev-dependencies]
+tempfile = "3.23.0"
 
 # Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
 

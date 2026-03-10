@@ -62,6 +62,10 @@ pub trait MetaSized: PointeeSized {}
 )]
 pub trait Sized: MetaSized {}
 
+#[lang = "destruct"]
+#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+pub trait Destruct: PointeeSized {}
+
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
 impl<T: PointeeSized> LegacyReceiver for &T {}
@@ -282,6 +286,17 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub const fn align_of<T>() -> usize;
+}
+
+pub mod ptr {
+    #[inline]
+    #[rustc_diagnostic_item = "ptr_write_volatile"]
+    pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+        #[rustc_intrinsic]
+        pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+
+        unsafe { volatile_store(dst, src) };
+    }
 }
 
 #[lang = "c_void"]

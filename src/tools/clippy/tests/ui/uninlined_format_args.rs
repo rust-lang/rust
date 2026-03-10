@@ -243,9 +243,7 @@ fn tester(fn_arg: i32) {
     }
 }
 
-fn main() {
-    tester(42);
-}
+fn main() {}
 
 #[clippy::msrv = "1.57"]
 fn _under_msrv() {
@@ -367,4 +365,25 @@ fn user_format() {
     //~^ uninlined_format_args
     usr_println!(true, "{:.1}", local_f64);
     //~^ uninlined_format_args
+}
+
+// issue #16411: false negative when #[clippy::format_args] macro uses nested format_args
+// without binding the inner args first
+#[clippy::format_args]
+macro_rules! nested_format_args {
+    ($($arg:tt)*) => {{
+        // Wraps the user args in another format_args call
+        ::core::format_args!("{}\n", ::core::format_args!($($arg)*))
+    }};
+}
+
+fn nested_format_args_user() {
+    let local_i32 = 1;
+    let local_f64 = 2.0;
+
+    // false negative: should warn but currently doesn't because the inner format_args
+    // is not processed when it's used as an argument to another format_args
+    nested_format_args!("{}", local_i32);
+    nested_format_args!("val='{}'", local_i32);
+    nested_format_args!("{:.1}", local_f64);
 }

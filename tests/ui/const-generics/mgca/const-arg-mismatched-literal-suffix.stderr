@@ -1,0 +1,8 @@
+error: the constant `1` is not of type `usize`
+  --> $DIR/const-arg-mismatched-literal-suffix.rs:4:1
+   |
+LL | type const CONST: usize = 1_i32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: aborting due to 1 previous error
+

@@ -1,5 +1,64 @@
 # Changelog
 
+## [Unreleased]
+
+
+## [1.9.0] 2026-02-26
+
+### Fixed
+- No longer strip `r#` prefix from `break` and `continue` labels [#6411](https://github.com/rust-lang/rustfmt/issues/6411)
+  ```rust
+  fn main() {
+      'r#if: {
+          break 'r#if;
+      }
+  }
+  ```
+- Fix panic when sorting imports [#6333](https://github.com/rust-lang/rustfmt/issues/6333)
+- Fix issue with `wrap_comments` invalidating code blocks [#6417](https://github.com/rust-lang/rustfmt/pull/6417)
+- No longer remove closure block label within a macro call [#6465](https://github.com/rust-lang/rustfmt/issues/6465)
+- Fix idempotency issue when normalizing imports [#6558](https://github.com/rust-lang/rustfmt/issues/6558)
+- Properly split long pattern in `if-let` at the `max_width` when setting `style_edition=2027` [#6202](https://github.com/rust-lang/rustfmt/issues/6202)
+- Format `lazy_static::lazy_static!` like `lazy_static!` when setting `style_edition=2027` [#6287](https://github.com/rust-lang/rustfmt/issues/6287)
+- Prevent panic when rewriting missing spans that contain unicode whitespace chars [#5739](https://github.com/rust-lang/rustfmt/issues/5739)
+- Allow `NotADirectory` errors when looking up rustfmt configuration files [#6624](https://github.com/rust-lang/rustfmt/pull/6624)
+- Prevent panic when sorting imports starting with a `_` for `style_edition=2015|2018|2021` [#6668](https://github.com/rust-lang/rustfmt/issues/6668)
+- Properly wrap long `impl trait` function parameters at the `max_width` when setting `style_edition=2027` [#6381](https://github.com/rust-lang/rustfmt/issues/6381)
+- Better support for deduplicating imports when setting `imports_granularity=Module` [#6243](https://github.com/rust-lang/rustfmt/issues/6243)
+
+### Changed
+- Stabilize `style_edition=2024` and stabilize the `style_edition` command line option [#6431](https://github.com/rust-lang/rustfmt/pull/6431) [rust-lang/rust#134929](https://github.com/rust-lang/rust/pull/134929)
+- Apply version sorting to module declarations when using `style_edition=2027` [#6368](https://github.com/rust-lang/rustfmt/pull/6368) and [#6594](https://github.com/rust-lang/rustfmt/pull/6594)
+- When users set the deprecated `version` config, rustfmt now gives a hint about which equivalent `style_edition` they should use [#6361](https://github.com/rust-lang/rustfmt/pull/6361)
+- Correct version chunk splitting in the internal version sort algorithm [#6407](https://github.com/rust-lang/rustfmt/pull/6407)
+- Extend support for single line let-chain formatting to include cases where the left hand side operand is a literal, in alignment with finalized style rules as part of let-chain stabilization [#6492](https://github.com/rust-lang/rustfmt/pull/6492)
+- Begin initial formatting for `use closures` and `use chains` (`#![feature(ergonomic_clones)]`). Previously, the closure and chain was left as the developer wrote it [#6532](https://github.com/rust-lang/rustfmt/pull/6532)
+- The unstable `required_version` configuration option now support cargo flavored semantic versioning using the `semver` crate [#6063](https://github.com/rust-lang/rustfmt/issues/6063)
+- Top-level imports are no longer merged when setting `imports_granularity=Module`. Note that `imports_granularity=Module` is still an unstable configuration [#6191](https://github.com/rust-lang/rustfmt/issues/6191)
+- Disable the `bytecount/generic-simd` optional dependency when using the `generic-simd` feature. The dependency was preventing rustfmt from building on nightly. simd support will be re-enabled once the issue has been fixed [#6807](https://github.com/rust-lang/rustfmt/pull/6807) [llogiq/bytecount#100](https://github.com/llogiq/bytecount/pull/100)
+- The `trailing_semicolon` configuration option will add a trailing semicolon to the last expression in a loop body when enabled along with `edition >= 2024` and `style_edition >= 2027` [#6711](https://github.com/rust-lang/rustfmt/pull/6711)
+  ```rust
+  fn main() {
+      for x in 0..10 {
+          println!("{x}");
+      }
+  }
+  ```
+
+
+### Added
+- Add `style_edition=2027` to gate unstable formatting [#6324](https://github.com/rust-lang/rustfmt/pull/6324)
+- Support discovering and formatting files via external mods imported within `cfg_match`, similar to `cfg_if` behavior [#6522](https://github.com/rust-lang/rustfmt/pull/6522)
+- Add new nightly-only `match_arm_indent` option [#6525](https://github.com/rust-lang/rustfmt/pull/6525)
+  - See the [`match_arm_indent` configuration documentation](https://rust-lang.github.io/rustfmt/?version=v1.9.0&search=#match_arm_indent) for more details
+- Add new nightly-only `float_literal_trailing_zero` option [#3187](https://github.com/rust-lang/rustfmt/issues/3187)
+  - See the [`float_literal_trailing_zero` configuration documentation](https://rust-lang.github.io/rustfmt/?version=v1.9.0&search=#float_literal_trailing_zero) for more details
+
+### Misc
+- Update `term` dependency to 1.1 [#6628](https://github.com/rust-lang/rustfmt/pull/6628)
+- Update `toml` dependency to 0.9.5 [#6652](https://github.com/rust-lang/rustfmt/pull/6652)
+
+
 ## [1.8.0] 2024-09-20
 
 ### Fixed
@@ -39,7 +98,7 @@
   use std::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64};
   ```
   [style guide's version sorting algorithm]: https://doc.rust-lang.org/nightly/style-guide/#sorting
-- When parsing rustfmt configurations fails, rustfmt will now include the path to the toml file in the erorr message [#6302](https://github.com/rust-lang/rustfmt/issues/6302)
+- When parsing rustfmt configurations fails, rustfmt will now include the path to the toml file in the error message [#6302](https://github.com/rust-lang/rustfmt/issues/6302)
 
 ### Added
 - rustfmt now formats trailing where clauses in type aliases [#5887](https://github.com/rust-lang/rustfmt/pull/5887)
@@ -133,7 +192,7 @@
 ### Changed
 
 - `hide_parse_errors` has been soft deprecated and it's been renamed to `show_parse_errors` [#5961](https://github.com/rust-lang/rustfmt/pull/5961).
-- The diff output produced by `rustfmt --check` is more compatable with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
+- The diff output produced by `rustfmt --check` is more compatible with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
 - When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
 
   [log crate]: https://crates.io/crates/log
@@ -298,7 +357,7 @@
 
 ### Added
 
-- New configuration option [`skip_macro_invocations`](https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations) [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
+- New configuration option [`skip_macro_invocations`](https://rust-lang.github.io/rustfmt/?version=main&search=#skip_macro_invocations) [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
 
 ### Misc
 

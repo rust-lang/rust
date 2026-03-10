@@ -1,7 +1,6 @@
 // https://github.com/rust-lang/rust/issues/61894
 //@ run-pass
 
-#![feature(core_intrinsics)]
 
 use std::any::type_name;
 

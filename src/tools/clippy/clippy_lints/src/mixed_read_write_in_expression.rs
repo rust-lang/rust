@@ -10,6 +10,34 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for diverging calls that are not match arms or
+    /// statements.
+    ///
+    /// ### Why is this bad?
+    /// It is often confusing to read. In addition, the
+    /// sub-expression evaluation order for Rust is not well documented.
+    ///
+    /// ### Known problems
+    /// Someone might want to use `some_bool || panic!()` as a
+    /// shorthand.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// # fn b() -> bool { true }
+    /// # fn c() -> bool { true }
+    /// let a = b() || panic!() || c();
+    /// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
+    /// let x = (a, b, c, panic!());
+    /// // can simply be replaced by `panic!()`
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DIVERGING_SUB_EXPRESSION,
+    complexity,
+    "whether an expression contains a diverging sub expression"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for a read and a write to the same variable where
     /// whether the read occurs before or after the write depends on the evaluation
     /// order of sub-expressions.
@@ -51,35 +79,10 @@ declare_clippy_lint! {
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for diverging calls that are not match arms or
-    /// statements.
-    ///
-    /// ### Why is this bad?
-    /// It is often confusing to read. In addition, the
-    /// sub-expression evaluation order for Rust is not well documented.
-    ///
-    /// ### Known problems
-    /// Someone might want to use `some_bool || panic!()` as a
-    /// shorthand.
-    ///
-    /// ### Example
-    /// ```rust,no_run
-    /// # fn b() -> bool { true }
-    /// # fn c() -> bool { true }
-    /// let a = b() || panic!() || c();
-    /// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
-    /// let x = (a, b, c, panic!());
-    /// // can simply be replaced by `panic!()`
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DIVERGING_SUB_EXPRESSION,
-    complexity,
-    "whether an expression contains a diverging sub expression"
-}
-
-declare_lint_pass!(EvalOrderDependence => [MIXED_READ_WRITE_IN_EXPRESSION, DIVERGING_SUB_EXPRESSION]);
+declare_lint_pass!(EvalOrderDependence => [
+    DIVERGING_SUB_EXPRESSION,
+    MIXED_READ_WRITE_IN_EXPRESSION,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -154,18 +157,14 @@ impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
         match e.kind {
             // fix #10776
             ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
-                (stmts, Some(e)) => {
-                    if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) {
-                        self.visit_expr(e);
-                    }
+                (stmts, Some(e)) if stmts.iter().all(|stmt| !stmt_might_diverge(stmt)) => {
+                    self.visit_expr(e);
                 },
-                ([first @ .., stmt], None) => {
-                    if first.iter().all(|stmt| !stmt_might_diverge(stmt)) {
-                        match stmt.kind {
-                            StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
-                            _ => {},
-                        }
-                    }
+                ([first @ .., stmt], None)
+                    if first.iter().all(|stmt| !stmt_might_diverge(stmt))
+                        && let StmtKind::Expr(e) | StmtKind::Semi(e) = stmt.kind =>
+                {
+                    self.visit_expr(e);
                 },
                 _ => {},
             },

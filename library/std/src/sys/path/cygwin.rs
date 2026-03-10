@@ -5,25 +5,20 @@ use crate::sys::cvt;
 use crate::sys::helpers::run_path_with_cstr;
 use crate::{io, ptr};
 
-#[inline]
-pub fn is_sep_byte(b: u8) -> bool {
-    b == b'/' || b == b'\\'
-}
+path_separator_bytes!(b'/', b'\\');
 
 /// Cygwin always prefers `/` over `\`, and it always converts all `/` to `\`
 /// internally when calling Win32 APIs. Therefore, the server component of path
 /// `\\?\UNC\localhost/share` is `localhost/share` on Win32, but `localhost`
 /// on Cygwin.
 #[inline]
-pub fn is_verbatim_sep(b: u8) -> bool {
-    b == b'/' || b == b'\\'
+pub const fn is_verbatim_sep(b: u8) -> bool {
+    is_sep_byte(b)
 }
 
 pub use super::windows_prefix::parse_prefix;
 
 pub const HAS_PREFIXES: bool = true;
-pub const MAIN_SEP_STR: &str = "/";
-pub const MAIN_SEP: char = '/';
 
 unsafe extern "C" {
     // Doc: https://cygwin.com/cygwin-api/func-cygwin-conv-path.html

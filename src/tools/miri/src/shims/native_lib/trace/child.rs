@@ -31,7 +31,7 @@ pub struct Supervisor {
     /// Used for synchronisation, allowing us to receive confirmation that the
     /// parent process has handled the request from `message_tx`.
     confirm_rx: ipc::IpcReceiver<Confirmation>,
-    /// Receiver for memory acceses that ocurred during the FFI call.
+    /// Receiver for memory accesses that occurred during the FFI call.
     event_rx: ipc::IpcReceiver<MemEvents>,
 }
 

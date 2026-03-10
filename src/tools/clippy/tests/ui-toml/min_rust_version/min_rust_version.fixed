@@ -88,12 +88,4 @@ fn manual_bits() {
     size_of_val(&0u32) * 8;
 }
 
-fn main() {
-    option_as_ref_deref();
-    match_like_matches();
-    match_same_arms();
-    match_same_arms2();
-    manual_strip_msrv();
-    check_index_refutable_slice();
-    borrow_as_ptr();
-}
+fn main() {}

@@ -72,6 +72,7 @@ declare_clippy_lint! {
     restriction,
     "more than one unsafe operation per `unsafe` block"
 }
+
 declare_lint_pass!(MultipleUnsafeOpsPerBlock => [MULTIPLE_UNSAFE_OPS_PER_BLOCK]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
@@ -165,10 +166,8 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 return self.visit_expr(inner);
             },
 
-            ExprKind::Field(e, _) => {
-                if self.typeck_results.expr_ty(e).is_union() {
-                    self.insert_span(expr.span, "union field access occurs here");
-                }
+            ExprKind::Field(e, _) if self.typeck_results.expr_ty(e).is_union() => {
+                self.insert_span(expr.span, "union field access occurs here");
             },
 
             ExprKind::Path(QPath::Resolved(

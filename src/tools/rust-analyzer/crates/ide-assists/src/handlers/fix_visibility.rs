@@ -2,7 +2,7 @@ use hir::{HasSource, HasVisibility, ModuleDef, PathResolution, ScopeDef, db::Hir
 use ide_db::FileId;
 use syntax::{
     AstNode, TextRange,
-    ast::{self, HasVisibility as _, edit_in_place::HasVisibilityEdit, make},
+    ast::{self, HasVisibility as _, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -59,10 +59,12 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
     let (vis_owner, target, target_file, target_name) = target_data_for_def(ctx.db(), def)?;
 
+    let make = SyntaxFactory::without_mappings();
+
     let missing_visibility = if current_module.krate(ctx.db()) == target_module.krate(ctx.db()) {
-        make::visibility_pub_crate()
+        make.visibility_pub_crate()
     } else {
-        make::visibility_pub()
+        make.visibility_pub()
     };
 
     let assist_label = match target_name {
@@ -75,15 +77,36 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         }
     };
 
-    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
-        edit.edit_file(target_file);
+    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |builder| {
+        let mut editor = builder.make_editor(vis_owner.syntax());
 
-        let vis_owner = edit.make_mut(vis_owner);
-        vis_owner.set_visibility(Some(missing_visibility.clone_for_update()));
+        if let Some(current_visibility) = vis_owner.visibility() {
+            editor.replace(current_visibility.syntax(), missing_visibility.syntax());
+        } else {
+            let vis_before = vis_owner
+                .syntax()
+                .children_with_tokens()
+                .find(|it| {
+                    !matches!(
+                        it.kind(),
+                        syntax::SyntaxKind::WHITESPACE
+                            | syntax::SyntaxKind::COMMENT
+                            | syntax::SyntaxKind::ATTR
+                    )
+                })
+                .unwrap_or_else(|| vis_owner.syntax().first_child_or_token().unwrap());
 
-        if let Some((cap, vis)) = ctx.config.snippet_cap.zip(vis_owner.visibility()) {
-            edit.add_tabstop_before(cap, vis);
+            editor.insert_all(
+                syntax::syntax_editor::Position::before(vis_before),
+                vec![missing_visibility.syntax().clone().into(), make.whitespace(" ").into()],
+            );
         }
+
+        if let Some(cap) = ctx.config.snippet_cap {
+            editor.add_annotation(missing_visibility.syntax(), builder.make_tabstop_before(cap));
+        }
+
+        builder.add_file_edits(target_file, editor);
     })
 }
 

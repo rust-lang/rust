@@ -634,6 +634,7 @@ impl<'db> DefCollector<'db> {
             crate_data.exported_derives.insert(proc_macro_id.into(), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
+        crate_data.fn_proc_macro_mapping_back.insert(proc_macro_id, fn_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -2095,6 +2096,8 @@ impl ModCollector<'_, '_> {
 
                     let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
 
+                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
+
                     if self.def_collector.def_map.block.is_none()
                         && self.def_collector.is_proc_macro
                         && self.module_id == self.def_collector.def_map.root
@@ -2105,9 +2108,14 @@ impl ModCollector<'_, '_> {
                             InFile::new(self.file_id(), id),
                             fn_id,
                         );
-                    }
 
-                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
+                        // A proc macro is implemented as a function, but it's treated as a macro, not a function.
+                        // You cannot call it like a function, for example, except in its defining crate.
+                        // So we keep the function definition, but remove it from the scope, leaving only the macro.
+                        self.def_collector.def_map[module_id]
+                            .scope
+                            .remove_from_value_ns(&it.name, fn_id.into());
+                    }
                 }
                 ModItemId::Struct(id) => {
                     let it = &self.item_tree[id];

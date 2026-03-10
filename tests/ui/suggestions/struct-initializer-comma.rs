@@ -7,7 +7,6 @@ pub struct Foo {
 
 fn main() {
     let _ = Foo {
-        //~^ ERROR missing field
         first: true
         second: 25
         //~^ ERROR expected one of

@@ -4,8 +4,8 @@ macro_rules! test { ($nm:ident,
                      #[$a:meta],
                      $i:item) => (mod $nm { #![$a] $i }); }
 
-test!(a,
-      #[cfg(false)],
+test!(a, //~ NOTE: found an item that was configured out
+      #[cfg(false)], //~ NOTE: the item is gated here
       pub fn bar() { });
 
 test!(b,
@@ -14,7 +14,7 @@ test!(b,
 
 #[rustc_dummy]
 fn main() {
-    a::bar();
-    //~^ ERROR failed to resolve: use of unresolved module or unlinked crate `a`
+    a::bar(); //~ ERROR: cannot find module or crate `a`
+    //~^ NOTE: use of unresolved module or unlinked crate `a`
     b::bar();
 }

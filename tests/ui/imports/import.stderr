@@ -2,10 +2,13 @@ error[E0432]: unresolved import `zed::baz`
   --> $DIR/import.rs:5:5
    |
 LL | use zed::baz;
-   |     ^^^^^---
-   |     |    |
-   |     |    help: a similar name exists in the module: `bar`
-   |     no `baz` in `zed`
+   |     ^^^^^^^^ no `baz` in `zed`
+   |
+help: a similar name exists in the module
+   |
+LL - use zed::baz;
+LL + use zed::bar;
+   |
 
 error[E0432]: unresolved import `foo`
   --> $DIR/import.rs:13:9

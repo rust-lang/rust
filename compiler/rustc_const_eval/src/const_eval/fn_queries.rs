@@ -1,4 +1,3 @@
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{
     Constness, ExprKind, ForeignItemKind, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind,
@@ -38,7 +37,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
             }
         }
         Node::TraitItem(ti @ TraitItem { kind: TraitItemKind::Fn(..), .. }) => {
-            if find_attr!(tcx.hir_attrs(ti.hir_id()), AttributeKind::RustcNonConstTraitMethod) {
+            if find_attr!(tcx.hir_attrs(ti.hir_id()), RustcNonConstTraitMethod) {
                 Constness::NotConst
             } else {
                 tcx.trait_def(tcx.local_parent(def_id)).constness

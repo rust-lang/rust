@@ -25,6 +25,7 @@ define_config! {
         build_dir: Option<String> = "build-dir",
         cargo: Option<PathBuf> = "cargo",
         rustc: Option<PathBuf> = "rustc",
+        rustdoc: Option<PathBuf> = "rustdoc",
         rustfmt: Option<PathBuf> = "rustfmt",
         cargo_clippy: Option<PathBuf> = "cargo-clippy",
         docs: Option<bool> = "docs",

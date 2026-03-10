@@ -10,7 +10,7 @@
     feature = "sysroot-abi",
     feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
 )]
-#![allow(internal_features)]
+#![allow(internal_features, unused_features)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
@@ -198,12 +198,8 @@ impl ProcMacroClient {
     }
 
     /// Loads a proc-macro dylib into the server process returning a list of `ProcMacro`s loaded.
-    pub fn load_dylib(
-        &self,
-        dylib: MacroDylib,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Vec<ProcMacro>, ServerError> {
-        self.pool.load_dylib(&dylib, callback)
+    pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
+        self.pool.load_dylib(&dylib)
     }
 
     /// Checks if the proc-macro server has exited.

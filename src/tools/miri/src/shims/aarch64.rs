@@ -58,7 +58,33 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_immediate(*res_lane, &dest)?;
                 }
             }
+            // Vector table lookup: each index selects a byte from the 16-byte table, out-of-range -> 0.
+            // Used to implement vtbl1_u8 function.
+            // LLVM does not have a portable shuffle that takes non-const indices
+            // so we need to implement this ourselves.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_u8
+            "neon.tbl1.v16i8" => {
+                let [table, indices] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
+                let (table, table_len) = this.project_to_simd(table)?;
+                let (indices, idx_len) = this.project_to_simd(indices)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+                assert_eq!(table_len, 16);
+                assert_eq!(idx_len, dest_len);
+
+                for i in 0..dest_len {
+                    let idx = this.read_immediate(&this.project_index(&indices, i)?)?;
+                    let idx_u = idx.to_scalar().to_u8()?;
+                    let val = if u64::from(idx_u) < table_len {
+                        let t = this.read_immediate(&this.project_index(&table, idx_u.into())?)?;
+                        t.to_scalar()
+                    } else {
+                        Scalar::from_u8(0)
+                    };
+                    this.write_scalar(val, &this.project_index(&dest, i)?)?;
+                }
+            }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)

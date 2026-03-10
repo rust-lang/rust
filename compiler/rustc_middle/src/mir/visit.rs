@@ -810,11 +810,6 @@ macro_rules! make_mir_visitor {
                         }
                     }
 
-                    Rvalue::ShallowInitBox(operand, ty) => {
-                        self.visit_operand(operand, location);
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                    }
-
                     Rvalue::WrapUnsafeBinder(op, ty) => {
                         self.visit_operand(op, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));

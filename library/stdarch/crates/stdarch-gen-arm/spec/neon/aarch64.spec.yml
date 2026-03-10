@@ -64,7 +64,7 @@ neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
 
 aarch64-stable-jscvt: &aarch64-stable-jscvt
-  FnCall: [stable, ['feature = "stdarch_aarch64_jscvt"', 'since = "CURRENT_RUSTC_VERSION"']]
+  FnCall: [stable, ['feature = "stdarch_aarch64_jscvt"', 'since = "1.95.0"']]
 
 # #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
 neon-unstable-feat-lrcpc3: &neon-unstable-feat-lrcpc3

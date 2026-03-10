@@ -2,9 +2,6 @@
 //@ needs-unwind
 //@ needs-threads
 //@ ignore-backends: gcc
-#![allow(stable_features)]
-
-#![feature(std_panic)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::panic;

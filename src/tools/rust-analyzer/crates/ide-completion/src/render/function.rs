@@ -908,4 +908,23 @@ fn bar() {
 "#,
         );
     }
+
+    #[test]
+    fn no_semicolon_in_array() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    let _ = [fo$0];
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    let _ = [foo()$0];
+}
+"#,
+        );
+    }
 }

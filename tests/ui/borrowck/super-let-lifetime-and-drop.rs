@@ -7,7 +7,7 @@
 //@ [borrowck] check-fail
 
 #![allow(dropping_references)]
-#![feature(super_let, stmt_expr_attributes)]
+#![feature(super_let)]
 
 use std::convert::identity;
 
