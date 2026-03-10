@@ -399,7 +399,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.kind {
-            PatKind::MacCall(..) => self.visit_macro_invoc(pat.id),
+            PatKind::MacCall(..) => {
+                self.visit_macro_invoc(pat.id);
+                self.visit_invoc(pat.id);
+            }
             _ => visit::walk_pat(self, pat),
         }
     }
@@ -433,7 +436,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         debug!(?self.invocation_parent);
 
         let parent_def = match &expr.kind {
-            ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
+            ExprKind::MacCall(..) => {
+                self.visit_macro_invoc(expr.id);
+                self.visit_invoc(expr.id);
+                return;
+            }
             ExprKind::Closure(..) | ExprKind::Gen(..) => {
                 self.create_def(expr.id, None, DefKind::Closure, expr.span)
             }
@@ -485,7 +492,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
-            TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
+            TyKind::MacCall(..) => {
+                self.visit_macro_invoc(ty.id);
+                self.visit_invoc(ty.id);
+            }
             TyKind::ImplTrait(opaque_id, _) => {
                 let name = *self
                     .r
