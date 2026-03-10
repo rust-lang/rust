@@ -59,8 +59,8 @@ use smallvec::SmallVec;
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
-    AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
-    ParamMode, CombinedResolverAstLowering, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, CombinedResolverAstLowering, GenericArgsMode, ImplTraitContext,
+    ImplTraitPosition, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
 mod generics;

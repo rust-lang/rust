@@ -65,7 +65,8 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, ResolverAstLowering, RegisteredTools, AstLoweringResolutionContext, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
+    self, AstLoweringResolutionContext, DelegationFnSig, DelegationInfo, Feed, MainDefinition,
+    RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;

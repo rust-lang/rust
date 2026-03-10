@@ -198,7 +198,7 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> 
+    query resolver_for_lowering_raw(_: ()) ->
         (
             &'tcx Steal<(ty::AstLoweringResolutionContext<'tcx>, Arc<ast::Crate>)>,
             &'tcx ty::ResolverGlobalCtxt
