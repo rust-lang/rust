@@ -503,7 +503,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
-            StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id),
+            StmtKind::MacCall(..) => {
+                self.brg_visit_stmt_mac_call(stmt);
+                self.visit_macro_invoc(stmt.id)
+            }
             // FIXME(impl_trait_in_bindings): We don't really have a good way of
             // introducing the right `ImplTraitContext` here for all the cases we
             // care about, in case we want to introduce ITIB to other positions
