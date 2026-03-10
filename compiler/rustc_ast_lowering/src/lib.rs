@@ -87,7 +87,7 @@ mod pat;
 mod path;
 pub mod stability;
 
-struct LoweringContext<'a, 'b, 'hir> {
+struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
 
     // During lowering of delegation we need to access AST of other functions
@@ -96,9 +96,9 @@ struct LoweringContext<'a, 'b, 'hir> {
     // are being reused and store their generics, or to store generics of all functions
     // in resolver. This approach helps with those problems, as functions that are reused
     // will be in AST index.
-    ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
+    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 
-    resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
+    resolver: &'a mut CombinedResolverAstLowering<'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -157,11 +157,11 @@ struct LoweringContext<'a, 'b, 'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(
         tcx: TyCtxt<'hir>,
-        ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-        resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
+        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+        resolver: &'a mut CombinedResolverAstLowering<'hir>,
     ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
@@ -251,13 +251,13 @@ struct MutableResolverAstLowering {
     partial_res_map: NodeMap<hir::def::PartialRes>,
 }
 
-struct CombinedResolverAstLowering<'a, 'tcx> {
+struct CombinedResolverAstLowering<'tcx> {
     next_node_id: NodeId,
-    base: &'a ResolverAstLowering<'tcx>,
+    base: ResolverAstLowering<'tcx>,
     mut_part: MutableResolverAstLowering,
 }
 
-impl<'a, 'tcx> ResolverAstLoweringExt for CombinedResolverAstLowering<'a, 'tcx> {
+impl ResolverAstLoweringExt for CombinedResolverAstLowering<'_> {
     #[inline]
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         self.base.legacy_const_generic_args(expr, tcx)
@@ -514,42 +514,42 @@ enum TryBlockScope {
     Heterogeneous(HirId),
 }
 
-fn index_crate<'a, 'b, 'tcx>(
-    resolver: &'b CombinedResolverAstLowering<'a, 'tcx>,
+fn index_crate<'a>(
+    node_id_to_def_id: &NodeMap<LocalDefId>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
-    let mut indexer = Indexer { resolver, index: IndexVec::new() };
+    let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
     *indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner) =
         AstOwner::Crate(krate);
     visit::walk_crate(&mut indexer, krate);
     return indexer.index;
 
-    struct Indexer<'s, 'a, 'tcx> {
-        resolver: &'s CombinedResolverAstLowering<'a, 'tcx>,
+    struct Indexer<'s, 'a> {
+        node_id_to_def_id: &'s NodeMap<LocalDefId>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
-    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a, '_> {
+    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a> {
         fn visit_attribute(&mut self, _: &'a Attribute) {
             // We do not want to lower expressions that appear in attributes,
             // as they are not accessible to the rest of the HIR.
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
-            let def_id = self.resolver.def_id(item.id).unwrap();
+            let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
             visit::walk_item(self, item)
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
-            let def_id = self.resolver.def_id(item.id).unwrap();
+            let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
-            let def_id = self.resolver.def_id(item.id).unwrap();
+            let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
             visit::walk_item(self, item);
@@ -590,25 +590,24 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
 
     let mut resolver = CombinedResolverAstLowering {
         next_node_id: resolver.next_node_id,
-        base: &resolver.resolver,
+        base: resolver.resolver,
         mut_part: Default::default(),
     };
 
-    let ast_index = index_crate(&resolver, &krate);
+    let ast_index = index_crate(&resolver.base.node_id_to_def_id, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
         tcx.definitions_untracked().def_index_count(),
     );
 
-    for def_id in ast_index.indices() {
-        resolver.mut_part = Default::default();
-        let mut lowerer = item::ItemLowerer {
-            tcx,
-            resolver: &mut resolver,
-            ast_index: &ast_index,
-            owners: &mut owners,
-        };
+    let mut lowerer = item::ItemLowerer {
+        tcx,
+        resolver: &mut resolver,
+        ast_index: &ast_index,
+        owners: &mut owners,
+    };
 
+    for def_id in ast_index.indices() {
         lowerer.lower_node(def_id);
     }
 
@@ -652,7 +651,7 @@ enum GenericArgsMode {
     Silence,
 }
 
-impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn create_def(
         &mut self,
         node_id: ast::NodeId,
@@ -3027,10 +3026,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
-    fn into_generic_args(
-        self,
-        this: &LoweringContext<'_, '_, 'hir>,
-    ) -> &'hir hir::GenericArgs<'hir> {
+    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
             constraints: self.constraints,

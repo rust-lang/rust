@@ -26,11 +26,11 @@ use super::{
 };
 use crate::CombinedResolverAstLowering;
 
-pub(super) struct ItemLowerer<'a, 'b, 'hir> {
+pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
-    pub(super) ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: &'b mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
+    pub(super) resolver: &'a mut CombinedResolverAstLowering<'hir>,
+    pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -52,13 +52,13 @@ fn add_ty_alias_where_clause(
         if before.0 || !after.0 { before } else { after };
 }
 
-impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
+impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     fn with_lctx(
-        &'b mut self,
+        &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'a, 'b, 'hir>) -> hir::OwnerNode<'hir>,
+        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, &mut self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
@@ -71,7 +71,7 @@ impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
         }
     }
 
-    pub(super) fn lower_node(&'b mut self, def_id: LocalDefId) {
+    pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
         let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
@@ -100,7 +100,7 @@ impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, '_, 'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[Box<Item>],
@@ -1476,7 +1476,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'_, '_, 'hir>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1613,7 +1613,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'_, '_, 'hir>| {
+        let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 
