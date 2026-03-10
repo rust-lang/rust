@@ -212,6 +212,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         });
     }
 
+    fn visit_block(&mut self, block: &'a Block) {
+        self.brg_visit_block(block);
+    }
+
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
         match fn_kind {
             FnKind::Fn(
