@@ -7,10 +7,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_middle::query::{
-    CycleError, QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter,
+    CycleError, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, respan};
 
 use crate::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
 
@@ -64,7 +64,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
-        cycle.push(QueryInfo { span: info.job.span, frame: info.frame.clone() });
+        cycle.push(respan(info.job.span, info.frame.clone()));
 
         if job == id {
             cycle.reverse();
@@ -77,7 +77,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
             // Find out why the cycle itself was used
             let usage = try {
                 let parent = info.job.parent?;
-                (info.job.span, job_map.frame_of(parent).clone())
+                respan(info.job.span, job_map.frame_of(parent).clone())
             };
             return CycleError { usage, cycle };
         }
@@ -289,14 +289,15 @@ fn remove_cycle<'tcx>(
             stack.rotate_left(pos);
         }
 
-        let usage = entry_point.waiter.map(|(span, job)| (span, job_map.frame_of(job).clone()));
+        let usage =
+            entry_point.waiter.map(|(span, job)| respan(span, job_map.frame_of(job).clone()));
 
         // Create the cycle error
         let error = CycleError {
             usage,
             cycle: stack
                 .iter()
-                .map(|&(span, job)| QueryInfo { span, frame: job_map.frame_of(job).clone() })
+                .map(|&(span, job)| respan(span, job_map.frame_of(job).clone()))
                 .collect(),
         };
 
@@ -430,12 +431,12 @@ pub(crate) fn report_cycle<'tcx>(
 ) -> Diag<'tcx> {
     assert!(!stack.is_empty());
 
-    let span = stack[0].frame.tagged_key.default_span(tcx, stack[1 % stack.len()].span);
+    let span = stack[0].node.tagged_key.default_span(tcx, stack[1 % stack.len()].span);
 
     let mut cycle_stack = Vec::new();
 
     use crate::error::StackCount;
-    let stack_bottom = stack[0].frame.tagged_key.description(tcx);
+    let stack_bottom = stack[0].node.tagged_key.description(tcx);
     let stack_count = if stack.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
     } else {
@@ -443,28 +444,27 @@ pub(crate) fn report_cycle<'tcx>(
     };
 
     for i in 1..stack.len() {
-        let frame = &stack[i].frame;
-        let span = frame.tagged_key.default_span(tcx, stack[(i + 1) % stack.len()].span);
-        cycle_stack
-            .push(crate::error::CycleStack { span, desc: frame.tagged_key.description(tcx) });
+        let node = &stack[i].node;
+        let span = node.tagged_key.default_span(tcx, stack[(i + 1) % stack.len()].span);
+        cycle_stack.push(crate::error::CycleStack { span, desc: node.tagged_key.description(tcx) });
     }
 
     let mut cycle_usage = None;
-    if let Some((span, ref query)) = *usage {
+    if let Some(usage) = usage {
         cycle_usage = Some(crate::error::CycleUsage {
-            span: query.tagged_key.default_span(tcx, span),
-            usage: query.tagged_key.description(tcx),
+            span: usage.node.tagged_key.default_span(tcx, usage.span),
+            usage: usage.node.tagged_key.description(tcx),
         });
     }
 
     let alias = if stack
         .iter()
-        .all(|entry| matches!(entry.frame.tagged_key.def_kind(tcx), Some(DefKind::TyAlias)))
+        .all(|entry| matches!(entry.node.tagged_key.def_kind(tcx), Some(DefKind::TyAlias)))
     {
         Some(crate::error::Alias::Ty)
     } else if stack
         .iter()
-        .all(|entry| entry.frame.tagged_key.def_kind(tcx) == Some(DefKind::TraitAlias))
+        .all(|entry| entry.node.tagged_key.def_kind(tcx) == Some(DefKind::TraitAlias))
     {
         Some(crate::error::Alias::Trait)
     } else {
