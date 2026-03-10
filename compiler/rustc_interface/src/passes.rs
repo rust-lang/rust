@@ -42,7 +42,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
-use rustc_thread_pool::spawn;
+use rustc_data_structures::sync::spawn;
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
