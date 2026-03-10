@@ -174,10 +174,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(use_tree) => {
                 self.create_def(i.id, None, DefKind::Use, use_tree.span);
-                return visit::walk_item(self, i);
+                self.brg_visit_item(i);
+                return;
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
-                return self.visit_macro_invoc(i.id);
+                self.visit_macro_invoc(i.id);
+                self.brg_visit_item(i);
+                return;
             }
         };
         let def_id =
@@ -204,7 +207,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     }
                     _ => {}
                 }
-                visit::walk_item(this, i);
+                this.brg_visit_item(i);
             })
         });
     }
