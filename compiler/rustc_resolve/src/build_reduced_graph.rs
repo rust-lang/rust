@@ -1434,7 +1434,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.parent_scope.macro_rules = orig_current_macro_rules_scope;
     }
 
-    fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+    pub(crate) fn brg_visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
         let (ident, ns) = match item.kind {
             AssocItemKind::Const(box ConstItem { ident, .. })
             | AssocItemKind::Fn(box Fn { ident, .. })
