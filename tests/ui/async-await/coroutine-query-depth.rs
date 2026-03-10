@@ -1,30 +1,21 @@
-//~ ERROR: queries overflow the depth limit!
-
 // Regression test for https://github.com/rust-lang/rust/issues/152942
 //
-// When computing coroutine layout,
-// each saved local is wrapped in `MaybeUninit<T>`,
-// which chains through `ManuallyDrop<T>`
-// and `MaybeDangling<T>` before reaching `T`.
-// This adds 3 extra layout_of queries per field.
-//
-// Query depth for computing layout of `deep()`'s coroutine body
-// (before fix, with recursion_limit = 8):
+// Query depth for computing layout of `deep()`'s coroutine body:
 //
 //   layout_of(coroutine)               depth 1
-//     layout_of(MaybeUninit<S4>)       depth 2  <- wrapping adds
-//       layout_of(ManuallyDrop<S4>)    depth 3  <- 3 extra
-//         layout_of(MaybeDangling<S4>) depth 4  <- queries
-//           layout_of(S4)              depth 5
-//             layout_of(S3)            depth 6
-//               layout_of(S2)          depth 7
-//                 layout_of(S1)        depth 8
-//                   layout_of(S0)      depth 9
-//                     layout_of(u8)    depth 10
+//     layout_of(S4)                    depth 2
+//       layout_of(S3)                  depth 3
+//         layout_of(S2)                depth 4
+//           layout_of(S1)              depth 5
+//             layout_of(S0)            depth 6
+//               layout_of(u8)          depth 7
 //
-//   total: 10 > 8 -> overflow!
+//   total: 7 < 8 -> won't overflow
+//
+// We used to have `MaybeUninit` wrap coroutine locals
+// and that made query depth 10 which exceeds 8
 
-//@ check-fail
+//@ check-pass
 //@ edition: 2024
 
 #![recursion_limit = "8"]

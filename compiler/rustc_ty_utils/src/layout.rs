@@ -520,8 +520,17 @@ fn layout_of_uncached<'tcx>(
                 .iter()
                 .map(|local| {
                     let field_ty = EarlyBinder::bind(local.ty);
-                    let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
-                    cx.spanned_layout_of(uninit_ty, local.source_info.span)
+                    let ty = field_ty.instantiate(tcx, args);
+                    let layout = cx.spanned_layout_of(ty, local.source_info.span)?;
+                    // Coroutine fields may be uninitialized in some variants,
+                    // so we hide niches (same effect as wrapping in MaybeUninit<T>,
+                    // but without the 3 extra layout_of depth levels from
+                    // MaybeUninit -> ManuallyDrop -> MaybeDangling -> T).
+                    // See https://github.com/rust-lang/rust/issues/152942
+                    let mut data = rustc_abi::LayoutData::clone(&layout.layout.0);
+                    data.hide_niches(cx.data_layout());
+                    data.uninhabited = false;
+                    Ok(TyAndLayout { ty: layout.ty, layout: tcx.mk_layout(data) })
                 })
                 .try_collect::<IndexVec<_, _>>()?;
 
