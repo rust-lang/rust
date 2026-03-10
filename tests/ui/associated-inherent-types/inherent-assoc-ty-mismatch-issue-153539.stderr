@@ -1,0 +1,31 @@
+warning: the feature `inherent_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/inherent-assoc-ty-mismatch-issue-153539.rs:2:12
+   |
+LL | #![feature(inherent_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0207]: the type parameter `X` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/inherent-assoc-ty-mismatch-issue-153539.rs:9:6
+   |
+LL | impl<X> S<'_> {
+   |      ^ unconstrained type parameter
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-assoc-ty-mismatch-issue-153539.rs:17:5
+   |
+LL | fn ret_ref_local<'e>() -> &'e i32 {
+   |                           ------- expected `&'e i32` because of return type
+...
+LL |     f(&1)
+   |     ^^^^^ expected `&i32`, found associated type
+   |
+   = help: consider constraining the associated type `S<'_>::P` to `&'e i32`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0207, E0308.
+For more information about an error, try `rustc --explain E0207`.
