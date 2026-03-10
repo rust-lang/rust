@@ -1496,14 +1496,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         visit::walk_attribute(self, attr);
     }
 
-    fn visit_field_def(&mut self, sf: &'a ast::FieldDef) {
-        if sf.is_placeholder {
-            self.visit_invoc(sf.id);
-        } else {
-            let vis = self.resolve_visibility(&sf.vis);
-            self.r.feed_visibility(self.r.feed(sf.id), vis);
-            visit::walk_field_def(self, sf);
-        }
+    pub(crate) fn brg_visit_field_def(&mut self, sf: &'a ast::FieldDef) {
+        let vis = self.resolve_visibility(&sf.vis);
+        self.r.feed_visibility(self.r.feed(sf.id), vis);
+        visit::walk_field_def(self, sf);
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
