@@ -104,9 +104,9 @@ impl<'sess> AttributeParser<'sess, Early> {
     /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
     /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
     /// Therefore, if `parse_only` is None, then features *must* be provided.
-    pub fn parse_limited_all(
+    pub fn parse_limited_all<'a>(
         sess: &'sess Session,
-        attrs: &[ast::Attribute],
+        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
         parse_only: Option<Symbol>,
         target: Target,
         target_span: Span,
@@ -130,6 +130,32 @@ impl<'sess> AttributeParser<'sess, Early> {
                     BuiltinLintDiag::AttributeLint(kind),
                 )
             },
+        )
+    }
+
+    /// This method provides the same functionality as [`parse_limited_all`](Self::parse_limited_all) except filtered,
+    /// making sure that only allow-listed symbols are parsed
+    pub fn parse_limited_all_filtered<'a>(
+        sess: &'sess Session,
+        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
+        filter: &[Symbol],
+        target: Target,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+        tools: &'sess RegisteredTools,
+    ) -> Vec<Attribute> {
+        Self::parse_limited_all(
+            sess,
+            attrs.into_iter().filter(|attr| attr.has_any_name(filter)),
+            None,
+            target,
+            target_span,
+            target_node_id,
+            features,
+            emit_errors,
+            Some(tools),
         )
     }
 
@@ -262,9 +288,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
     ///
     /// `target_span` is the span of the thing this list of attributes is applied to,
     /// and when `omit_doc` is set, doc attributes are filtered out.
-    pub fn parse_attribute_list(
+    pub fn parse_attribute_list<'a>(
         &mut self,
-        attrs: &[ast::Attribute],
+        attrs: impl IntoIterator<Item = &'a ast::Attribute>,
         target_span: Span,
         target: Target,
         omit_doc: OmitDoc,
@@ -280,9 +306,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
-        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::with_capacity(attrs.len());
+        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::new();
 
-        for attr in attrs {
+        for attr in attrs.into_iter() {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
                 if !attr.has_name(expected) {
@@ -419,7 +445,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                         let attr = Attribute::Unparsed(Box::new(attr));
 
-                        if self.tools.is_some_and(|tools|tools.iter().any(|tool|tool.name == parts[0]))
+                        if self
+                            .tools
+                            .is_some_and(|tools| tools.iter().any(|tool| tool.name == parts[0]))
                         {
                             attributes.push(attr);
                         } else {
