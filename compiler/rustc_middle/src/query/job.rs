@@ -102,9 +102,31 @@ impl<'tcx> QueryLatch<'tcx> {
         query: Option<QueryJobId>,
         span: Span,
     ) -> Result<(), CycleError<QueryStackDeferred<'tcx>>> {
+        let mut info = self.info.lock();
+        if info.complete {
+            return Ok(());
+        }
+
         let waiter =
             Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
-        self.wait_on_inner(tcx, &waiter);
+
+        // We push the waiter on to the `waiters` list. It can be accessed inside
+        // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
+        // Both of these will remove it from the `waiters` list before resuming
+        // this thread.
+        info.waiters.push(Arc::clone(&waiter));
+
+        // Awaits the caller on this latch by blocking the current thread.
+        // If this detects a deadlock and the deadlock handler wants to resume this thread
+        // we have to be in the `wait` call. This is ensured by the deadlock handler
+        // getting the self.info lock.
+        rustc_thread_pool::mark_blocked();
+        tcx.jobserver_proxy.release_thread();
+        waiter.condvar.wait(&mut info);
+        // Release the lock before we potentially block in `acquire_thread`
+        drop(info);
+        tcx.jobserver_proxy.acquire_thread();
+
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot
         // use Arc::get_mut
@@ -112,28 +134,6 @@ impl<'tcx> QueryLatch<'tcx> {
         match cycle.take() {
             None => Ok(()),
             Some(cycle) => Err(cycle),
-        }
-    }
-
-    /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, tcx: TyCtxt<'tcx>, waiter: &Arc<QueryWaiter<'tcx>>) {
-        let mut info = self.info.lock();
-        if !info.complete {
-            // We push the waiter on to the `waiters` list. It can be accessed inside
-            // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
-            // Both of these will remove it from the `waiters` list before resuming
-            // this thread.
-            info.waiters.push(Arc::clone(waiter));
-
-            // If this detects a deadlock and the deadlock handler wants to resume this thread
-            // we have to be in the `wait` call. This is ensured by the deadlock handler
-            // getting the self.info lock.
-            rustc_thread_pool::mark_blocked();
-            tcx.jobserver_proxy.release_thread();
-            waiter.condvar.wait(&mut info);
-            // Release the lock before we potentially block in `acquire_thread`
-            drop(info);
-            tcx.jobserver_proxy.acquire_thread();
         }
     }
 
