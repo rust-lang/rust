@@ -626,7 +626,7 @@ impl<T> Sender<T> {
     /// drop(rx);
     /// assert!(tx.is_disconnected());
     /// ```
-    #[unstable(feature = "mpsc_is_disconnected", issue = "none")]
+    #[unstable(feature = "mpsc_is_disconnected", issue = "153668")]
     pub fn is_disconnected(&self) -> bool {
         self.inner.is_disconnected()
     }
@@ -1080,7 +1080,7 @@ impl<T> Receiver<T> {
     /// drop(tx);
     /// assert!(rx.is_disconnected());
     /// ```
-    #[unstable(feature = "mpsc_is_disconnected", issue = "none")]
+    #[unstable(feature = "mpsc_is_disconnected", issue = "153668")]
     pub fn is_disconnected(&self) -> bool {
         self.inner.is_disconnected()
     }
