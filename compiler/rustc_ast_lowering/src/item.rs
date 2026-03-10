@@ -60,9 +60,9 @@ fn add_ty_alias_where_clause(
 
 impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
     fn with_lctx(
-        &'b mut self,
+        &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'a, 'b, 'hir>) -> hir::OwnerNode<'hir>,
+        f: impl FnOnce(&mut LoweringContext<'_, '_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
         let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
@@ -83,7 +83,7 @@ impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
         }
     }
 
-    pub(super) fn lower_node(&'b mut self, def_id: LocalDefId) {
+    pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
         let owner = match &mut self.owners {
             Owners::IndexVec(index_vec) => {
                 index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)

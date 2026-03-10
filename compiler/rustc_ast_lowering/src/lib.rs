@@ -602,6 +602,13 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
 
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
 
+    let mut lowerer = item::ItemLowerer {
+        tcx,
+        resolver: &mut resolver,
+        ast_index: &ast_index,
+        owners: Owners::IndexVec(&mut owners),
+    };
+
     for def_id in ast_index.indices() {
         let owner = &ast_index[def_id];
         let delay_lowering = match owner {
@@ -616,13 +623,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
             delayed_ids.insert(def_id);
             continue;
         }
-
-        let mut lowerer = item::ItemLowerer {
-            tcx,
-            resolver: &mut resolver,
-            ast_index: &ast_index,
-            owners: Owners::IndexVec(&mut owners),
-        };
 
         lowerer.lower_node(def_id);
     }
