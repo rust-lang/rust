@@ -487,7 +487,6 @@ pub fn lint_level(
 /// for example:
 ///
 /// - [`TyCtxt::emit_node_span_lint`]
-/// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 ///
 /// This function will replace `lint_level` once all its callers have been replaced

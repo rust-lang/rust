@@ -55,7 +55,7 @@ use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
-use crate::lint::{diag_lint_level, lint_level};
+use crate::lint::diag_lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
@@ -2583,20 +2583,6 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let level = self.lint_level_at_node(lint, id);
         diag_lint_level(self.sess, lint, level, None, decorator);
-    }
-
-    /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_lint(
-        self,
-        lint: &'static Lint,
-        id: HirId,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
