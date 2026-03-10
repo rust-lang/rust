@@ -10,8 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 

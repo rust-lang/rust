@@ -32,8 +32,10 @@ use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::{BytePos, Ident, RemapPathScopeComponents, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{
+    BytePos, Ident, RemapPathScopeComponents, Span, Spanned, Symbol, SyntaxContext, kw, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 

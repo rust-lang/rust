@@ -25,8 +25,7 @@ use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, Spanned};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -296,12 +295,12 @@ impl<'a> Parser<'a> {
             let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
                 AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
                 AssocOp::Cast | AssocOp::Range(_) => {
@@ -409,7 +408,7 @@ impl<'a> Parser<'a> {
             }
             _ => return None,
         };
-        Some(source_map::respan(span, op))
+        Some(respan(span, op))
     }
 
     /// Checks if this expression is a successfully parsed statement.
