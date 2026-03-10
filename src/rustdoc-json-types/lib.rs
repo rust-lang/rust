@@ -19,18 +19,20 @@
 //! ## `rkyv_0_8`
 //!
 //! We expose a `rkyv_0_8` feature, disabled by default. When enabled, it derives `rkyv`'s
-//! [`Archive`](rkyv::Archive), [`Serialize`](rkyv::Serialize) and [`Deserialize`](rkyv::Deserialize)
-//! traits for all types in this crate. Furthermore, it exposes the corresponding `Archived*` types
-//! (e.g. [`ArchivedId`] for [`Id`]).
+//! [`Archive`][3], [`Serialize`][4] and [`Deserialize`][5] traits for all types in this crate.
+//! Furthermore, it exposes the corresponding `Archived*` types (e.g. `ArchivedId` for [`Id`]).
 //!
 //! `rkyv` lets you works with JSON output without paying the deserialization cost _upfront_,
-//! thanks to [zero-copy deserialization][3].
+//! thanks to [zero-copy deserialization][6].
 //! You can perform various types of analyses on the `Archived*` version of the relevant types,
 //! incurring the full deserialization cost only for the subset of items you actually need.
 //!
 //! [1]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/rustc-hash.20and.20performance.20of.20rustdoc-types/near/474855731
 //! [2]: https://crates.io/crates/rustc-hash
-//! [3]: https://rkyv.org/zero-copy-deserialization.html
+//! [3]: https://docs.rs/rkyv/0.8.15/rkyv/trait.Archive.html
+//! [4]: https://docs.rs/rkyv/0.8.15/rkyv/trait.Serialize.html
+//! [5]: https://docs.rs/rkyv/0.8.15/rkyv/trait.Deserialize.html
+//! [6]: https://rkyv.org/zero-copy-deserialization.html
 
 // # On `rkyv` Derives
 //
