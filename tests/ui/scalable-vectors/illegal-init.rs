@@ -1,3 +1,4 @@
+//@ only-aarch64
 #![allow(incomplete_features, internal_features)]
 #![feature(rustc_attrs)]
 

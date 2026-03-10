@@ -934,6 +934,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     } }
 
+    with_fn! { with_span_suggestion_with_style,
     /// [`Diag::span_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn span_suggestion_with_style(
         &mut self,
@@ -956,7 +957,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             applicability,
         });
         self
-    }
+    } }
 
     with_fn! { with_span_suggestion_verbose,
     /// Always show the suggested change.

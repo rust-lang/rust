@@ -1,29 +1,29 @@
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:6:1
+  --> $DIR/illformed.rs:7:1
    |
 LL | struct NoFieldsStructWithElementCount {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:15:1
+  --> $DIR/illformed.rs:16:1
    |
 LL | struct NoFieldsUnitWithElementCount;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:20:1
+  --> $DIR/illformed.rs:21:1
    |
 LL | struct NoFieldsStructWithoutElementCount {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:29:1
+  --> $DIR/illformed.rs:30:1
    |
 LL | struct NoFieldsUnitWithoutElementCount;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:34:1
+  --> $DIR/illformed.rs:35:1
    |
 LL | / struct MultipleFieldsStructWithElementCount {
 LL | |
@@ -34,7 +34,7 @@ LL | | }
    | |_^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:46:1
+  --> $DIR/illformed.rs:47:1
    |
 LL | / struct MultipleFieldsStructWithoutElementCount {
 LL | |
@@ -44,13 +44,13 @@ LL | | }
    | |_^
 
 error: scalable vectors must be tuple structs
-  --> $DIR/illformed.rs:58:1
+  --> $DIR/illformed.rs:59:1
    |
 LL | struct SingleFieldStruct { _ty: f64 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:6:1
+  --> $DIR/illformed.rs:7:1
    |
 LL | struct NoFieldsStructWithElementCount {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL | struct NoFieldsStructWithElementCount {}
    = help: scalable vector types' only field must be a primitive scalar type
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:11:1
+  --> $DIR/illformed.rs:12:1
    |
 LL | struct NoFieldsTupleWithElementCount();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL | struct NoFieldsTupleWithElementCount();
    = help: scalable vector types' only field must be a primitive scalar type
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:15:1
+  --> $DIR/illformed.rs:16:1
    |
 LL | struct NoFieldsUnitWithElementCount;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL | struct NoFieldsUnitWithElementCount;
    = help: scalable vector types' only field must be a primitive scalar type
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:20:1
+  --> $DIR/illformed.rs:21:1
    |
 LL | struct NoFieldsStructWithoutElementCount {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL | struct NoFieldsStructWithoutElementCount {}
    = help: tuples of scalable vectors can only contain multiple of the same scalable vector type
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:25:1
+  --> $DIR/illformed.rs:26:1
    |
 LL | struct NoFieldsTupleWithoutElementCount();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL | struct NoFieldsTupleWithoutElementCount();
    = help: tuples of scalable vectors can only contain multiple of the same scalable vector type
 
 error: scalable vectors must have a single field
-  --> $DIR/illformed.rs:29:1
+  --> $DIR/illformed.rs:30:1
    |
 LL | struct NoFieldsUnitWithoutElementCount;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,25 +98,25 @@ LL | struct NoFieldsUnitWithoutElementCount;
    = help: tuples of scalable vectors can only contain multiple of the same scalable vector type
 
 error: scalable vectors cannot have multiple fields
-  --> $DIR/illformed.rs:34:1
+  --> $DIR/illformed.rs:35:1
    |
 LL | struct MultipleFieldsStructWithElementCount {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vectors cannot have multiple fields
-  --> $DIR/illformed.rs:42:1
+  --> $DIR/illformed.rs:43:1
    |
 LL | struct MultipleFieldsTupleWithElementCount(f32, u32);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: scalable vector structs can only have scalable vector fields
-  --> $DIR/illformed.rs:48:5
+  --> $DIR/illformed.rs:49:5
    |
 LL |     _ty: f32,
    |     ^^^^^^^^
 
 error: scalable vector structs can only have scalable vector fields
-  --> $DIR/illformed.rs:54:47
+  --> $DIR/illformed.rs:55:47
    |
 LL | struct MultipleFieldsTupleWithoutElementCount(f32, u32);
    |                                               ^^^
