@@ -7324,7 +7324,13 @@ intrinsics:
       - float32x2_t
       - float32x4_t
     compose:
-      - FnCall: [simd_fmax, [a, b]]
+      - LLVMLink:
+          name: "fmaxnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vmaxnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnm{neon_type.no}"
@@ -7344,7 +7350,13 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - FnCall: [simd_fmax, [a, b]]
+      - LLVMLink:
+          name: "fmaxnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vmaxnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vminnm{neon_type.no}"
@@ -7364,7 +7376,13 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - FnCall: [simd_fmin, [a, b]]
+      - LLVMLink:
+          name: "fminnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vminnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmin{neon_type.no}"
@@ -7477,7 +7495,13 @@ intrinsics:
       - float32x2_t
       - float32x4_t
     compose:
-      - FnCall: [simd_fmin, [a, b]]
+      - LLVMLink:
+          name: "fminnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vminnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
+              arch: aarch64,arm64ec
 
   - name: "vpadd{neon_type.no}"
     doc: Floating-point add pairwise
