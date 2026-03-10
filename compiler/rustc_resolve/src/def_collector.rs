@@ -570,9 +570,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_crate(&mut self, krate: &'a Crate) {
         if krate.is_placeholder {
-            self.visit_macro_invoc(krate.id)
+            self.visit_macro_invoc(krate.id);
+            self.visit_invoc_in_module(krate.id);
         } else {
-            visit::walk_crate(self, krate)
+            // Visit attributes after items for backward compatibility.
+            // This way they can use `macro_rules` defined later.
+            visit::walk_list!(self, visit_item, &krate.items);
+            visit::walk_list!(self, visit_attribute, &krate.attrs);
+            self.contains_macro_use(&krate.attrs);
         }
     }
 

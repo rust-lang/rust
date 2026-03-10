@@ -1200,7 +1200,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     /// Returns `true` if this attribute list contains `macro_use`.
-    fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
+    pub(crate) fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
@@ -1547,17 +1547,5 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
-    }
-
-    fn visit_crate(&mut self, krate: &'a ast::Crate) {
-        if krate.is_placeholder {
-            self.visit_invoc_in_module(krate.id);
-        } else {
-            // Visit attributes after items for backward compatibility.
-            // This way they can use `macro_rules` defined later.
-            visit::walk_list!(self, visit_item, &krate.items);
-            visit::walk_list!(self, visit_attribute, &krate.attrs);
-            self.contains_macro_use(&krate.attrs);
-        }
     }
 }
