@@ -263,38 +263,47 @@ impl ResolverAstLoweringExt for CombinedResolverAstLowering<'_, '_> {
         self.base.legacy_const_generic_args(expr, tcx)
     }
 
+    #[inline]
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.mut_part.partial_res_map.get(&id).cloned().or_else(|| self.base.get_partial_res(id))
     }
 
+    #[inline]
     fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
         self.base.get_import_res(id)
     }
 
+    #[inline]
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
         self.base.get_label_res(id)
     }
 
+    #[inline]
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
         self.base.get_lifetime_res(id)
     }
 
+    #[inline]
     fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
         self.base.extra_lifetime_params(id)
     }
 
+    #[inline]
     fn delegation_fn_sig(&self, id: LocalDefId) -> Option<&DelegationFnSig> {
         self.base.delegation_fn_sig(id)
     }
 
+    #[inline]
     fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
         self.base.delegation_info(id)
     }
 
+    #[inline]
     fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
         self.mut_part.node_id_to_def_id.get(&id).copied().or_else(|| self.base.def_id(id))
     }
 
+    #[inline]
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
         self.base.lifetime_elision_allowed(id)
     }
@@ -330,21 +339,25 @@ impl ResolverAstLowering<'_> {
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
+    #[inline]
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).copied()
     }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
+    #[inline]
     fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
         self.import_res_map.get(&id)
     }
 
     /// Obtains resolution for a label with the given `NodeId`.
+    #[inline]
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
         self.label_res_map.get(&id).copied()
     }
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
+    #[inline]
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
         self.lifetimes_res_map.get(&id).copied()
     }
@@ -356,22 +369,27 @@ impl ResolverAstLowering<'_> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
+    #[inline]
     fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
         self.extra_lifetime_params_map.get(&id)
     }
 
+    #[inline]
     fn delegation_fn_sig(&self, id: LocalDefId) -> Option<&DelegationFnSig> {
         self.delegation_fn_sigs.get(&id)
     }
 
+    #[inline]
     fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
         self.delegation_infos.get(&id)
     }
 
+    #[inline]
     fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&id).copied()
     }
 
+    #[inline]
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
         self.lifetime_elision_allowed.contains(&id)
     }
