@@ -993,19 +993,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => ("", &rcvr_ty),
                 };
                 let path = match self.tcx.assoc_parent(m.def_id) {
-                    Some((_, DefKind::Impl { of_trait: true })) => with_no_trimmed_paths!(
+                    Some((_, DefKind::Impl { of_trait: true })) => {
                         // We have `impl Trait for T {}`, suggest `<T as Trait>::method`.
-                        self.tcx.def_path_str_with_args(m.def_id, generic_args)
-                    )
-                    .to_string(),
+                        self.tcx.def_path_str_with_args(m.def_id, generic_args).to_string()
+                    }
                     Some((_, DefKind::Impl { of_trait: false })) => {
-                        with_no_trimmed_paths!(if let ty::Adt(def, _) = ty.kind() {
+                        if let ty::Adt(def, _) = ty.kind() {
                             // We have `impl T {}`, suggest `T::method`.
                             format!("{}::{}", self.tcx.def_path_str(def.did()), path.ident)
                         } else {
                             // This should be unreachable, as `impl &'a T {}` is invalid.
                             format!("{ty}::{}", path.ident)
-                        })
+                        }
                     }
                     // Fallback for arbitrary self types.
                     _ => with_no_trimmed_paths!(
@@ -1014,7 +1013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .to_string(),
                 };
                 Some(vec![
-                    (expr.span.until(base.span), format!("{path}({}", mutability,)),
+                    (expr.span.until(base.span), format!("{path}({}", mutability)),
                     match &args {
                         [] => (base.span.shrink_to_hi().with_hi(expr.span.hi()), ")".to_string()),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
