@@ -58,7 +58,7 @@ use smallvec::SmallVec;
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
-    AllowReturnTypeNotation, CombinedResolverForLowering, GenericArgsMode, ImplTraitContext,
+    AllowReturnTypeNotation, CombinedResolverAstLowering, GenericArgsMode, ImplTraitContext,
     ImplTraitPosition, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
@@ -678,7 +678,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 }
 
 struct SelfResolver<'a, 'b, 'hir> {
-    resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
+    resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
     path_id: NodeId,
     self_param_id: NodeId,
 }

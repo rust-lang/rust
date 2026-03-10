@@ -91,7 +91,7 @@ pub mod stability;
 
 struct LoweringContext<'a, 'b, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
+    resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -151,7 +151,7 @@ struct LoweringContext<'a, 'b, 'hir> {
 }
 
 impl<'a, 'b, 'hir> LoweringContext<'a, 'b, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'b mut CombinedResolverForLowering<'a, 'hir>) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             // Pseudo-globals.
@@ -234,58 +234,62 @@ impl SpanLowerer {
     }
 }
 
-struct CombinedResolverForLowering<'a, 'tcx> {
-    next_node_id: NodeId,
-    base: &'a ResolverAstLowering<'tcx>,
-    mut_part: ResolverAstLowering<'tcx>,
+#[derive(Default)]
+struct MutableResolverAstLowering {
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub partial_res_map: NodeMap<hir::def::PartialRes>,
 }
 
-impl<'a, 'tcx> ResolverAstLoweringExt for CombinedResolverForLowering<'a, 'tcx> {
+struct CombinedResolverAstLowering<'a, 'tcx> {
+    next_node_id: NodeId,
+    base: &'a ResolverAstLowering<'tcx>,
+    mut_part: MutableResolverAstLowering,
+}
+
+impl<'a, 'tcx> ResolverAstLoweringExt for CombinedResolverAstLowering<'a, 'tcx> {
     #[inline]
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
-        self.mut_part
-            .legacy_const_generic_args(expr, tcx)
-            .or_else(|| self.base.legacy_const_generic_args(expr, tcx))
+        self.base.legacy_const_generic_args(expr, tcx)
     }
 
     #[inline]
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.mut_part.get_partial_res(id).or_else(|| self.base.get_partial_res(id))
+        self.mut_part.partial_res_map.get(&id).cloned().or_else(|| self.base.get_partial_res(id))
     }
 
     #[inline]
     fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
-        self.mut_part.get_import_res(id).or_else(|| self.base.get_import_res(id))
+        self.base.get_import_res(id)
     }
 
     #[inline]
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.mut_part.get_label_res(id).or_else(|| self.base.get_label_res(id))
+        self.base.get_label_res(id)
     }
 
     #[inline]
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.mut_part.get_lifetime_res(id).or_else(|| self.base.get_lifetime_res(id))
+        self.base.get_lifetime_res(id)
     }
 
     #[inline]
     fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
-        self.mut_part.extra_lifetime_params(id).or_else(|| self.base.extra_lifetime_params(id))
+        self.base.extra_lifetime_params(id)
     }
 
     #[inline]
     fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
-        self.mut_part.delegation_info(id).or_else(|| self.base.delegation_info(id))
+        self.base.delegation_info(id)
     }
 
     #[inline]
     fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
-        self.mut_part.def_id(id).or_else(|| self.base.def_id(id))
+        self.mut_part.node_id_to_def_id.get(&id).copied().or_else(|| self.base.def_id(id))
     }
 
     #[inline]
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.mut_part.lifetime_elision_allowed(id) || self.base.lifetime_elision_allowed(id)
+        self.base.lifetime_elision_allowed(id)
     }
 }
 
@@ -590,7 +594,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
         tcx.definitions_untracked().def_index_count(),
     );
 
-    let mut resolver = CombinedResolverForLowering {
+    let mut resolver = CombinedResolverAstLowering {
         next_node_id: resolver.next_node_id,
         base: &resolver.resolver,
         mut_part: Default::default(),
@@ -612,8 +616,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
             delayed_ids.insert(def_id);
             continue;
         }
-
-        resolver.mut_part = Default::default();
 
         let mut lowerer = item::ItemLowerer {
             tcx,
@@ -638,7 +640,7 @@ pub fn lower_to_hir_delayed<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir:
     let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
     let ast_index = index_crate(&resolver.resolver, krate);
 
-    let mut resolver = CombinedResolverForLowering {
+    let mut resolver = CombinedResolverAstLowering {
         next_node_id: resolver.next_node_id,
         base: &resolver.resolver,
         mut_part: Default::default(),
@@ -655,12 +657,12 @@ pub fn lower_to_hir_delayed<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir:
 
     lowerer.lower_node(def_id);
 
-    for (child_def_id, owner) in &map {
-        if *child_def_id == def_id {
+    for (&child_def_id, &owner) in &map {
+        if child_def_id == def_id {
             continue;
         }
 
-        tcx.feed_child_delayed_hir_owner(*child_def_id).get_delayed_child_owner(*owner);
+        tcx.feed_child_delayed_hir_owner(child_def_id).get_delayed_child_owner(owner);
     }
 
     map.get(&def_id).cloned().unwrap()

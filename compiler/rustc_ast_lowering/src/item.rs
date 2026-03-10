@@ -25,7 +25,7 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
-use crate::CombinedResolverForLowering;
+use crate::CombinedResolverAstLowering;
 
 pub(super) enum Owners<'b, 'hir> {
     IndexVec(&'b mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>),
@@ -34,7 +34,7 @@ pub(super) enum Owners<'b, 'hir> {
 
 pub(super) struct ItemLowerer<'a, 'b, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'b mut CombinedResolverForLowering<'a, 'hir>,
+    pub(super) resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
     pub(super) ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: Owners<'b, 'hir>,
 }
