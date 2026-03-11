@@ -1292,6 +1292,12 @@ An assorted collection of tests that involves specific diagnostic spans.
 
 See [Tracking issue for specialization (RFC 1210) #31844](https://github.com/rust-lang/rust/issues/31844).
 
+## `tests/ui/splat`
+
+Tests for the `#![feature(splat)]` attribute.
+
+See [Tracking Issue for argument splatting #153629](https://github.com/rust-lang/rust/issues/153629).
+
 ## `tests/ui/stability-attribute/`
 
 Stability attributes used internally by the standard library: `#[stable()]` and `#[unstable()]`.

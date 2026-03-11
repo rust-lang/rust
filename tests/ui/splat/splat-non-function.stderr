@@ -1,0 +1,82 @@
+error: `#[splat]` attribute cannot be used on functions
+  --> $DIR/splat-non-function.rs:6:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on traits
+  --> $DIR/splat-non-function.rs:9:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on inherent impl blocks
+  --> $DIR/splat-non-function.rs:24:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on inherent methods
+  --> $DIR/splat-non-function.rs:34:5
+   |
+LL |     #[splat]
+   |     ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on inherent methods
+  --> $DIR/splat-non-function.rs:37:5
+   |
+LL |     #[splat]
+   |     ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on foreign modules
+  --> $DIR/splat-non-function.rs:69:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on foreign functions
+  --> $DIR/splat-non-function.rs:77:5
+   |
+LL |     #[splat]
+   |     ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on modules
+  --> $DIR/splat-non-function.rs:81:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on use statements
+  --> $DIR/splat-non-function.rs:84:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: `#[splat]` attribute cannot be used on structs
+  --> $DIR/splat-non-function.rs:87:1
+   |
+LL | #[splat]
+   | ^^^^^^^^
+   |
+   = help: `#[splat]` can be applied to function params and macro calls
+
+error: aborting due to 10 previous errors
+

@@ -551,6 +551,7 @@ fn construct_fn<'tcx>(
 
     body.spread_arg = if abi == ExternAbi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
+        // FIXME(splat): so does splat
         Some(Local::new(arguments.len()))
     } else {
         None

@@ -97,6 +97,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
             .emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span }));
     }
 
+    // FIXME(splat): also reject `#[splat]` on main function arguments
     if let Some(attr_span) = find_attr!(tcx, main_def_id, TrackCaller(span) => *span) {
         return Err(tcx
             .dcx()
