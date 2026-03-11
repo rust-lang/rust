@@ -66,7 +66,7 @@ fn cargo_help_sub(
     inst: &impl Fn(EscapeQuotes) -> String,
 ) -> lints::UnexpectedCfgCargoHelp {
     // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
-    // `build.rs`. We therefor do a best effort check (looking if the `--crate-name` is
+    // `build.rs`. We therefore do a best effort check (looking if the `--crate-name` is
     // `build_script_build`) to try to figure out if we are building a Cargo build script
 
     let unescaped = &inst(EscapeQuotes::No);
