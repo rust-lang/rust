@@ -1073,6 +1073,7 @@ symbols! {
         include_bytes,
         include_str,
         inclusive_range_syntax,
+        incomplete_features,
         index,
         index_mut,
         infer_outlives_requirements,

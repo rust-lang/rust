@@ -232,6 +232,9 @@ pub(crate) fn create_config(
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
         rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
+        rustc_lint::builtin::DUPLICATE_FEATURES.name.to_string(),
+        rustc_lint::builtin::UNUSED_FEATURES.name.to_string(),
+        rustc_lint::builtin::STABLE_FEATURES.name.to_string(),
         // this lint is needed to support `#[expect]` attributes
         rustc_lint::builtin::UNFULFILLED_LINT_EXPECTATIONS.name.to_string(),
     ];
