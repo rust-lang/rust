@@ -265,6 +265,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         .map(|local| {
             let arg_ty = fx.monomorphize(fx.mir.local_decls[local].ty);
 
+            // FIXME(splat): un-tuple splatted arguments in codegen, for performance
             // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
             if Some(local) == fx.mir.spread_arg {
                 // This argument (e.g. the last argument in the "rust-call" ABI)
