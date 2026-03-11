@@ -199,6 +199,14 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         }))
     }
 
+    symbols.extend(sorted.iter().flat_map(|&(&def_id, &info)| {
+        tcx.codegen_fn_attrs(def_id).foreign_item_symbol_aliases.iter().map(
+            move |&(foreign_item, _linkage, _visibility)| {
+                (ExportedSymbol::NonGeneric(foreign_item), info)
+            },
+        )
+    }));
+
     if tcx.entry_fn(()).is_some() {
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, tcx.sess.target.entry_name.as_ref()));
