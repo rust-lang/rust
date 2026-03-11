@@ -35,11 +35,6 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    // FIXME(autodiff): replace this as per discussion in https://github.com/rust-lang/rust/pull/149033#discussion_r2535465880
-    if find_attr!(tcx, def_id, RustcAutodiff(..)) {
-        return true;
-    }
-
     if find_attr!(tcx, def_id, RustcIntrinsic) {
         // Intrinsic fallback bodies are always cross-crate inlineable.
         // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
