@@ -823,7 +823,7 @@ pub const fn forget<T: ?Sized>(_: T);
 ///     unsafe {
 ///         let ptr = slice.as_mut_ptr();
 ///         // This now has three mutable references pointing at the same
-///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
+///         // memory: `slice`, and the two returned mutable slices.
 ///         // `slice` is never used after `let ptr = ...`, and so one can
 ///         // treat it as "dead", and therefore, you only have two real
 ///         // mutable slices.
