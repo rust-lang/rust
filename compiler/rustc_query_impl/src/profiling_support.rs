@@ -191,13 +191,8 @@ pub(crate) fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 
     let mut string_cache = QueryKeyStringCache::new();
 
-    for_each_query_vtable!(ALL, tcx, |query: &QueryVTable<'_, _>| {
-        alloc_self_profile_query_strings_for_query_cache(
-            tcx,
-            query.name,
-            &query.cache,
-            &mut string_cache,
-        );
+    for_each_query_vtable!(ALL, tcx, |query| {
+        alloc_self_profile_query_strings_for_query_cache(tcx, query, &mut string_cache);
     });
 
     tcx.sess.prof.store_query_cache_hits();
@@ -208,8 +203,7 @@ pub(crate) fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 /// the queries via macro magic.
 fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    query_name: &'static str,
-    query_cache: &C,
+    query: &'tcx QueryVTable<'tcx, C>,
     string_cache: &mut QueryKeyStringCache,
 ) where
     C: QueryCache,
@@ -224,14 +218,14 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
         if profiler.query_key_recording_enabled() {
             let mut query_string_builder = QueryKeyStringBuilder::new(profiler, tcx, string_cache);
 
-            let query_name = profiler.get_or_alloc_cached_string(query_name);
+            let query_name = profiler.get_or_alloc_cached_string(query.name);
 
             // Since building the string representation of query keys might
             // need to invoke queries itself, we cannot keep the query caches
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
             let mut query_keys_and_indices = Vec::new();
-            query_cache.for_each(&mut |k, _, i| query_keys_and_indices.push((*k, i)));
+            query.cache.for_each(&mut |k, _, i| query_keys_and_indices.push((*k, i)));
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but
@@ -252,14 +246,14 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             }
         } else {
             // In this branch we don't allocate query keys
-            let query_name = profiler.get_or_alloc_cached_string(query_name);
+            let query_name = profiler.get_or_alloc_cached_string(query.name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
             // FIXME(eddyb) make this O(1) by using a pre-cached query name `EventId`,
             // instead of passing the `DepNodeIndex` to `finish_with_query_invocation_id`,
             // when recording the event in the first place.
             let mut query_invocation_ids = Vec::new();
-            query_cache.for_each(&mut |_, _, i| {
+            query.cache.for_each(&mut |_, _, i| {
                 query_invocation_ids.push(i.into());
             });
 
