@@ -9,23 +9,19 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use std::debug_assert_matches;
-use std::ops::ControlFlow;
 
 use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor, walk_lifetime};
-use rustc_hir::{GenericArg, HirId, LifetimeKind, Path, QPath, TyKind};
-use rustc_middle::hir::nested_filter::All;
-use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind, TyCtxt, TypeVisitableExt};
+use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::UnconstrainedGenericParameter;
-use crate::hir::def::Res;
+use crate::errors::remove_or_use_generic::suggest_to_remove_or_use_generic;
 
 mod min_specialization;
 
@@ -177,13 +173,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                             );
                         }
                     }
-                    suggest_to_remove_or_use_generic(
-                        tcx,
-                        &mut diag,
-                        impl_def_id,
-                        param,
-                        "lifetime",
-                    );
+                    suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param, true);
                     res = Err(diag.emit());
                 }
             }
@@ -247,210 +237,9 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
                 const_param_note2: const_param_note,
             });
             diag.code(E0207);
-            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, "type");
+            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, false);
             res = Err(diag.emit());
         }
     }
     res
-}
-
-/// Use a Visitor to find usages of the type or lifetime parameter
-struct ParamUsageVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    /// The `DefId` of the generic parameter we are looking for.
-    param_def_id: DefId,
-    found: bool,
-}
-
-// todo: maybe this can be done more efficiently by only searching for generics OR lifetimes and searching more effectively
-impl<'tcx> Visitor<'tcx> for ParamUsageVisitor<'tcx> {
-    type NestedFilter = All;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-
-    type Result = ControlFlow<()>;
-
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
-        if let Some(res_def_id) = path.res.opt_def_id() {
-            if res_def_id == self.param_def_id {
-                self.found = true;
-                return ControlFlow::Break(());
-            }
-        }
-        intravisit::walk_path(self, path)
-    }
-
-    fn visit_lifetime(&mut self, lifetime: &'tcx rustc_hir::Lifetime) -> Self::Result {
-        if let LifetimeKind::Param(id) = lifetime.kind {
-            if let Some(local_def_id) = self.param_def_id.as_local() {
-                if id == local_def_id {
-                    self.found = true;
-                    return ControlFlow::Break(());
-                }
-            }
-        }
-        walk_lifetime(self, lifetime)
-    }
-}
-
-fn suggest_to_remove_or_use_generic(
-    tcx: TyCtxt<'_>,
-    diag: &mut Diag<'_>,
-    impl_def_id: LocalDefId,
-    param: &GenericParamDef,
-    parameter_type: &str,
-) {
-    let node = tcx.hir_node_by_def_id(impl_def_id);
-    let hir_impl = node.expect_item().expect_impl();
-
-    let Some((index, _)) = hir_impl
-        .generics
-        .params
-        .iter()
-        .enumerate()
-        .find(|(_, par)| par.def_id.to_def_id() == param.def_id)
-    else {
-        return;
-    };
-
-    // Get the Struct/ADT definition ID from the self type
-    let Some(struct_def_id) = (|| {
-        if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind
-            && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, def_id) = path.res
-        {
-            Some(def_id)
-        } else {
-            None
-        }
-    })() else {
-        return;
-    };
-
-    // Count how many slots are defined in the struct definition
-    let generics = tcx.generics_of(struct_def_id);
-    let total_slots = generics
-        .own_params
-        .iter()
-        .filter(|p| {
-            if parameter_type == "lifetime" {
-                matches!(p.kind, GenericParamDefKind::Lifetime)
-            } else {
-                matches!(p.kind, GenericParamDefKind::Type { .. })
-            }
-        })
-        .count();
-
-    // Count how many arguments are currently provided in the impl
-    let mut provided_slots = 0;
-    let mut last_segment_args = None;
-
-    if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind {
-        if let Some(seg) = path.segments.last() {
-            if let Some(args) = seg.args {
-                last_segment_args = Some(args);
-                provided_slots = args
-                    .args
-                    .iter()
-                    .filter(|arg| {
-                        if parameter_type == "lifetime" {
-                            matches!(arg, GenericArg::Lifetime(_))
-                        } else {
-                            matches!(arg, GenericArg::Type(_))
-                        }
-                    })
-                    .count();
-            }
-        }
-    }
-
-    let mut visitor = ParamUsageVisitor { tcx, param_def_id: param.def_id, found: false };
-    for item_ref in hir_impl.items {
-        let _ = visitor.visit_impl_item_ref(item_ref);
-        if visitor.found {
-            break;
-        }
-    }
-    let is_param_used = visitor.found;
-
-    let mut suggestions = vec![];
-
-    // Option A: Remove (Only if not used in body)
-    if !is_param_used {
-        suggestions.push((hir_impl.generics.span_for_param_removal(index), String::new()));
-    }
-    // todo: there could be a case where the parameter is used in the body, but the self type is still missing the generic argument, so we want to suggest adding it in that case as well
-    // e.g.
-    // ```
-    // struct S;
-    // impl<T> S {
-    //    fn foo(&self, x: T) {
-    //        // use T here
-    //    }
-    // }
-    // ```
-    // in such a case we could make the suggestion to add 'a to S in the `struct S` definition and the `impl S` definition
-    // but finding out whether the parameter is used as a generic argument in a function which doesnt have the generic parameter set for itself is not trivial
-    // such an edge case can be seen here:
-    // ```
-    // struct S;
-    // impl<T> S {
-    //    fn foo<T>(&self, x: T) {
-    //        // use T here
-    //    }
-    // }
-    // ```
-    // where it would be a good suggestion to remove the generic parameter `T` from the `impl` definition as the function `foo` can work without it.
-    // The test case `tests/ui/associated-types/unconstrained-lifetime-assoc-type.rs` for example would benefit from such a suggestion.
-
-    // Option B: Suggest adding only if there's an available slot
-    if provided_slots < total_slots {
-        if let Some(args) = last_segment_args {
-            // Struct already has <...>, append to it
-            suggestions.push((args.span().unwrap().shrink_to_hi(), format!(", {}", param.name)));
-        } else if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind {
-            // Struct has no <...> yet, add it
-            let seg = path.segments.last().unwrap();
-            suggestions.push((seg.ident.span.shrink_to_hi(), format!("<{}>", param.name)));
-        }
-    }
-
-    if suggestions.is_empty() {
-        return;
-    }
-
-    if is_param_used {
-        let msg = format!(
-            "make use of the {} parameter `{}` in the `self` type",
-            parameter_type, param.name
-        );
-        diag.span_suggestion(
-            suggestions[0].0,
-            msg,
-            suggestions[0].1.clone(),
-            Applicability::MaybeIncorrect,
-        );
-    } else {
-        let msg = if suggestions.len() == 2 {
-            format!("either remove the unused {} parameter `{}`", parameter_type, param.name)
-        } else {
-            format!("remove the unused {} parameter `{}`", parameter_type, param.name)
-        };
-        diag.span_suggestion(
-            suggestions[0].0,
-            msg,
-            suggestions[0].1.clone(),
-            Applicability::MaybeIncorrect,
-        );
-        if suggestions.len() == 2 {
-            let msg = format!("or make use of it");
-            diag.span_suggestion(
-                suggestions[1].0,
-                msg,
-                suggestions[1].1.clone(),
-                Applicability::MaybeIncorrect,
-            );
-        }
-    };
 }
