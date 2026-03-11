@@ -392,6 +392,7 @@ impl<'a> AstValidator<'a> {
                     sym::deny,
                     sym::expect,
                     sym::forbid,
+                    sym::splat,
                     sym::warn,
                 ];
                 !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)

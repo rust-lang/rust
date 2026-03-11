@@ -98,6 +98,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
+    // FIXME(splat): also reject `#[splat]` on main function arguments
     if let Some(attr_span) = find_attr!(tcx, main_def_id, TrackCaller(span) => *span) {
         tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr_span, annotated: main_span });
         error = true;

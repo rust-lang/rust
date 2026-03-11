@@ -651,6 +651,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Special handling for the closure ABI: untuple the last argument.
+                // FIXME(splat): un-tuple splatted arguments that were tupled in typecheck
                 let args: Cow<'_, [FnArg<'tcx, M::Provenance>]> =
                     if caller_abi == ExternAbi::RustCall && !args.is_empty() {
                         // Untuple
