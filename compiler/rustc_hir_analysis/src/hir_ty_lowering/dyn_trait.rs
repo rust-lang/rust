@@ -230,8 +230,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
-                                // Only associated types & consts can possibly be constrained via a binding.
-                                .filter(|item| item.is_type() || item.is_const())
+                                // Only associated types & type consts can possibly be
+                                // constrained in a trait object type via a binding.
+                                .filter(|item| item.is_type() || item.is_type_const())
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| (item.def_id, trait_ref)),
