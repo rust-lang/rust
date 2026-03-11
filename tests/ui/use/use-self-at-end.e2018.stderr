@@ -1,0 +1,523 @@
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:14:22
+   |
+LL |         pub use crate::self;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::self;
+LL +         pub use crate;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::{self};
+   |                        +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:14:24
+   |
+LL |         pub use crate::self;
+   |                        ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:16:22
+   |
+LL |         pub use crate::self as crate1;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::self as crate1;
+LL +         pub use crate as crate1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::{self as crate1};
+   |                        +              +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:17:25
+   |
+LL |         pub use crate::{self};
+   |                         ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use crate::{self as name};
+   |                              +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:21:17
+   |
+LL |         pub use self;
+   |                 ^^^^
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:23:18
+   |
+LL |         pub use {self};
+   |                  ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use {self as name};
+   |                       +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:27:21
+   |
+LL |         pub use self::self;
+   |                     ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use self::self;
+LL +         pub use self;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use self::{self};
+   |                       +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:27:23
+   |
+LL |         pub use self::self;
+   |                       ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:29:21
+   |
+LL |         pub use self::self as self3;
+   |                     ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use self::self as self3;
+LL +         pub use self as self3;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use self::{self as self3};
+   |                       +             +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:30:24
+   |
+LL |         pub use self::{self};
+   |                        ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use self::{self as name};
+   |                             +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:34:22
+   |
+LL |         pub use super::self;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::self;
+LL +         pub use super;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::{self};
+   |                        +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:34:24
+   |
+LL |         pub use super::self;
+   |                        ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:36:22
+   |
+LL |         pub use super::self as super1;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::self as super1;
+LL +         pub use super as super1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::{self as super1};
+   |                        +              +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:37:25
+   |
+LL |         pub use super::{self};
+   |                         ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use super::{self as name};
+   |                              +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:41:25
+   |
+LL |         pub use crate::x::self;
+   |                         ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::x::self;
+LL +         pub use crate::x;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::x::{self};
+   |                           +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:42:25
+   |
+LL |         pub use crate::x::self as x3;
+   |                         ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::x::self as x3;
+LL +         pub use crate::x as x3;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::x::{self as x3};
+   |                           +          +
+
+error: extern prelude cannot be imported
+  --> $DIR/use-self-at-end.rs:47:17
+   |
+LL |         pub use ::self;
+   |                 ^^^^^^
+
+error: extern prelude cannot be imported
+  --> $DIR/use-self-at-end.rs:50:17
+   |
+LL |         pub use ::self as crate4;
+   |                 ^^^^^^^^^^^^^^^^
+
+error: extern prelude cannot be imported
+  --> $DIR/use-self-at-end.rs:52:20
+   |
+LL |         pub use ::{self};
+   |                    ^^^^
+
+error: extern prelude cannot be imported
+  --> $DIR/use-self-at-end.rs:54:20
+   |
+LL |         pub use ::{self as crate5};
+   |                    ^^^^^^^^^^^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:57:24
+   |
+LL |         pub use z::self::self;
+   |                        ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use z::self::self;
+LL +         pub use z::self;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use z::self::{self};
+   |                          +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:57:26
+   |
+LL |         pub use z::self::self;
+   |                          ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:59:24
+   |
+LL |         pub use z::self::self as z1;
+   |                        ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use z::self::self as z1;
+LL +         pub use z::self as z1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use z::self::{self as z1};
+   |                          +          +
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:61:28
+   |
+LL |         pub use z::{self::{self}};
+   |                            ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use z::{self::{self as name}};
+   |                                 +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:65:30
+   |
+LL |         pub use super::Struct::self;
+   |                              ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Struct::self;
+LL +         pub use super::Struct;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Struct::{self};
+   |                                +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:67:30
+   |
+LL |         pub use super::Struct::self as Struct1;
+   |                              ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Struct::self as Struct1;
+LL +         pub use super::Struct as Struct1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Struct::{self as Struct1};
+   |                                +               +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:73:28
+   |
+LL |         pub use super::Enum::self;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Enum::self;
+LL +         pub use super::Enum;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Enum::{self};
+   |                              +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:74:28
+   |
+LL |         pub use super::Enum::self as Enum1;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Enum::self as Enum1;
+LL +         pub use super::Enum as Enum1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Enum::{self as Enum1};
+   |                              +             +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:79:29
+   |
+LL |         pub use super::Trait::self;
+   |                             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Trait::self;
+LL +         pub use super::Trait;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Trait::{self};
+   |                               +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-self-at-end.rs:80:29
+   |
+LL |         pub use super::Trait::self as Trait1;
+   |                             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::Trait::self as Trait1;
+LL +         pub use super::Trait as Trait1;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::Trait::{self as Trait1};
+   |                               +              +
+
+error[E0252]: the name `x` is defined multiple times
+  --> $DIR/use-self-at-end.rs:43:28
+   |
+LL |         pub use crate::x::self;
+   |                 -------------- previous import of the module `x` here
+LL |         pub use crate::x::self as x3;
+LL |         pub use crate::x::{self};
+   |         -------------------^^^^--
+   |         |                  |
+   |         |                  `x` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `x` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Enum` is defined multiple times
+  --> $DIR/use-self-at-end.rs:75:31
+   |
+LL |         pub use super::Enum::self;
+   |                 ----------------- previous import of the type `Enum` here
+LL |         pub use super::Enum::self as Enum1;
+LL |         pub use super::Enum::{self};
+   |         ----------------------^^^^--
+   |         |                     |
+   |         |                     `Enum` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `Enum` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Trait` is defined multiple times
+  --> $DIR/use-self-at-end.rs:81:32
+   |
+LL |         pub use super::Trait::self;
+   |                 ------------------ previous import of the trait `Trait` here
+LL |         pub use super::Trait::self as Trait1;
+LL |         pub use super::Trait::{self};
+   |         -----------------------^^^^--
+   |         |                      |
+   |         |                      `Trait` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `Trait` must be defined only once in the type namespace of this module
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:59:20
+   |
+LL |         pub use z::self::self as z1;
+   |                    ^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:62:21
+   |
+LL |         pub use z::{self::{self as z2}};
+   |                     ^^^^ can only be used in path start position
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:65:24
+   |
+LL |         pub use super::Struct::self;
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:67:24
+   |
+LL |         pub use super::Struct::self as Struct1;
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:69:24
+   |
+LL |         pub use super::Struct::{self};
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:70:24
+   |
+LL |         pub use super::Struct::{self as Struct2};
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:56:21
+   |
+LL |         type G = z::self::self;
+   |                     ^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:72:31
+   |
+LL |         type I = super::Enum::self;
+   |                               ^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:78:32
+   |
+LL |         type J = super::Trait::self;
+   |                                ^^^^ can only be used in path start position
+
+error[E0573]: expected type, found module `self`
+  --> $DIR/use-self-at-end.rs:20:18
+   |
+LL |         type B = self;
+   |                  ^^^^ not a type
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:40:28
+   |
+LL |         type E = crate::x::self;
+   |                            ^^^^ can only be used in path start position
+   |
+help: consider importing this module
+   |
+LL +         use crate::x;
+   |
+help: if you import `x`, refer to it directly
+   |
+LL -         type E = crate::x::self;
+LL +         type E = x::self;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/use-self-at-end.rs:64:18
+   |
+LL |         type H = super::Struct::self;
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `self` implemented for `x::Struct`, you could use the fully-qualified path
+   |
+LL -         type H = super::Struct::self;
+LL +         type H = <x::Struct as Example>::self;
+   |
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:13:25
+   |
+LL |         type A = crate::self;
+   |                         ^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:26:24
+   |
+LL |         type C = self::self;
+   |                        ^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-self-at-end.rs:33:25
+   |
+LL |         type D = super::self;
+   |                         ^^^^ can only be used in path start position
+
+error[E0433]: global paths cannot start with `self`
+  --> $DIR/use-self-at-end.rs:46:20
+   |
+LL |         type F = ::self;
+   |                    ^^^^ cannot start with this
+
+error: aborting due to 49 previous errors
+
+Some errors have detailed explanations: E0223, E0252, E0429, E0432, E0433, E0573.
+For more information about an error, try `rustc --explain E0223`.
