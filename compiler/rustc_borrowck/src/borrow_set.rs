@@ -126,7 +126,8 @@ impl<'tcx> BorrowData<'tcx> {
         matches!(self.pinnedness, Pinnedness::Pinned { .. })
     }
 
-    /// Returns the Pin result local if this borrow is pinned.
+    /// Returns the Pin result place if this borrow is pinned.
+    #[allow(dead_code)]
     pub(crate) fn pin_target_local(&self) -> Option<mir::Local> {
         match self.pinnedness {
             Pinnedness::Pinned { to, .. } => Some(to.local),
