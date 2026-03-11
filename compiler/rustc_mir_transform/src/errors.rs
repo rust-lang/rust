@@ -145,11 +145,7 @@ impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
                 }
             },
         );
-        let label = self.assert_kind.diagnostic_message();
-        self.assert_kind.add_args(&mut |name, value| {
-            diag.arg(name, value);
-        });
-        diag.span_label(self.span, label);
+        diag.span_label(self.span, self.assert_kind.to_string());
         diag
     }
 }
