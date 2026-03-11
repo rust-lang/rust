@@ -23,7 +23,6 @@ use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;
-use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
@@ -368,7 +367,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> rustc_type_ir::codec::TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     const CLEAR_CROSS_CRATE: bool = true;
