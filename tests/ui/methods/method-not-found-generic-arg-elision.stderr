@@ -7,8 +7,7 @@ LL | struct Point<T> {
 LL |     let d = point_i32.distance();
    |                       ^^^^^^^^ method not found in `Point<i32>`
    |
-   = note: the method was found for
-           - `Point<f64>`
+   = note: the method was found for `Point<f64>`
 
 error[E0599]: no method named `other` found for struct `Point<T>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:84:23

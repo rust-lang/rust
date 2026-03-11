@@ -7,8 +7,7 @@ LL | struct Bar<T>(T);
 LL |         self.bar()
    |              ^^^ method not found in `Bar<u32>`
    |
-   = note: the method was found for
-           - `Bar<Foo>`
+   = note: the method was found for `Bar<Foo>`
 
 error: aborting due to 1 previous error
 

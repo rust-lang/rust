@@ -9,8 +9,7 @@ note: if you're trying to build a new `issue_30123_aux::Graph<i32, i32>`, consid
    |
 LL |     pub fn new() -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^
-   = note: the function or associated item was found for
-           - `issue_30123_aux::Graph<N, E, Undirected>`
+   = note: the function or associated item was found for `issue_30123_aux::Graph<N, E, Undirected>`
 
 error: aborting due to 1 previous error
 

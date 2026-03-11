@@ -7,8 +7,7 @@ LL |     pub struct Foo<T>(T);
 LL |     test::Foo::<test::B>::foo();
    |                           ^^^ function or associated item not found in `Foo<B>`
    |
-   = note: the function or associated item was found for
-           - `Foo<A>`
+   = note: the function or associated item was found for `Foo<A>`
 
 error: aborting due to 1 previous error
 
