@@ -335,6 +335,20 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vcfn"] fn vcfn(a: vector_signed_short, immarg: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vcnf"] fn vcnf(a: vector_signed_short, immarg: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vcrnfs"] fn vcrnfs(a: vector_float, b: vector_float, immarg: i32) -> vector_signed_short;
+
+    // These are the intrinsics we'd like to use (with mode 0). However, they require
+    // "vector-enhancements-1" and don't have a fallback, whereas `vec_min`/`vec_max` should be
+    // available with just "vector". Therefore, we cannot use them.
+    // #[link_name = "llvm.s390.vfmaxsb"] fn vfmaxsb(a: vector_float, b: vector_float, mode: i32) -> vector_float;
+    // #[link_name = "llvm.s390.vfmaxdb"] fn vfmaxdb(a: vector_double, b: vector_double, mode: i32) -> vector_double;
+    // #[link_name = "llvm.s390.vfminsb"] fn vfminsb(a: vector_float, b: vector_float, mode: i32) -> vector_float;
+    // #[link_name = "llvm.s390.vfmindb"] fn vfmindb(a: vector_double, b: vector_double, mode: i32) -> vector_double;
+    // Instead, we use "portable" LLVM intrinsics -- even though those have the wrong semantics
+    // (https://github.com/rust-lang/stdarch/issues/2060), they usually do the right thing.
+    #[link_name = "llvm.minnum.v4f32"] fn minnum_v4f32(a: vector_float, b: vector_float) -> vector_float;
+    #[link_name = "llvm.minnum.v2f64"] fn minnum_v2f64(a: vector_double, b: vector_double) -> vector_double;
+    #[link_name = "llvm.maxnum.v4f32"] fn maxnum_v4f32(a: vector_float, b: vector_float) -> vector_float;
+    #[link_name = "llvm.maxnum.v2f64"] fn maxnum_v2f64(a: vector_double, b: vector_double) -> vector_double;
 }
 
 #[repr(simd)]
@@ -780,8 +794,8 @@ mod sealed {
         impl_max!(vec_vmxslg, vector_unsigned_long_long, vmxlg);
     }
 
-    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, "vector-enhancements-1" vfmaxsb ] }
-    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, "vector-enhancements-1" vfmaxdb] }
+    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [maxnum_v4f32, "vector-enhancements-1" vfmaxsb] }
+    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [maxnum_v2f64, "vector-enhancements-1" vfmaxdb] }
 
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxdb (vector_double, vector_double) -> vector_double);
@@ -827,8 +841,8 @@ mod sealed {
         impl_min!(vec_vmnslg, vector_unsigned_long_long, vmnlg);
     }
 
-    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, "vector-enhancements-1" vfminsb]  }
-    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, "vector-enhancements-1" vfmindb]  }
+    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [minnum_v4f32, "vector-enhancements-1" vfminsb] }
+    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [minnum_v2f64, "vector-enhancements-1" vfmindb] }
 
     impl_vec_trait!([VectorMin vec_min] vec_vfminsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMin vec_min] vec_vfmindb (vector_double, vector_double) -> vector_double);
@@ -7475,6 +7489,19 @@ mod tests {
         [1.0, f32::NAN, f32::NAN, 2.0],
         [1.0, f32::NAN, 5.0, 3.14],
         [0, !0, !0, !0]
+    }
+
+    // f32 is the tricky case for max/min as that needs a fallback on z13
+    test_vec_2! { test_vec_max, vec_max, f32x4, f32x4 -> f32x4,
+        [1.0,   f32::NAN, f32::INFINITY, 2.0],
+        [-10.0, -10.0,    5.0,           f32::NAN],
+        [1.0,   -10.0,    f32::INFINITY, 2.0]
+    }
+
+    test_vec_2! { test_vec_min, vec_min, f32x4, f32x4 -> f32x4,
+        [1.0,   f32::NAN, f32::INFINITY, 2.0],
+        [-10.0, -10.0,    5.0,           f32::NAN],
+        [-10.0, -10.0,    5.0,           2.0]
     }
 
     #[simd_test(enable = "vector")]
