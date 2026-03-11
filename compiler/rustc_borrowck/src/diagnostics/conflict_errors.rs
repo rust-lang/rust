@@ -47,9 +47,8 @@ use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
 use crate::borrow_set::{BorrowData, TwoPhaseActivation};
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{CapturedMessageOpt, call_kind, find_all_local_uses};
-use crate::pin_set::PinData;
 use crate::prefixes::IsPrefixOf;
-use crate::{InitializationRequiringAction, MirBorrowckCtxt, ReadOrWrite, WriteKind, borrowck_errors};
+use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
 
 #[derive(Debug)]
 struct MoveSite {
@@ -1741,45 +1740,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(&self, &mut err, "", None, None);
         err
-    }
-
-    pub(crate) fn report_pin_violation(
-        &mut self,
-        _location: Location,
-        place_span: (Place<'tcx>, Span),
-        pin_data: &PinData<'tcx>,
-        access_kind: ReadOrWrite,
-    ) {
-        use ReadOrWrite::Write;
-        use WriteKind::{Move, MutableBorrow};
-
-        let (place, span) = place_span;
-
-        let violation_kind = match access_kind {
-            Write(Move) => "move",
-            Write(MutableBorrow(_)) => "mutably borrow",
-            _ => unreachable!(),
-        };
-
-        let place_desc = self
-            .describe_place(place.as_ref())
-            .unwrap_or_else(|| "value".to_string());
-
-        let mut err = self.root_cx.tcx.dcx().struct_span_err(
-            span,
-            format!("cannot {} `{}` because it is pinned", violation_kind, place_desc),
-        );
-
-        // Show where the pin was created
-        let pin_span = self.body.source_info(pin_data.location).span;
-        err.span_note(pin_span, "pin created here");
-
-        err.help(
-            "pinned values cannot be moved or mutably borrowed, \
-             as this would invalidate the pin guarantee",
-        );
-
-        self.buffer_error(err);
     }
 
     pub(crate) fn report_conflicting_borrow(

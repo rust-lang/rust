@@ -121,6 +121,18 @@ impl<'tcx> BorrowData<'tcx> {
     pub fn assigned_place(&self) -> mir::Place<'tcx> {
         self.assigned_place
     }
+
+    pub(crate) fn is_pinned(&self) -> bool {
+        matches!(self.pinnedness, Pinnedness::Pinned { .. })
+    }
+
+    /// Returns the Pin result local if this borrow is pinned.
+    pub(crate) fn pin_target_local(&self) -> Option<mir::Local> {
+        match self.pinnedness {
+            Pinnedness::Pinned { to, .. } => Some(to.local),
+            Pinnedness::Not => None,
+        }
+    }
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -335,7 +347,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             if let mir::StatementKind::Assign(box (pinned_place, ref rvalue)) = stmt.kind
                 && let mir::Rvalue::Aggregate(box agg_kind, operands) = rvalue
                 && let mir::AggregateKind::Adt(adt_did, _, args, _, _) = agg_kind
-                && tcx.adt_def(adt_did).is_pin()
+                && tcx.adt_def(*adt_did).is_pin()
                 && args.type_at(0).is_ref()
                 && let mir::Operand::Move(place) = operands[FieldIdx::ZERO]
                 && place == assigned_place

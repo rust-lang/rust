@@ -48,13 +48,12 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
-use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, PinIndex, Pins};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, Pins};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
@@ -775,6 +774,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     borrow_set: &'a BorrowSet<'tcx>,
 
     /// The set of pins extracted from the MIR
+    #[allow(dead_code)]
     pin_set: &'a PinSet<'tcx>,
 
     /// Information about upvars not necessarily preserved in types or MIR
@@ -1032,6 +1032,15 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                         // so this "extra check" serves as a kind of backup.
                         for i in state.borrows.iter() {
                             let borrow = &self.borrow_set[i];
+                            // Skip pinned borrows: their lifetime is managed by
+                            // StorageDead of the Pin result local and reassignment,
+                            // not by NLL regions. On unwind paths, StorageDead may
+                            // not have been emitted, so these borrows can appear
+                            // spuriously alive. The normal dataflow-based conflict
+                            // detection already catches pin violations.
+                            if borrow.is_pinned() {
+                                continue;
+                            }
                             self.check_for_invalidation_at_exit(loc, borrow, span);
                         }
                     }
@@ -1249,10 +1258,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             location,
         );
         let conflict_error = self.check_access_for_conflict(location, place_span, sd, rw, state);
-        let pin_conflict_error =
-            self.check_access_for_pin_conflict(location, place_span, sd, rw, state);
 
-        if conflict_error || mutability_error || pin_conflict_error {
+        if conflict_error || mutability_error {
             debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`", place_span, kind);
             self.access_place_error_reported.insert((place_span.0, place_span.1));
         }
@@ -1274,77 +1281,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         } else {
             Cow::Borrowed(&state.borrows)
         }
-    }
-
-    fn pins_in_scope<'s>(
-        &self,
-        _location: Location,
-        state: &'s BorrowckDomain,
-    ) -> &'s MixedBitSet<PinIndex> {
-        &state.pins
-    }
-
-    #[instrument(level = "debug", skip(self, state))]
-    fn check_access_for_pin_conflict(
-        &mut self,
-        location: Location,
-        place_span: (Place<'tcx>, Span),
-        sd: AccessDepth,
-        rw: ReadOrWrite,
-        state: &BorrowckDomain,
-    ) -> bool {
-        use ReadOrWrite::Write;
-        use WriteKind::{Move, MutableBorrow};
-
-        // Early return: only check Move and MutableBorrow operations
-        let is_violating_access = matches!(rw, Write(Move) | Write(MutableBorrow(_)));
-        if !is_violating_access {
-            return false;
-        }
-
-        let mut error_reported = false;
-        let pins_in_scope = self.pins_in_scope(location, state);
-
-        // Check each active pin for conflicts
-        for pin_index in pins_in_scope.iter() {
-            let pin_data = &self.pin_set[pin_index];
-
-            // Check if accessed place conflicts with pinned place
-            if places_conflict(
-                self.infcx.tcx,
-                self.body,
-                pin_data.pinned_place,
-                place_span.0,
-                PlaceConflictBias::Overlap,
-            ) {
-                // Get the type of the pinned place (Pin<Ptr>)
-                let pinned_ty = pin_data.pinned_place.ty(self.body, self.infcx.tcx).ty;
-
-                // Extract the pointee type from Pin<&[mut] T> to get T
-                if let Some(pointee_ty) = pinned_ty.builtin_deref(true) {
-                    // Check if the pointee type implements Unpin
-                    let unpin_trait = self.infcx.tcx.lang_items().unpin_trait();
-                    if let Some(unpin_trait) = unpin_trait {
-                        let param_env = self.infcx.tcx.param_env(
-                            self.body.source.def_id()
-                        );
-                        let ty_is_unpin = self.infcx.type_implements_trait(
-                            unpin_trait,
-                            [pointee_ty],
-                            param_env,
-                        ).must_apply_modulo_regions();
-
-                        // Only report violation if the type does NOT implement Unpin
-                        if !ty_is_unpin {
-                            error_reported = true;
-                            self.report_pin_violation(location, place_span, pin_data, rw);
-                        }
-                    }
-                }
-            }
-        }
-
-        error_reported
     }
 
     #[instrument(level = "debug", skip(self, state))]

@@ -1,0 +1,112 @@
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/borrow.rs:31:14
+   |
+LL | fn baz(mut x: Foo, y: Foo) {
+   |        ----- binding `x` declared here
+LL |     let _x = &pin mut x;
+   |              ---------- borrow of `x` occurs here
+LL |     let _x = x;
+   |              ^ move out of `x` occurs here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _x = &pin mut x;
+   |                       - you could clone this value
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrow.rs:32:14
+   |
+LL |     let _x = &pin mut x;
+   |              ---------- first mutable borrow occurs here
+LL |     let _x = x;
+LL |     let _x = &mut x;
+   |              ^^^^^^ second mutable borrow occurs here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/borrow.rs:32:14
+   |
+LL | fn baz(mut x: Foo, y: Foo) {
+   |        ----- move occurs because `x` has type `Foo`, which does not implement the `Copy` trait
+LL |     let _x = &pin mut x;
+LL |     let _x = x;
+   |              - value moved here
+LL |     let _x = &mut x;
+   |              ^^^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _x = x;
+   |              - you could clone this value
+
+error[E0505]: cannot move out of `y` because it is borrowed
+  --> $DIR/borrow.rs:39:14
+   |
+LL | fn baz(mut x: Foo, y: Foo) {
+   |                    - binding `y` declared here
+...
+LL |     let _y = &pin const y;
+   |              ------------ borrow of `y` occurs here
+LL |     let _y = y;
+   |              ^ move out of `y` occurs here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _y = &pin const y;
+   |                         - you could clone this value
+
+error[E0502]: cannot borrow `y` as mutable because it is also borrowed as immutable
+  --> $DIR/borrow.rs:40:14
+   |
+LL |     let _y = &pin const y;
+   |              ------------ immutable borrow occurs here
+LL |     let _y = y;
+LL |     let _y = &mut y;
+   |              ^^^^^^ mutable borrow occurs here
+
+error[E0382]: borrow of moved value: `y`
+  --> $DIR/borrow.rs:40:14
+   |
+LL | fn baz(mut x: Foo, y: Foo) {
+   |                    - move occurs because `y` has type `Foo`, which does not implement the `Copy` trait
+...
+LL |     let _y = y;
+   |              - value moved here
+LL |     let _y = &mut y;
+   |              ^^^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _y = y;
+   |              - you could clone this value
+
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/borrow.rs:40:14
+   |
+LL |     let _y = &mut y;
+   |              ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL | fn baz(mut x: Foo, mut y: Foo) {
+   |                    +++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0382, E0499, E0502, E0505, E0596.
+For more information about an error, try `rustc --explain E0382`.
