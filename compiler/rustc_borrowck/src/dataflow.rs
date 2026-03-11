@@ -240,12 +240,6 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             borrows_out_of_scope_at_location: FxIndexMap::default(),
         };
         for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-            // Skip pinned borrows: their lifetime is extended beyond NLL scope.
-            // They are killed by StorageDead of the Pin result local or by
-            // reassignment of the borrowed place.
-            if borrow_data.is_pinned() {
-                continue;
-            }
             let borrow_region = borrow_data.region;
             let location = borrow_data.reserve_location;
             prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
@@ -362,10 +356,6 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             loans_out_of_scope_at_location: FxIndexMap::default(),
         };
         for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
-            // Skip pinned borrows: their lifetime is extended beyond NLL scope.
-            if loan_data.is_pinned() {
-                continue;
-            }
             let loan_issued_at = loan_data.reserve_location;
             prec.precompute_loans_out_of_scope(loan_idx, loan_issued_at);
         }
@@ -556,91 +546,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
         state.kill_all(definitely_conflicting_borrows);
     }
-
-    /// Kill pinned borrows whose borrowed place's local matches `local`.
-    /// This is called in the early phase when the borrowed place's storage dies,
-    /// to prevent spurious E0716 errors.
-    fn kill_pinned_borrows_on_borrowed_local(
-        &self,
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        local: mir::Local,
-    ) {
-        debug!("kill_pinned_borrows_on_borrowed_local: local={:?}", local);
-
-        let to_kill: Vec<_> = self
-            .borrow_set
-            .iter_enumerated()
-            .filter_map(|(idx, data)| {
-                if data.is_pinned() && data.borrowed_place.local == local {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        state.kill_all(to_kill.into_iter());
-    }
-
-    /// Kill pinned borrows whose Pin result local matches `local`.
-    /// This is called when the Pin value goes out of scope (StorageDead).
-    fn kill_pinned_borrows_on_local(
-        &self,
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        local: mir::Local,
-    ) {
-        debug!("kill_pinned_borrows_on_local: local={:?}", local);
-
-        let to_kill: Vec<_> = self
-            .borrow_set
-            .iter_enumerated()
-            .filter_map(
-                |(idx, data)| {
-                    if data.pin_target_local() == Some(local) { Some(idx) } else { None }
-                },
-            )
-            .collect();
-
-        state.kill_all(to_kill.into_iter());
-    }
-
-    /// Kill pinned borrows whose borrowed place conflicts with `place`.
-    /// Called in the early phase so reassignment of a pinned place is allowed.
-    fn kill_pinned_borrows_on_reassignment(
-        &self,
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        place: Place<'tcx>,
-    ) {
-        debug!("kill_pinned_borrows_on_reassignment: place={:?}", place);
-
-        let other_borrows_of_local = self
-            .borrow_set
-            .local_map
-            .get(&place.local)
-            .into_iter()
-            .flat_map(|bs| bs.iter())
-            .copied();
-
-        if place.projection.is_empty() {
-            // Only kill pinned borrows, not regular ones
-            let pinned_borrows = other_borrows_of_local.filter(|&i| self.borrow_set[i].is_pinned());
-            state.kill_all(pinned_borrows);
-            return;
-        }
-
-        let conflicting_pinned_borrows = other_borrows_of_local.filter(|&i| {
-            self.borrow_set[i].is_pinned()
-                && places_conflict(
-                    self.tcx,
-                    self.body,
-                    self.borrow_set[i].borrowed_place,
-                    place,
-                    PlaceConflictBias::NoOverlap,
-                )
-        });
-
-        state.kill_all(conflicting_pinned_borrows);
-    }
 }
 
 type BorrowsDomain = MixedBitSet<BorrowIndex>;
@@ -670,29 +575,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     fn apply_early_statement_effect(
         &self,
         state: &mut Self::Domain,
-        statement: &mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
         self.kill_loans_out_of_scope_at_location(state, location);
-
-        match &statement.kind {
-            // For pinned borrows whose lifetime is extended beyond NLL scope,
-            // kill them early when the pinned place is reassigned. This allows
-            // the reassignment to proceed without conflicting with the borrow.
-            mir::StatementKind::Assign(box (lhs, _)) => {
-                self.kill_pinned_borrows_on_reassignment(state, *lhs);
-            }
-            // Kill pinned borrows in the early phase when the borrowed place's
-            // local has StorageDead. This must happen before the visitor's
-            // StorageDead check (which runs after early effects) to avoid
-            // spurious E0716 errors for temporaries whose storage dies before
-            // the Pin result local.
-            mir::StatementKind::StorageDead(local) => {
-                self.kill_pinned_borrows_on_local(state, *local);
-                self.kill_pinned_borrows_on_borrowed_local(state, *local);
-            }
-            _ => {}
-        }
     }
 
     fn apply_primary_statement_effect(
@@ -727,8 +613,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
                 self.kill_borrows_on_place(state, Place::from(*local));
-                // Kill pinned borrows whose Pin result local is going out of scope.
-                self.kill_pinned_borrows_on_local(state, *local);
             }
 
             mir::StatementKind::FakeRead(..)
@@ -848,11 +732,22 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
 
     fn apply_early_statement_effect(
         &self,
-        _state: &mut Self::Domain,
-        _statement: &mir::Statement<'tcx>,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
-        // Pins don't go out of scope based on regions like borrows do
+        // Kill pins early on reassignment/StorageDead so that the visitor
+        // (which runs after the early phase) sees the updated pin state.
+        match &statement.kind {
+            mir::StatementKind::Assign(box (lhs, _)) => {
+                self.kill_pins_on_place(state, *lhs);
+            }
+            mir::StatementKind::StorageDead(local) => {
+                self.kill_pins_on_place(state, Place::from(*local));
+                self.kill_pins_by_pin_local(state, *local);
+            }
+            _ => {}
+        }
     }
 
     fn apply_primary_statement_effect(

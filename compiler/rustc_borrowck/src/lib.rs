@@ -1037,15 +1037,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                         // so this "extra check" serves as a kind of backup.
                         for i in state.borrows.iter() {
                             let borrow = &self.borrow_set[i];
-                            // Skip pinned borrows: their lifetime is managed by
-                            // StorageDead of the Pin result local and reassignment,
-                            // not by NLL regions. On unwind paths, StorageDead may
-                            // not have been emitted, so these borrows can appear
-                            // spuriously alive. The normal dataflow-based conflict
-                            // detection already catches pin violations.
-                            if borrow.is_pinned() {
-                                continue;
-                            }
                             self.check_for_invalidation_at_exit(loc, borrow, span);
                         }
                     }
@@ -1275,7 +1266,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         state: &'s BorrowckDomain,
     ) -> Cow<'s, MixedBitSet<BorrowIndex>> {
-        if let Some(polonius) = &self.polonius_output {
+        let mut borrows = if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
             let mut polonius_output = MixedBitSet::new_empty(self.borrow_set.len());
@@ -1285,7 +1276,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Cow::Owned(polonius_output)
         } else {
             Cow::Borrowed(&state.borrows)
+        };
+
+        // For pinned borrows, the Pins dataflow determines their liveness
+        // independently of NLL regions. If a pin is active, its corresponding
+        // borrow should be treated as in scope even if NLL killed it.
+        for (borrow_idx, borrow_data) in self.borrow_set.iter_enumerated() {
+            if let crate::borrow_set::Pinnedness::Pinned { at, .. } = borrow_data.pinnedness {
+                if let Some(pin_idx) = self.pin_set.get_index_of(&at) {
+                    if state.pins.contains(pin_idx) && !borrows.contains(borrow_idx) {
+                        borrows.to_mut().insert(borrow_idx);
+                    }
+                }
+            }
         }
+
+        borrows
     }
 
     #[instrument(level = "debug", skip(self, state))]
