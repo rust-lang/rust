@@ -753,7 +753,7 @@ impl<'tcx> Ty<'tcx> {
                     .map(|principal| {
                         tcx.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.is_type() || item.is_const())
+                            .filter(|item| item.is_type() || item.is_type_const())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                             .count()
