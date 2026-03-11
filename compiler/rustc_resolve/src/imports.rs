@@ -1682,26 +1682,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ImportResolutionKind::Glob(import_bindings)
     }
 
-    // "Same res different import" ambiguity hack for macros introduced in #145108.
-    fn same_res_different_import_hack(&self, module: Module<'ra>, decl: Decl<'ra>) -> bool {
-        // we are checking for a pattern like this:
+    // Hack for the `rust_embed` regression observed in the crater run of #145108.
+    fn rust_embed_hack(&self, module: Module<'ra>, decl: Decl<'ra>) -> bool {
+        // We are looking for this pattern:
         // ```rust
         // #[macro_use]
-        // extern crate macro_crate;
-        // pub use macro_crate::*;
+        // extern crate rust_embed_impl;
+        // pub use rust_embed_impl::*;
         //
-        // pub use MacroName as Name;
+        // pub use RustEmbed as Embed;
         // ```
         if let DeclKind::Import { source_decl, import } = decl.kind
-            && let ImportKind::Single { source, .. } = import.kind // this is "pub use MacroName as Name;"
-            && let DeclKind::Import { import, .. } = source_decl.kind // make sure that the import points to a macro_use import
+            // Check that `decl` is the re-export: "pub use RustEmbed as Embed;"
+            && let ImportKind::Single { source, .. } = import.kind
+            && source.name == sym::RustEmbed
+            // make sure that the import points to the #[macro_use] import
+            && let DeclKind::Import { import, .. } = source_decl.kind
             && matches!(import.kind, ImportKind::MacroUse { .. })
-            && self.macro_use_prelude.contains_key(&source.name) // and that the macro actually exists in the macro_use_prelude
-            // then check that `MacroName` exists in the module MacroNamespace
+            && self.macro_use_prelude.contains_key(&source.name) // and that the name actually exists in the macro_use_prelude
+            // Then check that `RustEmbed` exists in the modules Macro namespace.
             && let Some(y_decl) = self
                 .resolution(module, BindingKey::new(IdentKey::new(source), MacroNS))
                 .and_then(|res| res.best_decl())
-            // which comes from a "pub use macro_crate::*"
+            // which comes from "pub use rust_embed_impl::*"
             && y_decl.is_glob_import()
             && y_decl.vis().is_public()
         {
@@ -1730,7 +1733,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module.for_each_child(self, |this, ident, orig_ident_span, _, decl| {
             let res = decl.res().expect_non_local();
             if res != def::Res::Err {
-                let vis = if this.same_res_different_import_hack(module, decl) {
+                let vis = if this.rust_embed_hack(module, decl) {
                     Visibility::Public
                 } else {
                     decl.vis()
