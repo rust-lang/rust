@@ -24,9 +24,9 @@ use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
 pub use {
-    err_exhaust, err_inval, err_machine_stop, err_ub, err_ub_custom, err_ub_format, err_unsup,
-    err_unsup_format, throw_exhaust, throw_inval, throw_machine_stop, throw_ub, throw_ub_custom,
-    throw_ub_format, throw_unsup, throw_unsup_format,
+    err_exhaust, err_inval, err_machine_stop, err_ub, err_ub_format, err_unsup, err_unsup_format,
+    throw_exhaust, throw_inval, throw_machine_stop, throw_ub, throw_ub_format, throw_unsup,
+    throw_unsup_format,
 };
 
 pub use self::allocation::{
@@ -35,11 +35,10 @@ pub use self::allocation::{
 };
 pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
-    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
-    InterpErrorInfo, InterpErrorKind, InterpResult, InvalidMetaKind, InvalidProgramInfo,
-    MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValTreeCreationError,
-    ValidationErrorInfo, ValidationErrorKind, interp_ok,
+    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, InterpErrorInfo,
+    InterpErrorKind, InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType,
+    Misalignment, ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UnsupportedOpInfo, ValTreeCreationError, interp_ok,
 };
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
@@ -76,15 +75,21 @@ impl<'tcx> GlobalId<'tcx> {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub NonZero<u64>);
 
-// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
-// all the Miri types.
-impl fmt::Debug for AllocId {
+// AllocId show up in const-eval error messages
+impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() { write!(f, "a{}", self.0) } else { write!(f, "alloc{}", self.0) }
     }
 }
 
-// No "Display" since AllocIds are not usually user-visible.
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
+impl fmt::Debug for AllocId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Dispatch to `Display` impl.
+        fmt::Display::fmt(self, f)
+    }
+}
 
 #[derive(TyDecodable, TyEncodable)]
 enum AllocDiscriminant {
