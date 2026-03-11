@@ -28,7 +28,9 @@ use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin}
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, AdtKind, FnSigKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
@@ -1482,16 +1484,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
+                // Handle splatted method arguments
+                // self is already handled as `rcvr`, so it's never splatted here
+                let method_inputs = &method.sig.inputs()[1..];
+                let method_fn_sig_kind = if let Some(splatted_arg_index) =
+                    method.sig.fn_sig_kind.splatted()
+                {
+                    method
+                        .sig
+                        .fn_sig_kind
+                        .set_splatted(Some(splatted_arg_index.strict_sub(1)), method_inputs.len())
+                        .unwrap()
+                } else {
+                    method.sig.fn_sig_kind
+                };
+
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
-                    &method.sig.inputs()[1..],
+                    method_inputs,
                     method.sig.output(),
                     expected,
                     args,
-                    method.sig.c_variadic(),
-                    TupleArgumentsFlag::DontTupleArguments,
+                    method_fn_sig_kind,
+                    TupleArgumentsFlag::NotCallOper,
                     Some(method.def_id),
+                    Some(method.args),
                 );
 
                 self.check_call_abi(method.sig.abi(), expr.span);
@@ -1511,9 +1529,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err_output,
                     NoExpectation,
                     args,
-                    false,
-                    TupleArgumentsFlag::DontTupleArguments,
+                    // Avoid spurious unsafe errors by using a safe dummy sig
+                    FnSigKind::dummy(),
+                    TupleArgumentsFlag::NotCallOper,
                     None,
+                    Some(GenericArgsRef::default()),
                 );
 
                 err_output

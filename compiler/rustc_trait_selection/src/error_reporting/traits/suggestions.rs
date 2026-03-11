@@ -4721,6 +4721,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let fn_sig @ ty::FnSig {
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
+            // FIXME(splat): this might need to change if the Fn* traits start using/supporting splat
             && fn_sig.abi() == ExternAbi::Rust
             && !fn_sig.c_variadic()
             && fn_sig.safety() == hir::Safety::Safe

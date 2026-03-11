@@ -1084,8 +1084,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         // Build a new closure where the return type is an owned value, instead of a ref.
-        let fn_sig_kind =
-            FnSigKind::default().set_safe(true).set_c_variadic(liberated_sig.c_variadic());
+        // The new closure is safe, but otherwise has the same ABI, splat, and c-variadic.
+        let fn_sig_kind = liberated_sig.fn_sig_kind.set_safe(true);
         let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
             tcx,
             ty::Binder::dummy(tcx.mk_fn_sig(
