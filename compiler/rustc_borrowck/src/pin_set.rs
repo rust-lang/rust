@@ -112,9 +112,7 @@ impl<'tcx> Visitor<'tcx> for GatherPins<'_, 'tcx> {
         {
             // Look at the preceding statement to find the original borrow:
             //   _ref = &[mut] _original
-            if let Some(original_place) =
-                self.find_original_borrowed_place(location, ref_place)
-            {
+            if let Some(original_place) = self.find_original_borrowed_place(location, ref_place) {
                 let pin_data = PinData {
                     location,
                     pinned_place: original_place,
@@ -146,10 +144,8 @@ impl<'tcx> GatherPins<'_, 'tcx> {
         if location.statement_index == 0 {
             return None;
         }
-        let predecessor = Location {
-            block: location.block,
-            statement_index: location.statement_index - 1,
-        };
+        let predecessor =
+            Location { block: location.block, statement_index: location.statement_index - 1 };
         let stmt =
             &self.body.basic_blocks[predecessor.block].statements[predecessor.statement_index];
 

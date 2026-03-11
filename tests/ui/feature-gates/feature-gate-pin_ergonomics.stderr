@@ -69,7 +69,7 @@ LL |     let mut x: Pin<&mut _> = &pin mut Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:45:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:44:23
    |
 LL |     let x: Pin<&_> = &pin const Foo;
    |                       ^^^
@@ -79,7 +79,7 @@ LL |     let x: Pin<&_> = &pin const Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:52:6
+  --> $DIR/feature-gate-pin_ergonomics.rs:51:6
    |
 LL |     &pin mut x: &pin mut i32,
    |      ^^^
@@ -89,7 +89,7 @@ LL |     &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:52:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:51:18
    |
 LL |     &pin mut x: &pin mut i32,
    |                  ^^^
@@ -99,7 +99,7 @@ LL |     &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:55:6
+  --> $DIR/feature-gate-pin_ergonomics.rs:54:6
    |
 LL |     &pin const y: &'a pin const i32,
    |      ^^^
@@ -109,7 +109,7 @@ LL |     &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:55:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:54:23
    |
 LL |     &pin const y: &'a pin const i32,
    |                       ^^^
@@ -119,7 +119,7 @@ LL |     &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:58:9
+  --> $DIR/feature-gate-pin_ergonomics.rs:57:9
    |
 LL |     ref pin mut z: i32,
    |         ^^^
@@ -129,7 +129,7 @@ LL |     ref pin mut z: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:59:9
+  --> $DIR/feature-gate-pin_ergonomics.rs:58:9
    |
 LL |     ref pin const w: i32,
    |         ^^^
@@ -139,7 +139,7 @@ LL |     ref pin const w: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:71:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:70:23
    |
 LL |         fn foo_sugar(&pin mut self) {}
    |                       ^^^
@@ -149,7 +149,7 @@ LL |         fn foo_sugar(&pin mut self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:72:29
+  --> $DIR/feature-gate-pin_ergonomics.rs:71:29
    |
 LL |         fn foo_sugar_const(&pin const self) {}
    |                             ^^^
@@ -159,7 +159,7 @@ LL |         fn foo_sugar_const(&pin const self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:78:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:77:18
    |
 LL |         let _y: &pin mut Foo = x;
    |                  ^^^
@@ -169,7 +169,7 @@ LL |         let _y: &pin mut Foo = x;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:81:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:80:22
    |
 LL |     fn foo_sugar(_: &pin mut Foo) {}
    |                      ^^^
@@ -179,7 +179,7 @@ LL |     fn foo_sugar(_: &pin mut Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:93:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:92:22
    |
 LL |     fn baz_sugar(_: &pin const Foo) {}
    |                      ^^^
@@ -189,7 +189,7 @@ LL |     fn baz_sugar(_: &pin const Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:96:35
+  --> $DIR/feature-gate-pin_ergonomics.rs:95:35
    |
 LL |         let mut x: Pin<&mut _> = &pin mut Foo;
    |                                   ^^^
@@ -199,7 +199,7 @@ LL |         let mut x: Pin<&mut _> = &pin mut Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:101:27
+  --> $DIR/feature-gate-pin_ergonomics.rs:100:27
    |
 LL |         let x: Pin<&_> = &pin const Foo;
    |                           ^^^
@@ -209,7 +209,7 @@ LL |         let x: Pin<&_> = &pin const Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:108:10
+  --> $DIR/feature-gate-pin_ergonomics.rs:107:10
    |
 LL |         &pin mut x: &pin mut i32,
    |          ^^^
@@ -219,7 +219,7 @@ LL |         &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:108:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:107:22
    |
 LL |         &pin mut x: &pin mut i32,
    |                      ^^^
@@ -229,7 +229,7 @@ LL |         &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:111:10
+  --> $DIR/feature-gate-pin_ergonomics.rs:110:10
    |
 LL |         &pin const y: &'a pin const i32,
    |          ^^^
@@ -239,7 +239,7 @@ LL |         &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:111:27
+  --> $DIR/feature-gate-pin_ergonomics.rs:110:27
    |
 LL |         &pin const y: &'a pin const i32,
    |                           ^^^
@@ -249,7 +249,7 @@ LL |         &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:114:13
+  --> $DIR/feature-gate-pin_ergonomics.rs:113:13
    |
 LL |         ref pin mut z: i32,
    |             ^^^
@@ -259,7 +259,7 @@ LL |         ref pin mut z: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:115:13
+  --> $DIR/feature-gate-pin_ergonomics.rs:114:13
    |
 LL |         ref pin const w: i32,
    |             ^^^
@@ -316,16 +316,7 @@ help: consider reborrowing the `Pin` instead of moving it
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/feature-gate-pin_ergonomics.rs:39:39
-   |
-LL |     let mut x: Pin<&mut _> = &pin mut Foo;
-   |                                       ^^^ creates a temporary value which is freed while still in use
-...
-LL | }
-   | - temporary value is freed at the end of this statement
+error: aborting due to 30 previous errors
 
-error: aborting due to 31 previous errors
-
-Some errors have detailed explanations: E0382, E0658, E0716.
+Some errors have detailed explanations: E0382, E0658.
 For more information about an error, try `rustc --explain E0382`.

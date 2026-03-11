@@ -557,6 +557,31 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         state.kill_all(definitely_conflicting_borrows);
     }
 
+    /// Kill pinned borrows whose borrowed place's local matches `local`.
+    /// This is called in the early phase when the borrowed place's storage dies,
+    /// to prevent spurious E0716 errors.
+    fn kill_pinned_borrows_on_borrowed_local(
+        &self,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
+        local: mir::Local,
+    ) {
+        debug!("kill_pinned_borrows_on_borrowed_local: local={:?}", local);
+
+        let to_kill: Vec<_> = self
+            .borrow_set
+            .iter_enumerated()
+            .filter_map(|(idx, data)| {
+                if data.is_pinned() && data.borrowed_place.local == local {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        state.kill_all(to_kill.into_iter());
+    }
+
     /// Kill pinned borrows whose Pin result local matches `local`.
     /// This is called when the Pin value goes out of scope (StorageDead).
     fn kill_pinned_borrows_on_local(
@@ -569,9 +594,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         let to_kill: Vec<_> = self
             .borrow_set
             .iter_enumerated()
-            .filter_map(|(idx, data)| {
-                if data.pin_target_local() == Some(local) { Some(idx) } else { None }
-            })
+            .filter_map(
+                |(idx, data)| {
+                    if data.pin_target_local() == Some(local) { Some(idx) } else { None }
+                },
+            )
             .collect();
 
         state.kill_all(to_kill.into_iter());
@@ -596,8 +623,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
         if place.projection.is_empty() {
             // Only kill pinned borrows, not regular ones
-            let pinned_borrows = other_borrows_of_local
-                .filter(|&i| self.borrow_set[i].is_pinned());
+            let pinned_borrows = other_borrows_of_local.filter(|&i| self.borrow_set[i].is_pinned());
             state.kill_all(pinned_borrows);
             return;
         }
@@ -649,11 +675,23 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     ) {
         self.kill_loans_out_of_scope_at_location(state, location);
 
-        // For pinned borrows whose lifetime is extended beyond NLL scope,
-        // kill them early when the pinned place is reassigned. This allows
-        // the reassignment to proceed without conflicting with the borrow.
-        if let mir::StatementKind::Assign(box (lhs, _)) = &statement.kind {
-            self.kill_pinned_borrows_on_reassignment(state, *lhs);
+        match &statement.kind {
+            // For pinned borrows whose lifetime is extended beyond NLL scope,
+            // kill them early when the pinned place is reassigned. This allows
+            // the reassignment to proceed without conflicting with the borrow.
+            mir::StatementKind::Assign(box (lhs, _)) => {
+                self.kill_pinned_borrows_on_reassignment(state, *lhs);
+            }
+            // Kill pinned borrows in the early phase when the borrowed place's
+            // local has StorageDead. This must happen before the visitor's
+            // StorageDead check (which runs after early effects) to avoid
+            // spurious E0716 errors for temporaries whose storage dies before
+            // the Pin result local.
+            mir::StatementKind::StorageDead(local) => {
+                self.kill_pinned_borrows_on_local(state, *local);
+                self.kill_pinned_borrows_on_borrowed_local(state, *local);
+            }
+            _ => {}
         }
     }
 
@@ -736,29 +774,16 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> Pins<'a, 'tcx> {
-    pub(crate) fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        pin_set: &'a PinSet<'tcx>,
-    ) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, pin_set: &'a PinSet<'tcx>) -> Self {
         Pins { tcx, body, pin_set }
     }
 
     /// Kill any pins whose original pinned place conflicts with `place`.
-    fn kill_pins_on_place(
-        &self,
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        place: Place<'tcx>,
-    ) {
+    fn kill_pins_on_place(&self, state: &mut <Self as Analysis<'tcx>>::Domain, place: Place<'tcx>) {
         debug!("kill_pins_on_place: place={:?}", place);
 
-        let other_pins_of_local = self
-            .pin_set
-            .local_map
-            .get(&place.local)
-            .into_iter()
-            .flat_map(|ps| ps.iter())
-            .copied();
+        let other_pins_of_local =
+            self.pin_set.local_map.get(&place.local).into_iter().flat_map(|ps| ps.iter()).copied();
 
         // If the place is a local with no projections, all pins of this
         // local must be killed. This is purely an optimization so we don't have to call
@@ -794,13 +819,8 @@ impl<'a, 'tcx> Pins<'a, 'tcx> {
     ) {
         debug!("kill_pins_by_pin_local: local={:?}", local);
 
-        let pins_of_local = self
-            .pin_set
-            .pin_local_map
-            .get(&local)
-            .into_iter()
-            .flat_map(|ps| ps.iter())
-            .copied();
+        let pins_of_local =
+            self.pin_set.pin_local_map.get(&local).into_iter().flat_map(|ps| ps.iter()).copied();
 
         state.kill_all(pins_of_local);
     }

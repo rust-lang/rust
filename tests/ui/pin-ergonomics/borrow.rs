@@ -28,6 +28,7 @@ fn bar() {
 
 fn baz(mut x: Foo, y: Foo) {
     let _x = &pin mut x;
+    drop(_x);
     let _x = x; //~ ERROR cannot move out of `x` because it is borrowed [E0505]
     let _x = &mut x; //~ ERROR cannot borrow `x` as mutable more than once at a time [E0499]
     //~^ ERROR borrow of moved value: `x` [E0382]
