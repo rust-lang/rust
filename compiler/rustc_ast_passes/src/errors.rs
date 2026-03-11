@@ -125,6 +125,33 @@ pub(crate) struct FnParamCVarArgsNotLast {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[splat]` is not supported on argument index {$splatted_arg_index}")]
+#[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
+pub(crate) struct InvalidSplattedArg {
+    pub splatted_arg_index: u16,
+
+    #[primary_span]
+    #[label("`#[splat]` is not supported here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("multiple `#[splat]`s are not allowed in the same function")]
+#[help("remove `#[splat]` from all but one argument")]
+pub(crate) struct DuplicateSplattedArgs {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("`...` and `#[splat]` are not allowed in the same function")]
+#[help("remove `#[splat]` or remove `...`")]
+pub(crate) struct CVarArgsAndSplat {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("documentation comments cannot be applied to function parameters")]
 pub(crate) struct FnParamDocComment {
     #[primary_span]
@@ -132,6 +159,7 @@ pub(crate) struct FnParamDocComment {
     pub span: Span,
 }
 
+// FIXME(splat): add splat to the allowed built-in attributes when it is complete/stabilized
 #[derive(Diagnostic)]
 #[diag(
     "allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters"
