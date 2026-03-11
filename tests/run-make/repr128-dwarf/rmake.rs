@@ -13,25 +13,8 @@ use object::{Object, ObjectSection};
 use run_make_support::{gimli, object, rfs, rustc};
 
 fn main() {
-    // Before LLVM 20, 128-bit enums with variants didn't emit debuginfo correctly.
-    // This check can be removed once Rust no longer supports LLVM 18 and 19.
-    let llvm_version = rustc()
-        .verbose()
-        .arg("--version")
-        .run()
-        .stdout_utf8()
-        .lines()
-        .filter_map(|line| line.strip_prefix("LLVM version: "))
-        .map(|version| version.split(".").next().unwrap().parse::<u32>().unwrap())
-        .next()
-        .unwrap();
-    let is_old_llvm = llvm_version < 20;
-
     let output = PathBuf::from("repr128");
     let mut rustc = rustc();
-    if is_old_llvm {
-        rustc.cfg("old_llvm");
-    }
     rustc.input("main.rs").output(&output).arg("-Cdebuginfo=2").run();
     // Mach-O uses packed debug info
     let dsym_location = output
@@ -88,7 +71,7 @@ fn main() {
 
         while let Some((_, entry)) = cursor.next_dfs().unwrap() {
             match entry.tag() {
-                gimli::constants::DW_TAG_variant if !is_old_llvm => {
+                gimli::constants::DW_TAG_variant => {
                     let Some(value) = entry.attr(gimli::constants::DW_AT_discr_value).unwrap()
                     else {
                         // `std` enums might have variants without `DW_AT_discr_value`.
@@ -143,7 +126,7 @@ fn main() {
     if !enumerators_to_find.is_empty() {
         panic!("Didn't find debug enumerator entries for {enumerators_to_find:?}");
     }
-    if !is_old_llvm && !variants_to_find.is_empty() {
+    if !variants_to_find.is_empty() {
         panic!("Didn't find debug variant entries for {variants_to_find:?}");
     }
 }

@@ -5,7 +5,6 @@
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
 //@ compile-flags: -Ctarget-feature=-crt-static -Cpanic=abort -Zsanitizer=kcfi -Zsanitizer-kcfi-arity
-//@ min-llvm-version: 21.0.0
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

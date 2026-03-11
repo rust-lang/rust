@@ -190,17 +190,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (21, 0, 0) {
-        if sess.target.arch == Arch::Nvptx64 {
-            // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
-            target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
-        }
-        if sess.target.arch == Arch::AmdGpu {
-            // LLVM 21 adds the address width for address space 8.
-            // See https://github.com/llvm/llvm-project/pull/139419
-            target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
-        }
-    }
     if llvm_version < (22, 0, 0) {
         if sess.target.arch == Arch::Avr {
             // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
@@ -342,11 +331,6 @@ pub(crate) unsafe fn create_module<'ll>(
         // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
         // https://github.com/llvm/llvm-project/pull/117121.)
         if sess.is_sanitizer_kcfi_arity_enabled() {
-            // KCFI arity indicator requires LLVM 21.0.0 or later.
-            if llvm_version < (21, 0, 0) {
-                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
-            }
-
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Override,
