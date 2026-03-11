@@ -1,9 +1,9 @@
-// Checks that `-Z instrument-xray` options can be specified multiple times.
+// Checks that `-Z instrument-xray-opts` options can be specified multiple times.
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-xray=skip-exit -Copt-level=0
-//@ compile-flags: -Z instrument-xray=instruction-threshold=123 -Copt-level=0
-//@ compile-flags: -Z instrument-xray=instruction-threshold=456 -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=skip-exit -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=instruction-threshold=123 -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=instruction-threshold=456 -Copt-level=0
 
 #![crate_type = "lib"]
 

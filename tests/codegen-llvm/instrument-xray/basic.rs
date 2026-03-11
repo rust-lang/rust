@@ -1,7 +1,8 @@
-// Checks that `-Z instrument-xray` produces expected instrumentation.
+// Checks that `-Z instrument-function=xray -Z instrument-xray-opts`
+// produces expected instrumentation.
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-xray=always -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=always -Copt-level=0
 
 #![crate_type = "lib"]
 

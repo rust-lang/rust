@@ -1,8 +1,8 @@
-// Checks that `-Z instrument-xray` does not allow `always` and `never` simultaneously.
+// Checks that `-Z instrument-xray-opts` does not allow `always` and `never` simultaneously.
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-xray=always,never
+//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=always,never
 
 fn main() {}
 
-//~? ERROR incorrect value `always,never` for unstable option `instrument-xray`
+//~? ERROR incorrect value `always,never` for unstable option `instrument-xray-opts`
