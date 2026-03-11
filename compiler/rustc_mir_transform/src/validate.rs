@@ -713,15 +713,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
-                        if adt_def.repr().simd() {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
-                                ),
-                            );
-                        }
-
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                         let Some(field) = adt_def.variant(var).fields.get(f) else {
                             fail_out_of_bounds(self, location);
@@ -811,6 +802,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
                 match indexed_ty.kind() {
                     ty::Array(_, _) | ty::Slice(_) => {}
+                    // MCP#838: Allow direct indexing on SIMD types
+                    ty::Adt(def, _) if def.repr().simd() => {}
                     _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
                 }
 
@@ -944,6 +937,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, cntxt: PlaceContext, location: Location) {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
+        // MCP#838: Ban standalone field projections on SIMD types.
+        // They are only permitted as an intermediate step for indexing.
+        for i in 0..place.projection.len() {
+            if let ProjectionElem::Field(_, _) = place.projection[i] {
+                let parent_place =
+                    PlaceRef { local: place.local, projection: &place.projection[..i] };
+                let parent_ty = parent_place.ty(&self.body.local_decls, self.tcx).ty;
+
+                if let ty::Adt(adt_def, _) = parent_ty.kind() {
+                    if adt_def.repr().simd() {
+                        let allowed = matches!(
+                            place.projection.get(i + 1),
+                            Some(ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. })
+                        );
+                        if !allowed {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+        }
 
         if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
             && place.projection.len() > 1

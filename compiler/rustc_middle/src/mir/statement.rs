@@ -219,7 +219,18 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                PlaceTy::from_ty(structurally_normalize(self.ty).builtin_index().unwrap())
+                let normalized_ty = structurally_normalize(self.ty);
+                let ty = if let ty::Adt(def, args) = normalized_ty.kind()
+                    && def.repr().simd()
+                {
+                    // MCP#838: SIMD types are indexable. The element type is
+                    // the element type of the internal array (field 0).
+                    let array_ty = def.non_enum_variant().fields.raw[0].ty(tcx, args);
+                    array_ty.builtin_index().expect("SIMD internal field must be an array")
+                } else {
+                    normalized_ty.builtin_index().expect("indexing non-indexable type")
+                };
+                PlaceTy::from_ty(ty)
             }
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match structurally_normalize(self.ty).kind() {
