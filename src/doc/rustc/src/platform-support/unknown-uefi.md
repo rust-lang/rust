@@ -16,6 +16,7 @@ Available targets:
 - [@dvdhrm](https://github.com/dvdhrm)
 - [@nicholasbishop](https://github.com/nicholasbishop)
 - (for `aarch64-unknown-uefi` only) [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+    - Use `@rustbot ping arm-maintainers` to ping us
 
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
 [arm_email]: mailto:rust@arm.com

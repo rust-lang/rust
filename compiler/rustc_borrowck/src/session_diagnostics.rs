@@ -570,6 +570,16 @@ pub(crate) enum TypeNoCopy<'a, 'tcx> {
         #[primary_span]
         span: Span,
     },
+    #[label(
+        "data moved here because {$place} has type `{$ty}`, which does not implement the `Copy` \
+         trait"
+    )]
+    LabelMovedHere {
+        ty: Ty<'tcx>,
+        place: &'a str,
+        #[primary_span]
+        span: Span,
+    },
     #[note(
         "{$is_partial_move ->
             [true] partial move

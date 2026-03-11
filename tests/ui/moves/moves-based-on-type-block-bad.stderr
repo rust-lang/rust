@@ -5,10 +5,7 @@ LL |             match hellothere.x {
    |                   ^^^^^^^^^^^^
 LL |                 box E::Foo(_) => {}
 LL |                 box E::Bar(x) => println!("{}", x.to_string()),
-   |                            -
-   |                            |
-   |                            data moved here
-   |                            move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+   |                            - data moved here because `x` has type `Box<isize>`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |

@@ -1151,12 +1151,18 @@ impl Step for Enzyme {
 
         let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
+        // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
+        // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
+        // hash into the Enzyme hash we force a rebuild of Enzyme when updating LLVM.
+        let enzyme_hash_input = builder.in_tree_llvm_info.sha().unwrap_or_default().to_owned()
+            + builder.enzyme_info.sha().unwrap_or_default();
+
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/tools/enzyme"),
-                builder.enzyme_info.sha().unwrap_or_default(),
+                &enzyme_hash_input,
             )
         });
 

@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{FatalError, StashKey};
+use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -16,8 +16,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::collect_active_jobs_from_all_queries;
 use crate::dep_graph::{DepNode, DepNodeIndex};
+use crate::for_each_query_vtable;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 
@@ -30,6 +30,33 @@ pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
     state.active.lock_shards().all(|shard| shard.is_empty())
 }
 
+/// Returns a map of currently active query jobs, collected from all queries.
+///
+/// If `require_complete` is `true`, this function locks all shards of the
+/// query results to produce a complete map, which always returns `Ok`.
+/// Otherwise, it may return an incomplete map as an error if any shard
+/// lock cannot be acquired.
+///
+/// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
+/// especially when called from within a deadlock handler, unless a
+/// complete map is needed and no deadlock is possible at this call site.
+pub fn collect_active_jobs_from_all_queries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    require_complete: bool,
+) -> Result<QueryJobMap<'tcx>, QueryJobMap<'tcx>> {
+    let mut job_map_out = QueryJobMap::default();
+    let mut complete = true;
+
+    for_each_query_vtable!(ALL, tcx, |query| {
+        let res = gather_active_jobs(query, tcx, require_complete, &mut job_map_out);
+        if res.is_none() {
+            complete = false;
+        }
+    });
+
+    if complete { Ok(job_map_out) } else { Err(job_map_out) }
+}
+
 /// Internal plumbing for collecting the set of active jobs for this query.
 ///
 /// Should only be called from `collect_active_jobs_from_all_queries`.
@@ -37,7 +64,7 @@ pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
 /// (We arbitrarily use the word "gather" when collecting the jobs for
 /// each individual query, so that we have distinct function names to
 /// grep for.)
-pub(crate) fn gather_active_jobs<'tcx, C>(
+fn gather_active_jobs<'tcx, C>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     require_complete: bool,
@@ -108,16 +135,6 @@ fn mk_cycle<'tcx, C: QueryCache>(
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
-        }
-        CycleErrorHandling::Stash => {
-            let guar = if let Some(root) = cycle_error.cycle.first()
-                && let Some(span) = root.frame.info.span
-            {
-                error.stash(span, StashKey::Cycle).unwrap()
-            } else {
-                error.emit()
-            };
             (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
     }

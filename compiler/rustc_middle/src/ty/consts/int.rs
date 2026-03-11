@@ -4,7 +4,6 @@ use std::num::NonZero;
 use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::ty::TyCtxt;
@@ -134,14 +133,6 @@ impl std::fmt::Debug for ConstInt {
                 Ok(())
             }
         }
-    }
-}
-
-impl IntoDiagArg for ConstInt {
-    // FIXME this simply uses the Debug impl, but we could probably do better by converting both
-    // to an inherent method that returns `Cow`.
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(format!("{self:?}").into())
     }
 }
 

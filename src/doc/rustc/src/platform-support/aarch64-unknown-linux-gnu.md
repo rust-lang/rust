@@ -7,6 +7,7 @@ Target for 64-bit little endian ARMv8-A Linux 4.1+ programs using glibc 2.17+.
 ## Target maintainers
 
 - [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+    - Use `@rustbot ping arm-maintainers` to ping us
 
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
 [arm_email]: mailto:rust@arm.com

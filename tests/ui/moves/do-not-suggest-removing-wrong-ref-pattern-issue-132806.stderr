@@ -4,8 +4,7 @@ error[E0507]: cannot move out of a shared reference
 LL |     let _ = HashMap::<String, i32>::new().iter().filter(|&(&_k, &_v)| { true });
    |                                                          ^^^--^^^^^^
    |                                                             |
-   |                                                             data moved here
-   |                                                             move occurs because `_k` has type `String`, which does not implement the `Copy` trait
+   |                                                             data moved here because `_k` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
