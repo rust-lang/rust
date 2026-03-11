@@ -48,7 +48,8 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
-    CollectAndApply, FnSigKind, TypeFlags, WithCachedTypeInfo, elaborate, search_graph,
+    CollectAndApply, FnSigKind, SplattedArgIndexError, TypeFlags, WithCachedTypeInfo, elaborate,
+    search_graph,
 };
 use tracing::{debug, instrument};
 
@@ -91,8 +92,34 @@ impl<'tcx> rustc_type_ir::inherent::FSigKind<TyCtxt<'tcx>> for FnSigKind {
         self
     }
 
-    fn new(abi: ExternAbi, safety: hir::Safety, c_variadic: bool) -> Self {
-        FnSigKind::default().set_abi(abi).set_safe(safety.is_safe()).set_c_variadic(c_variadic)
+    fn new(
+        abi: ExternAbi,
+        safety: hir::Safety,
+        c_variadic: bool,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        FnSigKind::default()
+            .set_abi(abi)
+            .set_safe(safety.is_safe())
+            .set_c_variadic(c_variadic)
+            .set_splatted(splatted, args_len)
+    }
+
+    fn dummy() -> Self {
+        FnSigKind::dummy()
+    }
+
+    fn set_safe(self, is_safe: bool) -> Self {
+        self.set_safe(is_safe)
+    }
+
+    fn set_splatted(
+        self,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        self.set_splatted(splatted, args_len)
     }
 
     fn abi(self) -> ExternAbi {
@@ -105,6 +132,10 @@ impl<'tcx> rustc_type_ir::inherent::FSigKind<TyCtxt<'tcx>> for FnSigKind {
 
     fn c_variadic(self) -> bool {
         self.c_variadic()
+    }
+
+    fn splatted(self) -> Option<u16> {
+        self.splatted()
     }
 }
 
@@ -2193,6 +2224,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
+            // Ignore splatting, it is unsupported on closures.
+            assert!(s.splatted().is_none());
             self.mk_fn_sig(
                 params,
                 s.output(),
