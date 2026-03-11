@@ -1,5 +1,4 @@
 use std::hash::Hash;
-use std::mem::ManuallyDrop;
 
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -135,6 +134,7 @@ where
     state: &'tcx QueryState<'tcx, K>,
     key: K,
     key_hash: u64,
+    poison_on_drop: bool,
 }
 
 impl<'tcx, K> ActiveJobGuard<'tcx, K>
@@ -143,7 +143,8 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter, and forgets the guard so it won't poison the query.
-    fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
+    #[inline]
+    fn complete<C>(mut self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
@@ -151,13 +152,18 @@ where
         // so no other thread can re-execute this query.
         cache.complete(self.key, value, dep_node_index);
 
-        let mut this = ManuallyDrop::new(self);
-
         // Drop everything without poisoning the query.
-        this.drop_and_maybe_poison(/* poison */ false);
-    }
+        self.poison_on_drop = false;
 
-    fn drop_and_maybe_poison(&mut self, poison: bool) {
+        // `drop` is now called because this method consumes `self`.
+    }
+}
+
+impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    fn drop(&mut self) {
         let status = {
             let mut shard = self.state.active.lock_shard_by_hash(self.key_hash);
             match shard.find_entry(self.key_hash, equivalent_key(self.key)) {
@@ -169,7 +175,7 @@ where
                 }
                 Ok(occupied) => {
                     let ((key, status), vacant) = occupied.remove();
-                    if poison {
+                    if self.poison_on_drop {
                         vacant.insert((key, ActiveKeyStatus::Poisoned));
                     }
                     status
@@ -182,18 +188,6 @@ where
             ActiveKeyStatus::Started(job) => job.signal_complete(),
             ActiveKeyStatus::Poisoned => panic!(),
         }
-    }
-}
-
-impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    #[inline(never)]
-    #[cold]
-    fn drop(&mut self) {
-        // Poison the query so jobs waiting on it panic.
-        self.drop_and_maybe_poison(/* poison */ true);
     }
 }
 
@@ -340,7 +334,7 @@ fn execute_job<'tcx, C: QueryCache, const INCR: bool>(
 ) -> (C::Value, Option<DepNodeIndex>) {
     // Set up a guard object that will automatically poison the query if a
     // panic occurs while executing the query (or any intermediate plumbing).
-    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash, poison_on_drop: true };
 
     debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
 
