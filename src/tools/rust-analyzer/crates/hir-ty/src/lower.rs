@@ -553,6 +553,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                     fn_.abi,
                     if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
                     fn_.is_varargs,
+                    // FIXME(splat): handle splatted arguments
                 ),
                 inputs_and_output: Tys::new_from_slice(&args),
             }),

@@ -27,8 +27,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized,
-    UserArgs, UserSelfTy,
+    SizedTraitKind, SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt,
+    Unnormalized, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     // FIXME(-Znext-solver): A lot of the calls to this method should
-    // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
+    // probably be `resolve_vars_with_obligations` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
@@ -237,6 +237,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_resolution(
+        &self,
+        hir_id: HirId,
+        r: Result<SplattedDef, ErrorGuaranteed>,
+    ) {
+        self.typeck_results.borrow_mut().splatted_defs_mut().insert(hir_id, r);
+    }
+
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn write_method_call_and_enforce_effects(
         &self,
         hir_id: HirId,
@@ -246,6 +255,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_call(
+        &self,
+        hir_id: HirId,
+        span: Span,
+        callee_def_id: Option<DefId>,
+        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        first_tupled_arg_index: u16,
+        tupled_args_count: u16,
+    ) {
+        // FIXME(const_trait_impl): enforce constness using enforce_context_effects() and add
+        // _and_enforce_effects to this method's name
+
+        self.write_splatted_resolution(
+            hir_id,
+            Ok(SplattedDef {
+                def_id: callee_def_id,
+                arg_index: first_tupled_arg_index,
+                arg_count: tupled_args_count,
+            }),
+        );
+        if let Some(callee_generic_args) = callee_generic_args {
+            self.write_args(hir_id, callee_generic_args);
+        }
     }
 
     fn write_args(&self, node_id: HirId, args: GenericArgsRef<'tcx>) {

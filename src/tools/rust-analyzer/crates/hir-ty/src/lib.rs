@@ -463,6 +463,7 @@ pub fn callable_sig_from_fn_trait<'db>(
         args.tuple_fields(),
         ret,
         false,
+        // FIXME(splat): handle splatted arguments
         Safety::Safe,
         ExternAbi::Rust,
     ));
