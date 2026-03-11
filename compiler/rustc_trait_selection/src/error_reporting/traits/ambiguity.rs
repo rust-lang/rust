@@ -246,12 +246,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(term) = term {
-                    self.emit_inference_failure_err(
+                    let candidates: Vec<_> = self
+                        .tcx
+                        .all_impls(trait_pred.def_id())
+                        .filter_map(|def_id| {
+                            let imp = self.tcx.impl_trait_header(def_id);
+                            if imp.polarity != ty::ImplPolarity::Positive
+                                || !self.tcx.is_user_visible_dep(def_id.krate)
+                            {
+                                return None;
+                            }
+                            let imp = imp.trait_ref.skip_binder();
+                            if imp
+                                .with_replaced_self_ty(self.tcx, trait_pred.skip_binder().self_ty())
+                                == trait_pred.skip_binder().trait_ref
+                            {
+                                Some(imp.self_ty())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    self.emit_inference_failure_err_with_type_hint(
                         obligation.cause.body_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0283,
                         true,
+                        match &candidates[..] {
+                            [candidate] => Some(*candidate),
+                            _ => None,
+                        },
                     )
                 } else {
                     struct_span_code_err!(
