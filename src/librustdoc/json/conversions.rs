@@ -31,14 +31,14 @@ impl JsonRenderer<'_> {
             .get(&item.item_id)
             .into_iter()
             .flatten()
-            .map(|clean::ItemLink { link, page_id, fragment, .. }| {
+            .flat_map(|clean::ItemLink { link, page_id, fragment, .. }| {
                 let id = match fragment {
-                    Some(UrlFragment::Item(frag_id)) => *frag_id,
+                    Some(UrlFragment::Item(frag_id)) => Some(*frag_id),
                     // FIXME: Pass the `UserWritten` segment to JSON consumer.
-                    Some(UrlFragment::UserWritten(_)) | None => *page_id,
+                    Some(UrlFragment::UserWritten(_)) | None => page_id.as_ref().copied(),
                 };
 
-                (String::from(&**link), self.id_from_item_default(id.into()))
+                id.map(|id| (String::from(&**link), self.id_from_item_default(id.into())))
             })
             .collect();
         let docs = item.opt_doc_value();
