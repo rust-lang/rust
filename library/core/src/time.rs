@@ -1708,12 +1708,19 @@ impl fmt::Display for DurationConversionError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum DurationConversionErrorKind {
+    // The number of nanoseconds would overflow Duration::MAX
     NanosecondsOverflow,
+    // The number of weeks would overflow Duration::MAX
     WeeksOverflow,
+    // The number of days would overflow Duration::MAX
     DaysOverflow,
+    // The number of hours would overflow Duration::MAX
     HoursOverflow,
+    // The number of minutes would overflow Duration::MAX
     MinutesOverflow,
+    // Value is negative.
     NegativeFloat,
+    // Value is either too big to be represented as `Duration` or `NaN`.
     FloatOverflowOrNan,
 }
 
