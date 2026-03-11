@@ -1,0 +1,256 @@
+warning: the feature `async_drop` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:9:12
+   |
+LL | #![feature(async_drop)]
+   |            ^^^^^^^^^^
+   |
+   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
+note: the lint level is defined here
+  --> $DIR/incomplete-features.rs:7:9
+   |
+LL | #![warn(incomplete_features)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: the feature `async_fn_in_dyn_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:10:12
+   |
+LL | #![feature(async_fn_in_dyn_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133119 <https://github.com/rust-lang/rust/issues/133119> for more information
+
+warning: the feature `const_closures` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:11:12
+   |
+LL | #![feature(const_closures)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
+
+warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:12:12
+   |
+LL | #![feature(contracts)]
+   |            ^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+
+warning: the feature `effective_target_features` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:13:12
+   |
+LL | #![feature(effective_target_features)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #143352 <https://github.com/rust-lang/rust/issues/143352> for more information
+
+warning: the feature `ergonomic_clones` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:14:12
+   |
+LL | #![feature(ergonomic_clones)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+
+warning: the feature `explicit_tail_calls` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:15:12
+   |
+LL | #![feature(explicit_tail_calls)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112788 <https://github.com/rust-lang/rust/issues/112788> for more information
+
+warning: the feature `export_stable` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:16:12
+   |
+LL | #![feature(export_stable)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #139939 <https://github.com/rust-lang/rust/issues/139939> for more information
+
+warning: the feature `field_projections` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:17:12
+   |
+LL | #![feature(field_projections)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
+
+warning: the feature `fn_delegation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:18:12
+   |
+LL | #![feature(fn_delegation)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:19:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+warning: the feature `generic_const_items` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:20:12
+   |
+LL | #![feature(generic_const_items)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
+
+warning: the feature `generic_const_parameter_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:21:12
+   |
+LL | #![feature(generic_const_parameter_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #137626 <https://github.com/rust-lang/rust/issues/137626> for more information
+
+warning: the feature `generic_pattern_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:22:12
+   |
+LL | #![feature(generic_pattern_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136574 <https://github.com/rust-lang/rust/issues/136574> for more information
+
+warning: the feature `guard_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:23:12
+   |
+LL | #![feature(guard_patterns)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+
+warning: the feature `impl_restriction` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:24:12
+   |
+LL | #![feature(impl_restriction)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+
+warning: the feature `inherent_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:25:12
+   |
+LL | #![feature(inherent_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:26:12
+   |
+LL | #![feature(lazy_type_alias)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+
+warning: the feature `loop_match` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:27:12
+   |
+LL | #![feature(loop_match)]
+   |            ^^^^^^^^^^
+   |
+   = note: see issue #132306 <https://github.com/rust-lang/rust/issues/132306> for more information
+
+warning: the feature `mgca_type_const_syntax` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:28:12
+   |
+LL | #![feature(mgca_type_const_syntax)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:29:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+warning: the feature `mut_ref` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:30:12
+   |
+LL | #![feature(mut_ref)]
+   |            ^^^^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+
+warning: the feature `never_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:31:12
+   |
+LL | #![feature(never_patterns)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:32:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+
+warning: the feature `pin_ergonomics` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:33:12
+   |
+LL | #![feature(pin_ergonomics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+
+warning: the feature `raw_dylib_elf` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:34:12
+   |
+LL | #![feature(raw_dylib_elf)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #135694 <https://github.com/rust-lang/rust/issues/135694> for more information
+
+warning: the feature `ref_pat_eat_one_layer_2024` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:35:30
+   |
+LL | #![cfg_attr(ref_pat, feature(ref_pat_eat_one_layer_2024))]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:37:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+
+warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:38:12
+   |
+LL | #![feature(unsafe_binders)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+
+warning: the feature `unsafe_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:39:12
+   |
+LL | #![feature(unsafe_fields)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #132922 <https://github.com/rust-lang/rust/issues/132922> for more information
+
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:40:12
+   |
+LL | #![feature(unsized_const_params)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+
+warning: 31 warnings emitted
+
