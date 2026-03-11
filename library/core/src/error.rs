@@ -1124,7 +1124,7 @@ impl Error for crate::cell::BorrowMutError {}
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for crate::char::CharTryFromError {}
 
-#[unstable(feature = "non_panicking_duration_conversion", issue = "none")]
+#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
 impl Error for crate::time::DurationConversionError {}
 
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
