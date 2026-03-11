@@ -18,7 +18,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
-pub use crate::execution::collect_active_jobs_from_all_queries;
+pub use crate::execution::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
 
 #[macro_use]

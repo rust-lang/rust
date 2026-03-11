@@ -12,7 +12,7 @@ use rustc_middle::query::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::execution::collect_active_jobs_from_all_queries;
+use crate::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.
@@ -383,8 +383,7 @@ pub fn print_query_stack<'tcx>(
     let mut count_total = 0;
 
     // Make use of a partial query job map if we fail to take locks collecting active queries.
-    let job_map: QueryJobMap<'_> = collect_active_jobs_from_all_queries(tcx, false)
-        .unwrap_or_else(|partial_job_map| partial_job_map);
+    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::PartialAllowed);
 
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "\n\nquery stack during panic:");

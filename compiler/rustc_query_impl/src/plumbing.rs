@@ -29,11 +29,13 @@ use rustc_span::def_id::LOCAL_CRATE;
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::find_dep_kind_root;
-use crate::{GetQueryVTable, collect_active_jobs_from_all_queries, for_each_query_vtable};
+use crate::{
+    CollectActiveJobsKind, GetQueryVTable, collect_active_jobs_from_all_queries,
+    for_each_query_vtable,
+};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
-    let job_map =
-        collect_active_jobs_from_all_queries(tcx, true).expect("failed to collect active queries");
+    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::Full);
     let (info, depth) = find_dep_kind_root(job, job_map);
 
     let suggested_limit = match tcx.recursion_limit() {
