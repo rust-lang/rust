@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -Zinstrument-xray=always -Cllvm-args=-x86-asm-syntax=intel
+//@ compile-flags: -Zinstrument-function=xray -Zinstrument-xray-opts=always -Cllvm-args=-x86-asm-syntax=intel
 
 //@ revisions: x86_64-linux
 //@[x86_64-linux] compile-flags: --target=x86_64-unknown-linux-gnu

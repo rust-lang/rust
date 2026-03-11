@@ -8,8 +8,12 @@ use run_make_support::{path, run, rustc};
 
 fn main() {
     // Compile instrumentation enabled binary, and verify -pg is passed
-    let link_args =
-        rustc().input("main.rs").arg("-Zinstrument-mcount").print("link-args").run().stdout_utf8();
+    let link_args = rustc()
+        .input("main.rs")
+        .arg("-Zinstrument-function=mcount")
+        .print("link-args")
+        .run()
+        .stdout_utf8();
     assert!(link_args.contains("\"-pg\""));
 
     // Run it, and verify gmon.out is created
