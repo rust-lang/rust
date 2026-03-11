@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ compile-flags: -Z instrument-fentry -Copt-level=0
+//@ compile-flags: -Z instrument-function=fentry -Copt-level=0
 //
 //@ revisions: x86_64-linux
 //@[x86_64-linux] compile-flags: --target=x86_64-unknown-linux-gnu

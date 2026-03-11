@@ -1,11 +1,11 @@
 //@ revisions: dflt ncyr ycnr ncnr ycyr
 //@ add-minicore
 //@ needs-llvm-components: systemz
-//@ compile-flags: -Zinstrument-fentry=y -Copt-level=0 --target=s390x-unknown-linux-gnu
-//@[ncyr] compile-flags: -Zinstrument-mcount-opts=no-call,record
-//@[ncnr] compile-flags: -Zinstrument-mcount-opts=no-call,no-record
-//@[ycnr] compile-flags: -Zinstrument-mcount-opts=call,no-record
-//@[ycyr] compile-flags: -Zinstrument-mcount-opts=call,record
+//@ compile-flags: -Zinstrument-function=fentry -Copt-level=0 --target=s390x-unknown-linux-gnu
+//@[ncyr] compile-flags: -Zinstrument-fentry-opts=no-call,record
+//@[ncnr] compile-flags: -Zinstrument-fentry-opts=no-call,no-record
+//@[ycnr] compile-flags: -Zinstrument-fentry-opts=call,no-record
+//@[ycyr] compile-flags: -Zinstrument-fentry-opts=call,record
 #![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]

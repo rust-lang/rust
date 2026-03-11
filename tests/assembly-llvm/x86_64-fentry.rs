@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -Zinstrument-fentry=y -Cllvm-args=-x86-asm-syntax=intel
+//@ compile-flags: -Zinstrument-function=fentry -Cllvm-args=-x86-asm-syntax=intel
 
 //@ revisions: x86_64-linux
 //@[x86_64-linux] compile-flags: --target=x86_64-unknown-linux-gnu
