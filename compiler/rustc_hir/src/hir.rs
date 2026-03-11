@@ -1096,6 +1096,28 @@ impl<'hir> Generics<'hir> {
         }
     }
 
+    /// Computes the span representing the removal of a generic parameter at `param_index`.
+    ///
+    /// This function identifies the correct slice of source code to delete so that the
+    /// remaining generic list remains syntactically valid (handling commas and brackets).
+    ///
+    /// ### Examples
+    ///
+    /// 1. **With a following parameter:** (Includes the trailing comma)
+    ///    - Input: `<T, U>` (index 0)
+    ///    - Produces span for: `T, `
+    ///
+    /// 2. **With a previous parameter:** (Includes the leading comma and bounds)
+    ///    - Input: `<T: Clone, U>` (index 1)
+    ///    - Produces span for: `, U`
+    ///
+    /// 3. **The only parameter:** (Includes the angle brackets)
+    ///    - Input: `<T>` (index 0)
+    ///    - Produces span for: `<T>`
+    ///
+    /// 4. **Parameter with where-clause bounds:**
+    ///    - Input: `fn foo<T, U>() where T: Copy` (index 0)
+    ///    - Produces span for: `T, ` (The where-clause remains for other logic to handle).
     pub fn span_for_param_removal(&self, param_index: usize) -> Span {
         if param_index >= self.params.len() {
             return self.span.shrink_to_hi();
@@ -1133,6 +1155,16 @@ impl<'hir> Generics<'hir> {
         }
     }
 
+    /// Returns the span of the `WherePredicate` associated with the given `GenericParam`, if any.
+    ///
+    /// This looks specifically for predicates in the `where` clause that were generated
+    /// from the parameter definition (e.g., `T` in `where T: Bound`).
+    ///
+    /// ### Example
+    ///
+    /// - Input: `param` representing `T`
+    /// - Context: `where T: Clone + Default, U: Copy`
+    /// - Returns: Span of `T: Clone + Default`
     fn span_for_param_bounds(&self, param: &GenericParam<'hir>) -> Option<Span> {
         self.predicates
             .iter()
