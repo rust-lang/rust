@@ -94,7 +94,6 @@ impl<'a, T: PointeeSized> Copy for &'a T {}
 impl<T: PointeeSized> Copy for *const T {}
 impl<T: PointeeSized> Copy for *mut T {}
 
-#[lang = "sync"]
 pub unsafe trait Sync {}
 
 unsafe impl Sync for bool {}
@@ -110,6 +109,10 @@ unsafe impl Sync for isize {}
 unsafe impl Sync for char {}
 unsafe impl<'a, T: PointeeSized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
+
+#[lang = "allow_shared_static"]
+unsafe trait AllowSharedStatic {}
+unsafe impl<T: PointeeSized + Sync> AllowSharedStatic for T {}
 
 #[lang = "freeze"]
 unsafe auto trait Freeze {}

@@ -19,9 +19,9 @@ trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 
-#[lang = "sync"]
-trait Sync {}
-impl Sync for bool {}
+#[lang = "allow_shared_static"]
+trait AllowSharedStatic {}
+impl AllowSharedStatic for bool {}
 
 #[lang = "drop_in_place"]
 //~^ ERROR: `drop_in_place` lang item must be applied to a function with at least 1 generic argument
@@ -31,4 +31,4 @@ fn drop_fn() {
 
 #[lang = "start"]
 //~^ ERROR: `start` lang item must be applied to a function with 1 generic argument
-fn start(){}
+fn start() {}

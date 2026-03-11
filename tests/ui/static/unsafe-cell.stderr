@@ -1,0 +1,18 @@
+error[E0277]: `UnsafeCell<i32>` cannot be shared between threads safely
+  --> $DIR/unsafe-cell.rs:11:13
+   |
+LL | static BAR: Bar = Bar(UnsafeCell::new(42));
+   |             ^^^ `UnsafeCell<i32>` cannot be shared between threads safely
+   |
+   = help: within `Bar`, the trait `Sync` is not implemented for `UnsafeCell<i32>`
+note: required because it appears within the type `Bar`
+  --> $DIR/unsafe-cell.rs:9:8
+   |
+LL | struct Bar(UnsafeCell<i32>);
+   |        ^^^
+   = note: required for `Bar` to implement `AllowSharedStatic`
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

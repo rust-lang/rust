@@ -387,6 +387,7 @@ symbols! {
         allow_fail,
         allow_internal_unsafe,
         allow_internal_unstable,
+        allow_shared_static,
         altivec,
         alu32,
         always,

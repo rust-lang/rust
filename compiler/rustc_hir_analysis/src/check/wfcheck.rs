@@ -1226,7 +1226,7 @@ pub(crate) fn check_static_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item_id: LocalDefId,
     ty: Ty<'tcx>,
-    should_check_for_sync: bool,
+    should_check_allow_in_shared_static: bool,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let span = tcx.ty_span(item_id);
@@ -1261,13 +1261,13 @@ pub(crate) fn check_static_item<'tcx>(
             );
         }
 
-        // Ensure that the end result is `Sync` in a non-thread local `static`.
-        let should_check_for_sync = should_check_for_sync
+        // Ensure that the end result is `Sync` or `UnsafeCell<T: Sync>` in a non-thread local `static`.
+        let should_check_allow_in_shared_static = should_check_allow_in_shared_static
             && !is_foreign_item
             && tcx.static_mutability(item_id.to_def_id()) == Some(hir::Mutability::Not)
             && !tcx.is_thread_local_static(item_id.to_def_id());
 
-        if should_check_for_sync {
+        if should_check_allow_in_shared_static {
             wfcx.register_bound(
                 traits::ObligationCause::new(
                     span,
@@ -1276,7 +1276,7 @@ pub(crate) fn check_static_item<'tcx>(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sync, span),
+                tcx.require_lang_item(LangItem::AllowSharedStatic, span),
             );
         }
         Ok(())

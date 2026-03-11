@@ -1,0 +1,8 @@
+error: requires `allow_shared_static` lang_item
+  --> $DIR/static-requires-lang-item.rs:15:13
+   |
+LL | static FOO: () = ();
+   |             ^^
+
+error: aborting due to 1 previous error
+

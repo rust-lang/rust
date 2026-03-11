@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
         let auto_traits_def_id = [
             self.tcx.lang_items().clone_trait(),
-            self.tcx.lang_items().sync_trait(),
+            self.tcx.get_diagnostic_item(sym::Sync),
             self.tcx.get_diagnostic_item(sym::Send),
             self.tcx.lang_items().unpin_trait(),
             self.tcx.get_diagnostic_item(sym::unwind_safe_trait),

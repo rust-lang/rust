@@ -269,7 +269,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Constant expressions must be sized.
     SizedConstOrStatic,
 
-    /// `static` items must have `Sync` type.
+    /// `static` items must have `Sync` or `UnsafeCell<T: Sync>` type (`AllowSharedStatic`).
     SharedStatic,
 
     /// Derived obligation (i.e. theoretical `where` clause) on a built-in

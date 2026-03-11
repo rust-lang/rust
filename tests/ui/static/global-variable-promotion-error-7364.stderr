@@ -9,6 +9,7 @@ LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
    = note: required for `std::ptr::Unique<RefCell<isize>>` to implement `Sync`
 note: required because it appears within the type `Box<RefCell<isize>>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   = note: required for `Box<RefCell<isize>>` to implement `AllowSharedStatic`
    = note: shared static variables must have a type that implements `Sync`
 
 error[E0015]: cannot call non-const associated function `Box::<RefCell<isize>>::new` in statics

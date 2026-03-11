@@ -583,7 +583,6 @@ pub trait BikeshedGuaranteedNoDrop {}
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Sync"]
-#[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
         Self = "core::cell::once::OnceCell<T>",
@@ -675,6 +674,35 @@ pub unsafe auto trait Sync {
 impl<T: PointeeSized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> !Sync for *mut T {}
+
+/// Whether a type is usable in shared statics.
+///
+/// TODO.
+#[lang = "allow_shared_static"]
+#[unstable(feature = "allow_shared_static_trait", issue = "none")]
+#[rustc_on_unimplemented(
+    message = "`{Self}` cannot be shared between threads safely",
+    label = "`{Self}` cannot be shared between threads safely"
+)]
+pub unsafe trait AllowSharedStatic {}
+
+// SAFETY: All `T: Sync` types are usable in shared statics.
+//
+// NOTE: The `MetaSized` bound is mostly a lie, as only sized types can be
+// used directly in statics. But this is already enforced by the compiler.
+#[unstable(feature = "allow_shared_static_trait", issue = "none")]
+unsafe impl<T: MetaSized + Sync> AllowSharedStatic for T {}
+
+// SAFETY: `UnsafeCell<T: Sync>` could (and should) have been `Sync`, there
+// is nothing inherent to `UnsafeCell` that forbids `Sync`.
+//
+// NOTE: Ideally, we'd have marked `UnsafeCell<T: Sync>: Sync`, but that is a
+// breaking change, since users rely upon `UnsafeCell<u32>` making their type
+// `!Sync`.
+//
+// See also TODO link.
+#[unstable(feature = "allow_shared_static_trait", issue = "none")]
+unsafe impl<T: MetaSized + Sync> AllowSharedStatic for UnsafeCell<T> {}
 
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///

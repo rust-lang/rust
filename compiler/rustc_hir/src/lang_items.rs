@@ -166,7 +166,6 @@ language_item_table! {
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
-    Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
@@ -219,6 +218,7 @@ language_item_table! {
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
+    AllowSharedStatic,       sym::allow_shared_static, allow_shared_static_trait,  Target::Trait,          GenericRequirement::Exact(0);
     UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
 
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;

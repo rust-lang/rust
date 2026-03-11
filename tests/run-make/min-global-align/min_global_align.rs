@@ -29,10 +29,10 @@ trait Freeze {}
 // No `UnsafeCell`, so everything is `Freeze`.
 impl<T: ?Sized> Freeze for T {}
 
-#[lang = "sync"]
-trait Sync {}
-impl Sync for bool {}
-impl Sync for &'static bool {}
+#[lang = "allow_shared_static"]
+trait AllowSharedStatic {}
+impl AllowSharedStatic for bool {}
+impl AllowSharedStatic for &'static bool {}
 
 #[lang = "drop_in_place"]
 pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
