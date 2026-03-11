@@ -481,7 +481,7 @@ impl MetaItem {
         }
     }
 
-    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItem> {
+    pub fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItem> {
         // FIXME: Share code with `parse_path`.
         let tt = iter.next().map(|tt| TokenTree::uninterpolate(tt));
         let path = match tt.as_deref() {
