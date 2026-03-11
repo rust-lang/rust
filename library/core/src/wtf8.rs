@@ -487,6 +487,9 @@ unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
 #[inline(never)]
 fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     let len = s.len();
+    if begin > len {
+        panic!("start byte index {begin} is out of bounds for string of length {len}");
+    }
     if end > len {
         panic!("end byte index {end} is out of bounds for string of length {len}");
     }
