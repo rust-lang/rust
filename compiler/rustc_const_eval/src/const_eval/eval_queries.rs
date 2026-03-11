@@ -2,7 +2,6 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
-use rustc_errors::{E0080, msg};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -460,23 +459,17 @@ fn report_eval_error<'tcx>(
 
     super::report(ecx, error, |diag, span, frames| {
         let num_frames = frames.len();
-        // FIXME(oli-obk): figure out how to use structured diagnostics again.
-        diag.code(E0080);
         diag.span_label(
             span,
-            msg!(
-                "evaluation of `{$instance}` failed {$num_frames ->
-                        [0] here
-                        *[other] inside this call
-                    }"
+            format!(
+                "evaluation of `{instance}` failed {where_}",
+                instance = with_no_trimmed_paths!(cid.instance.to_string()),
+                where_ = if num_frames == 0 { "here" } else { "inside this call" },
             ),
         );
         for frame in frames {
             diag.subdiagnostic(frame);
         }
-        // Add after the frame rendering above, as it adds its own `instance` args.
-        diag.arg("instance", with_no_trimmed_paths!(cid.instance.to_string()));
-        diag.arg("num_frames", num_frames);
     })
 }
 
@@ -501,13 +494,9 @@ fn report_validation_error<'tcx>(
         errors::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
 
     crate::const_eval::report(ecx, error, move |diag, span, frames| {
-        // FIXME(oli-obk): figure out how to use structured diagnostics again.
-        diag.code(E0080);
         diag.span_label(span, "it is undefined behavior to use this value");
         diag.note("the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.");
-        for frame in frames {
-            diag.subdiagnostic(frame);
-        }
+        assert!(frames.is_empty()); // we just report validation errors for the final const here
         diag.subdiagnostic(raw_bytes);
     })
 }

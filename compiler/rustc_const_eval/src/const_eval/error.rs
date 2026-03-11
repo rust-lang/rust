@@ -1,6 +1,6 @@
 use std::{fmt, mem};
 
-use rustc_errors::Diag;
+use rustc_errors::{Diag, E0080};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::interpret::{
     AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
@@ -187,6 +187,7 @@ pub(super) fn report<'tcx>(
         _ => {
             let (span, frames) = super::get_span_and_frames(ecx.tcx, ecx.stack());
             let mut err = tcx.dcx().struct_span_err(span, error.to_string());
+            err.code(E0080);
             if matches!(
                 error,
                 InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
