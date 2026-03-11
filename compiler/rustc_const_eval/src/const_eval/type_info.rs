@@ -465,6 +465,15 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::variadic => {
                     self.write_scalar(Scalar::from_bool(fn_sig_kind.c_variadic()), &field_place)?;
                 }
+                sym::splat => {
+                    self.write_scalar(
+                        // Use the same encoding as FnSigKind.splatted
+                        Scalar::from_u16(
+                            fn_sig_kind.splatted().unwrap_or(FnSigKind::NO_SPLATTED_ARG_INDEX),
+                        ),
+                        &field_place,
+                    )?;
+                }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }
