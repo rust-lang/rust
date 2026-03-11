@@ -9,8 +9,8 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, QueryCache, QueryJob, QueryJobId,
-    QueryKey, QueryLatch, QueryMode, QueryState,
+    ActiveKeyStatus, CycleError, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey,
+    QueryLatch, QueryMode, QueryState,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
@@ -128,16 +128,7 @@ fn mk_cycle<'tcx, C: QueryCache>(
     cycle_error: CycleError<'tcx>,
 ) -> C::Value {
     let error = report_cycle(tcx, &cycle_error);
-    match query.cycle_error_handling {
-        CycleErrorHandling::Error => {
-            let guar = error.emit();
-            (query.value_from_cycle_error)(tcx, key, cycle_error, guar)
-        }
-        CycleErrorHandling::DelayBug => {
-            let guar = error.delay_as_bug();
-            (query.value_from_cycle_error)(tcx, key, cycle_error, guar)
-        }
-    }
+    (query.value_from_cycle_error)(tcx, key, cycle_error, error)
 }
 
 /// Guard object representing the responsibility to execute a query job and

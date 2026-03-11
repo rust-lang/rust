@@ -5,9 +5,10 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
+use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::Span;
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
@@ -49,16 +50,6 @@ pub enum ActiveKeyStatus<'tcx> {
     Poisoned,
 }
 
-/// How a particular query deals with query cycle errors.
-///
-/// Inspected by the code that actually handles cycle errors, to decide what
-/// approach to use.
-#[derive(Copy, Clone)]
-pub enum CycleErrorHandling {
-    Error,
-    DelayBug,
-}
-
 #[derive(Clone, Debug)]
 pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
@@ -98,8 +89,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub feedable: bool,
 
     pub dep_kind: DepKind,
-    /// How this query deals with query cycle errors.
-    pub cycle_error_handling: CycleErrorHandling,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
@@ -127,12 +116,16 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// For `no_hash` queries, this function pointer is None.
     pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
 
+    /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
+    /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
+    /// error is created and emitted).
     pub value_from_cycle_error: fn(
         tcx: TyCtxt<'tcx>,
         key: C::Key,
         cycle_error: CycleError<'tcx>,
-        guar: ErrorGuaranteed,
+        error: Diag<'_>,
     ) -> C::Value,
+
     pub format_value: fn(&C::Value) -> String,
 
     pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
@@ -295,7 +288,6 @@ macro_rules! define_callbacks {
                     anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
-                    cycle_error_handling: $cycle_error_handling:ident,
                     depth_limit: $depth_limit:literal,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,

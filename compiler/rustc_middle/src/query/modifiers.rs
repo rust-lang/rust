@@ -29,11 +29,6 @@ pub(crate) struct arena_cache;
 /// identifier is available for use within the block, as is `tcx`.
 pub(crate) struct cache_on_disk_if;
 
-/// # `cycle_delay_bug` query modifier
-///
-/// If a dependency cycle is detected, emit a delayed bug instead of a normal error.
-pub(crate) struct cycle_delay_bug;
-
 /// # `depth_limit` query modifier
 ///
 /// Impose a recursion call depth limit on the query to prevent stack overflow.

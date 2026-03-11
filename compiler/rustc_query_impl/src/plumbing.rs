@@ -295,7 +295,6 @@ macro_rules! define_queries {
                     anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
-                    cycle_error_handling: $cycle_error_handling:ident,
                     depth_limit: $depth_limit:literal,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
@@ -409,8 +408,6 @@ macro_rules! define_queries {
                     depth_limit: $depth_limit,
                     feedable: $feedable,
                     dep_kind: dep_graph::DepKind::$name,
-                    cycle_error_handling:
-                        rustc_middle::query::CycleErrorHandling::$cycle_error_handling,
                     state: Default::default(),
                     cache: Default::default(),
 
@@ -446,8 +443,11 @@ macro_rules! define_queries {
                     #[cfg(not($cache_on_disk))]
                     is_loadable_from_disk_fn: |_tcx, _key, _index| false,
 
-                    value_from_cycle_error: |tcx, _, cycle, _| {
-                        $crate::from_cycle_error::default(tcx, cycle, stringify!($name))
+                    // The default just emits `err` and then aborts.
+                    // `from_cycle_error::specialize_query_vtables` overwrites this default for
+                    // certain queries.
+                    value_from_cycle_error: |_tcx, _key, _cycle, err| {
+                        $crate::from_cycle_error::default(err)
                     },
 
                     #[cfg($no_hash)]
