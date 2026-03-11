@@ -164,10 +164,10 @@ where
         let mut this = ManuallyDrop::new(self);
 
         // Drop everything without poisoning the query.
-        this.drop_and_maybe_poison(/* poison */ false);
+        this.drop_and_maybe_poison::<false>();
     }
 
-    fn drop_and_maybe_poison(&mut self, poison: bool) {
+    fn drop_and_maybe_poison<const POISON: bool>(&mut self) {
         let status = {
             let mut shard = self.state.active.lock_shard_by_hash(self.key_hash);
             match shard.find_entry(self.key_hash, equivalent_key(self.key)) {
@@ -179,7 +179,7 @@ where
                 }
                 Ok(occupied) => {
                     let ((key, status), vacant) = occupied.remove();
-                    if poison {
+                    if POISON {
                         vacant.insert((key, ActiveKeyStatus::Poisoned));
                     }
                     status
@@ -203,7 +203,7 @@ where
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        self.drop_and_maybe_poison(/* poison */ true);
+        self.drop_and_maybe_poison::<true>();
     }
 }
 
