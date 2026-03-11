@@ -1,0 +1,38 @@
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:48:1
+   |
+LL | mod foo_mod {}
+   | ^^^^^^^^^^^^^^
+
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:51:1
+   |
+LL | extern crate foo_crate;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:54:1
+   |
+LL | use std::mem;
+   | ^^^^^^^^^^^^^
+
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:57:1
+   |
+LL | type FooTy = u32;
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:60:1
+   |
+LL | struct FooStruct;
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[splat]` attribute is only allowed on functions
+  --> $DIR/splat-non-function.rs:63:1
+   |
+LL | const FOO: () = ();
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
