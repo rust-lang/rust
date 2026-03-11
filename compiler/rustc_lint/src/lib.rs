@@ -60,6 +60,7 @@ mod lints;
 mod lossy_provenance_casts;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
+mod misleading_cfg_in_build_script;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -106,6 +107,7 @@ use lifetime_syntax::*;
 use lossy_provenance_casts::LossyProvenanceCasts;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
+use misleading_cfg_in_build_script::MisleadingCfgInBuildScript;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -160,6 +162,7 @@ early_lint_methods!(
         pub BuiltinCombinedPreExpansionLintPass,
         [
             KeywordIdents: KeywordIdents,
+            MisleadingCfgInBuildScript: MisleadingCfgInBuildScript,
         ]
     ]
 );
