@@ -14,7 +14,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::collect_active_jobs_from_all_queries;
+use crate::execution::collect_active_jobs_from_all_queries;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.
