@@ -2404,15 +2404,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
-                    match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => ty::Binder::dummy(AutoImplConstituents {
-                            types: vec![ty.instantiate(self.tcx(), args)],
-                            assumptions: vec![],
-                        }),
-                        Err(_) => {
-                            return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
-                        }
-                    }
+                    let ty = self.tcx().type_of_opaque(def_id);
+                    ty::Binder::dummy(AutoImplConstituents {
+                        types: vec![ty.instantiate(self.tcx(), args)],
+                        assumptions: vec![],
+                    })
                 }
             }
         })

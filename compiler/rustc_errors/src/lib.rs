@@ -371,8 +371,6 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     AssociatedTypeSuggestion,
-    /// Query cycle detected, stashing in favor of a better error.
-    Cycle,
     UndeterminedMacroResolution,
     /// Used by `Parser::maybe_recover_trailing_expr`
     ExprInPat,

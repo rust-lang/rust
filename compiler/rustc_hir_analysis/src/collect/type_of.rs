@@ -4,7 +4,6 @@ use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, HirId};
-use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -183,10 +182,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
         },
 
-        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).map_or_else(
-            |CyclePlaceholder(guar)| Ty::new_error(tcx, guar),
-            |ty| ty.instantiate_identity(),
-        ),
+        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
@@ -249,12 +245,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
     }
 }
 
-pub(super) fn type_of_opaque(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+pub(super) fn type_of_opaque(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     if let Some(def_id) = def_id.as_local() {
-        Ok(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+        match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
                 opaque::find_opaque_ty_constraints_for_tait(
                     tcx,
@@ -287,11 +280,11 @@ pub(super) fn type_of_opaque(
                     DefiningScopeKind::MirBorrowck,
                 )
             }
-        })
+        }
     } else {
         // Foreign opaque type will go through the foreign provider
         // and load the type from metadata.
-        Ok(tcx.type_of(def_id))
+        tcx.type_of(def_id)
     }
 }
 

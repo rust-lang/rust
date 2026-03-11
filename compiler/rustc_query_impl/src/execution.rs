@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{FatalError, StashKey};
+use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -108,16 +108,6 @@ fn mk_cycle<'tcx, C: QueryCache>(
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
-        }
-        CycleErrorHandling::Stash => {
-            let guar = if let Some(root) = cycle_error.cycle.first()
-                && let Some(span) = root.frame.info.span
-            {
-                error.stash(span, StashKey::Cycle).unwrap()
-            } else {
-                error.emit()
-            };
             (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
     }
