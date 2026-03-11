@@ -1844,12 +1844,15 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         coro: Option<CoroutineKind>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
+        let mut splatted = decl.splatted();
 
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
         let mut inputs = &decl.inputs[..];
         if decl.c_variadic() {
+            // Splat + variadic errors in AST validation, so just ignore one of them here.
+            splatted = None;
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
@@ -1937,7 +1940,9 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 }
             }))
             .set_lifetime_elision_allowed(self.resolver.lifetime_elision_allowed(fn_node_id))
-            .set_c_variadic(c_variadic);
+            .set_c_variadic(c_variadic)
+            .set_splatted(splatted, inputs.len())
+            .unwrap();
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
     }

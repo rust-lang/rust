@@ -3055,8 +3055,29 @@ impl FnDecl {
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).is_some_and(Param::is_self)
     }
+
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+    }
+
+    /// The marker index for "no splatted arguments".
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
+    pub const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+
+    /// Returns a splatted argument index, if any are present.
+    pub fn splatted(&self) -> Option<u16> {
+        self.inputs.iter().enumerate().find_map(|(index, arg)| {
+            if index == Self::NO_SPLATTED_ARG_INDEX as usize {
+                // AST validation has already checked the splatted argument index is valid, so just
+                // ignore invalid indexes here.
+                None
+            } else {
+                arg.attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::splat))
+                    .then_some(u16::try_from(index).unwrap())
+            }
+        })
     }
 }
 
