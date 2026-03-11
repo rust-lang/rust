@@ -15,7 +15,10 @@ pub(crate) fn collect_autodiff_fn<'tcx>(
     intrinsic: IntrinsicDef,
     output: &mut MonoItems<'tcx>,
 ) {
-    if intrinsic.name != rustc_span::sym::autodiff {
+    if intrinsic.name != rustc_span::sym::autodiff
+        && intrinsic.name != rustc_span::sym::offload
+        && intrinsic.name != rustc_span::sym::offload_args
+    {
         return;
     };
 
