@@ -5,7 +5,9 @@ use std::ops::{ControlFlow, Deref, Range};
 use derive_where::derive_where;
 use rustc_abi::{FieldIdx, VariantIdx};
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_NoContext;
+use rustc_data_structures::fingerprint::Fingerprint;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::sym;
 use tracing::instrument;
 
@@ -25,7 +27,6 @@ use crate::{
 /// Use this rather than `TyKind`, whenever possible.
 #[derive_where(Copy; I: Interner, I::Interned<WithCachedTypeInfo<TyKind<I>>>: Copy)]
 #[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<I: Interner>(pub I::Interned<WithCachedTypeInfo<TyKind<I>>>);
@@ -39,6 +40,21 @@ impl<I: Interner> Ty<I> {
     #[inline]
     pub fn interned(self) -> I::Interned<WithCachedTypeInfo<TyKind<I>>> {
         self.0
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<CTX, I: Interner> HashStable<CTX> for Ty<I> {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        // Hashing the cached fingerprint avoids recursive trait obligations like
+        // `Ty: HashStable -> TyKind: HashStable -> Ty: HashStable`.
+        let stable_hash = self.0.stable_hash;
+        debug_assert_ne!(
+            stable_hash,
+            Fingerprint::ZERO,
+            "Ty should only be stably hashed once it has a cached stable hash",
+        );
+        stable_hash.hash_stable(hcx, hasher);
     }
 }
 
