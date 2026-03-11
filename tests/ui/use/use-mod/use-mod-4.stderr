@@ -31,10 +31,15 @@ LL | use std::mem::{self};
    |               +    +
 
 error[E0432]: unresolved import `crate::foo`
-  --> $DIR/use-mod-4.rs:1:5
+  --> $DIR/use-mod-4.rs:1:12
    |
 LL | use crate::foo::self;
-   |     ^^^^^^^^^^^^^^^^ no `foo` in the root
+   |            ^^^ use of unresolved module or unlinked crate `foo`
+   |
+help: you might be missing a crate named `foo`, add it to your project and import it in your code
+   |
+LL + extern crate foo;
+   |
 
 error: aborting due to 3 previous errors
 
