@@ -310,13 +310,13 @@ fn panic_null_pointer_dereference() -> ! {
 #[track_caller]
 #[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
 #[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
-fn panic_invalid_enum_construction(source: u128) -> ! {
+fn panic_invalid_enum_construction(ty: &'static str, source: u128) -> ! {
     if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
     panic_nounwind_fmt(
-        format_args!("trying to construct an enum from an invalid value {source:#x}"),
+        format_args!("trying to construct an enum from an invalid value {source:#x}; type {ty}"),
         /* force_no_backtrace */ false,
     )
 }

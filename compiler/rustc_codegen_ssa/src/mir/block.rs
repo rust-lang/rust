@@ -23,6 +23,7 @@ use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
+use crate::mir::operand::OperandValue;
 use crate::traits::*;
 use crate::{MemFlags, meth};
 
@@ -759,11 +760,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // `#[track_caller]` adds an implicit argument.
                 (LangItem::PanicNullPointerDereference, vec![location])
             }
-            AssertKind::InvalidEnumConstruction(source) => {
+            AssertKind::InvalidEnumConstruction(ty, source) => {
                 let source = self.codegen_operand(bx, source).immediate();
+                let OperandValue::Pair(ptr, len) = self.codegen_operand(bx, ty).val else {
+                    panic!("What the hell?");
+                };
+                let ptr = ptr;
+                let len = len;
                 // It's `fn panic_invalid_enum_construction(source: u128)`,
                 // `#[track_caller]` adds an implicit argument.
-                (LangItem::PanicInvalidEnumConstruction, vec![source, location])
+                (LangItem::PanicInvalidEnumConstruction, vec![ptr, len, source, location])
             }
             _ => {
                 // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
