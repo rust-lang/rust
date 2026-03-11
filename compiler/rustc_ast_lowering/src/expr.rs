@@ -231,6 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.id,
                         expr_hir_id,
                         *coroutine_kind,
+                        *constness,
                         fn_decl,
                         body,
                         *fn_decl_span,
@@ -1158,6 +1159,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_id: NodeId,
         closure_hir_id: HirId,
         coroutine_kind: CoroutineKind,
+        constness: Const,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
@@ -1204,6 +1206,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl =
             self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
+        if let Const::Yes(span) = constness {
+            self.dcx().span_err(span, "const coroutines are not supported");
+        }
+
         let c = self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
             binder: binder_clause,
@@ -1217,7 +1223,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: hir::Constness::NotConst,
+            constness: self.lower_constness(constness),
         });
         hir::ExprKind::Closure(c)
     }
