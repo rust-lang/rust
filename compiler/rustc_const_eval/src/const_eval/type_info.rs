@@ -7,7 +7,7 @@ use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Const, FnHeader, FnSigTys, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -435,6 +435,22 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 }
                 sym::variadic => {
                     self.write_scalar(Scalar::from_bool(fn_sig_kind.c_variadic()), &field_place)?;
+                }
+                sym::is_splatted => {
+                    self.write_scalar(
+                        Scalar::from_bool(fn_sig_kind.splatted().is_some()),
+                        &field_place,
+                    )?;
+                }
+                sym::splatted_index => {
+                    self.write_scalar(
+                        Scalar::from_u16(
+                            // Currently the same encoding as FnSigKind.splatted
+                            // FIXME(splat): make these two fields into a single Option<u16>, or choose a stable encoding
+                            fn_sig_kind.splatted().unwrap_or(FnSigKind::NO_SPLATTED_ARG_INDEX),
+                        ),
+                        &field_place,
+                    )?;
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
