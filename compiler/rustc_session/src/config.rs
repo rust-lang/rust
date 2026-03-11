@@ -150,6 +150,19 @@ pub enum InstrumentCoverage {
     Yes,
 }
 
+/// The different settings that the `-Z instrument-function` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InstrumentFunction {
+    /// No instrumentation requested, or `-Z instrument-function=none`
+    No,
+    /// `-Z instrument-function=fentry`
+    Fentry,
+    /// `-Z instrument-function=mcount`
+    Mcount,
+    /// `-Z instrument-function=xray`
+    XRay,
+}
+
 /// Individual flag values controlled by `-Zcoverage-options`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct CoverageOptions {
@@ -255,22 +268,22 @@ pub struct InstrumentMcountOpts {
     pub record: bool,
 }
 
-/// Settings for `-Z instrument-xray` flag.
+/// Settings for `-Z instrument-xray-opts` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct InstrumentXRay {
-    /// `-Z instrument-xray=always`, force instrumentation
+pub struct InstrumentXRayOpts {
+    /// `-Z instrument-xray-opts=always`, force instrumentation
     pub always: bool,
-    /// `-Z instrument-xray=never`, disable instrumentation
+    /// `-Z instrument-xray-opts=never`, disable instrumentation
     pub never: bool,
-    /// `-Z instrument-xray=ignore-loops`, ignore presence of loops,
+    /// `-Z instrument-xray-opts=ignore-loops`, ignore presence of loops,
     /// instrument functions based only on instruction count
     pub ignore_loops: bool,
-    /// `-Z instrument-xray=instruction-threshold=N`, explicitly set instruction threshold
+    /// `-Z instrument-xray-opts=instruction-threshold=N`, explicitly set instruction threshold
     /// for instrumentation, or `None` to use compiler's default
     pub instruction_threshold: Option<usize>,
-    /// `-Z instrument-xray=skip-entry`, do not instrument function entry
+    /// `-Z instrument-xray-opts=skip-entry`, do not instrument function entry
     pub skip_entry: bool,
-    /// `-Z instrument-xray=skip-exit`, do not instrument function exit
+    /// `-Z instrument-xray-opts=skip-exit`, do not instrument function exit
     pub skip_exit: bool,
 }
 
@@ -3083,11 +3096,11 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentMcountOpts, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        InliningThreshold, InstrumentCoverage, InstrumentFunction, InstrumentMcountOpts,
+        InstrumentXRayOpts, LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo,
+        NextSolverConfig, Offload, OptLevel, OutFileName, OutputType, OutputTypes,
+        PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3148,9 +3161,10 @@ pub(crate) mod dep_tracking {
         CodeModel,
         TlsModel,
         InstrumentCoverage,
+        InstrumentFunction,
         CoverageOptions,
         InstrumentMcountOpts,
-        InstrumentXRay,
+        InstrumentXRayOpts,
         CrateType,
         MergeFunctions,
         OnBrokenPipe,

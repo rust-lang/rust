@@ -9,11 +9,11 @@ For more information on XRay,
 read [LLVM documentation](https://llvm.org/docs/XRay.html),
 and/or the [XRay whitepaper](http://research.google.com/pubs/pub45287.html).
 
-Set the `-Z instrument-xray` compiler flag in order to enable XRay instrumentation.
+Set the `-Z instrument-function=xray` compiler flag in order to enable XRay instrumentation.
 
-  - `-Z instrument-xray` – use the default settings
-  - `-Z instrument-xray=skip-exit` – configure a custom setting
-  - `-Z instrument-xray=ignore-loops,instruction-threshold=300` –
+  - `-Z instrument-function=xray` – use the default settings
+  - `-Z instrument-function=xray -Z instrument-xray-opts=skip-exit` – configure a custom setting
+  - `-Z instrument-function=xray -Z instrument-xray-opts=ignore-loops,instruction-threshold=300` –
     multiple settings separated by commas
 
 Supported options:
@@ -32,7 +32,7 @@ The default settings are:
   - instrument functions with at least 200 instructions,
     or containing a non-trivial loop
 
-Note that `-Z instrument-xray` only enables generation of NOP sleds
+Note that `-Z instrument-function=xray` only enables generation of NOP sleds
 which on their own don't do anything useful.
 In order to actually trace the functions,
 you will need to link a separate runtime library of your choice,

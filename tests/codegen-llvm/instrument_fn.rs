@@ -2,9 +2,10 @@
 //
 //@ revisions:XRAY MCOUNT FENTRY
 //@ add-minicore
-//@ [XRAY] compile-flags: -Zinstrument-xray -Copt-level=0
-//@ [MCOUNT] compile-flags: -Zinstrument-mcount -Copt-level=0
-//@ [FENTRY] compile-flags: -Zinstrument-fentry -Copt-level=0 --target=x86_64-unknown-linux-gnu
+//@ compile-flags: -Copt-level=0
+//@ [XRAY] compile-flags: -Zinstrument-function=xray
+//@ [MCOUNT] compile-flags: -Zinstrument-function=mcount
+//@ [FENTRY] compile-flags: -Zinstrument-function=fentry --target=x86_64-unknown-linux-gnu
 //@ [FENTRY] needs-llvm-components: x86
 
 #![feature(no_core)]

@@ -37,7 +37,8 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
+    Input, InstrumentCoverage, InstrumentFunction, OptLevel, OutFileName, OutputType,
+    SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -1300,12 +1301,20 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.instrument_fentry && !sess.target.options.supports_fentry {
-        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
-    }
-
-    if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
-        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
+    match sess.opts.unstable_opts.instrument_function {
+        InstrumentFunction::No => {}
+        InstrumentFunction::Mcount => {}
+        InstrumentFunction::Fentry => {
+            if !sess.target.options.supports_fentry {
+                sess.dcx()
+                    .emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
+            }
+        }
+        InstrumentFunction::XRay => {
+            if !sess.target.options.supports_xray {
+                sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
+            }
+        }
     }
 
     if let Some(flavor) = sess.opts.cg.linker_flavor
