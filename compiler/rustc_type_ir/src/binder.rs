@@ -5,6 +5,8 @@ use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
@@ -1010,10 +1012,7 @@ where
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[derive(Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum BoundRegionKind<I: Interner> {
     /// An anonymous region parameter for a given fn (&T)
     Anon,
@@ -1072,10 +1071,7 @@ impl<I: Interner> BoundRegionKind<I> {
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
 #[derive(Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum BoundTyKind<I: Interner> {
     Anon,
     Param(I::DefId),
@@ -1083,10 +1079,7 @@ pub enum BoundTyKind<I: Interner> {
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
 #[derive(Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum BoundVariableKind<I: Interner> {
     Ty(BoundTyKind<I>),
     Region(BoundRegionKind<I>),
@@ -1112,6 +1105,58 @@ impl<I: Interner> BoundVariableKind<I> {
         match self {
             BoundVariableKind::Const => (),
             _ => panic!("expected a const, but found another kind"),
+        }
+    }
+}
+
+#[cfg(feature = "nightly")]
+// This is not a derived impl because a derive would require `I: HashStable`.
+impl<CTX, I: Interner> HashStable<CTX> for BoundRegionKind<I>
+where
+    I::DefId: HashStable<CTX>,
+    I::Symbol: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            BoundRegionKind::Anon | BoundRegionKind::ClosureEnv => {}
+            BoundRegionKind::NamedForPrinting(sym) => sym.hash_stable(hcx, hasher),
+            BoundRegionKind::Named(def_id) => def_id.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+#[cfg(feature = "nightly")]
+// This is not a derived impl because a derive would require `I: HashStable`.
+impl<CTX, I: Interner> HashStable<CTX> for BoundTyKind<I>
+where
+    I::DefId: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            BoundTyKind::Anon => {}
+            BoundTyKind::Param(def_id) => def_id.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+#[cfg(feature = "nightly")]
+// This is not a derived impl because a derive would require `I: HashStable`.
+impl<CTX, I: Interner> HashStable<CTX> for BoundVariableKind<I>
+where
+    BoundRegionKind<I>: HashStable<CTX>,
+    BoundTyKind<I>: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            BoundVariableKind::Ty(ty) => ty.hash_stable(hcx, hasher),
+            BoundVariableKind::Region(region) => region.hash_stable(hcx, hasher),
+            BoundVariableKind::Const => {}
         }
     }
 }
