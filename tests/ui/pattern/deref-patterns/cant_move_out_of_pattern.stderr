@@ -5,10 +5,7 @@ LL |     match b {
    |           ^ cannot move out of here
 LL |
 LL |         deref!([x]) => x,
-   |                 -
-   |                 |
-   |                 data moved here
-   |                 move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |                 - data moved here because `x` has type `Struct`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -22,10 +19,7 @@ LL |     match rc {
    |           ^^
 LL |
 LL |         deref!(x) => x,
-   |                -
-   |                |
-   |                data moved here
-   |                move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |                - data moved here because `x` has type `Struct`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -39,10 +33,7 @@ LL |     match b {
    |           ^ cannot move out of here
 LL |
 LL |         [x] => x,
-   |          -
-   |          |
-   |          data moved here
-   |          move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |          - data moved here because `x` has type `Struct`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -56,10 +47,7 @@ LL |     match rc {
    |           ^^
 LL |
 LL |         Container(x) => x,
-   |                   -
-   |                   |
-   |                   data moved here
-   |                   move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |                   - data moved here because `x` has type `Struct`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
