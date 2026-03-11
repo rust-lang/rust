@@ -2333,6 +2333,7 @@ impl<'db> DbInterner<'db> {
         self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate)
     }
 
+    // FIXME: add splat support when the experiment is complete
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
