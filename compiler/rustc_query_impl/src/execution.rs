@@ -238,6 +238,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
+    key_hash: u64,
     latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
 ) -> (C::Value, Option<DepNodeIndex>) {
@@ -246,8 +247,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     // self-profiler.
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
-    // With parallel queries we might just have to wait on some other
-    // thread.
+    // With parallel queries we might just have to wait on some other thread.
     let result = latch.wait_on(tcx, current, span);
 
     match result {
@@ -256,7 +256,6 @@ fn wait_for_query<'tcx, C: QueryCache>(
                 outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
-                    let key_hash = sharded::make_hash(&key);
                     let shard = query.state.active.lock_shard_by_hash(key_hash);
                     match shard.find(key_hash, equivalent_key(key)) {
                         // The query we waited on panicked. Continue unwinding here.
@@ -309,8 +308,8 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
     match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
-            // Nothing has computed or is computing the query, so we start a new job and insert it in the
-            // state map.
+            // Nothing has computed or is computing the query, so we start a new job and insert it
+            // in the state map.
             let id = next_job_id(tcx);
             let job = QueryJob::new(id, span, current_job_id);
             entry.insert((key, ActiveKeyStatus::Started(job)));
@@ -330,7 +329,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
                     } else {
                         let id = job.id;
                         drop(state_lock);
