@@ -308,6 +308,7 @@ pub trait Interner:
 
     fn impl_is_const(self, def_id: Self::ImplId) -> bool;
     fn fn_is_const(self, def_id: Self::FunctionId) -> bool;
+    fn closure_is_const(self, def_id: Self::ClosureId) -> bool;
     fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,

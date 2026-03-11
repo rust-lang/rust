@@ -2118,11 +2118,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // FIXME(const_trait_impl): ATPITs could be conditionally const?
                 hir::OpaqueTyOrigin::TyAlias { .. } => false,
             },
-            DefKind::Closure => {
-                // Closures and RPITs will eventually have const conditions
-                // for `[const]` bounds.
-                false
-            }
+            DefKind::Closure => self.constness(def_id) == hir::Constness::Const,
             DefKind::Ctor(_, CtorKind::Const)
             | DefKind::Mod
             | DefKind::Struct

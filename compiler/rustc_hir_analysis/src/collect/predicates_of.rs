@@ -1069,6 +1069,9 @@ pub(super) fn const_conditions<'tcx>(
         },
         // N.B. Tuple ctors are unconditionally constant.
         Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_), .. }) => {
+            (hir::Generics::empty(), None, tcx.is_conditionally_const(tcx.local_parent(def_id)))
+        }
         _ => bug!("const_conditions called on wrong item: {def_id:?}"),
     };
 
