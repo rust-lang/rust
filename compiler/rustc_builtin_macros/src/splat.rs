@@ -9,7 +9,7 @@ use crate::errors;
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 /// Expand a function taking a tuple, into a function taking separate arguments.
-/// TODO: not yet implemented, currently passes the input through unchanged, after checking it's a function.
+/// FIXME(splat): not yet implemented, currently passes the input through unchanged, after checking it's a function.
 pub(crate) fn expand_splat(
     ecx: &mut ExtCtxt<'_>,
     _attr_sp: Span,
@@ -43,13 +43,13 @@ pub(crate) fn expand_splat(
 
     // `#[splat]` is valid on functions, associated trait methods, impl methods, and extern
     // functions. Only modify the item in those cases.
-    // TODO: combine this match with the match above, to avoid cloning ItemKind
+    // FIXME(splat): combine this match with the match above, to avoid cloning ItemKind
     match &item_kind {
         ast::ItemKind::Fn(box ast::Fn { .. })
         | ast::ItemKind::Trait(box ast::Trait { .. })
         | ast::ItemKind::Impl(ast::Impl { .. })
         | ast::ItemKind::ForeignMod(ast::ForeignMod { .. }) => {
-            // TODO: do the splat here
+            // FIXME(splat): do the splat here
         }
         _ => {
             ecx.dcx().emit_err(errors::SplatNonFunction { span });

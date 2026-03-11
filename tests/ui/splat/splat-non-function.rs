@@ -38,7 +38,7 @@ extern "C" {
     fn foo_2(_: (u32, i8));
 }
 
-// TODO: this might not be possible if we need the extern "C" for the trampoline
+// FIXME(splat): this might not be possible if we need the extern "C" for the trampoline
 extern "C" {
     #[splat]
     fn bar_2(_: (u32, i8));

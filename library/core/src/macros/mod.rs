@@ -1916,7 +1916,7 @@ pub(crate) mod builtin {
 
     /// Macro that "splats" tuple function arguments into an argument list.
     /// This stub creates a function trampoline with splatted arguments, for initial tests.
-    // TODO: turn this into a `#[splat]` attribute macro supporting overloads/variadics.
+    // FIXME(splat): implement the `#[splat]` attribute macro to support overloads/variadics.
     #[unstable(
         feature = "splat",
         issue = "153629",
