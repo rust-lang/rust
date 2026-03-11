@@ -8,6 +8,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::bug;
 use rustc_middle::dep_graph::DepKind;
 use rustc_middle::queries::QueryVTables;
 use rustc_middle::query::CycleError;
@@ -15,38 +16,38 @@ use rustc_middle::query::erase::erase_val;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::job::report_cycle;
 
 pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
     vtables.type_of.value_from_cycle_error =
-        |tcx, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
+        |tcx, _, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
 
     vtables.type_of_opaque_hir_typeck.value_from_cycle_error =
-        |tcx, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
+        |tcx, _, _, guar| erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)));
 
     vtables.erase_and_anonymize_regions_ty.value_from_cycle_error =
-        |tcx, _, guar| erase_val(Ty::new_error(tcx, guar));
+        |tcx, _, _, guar| erase_val(Ty::new_error(tcx, guar));
 
     vtables.type_of_opaque.value_from_cycle_error =
-        |_, _, guar| erase_val(Err(CyclePlaceholder(guar)));
+        |_, _, _, guar| erase_val(Err(CyclePlaceholder(guar)));
 
-    vtables.fn_sig.value_from_cycle_error = |tcx, cycle, guar| erase_val(fn_sig(tcx, cycle, guar));
+    vtables.fn_sig.value_from_cycle_error =
+        |tcx, key, cycle, guar| erase_val(fn_sig(tcx, key, cycle, guar));
 
     vtables.check_representability.value_from_cycle_error =
-        |tcx, cycle, guar| check_representability(tcx, cycle, guar);
+        |tcx, _key, cycle, guar| check_representability(tcx, cycle, guar);
 
     vtables.check_representability_adt_ty.value_from_cycle_error =
-        |tcx, cycle, guar| check_representability(tcx, cycle, guar);
+        |tcx, _key, cycle, guar| check_representability(tcx, cycle, guar);
 
     vtables.variances_of.value_from_cycle_error =
-        |tcx, cycle, guar| erase_val(variances_of(tcx, cycle, guar));
+        |tcx, key, _cycle, guar| erase_val(variances_of(tcx, key, guar));
 
     vtables.layout_of.value_from_cycle_error =
-        |tcx, cycle, guar| erase_val(layout_of(tcx, cycle, guar));
+        |tcx, _key, cycle, guar| erase_val(layout_of(tcx, cycle, guar));
 }
 
 pub(crate) fn default<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError, query_name: &str) -> ! {
@@ -61,22 +62,19 @@ pub(crate) fn default<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError, query_na
 
 fn fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
+    def_id: DefId,
     cycle_error: CycleError,
     guar: ErrorGuaranteed,
 ) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
     let err = Ty::new_error(tcx, guar);
-
-    let arity = if let Some(info) = cycle_error.cycle.get(0)
-        && info.frame.dep_kind == DepKind::fn_sig
-        && let Some(def_id) = info.frame.def_id
-        && let Some(node) = tcx.hir_get_if_local(def_id)
-        && let Some(sig) = node.fn_sig()
-    {
-        sig.decl.inputs.len()
-    } else {
-        tcx.dcx().abort_if_errors();
-        unreachable!()
-    };
+    let arity = tcx
+        .hir_get_if_local(def_id)
+        .expect("found an extern query in a query cycle")
+        .fn_sig()
+        .unwrap_or_else(|| default(tcx, cycle_error, "fn_sig"))
+        .decl
+        .inputs
+        .len();
 
     ty::EarlyBinder::bind(ty::Binder::dummy(tcx.mk_fn_sig(
         std::iter::repeat_n(err, arity),
@@ -125,29 +123,11 @@ fn check_representability<'tcx>(
 
 fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError,
+    def_id: DefId,
     _guar: ErrorGuaranteed,
 ) -> &'tcx [ty::Variance] {
-    search_for_cycle_permutation(
-        &cycle_error.cycle,
-        |cycle| {
-            if let Some(info) = cycle.get(0)
-                && info.frame.dep_kind == DepKind::variances_of
-                && let Some(def_id) = info.frame.def_id
-            {
-                let n = tcx.generics_of(def_id).own_params.len();
-                ControlFlow::Break(tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n)))
-            } else {
-                ControlFlow::Continue(())
-            }
-        },
-        || {
-            span_bug!(
-                cycle_error.usage.as_ref().unwrap().0,
-                "only `variances_of` returns `&[ty::Variance]`"
-            )
-        },
-    )
+    let n = tcx.generics_of(def_id).own_params.len();
+    tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
 }
 
 // Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
