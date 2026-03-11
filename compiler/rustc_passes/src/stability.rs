@@ -972,7 +972,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         }
         if !lang_features.insert(gate_name) {
             // Warn if the user enables a lang feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
     }
 
@@ -981,7 +981,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     for EnabledLibFeature { gate_name, attr_sp } in enabled_lib_features {
         if remaining_lib_features.contains_key(gate_name) {
             // Warn if the user enables a lib feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
         remaining_lib_features.insert(*gate_name, *attr_sp);
     }
@@ -1164,5 +1164,14 @@ fn unnecessary_stable_feature_lint(
         hir::CRATE_HIR_ID,
         span,
         errors::UnnecessaryStableFeature { feature, since },
+    );
+}
+
+fn duplicate_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol) {
+    tcx.emit_node_span_lint(
+        lint::builtin::DUPLICATE_FEATURES,
+        hir::CRATE_HIR_ID,
+        span,
+        errors::DuplicateFeature { feature },
     );
 }
