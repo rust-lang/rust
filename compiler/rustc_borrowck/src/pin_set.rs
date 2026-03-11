@@ -1,12 +1,12 @@
 use std::ops::Index;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_middle::mir::{self, Body, Location, traversal};
-use rustc_middle::mir::visit::Visitor;
-use rustc_middle::ty::TyCtxt;
 use rustc_abi::FieldIdx;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, Body, Location, traversal};
+use rustc_middle::ty::TyCtxt;
 
-use crate::PinIndex;
+use crate::dataflow::PinIndex;
 
 pub(crate) struct PinSet<'tcx> {
     /// The fundamental map relating bitvector indexes to the pins
@@ -16,8 +16,11 @@ pub(crate) struct PinSet<'tcx> {
     /// key, and its position in the map corresponds to `PinIndex`.
     pub(crate) location_map: FxIndexMap<Location, PinData<'tcx>>,
 
-    /// Map from local to all the pins on that local.
+    /// Map from the original borrowed local to all the pins on that local.
     pub(crate) local_map: FxIndexMap<mir::Local, FxIndexSet<PinIndex>>,
+
+    /// Map from Pin result local to all the pins it holds.
+    pub(crate) pin_local_map: FxIndexMap<mir::Local, FxIndexSet<PinIndex>>,
 }
 
 #[derive(Debug, Clone)]
@@ -25,19 +28,22 @@ pub(crate) struct PinData<'tcx> {
     /// Location where the pin is created (the aggregate statement).
     #[allow(dead_code)]
     pub(crate) location: Location,
-    /// The place that is pinned (the result of the Pin aggregate).
+    /// The original place being borrowed/pinned (e.g. `_1` for `x` in `&pin mut x`).
     pub(crate) pinned_place: mir::Place<'tcx>,
-    /// The borrowed place that is wrapped in Pin.
+    /// The local holding the Pin aggregate result (e.g. `_3` for `let _x = &pin mut x`).
+    /// The pin is killed when this local has StorageDead.
     #[allow(dead_code)]
-    pub(crate) borrowed_place: mir::Place<'tcx>,
+    pub(crate) pin_result_local: mir::Local,
 }
 
 impl<'tcx> PinSet<'tcx> {
     pub(crate) fn build(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Self {
         let mut visitor = GatherPins {
             tcx,
+            body,
             location_map: Default::default(),
             local_map: Default::default(),
+            pin_local_map: Default::default(),
         };
 
         for (block, block_data) in traversal::preorder(body) {
@@ -47,6 +53,7 @@ impl<'tcx> PinSet<'tcx> {
         PinSet {
             location_map: visitor.location_map,
             local_map: visitor.local_map,
+            pin_local_map: visitor.pin_local_map,
         }
     }
 
@@ -77,39 +84,82 @@ impl<'tcx> Index<PinIndex> for PinSet<'tcx> {
     }
 }
 
-struct GatherPins<'tcx> {
+struct GatherPins<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
     location_map: FxIndexMap<Location, PinData<'tcx>>,
     local_map: FxIndexMap<mir::Local, FxIndexSet<PinIndex>>,
+    pin_local_map: FxIndexMap<mir::Local, FxIndexSet<PinIndex>>,
 }
 
-impl<'tcx> Visitor<'tcx> for GatherPins<'tcx> {
+impl<'tcx> Visitor<'tcx> for GatherPins<'_, 'tcx> {
     fn visit_assign(
         &mut self,
-        pinned_place: &mir::Place<'tcx>,
+        pin_result_place: &mir::Place<'tcx>,
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
     ) {
         // Look for patterns like:
-        // pinned_place = Pin::<&[mut] T> { pointer: move borrowed_place }
+        //   _ref = &[mut] _original;                              // predecessor statement
+        //   pin_result_place = Pin::<&[mut] T> { pointer: move _ref };  // this statement
+        //
+        // We want to track `_original` as the pinned place.
         if let mir::Rvalue::Aggregate(box agg_kind, operands) = rvalue
             && let mir::AggregateKind::Adt(adt_did, _, args, _, _) = agg_kind
-            && self.tcx.adt_def(adt_did).is_pin()
+            && self.tcx.adt_def(*adt_did).is_pin()
             && args.type_at(0).is_ref()
-            && let mir::Operand::Move(borrowed_place) = operands[FieldIdx::ZERO]
+            && let mir::Operand::Move(ref_place) = operands[FieldIdx::ZERO]
         {
-            let pin_data = PinData {
-                location,
-                pinned_place: *pinned_place,
-                borrowed_place,
-            };
+            // Look at the preceding statement to find the original borrow:
+            //   _ref = &[mut] _original
+            if let Some(original_place) =
+                self.find_original_borrowed_place(location, ref_place)
+            {
+                let pin_data = PinData {
+                    location,
+                    pinned_place: original_place,
+                    pin_result_local: pin_result_place.local,
+                };
 
-            let (idx, _) = self.location_map.insert_full(location, pin_data);
-            let idx = PinIndex::from(idx);
+                let (idx, _) = self.location_map.insert_full(location, pin_data);
+                let idx = PinIndex::from(idx);
 
-            self.local_map.entry(borrowed_place.local).or_default().insert(idx);
+                self.local_map.entry(original_place.local).or_default().insert(idx);
+                self.pin_local_map.entry(pin_result_place.local).or_default().insert(idx);
+            }
         }
 
-        self.super_assign(pinned_place, rvalue, location)
+        self.super_assign(pin_result_place, rvalue, location)
+    }
+}
+
+impl<'tcx> GatherPins<'_, 'tcx> {
+    /// Given a Pin aggregate at `location` that uses `move ref_place`,
+    /// look at the preceding statement to find the original borrow.
+    /// i.e. find `_original` in `ref_place = &[mut] _original`.
+    fn find_original_borrowed_place(
+        &self,
+        location: Location,
+        ref_place: mir::Place<'tcx>,
+    ) -> Option<mir::Place<'tcx>> {
+        // The borrow statement should be immediately before the Pin aggregate
+        if location.statement_index == 0 {
+            return None;
+        }
+        let predecessor = Location {
+            block: location.block,
+            statement_index: location.statement_index - 1,
+        };
+        let stmt =
+            &self.body.basic_blocks[predecessor.block].statements[predecessor.statement_index];
+
+        if let mir::StatementKind::Assign(box (place, ref rvalue)) = stmt.kind
+            && place == ref_place
+            && let mir::Rvalue::Ref(_, _, original_place) = rvalue
+        {
+            Some(*original_place)
+        } else {
+            None
+        }
     }
 }

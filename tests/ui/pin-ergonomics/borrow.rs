@@ -1,4 +1,3 @@
-//@ check-pass
 #![feature(pin_ergonomics)]
 #![allow(dead_code, incomplete_features)]
 
@@ -29,10 +28,18 @@ fn bar() {
 
 fn baz(mut x: Foo, y: Foo) {
     let _x = &pin mut x;
-    let _x = x; // ok because `Foo: Unpin` and thus `&pin mut x` doesn't move `x`
+    let _x = x; //~ ERROR cannot move out of `x` because it is borrowed [E0505]
+    let _x = &mut x; //~ ERROR cannot borrow `x` as mutable more than once at a time [E0499]
+    //~^ ERROR borrow of moved value: `x` [E0382]
+
+    x = Foo;
+    let _x = &mut x; // ok
 
     let _y = &pin const y;
-    let _y = y; // ok because `&pin const y` dosn't move `y`
+    let _y = y; //~ ERROR cannot move out of `y` because it is borrowed [E0505]
+    let _y = &mut y; //~ ERROR cannot borrow `y` as mutable because it is also borrowed as immutable [E0502]
+    //~^ ERROR borrow of moved value: `y` [E0382]
+    //~| ERROR cannot borrow `y` as mutable, as it is not declared as mutable [E0596]
 }
 
 fn main() {}
