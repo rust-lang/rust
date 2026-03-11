@@ -3,13 +3,14 @@
 #![allow(unused_macros)]
 // Check the macro follow sets (see corresponding cfail test).
 
-// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}
+// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), MetaVarDecl(Guard), Ident(in)}
 macro_rules! follow_pat {
     ($p:pat =>) => {};
     ($p:pat ,) => {};
     ($p:pat =) => {};
     ($p:pat |) => {};
     ($p:pat if) => {};
+    ($p:pat if let) => {};
     ($p:pat in) => {};
 }
 // FOLLOW(expr) = {FatArrow, Comma, Semicolon}

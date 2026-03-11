@@ -880,9 +880,9 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&arm.attrs);
         self.print_pat(&arm.pat);
         self.space();
-        if let Some(e) = &arm.guard {
+        if let Some(guard) = &arm.guard {
             self.word_space("if");
-            self.print_expr(e, FixupContext::default());
+            self.print_expr(&guard.cond, FixupContext::default());
             self.space();
         }
 

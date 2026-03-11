@@ -280,7 +280,7 @@ pub fn eq_arm(l: &Arm, r: &Arm) -> bool {
     l.is_placeholder == r.is_placeholder
         && eq_pat(&l.pat, &r.pat)
         && eq_expr_opt(l.body.as_deref(), r.body.as_deref())
-        && eq_expr_opt(l.guard.as_deref(), r.guard.as_deref())
+        && eq_expr_opt(l.guard.as_deref().map(|g| &g.cond), r.guard.as_deref().map(|g| &g.cond))
         && over(&l.attrs, &r.attrs, eq_attr)
 }
 
