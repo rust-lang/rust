@@ -50,7 +50,7 @@ pub enum ActiveKeyStatus<'tcx> {
     Poisoned,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
     pub usage: Option<Spanned<QueryStackFrame<'tcx>>>,
