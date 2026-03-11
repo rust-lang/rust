@@ -571,7 +571,7 @@ fn rewrite_match_body(
 // The `if ...` guard on a match arm.
 fn rewrite_guard(
     context: &RewriteContext<'_>,
-    guard: &Option<Box<ast::Expr>>,
+    guard: &Option<Box<ast::Guard>>,
     shape: Shape,
     // The amount of space used up on this line for the pattern in
     // the arm (excludes offset).
@@ -586,7 +586,7 @@ fn rewrite_guard(
             .and_then(|s| s.sub_width_opt(5));
         if !multiline_pattern {
             if let Some(cond_shape) = cond_shape {
-                if let Ok(cond_str) = guard.rewrite_result(context, cond_shape) {
+                if let Ok(cond_str) = guard.cond.rewrite_result(context, cond_shape) {
                     if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
                         return Ok(format!(" if {cond_str}"));
                     }
@@ -597,9 +597,9 @@ fn rewrite_guard(
         // Not enough space to put the guard after the pattern, try a newline.
         // 3 = `if `, 5 = ` => {`
         let cond_shape = Shape::indented(shape.indent.block_indent(context.config), context.config)
-            .offset_left(3, guard.span)?
-            .sub_width(5, guard.span)?;
-        let cond_str = guard.rewrite_result(context, cond_shape)?;
+            .offset_left(3, guard.span())?
+            .sub_width(5, guard.span())?;
+        let cond_str = guard.cond.rewrite_result(context, cond_shape)?;
         Ok(format!(
             "{}if {}",
             cond_shape.indent.to_string_with_newline(context.config),
