@@ -42,7 +42,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Using host floats except for sqrt (but it's fine, these operations do not
                     // have guaranteed precision).
                     let val = match float_ty {
-                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F16 => {
+                            let f = op.to_scalar().to_f16()?;
+                            let res = match intrinsic_name {
+                                "fsqrt" => math::sqrt(f),
+                                "fsin" => f.to_host().sin().to_soft(),
+                                "fcos" => f.to_host().cos().to_soft(),
+                                "fexp" => f.to_host().exp().to_soft(),
+                                "fexp2" => f.to_host().exp2().to_soft(),
+                                "flog" => f.to_host().ln().to_soft(),
+                                "flog2" => f.to_host().log2().to_soft(),
+                                "flog10" => f.to_host().log10().to_soft(),
+                                _ => bug!(),
+                            };
+                            let res = this.adjust_nan(res, &[f]);
+                            Scalar::from(res)
+                        }
                         FloatTy::F32 => {
                             let f = op.to_scalar().to_f32()?;
                             let res = match intrinsic_name {

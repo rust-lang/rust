@@ -14,7 +14,7 @@ use std::any::type_name;
 use std::cmp::min;
 use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
-use std::{f32, f64};
+use std::{f16, f32, f64, f128};
 
 use utils::check_nondet;
 
@@ -1014,14 +1014,20 @@ fn rounding() {
 }
 
 fn mul_add() {
-    // FIXME(f16_f128): add when supported
-
+    assert_eq!(3.0f16.mul_add(2.0f16, 5.0f16), 11.0);
     assert_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
-    assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
-    assert_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
+    assert_eq!(3.0f64.mul_add(2.0f64, 5.0f64), 11.0);
+    assert_eq!(3.0f128.mul_add(2.0f128, 5.0f128), 11.0);
+
+    assert_eq!(0.0f16.mul_add(-2.0f16, f16::consts::E), f16::consts::E);
+    assert_eq!(0.0f32.mul_add(-2.0f32, f32::consts::E), f32::consts::E);
     assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
+    assert_eq!(0.0f128.mul_add(-2.0f128, f128::consts::E), f128::consts::E);
+
+    assert_eq!((-3.2f16).mul_add(2.4, f16::NEG_INFINITY), f16::NEG_INFINITY);
     assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
     assert_eq!((-3.2f64).mul_add(2.4, f64::NEG_INFINITY), f64::NEG_INFINITY);
+    assert_eq!((-3.2f128).mul_add(2.4, f128::NEG_INFINITY), f128::NEG_INFINITY);
 
     let f = f32::mul_add(
         -0.000000000000000000000000000000000000014728589,
@@ -1039,9 +1045,11 @@ fn libm() {
         unsafe { ldexp(a, b) }
     }
 
+    assert_approx_eq!(25f16.powi(-2), 0.0016f16);
     assert_approx_eq!(25f32.powi(-2), 0.0016f32);
     assert_approx_eq!(23.2f64.powi(2), 538.24f64);
 
+    assert_approx_eq!(25f16.powf(-2f16), 0.0016f16);
     assert_approx_eq!(25f32.powf(-2f32), 0.0016f32);
     assert_approx_eq!(400f64.powf(0.5f64), 20f64);
 
@@ -1049,81 +1057,111 @@ fn libm() {
     // and thus must be exactly equal to that value.
     // C standard says:
     // 1^y = 1 for any y, even a NaN.
+    assert_eq!(1f16.powf(10.0), 1.0);
     assert_eq!(1f32.powf(10.0), 1.0);
     assert_eq!(1f64.powf(100.0), 1.0);
+    assert_eq!(1f16.powf(f16::INFINITY), 1.0);
     assert_eq!(1f32.powf(f32::INFINITY), 1.0);
     assert_eq!(1f64.powf(f64::INFINITY), 1.0);
+    assert_eq!(1f16.powf(f16::NAN), 1.0);
     assert_eq!(1f32.powf(f32::NAN), 1.0);
     assert_eq!(1f64.powf(f64::NAN), 1.0);
 
     // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f16::NAN.powf(0.0), 1.0);
     assert_eq!(f32::NAN.powf(0.0), 1.0);
     assert_eq!(f64::NAN.powf(0.0), 1.0);
 
+    assert_eq!(42f16.powf(0.0), 1.0);
     assert_eq!(42f32.powf(0.0), 1.0);
     assert_eq!(42f64.powf(0.0), 1.0);
+    assert_eq!(f16::INFINITY.powf(0.0), 1.0);
     assert_eq!(f32::INFINITY.powf(0.0), 1.0);
     assert_eq!(f64::INFINITY.powf(0.0), 1.0);
+    assert_eq!(f16::NEG_INFINITY.powi(3), f16::NEG_INFINITY);
     assert_eq!(f32::NEG_INFINITY.powi(3), f32::NEG_INFINITY);
     assert_eq!(f32::NEG_INFINITY.powi(2), f32::INFINITY);
+    assert_eq!(f16::INFINITY.powi(3), f16::INFINITY);
     assert_eq!(f64::INFINITY.powi(3), f64::INFINITY);
     assert_eq!(f64::INFINITY.powi(2), f64::INFINITY);
 
     // f*::NAN is a quiet NAN and should return 1 as well.
+    assert_eq!(f16::NAN.powi(0), 1.0);
     assert_eq!(f32::NAN.powi(0), 1.0);
     assert_eq!(f64::NAN.powi(0), 1.0);
 
+    assert_eq!(10.0f16.powi(0), 1.0);
     assert_eq!(10.0f32.powi(0), 1.0);
     assert_eq!(10.0f64.powi(0), 1.0);
+    assert_eq!(f16::INFINITY.powi(0), 1.0);
     assert_eq!(f32::INFINITY.powi(0), 1.0);
     assert_eq!(f64::INFINITY.powi(0), 1.0);
 
+    assert_eq!((-1f16).powf(f16::INFINITY), 1.0);
     assert_eq!((-1f32).powf(f32::INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::INFINITY), 1.0);
+    assert_eq!((-1f16).powf(f16::NEG_INFINITY), 1.0);
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
+    assert_eq!(0f16.powi(10), 0.0);
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);
+    assert_eq!(0f16.powi(9), 0.0);
     assert_eq!(0f32.powi(9), 0.0);
     assert_eq!(0f64.powi(99), 0.0);
 
+    assert_biteq((-0f16).powf(10.0), 0.0, "-0^x = +0 where x is positive");
     assert_biteq((-0f32).powf(10.0), 0.0, "-0^x = +0 where x is positive");
     assert_biteq((-0f64).powf(100.0), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f16).powf(9.0), -0.0, "-0^x = -0 where x is negative");
     assert_biteq((-0f32).powf(9.0), -0.0, "-0^x = -0 where x is negative");
     assert_biteq((-0f64).powf(99.0), -0.0, "-0^x = -0 where x is negative");
 
+    assert_biteq((-0f16).powi(10), 0.0, "-0^x = +0 where x is positive");
     assert_biteq((-0f32).powi(10), 0.0, "-0^x = +0 where x is positive");
     assert_biteq((-0f64).powi(100), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f16).powi(9), -0.0, "-0^x = -0 where x is negative");
     assert_biteq((-0f32).powi(9), -0.0, "-0^x = -0 where x is negative");
     assert_biteq((-0f64).powi(99), -0.0, "-0^x = -0 where x is negative");
 
+    assert_approx_eq!(1f16.exp(), f16::consts::E);
     assert_approx_eq!(1f32.exp(), f32::consts::E);
     assert_approx_eq!(1f64.exp(), f64::consts::E);
+    assert_eq!(0f16.exp(), 1.0);
     assert_eq!(0f32.exp(), 1.0);
     assert_eq!(0f64.exp(), 1.0);
 
+    assert_approx_eq!(1f16.exp_m1(), f16::consts::E - 1.0);
     assert_approx_eq!(1f32.exp_m1(), f32::consts::E - 1.0);
     assert_approx_eq!(1f64.exp_m1(), f64::consts::E - 1.0);
+    assert_approx_eq!(f16::NEG_INFINITY.exp_m1(), -1.0);
     assert_approx_eq!(f32::NEG_INFINITY.exp_m1(), -1.0);
     assert_approx_eq!(f64::NEG_INFINITY.exp_m1(), -1.0);
 
+    assert_approx_eq!(10f16.exp2(), 1024f16);
     assert_approx_eq!(10f32.exp2(), 1024f32);
     assert_approx_eq!(50f64.exp2(), 1125899906842624f64);
+    assert_eq!(0f16.exp2(), 1.0);
     assert_eq!(0f32.exp2(), 1.0);
     assert_eq!(0f64.exp2(), 1.0);
 
+    assert_approx_eq!(f16::consts::E.ln(), 1f16);
     assert_approx_eq!(f32::consts::E.ln(), 1f32);
     assert_approx_eq!(f64::consts::E.ln(), 1f64);
+    assert_eq!(1f16.ln(), 0.0);
     assert_eq!(1f32.ln(), 0.0);
     assert_eq!(1f64.ln(), 0.0);
 
+    assert_approx_eq!(0f16.ln_1p(), 0f16);
     assert_approx_eq!(0f32.ln_1p(), 0f32);
     assert_approx_eq!(0f64.ln_1p(), 0f64);
 
+    assert_approx_eq!(10f16.log10(), 1f16);
     assert_approx_eq!(10f32.log10(), 1f32);
     assert_approx_eq!(f64::consts::E.log10(), f64::consts::LOG10_E);
 
+    assert_approx_eq!(8f16.log2(), 3f16);
     assert_approx_eq!(8f32.log2(), 3f32);
     assert_approx_eq!(f64::consts::E.log2(), f64::consts::LOG2_E);
 
@@ -1133,9 +1171,11 @@ fn libm() {
         assert_approx_eq!(3.0f64.abs_sub(5.0), 0.0);
     }
 
+    assert_approx_eq!(27.0f16.cbrt(), 3.0f16);
     assert_approx_eq!(27.0f32.cbrt(), 3.0f32);
     assert_approx_eq!(27.0f64.cbrt(), 3.0f64);
 
+    assert_approx_eq!(3.0f16.hypot(4.0f16), 5.0f16);
     assert_approx_eq!(3.0f32.hypot(4.0f32), 5.0f32);
     assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
 
@@ -1146,70 +1186,94 @@ fn libm() {
 
     // Trigonometric functions.
 
+    assert_eq!(0f16.sin(), 0f16);
     assert_eq!(0f32.sin(), 0f32);
     assert_eq!(0f64.sin(), 0f64);
-    assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
+    assert_approx_eq!(f16::consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
     // Increase error tolerance to 16ULP because of the extra operation.
+    assert_approx_eq!(f16::consts::FRAC_PI_4.sin().asin(), f16::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f32::consts::FRAC_PI_4.sin().asin(), f32::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4, 16);
+    assert_biteq(0.0f16.asin(), 0.0f16, "asin(+0) = +0");
+    assert_biteq((-0.0f16).asin(), -0.0, "asin(-0) = -0");
     assert_biteq(0.0f32.asin(), 0.0f32, "asin(+0) = +0");
     assert_biteq((-0.0f32).asin(), -0.0, "asin(-0) = -0");
     assert_biteq(0.0f64.asin(), 0.0, "asin(+0) = +0");
     assert_biteq((-0.0f64).asin(), -0.0, "asin(-0) = -0");
 
+    assert_approx_eq!(1.0f16.sinh(), 1.1752012f16);
     assert_approx_eq!(1.0f32.sinh(), 1.1752012f32);
     assert_approx_eq!(1.0f64.sinh(), 1.1752011936438014f64);
+    assert_approx_eq!(2.0f16.asinh(), 1.443635475178810342493276740273105f16);
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
 
     // Ensure `sin` always returns something that is a valid input for `asin`, and same for
     // `cos` and `acos`.
+    let halve_pi_f16 = std::f16::consts::FRAC_PI_2;
     let halve_pi_f32 = std::f32::consts::FRAC_PI_2;
     let halve_pi_f64 = std::f64::consts::FRAC_PI_2;
+    let pi_f16 = std::f16::consts::PI;
     let pi_f32 = std::f32::consts::PI;
     let pi_f64 = std::f64::consts::PI;
     for _ in 0..64 {
         // sin() should be clamped to [-1, 1] so asin() can never return NaN
+        assert!(!halve_pi_f16.sin().asin().is_nan());
         assert!(!halve_pi_f32.sin().asin().is_nan());
         assert!(!halve_pi_f64.sin().asin().is_nan());
         // cos() should be clamped to [-1, 1] so acos() can never return NaN
+        assert!(!pi_f16.cos().acos().is_nan());
         assert!(!pi_f32.cos().acos().is_nan());
         assert!(!pi_f64.cos().acos().is_nan());
     }
 
+    assert_eq!(0f16.cos(), 1f16);
     assert_eq!(0f32.cos(), 1f32);
     assert_eq!(0f64.cos(), 1f64);
-    assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
+    assert_approx_eq!(f16::consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
     // Increase error tolerance to 16ULP because of the extra operation.
+    assert_approx_eq!(f16::consts::FRAC_PI_4.cos().acos(), f16::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f32::consts::FRAC_PI_4.cos().acos(), f32::consts::FRAC_PI_4, 16);
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4, 16);
+    assert_biteq(1.0f16.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f32.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f64.acos(), 0.0, "acos(1) = 0");
 
+    assert_approx_eq!(1.0f16.cosh(), 1.5430806f16);
     assert_approx_eq!(1.0f32.cosh(), 1.5430806f32);
     assert_approx_eq!(1.0f64.cosh(), 1.5430806348152437f64);
+    assert_eq!(0.0f16.cosh(), 1.0);
     assert_eq!(0.0f32.cosh(), 1.0);
     assert_eq!(0.0f64.cosh(), 1.0);
+    assert_eq!((-0.0f16).cosh(), 1.0);
     assert_eq!((-0.0f32).cosh(), 1.0);
     assert_eq!((-0.0f64).cosh(), 1.0);
+    assert_approx_eq!(2.0f16.acosh(), 1.31695789692481670862504634730796844f16);
     assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
     assert_approx_eq!(3.0f64.acosh(), 1.76274717403908605046521864995958461f64);
 
+    assert_approx_eq!(1.0f16.tan(), 1.557408f16);
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
     assert_approx_eq!(1.0f64.tan(), 1.5574077246549023f64);
+    assert_approx_eq!(1.0_f16, 1.0_f16.tan().atan());
     assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan());
     assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan());
+    assert_approx_eq!(1.0f16.atan2(2.0f16), 0.46364761f16);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
     // C standard defines a bunch of fixed outputs for atan2
     macro_rules! fixed_atan2_cases{
         ($float_type:ident) => {{
             use std::$float_type::consts::{PI, FRAC_PI_2, FRAC_PI_4};
-            use $float_type::{INFINITY, NEG_INFINITY};
+
+            // The core::$float_type::INFINITY constant is deprecated, and not available for f16.
+            // Associated items cannot be brought into scope with a `use`, hence the `const`s.
+            const INFINITY: $float_type = <$float_type>::INFINITY;
+            const NEG_INFINITY: $float_type = <$float_type>::NEG_INFINITY;
 
             // atan2(±0,−0) = ±π.
             assert_eq!($float_type::atan2(0.0, -0.0), PI, "atan2(0,−0) = π");
@@ -1244,9 +1308,14 @@ fn libm() {
             assert_eq!($float_type::atan2(NEG_INFINITY, INFINITY), -FRAC_PI_4, "atan2(-∞, +∞) = -π/4");
         }}
     }
+    fixed_atan2_cases!(f16);
     fixed_atan2_cases!(f32);
     fixed_atan2_cases!(f64);
 
+    assert_approx_eq!(
+        1.0f16.tanh(),
+        (1.0 - f16::consts::E.powi(-2)) / (1.0 + f16::consts::E.powi(-2))
+    );
     assert_approx_eq!(
         1.0f32.tanh(),
         (1.0 - f32::consts::E.powi(-2)) / (1.0 + f32::consts::E.powi(-2))
@@ -1255,22 +1324,31 @@ fn libm() {
         1.0f64.tanh(),
         (1.0 - f64::consts::E.powi(-2)) / (1.0 + f64::consts::E.powi(-2))
     );
+    assert_eq!(f16::INFINITY.tanh(), 1.0);
+    assert_eq!(f16::NEG_INFINITY.tanh(), -1.0);
     assert_eq!(f32::INFINITY.tanh(), 1.0);
     assert_eq!(f32::NEG_INFINITY.tanh(), -1.0);
     assert_eq!(f64::INFINITY.tanh(), 1.0);
     assert_eq!(f64::NEG_INFINITY.tanh(), -1.0);
 
+    assert_approx_eq!(0.5f16.atanh(), 0.54930614433405484569762261846126285f16);
     assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
     assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
 
+    assert_approx_eq!(5.0f16.gamma(), 24.0);
     assert_approx_eq!(5.0f32.gamma(), 24.0);
     assert_approx_eq!(5.0f64.gamma(), 24.0);
+    assert_approx_eq!((-0.5f16).gamma(), (-2.0) * f16::consts::PI.sqrt());
     assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32::consts::PI.sqrt());
     assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64::consts::PI.sqrt());
 
+    assert_eq!(2.0f16.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f32.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f64.ln_gamma(), (0.0, 1));
     // Gamma(-0.5) = -2*sqrt(π)
+    let (val, sign) = (-0.5f16).ln_gamma();
+    assert_approx_eq!(val, (2.0 * f16::consts::PI.sqrt()).ln());
+    assert_eq!(sign, -1);
     let (val, sign) = (-0.5f32).ln_gamma();
     assert_approx_eq!(val, (2.0 * f32::consts::PI.sqrt()).ln());
     assert_eq!(sign, -1);
@@ -1278,14 +1356,19 @@ fn libm() {
     assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
     assert_eq!(sign, -1);
 
+    assert_approx_eq!(1.0f16.erf(), 0.84270079294971486934122063508260926f16);
     assert_approx_eq!(1.0f32.erf(), 0.84270079294971486934122063508260926f32);
     assert_approx_eq!(1.0f64.erf(), 0.84270079294971486934122063508260926f64);
+    assert_eq!(f16::INFINITY.erf(), 1.0);
     assert_eq!(f32::INFINITY.erf(), 1.0);
     assert_eq!(f64::INFINITY.erf(), 1.0);
+    assert_approx_eq!(1.0f16.erfc(), 0.15729920705028513065877936491739074f16);
     assert_approx_eq!(1.0f32.erfc(), 0.15729920705028513065877936491739074f32);
     assert_approx_eq!(1.0f64.erfc(), 0.15729920705028513065877936491739074f64);
+    assert_eq!(f16::NEG_INFINITY.erfc(), 2.0);
     assert_eq!(f32::NEG_INFINITY.erfc(), 2.0);
     assert_eq!(f64::NEG_INFINITY.erfc(), 2.0);
+    assert_eq!(f16::INFINITY.erfc(), 0.0);
     assert_eq!(f32::INFINITY.erfc(), 0.0);
     assert_eq!(f64::INFINITY.erfc(), 0.0);
 }
@@ -1407,9 +1490,14 @@ fn test_algebraic() {
 }
 
 fn test_fmuladd() {
-    use std::intrinsics::{fmuladdf32, fmuladdf64};
+    use std::intrinsics::{fmuladdf16, fmuladdf32, fmuladdf64};
 
-    // FIXME(f16_f128): add when supported
+    // FIXME(f128): add when supported
+
+    #[inline(never)]
+    fn test_operations_f16(a: f16, b: f16, c: f16) {
+        assert_approx_eq!(fmuladdf16(a, b, c), a * b + c);
+    }
 
     #[inline(never)]
     fn test_operations_f32(a: f32, b: f32, c: f32) {
@@ -1421,6 +1509,7 @@ fn test_fmuladd() {
         assert_approx_eq!(fmuladdf64(a, b, c), a * b + c);
     }
 
+    test_operations_f16(0.1, 0.2, 0.3);
     test_operations_f32(0.1, 0.2, 0.3);
     test_operations_f64(1.1, 1.2, 1.3);
 }
@@ -1464,6 +1553,39 @@ fn test_non_determinism() {
 
     fn test_operations_f16(a: f16, b: f16) {
         test_operations_f!(a, b);
+        check_nondet(|| a.powf(b));
+        check_nondet(|| a.powi(2));
+        check_nondet(|| a.log(b));
+        check_nondet(|| a.exp());
+        check_nondet(|| 10f16.exp2());
+        check_nondet(|| f16::consts::E.ln());
+        check_nondet(|| 10f16.log10());
+        check_nondet(|| 8f16.log2());
+        check_nondet(|| 1f16.sin());
+        check_nondet(|| 1f16.cos());
+
+        // these functions are implemented by calling the `f32` version, which means the little
+        // rounding errors Miri introduces are discarded by the cast down to `f16`.
+        // Just skip the test for them.
+        //
+        // check_nondet(|| 1f16.ln_1p());
+        // check_nondet(|| 27.0f16.cbrt());
+        // check_nondet(|| 3.0f16.hypot(4.0f16));
+        // check_nondet(|| 1.0f16.tan());
+        // check_nondet(|| 1.0f16.asin());
+        // check_nondet(|| 5.0f16.acos());
+        // check_nondet(|| 1.0f16.atan());
+        // check_nondet(|| 1.0f16.atan2(2.0f16));
+        // check_nondet(|| 1.0f16.sinh());
+        // check_nondet(|| 1.0f16.cosh());
+        // check_nondet(|| 1.0f16.tanh());
+        // check_nondet(|| 1.0f16.asinh());
+        // check_nondet(|| 2.0f16.acosh());
+        // check_nondet(|| 0.5f16.atanh());
+        // check_nondet(|| 5.0f16.gamma());
+        // check_nondet(|| 5.0f16.ln_gamma());
+        // check_nondet(|| 5.0f16.erf());
+        // check_nondet(|| 5.0f16.erfc());
     }
     fn test_operations_f32(a: f32, b: f32) {
         test_operations_f!(a, b);
@@ -1536,7 +1658,7 @@ fn test_non_determinism() {
         test_operations_f!(a, b);
     }
 
-    test_operations_f16(5., 7.);
+    test_operations_f16(3., 5.);
     test_operations_f32(12., 5.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);

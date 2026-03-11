@@ -209,6 +209,22 @@ impl ToSoft for f32 {
     }
 }
 
+impl ToHost for rustc_apfloat::ieee::Half {
+    type HostFloat = f16;
+
+    fn to_host(self) -> Self::HostFloat {
+        f16::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f16 {
+    type SoftFloat = rustc_apfloat::ieee::Half;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Checks if the given crate/module exists.
