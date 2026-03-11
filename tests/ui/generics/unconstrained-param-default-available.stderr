@@ -1,0 +1,35 @@
+error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-param-default-available.rs:6:6
+   |
+LL | impl<V> MyTrait for S {}
+   |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `V`
+   |
+LL - impl<V> MyTrait for S {}
+LL + impl MyTrait for S {}
+   |
+help: or make use of it
+   |
+LL | impl<V> MyTrait for S<V> {}
+   |                      +++
+
+error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-param-default-available.rs:13:9
+   |
+LL | impl<T, V> MyTrait for S2<T> {}
+   |         ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `V`
+   |
+LL - impl<T, V> MyTrait for S2<T> {}
+LL + impl<T> MyTrait for S2<T> {}
+   |
+help: or make use of it
+   |
+LL | impl<T, V> MyTrait for S2<T, V> {}
+   |                            +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.
