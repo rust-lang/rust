@@ -3178,6 +3178,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
+        self.suggest_shadowed_inherent_method(err, obligation, trait_predicate);
     }
 
     fn add_help_message_for_fn_trait(
