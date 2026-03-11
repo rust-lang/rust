@@ -564,7 +564,7 @@ rustc_queries! {
     }
 
     /// Checks whether a type is representable or infinitely sized
-    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    query check_representability(key: LocalDefId) {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
         // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
         // `Representability` will print a custom error about the infinite size and then abort
@@ -580,7 +580,7 @@ rustc_queries! {
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
-    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
         cycle_delay_bug
         anon
