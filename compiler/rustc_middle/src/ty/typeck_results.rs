@@ -716,7 +716,7 @@ impl<'a> LocalSetInContextMut<'a> {
 }
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[debug_format = "UserType({})"]
     pub struct UserTypeAnnotationIndex {

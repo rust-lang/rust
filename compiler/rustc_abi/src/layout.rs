@@ -45,7 +45,7 @@ rustc_index::newtype_index! {
     /// `b` is `FieldIdx(1)` in `VariantIdx(0)`,
     /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
     /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
-    #[cfg_attr(feature = "nightly", derive(rustc_macros::HashStable_Generic))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[gate_rustc_only]
@@ -70,7 +70,7 @@ rustc_index::newtype_index! {
     ///
     /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
     /// with variant index zero, aka [`FIRST_VARIANT`].
-    #[cfg_attr(feature = "nightly", derive(rustc_macros::HashStable_Generic))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[gate_rustc_only]
