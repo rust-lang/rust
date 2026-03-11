@@ -38,9 +38,8 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, Spanned};
 use thin_vec::{thin_vec, ThinVec};
 
 // Helper functions for building exprs

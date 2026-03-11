@@ -1,3 +1,4 @@
+//@ reference: expr.arith-logic.behavior
 // Test that move restrictions are enforced on overloaded binary operations
 
 use std::ops::Add;

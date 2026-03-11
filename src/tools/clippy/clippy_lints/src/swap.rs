@@ -14,9 +14,8 @@ use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, St
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{Span, Spanned, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
