@@ -314,11 +314,6 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     trait_def_id: DefId,
     item: ty::AssocItem,
 ) -> Vec<DynCompatibilityViolation> {
-    // `final` assoc functions don't prevent a trait from being dyn-compatible
-    if tcx.defaultness(item.def_id).is_final() {
-        return Vec::new();
-    }
-
     // Any item that has a `Self: Sized` requisite is otherwise exempt from the regulations.
     if tcx.generics_require_sized_self(item.def_id) {
         return Vec::new();
@@ -360,7 +355,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                 .collect()
         }
         ty::AssocKind::Fn { name, .. } => {
-            virtual_call_violations_for_method(tcx, trait_def_id, item)
+            let violations: Vec<_> = virtual_call_violations_for_method(tcx, trait_def_id, item)
                 .into_iter()
                 .map(|v| {
                     let node = tcx.hir_get_if_local(item.def_id);
@@ -377,7 +372,14 @@ pub fn dyn_compatibility_violations_for_assoc_item(
 
                     DynCompatibilityViolation::Method(name, v, span)
                 })
-                .collect()
+                .collect();
+
+            if tcx.defaultness(item.def_id).is_final() {
+                tcx.feed_is_dyn_incompatible_final_assoc_fn(item.def_id, !violations.is_empty());
+                Vec::new()
+            } else {
+                violations
+            }
         }
         ty::AssocKind::Type { data } => {
             if !tcx.generics_of(item.def_id).is_own_empty()
