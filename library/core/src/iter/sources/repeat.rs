@@ -101,11 +101,37 @@ impl<A: Clone> Iterator for Repeat<A> {
         Some(self.element.clone())
     }
 
+    /// Always panics because the iterator is infinite.
+    ///
+    /// # Panics
+    ///
+    /// Always panics. Since `Repeat` yields elements endlessly, there is no
+    /// last element to return.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::iter;
+    /// let _ = iter::repeat(5).last();
+    /// ```
     #[track_caller]
     fn last(self) -> Option<A> {
         panic!("iterator is infinite");
     }
 
+    /// Always panics because the iterator is infinite.
+    ///
+    /// # Panics
+    ///
+    /// Always panics. Since `Repeat` yields elements endlessly, there is no
+    /// finite count to return.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::iter;
+    /// let _ = iter::repeat(5).count();
+    /// ```
     #[track_caller]
     fn count(self) -> usize {
         panic!("iterator is infinite");
