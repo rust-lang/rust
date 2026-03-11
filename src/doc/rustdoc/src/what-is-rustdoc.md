@@ -159,6 +159,15 @@ You will find an HTML file in `docs/doc/README.html` generated from its
 Markdown contents.
 
 Cargo currently does not understand standalone Markdown files, unfortunately.
+However, you can include the contents of a Markdown file in your crate-level
+documentation by adding the following to `src/lib.rs`:
+
+```rust,ignore
+#![doc = include_str!("../README.md")]
+```
+
+This way, the contents of `README.md` will be used as the crate's top-level
+documentation when running `cargo doc`.
 
 ## Summary
 
