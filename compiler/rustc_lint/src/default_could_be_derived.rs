@@ -180,7 +180,7 @@ fn mk_lint(
     if removed_all_fields {
         let msg = "to avoid divergence in behavior between `Struct { .. }` and \
                    `<Struct as Default>::default()`, derive the `Default`";
-        diag.multipart_suggestion_verbose(
+        diag.multipart_suggestion(
             msg,
             vec![
                 (tcx.def_span(type_def_id).shrink_to_lo(), "#[derive(Default)] ".to_string()),

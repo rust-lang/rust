@@ -5,7 +5,7 @@ use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
@@ -302,7 +302,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`if let` assigns a shorter lifetime since Edition 2024")]
 struct IfLetRescopeLint {
     #[subdiagnostic]
@@ -354,9 +354,8 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));
-        let msg = diag.eagerly_translate(msg!(
-            "a `match` with a single arm can preserve the drop order up to Edition 2021"
-        ));
+        let msg =
+            msg!("a `match` with a single arm can preserve the drop order up to Edition 2021");
         diag.multipart_suggestion_with_style(
             msg,
             suggestions,

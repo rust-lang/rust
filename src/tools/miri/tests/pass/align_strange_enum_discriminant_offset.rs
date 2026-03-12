@@ -1,5 +1,4 @@
-#![allow(unused)]
-
+#[allow(unused)]
 #[repr(u16)]
 enum DeviceKind {
     Nil = 0,
@@ -19,5 +18,5 @@ fn main() {
     let x = None::<(DeviceInfo, u8)>;
     let y = None::<(DeviceInfo, u16)>;
     let z = None::<(DeviceInfo, u64)>;
-    format!("{} {} {}", x.is_some(), y.is_some(), y.is_some());
+    let _out = format!("{} {} {}", x.is_some(), y.is_some(), z.is_some());
 }

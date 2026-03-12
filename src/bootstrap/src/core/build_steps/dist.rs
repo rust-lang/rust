@@ -87,6 +87,12 @@ impl Step for Docs {
         // from a shared directory.
         builder.run_default_doc_steps();
 
+        // In case no default doc steps are run for host, it is possible that `<host>/doc` directory
+        // is never created.
+        if !builder.config.dry_run() {
+            t!(fs::create_dir_all(builder.doc_out(host)));
+        }
+
         let dest = "share/doc/rust/html";
 
         let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
@@ -2557,7 +2563,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     ),
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir = sysroot.join(builder.sysroot_libdir_relative(Compiler::new(1, target)));
+    let dst_libdir = sysroot.join(builder.libdir_relative(Compiler::new(1, target)));
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
@@ -3084,7 +3090,7 @@ impl Step for Gcc {
             return None;
         }
 
-        if builder.config.is_running_on_ci {
+        if builder.config.is_running_on_ci() {
             assert_eq!(
                 builder.config.gcc_ci_mode,
                 GccCiMode::BuildLocally,

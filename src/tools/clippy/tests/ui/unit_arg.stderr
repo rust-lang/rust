@@ -200,19 +200,19 @@ LL +     Some(())
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:171:5
+  --> tests/ui/unit_arg.rs:168:5
    |
 LL |     fn_take_unit(mac!(def));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:173:5
+  --> tests/ui/unit_arg.rs:170:5
    |
 LL |     fn_take_unit(mac!(func Default::default));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:175:5
+  --> tests/ui/unit_arg.rs:172:5
    |
 LL |     fn_take_unit(mac!(nonempty_block Default::default()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

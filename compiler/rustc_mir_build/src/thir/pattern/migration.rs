@@ -129,7 +129,7 @@ impl<'a> PatMigration<'a> {
         // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
         debug_assert!(!self.suggestion.is_empty());
         if !self.suggestion.is_empty() {
-            diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
+            diag.multipart_suggestion(msg, self.suggestion, applicability);
         }
     }
 

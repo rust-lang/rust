@@ -485,7 +485,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         ));
                     }
 
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         "consider borrowing the value",
                         suggestion,
                         Applicability::MachineApplicable,

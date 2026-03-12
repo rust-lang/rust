@@ -52,6 +52,8 @@ See https://www.rust-lang.org/community for a list of chat platforms and forums.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+For a detailed explanation of the compiler's architecture and how to begin contributing, see the [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/).
+
 ## License
 
 Rust is primarily distributed under the terms of both the MIT license and the

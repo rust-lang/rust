@@ -2,15 +2,15 @@ use std::num::Saturating;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::snippet;
+use clippy_utils::{is_from_proc_macro, sym};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -28,6 +28,8 @@ declare_clippy_lint! {
     pedantic,
     "allocating large arrays on stack may cause stack overflow"
 }
+
+impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
 pub struct LargeStackArrays {
     maximum_allowed_size: u64,
@@ -60,8 +62,6 @@ impl LargeStackArrays {
             }
     }
 }
-
-impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

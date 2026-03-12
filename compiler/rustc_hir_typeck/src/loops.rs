@@ -3,7 +3,6 @@ use std::fmt;
 
 use Context::*;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -208,7 +207,7 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 };
 
                 // A `#[const_continue]` must break to a block in a `#[loop_match]`.
-                if find_attr!(self.tcx.hir_attrs(e.hir_id), AttributeKind::ConstContinue(_)) {
+                if find_attr!(self.tcx.hir_attrs(e.hir_id), ConstContinue(_)) {
                     let Some(label) = break_destination.label else {
                         let span = e.span;
                         self.tcx.dcx().emit_fatal(ConstContinueBadLabel { span });
@@ -421,7 +420,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
         e: &'hir hir::Expr<'hir>,
         body: &'hir hir::Block<'hir>,
     ) -> Option<Destination> {
-        if !find_attr!(self.tcx.hir_attrs(e.hir_id), AttributeKind::LoopMatch(_)) {
+        if !find_attr!(self.tcx.hir_attrs(e.hir_id), LoopMatch(_)) {
             return None;
         }
 

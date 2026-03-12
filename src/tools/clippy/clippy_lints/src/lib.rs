@@ -3,7 +3,6 @@
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr_concat)]
@@ -103,6 +102,7 @@ mod default_union_representation;
 mod dereference;
 mod derivable_impls;
 mod derive;
+mod disallowed_fields;
 mod disallowed_macros;
 mod disallowed_methods;
 mod disallowed_names;
@@ -857,6 +857,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(toplevel_ref_arg::ToplevelRefArg)),
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
+        Box::new(move |tcx| Box::new(disallowed_fields::DisallowedFields::new(tcx, conf))),
         Box::new(move |_| Box::new(manual_ilog2::ManualIlog2::new(conf))),
         Box::new(|_| Box::new(same_length_and_capacity::SameLengthAndCapacity)),
         Box::new(move |tcx| Box::new(duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf))),

@@ -393,7 +393,7 @@ mod test_str_ext {
     }
 }
 
-#[cfg(feature = "borsh")]
+#[cfg(all(feature = "borsh", feature = "std"))]
 mod borsh_tests {
     use borsh::BorshDeserialize;
     use smol_str::{SmolStr, ToSmolStr};

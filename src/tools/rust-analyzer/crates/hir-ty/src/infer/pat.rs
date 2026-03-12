@@ -673,7 +673,7 @@ impl<'db> InferenceContext<'_, 'db> {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(body[pat], Pat::Bind { id, .. } if body[id].mode == BindingAnnotation::Ref);
+        res |= matches!(body[pat], Pat::Bind { id, .. } if matches!(body[id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut));
     });
     res
 }

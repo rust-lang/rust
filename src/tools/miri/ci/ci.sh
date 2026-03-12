@@ -129,7 +129,7 @@ function run_tests_minimal {
   time ./miri test $TARGET_FLAG "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
-  time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml $TARGET_FLAG
+  time cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml -Zjson-target-spec $TARGET_FLAG
 
   endgroup
 }
@@ -173,7 +173,9 @@ case $HOST_TARGET in
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Custom target JSON file
-    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 run_tests_minimal no_std
+    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std
+    # Not officially supported tier 2
+    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
     ;;
   aarch64-apple-darwin)
     # Host
@@ -184,7 +186,6 @@ case $HOST_TARGET in
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
     ;;
   i686-pc-windows-msvc)
     # Host

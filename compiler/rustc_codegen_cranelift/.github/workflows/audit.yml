@@ -13,6 +13,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           sed -i 's/components.*/components = []/' rust-toolchain.toml
-      - uses: rustsec/audit-check@v1.4.1
+      - uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

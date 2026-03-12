@@ -4,8 +4,8 @@
 #[repr(C)]
 #[allow(dead_code)]
 enum E {
-  V0, // discriminant: 0
-  V1(!), // 1
+    V0,    // discriminant: 0
+    V1(!), // 1
 }
 
 fn main() {
@@ -14,7 +14,8 @@ fn main() {
     let val = 1u32;
     let ptr = (&raw const val).cast::<E>();
     let r = unsafe { &*ptr };
-    match r { //~ ERROR: read discriminant of an uninhabited enum variant
+    match r {
+        //~^ ERROR: read discriminant of an uninhabited enum variant
         E::V0 => {}
         E::V1(_) => {}
     }

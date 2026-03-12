@@ -1,6 +1,8 @@
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -12,7 +14,6 @@ use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Ident, Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -322,7 +323,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::CrateName{name, name_span,..} => (name, name_span)).map(
+            find_attr!(cx.tcx, crate, CrateName{name, name_span,..} => (name, name_span)).map(
                 |(&name, &span)| {
                     // Discard the double quotes surrounding the literal.
                     let sp = cx
@@ -335,8 +336,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                             let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
 
                             Some(
-                                span
-                                    .with_lo(span.lo() + BytePos(left as u32 + 1))
+                                span.with_lo(span.lo() + BytePos(left as u32 + 1))
                                     .with_hi(span.hi() - BytePos(right as u32)),
                             )
                         })
@@ -370,9 +370,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         match &fk {
             FnKind::Method(ident, sig, ..) => match cx.tcx.associated_item(id).container {
                 AssocContainer::InherentImpl => {
-                    if sig.header.abi != ExternAbi::Rust
-                        && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
-                    {
+                    if sig.header.abi != ExternAbi::Rust && find_attr!(cx.tcx, id, NoMangle(..)) {
                         return;
                     }
                     self.check_snake_case(cx, "method", ident);
@@ -384,9 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != ExternAbi::Rust
-                    && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
-                {
+                if header.abi != ExternAbi::Rust && find_attr!(cx.tcx, id, NoMangle(..)) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
@@ -466,6 +462,19 @@ declare_lint! {
 
 declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
+struct NonUpperCaseGlobalGenerator<'a, F: FnOnce() -> NonUpperCaseGlobal<'a>> {
+    callback: F,
+}
+
+impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a, ()>
+    for NonUpperCaseGlobalGenerator<'b, F>
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { callback } = self;
+        callback().into_diag(dcx, level)
+    }
+}
+
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, did: Option<LocalDefId>, ident: &Ident) {
         let name = ident.name.as_str();
@@ -522,7 +531,7 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
+            let callback = || {
                 // Compute usages lazily as it can expansive and useless when the lint is allowed.
                 // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
                 let usages = if can_change_usages
@@ -542,7 +551,12 @@ impl NonUpperCaseGlobals {
                 };
 
                 NonUpperCaseGlobal { sort, name, sub, usages }
-            });
+            };
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobalGenerator { callback },
+            );
         }
     }
 }
@@ -551,9 +565,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(_, ident, ..)
-                if !find_attr!(attrs, AttributeKind::NoMangle(..)) =>
-            {
+            hir::ItemKind::Static(_, ident, ..) if !find_attr!(attrs, NoMangle(..)) => {
                 NonUpperCaseGlobals::check_upper_case(
                     cx,
                     "static variable",
@@ -594,7 +606,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
             ..
         }) = p.kind
         {
-            if let Res::Def(DefKind::Const, _) = path.res
+            if let Res::Def(DefKind::Const { .. }, _) = path.res
                 && let [segment] = path.segments
             {
                 NonUpperCaseGlobals::check_upper_case(

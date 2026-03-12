@@ -237,12 +237,12 @@ macro_rules! deinterleaving_load {
     ($elem:ty, $lanes:literal, 2, $ptr:expr) => {{
         use $crate::core_arch::macros::deinterleave_mask;
         use $crate::core_arch::simd::Simd;
-        use $crate::{mem::transmute, ptr};
+        use $crate::mem::transmute;
 
         type V = Simd<$elem, $lanes>;
         type W = Simd<$elem, { $lanes * 2 }>;
 
-        let w: W = ptr::read_unaligned($ptr as *const W);
+        let w: W = $crate::ptr::read_unaligned($ptr as *const W);
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 2, 0>());
         let v1: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 2, 1>());
@@ -253,12 +253,20 @@ macro_rules! deinterleaving_load {
     ($elem:ty, $lanes:literal, 3, $ptr:expr) => {{
         use $crate::core_arch::macros::deinterleave_mask;
         use $crate::core_arch::simd::Simd;
-        use $crate::{mem::transmute, ptr};
+        use $crate::mem::{MaybeUninit, transmute};
 
         type V = Simd<$elem, $lanes>;
         type W = Simd<$elem, { $lanes * 3 }>;
 
-        let w: W = ptr::read_unaligned($ptr as *const W);
+        // NOTE: repr(simd) adds padding to make the total size a power of two.
+        // Hence reading W from ptr might read out of bounds.
+        let mut mem = MaybeUninit::<W>::uninit();
+        $crate::ptr::copy_nonoverlapping(
+            $ptr.cast::<$elem>(),
+            mem.as_mut_ptr().cast::<$elem>(),
+            $lanes * 3,
+        );
+        let w = mem.assume_init();
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 0>());
         let v1: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 1>());
@@ -270,12 +278,12 @@ macro_rules! deinterleaving_load {
     ($elem:ty, $lanes:literal, 4, $ptr:expr) => {{
         use $crate::core_arch::macros::deinterleave_mask;
         use $crate::core_arch::simd::Simd;
-        use $crate::{mem::transmute, ptr};
+        use $crate::mem::transmute;
 
         type V = Simd<$elem, $lanes>;
         type W = Simd<$elem, { $lanes * 4 }>;
 
-        let w: W = ptr::read_unaligned($ptr as *const W);
+        let w: W = $crate::ptr::read_unaligned($ptr as *const W);
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 4, 0>());
         let v1: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 4, 1>());
@@ -322,8 +330,15 @@ macro_rules! interleaving_store {
             simd_shuffle!($v.2, $v.2, identity::<{ $lanes * 2 }>());
 
         type W = Simd<$elem, { $lanes * 3 }>;
+
+        // NOTE: repr(simd) adds padding to make the total size a power of two.
+        // Hence writing W to ptr might write out of bounds.
         let w: W = simd_shuffle!(v0v1, v2v2, interleave_mask::<{ $lanes * 3 }, $lanes, 3>());
-        $crate::ptr::write_unaligned($ptr as *mut W, w);
+        $crate::ptr::copy_nonoverlapping(
+            (&w as *const W).cast::<$elem>(),
+            $ptr.cast::<$elem>(),
+            $lanes * 3,
+        );
     }};
 
     // N = 4

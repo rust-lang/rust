@@ -7,11 +7,11 @@ and joining does not entail any particular commitment.
 
 Once you [join a notification group](#join), you will be added to
 a list that receives pings on github whenever a new issue is found
-that fits the notification group's criteria. If you are interested, you
-can then [claim the issue] and start working on it.
+that fits the notification group's criteria.
+If you are interested, you can then [claim the issue] and start working on it.
 
-Of course, you don't have to wait for new issues to be tagged! If you
-prefer, you can use the GitHub label for a notification group to
+Of course, you don't have to wait for new issues to be tagged!
+If you prefer, you can use the GitHub label for a notification group to
 search for existing issues that haven't been claimed yet.
 
 [claim the issue]: https://forge.rust-lang.org/triagebot/issue-assignment.html
@@ -37,8 +37,8 @@ particularly those of **middle priority**:
 - By **isolated**, we mean that we do not expect large-scale refactoring
   to be required to fix the bug.
 - By **middle priority**, we mean that we'd like to see the bug fixed,
-  but it's not such a burning problem that we are dropping everything
-  else to fix it. The danger with such bugs, of course, is that they
+  but it's not such a burning problem that we are dropping everything else to fix it.
+  The danger with such bugs, of course, is that they
   can accumulate over time, and the role of the notification group is
   to try and stop that from happening!
 
@@ -48,8 +48,7 @@ particularly those of **middle priority**:
 
 To join a notification group, you just have to open a PR adding your
 GitHub username to the appropriate file in the Rust team repository.
-See the "example PRs" below to get a precise idea and to identify the
-file to edit.
+See the "example PRs" below to get a precise idea and to identify the file to edit.
 
 Also, if you are not already a member of a Rust team then -- in addition
 to adding your name to the file -- you have to checkout the repository and
@@ -73,8 +72,8 @@ Example PRs:
 ## Tagging an issue for a notification group
 
 To tag an issue as appropriate for a notification group, you give
-[rustbot] a [`ping`] command with the name of the notification
-group. For example:
+[rustbot] a [`ping`] command with the name of the notification group.
+For example:
 
 ```text
 @rustbot ping apple
@@ -87,8 +86,8 @@ group. For example:
 ```
 
 To make some commands shorter and easier to remember, there are aliases,
-defined in the [`triagebot.toml`] file. For example, all of these commands
-are equivalent and will ping the Apple group:
+defined in the [`triagebot.toml`] file.
+For example, all of these commands are equivalent and will ping the Apple group:
 
 ```text
 @rustbot ping apple
@@ -97,12 +96,12 @@ are equivalent and will ping the Apple group:
 ```
 
 Keep in mind that these aliases are meant to make humans' life easier.
-They might be subject to change. If you need to ensure that a command
+They might be subject to change.
+If you need to ensure that a command
 will always be valid, prefer the full invocations over the aliases.
 
 **Note though that this should only be done by compiler team members
-or contributors, and is typically done as part of compiler team
-triage.**
+or contributors, and is typically done as part of compiler team triage.**
 
 [rustbot]: https://github.com/rust-lang/triagebot/
 [`ping`]: https://forge.rust-lang.org/triagebot/pinging.html

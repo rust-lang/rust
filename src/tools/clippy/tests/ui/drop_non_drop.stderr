@@ -1,11 +1,11 @@
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
-  --> tests/ui/drop_non_drop.rs:22:5
+  --> tests/ui/drop_non_drop.rs:27:5
    |
 LL |     drop(Foo);
    |     ^^^^^^^^^
    |
 note: argument has type `main::Foo`
-  --> tests/ui/drop_non_drop.rs:22:10
+  --> tests/ui/drop_non_drop.rs:27:10
    |
 LL |     drop(Foo);
    |          ^^^
@@ -13,16 +13,28 @@ LL |     drop(Foo);
    = help: to override `-D warnings` add `#[allow(clippy::drop_non_drop)]`
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
-  --> tests/ui/drop_non_drop.rs:39:5
+  --> tests/ui/drop_non_drop.rs:44:5
    |
 LL |     drop(Baz(Foo));
    |     ^^^^^^^^^^^^^^
    |
 note: argument has type `main::Baz<main::Foo>`
-  --> tests/ui/drop_non_drop.rs:39:10
+  --> tests/ui/drop_non_drop.rs:44:10
    |
 LL |     drop(Baz(Foo));
    |          ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
+  --> tests/ui/drop_non_drop.rs:51:5
+   |
+LL |     drop(make_result_uninhabited_err(Foo));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `std::result::Result<main::Foo, std::convert::Infallible>`
+  --> tests/ui/drop_non_drop.rs:51:10
+   |
+LL |     drop(make_result_uninhabited_err(Foo));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

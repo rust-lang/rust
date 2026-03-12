@@ -35,6 +35,8 @@ declare_clippy_lint! {
     "checks for fields in struct literals where shorthands could be used"
 }
 
+impl_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
+
 pub struct RedundantFieldNames {
     msrv: MsrvStack,
 }
@@ -46,8 +48,6 @@ impl RedundantFieldNames {
         }
     }
 }
-
-impl_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {

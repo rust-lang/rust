@@ -361,6 +361,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new_in(Global);
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
+    #[must_use]
     pub const fn new_in(alloc: A) -> BTreeSet<T, A> {
         BTreeSet { map: BTreeMap::new_in(alloc) }
     }

@@ -25,9 +25,6 @@ declare_features! (
     // feature-group-start: for testing purposes
     // -------------------------------------------------------------------------
 
-    /// A temporary feature gate used to enable parser extensions needed
-    /// to bootstrap fix for #5723.
-    (accepted, issue_5723_bootstrap, "1.0.0", None),
     /// These are used to test this portion of the compiler,
     /// they don't actually mean anything.
     (accepted, test_accepted_feature, "1.0.0", None),
@@ -105,6 +102,8 @@ declare_features! (
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
     (accepted, cfg_panic, "1.60.0", Some(77443)),
+    /// Provides a native way to easily manage multiple conditional flags without having to rewrite each clause multiple times.
+    (accepted, cfg_select, "1.95.0", Some(115585)),
     /// Allows `cfg(target_abi = "...")`.
     (accepted, cfg_target_abi, "1.78.0", Some(80970)),
     /// Allows `cfg(target_feature = "...")`.
@@ -243,6 +242,8 @@ declare_features! (
     (accepted, i128_type, "1.26.0", Some(35118)),
     /// Allows the use of `if let` expressions.
     (accepted, if_let, "1.0.0", None),
+    /// Allows `if let` guard in match arms.
+    (accepted, if_let_guard, "1.95.0", Some(51114)),
     /// Rescoping temporaries in `if let` to align with Rust 2024.
     (accepted, if_let_rescope, "1.84.0", Some(124085)),
     /// Allows top level or-patterns (`p | q`) in `if let` and `while let`.

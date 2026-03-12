@@ -6,69 +6,71 @@ use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { representability, representability_adt_ty, params_in_repr, ..*providers };
-}
-
-macro_rules! rtry {
-    ($e:expr) => {
-        match $e {
-            e @ Representability::Infinite(_) => return e,
-            Representability::Representable => {}
-        }
+    *providers = Providers {
+        check_representability,
+        check_representability_adt_ty,
+        params_in_repr,
+        ..*providers
     };
 }
 
-fn representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
+fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
     match tcx.def_kind(def_id) {
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             for variant in tcx.adt_def(def_id).variants() {
                 for field in variant.fields.iter() {
-                    rtry!(tcx.representability(field.did.expect_local()));
+                    let _ = tcx.check_representability(field.did.expect_local());
                 }
             }
-            Representability::Representable
         }
-        DefKind::Field => representability_ty(tcx, tcx.type_of(def_id).instantiate_identity()),
+        DefKind::Field => {
+            check_representability_ty(tcx, tcx.type_of(def_id).instantiate_identity());
+        }
         def_kind => bug!("unexpected {def_kind:?}"),
     }
+    Representability
 }
 
-fn representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
     match *ty.kind() {
-        ty::Adt(..) => tcx.representability_adt_ty(ty),
+        // This one must be a query rather than a vanilla `check_representability_adt_ty` call. See
+        // the comment on `check_representability_adt_ty` below for why.
+        ty::Adt(..) => {
+            let _ = tcx.check_representability_adt_ty(ty);
+        }
         // FIXME(#11924) allow zero-length arrays?
-        ty::Array(ty, _) => representability_ty(tcx, ty),
+        ty::Array(ty, _) => {
+            check_representability_ty(tcx, ty);
+        }
         ty::Tuple(tys) => {
             for ty in tys {
-                rtry!(representability_ty(tcx, ty));
+                check_representability_ty(tcx, ty);
             }
-            Representability::Representable
         }
-        _ => Representability::Representable,
+        _ => {}
     }
 }
 
-/*
-The reason for this being a separate query is very subtle:
-Consider this infinitely sized struct: `struct Foo(Box<Foo>, Bar<Foo>)`:
-When calling representability(Foo), a query cycle will occur:
-  representability(Foo)
-    -> representability_adt_ty(Bar<Foo>)
-    -> representability(Foo)
-For the diagnostic output (in `Value::from_cycle_error`), we want to detect that
-the `Foo` in the *second* field of the struct is culpable. This requires
-traversing the HIR of the struct and calling `params_in_repr(Bar)`. But we can't
-call params_in_repr for a given type unless it is known to be representable.
-params_in_repr will cycle/panic on infinitely sized types. Looking at the query
-cycle above, we know that `Bar` is representable because
-representability_adt_ty(Bar<..>) is in the cycle and representability(Bar) is
-*not* in the cycle.
-*/
-fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+// The reason for this being a separate query is very subtle. Consider this
+// infinitely sized struct: `struct Foo(Box<Foo>, Bar<Foo>)`. When calling
+// check_representability(Foo), a query cycle will occur:
+//
+//   check_representability(Foo)
+//     -> check_representability_adt_ty(Bar<Foo>)
+//     -> check_representability(Foo)
+//
+// For the diagnostic output (in `Value::from_cycle_error`), we want to detect
+// that the `Foo` in the *second* field of the struct is culpable. This
+// requires traversing the HIR of the struct and calling `params_in_repr(Bar)`.
+// But we can't call params_in_repr for a given type unless it is known to be
+// representable. params_in_repr will cycle/panic on infinitely sized types.
+// Looking at the query cycle above, we know that `Bar` is representable
+// because `check_representability_adt_ty(Bar<..>)` is in the cycle and
+// `check_representability(Bar)` is *not* in the cycle.
+fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
     let ty::Adt(adt, args) = ty.kind() else { bug!("expected adt") };
     if let Some(def_id) = adt.did().as_local() {
-        rtry!(tcx.representability(def_id));
+        let _ = tcx.check_representability(def_id);
     }
     // At this point, we know that the item of the ADT type is representable;
     // but the type parameters may cause a cycle with an upstream type
@@ -76,11 +78,11 @@ fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representab
     for (i, arg) in args.iter().enumerate() {
         if let ty::GenericArgKind::Type(ty) = arg.kind() {
             if params_in_repr.contains(i as u32) {
-                rtry!(representability_ty(tcx, ty));
+                check_representability_ty(tcx, ty);
             }
         }
     }
-    Representability::Representable
+    Representability
 }
 
 fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {

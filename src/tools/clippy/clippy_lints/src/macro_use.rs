@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use hir::def::{DefKind, Res};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, AmbigArg, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -44,6 +43,8 @@ declare_clippy_lint! {
     "#[macro_use] is no longer needed"
 }
 
+impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
+
 /// `MacroRefData` includes the name of the macro.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
@@ -65,8 +66,6 @@ pub struct MacroUseImports {
     collected: FxHashSet<Span>,
     mac_refs: Vec<MacroRefData>,
 }
-
-impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 
 impl MacroUseImports {
     fn push_unique_macro(&mut self, cx: &LateContext<'_>, span: Span) {
@@ -100,7 +99,7 @@ impl LateLintPass<'_> for MacroUseImports {
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
             && let attrs = cx.tcx.hir_attrs(hir_id)
-            && let Some(mac_attr_span) = find_attr!(attrs, AttributeKind::MacroUse {span, ..} => *span)
+            && let Some(mac_attr_span) = find_attr!(attrs, MacroUse {span, ..} => *span)
             && let Some(Res::Def(DefKind::Mod, id)) = path.res.type_ns
             && !id.is_local()
         {

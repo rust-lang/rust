@@ -1,11 +1,9 @@
-warning: `max` is ambiguous
+error: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
    |                            ^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `max` could refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
@@ -19,16 +17,16 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
-warning: `max` is ambiguous
+error: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
    |                                 ^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `max` could refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
@@ -42,18 +40,18 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
 
-warning: 2 warnings emitted
+error: aborting due to 2 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: `max` is ambiguous
+error: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:6:28
    |
 LL | use issue_114682_2_extern::max;
    |                            ^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `max` could refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
@@ -67,17 +65,17 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-warning: `max` is ambiguous
+error: `max` is ambiguous
   --> $DIR/issue-114682-2.rs:9:33
    |
 LL | type A = issue_114682_2_extern::max;
    |                                 ^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `max` could refer to the type alias defined here
   --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
@@ -91,5 +89,7 @@ note: `max` could also refer to the module defined here
    |
 LL | pub use self::d::*;
    |         ^^^^^^^
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 

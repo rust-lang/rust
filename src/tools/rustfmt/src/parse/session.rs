@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{DynEmitter, Emitter, SilentEmitter, stderr_destination};
-use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
@@ -74,10 +73,6 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         self.handle_non_ignoreable_error(diag);
     }
-
-    fn translator(&self) -> &Translator {
-        self.emitter.translator()
-    }
 }
 
 impl From<Color> for ColorConfig {
@@ -104,15 +99,13 @@ fn default_dcx(
         ColorConfig::Never
     };
 
-    let translator = rustc_driver::default_translator();
-
     let emitter: Box<DynEmitter> = if show_parse_errors {
         Box::new(
-            AnnotateSnippetEmitter::new(stderr_destination(emit_color), translator)
+            AnnotateSnippetEmitter::new(stderr_destination(emit_color))
                 .sm(Some(source_map.clone())),
         )
     } else {
-        Box::new(SilentEmitter { translator })
+        Box::new(SilentEmitter)
     };
     DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -341,10 +334,6 @@ mod tests {
 
             fn emit_diagnostic(&mut self, _diag: DiagInner) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
-            }
-
-            fn translator(&self) -> &Translator {
-                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 

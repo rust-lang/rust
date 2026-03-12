@@ -3,8 +3,6 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(if_let_guard)]
-
 fn t_if_let_chains_then() {
     let e = Events::new();
     _ = if e.ok(1).is_ok()

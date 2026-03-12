@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `aaa`
+error[E0433]: cannot find module or crate `aaa` in this scope
   --> $DIR/unresolved-module-error-33293.rs:4:9
    |
 LL |         aaa::bbb(_) => ()

@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name: `invalid_cfg1`
-  --> $DIR/cfg-select.rs:8:5
+  --> $DIR/cfg-select.rs:7:5
    |
 LL |     invalid_cfg1 => {}
    |     ^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     invalid_cfg1 => {}
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `invalid_cfg2`
-  --> $DIR/cfg-select.rs:14:5
+  --> $DIR/cfg-select.rs:13:5
    |
 LL |     invalid_cfg2 => {}
    |     ^^^^^^^^^^^^

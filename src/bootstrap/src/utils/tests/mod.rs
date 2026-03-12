@@ -35,6 +35,11 @@ impl TestCtx {
         self.directory.path()
     }
 
+    /// Using backslashes fails with `--set`
+    pub fn normalized_dir(&self) -> String {
+        self.dir().to_string_lossy().replace("\\", "/")
+    }
+
     /// Starts a new invocation of bootstrap that executes `kind` as its top level command
     /// (i.e. `x <kind>`). Returns a builder that configures the created config through CLI flags.
     pub fn config(&self, kind: &str) -> ConfigBuilder {

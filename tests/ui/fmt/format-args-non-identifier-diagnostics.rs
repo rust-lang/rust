@@ -1,6 +1,7 @@
 // Checks that there is a suggestion for simple tuple index access expression (used where an
-// identifier is expected in a format arg) to use positional arg instead.
-// Issue: <https://github.com/rust-lang/rust/issues/122535>.
+// identifier is expected in a format arg) to use positional arg instead, with a note to move
+// the expression into a local variable.
+// Issue: <https://github.com/rust-lang/rust/issues/114108>.
 //@ run-rustfix
 
 fn main() {

@@ -1,8 +1,6 @@
 #![warn(clippy::manual_take)]
 
 fn main() {
-    msrv_1_39();
-    msrv_1_40();
     let mut x = true;
     let mut y = false;
 

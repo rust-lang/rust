@@ -101,11 +101,7 @@ fn dont_lint_not_used() {
     std::mem::replace(&mut s, String::default());
 }
 
-fn main() {
-    replace_option_with_none();
-    replace_with_default();
-    dont_lint_primitive();
-}
+fn main() {}
 
 #[clippy::msrv = "1.39"]
 fn msrv_1_39() {

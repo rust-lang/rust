@@ -1,4 +1,4 @@
-use rustc_abi::WrappingRange;
+use rustc_abi::{Align, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -179,9 +179,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
                         bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
                     }
-                    // Alignment is always nonzero.
+                    // Alignment is always a power of two, thus 1..=0x800…000,
+                    // but also bounded by the maximum we support in type layout.
                     sym::vtable_align => {
-                        bx.range_metadata(value, WrappingRange { start: 1, end: !0 })
+                        let align_bound = Align::max_for_target(bx.data_layout()).bytes().into();
+                        bx.range_metadata(value, WrappingRange { start: 1, end: align_bound })
                     }
                     _ => {}
                 }

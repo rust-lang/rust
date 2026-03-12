@@ -289,7 +289,6 @@
 #![feature(ffi_const)]
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
@@ -323,7 +322,6 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
-#![feature(cfg_select)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_convert)]
@@ -497,6 +495,8 @@ pub use core::cmp;
 pub use core::convert;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub use core::field;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]
@@ -696,7 +696,7 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "1.95.0")]
 pub use core::cfg_select;
 #[unstable(
     feature = "concat_bytes",
@@ -726,7 +726,7 @@ pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,
 };
-#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "1.95.0")]
 pub use core::{assert_matches, debug_assert_matches};
 
 // Re-export unstable derive macro defined through core.

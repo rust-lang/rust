@@ -45,13 +45,11 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
     rustc_span::create_default_session_globals_then(|| {
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         sm.new_source_file(filename(&sm, "test.rs"), code.to_owned());
-        let translator = Translator::new();
 
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
             Box::new(Shared { data: output.clone() }),
             Some(sm),
-            translator,
             true, // pretty
             HumanReadableErrorType { short: true, unicode: false },
             ColorConfig::Never,

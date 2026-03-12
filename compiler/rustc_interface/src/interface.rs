@@ -16,7 +16,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::Recovery;
 use rustc_parse::parser::attr::AllowLeadingUnsafe;
-use rustc_query_impl::{QueryCtxt, print_query_stack};
+use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
@@ -435,16 +435,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
-            let bundle = match rustc_errors::fluent_bundle(
-                &config.opts.sysroot.all_paths().collect::<Vec<_>>(),
-                config.opts.unstable_opts.translate_lang.clone(),
-                config.opts.unstable_opts.translate_additional_ftl.as_deref(),
-                config.opts.unstable_opts.translate_directionality_markers,
-            ) {
-                Ok(bundle) => bundle,
-                Err(e) => early_dcx.early_fatal(format!("failed to load fluent bundle: {e}")),
-            };
-
             let mut sess = rustc_session::build_session(
                 config.opts,
                 CompilerIO {
@@ -453,7 +443,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     output_file: config.output_file,
                     temps_dir,
                 },
-                bundle,
                 config.lint_caps,
                 target,
                 util::rustc_version_str().unwrap_or("unknown"),
@@ -556,7 +545,7 @@ pub fn try_print_query_stack(
     let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
-                QueryCtxt::new(icx.tcx),
+                icx.tcx,
                 icx.query,
                 dcx,
                 limit_frames,

@@ -52,7 +52,10 @@ where
     F: FnOnce() -> B,
     B: Deref<Target = Body<'tcx>>,
 {
-    if !matches!(tcx.def_kind(def), DefKind::AssocConst | DefKind::Const | DefKind::AnonConst) {
+    if !matches!(
+        tcx.def_kind(def),
+        DefKind::AssocConst { .. } | DefKind::Const { .. } | DefKind::AnonConst
+    ) {
         return None;
     }
 

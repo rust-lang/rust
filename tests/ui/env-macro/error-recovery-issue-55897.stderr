@@ -16,10 +16,12 @@ error[E0432]: unresolved import `prelude`
   --> $DIR/error-recovery-issue-55897.rs:2:5
    |
 LL | use prelude::*;
-   |     ^^^^^^^
-   |     |
-   |     unresolved import
-   |     help: a similar path exists: `std::prelude`
+   |     ^^^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+LL | use std::prelude::*;
+   |     +++++
 
 error[E0432]: unresolved import `env`
   --> $DIR/error-recovery-issue-55897.rs:5:9

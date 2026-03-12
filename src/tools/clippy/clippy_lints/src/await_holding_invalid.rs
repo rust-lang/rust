@@ -2,13 +2,51 @@ use clippy_config::Conf;
 use clippy_config::types::{DisallowedPathWithoutReplacement, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths::{self, PathNS};
+use clippy_utils::sym;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Allows users to configure types which should not be held across await
+    /// suspension points.
+    ///
+    /// ### Why is this bad?
+    /// There are some types which are perfectly safe to use concurrently from
+    /// a memory access perspective, but that will cause bugs at runtime if
+    /// they are held in such a way.
+    ///
+    /// ### Example
+    ///
+    /// ```toml
+    /// await-holding-invalid-types = [
+    ///   # You can specify a type name
+    ///   "CustomLockType",
+    ///   # You can (optionally) specify a reason
+    ///   { path = "OtherCustomLockType", reason = "Relies on a thread local" }
+    /// ]
+    /// ```
+    ///
+    /// ```no_run
+    /// # async fn baz() {}
+    /// struct CustomLockType;
+    /// struct OtherCustomLockType;
+    /// async fn foo() {
+    ///   let _x = CustomLockType;
+    ///   let _y = OtherCustomLockType;
+    ///   baz().await; // Lint violation
+    /// }
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub AWAIT_HOLDING_INVALID_TYPE,
+    suspicious,
+    "holding a type across an await point which is not allowed to be held as per the configuration"
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -134,44 +172,11 @@ declare_clippy_lint! {
     "inside an async function, holding a `RefCell` ref while calling `await`"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Allows users to configure types which should not be held across await
-    /// suspension points.
-    ///
-    /// ### Why is this bad?
-    /// There are some types which are perfectly safe to use concurrently from
-    /// a memory access perspective, but that will cause bugs at runtime if
-    /// they are held in such a way.
-    ///
-    /// ### Example
-    ///
-    /// ```toml
-    /// await-holding-invalid-types = [
-    ///   # You can specify a type name
-    ///   "CustomLockType",
-    ///   # You can (optionally) specify a reason
-    ///   { path = "OtherCustomLockType", reason = "Relies on a thread local" }
-    /// ]
-    /// ```
-    ///
-    /// ```no_run
-    /// # async fn baz() {}
-    /// struct CustomLockType;
-    /// struct OtherCustomLockType;
-    /// async fn foo() {
-    ///   let _x = CustomLockType;
-    ///   let _y = OtherCustomLockType;
-    ///   baz().await; // Lint violation
-    /// }
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub AWAIT_HOLDING_INVALID_TYPE,
-    suspicious,
-    "holding a type across an await point which is not allowed to be held as per the configuration"
-}
-
-impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
+impl_lint_pass!(AwaitHolding => [
+    AWAIT_HOLDING_INVALID_TYPE,
+    AWAIT_HOLDING_LOCK,
+    AWAIT_HOLDING_REFCELL_REF,
+]);
 
 pub struct AwaitHolding {
     def_ids: DefIdMap<(&'static str, &'static DisallowedPathWithoutReplacement)>,

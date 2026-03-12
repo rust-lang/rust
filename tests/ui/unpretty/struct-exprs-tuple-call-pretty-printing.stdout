@@ -1,9 +1,9 @@
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
 
-#![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 #![allow(dead_code)]
+#![attr = Feature([min_generic_const_args#0, adt_const_params#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;

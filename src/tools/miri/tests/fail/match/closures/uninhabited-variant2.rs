@@ -22,7 +22,8 @@ fn main() {
         // After rust-lang/rust#138961, constructing the closure performs a reborrow of r.
         // Nevertheless, the discriminant is only actually inspected when the closure
         // is called.
-        match r { //~ ERROR: read discriminant of an uninhabited enum variant
+        match r {
+            //~^ ERROR: read discriminant of an uninhabited enum variant
             E::V0 => {}
             E::V1(_) => {}
         }

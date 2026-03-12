@@ -517,11 +517,13 @@ trait Trait<'a> {}
 
 fn add_auto<'a>(x: *mut dyn Trait<'a>) -> *mut (dyn Trait<'a> + Send) {
     x as _
+  //^^^^^^ error: cannot add auto trait to dyn bound via pointer cast
 }
 
 // (to test diagnostic list formatting)
 fn add_multiple_auto<'a>(x: *mut dyn Trait<'a>) -> *mut (dyn Trait<'a> + Send + Sync + Unpin) {
     x as _
+  //^^^^^^ error: cannot add auto trait to dyn bound via pointer cast
 }
 "#,
         );

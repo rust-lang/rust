@@ -504,12 +504,11 @@ impl<'test> TestCx<'test> {
             let normalized_revision = normalize_revision(revision);
             let cfg_arg = ["--cfg", &normalized_revision];
             let arg = format!("--cfg={normalized_revision}");
-            if self
-                .props
-                .compile_flags
-                .windows(2)
-                .any(|args| args == cfg_arg || args[0] == arg || args[1] == arg)
-            {
+            // Handle if compile_flags is length 1
+            let contains_arg =
+                self.props.compile_flags.iter().any(|considered_arg| *considered_arg == arg);
+            let contains_cfg_arg = self.props.compile_flags.windows(2).any(|args| args == cfg_arg);
+            if contains_arg || contains_cfg_arg {
                 error!(
                     "redundant cfg argument `{normalized_revision}` is already created by the \
                     revision"
@@ -2384,15 +2383,22 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if self.force_color_svg() {
-            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
-        } else if explicit_format {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
+        let stderr;
+        let normalized_stderr;
 
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        if self.force_color_svg() {
+            let normalized = self.normalize_output(&proc_res.stderr, &self.props.normalize_stderr);
+            stderr = anstyle_svg::Term::new().render_svg(&normalized);
+            normalized_stderr = stderr.clone();
+        } else {
+            stderr = if explicit_format {
+                proc_res.stderr.clone()
+            } else {
+                json::extract_rendered(&proc_res.stderr)
+            };
+            normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        }
+
         let mut errors = 0;
         match output_kind {
             TestOutput::Compile => {

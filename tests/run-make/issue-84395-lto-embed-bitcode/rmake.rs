@@ -18,7 +18,7 @@ fn main() {
         .arg("-Clinker-plugin-lto")
         .arg(format!("-Clinker={}", env_var("CLANG")))
         .arg("-Clink-arg=-Wl,--plugin-opt=-lto-embed-bitcode=optimized")
-        .arg("-Zemit-thin-lto=no")
+        .arg("-Clto=fat")
         .run();
 
     llvm_objcopy().dump_section(".llvmbc", "test.bc").arg("test").run();

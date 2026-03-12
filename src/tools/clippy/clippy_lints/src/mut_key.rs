@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::InteriorMut;
+use clippy_utils::{sym, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -9,7 +9,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
 use std::iter;
 
 declare_clippy_lint! {
@@ -68,11 +67,11 @@ declare_clippy_lint! {
     "Check for mutable `Map`/`Set` key type"
 }
 
+impl_lint_pass!(MutableKeyType<'_> => [MUTABLE_KEY_TYPE]);
+
 pub struct MutableKeyType<'tcx> {
     interior_mut: InteriorMut<'tcx>,
 }
-
-impl_lint_pass!(MutableKeyType<'_> => [ MUTABLE_KEY_TYPE ]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {

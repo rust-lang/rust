@@ -8,15 +8,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(ptr_as_ref_unchecked))]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(control_flow_into_value)]
 #![feature(default_field_values)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]
@@ -25,7 +22,7 @@
 
 use std::cell::Ref;
 use std::collections::BTreeSet;
-use std::fmt::{self};
+use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -53,7 +50,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
@@ -274,16 +271,13 @@ enum ResolutionError<'ra> {
     UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
-    /// Error E0430: `self` import can only appear once in the list.
-    SelfImportCanOnlyAppearOnceInTheList,
-    /// Error E0431: `self` import can only appear in an import list with a non-empty prefix.
-    SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
-        segment: Option<Symbol>,
+        segment: Symbol,
         label: String,
         suggestion: Option<Suggestion>,
         module: Option<ModuleOrUniformRoot<'ra>>,
+        message: String,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
@@ -312,7 +306,11 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
-    ParamInNonTrivialAnonConst { name: Symbol, param_kind: ParamKindInNonTrivialAnonConst },
+    ParamInNonTrivialAnonConst {
+        is_ogca: bool,
+        name: Symbol,
+        param_kind: ParamKindInNonTrivialAnonConst,
+    },
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.
@@ -342,7 +340,7 @@ enum ResolutionError<'ra> {
 enum VisResolutionError<'a> {
     Relative2018(Span, &'a ast::Path),
     AncestorOnly(Span),
-    FailedToResolve(Span, String, Option<Suggestion>),
+    FailedToResolve(Span, Symbol, String, Option<Suggestion>, String),
     ExpectedFound(Span, String, Res),
     Indeterminate(Span),
     ModuleOnly(Span),
@@ -371,16 +369,6 @@ impl Segment {
         Segment {
             ident,
             id: None,
-            has_generic_args: false,
-            has_lifetime_args: false,
-            args_span: DUMMY_SP,
-        }
-    }
-
-    fn from_ident_and_id(ident: Ident, id: NodeId) -> Segment {
-        Segment {
-            ident,
-            id: Some(id),
             has_generic_args: false,
             has_lifetime_args: false,
             args_span: DUMMY_SP,
@@ -486,6 +474,7 @@ enum PathResult<'ra> {
         /// The segment name of target
         segment_name: Symbol,
         error_implied_by_parse_error: bool,
+        message: String,
     },
 }
 
@@ -496,10 +485,14 @@ impl<'ra> PathResult<'ra> {
         finalize: bool,
         error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
-        label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
+        label_and_suggestion: impl FnOnce() -> (String, String, Option<Suggestion>),
     ) -> PathResult<'ra> {
-        let (label, suggestion) =
-            if finalize { label_and_suggestion() } else { (String::new(), None) };
+        let (message, label, suggestion) = if finalize {
+            label_and_suggestion()
+        } else {
+            // FIXME: this output isn't actually present in the test suite.
+            (format!("cannot find `{ident}` in this scope"), String::new(), None)
+        };
         PathResult::Failed {
             span: ident.span,
             segment_name: ident.name,
@@ -508,6 +501,7 @@ impl<'ra> PathResult<'ra> {
             is_error_from_last_segment,
             module,
             error_implied_by_parse_error,
+            message,
         }
     }
 }
@@ -1058,7 +1052,10 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn is_assoc_item(&self) -> bool {
-        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
+        matches!(
+            self.res(),
+            Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _)
+        )
     }
 
     fn macro_kinds(&self) -> Option<MacroKinds> {
@@ -1155,9 +1152,9 @@ impl MacroData {
     }
 }
 
-pub struct ResolverOutputs {
+pub struct ResolverOutputs<'tcx> {
     pub global_ctxt: ResolverGlobalCtxt,
-    pub ast_lowering: ResolverAstLowering,
+    pub ast_lowering: ResolverAstLowering<'tcx>,
 }
 
 /// The main resolver class.
@@ -1212,7 +1209,7 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<Vec<TraitCandidate>> = Default::default(),
+    trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1806,7 +1803,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.visibilities_for_hashing.push((feed.def_id(), vis));
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(self) -> ResolverOutputs<'tcx> {
         let proc_macros = self.proc_macros;
         let expn_that_defined = self.expn_that_defined;
         let extern_crate_map = self.extern_crate_map;
@@ -1952,7 +1949,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         sp: Span,
         assoc_item: Option<(Symbol, Namespace)>,
-    ) -> Vec<TraitCandidate> {
+    ) -> &'tcx [TraitCandidate<'tcx>] {
         let mut found_traits = Vec::new();
 
         if let Some(module) = current_trait {
@@ -1960,7 +1957,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let def_id = module.def_id();
                 found_traits.push(TraitCandidate {
                     def_id,
-                    import_ids: smallvec![],
+                    import_ids: &[],
                     lint_ambiguous: false,
                 });
             }
@@ -1990,14 +1987,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ControlFlow::<()>::Continue(())
         });
 
-        found_traits
+        self.tcx.hir_arena.alloc_slice(&found_traits)
     }
 
     fn traits_in_module(
         &mut self,
         module: Module<'ra>,
         assoc_item: Option<(Symbol, Namespace)>,
-        found_traits: &mut Vec<TraitCandidate>,
+        found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
         module.ensure_traits(self);
         let traits = module.traits.borrow();
@@ -2036,8 +2033,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         mut kind: &DeclKind<'_>,
         trait_name: Symbol,
-    ) -> SmallVec<[LocalDefId; 1]> {
-        let mut import_ids = smallvec![];
+    ) -> &'tcx [LocalDefId] {
+        let mut import_ids: SmallVec<[LocalDefId; 1]> = smallvec![];
         while let DeclKind::Import { import, source_decl, .. } = kind {
             if let Some(node_id) = import.id() {
                 let def_id = self.local_def_id(node_id);
@@ -2047,7 +2044,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.add_to_glob_map(*import, trait_name);
             kind = &source_decl.kind;
         }
-        import_ids
+
+        self.tcx.hir_arena.alloc_slice(&import_ids)
     }
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
@@ -2468,8 +2466,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         find_attr!(
             // we can use parsed attrs here since for other crates they're already available
-            self.tcx.get_all_attrs(def_id),
-            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+            self.tcx, def_id,
+            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
@@ -2507,7 +2505,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
     let mut result = String::new();
-    for (i, name) in names.filter(|name| *name != kw::PathRoot).enumerate() {
+    for (i, name) in names.enumerate().filter(|(_, name)| *name != kw::PathRoot) {
         if i > 0 {
             result.push_str("::");
         }

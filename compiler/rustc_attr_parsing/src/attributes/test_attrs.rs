@@ -93,28 +93,6 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     }
 }
 
-pub(crate) struct RustcVarianceParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceParser {
-    const PATH: &[Symbol] = &[sym::rustc_variance];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVariance;
-}
-
-pub(crate) struct RustcVarianceOfOpaquesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceOfOpaquesParser {
-    const PATH: &[Symbol] = &[sym::rustc_variance_of_opaques];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVarianceOfOpaques;
-}
-
 pub(crate) struct ReexportTestHarnessMainParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
@@ -213,20 +191,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
-}
-
-pub(crate) struct RustcOutlivesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
-    const PATH: &[Symbol] = &[sym::rustc_outlives];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-        Allow(Target::TyAlias),
-    ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
 }
 
 pub(crate) struct TestRunnerParser;

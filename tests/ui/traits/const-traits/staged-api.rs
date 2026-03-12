@@ -5,7 +5,7 @@
 #![feature(local_feature)]
 #![feature(const_trait_impl)]
 #![feature(staged_api)]
-#![feature(rustc_allow_const_fn_unstable)]
+#![feature(rustc_attrs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //@ aux-build: staged-api.rs

@@ -393,7 +393,7 @@ Here’s how these different lint controls interact:
     warning: 1 warning emitted
    ```
 
-3. [CLI level flags](#via-compiler-flag) take precedence over attributes.
+3. [CLI level flags](#via-compiler-flag) override the default level of a lint. They essentially behave like crate-level attributes. Attributes within the source code take precedence over CLI flags, except for `-F`/`--forbid`, which cannot be overridden.
 
    The order of the flags matter; flags on the right take precedence over earlier flags.
 

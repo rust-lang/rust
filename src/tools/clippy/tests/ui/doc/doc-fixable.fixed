@@ -109,10 +109,6 @@ fn test_allowed() {
 /// `be_sure_we_got_to_the_end_of_it`
 //~^ doc_markdown
 fn main() {
-    foo_bar();
-    multiline_codeblock();
-    test_emphasis();
-    test_units();
 }
 
 /// ## `CamelCaseThing`

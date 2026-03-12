@@ -133,7 +133,7 @@ fn par_slice<I: DynSend>(
     rustc_thread_pool::scope(|s| {
         let proof = items.derive(());
         let group_size = std::cmp::max(items.len() / 128, 1);
-        for group in items.chunks_exact_mut(group_size) {
+        for group in items.chunks_mut(group_size) {
             let group = proof.derive(group);
             s.spawn(|_| {
                 let mut group = group;

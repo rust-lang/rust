@@ -16,7 +16,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -38,7 +38,6 @@ use rustc_span::{
     kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -200,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // NOTE: Reporting a method error should also suppress any unused trait errors,
         // since the method error is very possibly the reason why the trait wasn't used.
         for &import_id in
-            self.tcx.in_scope_traits(call_id).into_iter().flatten().flat_map(|c| &c.import_ids)
+            self.tcx.in_scope_traits(call_id).into_iter().flatten().flat_map(|c| c.import_ids)
         {
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
         }
@@ -854,7 +853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
             if !span.in_external_macro(self.tcx.sess.source_map()) {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "call `.into_iter()` first",
                     vec![(span.shrink_to_lo(), format!("into_iter()."))],
                     Applicability::MaybeIncorrect,
@@ -1415,7 +1414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>();
                 if !inherent_impls_candidate.is_empty() {
-                    inherent_impls_candidate.sort_by_key(|id| self.tcx.def_path_str(id));
+                    inherent_impls_candidate.sort_by_key(|&id| self.tcx.def_path_str(id));
                     inherent_impls_candidate.dedup();
 
                     // number of types to show at most
@@ -1581,7 +1580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "there is a variant with a similar name",
                 suggestion,
                 Applicability::HasPlaceholders,
@@ -2257,11 +2256,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_args: Option<Vec<Ty<'tcx>>>,
     ) -> Option<Symbol> {
         if let ty::Adt(adt, adt_args) = rcvr_ty.kind() {
-            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter() {
+            for &inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter() {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(candidates) = find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::RustcConfusables{symbols, ..} => symbols)
+                    if let Some(candidates) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
                         && inherent_method.is_fn()
                     {
@@ -2316,7 +2315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sources: &mut Vec<CandidateSource>,
         sugg_span: Option<Span>,
     ) {
-        sources.sort_by_key(|source| match source {
+        sources.sort_by_key(|source| match *source {
             CandidateSource::Trait(id) => (0, self.tcx.def_path_str(id)),
             CandidateSource::Impl(id) => (1, self.tcx.def_path_str(id)),
         });
@@ -2469,7 +2468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .tcx
             .inherent_impls(adt_def.did())
             .iter()
-            .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+            .flat_map(|&i| self.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers and only if
             // they are resolvable
             .filter(|item| {
@@ -2522,7 +2521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             String::new()
         };
-        match &items[..] {
+        match items[..] {
             [] => {}
             [(def_id, ret_ty)] => {
                 err.span_note(
@@ -2537,7 +2536,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {
                 let span: MultiSpan = items
                     .iter()
-                    .map(|(def_id, _)| self.tcx.def_span(def_id))
+                    .map(|&(def_id, _)| self.tcx.def_span(def_id))
                     .collect::<Vec<Span>>()
                     .into();
                 err.span_note(
@@ -2547,7 +2546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          following associated functions:\n{}{post}",
                         items
                             .iter()
-                            .map(|(def_id, _ret_ty)| self.tcx.def_path_str(def_id))
+                            .map(|&(def_id, _ret_ty)| self.tcx.def_path_str(def_id))
                             .collect::<Vec<String>>()
                             .join("\n")
                     ),
@@ -3519,7 +3518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits.push(trait_pred.def_id());
             }
         }
-        traits.sort_by_key(|id| self.tcx.def_path_str(id));
+        traits.sort_by_key(|&id| self.tcx.def_path_str(id));
         traits.dedup();
 
         let len = traits.len();
@@ -3777,8 +3776,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "method `poll` found on `Pin<&mut {ty_str}>`, \
                 see documentation for `std::pin::Pin`"
             ));
-            err.help("self type must be pinned to call `Future::poll`, \
-                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+            err.help(
+                "self type must be pinned to call `Future::poll`, \
+                see https://rust-lang.github.io/async-book/part-reference/pinning.html",
             );
         }
 
@@ -3921,7 +3921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         valid_out_of_scope_traits.retain(|id| self.tcx.is_user_visible_dep(id.krate));
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
-            candidates.sort_by_key(|id| self.tcx.def_path_str(id));
+            candidates.sort_by_key(|&id| self.tcx.def_path_str(id));
             candidates.dedup();
 
             // `TryFrom` and `FromIterator` have no methods

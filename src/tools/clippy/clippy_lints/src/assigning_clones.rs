@@ -53,6 +53,8 @@ declare_clippy_lint! {
     "assigning the result of cloning may be inefficient"
 }
 
+impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
+
 pub struct AssigningClones {
     msrv: Msrv,
 }
@@ -62,8 +64,6 @@ impl AssigningClones {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {

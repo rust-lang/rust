@@ -115,10 +115,7 @@ macro_rules! async_trait_impl {
 }
 async_trait_impl!();
 
-fn main() {
-    foo();
-    bar();
-}
+fn main() {}
 
 mod issue14704 {
     use std::sync::Arc;

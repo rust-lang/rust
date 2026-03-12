@@ -460,7 +460,8 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
         if let Some(instance) = instance
-            && let Some(name) = find_attr!(tcx.get_all_attrs(instance.def_id()), rustc_hir::attrs::AttributeKind::RustcAllocatorZeroedVariant {name} => name)
+            && let Some(name) =
+                find_attr!(tcx, instance.def_id(), RustcAllocatorZeroedVariant {name} => name)
         {
             to_add.push(llvm::CreateAttrStringValue(
                 cx.llcx,

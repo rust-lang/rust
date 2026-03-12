@@ -1,0 +1,39 @@
+error: `super` in paths can only be used in start position, after `self`, or after another `super`
+  --> $DIR/use-super-in-middle.rs:2:23
+   |
+LL |     pub use crate::x::super::{self as crate1};
+   |                       ^^^^^
+
+error: `super` in paths can only be used in start position, after `self`, or after another `super`
+  --> $DIR/use-super-in-middle.rs:3:29
+   |
+LL |     pub use crate::x::self::super::{self as crate2};
+   |                             ^^^^^
+
+error[E0433]: cannot find `crate1` in `x`
+  --> $DIR/use-super-in-middle.rs:9:8
+   |
+LL |     x::crate1::x::foo();
+   |        ^^^^^^ could not find `crate1` in `x`
+
+error[E0433]: cannot find `crate2` in `x`
+  --> $DIR/use-super-in-middle.rs:10:8
+   |
+LL |     x::crate2::x::foo();
+   |        ^^^^^^ could not find `crate2` in `x`
+
+error[E0433]: `super` in paths can only be used in start position
+  --> $DIR/use-super-in-middle.rs:12:15
+   |
+LL |     crate::x::super::x::foo();
+   |               ^^^^^ can only be used in path start position
+
+error[E0433]: `self` in paths can only be used in start position
+  --> $DIR/use-super-in-middle.rs:13:15
+   |
+LL |     crate::x::self::super::x::foo();
+   |               ^^^^ can only be used in path start position
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

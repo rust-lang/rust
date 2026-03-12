@@ -189,7 +189,14 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
     let mut prefill_stream = quote! {};
-    let mut entries = Entries::with_capacity(input.keywords.len() + input.symbols.len() + 10);
+    let prefill_ints = 0..=9;
+    let prefill_letters = ('A'..='Z').chain('a'..='z');
+    let mut entries = Entries::with_capacity(
+        input.keywords.len()
+            + input.symbols.len()
+            + prefill_ints.clone().count()
+            + prefill_letters.clone().count(),
+    );
 
     // Generate the listed keywords.
     for keyword in input.keywords.iter() {
@@ -234,12 +241,11 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         });
     }
 
-    // Generate symbols for the strings "0", "1", ..., "9".
-    for n in 0..10 {
-        let n = n.to_string();
-        entries.insert(Span::call_site(), &n, &mut errors);
+    // Generate symbols for ascii letters and digits
+    for s in prefill_ints.map(|n| n.to_string()).chain(prefill_letters.map(|c| c.to_string())) {
+        entries.insert(Span::call_site(), &s, &mut errors);
         prefill_stream.extend(quote! {
-            #n,
+            #s,
         });
     }
 
@@ -285,9 +291,13 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     }
 
     let symbol_digits_base = entries.map["0"].idx;
+    let symbol_uppercase_letters_base = entries.map["A"].idx;
+    let symbol_lowercase_letters_base = entries.map["a"].idx;
     let predefined_symbols_count = entries.len();
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #symbol_digits_base;
+        const SYMBOL_UPPERCASE_LETTERS_BASE: u32 = #symbol_uppercase_letters_base;
+        const SYMBOL_LOWERCASE_LETTERS_BASE: u32 = #symbol_lowercase_letters_base;
 
         /// The number of predefined symbols; this is the first index for
         /// extra pre-interned symbols in an Interner created via

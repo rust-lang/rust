@@ -37,6 +37,8 @@ declare_clippy_lint! {
     "imports with single component path are redundant"
 }
 
+impl_lint_pass!(SingleComponentPathImports => [SINGLE_COMPONENT_PATH_IMPORTS]);
+
 #[derive(Default)]
 pub struct SingleComponentPathImports {
     /// Buffer found usages to emit when visiting that item so that `#[allow]` works as expected
@@ -49,8 +51,6 @@ struct SingleUse {
     item_id: NodeId,
     can_suggest: bool,
 }
-
-impl_lint_pass!(SingleComponentPathImports => [SINGLE_COMPONENT_PATH_IMPORTS]);
 
 impl EarlyLintPass for SingleComponentPathImports {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {

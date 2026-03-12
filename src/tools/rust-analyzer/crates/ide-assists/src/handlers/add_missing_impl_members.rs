@@ -2537,4 +2537,84 @@ impl Test for () {
 "#,
         );
     }
+
+    #[test]
+    fn test_param_name_not_qualified() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod ptr {
+    pub struct NonNull<T>(T);
+}
+mod alloc {
+    use super::ptr::NonNull;
+    pub trait Allocator {
+        unsafe fn deallocate(&self, ptr: NonNull<u8>);
+    }
+}
+
+struct System;
+
+unsafe impl alloc::Allocator for System {
+    $0
+}
+"#,
+            r#"
+mod ptr {
+    pub struct NonNull<T>(T);
+}
+mod alloc {
+    use super::ptr::NonNull;
+    pub trait Allocator {
+        unsafe fn deallocate(&self, ptr: NonNull<u8>);
+    }
+}
+
+struct System;
+
+unsafe impl alloc::Allocator for System {
+    unsafe fn deallocate(&self, ptr: ptr::NonNull<u8>) {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_param_name_shadows_module() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m { }
+use m as p;
+
+pub trait Allocator {
+    fn deallocate(&self, p: u8);
+}
+
+struct System;
+
+impl Allocator for System {
+    $0
+}
+"#,
+            r#"
+mod m { }
+use m as p;
+
+pub trait Allocator {
+    fn deallocate(&self, p: u8);
+}
+
+struct System;
+
+impl Allocator for System {
+    fn deallocate(&self, p: u8) {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
 }

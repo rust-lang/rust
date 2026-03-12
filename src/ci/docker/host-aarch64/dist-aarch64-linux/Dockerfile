@@ -76,8 +76,7 @@ ENV HOSTS=aarch64-unknown-linux-gnu
 
 ENV CPATH=/usr/include/aarch64-linux-gnu/:$CPATH
 
-ENV RUST_CONFIGURE_ARGS \
-      --build=aarch64-unknown-linux-gnu \
+ENV RUST_CONFIGURE_ARGS="--build=aarch64-unknown-linux-gnu \
       --enable-full-tools \
       --enable-profiler \
       --enable-sanitizers \
@@ -93,12 +92,12 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
-      --set rust.codegen-units=1
+      --set rust.codegen-units=1"
 
-ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
+ENV SCRIPT="python3 ../x.py build --set rust.debug=true opt-dist && \
       ./build/$HOSTS/stage1-tools-bin/opt-dist linux-ci --  python3 ../x.py dist \
-      --host $HOSTS --target $HOSTS --include-default-paths build-manifest bootstrap
+      --host $HOSTS --target $HOSTS --include-default-paths build-manifest bootstrap enzyme"
 
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=clang
-ENV LIBCURL_NO_PKG_CONFIG 1
-ENV DIST_REQUIRE_ALL_TOOLS 1
+ENV LIBCURL_NO_PKG_CONFIG="1"
+ENV DIST_REQUIRE_ALL_TOOLS="1"

@@ -209,10 +209,11 @@ fn verify_all_signatures() {
                 "_rdseed16_step",
                 "_rdseed32_step",
                 "_rdseed64_step",
+                // Prefetch
+                "_mm_prefetch",
+                "_m_prefetchrs",
                 // CMPXCHG
                 "cmpxchg16b",
-                //PREFETCH
-                "_mm_prefetch",
                 // Undefined,
                 "_mm_undefined_ps",
                 "_mm_undefined_pd",
@@ -303,7 +304,7 @@ fn verify_all_signatures() {
             }
 
             // FIXME: these have not been added to Intrinsics Guide yet
-            if ["amx-avx512", "amx-fp8", "amx-movrs", "amx-tf32"]
+            if ["amx-avx512", "amx-fp8", "amx-movrs", "amx-tf32", "movrs"]
                 .iter()
                 .any(|f| feature.contains(f))
             {

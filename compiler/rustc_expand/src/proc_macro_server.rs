@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan};
 use rustc_parse::lexer::{StripTokens, nfc_normalize};
 use rustc_parse::parser::Parser;
-use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
+use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream};
 use rustc_proc_macro::bridge::{
     DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
 };
@@ -103,8 +103,8 @@ impl ToInternal<token::LitKind> for LitKind {
     }
 }
 
-impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStream, Span, Symbol>> {
-    fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
+impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
+    fn from_internal(stream: TokenStream) -> Self {
         use rustc_ast::token::*;
 
         // Estimate the capacity as `stream.len()` rounded up to the next power
@@ -115,22 +115,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
         while let Some(tree) = iter.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
                 tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
-                    // We used to have an alternative behaviour for crates that
-                    // needed it: a hack used to pass AST fragments to
-                    // attribute and derive macros as a single nonterminal
-                    // token instead of a token stream. Such token needs to be
-                    // "unwrapped" and not represented as a delimited group. We
-                    // had a lint for a long time, but now we just emit a hard
-                    // error. Eventually we might remove the special case hard
-                    // error check altogether. See #73345.
-                    if let Delimiter::Invisible(InvisibleOrigin::MetaVar(kind)) = delim {
-                        crate::base::stream_pretty_printing_compatibility_hack(
-                            kind,
-                            &stream,
-                            rustc.psess(),
-                        );
-                    }
-
                     // In `mk_delimited` we avoid nesting invisible delimited
                     // of the same `MetaVarKind`. Here we do the same but
                     // ignore the `MetaVarKind` because it is discarded when we
@@ -431,6 +415,13 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
+fn cancel_diags_into_string(diags: Vec<Diag<'_>>) -> String {
+    let mut messages = diags.into_iter().flat_map(Diag::cancel_into_message);
+    let msg = messages.next().expect("no diagnostic has a message");
+    messages.for_each(|_| ()); // consume iterator to cancel the remaining diagnostics
+    msg
+}
+
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
     def_site: Span,
@@ -494,35 +485,32 @@ impl server::Server for Rustc<'_, '_> {
         self.psess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
     }
 
-    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, String> {
         let name = FileName::proc_macro_source_code(s);
 
-        let mut parser = unwrap_or_emit_fatal(new_parser_from_source_str(
-            self.psess(),
-            name,
-            s.to_owned(),
-            StripTokens::Nothing,
-        ));
+        let mut parser =
+            new_parser_from_source_str(self.psess(), name, s.to_owned(), StripTokens::Nothing)
+                .map_err(cancel_diags_into_string)?;
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(exp!(Minus));
 
         let lit_span = parser.token.span.data();
         let token::Literal(mut lit) = parser.token.kind else {
-            return Err(());
+            return Err("not a literal".to_string());
         };
 
         // Check no comment or whitespace surrounding the (possibly negative)
         // literal, or more tokens after it.
         if (lit_span.hi.0 - first_span.lo.0) as usize != s.len() {
-            return Err(());
+            return Err("comment or whitespace around literal".to_string());
         }
 
         if minus_present {
             // If minus is present, check no comment or whitespace in between it
             // and the literal token.
             if first_span.hi.0 != lit_span.lo.0 {
-                return Err(());
+                return Err("comment or whitespace after minus".to_string());
             }
 
             // Check literal is a kind we allow to be negated in a proc macro token.
@@ -536,7 +524,9 @@ impl server::Server for Rustc<'_, '_> {
                 | token::LitKind::ByteStrRaw(_)
                 | token::LitKind::CStr
                 | token::LitKind::CStrRaw(_)
-                | token::LitKind::Err(_) => return Err(()),
+                | token::LitKind::Err(_) => {
+                    return Err("non-numeric literal may not be negated".to_string());
+                }
                 token::LitKind::Integer | token::LitKind::Float => {}
             }
 
@@ -576,13 +566,14 @@ impl server::Server for Rustc<'_, '_> {
         stream.is_empty()
     }
 
-    fn ts_from_str(&mut self, src: &str) -> Self::TokenStream {
-        unwrap_or_emit_fatal(source_str_to_stream(
+    fn ts_from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
+        source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
             Some(self.call_site),
-        ))
+        )
+        .map_err(cancel_diags_into_string)
     }
 
     fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
@@ -687,7 +678,7 @@ impl server::Server for Rustc<'_, '_> {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        FromInternal::from_internal((stream, self))
+        FromInternal::from_internal(stream)
     }
 
     fn span_debug(&mut self, span: Self::Span) -> String {

@@ -1,22 +1,22 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_escape`
+error[E0433]: cannot find module or crate `macro_escape` in this scope
   --> $DIR/illegal-macro-use.rs:12:3
    |
 LL | #[macro_escape::a::b]
    |   ^^^^^^^^^^^^ use of unresolved module or unlinked crate `macro_escape`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_escape`
+error[E0433]: cannot find module or crate `macro_escape` in this scope
   --> $DIR/illegal-macro-use.rs:9:3
    |
 LL | #[macro_escape::a]
    |   ^^^^^^^^^^^^ use of unresolved module or unlinked crate `macro_escape`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_use`
+error[E0433]: cannot find module or crate `macro_use` in this scope
   --> $DIR/illegal-macro-use.rs:6:3
    |
 LL | #[macro_use::a::b]
    |   ^^^^^^^^^ use of unresolved module or unlinked crate `macro_use`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_use`
+error[E0433]: cannot find module or crate `macro_use` in this scope
   --> $DIR/illegal-macro-use.rs:3:3
    |
 LL | #[macro_use::a]

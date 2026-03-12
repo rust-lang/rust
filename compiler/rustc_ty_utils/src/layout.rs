@@ -1,4 +1,5 @@
 use hir::def_id::DefId;
+use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
@@ -7,7 +8,7 @@ use rustc_abi::{
     TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir as hir;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
@@ -23,7 +24,6 @@ use rustc_middle::ty::{
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
-use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::errors::NonPrimitiveSimdType;
 
@@ -624,8 +624,8 @@ fn layout_of_uncached<'tcx>(
 
             // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
             if let Some(limit) = find_attr!(
-                tcx.get_all_attrs(def.did()),
-                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+                tcx, def.did(),
+                RustcSimdMonomorphizeLaneLimit(limit) => limit
             ) {
                 if !limit.value_within_limit(e_len as usize) {
                     return Err(map_error(

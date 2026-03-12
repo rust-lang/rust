@@ -11,11 +11,12 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
 };
+use rustc_ast as ast;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
 
@@ -84,10 +85,10 @@ pub(super) fn check<'tcx>(
                         return ControlFlow::Break(());
                     }
                 },
-                hir::ExprKind::MethodCall(..) => {
-                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, None) {
-                        return ControlFlow::Break(());
-                    }
+                hir::ExprKind::MethodCall(..)
+                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, None) =>
+                {
+                    return ControlFlow::Break(());
                 },
                 _ => {},
             }
@@ -133,7 +134,7 @@ fn check_unwrap_or_default(
 
     let output_type_implements_default = |fun| {
         let fun_ty = cx.typeck_results().expr_ty(fun);
-        if let ty::FnDef(def_id, args) = fun_ty.kind() {
+        if let ty::FnDef(def_id, args) = *fun_ty.kind() {
             let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
             cx.tcx
                 .get_diagnostic_item(sym::Default)
@@ -153,7 +154,7 @@ fn check_unwrap_or_default(
         cx.tcx
             .inherent_impls(adt_def.did())
             .iter()
-            .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
+            .flat_map(|&impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
             .find_map(|assoc| {
                 if assoc.is_method() && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1 {
                     Some(assoc.def_id)

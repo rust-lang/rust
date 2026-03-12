@@ -66,11 +66,3 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     None
 }
-
-pub fn exit(_code: i32) -> ! {
-    panic!("TA should not call `exit`")
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids on this platform")
-}

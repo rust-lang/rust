@@ -47,6 +47,37 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for modules that have the same name as their
+    /// parent module
+    ///
+    /// ### Why is this bad?
+    /// A typical beginner mistake is to have `mod foo;` and
+    /// again `mod foo { ..
+    /// }` in `foo.rs`.
+    /// The expectation is that items inside the inner `mod foo { .. }` are then
+    /// available
+    /// through `foo::x`, but they are only available through
+    /// `foo::foo::x`.
+    /// If this is done on purpose, it would be better to choose a more
+    /// representative module name.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// // lib.rs
+    /// mod foo;
+    /// // foo.rs
+    /// mod foo {
+    ///     ...
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MODULE_INCEPTION,
+    style,
+    "modules that have the same name as their parent module"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Detects public item names that are prefixed or suffixed by the
     /// containing public module's name.
     ///
@@ -91,36 +122,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for modules that have the same name as their
-    /// parent module
-    ///
-    /// ### Why is this bad?
-    /// A typical beginner mistake is to have `mod foo;` and
-    /// again `mod foo { ..
-    /// }` in `foo.rs`.
-    /// The expectation is that items inside the inner `mod foo { .. }` are then
-    /// available
-    /// through `foo::x`, but they are only available through
-    /// `foo::foo::x`.
-    /// If this is done on purpose, it would be better to choose a more
-    /// representative module name.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// // lib.rs
-    /// mod foo;
-    /// // foo.rs
-    /// mod foo {
-    ///     ...
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub MODULE_INCEPTION,
-    style,
-    "modules that have the same name as their parent module"
-}
-declare_clippy_lint! {
-    /// ### What it does
     /// Detects struct fields that are prefixed or suffixed
     /// by the same characters or the name of the struct itself.
     ///
@@ -154,6 +155,13 @@ declare_clippy_lint! {
     pedantic,
     "structs where all fields share a prefix/postfix or contain the name of the struct"
 }
+
+impl_lint_pass!(ItemNameRepetitions => [
+    ENUM_VARIANT_NAMES,
+    MODULE_INCEPTION,
+    MODULE_NAME_REPETITIONS,
+    STRUCT_FIELD_NAMES,
+]);
 
 pub struct ItemNameRepetitions {
     /// The module path the lint pass is in.
@@ -194,13 +202,6 @@ impl ItemNameRepetitions {
         self.allowed_prefixes.contains(prefix)
     }
 }
-
-impl_lint_pass!(ItemNameRepetitions => [
-    ENUM_VARIANT_NAMES,
-    STRUCT_FIELD_NAMES,
-    MODULE_NAME_REPETITIONS,
-    MODULE_INCEPTION
-]);
 
 #[must_use]
 fn have_no_extra_prefix(prefixes: &[&str]) -> bool {

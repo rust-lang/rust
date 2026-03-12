@@ -15,6 +15,7 @@ fn main() {
             &root_path.join("library"),
             &root_path.join("src/doc/rustc"),
             &root_path.join("src/doc/rustdoc"),
+            &root_path.join("src/tools/clippy"),
         ],
         |path, _is_dir| filter_dirs(path),
         &mut |entry, contents| {

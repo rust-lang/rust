@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
+use clippy_utils::{fn_has_unsatisfiable_preds, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -12,7 +12,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -368,25 +368,25 @@ struct CloneUsage {
 }
 
 fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>, bb: mir::BasicBlock) -> CloneUsage {
-    if let Some((
-        LocalUsage {
-            local_use_locs: cloned_use_locs,
-            local_consume_or_mutate_locs: cloned_consume_or_mutate_locs,
-        },
-        LocalUsage {
-            local_use_locs: _,
-            local_consume_or_mutate_locs: clone_consume_or_mutate_locs,
-        },
-    )) = visit_local_usage(
-        &[cloned, clone],
+    if let Some(
+        [
+            LocalUsage {
+                local_use_locs: cloned_use_locs,
+                local_consume_or_mutate_locs: cloned_consume_or_mutate_locs,
+            },
+            LocalUsage {
+                local_use_locs: _,
+                local_consume_or_mutate_locs: clone_consume_or_mutate_locs,
+            },
+        ],
+    ) = visit_local_usage(
+        [cloned, clone],
         mir,
         mir::Location {
             block: bb,
             statement_index: mir.basic_blocks[bb].statements.len(),
         },
-    )
-    .map(|mut vec| (vec.remove(0), vec.remove(0)))
-    {
+    ) {
         CloneUsage {
             cloned_use_loc: cloned_use_locs.first().copied().into(),
             cloned_consume_or_mutate_loc: cloned_consume_or_mutate_locs.first().copied(),

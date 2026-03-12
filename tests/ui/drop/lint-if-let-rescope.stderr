@@ -6,8 +6,6 @@ LL |     if let Some(_value) = droppy().get() {
    |                           |
    |                           this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -18,6 +16,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     } else {
    |     ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: the lint level is defined here
   --> $DIR/lint-if-let-rescope.rs:3:9
    |
@@ -46,8 +46,6 @@ LL |     if let Some(_value) = droppy().get() {
 LL |     } else if let Some(_value) = droppy().get() {
    |                                  -------- this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -68,6 +66,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     }
    |     ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     match droppy().get() { Some(_value) => {
@@ -88,8 +88,6 @@ LL |     } else if let Some(_value) = droppy().get() {
    |                                  |
    |                                  this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -100,6 +98,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     } else if droppy().get().is_none() {
    |     ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     } else { match droppy().get() { Some(_value) => {
@@ -119,8 +119,6 @@ LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else 
    |                                              |
    |                                              this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -131,6 +129,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else { None } } {
    |                                                                     ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL -     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else { None } } {
@@ -145,8 +145,6 @@ LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
    |                               |
    |                               this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -157,6 +155,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
    |                                                     ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL -     if (if let Some(_value) = droppy().get() { true } else { false }) {
@@ -171,8 +171,6 @@ LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false
    |                                        |
    |                                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -183,6 +181,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
    |                                                              ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL -     } else if (((if let Some(_value) = droppy().get() { true } else { false }))) {
@@ -197,8 +197,6 @@ LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
    |                                  |
    |                                  this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 note: value invokes this custom destructor
   --> $DIR/lint-if-let-rescope.rs:11:1
    |
@@ -209,6 +207,8 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
    |                                                         ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL -     while (if let Some(_value) = droppy().get() { false } else { true }) {
@@ -223,13 +223,13 @@ LL |     if let Some(_value) = Some((droppy(), ()).1) {} else {}
    |                                |
    |                                this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:97:51
    |
 LL |     if let Some(_value) = Some((droppy(), ()).1) {} else {}
    |                                                   ^
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL -     if let Some(_value) = Some((droppy(), ()).1) {} else {}

@@ -45,6 +45,7 @@ declare_clippy_lint! {
     nursery,
     "struct built from a base that can be written mode concisely"
 }
+
 declare_lint_pass!(UnnecessaryStruct => [UNNECESSARY_STRUCT_INITIALIZATION]);
 
 impl LateLintPass<'_> for UnnecessaryStruct {

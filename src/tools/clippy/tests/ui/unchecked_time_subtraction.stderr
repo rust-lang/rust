@@ -32,31 +32,25 @@ LL |     let _ = dur1 - dur2;
    |             ^^^^^^^^^^^ help: try: `dur1.checked_sub(dur2).unwrap()`
 
 error: unchecked subtraction of a `Duration`
-  --> tests/ui/unchecked_time_subtraction.rs:28:13
-   |
-LL |     let _ = Duration::from_secs(10) - Duration::from_secs(5);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::from_secs(10).checked_sub(Duration::from_secs(5)).unwrap()`
-
-error: unchecked subtraction of a `Duration`
-  --> tests/ui/unchecked_time_subtraction.rs:31:13
+  --> tests/ui/unchecked_time_subtraction.rs:30:13
    |
 LL |     let _ = second - dur1;
    |             ^^^^^^^^^^^^^ help: try: `second.checked_sub(dur1).unwrap()`
 
 error: unchecked subtraction of a `Duration`
-  --> tests/ui/unchecked_time_subtraction.rs:35:13
+  --> tests/ui/unchecked_time_subtraction.rs:34:13
    |
 LL |     let _ = 2 * dur1 - dur2;
    |             ^^^^^^^^^^^^^^^ help: try: `(2 * dur1).checked_sub(dur2).unwrap()`
 
 error: unchecked subtraction of a `Duration`
-  --> tests/ui/unchecked_time_subtraction.rs:42:5
+  --> tests/ui/unchecked_time_subtraction.rs:41:5
    |
 LL |     Duration::ZERO.sub(Duration::MAX);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::ZERO.checked_sub(Duration::MAX).unwrap()`
 
 error: unchecked subtraction of a `Duration`
-  --> tests/ui/unchecked_time_subtraction.rs:45:13
+  --> tests/ui/unchecked_time_subtraction.rs:44:13
    |
 LL |     let _ = Duration::ZERO - Duration::MAX;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::ZERO.checked_sub(Duration::MAX).unwrap()`
@@ -64,14 +58,14 @@ LL |     let _ = Duration::ZERO - Duration::MAX;
 error: unchecked subtraction of a `Duration`
   --> tests/ui/unchecked_time_subtraction.rs:58:5
    |
-LL |     duration!(0).sub(duration!(1));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `duration!(0).checked_sub(duration!(1)).unwrap()`
+LL |     d.sub(duration!(1));
+   |     ^^^^^^^^^^^^^^^^^^^ help: try: `d.checked_sub(duration!(1)).unwrap()`
 
 error: unchecked subtraction of a `Duration`
   --> tests/ui/unchecked_time_subtraction.rs:60:13
    |
-LL |     let _ = duration!(0) - duration!(1);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `duration!(0).checked_sub(duration!(1)).unwrap()`
+LL |     let _ = d - duration!(1);
+   |             ^^^^^^^^^^^^^^^^ help: try: `d.checked_sub(duration!(1)).unwrap()`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 

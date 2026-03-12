@@ -1,4 +1,3 @@
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, ItemKind, Node, find_attr};
 use rustc_middle::ty::adjustment::Adjust;
@@ -76,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
         };
 
         if let ExprKind::Path(qpath) = &receiver.kind
-            && let Res::Def(DefKind::Const | DefKind::AssocConst, const_did) =
+            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, const_did) =
                 typeck.qpath_res(qpath, receiver.hir_id)
             // Don't consider derefs as those can do arbitrary things
             // like using thread local (see rust-lang/rust#150157)
@@ -87,8 +86,8 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
                 .any(|adj| matches!(adj.kind, Adjust::Deref(_)))
             // Let's do the attribute check after the other checks for perf reasons
             && find_attr!(
-                cx.tcx.get_all_attrs(method_did),
-                AttributeKind::RustcShouldNotBeCalledOnConstItems(_)
+                cx.tcx, method_did,
+                RustcShouldNotBeCalledOnConstItems(_)
             )
             && let Some(method_name) = cx.tcx.opt_item_ident(method_did)
             && let Some(const_name) = cx.tcx.opt_item_ident(const_did)
@@ -106,9 +105,10 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
                     Some(ConstItemInteriorMutationsSuggestionStatic::Spanful {
                         const_: const_item.vis_span.between(ident.span),
                         before: if !vis_span.is_empty() { " " } else { "" },
+                        const_name,
                     })
                 } else {
-                    Some(ConstItemInteriorMutationsSuggestionStatic::Spanless)
+                    Some(ConstItemInteriorMutationsSuggestionStatic::Spanless { const_name })
                 }
             } else {
                 None

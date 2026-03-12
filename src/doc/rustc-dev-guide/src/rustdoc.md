@@ -37,28 +37,25 @@ Note that literally all that does is call the `main()` that's in this crate's `l
 
 ## Cheat sheet
 
-* Run `./x setup tools` before getting started. This will configure `x`
-  with nice settings for developing rustdoc and other tools, including
+* Run `./x setup tools` before getting started.
+  This will configure `x` with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
 * Use `./x check rustdoc` to quickly check for compile errors.
-* Use `./x build library rustdoc` to make a usable
-  rustdoc you can run on other projects.
+* Use `./x build library rustdoc` to make a usable rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
   * Run `rustup toolchain link stage2 build/host/stage2` to add a
     custom toolchain called `stage2` to your rustup environment.
     After running that, `cargo +stage2 doc` in any directory will build with
     your locally-compiled rustdoc.
-* Use `./x doc library` to use this rustdoc to generate the
-  standard library docs.
+* Use `./x doc library` to use this rustdoc to generate the standard library docs.
   * The completed docs will be available in `build/host/doc` (under `core`, `alloc`, and `std`).
   * If you want to copy those docs to a webserver, copy all of
     `build/host/doc`, since that's where the CSS, JS, fonts, and landing page are.
   * For frontend debugging, disable the `rust.docs-minification` option in [`bootstrap.toml`].
-* Use `./x test tests/rustdoc*` to run the tests using a stage1
-  rustdoc.
+* Use `./x test tests/rustdoc*` to run the tests using a stage1 rustdoc.
   * See [Rustdoc internals] for more information about tests.
-* Use `./x.py test tidy --extra-checks=js` to run rustdoc’s JavaScript checks (`eslint`, `es-check`, and `tsc`).
-> **Note:** `./x.py test tidy` already runs these checks automatically when JS/TS sources changed; `--extra-checks=js` forces them explicitly.
+* Use `./x test tidy --extra-checks=js` to run rustdoc’s JavaScript checks (`eslint`, `es-check`, and `tsc`).
+> **Note:** `./x test tidy` already runs these checks automatically when JS/TS sources changed; `--extra-checks=js` forces them explicitly.
 
 ### JavaScript CI checks
 
@@ -66,7 +63,7 @@ Rustdoc’s JavaScript and TypeScript are checked during CI by `eslint`, `es-che
 These run as part of the `tidy` job.
 
 ```console
-./x.py test tidy --extra-checks=js
+./x test tidy --extra-checks=js
 ```
 
 The `--extra-checks=js` flag enables the frontend linting that runs in CI.
@@ -82,12 +79,12 @@ All paths in this section are relative to `src/librustdoc/` in the rust-lang/rus
 * The data types that get rendered by the functions mentioned above are defined in `clean/types.rs`.
   The functions responsible for creating them from the `HIR` and the `rustc_middle::ty` IR
   live in `clean/mod.rs`.
-* The bits specific to using rustdoc as a test harness are in
-  `doctest.rs`.
+* The bits specific to using rustdoc as a test harness are in `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
 * Frontend CSS and JavaScript are stored in `html/static/`.
-  * Re. JavaScript, type annotations are written using [TypeScript-flavored JSDoc]
+  * Re.
+    JavaScript, type annotations are written using [TypeScript-flavored JSDoc]
 comments and an external `.d.ts` file.
     This way, the code itself remains plain, valid JavaScript.
     We only use `tsc` as a linter.

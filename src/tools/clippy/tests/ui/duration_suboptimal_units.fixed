@@ -94,3 +94,14 @@ fn issue16457() {
     // Methods taking something else than `u64` are not covered
     _ = Duration::from_nanos_u128(1 << 90);
 }
+
+#[clippy::msrv = "1.90"]
+fn insufficient_msrv() {
+    _ = Duration::from_secs(67_768_040_922_076_800);
+}
+
+#[clippy::msrv = "1.91"]
+fn sufficient_msrv() {
+    _ = Duration::from_hours(18824455811688);
+    //~^ duration_suboptimal_units
+}

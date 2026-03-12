@@ -85,7 +85,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
     }
 
     fn is_required(&self) -> bool {
-        true
+        false
     }
 }
 

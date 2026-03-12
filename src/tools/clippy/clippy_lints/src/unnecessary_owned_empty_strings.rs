@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::MaybeDef;
+use clippy_utils::sym;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -30,7 +30,10 @@ declare_clippy_lint! {
     style,
     "detects cases of references to owned empty strings being passed as an argument to a function expecting `&str`"
 }
-declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [UNNECESSARY_OWNED_EMPTY_STRINGS]);
+
+declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [
+    UNNECESSARY_OWNED_EMPTY_STRINGS,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {

@@ -28,7 +28,8 @@ fn main() {
             _ => {}
         }
 
-        match *nexh { //~ ERROR: memory is uninitialized
+        match *nexh {
+            //~^ ERROR: memory is uninitialized
             NonExhaustive::A(ref _val) => {}
             _ => {}
         }

@@ -1,6 +1,7 @@
+use std::assert_matches;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::assert_matches;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
@@ -11,12 +12,22 @@ use rustc_session::lint;
 use rustc_span::{Span, Symbol, kw};
 use tracing::{debug, instrument};
 
-use crate::delegation::inherit_generics_for_delegation_item;
 use crate::middle::resolve_bound_vars as rbv;
 
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
+
+    struct GenericParametersForbiddenHere {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for GenericParametersForbiddenHere {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+        }
+    }
 
     // For an RPITIT, synthesize generics which are equal to the opaque's generics
     // and parent fn's generics compressed into one list.
@@ -56,13 +67,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
     let node = tcx.hir_node(hir_id);
-    if let Some(sig) = node.fn_sig()
-        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
-    {
-        return inherit_generics_for_delegation_item(tcx, def_id, sig_id);
-    }
 
     let parent_def_id = match node {
         Node::ImplItem(_)
@@ -276,13 +281,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     match param_default_policy.expect("no policy for generic param default") {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
-                            tcx.node_span_lint(
+                            tcx.emit_node_span_lint(
                                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
-                                |lint| {
-                                    lint.primary_message(MESSAGE);
-                                },
+                                GenericParametersForbiddenHere { msg: MESSAGE },
                             );
                         }
                         ParamDefaultPolicy::Forbidden => {

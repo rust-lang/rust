@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -9,7 +8,6 @@
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(rustc_private)]
@@ -74,7 +72,6 @@ use std::process::ExitCode;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::lints::DelayedLint;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -910,23 +907,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
                 if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
                     for lint in &delayed_lints.lints {
-                        match lint {
-                            DelayedLint::AttributeParsing(attribute_lint) => {
-                                tcx.node_span_lint(
-                                    attribute_lint.lint_id.lint,
-                                    attribute_lint.id,
-                                    attribute_lint.span,
-                                    |diag| {
-                                        rustc_lint::decorate_attribute_lint(
-                                            tcx.sess,
-                                            Some(tcx),
-                                            &attribute_lint.kind,
-                                            diag,
-                                        );
-                                    },
-                                );
-                            }
-                        }
+                        rustc_hir_analysis::emit_delayed_lint(lint, tcx);
                     }
                 }
             }

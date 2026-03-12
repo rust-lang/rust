@@ -300,7 +300,8 @@ pub enum ProvenanceExtra {
 
 #[cfg(target_pointer_width = "64")]
 static_assert_size!(StrictPointer, 24);
-// FIXME: this would with in 24bytes but layout optimizations are not smart enough
+// Pointer does not fit as the layout algorithm isn't smart enough (but also, we tried using
+// pattern types to get a larger niche that makes this fit and it didn't improve performance).
 // #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer, 24);
 #[cfg(target_pointer_width = "64")]
@@ -654,7 +655,7 @@ pub struct MiriMachine<'tcx> {
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
 
-    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    /// Whether Miri artificially introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
 }
 
@@ -1235,7 +1236,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
+            let args = MiriInterpCx::copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
             let link_name = Symbol::intern(ecx.tcx.symbol_name(instance).name);
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
@@ -1262,7 +1263,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let args = ecx.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
+        let args = MiriInterpCx::copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
         ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
     }
 
@@ -1802,7 +1803,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // We have to skip the frame that is just being popped.
             ecx.active_thread_mut().recompute_top_user_relevant_frame(/* skip */ 1);
         }
-        // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
+        // tracing-tree can automatically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
         info!("Leaving {}", ecx.frame().instance());

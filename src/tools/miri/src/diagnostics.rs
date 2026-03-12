@@ -149,6 +149,7 @@ pub enum NonHaltingDiagnostic {
         failure_ordering: AtomicReadOrd,
         effective_failure_ordering: AtomicReadOrd,
     },
+    FileInProcOpened,
 }
 
 /// Level of Miri specific diagnostics
@@ -257,7 +258,7 @@ pub fn report_result<'tcx>(
                 // The "active" thread might actually be terminated, so we ignore it.
                 let mut any_pruned = false;
                 for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
-                    let stacktrace = Frame::generate_stacktrace_from_stack(stack);
+                    let stacktrace = Frame::generate_stacktrace_from_stack(stack, *ecx.tcx);
                     let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
                     any_pruned |= was_pruned;
                     report_msg(
@@ -493,7 +494,7 @@ pub fn report_result<'tcx>(
     for (i, frame) in ecx.active_thread_stack().iter().enumerate() {
         trace!("-------------------");
         trace!("Frame {}", i);
-        trace!("    return: {:?}", frame.return_place);
+        trace!("    return: {:?}", frame.return_place());
         for (i, local) in frame.locals.iter().enumerate() {
             trace!("    local {}: {:?}", i, local);
         }
@@ -633,7 +634,8 @@ impl<'tcx> MiriMachine<'tcx> {
     pub fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
         use NonHaltingDiagnostic::*;
 
-        let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
+        let stacktrace =
+            Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack(), self.tcx);
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (label, diag_level) = match &e {
@@ -654,6 +656,7 @@ impl<'tcx> MiriMachine<'tcx> {
             | ProgressReport { .. }
             | WeakMemoryOutdatedLoad { .. } =>
                 ("tracking was triggered here".to_string(), DiagLevel::Note),
+            FileInProcOpened => ("open a file in `/proc`".to_string(), DiagLevel::Warning),
         };
 
         let title = match &e {
@@ -701,6 +704,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 };
                 format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
             }
+            FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri")
         };
 
         let notes = match &e {

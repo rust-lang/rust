@@ -68,7 +68,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     // FIXME(clippy): don't you want to use the hir id of the peeled pat?
                     let id = match cx.qpath_res(path, *hir_id) {
                         Res::Def(
-                            DefKind::Const | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
+                            DefKind::Const { .. } | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
                             _,
                         ) => return,
                         Res::Def(_, id) => id,
@@ -208,5 +208,5 @@ impl<'a> CommonPrefixSearcher<'a> {
 }
 
 fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
-    cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable)
+    cx.tcx.is_doc_hidden(variant_def.def_id)
 }

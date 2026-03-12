@@ -198,11 +198,11 @@ macro_rules! impl_float_from_bool {
             /// # Examples
             /// ```
             $($(#[doc = $doctest_prefix])*)?
-            #[doc = concat!("let x: ", stringify!($float)," = false.into();")]
+            #[doc = concat!("let x = ", stringify!($float), "::from(false);")]
             /// assert_eq!(x, 0.0);
             /// assert!(x.is_sign_positive());
             ///
-            #[doc = concat!("let y: ", stringify!($float)," = true.into();")]
+            #[doc = concat!("let y = ", stringify!($float), "::from(true);")]
             /// assert_eq!(y, 1.0);
             $($(#[doc = $doctest_suffix])*)?
             /// ```
@@ -343,11 +343,11 @@ macro_rules! impl_try_from_integer_for_bool {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!("assert_eq!(0_", stringify!($int), ".try_into(), Ok(false));")]
+            #[doc = concat!("assert_eq!(bool::try_from(0_", stringify!($int), "), Ok(false));")]
             ///
-            #[doc = concat!("assert_eq!(1_", stringify!($int), ".try_into(), Ok(true));")]
+            #[doc = concat!("assert_eq!(bool::try_from(1_", stringify!($int), "), Ok(true));")]
             ///
-            #[doc = concat!("assert!(<", stringify!($int), " as TryInto<bool>>::try_into(2).is_err());")]
+            #[doc = concat!("assert!(bool::try_from(2_", stringify!($int), ").is_err());")]
             /// ```
             #[inline]
             fn try_from(i: $int) -> Result<Self, Self::Error> {

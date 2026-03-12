@@ -57,10 +57,4 @@ fn transmute_pointer_creators() {
     }
 }
 
-fn main() {
-    one_liners();
-    transmute_const();
-    transmute_const_int();
-    transumute_single_expr_blocks();
-    transmute_pointer_creators();
-}
+fn main() {}
