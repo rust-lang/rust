@@ -87,7 +87,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 lint.span_suggestion(
                     ref_span.shrink_to_lo(),
                     "if it should not be a footnote, escape it",
-                    "\\",
+                    format!("\\{}", &dox[span]),
                     Applicability::MaybeIncorrect,
                 );
             }),
