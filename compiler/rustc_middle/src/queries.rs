@@ -200,7 +200,7 @@ rustc_queries! {
 
     query resolver_for_lowering_raw(_: ()) ->
         (
-            &'tcx Steal<(ty::AstLoweringResolutionContext<'tcx>, Arc<ast::Crate>)>,
+            &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>,
             &'tcx ty::ResolverGlobalCtxt
         )
     {

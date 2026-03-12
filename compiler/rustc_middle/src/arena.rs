@@ -32,7 +32,7 @@ macro_rules! arena_types {
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
             >,
             [] resolver: rustc_data_structures::steal::Steal<(
-                rustc_middle::ty::AstLoweringResolutionContext<'tcx>,
+                rustc_middle::ty::ResolverAstLowering<'tcx>,
                 std::sync::Arc<rustc_ast::Crate>,
             )>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,

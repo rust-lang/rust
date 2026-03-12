@@ -14,7 +14,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::GenericRequirement;
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{AstLoweringResolutionContext, TyCtxt};
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
@@ -32,7 +32,7 @@ pub(crate) enum Duplicate {
 struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
-    resolver: &'ast AstLoweringResolutionContext<'tcx>,
+    resolver: &'ast ResolverAstLowering<'tcx>,
     // FIXME(#118552): We should probably feed def_span eagerly on def-id creation
     // so we can avoid constructing this map for local def-ids.
     item_spans: FxHashMap<DefId, Span>,
@@ -42,7 +42,7 @@ struct LanguageItemCollector<'ast, 'tcx> {
 impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        resolver: &'ast AstLoweringResolutionContext<'tcx>,
+        resolver: &'ast ResolverAstLowering<'tcx>,
     ) -> LanguageItemCollector<'ast, 'tcx> {
         LanguageItemCollector {
             tcx,
@@ -295,7 +295,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
         self.check_for_lang(
             target,
-            self.resolver.resolver.node_id_to_def_id[&i.id],
+            self.resolver.node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
             i.opt_generics(),
@@ -309,7 +309,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_variant(&mut self, variant: &'ast ast::Variant) {
         self.check_for_lang(
             Target::Variant,
-            self.resolver.resolver.node_id_to_def_id[&variant.id],
+            self.resolver.node_id_to_def_id[&variant.id],
             &variant.attrs,
             variant.span,
             None,
@@ -348,7 +348,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
         self.check_for_lang(
             target,
-            self.resolver.resolver.node_id_to_def_id[&i.id],
+            self.resolver.node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
             generics,

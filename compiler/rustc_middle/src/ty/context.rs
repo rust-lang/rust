@@ -2779,7 +2779,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> &'tcx Steal<(ty::AstLoweringResolutionContext<'tcx>, Arc<ast::Crate>)> {
+    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 
