@@ -328,7 +328,7 @@ impl<'snap> EnvChange<'snap> {
                 let prev_working_dir = std::env::current_dir().ok();
                 if let Err(err) = std::env::set_current_dir(dir) {
                     eprintln!(
-                        "Failed to set the current working dir to {}. Error: {err:?}",
+                        "Failed to change the current working dir to {}. Error: {err:?}",
                         dir.display()
                     )
                 }
@@ -370,7 +370,7 @@ impl Drop for EnvChange<'_> {
             && let Err(err) = std::env::set_current_dir(dir)
         {
             eprintln!(
-                "Failed to set the current working dir to {}. Error: {:?}",
+                "Failed to change the current working dir back to {}. Error: {:?}",
                 dir.display(),
                 err
             )
