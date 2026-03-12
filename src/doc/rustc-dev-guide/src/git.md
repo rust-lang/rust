@@ -383,7 +383,9 @@ Both the upside and downside of this is that it simplifies the history.
 On the one hand, you lose track of the steps in which changes were made, but
 the history becomes easier to work with.
 
-The easiest way to squash your commits in a PR on the `rust-lang/rust` repository is to use the `@bors squash` command in a comment on the PR. By default, [bors] combines all commit messages of the PR into the squashed commit message. To customize the commit message, use `@bors squash msg=<commit message>`.
+The easiest way to squash your commits in a PR on the `rust-lang/rust` repository is to use the `@bors squash` command in a comment on the PR.
+By default, [bors] combines all commit messages of the PR into the squashed commit message.
+To customize the commit message, use `@bors squash msg=<commit message>`.
 
 
 If you want to squash commits using local git operations, read on below.
