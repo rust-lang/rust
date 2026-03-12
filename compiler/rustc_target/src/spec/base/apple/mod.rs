@@ -127,7 +127,12 @@ pub(crate) fn base(
     let link_env_remove = link_env_remove(&os);
     let unversioned_llvm_target = unversioned_llvm_target(&os, arch, env);
     let mut opts = TargetOptions {
-        llvm_floatabi: Some(FloatAbi::Hard),
+        llvm_floatabi: if arch.target_arch() == crate::spec::Arch::Arm {
+            Some(FloatAbi::Hard)
+        } else {
+            // `llvm_floatabi` makes no sense on x86 and aarch64.
+            None
+        },
         os,
         env: env.target_env(),
         abi: env.target_abi(),
