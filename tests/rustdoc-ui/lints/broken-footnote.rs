@@ -5,3 +5,12 @@
 //! [^1]: footnote defined
 //~^^^ ERROR: no footnote definition matching this footnote
 //~| ERROR: no footnote definition matching this footnote
+
+// Should not lint.
+//! foo[^1]
+//!
+//! ```
+//!
+//! [^1]: bar
+//!
+//! ```
