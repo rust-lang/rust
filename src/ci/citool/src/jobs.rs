@@ -200,12 +200,14 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
         equivalent_modulo_carve_out(pr_job, auto_job)?;
     }
 
-    // Auto CI jobs must all "fail-fast" to avoid wasting Auto CI resources. For instance, `tidy`.
+    // Auto CI should "fail-fast" to avoid wasting Auto CI resources.
+    // However, some experimental auto jobs can be made optional, for example if we are unsure about
+    // their flakiness. Those have to be prefixed with `optional-`.
     for auto_job in &db.auto_jobs {
-        if auto_job.continue_on_error == Some(true) {
+        if auto_job.continue_on_error == Some(true) && !auto_job.name.starts_with("optional-") {
             return Err(anyhow!(
-                "Auto job `{}` cannot have `continue_on_error: true`",
-                auto_job.name
+                "Auto job `{job}` cannot have `continue_on_error: true`. If the job should be optional, name it `optional-{job}`.",
+                job = auto_job.name
             ));
         }
     }

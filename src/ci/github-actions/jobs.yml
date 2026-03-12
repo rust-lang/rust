@@ -348,6 +348,11 @@ auto:
   - name: x86_64-gnu
     <<: *job-linux-4c
 
+  - name: optional-x86_64-gnu-parallel-frontend
+    # This test can be flaky, so do not cancel CI if it fails, for now.
+    continue_on_error: true
+    <<: *job-linux-4c
+
   - name: x86_64-gnu-gcc
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     <<: *job-linux-4c
