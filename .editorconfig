@@ -12,6 +12,9 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+[*.css]
+indent_style = tab
+
 # some tests need trailing whitespace in output snapshots
 [tests/**]
 trim_trailing_whitespace = false
