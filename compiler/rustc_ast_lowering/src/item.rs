@@ -1,3 +1,5 @@
+use std::mem;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
@@ -345,6 +347,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body.as_deref(),
                         attrs,
                         contract.as_deref(),
+                        header.constness,
                     );
 
                     let itctx = ImplTraitContext::Universal;
@@ -1024,6 +1027,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(body),
                     attrs,
                     contract.as_deref(),
+                    sig.header.constness,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1217,6 +1221,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body.as_deref(),
                     attrs,
                     contract.as_deref(),
+                    sig.header.constness,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1346,11 +1351,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
         let prev_coroutine_kind = self.coroutine_kind.take();
+        let prev_is_in_const_context = mem::take(&mut self.is_in_const_context);
         let task_context = self.task_context.take();
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
         self.task_context = task_context;
         self.coroutine_kind = prev_coroutine_kind;
+        self.is_in_const_context = prev_is_in_const_context;
         body_id
     }
 
@@ -1369,9 +1376,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         contract: Option<&FnContract>,
+        constness: Const,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
+            if let Const::Yes(_) = constness {
+                this.is_in_const_context = true;
+            }
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
 
@@ -1389,8 +1400,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         body: &Block,
         contract: Option<&FnContract>,
+        constness: Const,
     ) -> hir::BodyId {
-        self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
+        self.lower_fn_body(decl, contract, constness, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
@@ -1398,7 +1410,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (
                 &[],
                 match expr {
-                    Some(expr) => this.lower_expr_mut(expr),
+                    Some(expr) => {
+                        this.is_in_const_context = true;
+                        this.lower_expr_mut(expr)
+                    }
                     None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
                 },
             )
@@ -1417,12 +1432,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: Option<&Block>,
         attrs: &'hir [hir::Attribute],
         contract: Option<&FnContract>,
+        constness: Const,
     ) -> hir::BodyId {
         let Some(body) = body else {
             // Functions without a body are an error, except if this is an intrinsic. For those we
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
-            return self.lower_fn_body(decl, contract, |this| {
+            return self.lower_fn_body(decl, contract, constness, |this| {
                 if find_attr!(attrs, RustcIntrinsic) || this.tcx.is_sdylib_interface_build() {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
@@ -1447,7 +1463,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let Some(coroutine_kind) = coroutine_kind else {
             // Typical case: not a coroutine.
-            return self.lower_fn_body_block(decl, body, contract);
+            return self.lower_fn_body_block(decl, body, contract, constness);
         };
         // FIXME(contracts): Support contracts on async fn.
         self.lower_body(|this| {

@@ -1,8 +1,8 @@
 error[E0658]: const closures are experimental
-  --> $DIR/gate.rs:4:6
+  --> $DIR/gate.rs:4:14
    |
-LL |     (const || {})();
-   |      ^^^^^
+LL |     const { (const || {})() };
+   |              ^^^^^
    |
    = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
@@ -18,11 +18,11 @@ LL | e!((const || {}));
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0277]: the trait bound `{closure@$DIR/gate.rs:4:6: 4:14}: [const] Fn()` is not satisfied
-  --> $DIR/gate.rs:4:5
+error[E0277]: the trait bound `{closure@$DIR/gate.rs:4:14: 4:22}: [const] Fn()` is not satisfied
+  --> $DIR/gate.rs:4:13
    |
-LL |     (const || {})();
-   |     ^^^^^^^^^^^^^^^
+LL |     const { (const || {})() };
+   |             ^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
