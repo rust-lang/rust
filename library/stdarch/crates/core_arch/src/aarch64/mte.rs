@@ -3,35 +3,17 @@
 //! [ACLE documentation](https://arm-software.github.io/acle/main/acle.html#markdown-toc-mte-intrinsics)
 
 unsafe extern "unadjusted" {
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.irg"
-    )]
+    #[link_name = "llvm.aarch64.irg"]
     fn irg_(ptr: *const (), exclude: i64) -> *const ();
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.gmi"
-    )]
+    #[link_name = "llvm.aarch64.gmi"]
     fn gmi_(ptr: *const (), exclude: i64) -> i64;
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.ldg"
-    )]
+    #[link_name = "llvm.aarch64.ldg"]
     fn ldg_(ptr: *const (), tag_ptr: *const ()) -> *const ();
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.stg"
-    )]
+    #[link_name = "llvm.aarch64.stg"]
     fn stg_(tagged_ptr: *const (), addr_to_tag: *const ());
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.addg"
-    )]
+    #[link_name = "llvm.aarch64.addg"]
     fn addg_(ptr: *const (), value: i64) -> *const ();
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.subp"
-    )]
+    #[link_name = "llvm.aarch64.subp"]
     fn subp_(ptr_a: *const (), ptr_b: *const ()) -> i64;
 }
 

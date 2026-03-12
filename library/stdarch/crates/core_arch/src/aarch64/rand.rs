@@ -3,16 +3,10 @@
 //! [ACLE documentation](https://arm-software.github.io/acle/main/acle.html#random-number-generation-intrinsics)
 
 unsafe extern "unadjusted" {
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.rndr"
-    )]
+    #[link_name = "llvm.aarch64.rndr"]
     fn rndr_() -> Tuple;
 
-    #[cfg_attr(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        link_name = "llvm.aarch64.rndrrs"
-    )]
+    #[link_name = "llvm.aarch64.rndrrs"]
     fn rndrrs_() -> Tuple;
 }
 
