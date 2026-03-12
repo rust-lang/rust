@@ -14,8 +14,8 @@ of `tracing-subscriber`](https://docs.rs/tracing-subscriber/0.2.24/tracing_subsc
 
 ## Environment variables
 
-This is an overview of the environment variables rustc accepts to customize
-its tracing output. The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
+This is an overview of the environment variables rustc accepts to customize its tracing output.
+The definition of these can mostly be found in `compiler/rustc_log/src/lib.rs`.
 
 |  Name                     | Usage                                                                                                                   |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
