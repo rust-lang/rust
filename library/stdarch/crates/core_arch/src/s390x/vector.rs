@@ -7491,17 +7491,28 @@ mod tests {
         [0, !0, !0, !0]
     }
 
-    // f32 is the tricky case for max/min as that needs a fallback on z13
-    test_vec_2! { test_vec_max, vec_max, f32x4, f32x4 -> f32x4,
+    test_vec_2! { test_vec_max_f32, vec_max, f32x4, f32x4 -> f32x4,
         [1.0,   f32::NAN, f32::INFINITY, 2.0],
         [-10.0, -10.0,    5.0,           f32::NAN],
         [1.0,   -10.0,    f32::INFINITY, 2.0]
     }
 
-    test_vec_2! { test_vec_min, vec_min, f32x4, f32x4 -> f32x4,
+    test_vec_2! { test_vec_min_f32, vec_min, f32x4, f32x4 -> f32x4,
         [1.0,   f32::NAN, f32::INFINITY, 2.0],
         [-10.0, -10.0,    5.0,           f32::NAN],
         [-10.0, -10.0,    5.0,           2.0]
+    }
+
+    test_vec_2! { test_vec_max_f64, vec_max, f64x2, f64x2 -> f64x2,
+        [f64::NAN, 2.0],
+        [-10.0,    f64::NAN],
+        [-10.0,    2.0]
+    }
+
+    test_vec_2! { test_vec_min_f64, vec_min, f64x2, f64x2 -> f64x2,
+        [f64::NAN, 2.0],
+        [-10.0,    f64::NAN],
+        [-10.0,    2.0]
     }
 
     #[simd_test(enable = "vector")]
