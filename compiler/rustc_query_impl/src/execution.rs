@@ -316,7 +316,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             let job = QueryJob::new(id, span, current_job_id);
             entry.insert((key, ActiveKeyStatus::Started(job)));
 
-            // Drop the lock before we start executing the query
+            // Drop the lock before we start executing the query.
             drop(state_lock);
 
             // Set up a guard object that will automatically poison the query if a
@@ -332,13 +332,13 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
                 execute_job_non_incr(query, tcx, key, id)
             };
 
-            let cache = &query.cache;
             if query.feedable {
                 check_feedable_consistency(tcx, query, key, &value);
             }
 
-            // Tell the guard to perform completion bookkeeping, and also to not poison the query.
-            job_guard.complete(cache, value, dep_node_index);
+            // Tell the guard to insert `value` in the cache and remove the status entry from
+            // `query.state`.
+            job_guard.complete(&query.cache, value, dep_node_index);
 
             (value, Some(dep_node_index))
         }
