@@ -6,7 +6,12 @@ Rust supports building against multiple LLVM versions:
 * Tip-of-tree for the current LLVM development branch is usually supported within a few days.
   PRs for such fixes are tagged with `llvm-main`.
 * The latest released major version is always supported.
-* The one or two preceding major versions are usually supported.
+* The one or two preceding major versions are usually supported in the sense that they are expected
+  to build successfully and pass most tests.
+  However, fixes for miscompilations often do not get
+  backported to past LLVM versions, so using rustc with older versions of LLVM comes with an
+  increased risk of soundness bugs.
+  We strongly recommend using the latest version of LLVM.
 
 By default, Rust uses its own fork in the [rust-lang/llvm-project repository].
 This fork is based on a `release/$N.x` branch of the upstream project, where
