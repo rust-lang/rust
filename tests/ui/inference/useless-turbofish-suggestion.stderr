@@ -1,0 +1,20 @@
+error[E0282]: type annotations needed
+  --> $DIR/useless-turbofish-suggestion.rs:19:7
+   |
+LL |     S.f::<u32, _>(42);
+   |       ^ cannot infer type of the type parameter `B` declared on the method `f`
+
+error[E0282]: type annotations needed
+  --> $DIR/useless-turbofish-suggestion.rs:24:7
+   |
+LL |     S.f(42);
+   |       ^ cannot infer type of the type parameter `B` declared on the method `f`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     S.f::<i32, B>(42);
+   |        ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
