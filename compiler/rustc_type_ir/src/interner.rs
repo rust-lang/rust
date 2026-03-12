@@ -14,7 +14,9 @@ use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
-use crate::{self as ty, CanonicalParamEnvCacheEntry, Ty, search_graph};
+use crate::{
+    self as ty, CanonicalParamEnvCacheEntry, Ty, TyKind, WithCachedTypeInfo, search_graph,
+};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
@@ -177,13 +179,20 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
 
-    type Interned<T: Copy + Clone + Debug + Hash + Eq + PartialEq>: Copy
+    // type Interned<'a, T: Copy + Clone + Debug + Hash + Eq + PartialEq + 'a>: Copy
+    //     + Clone
+    //     + Debug
+    //     + Hash
+    //     + Eq
+    //     + PartialEq
+    //     + Deref<Target = T>;
+    type InternedTyKindWithCachedInfo: Copy
         + Clone
         + Debug
         + Hash
         + Eq
         + PartialEq
-        + Deref<Target = T>;
+        + Deref<Target = WithCachedTypeInfo<TyKind<Self>>>;
     type VariantIdx;
     type Discr: Debug + Copy + Clone;
     type ObligationCause: Debug + Clone;
