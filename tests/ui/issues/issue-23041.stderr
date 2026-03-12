@@ -3,12 +3,6 @@ error[E0282]: type annotations needed
    |
 LL |     b.downcast_ref::<fn(_)->_>();
    |       ^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the method `downcast_ref`
-   |
-help: consider specifying the generic argument
-   |
-LL -     b.downcast_ref::<fn(_)->_>();
-LL +     b.downcast_ref::<fn(_) -> _>();
-   |
 
 error: aborting due to 1 previous error
 
