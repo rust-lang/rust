@@ -1,5 +1,5 @@
 warning: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/self_lifetime.rs:7:38
+  --> $DIR/self_lifetime.rs:8:38
    |
 LL |     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
    |                       --             ^^^ the same lifetime is elided here
@@ -14,7 +14,7 @@ LL |     fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
    |                                       ++
 
 warning: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/self_lifetime.rs:13:46
+  --> $DIR/self_lifetime.rs:14:46
    |
 LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
    |                                    --        ^^^ the same lifetime is elided here

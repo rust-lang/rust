@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 use std::pin::Pin;
 
 struct Foo;

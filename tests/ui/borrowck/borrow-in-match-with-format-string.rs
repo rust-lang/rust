@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(self_lifetime_elision_not_applicable)]
 // Test for https://github.com/rust-lang/rust/issues/21400 extracted from
 // stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580
 

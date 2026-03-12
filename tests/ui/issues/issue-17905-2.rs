@@ -1,3 +1,5 @@
+#![allow(self_lifetime_elision_not_applicable)]
+
 #[derive(Debug)]
 struct Pair<T, V> (T, V);
 

@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-103202.rs:4:17
+  --> $DIR/issue-103202.rs:5:17
    |
 LL |     fn f(self: &S::x) {}
    |                 ^^^^

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ref-assoc-async.rs:19:9
+  --> $DIR/ref-assoc-async.rs:20:9
    |
 LL |     async fn ref_AssocType(self: &<Struct as Trait>::AssocType, f: &u32) -> &u32 {
    |                                  -                                 - let's call the lifetime of this reference `'1`
@@ -14,7 +14,7 @@ LL |     async fn ref_AssocType<'a>(self: &<Struct as Trait>::AssocType, f: &'a 
    |                           ++++                                          ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-assoc-async.rs:24:9
+  --> $DIR/ref-assoc-async.rs:25:9
    |
 LL |     async fn box_ref_AssocType(self: Box<&<Struct as Trait>::AssocType>, f: &u32) -> &u32 {
    |                                          -                                  - let's call the lifetime of this reference `'1`
@@ -29,7 +29,7 @@ LL |     async fn box_ref_AssocType<'a>(self: Box<&<Struct as Trait>::AssocType>
    |                               ++++                                               ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-assoc-async.rs:29:9
+  --> $DIR/ref-assoc-async.rs:30:9
    |
 LL |     async fn pin_ref_AssocType(self: Pin<&<Struct as Trait>::AssocType>, f: &u32) -> &u32 {
    |                                          -                                  - let's call the lifetime of this reference `'1`
@@ -44,7 +44,7 @@ LL |     async fn pin_ref_AssocType<'a>(self: Pin<&<Struct as Trait>::AssocType>
    |                               ++++                                               ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-assoc-async.rs:34:9
+  --> $DIR/ref-assoc-async.rs:35:9
    |
 LL |     async fn box_box_ref_AssocType(self: Box<Box<&<Struct as Trait>::AssocType>>, f: &u32) -> &u32 {
    |                                                  -                                   - let's call the lifetime of this reference `'1`
@@ -59,7 +59,7 @@ LL |     async fn box_box_ref_AssocType<'a>(self: Box<Box<&<Struct as Trait>::As
    |                                   ++++                                                    ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-assoc-async.rs:39:9
+  --> $DIR/ref-assoc-async.rs:40:9
    |
 LL |     async fn box_pin_ref_AssocType(self: Box<Pin<&<Struct as Trait>::AssocType>>, f: &u32) -> &u32 {
    |                                                  -                                   - let's call the lifetime of this reference `'1`

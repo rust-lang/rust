@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 //! This is a regression test for an ICE.
 //@ edition: 2021
 

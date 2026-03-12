@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `DerefMut` for type `Pin<&dyn SomeTrait<'_, _>>`
-  --> $DIR/pin-unsound-issue-85099-derefmut.rs:44:1
+  --> $DIR/pin-unsound-issue-85099-derefmut.rs:45:1
    |
 LL | impl<'b, 'a, Fut> DerefMut for Pin<&'b dyn SomeTrait<'a, Fut>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
