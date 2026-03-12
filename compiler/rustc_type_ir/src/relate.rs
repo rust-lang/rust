@@ -495,7 +495,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
                 Ok(a)
             } else {
                 relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    Ty::new_fn_def(cx, a_def_id, args)
+                    Ty::new_fn_def_from_args(cx, a_def_id, args)
                 })
             }
         }

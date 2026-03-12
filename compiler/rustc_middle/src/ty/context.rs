@@ -2298,7 +2298,9 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Lifetime => {
                 ty::Region::new_early_param(self, param.to_early_bound_region_data()).into()
             }
-            GenericParamDefKind::Type { .. } => Ty::new_param(self, param.index, param.name).into(),
+            GenericParamDefKind::Type { .. } => {
+                Ty::new_param(self, ty::ParamTy::new(param.index, param.name)).into()
+            }
             GenericParamDefKind::Const { .. } => {
                 ty::Const::new_param(self, ParamConst { index: param.index, name: param.name })
                     .into()

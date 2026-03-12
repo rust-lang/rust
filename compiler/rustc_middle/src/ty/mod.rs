@@ -64,7 +64,6 @@ pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
     rustc::non_glob_import_of_type_ir_inherent
 )]
 use rustc_type_ir::inherent;
-use rustc_type_ir::inherent::IntoKind;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind};
 pub use rustc_type_ir::*;
@@ -126,7 +125,7 @@ use crate::ty::codec::{TyDecoder as CodecTyDecoder, TyEncoder as CodecTyEncoder}
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{FnAbiError, LayoutError};
-use crate::ty::util::Discr;
+use crate::ty::util::{Discr, TyUtil};
 use crate::ty::walk::TypeWalker;
 
 pub mod abstract_const;
@@ -618,7 +617,7 @@ impl<'tcx> Term<'tcx> {
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_kind, alias_ty) => Some((*alias_ty).into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
@@ -2202,7 +2201,11 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
         rustc_abi::FIRST_VARIANT
-            ..self.coroutine_layout(def_id, coroutine_args).unwrap().variant_fields.next_index()
+            ..self
+                .coroutine_layout(def_id, coroutine_args.args)
+                .unwrap()
+                .variant_fields
+                .next_index()
     }
 
     pub fn new_error_with_message<S: Into<MultiSpan>>(
@@ -2422,7 +2425,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
     if ty.is_slice() {
         if let ty::Slice(element_ty) = ty.kind() {
             let element_tree =
-                typetree_from_ty_impl_inner(tcx, element_ty, depth + 1, visited, false);
+                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
             return element_tree;
         }
     }

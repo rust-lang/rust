@@ -9,7 +9,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
-use rustc_type_ir::inherent::IntoKind;
 
 use crate::dep_graph::DepNodeIndex;
 use crate::ich::StableHashingContext;
@@ -270,7 +269,7 @@ impl<'tcx> QueryKey for Ty<'tcx> {
     fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
         match self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
-            ty::Coroutine(def_id, ..) => Some(def_id),
+            ty::Coroutine(def_id, ..) => Some(*def_id),
             _ => None,
         }
     }

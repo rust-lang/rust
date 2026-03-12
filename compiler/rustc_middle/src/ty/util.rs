@@ -636,6 +636,20 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.def_kind(def_id), DefKind::Ctor(..))
     }
 
+    /// Given the `DefId`, returns the `DefId` of the innermost item that
+    /// has its own type-checking context or "inference environment".
+    ///
+    /// For example, a closure has its own `DefId`, but it is type-checked
+    /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
+    /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
+    pub fn typeck_root_def_id(self, def_id: DefId) -> DefId {
+        let mut def_id = def_id;
+        while self.is_typeck_child(def_id) {
+            def_id = self.parent(def_id);
+        }
+        def_id
+    }
+
     /// Given the `DefId` and args a closure, creates the type of
     /// `self` argument that the closure expects. For example, for a
     /// `Fn` closure, this would return a reference type `&T` where
@@ -1053,7 +1067,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
     }
 }
 
-trait TyUtil<'tcx> {
+pub trait TyUtil<'tcx> {
     fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size;
     fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool);
     fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)>;

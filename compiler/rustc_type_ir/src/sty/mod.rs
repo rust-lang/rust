@@ -622,8 +622,17 @@ where
     }
 
     #[inline]
-    pub fn new_fn_def(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self {
-        Self::new(interner, ty::FnDef(def_id, args))
+    pub fn new_fn_def_from_args(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self {
+        Ty::new(interner, ty::FnDef(def_id, args))
+    }
+
+    #[inline]
+    pub fn new_fn_def(
+        interner: I,
+        def_id: I::FunctionId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> Self {
+        interner.new_fn_def(def_id, args)
     }
 
     #[inline]
