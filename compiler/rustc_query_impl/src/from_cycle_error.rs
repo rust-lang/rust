@@ -21,11 +21,6 @@ use rustc_span::{ErrorGuaranteed, Span};
 use crate::job::report_cycle;
 
 pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
-    vtables.type_of.value_from_cycle_error = |tcx, _, _, err| {
-        let guar = err.emit();
-        erase_val(ty::EarlyBinder::bind(Ty::new_error(tcx, guar)))
-    };
-
     vtables.fn_sig.value_from_cycle_error = |tcx, key, _, err| {
         let guar = err.delay_as_bug();
         erase_val(fn_sig(tcx, key, guar))
