@@ -24,7 +24,7 @@ pub struct Skip<I> {
 }
 
 impl<I> Skip<I> {
-    pub(in crate::iter) fn new(iter: I, n: usize) -> Skip<I> {
+    pub(in crate::iter) const fn new(iter: I, n: usize) -> Skip<I> {
         Skip { iter, n }
     }
 }

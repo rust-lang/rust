@@ -10,11 +10,12 @@ use crate::num::{Saturating, Wrapping};
 /// [`sum()`]: Iterator::sum
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[diagnostic::on_unimplemented(
     message = "a value of type `{Self}` cannot be made by summing an iterator over elements of type `{A}`",
     label = "value of type `{Self}` cannot be made by summing a `std::iter::Iterator<Item={A}>`"
 )]
-pub trait Sum<A = Self>: Sized {
+pub const trait Sum<A = Self>: Sized {
     /// Takes an iterator and generates `Self` from the elements by "summing up"
     /// the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
@@ -31,11 +32,12 @@ pub trait Sum<A = Self>: Sized {
 /// [`product()`]: Iterator::product
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[diagnostic::on_unimplemented(
     message = "a value of type `{Self}` cannot be made by multiplying all elements of type `{A}` from an iterator",
     label = "value of type `{Self}` cannot be made by multiplying all elements from a `std::iter::Iterator<Item={A}>`"
 )]
-pub trait Product<A = Self>: Sized {
+pub const trait Product<A = Self>: Sized {
     /// Takes an iterator and generates `Self` from the elements by multiplying
     /// the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]

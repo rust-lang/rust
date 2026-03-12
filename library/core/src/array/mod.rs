@@ -1003,9 +1003,10 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 /// dropped.
 ///
 /// Used for [`Iterator::next_chunk`].
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-pub(crate) fn iter_next_chunk<T, const N: usize>(
-    iter: &mut impl Iterator<Item = T>,
+pub(crate) const fn iter_next_chunk<T, const N: usize>(
+    iter: &mut impl [const] Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
     let mut array = [const { MaybeUninit::uninit() }; N];
     let r = iter_next_chunk_erased(&mut array, iter);
@@ -1026,10 +1027,11 @@ pub(crate) fn iter_next_chunk<T, const N: usize>(
 ///
 /// Unfortunately this loop has two exit conditions, the buffer filling up
 /// or the iterator running out of items, making it tend to optimize poorly.
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-fn iter_next_chunk_erased<T>(
+const fn iter_next_chunk_erased<T>(
     buffer: &mut [MaybeUninit<T>],
-    iter: &mut impl Iterator<Item = T>,
+    iter: &mut impl [const] Iterator<Item = T>,
 ) -> Result<(), usize> {
     // if `Iterator::next` panics, this guard will drop already initialized items
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
