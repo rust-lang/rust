@@ -58,7 +58,7 @@ impl<'hir> ItemLowerer<'_, '_, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, '_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, &mut self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
