@@ -251,7 +251,7 @@ fn visit_implementation_of_coerce_shared(checker: &Checker<'_>) -> Result<(), Er
     // Just compute this for the side-effects, in particular reporting
     // errors; other parts of the code may demand it for the info of
     // course.
-    tcx.ensure_ok().coerce_shared_info(impl_did)
+    tcx.ensure_result().coerce_shared_info(impl_did)
 }
 
 fn is_from_coerce_pointee_derive(tcx: TyCtxt<'_>, span: Span) -> bool {

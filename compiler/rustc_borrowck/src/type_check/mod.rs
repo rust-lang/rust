@@ -550,16 +550,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
-    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Reborrow(mutability, rvalue, _) = rvalue {
-            // check rvalue is Reborrow
-            self.add_generic_reborrow_constraint(*mutability, location, place, rvalue);
-        } else {
-            // rest of the cases
-            self.super_assign(place, rvalue, location);
-        }
-    }
-
     fn visit_span(&mut self, span: Span) {
         if !span.is_dummy() {
             debug!(?span);
@@ -637,10 +627,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
-                if let Rvalue::Reborrow(mutability, rvalue, _) = rv {
-                    // check rvalue is Reborrow
-                    self.add_generic_reborrow_constraint(*mutability, location, place, rvalue);
-                } else if let Err(terr) =
+                if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
                     span_mirbug!(
@@ -1594,10 +1581,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.add_reborrow_constraint(location, *region, borrowed_place);
             }
 
-            Rvalue::Reborrow(..) => {
+            Rvalue::Reborrow(target, mutability, borrowed_place) => {
                 // Reborrow needs to produce a relation between the source and destination fields,
                 // which means that we have had to already handle this in visit_assign.
-                unreachable!()
+                self.add_generic_reborrow_constraint(
+                    *mutability,
+                    location,
+                    borrowed_place,
+                    *target,
+                );
             }
 
             Rvalue::BinaryOp(
@@ -2445,8 +2437,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         mutability: Mutability,
         location: Location,
-        dest: &Place<'tcx>,
         borrowed_place: &Place<'tcx>,
+        dest_ty: Ty<'tcx>,
     ) {
         // These constraints are only meaningful during borrowck:
         let Self { borrow_set, location_table, polonius_facts, constraints, infcx, body, .. } =
@@ -2459,7 +2451,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         debug!(
             "add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})",
-            mutability, location, dest, borrowed_place
+            mutability, location, borrowed_place, dest_ty
         );
 
         let tcx = infcx.tcx;
@@ -2473,19 +2465,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ConstraintCategory::Boring
         };
 
-        let dest_ty = dest.ty(self.body, tcx).ty;
         let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
-        let ty::Adt(_, args) = dest_ty.kind() else { bug!() };
-        let [arg, ..] = ***args else { bug!() };
-        let ty::GenericArgKind::Lifetime(reborrow_region) = arg.kind() else { bug!() };
-        constraints.liveness_constraints.add_location(reborrow_region.as_var(), location);
+
+        let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { bug!() };
+        let [dest_arg, ..] = ***dest_args else { bug!() };
+        let ty::GenericArgKind::Lifetime(dest_region) = dest_arg.kind() else { bug!() };
+        constraints.liveness_constraints.add_location(dest_region.as_var(), location);
 
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region.
         if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrow_index) = borrow_set.get_index_of(&location) {
-                let region_vid = reborrow_region.as_var();
+                let region_vid = dest_region.as_var();
                 polonius_facts.loan_issued_at.push((
                     region_vid.into(),
                     borrow_index,
@@ -2501,7 +2493,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
             // Field-by-field relate_types is expected to work based on the wf-checks that the
             // CoerceShared trait performs.
-            let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { unreachable!() };
             let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
             let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
             for dest_field in dest_adt.all_fields() {

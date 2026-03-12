@@ -275,7 +275,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            &Rvalue::Reborrow(mutability, place, _target) => {
+            &Rvalue::Reborrow(_target, mutability, place) => {
                 let access_kind = (
                     Deep,
                     if mutability == Mutability::Mut {

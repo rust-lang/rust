@@ -1489,7 +1489,7 @@ pub enum Rvalue<'tcx> {
     /// This is produced by the [`ExprKind::Reborrow`].
     ///
     /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
-    Reborrow(Mutability, Place<'tcx>, Ty<'tcx>),
+    Reborrow(Ty<'tcx>, Mutability, Place<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

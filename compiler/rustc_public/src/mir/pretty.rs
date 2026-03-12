@@ -380,7 +380,7 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             };
             write!(writer, "{kind}{place:?}")
         }
-        Rvalue::Reborrow(mutability, place, target) => {
+        Rvalue::Reborrow(target, mutability, place) => {
             let kind = match mutability {
                 Mutability::Not => "Reborrow",
                 Mutability::Mut => "CoerceShared",

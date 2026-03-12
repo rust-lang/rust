@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::Reborrow(mutability, place, _target) => {
+            &Rvalue::Reborrow(_target, mutability, place) => {
                 let access_kind = (
                     Deep,
                     if mutability == Mutability::Mut {

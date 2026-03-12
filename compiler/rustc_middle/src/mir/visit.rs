@@ -730,7 +730,8 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
-                    Rvalue::Reborrow(mutability, place, _) => {
+                    Rvalue::Reborrow(target, mutability, place) => {
+                        self.visit_ty($(& $mutability)? *target, TyContext::Location(location));
                         self.visit_place(
                             place,
                             match mutability {

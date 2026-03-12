@@ -228,6 +228,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
+            Reborrow(_, _, place) => {
+                let op = self.eval_place_to_op(place, Some(dest.layout))?;
+                self.copy_op(&op, &dest)?;
+            }
+
             RawPtr(kind, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
@@ -268,11 +273,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // since the operand's layout does not change.
                 let op = self.eval_operand(op, None)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
-            }
-
-            Reborrow(_, place, _) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
             }
         }
 
