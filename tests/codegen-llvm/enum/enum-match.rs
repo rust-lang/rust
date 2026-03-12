@@ -739,7 +739,7 @@ pub enum Tricky {
 
 const _: () = assert!(std::intrinsics::discriminant_value(&Tricky::V100) == 100);
 
-// CHECK-LABEL: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @discriminant6(i8 noundef{{( zeroext)?}} %e)
+// CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @discriminant6(i8 noundef{{( zeroext)?}} %e)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[REL_VAR:.+]] = add i8 %e, -66
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp ult i8 %[[REL_VAR]], -56
@@ -767,7 +767,7 @@ pub enum TransportErr {
 
 #[no_mangle]
 pub fn match7(result: OpenResult) -> u8 {
-    // CHECK-LABEL: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match7(i32{{.+}}%result)
+    // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match7(i32{{.+}}%result)
     // CHECK-NEXT: start:
     // CHECK-NEXT: %[[NOT_OK:.+]] = icmp ne i32 %result, -1
     // CHECK-NEXT: %[[RET:.+]] = zext i1 %[[NOT_OK]] to i8
