@@ -16,7 +16,7 @@ of such structures include but are not limited to
     * Converted to a virtual `existential type` declaration
 
 Lowering needs to uphold several invariants in order to not trigger the
-sanity checks in `compiler/rustc_passes/src/hir_id_validator.rs`:
+sanity checks in [`compiler/rustc_passes/src/hir_id_validator.rs`][hir_id_validator]:
 
 1. A `HirId` must be used if created. So if you use the `lower_node_id`,
   you *must* use the resulting `NodeId` or `HirId` (either is fine, since
@@ -32,6 +32,8 @@ sanity checks in `compiler/rustc_passes/src/hir_id_validator.rs`:
   create new ids for them. This is done by calling the `next_id` method,
   which produces both a new `NodeId` as well as automatically lowering it
   for you so you also get the `HirId`.
+
+[hir_id_validator]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_passes/src/hir_id_validator.rs
 
 If you are creating new `DefId`s, since each `DefId` needs to have a
 corresponding `NodeId`, it is advisable to add these `NodeId`s to the
