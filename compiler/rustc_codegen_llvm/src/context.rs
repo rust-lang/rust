@@ -1135,7 +1135,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         | LayoutError::ReferencesError(_)
         | LayoutError::InvalidSimd { .. } = err
         {
-            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+            self.tcx.dcx().span_fatal(span, err.to_string())
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }

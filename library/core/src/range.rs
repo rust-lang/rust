@@ -584,7 +584,7 @@ impl<T> const From<legacy::RangeFrom<T>> for RangeFrom<T> {
 ///
 /// The `..=last` syntax is a `RangeToInclusive`:
 ///
-/// ```
+/// ```standalone_crate
 /// #![feature(new_range)]
 /// assert_eq!((..=5), std::range::RangeToInclusive { last: 5 });
 /// ```

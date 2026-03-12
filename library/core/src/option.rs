@@ -1777,7 +1777,7 @@ impl<T> Option<T> {
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn get_or_insert_default(&mut self) -> &mut T
     where
-        T: [const] Default + [const] Destruct,
+        T: [const] Default,
     {
         self.get_or_insert_with(T::default)
     }
@@ -1805,10 +1805,25 @@ impl<T> Option<T> {
     pub const fn get_or_insert_with<F>(&mut self, f: F) -> &mut T
     where
         F: [const] FnOnce() -> T + [const] Destruct,
-        T: [const] Destruct,
     {
         if let None = self {
-            *self = Some(f());
+            // The effect of the following statement is identical to
+            //     *self = Some(f());
+            // except that it does not drop the old value of `*self`. This is not a leak, because
+            // we just checked that the old value is `None`, which contains no fields to drop.
+            // This implementation strategy
+            //
+            // * avoids needing a `T: [const] Destruct` bound, to the benefit of `const` callers,
+            // * and avoids possibly compiling needless drop code (as would sometimes happen in the
+            //   previous implementation), to the benefit of non-`const` callers.
+            //
+            // FIXME(const-hack): It would be nice if this weird trick were made obsolete
+            // (though that is likely to be hard/wontfix).
+            //
+            // It could also be expressed as `unsafe { core::ptr::write(self, Some(f())) }`, but
+            // no reason is currently known to use additional unsafe code here.
+
+            mem::forget(mem::replace(self, Some(f())));
         }
 
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`

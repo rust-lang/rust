@@ -14,7 +14,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::collect_active_jobs_from_all_queries;
+use crate::execution::collect_active_jobs_from_all_queries;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.
@@ -136,7 +136,7 @@ fn visit_waiters<'tcx>(
 
     // Visit the explicit waiters which use condvars and are resumable
     if let Some(latch) = job_map.latch_of(query) {
-        for (i, waiter) in latch.info.lock().waiters.iter().enumerate() {
+        for (i, waiter) in latch.waiters.lock().as_ref().unwrap().iter().enumerate() {
             if let Some(waiter_query) = waiter.query {
                 // Return a value which indicates that this waiter can be resumed
                 visit(waiter.span, waiter_query).map_break(|_| Some((query, i)))?;

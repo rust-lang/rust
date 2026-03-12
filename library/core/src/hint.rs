@@ -514,7 +514,7 @@ pub const fn black_box<T>(dummy: T) -> T {
 /// macro_rules! make_error {
 ///     ($($args:expr),*) => {
 ///         core::hint::must_use({
-///             let error = $crate::make_error(core::format_args!($($args),*));
+///             let error = make_error(core::format_args!($($args),*));
 ///             error
 ///         })
 ///     };

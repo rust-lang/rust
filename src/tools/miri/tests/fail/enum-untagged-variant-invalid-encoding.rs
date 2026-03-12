@@ -20,8 +20,8 @@ fn main() {
         assert!(Foo::Var1 == mem::transmute(2u8));
         assert!(Foo::Var3 == mem::transmute(4u8));
 
-        let invalid: Foo = mem::transmute(3u8);
-        assert!(matches!(invalid, Foo::Var2(_)));
+        let invalid: *const Foo = mem::transmute(&3u8);
+        assert!(matches!(*invalid, Foo::Var2(_)));
         //~^ ERROR: invalid tag
     }
 }

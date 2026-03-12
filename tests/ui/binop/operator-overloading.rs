@@ -1,4 +1,7 @@
 //@ run-pass
+//@ reference: expr.arith-logic.behavior
+//@ reference: expr.array.index.trait
+//@ reference: expr.negate.results
 
 #![allow(unused_variables)]
 use std::cmp;

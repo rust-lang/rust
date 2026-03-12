@@ -83,7 +83,7 @@ const GOOD_INHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(2u8) 
 const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
 //~^ ERROR uninhabited enum variant
 const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-//~^ ERROR uninhabited enum variant
+//~^ ERROR expected a valid enum tag
 
 // # other
 

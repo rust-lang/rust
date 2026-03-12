@@ -633,10 +633,6 @@ pub enum SelectionError<'tcx> {
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
     Overflow(OverflowError),
-    /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
-    /// We can thus not know whether the hidden type implements an auto trait, so
-    /// we should not presume anything about it.
-    OpaqueTypeAutoTraitLeakageUnknown(DefId),
     /// Error for a `ConstArgHasType` goal
     ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }

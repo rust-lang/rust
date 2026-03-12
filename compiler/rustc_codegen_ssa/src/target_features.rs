@@ -14,7 +14,7 @@ use rustc_target::spec::Arch;
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
-use crate::errors::FeatureNotValid;
+use crate::errors::{FeatureNotValid, RemovePlusFromFeatureName};
 use crate::{errors, target_features};
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
@@ -34,7 +34,8 @@ pub(crate) fn from_target_feature_attr(
         let Some(stability) = rust_target_features.get(feature_str) else {
             let plus_hint = feature_str
                 .strip_prefix('+')
-                .is_some_and(|stripped| rust_target_features.contains_key(stripped));
+                .filter(|stripped| rust_target_features.contains_key(*stripped))
+                .map(|stripped| RemovePlusFromFeatureName { span: feature_span, stripped });
             tcx.dcx().emit_err(FeatureNotValid {
                 feature: feature_str,
                 span: feature_span,

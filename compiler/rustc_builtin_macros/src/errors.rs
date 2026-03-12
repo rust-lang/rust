@@ -545,6 +545,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessag
 #[derive(Diagnostic)]
 pub(crate) enum EnvNotDefined<'a> {
     #[diag("environment variable `{$var}` not defined at compile time")]
+    #[help("`{$var}` may not be available for the current Cargo target")]
     #[help(
         "Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead"
     )]

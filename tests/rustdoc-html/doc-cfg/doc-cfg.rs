@@ -1,5 +1,4 @@
 #![feature(doc_cfg)]
-#![feature(target_feature, cfg_target_feature)]
 
 //@ has doc_cfg/struct.Portable.html
 //@ !has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' ''

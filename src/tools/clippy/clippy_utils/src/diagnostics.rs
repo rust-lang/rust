@@ -326,14 +326,14 @@ pub fn span_lint_hir_and_then(
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
+    cx.tcx.emit_node_span_lint(lint, hir_id, sp, rustc_errors::DiagDecorator(|diag| {
         diag.primary_message(msg);
         f(diag);
         docs_link(diag, lint);
 
         #[cfg(debug_assertions)]
         validate_diag(diag);
-    });
+    }));
 }
 
 /// Add a span lint with a suggestion on how to fix it.

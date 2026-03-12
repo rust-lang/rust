@@ -111,23 +111,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     .try_to_scalar_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
                     .to_bits(tag_layout.size);
+                // Ensure the tag is in its layout range. Codegen adds range metadata on the
+                // discriminant load so we really have to make this UB.
+                if !tag_scalar_layout.valid_range(self).contains(tag_bits) {
+                    throw_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size)))
+                }
                 // Cast bits from tag layout to discriminant layout.
                 // After the checks we did above, this cannot fail, as
                 // discriminants are int-like.
                 let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
                 let discr_bits = discr_val.to_scalar().to_bits(discr_layout.size)?;
-                // Convert discriminant to variant index, and catch invalid discriminants.
+                // Convert discriminant to variant index. Since we validated the tag against the
+                // layout range above, this cannot fail.
                 let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
+                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits).unwrap()
                     }
                     ty::Coroutine(def_id, args) => {
                         let args = args.as_coroutine();
-                        args.discriminants(def_id, *self.tcx).find(|(_, var)| var.val == discr_bits)
+                        args.discriminants(def_id, *self.tcx)
+                            .find(|(_, var)| var.val == discr_bits)
+                            .unwrap()
                     }
                     _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-coroutine"),
-                }
-                .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
+                };
                 // Return the cast value, and the index.
                 index.0
             }
@@ -174,13 +181,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             let variants =
                                 ty.ty_adt_def().expect("tagged layout for non adt").variants();
                             assert!(variant_index < variants.next_index());
+                            // This should imply that the tag is in its layout range.
+                            assert!(tag_scalar_layout.valid_range(self).contains(tag_bits));
+
                             if variant_index == untagged_variant {
                                 // The untagged variant can be in the niche range, but even then it
-                                // is not a valid encoding.
+                                // is not a valid encoding. Codegen inserts an `assume` here
+                                // so we really have to make this UB.
                                 throw_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size)))
                             }
                             variant_index
                         } else {
+                            // Ensure the tag is in its layout range. Codegen adds range metadata on
+                            // the discriminant load so we really have to make this UB.
+                            if !tag_scalar_layout.valid_range(self).contains(tag_bits) {
+                                throw_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size)))
+                            }
                             untagged_variant
                         }
                     }

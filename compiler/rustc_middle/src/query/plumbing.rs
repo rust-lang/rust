@@ -7,7 +7,6 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
-use rustc_macros::HashStable;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
@@ -58,7 +57,6 @@ pub enum ActiveKeyStatus<'tcx> {
 pub enum CycleErrorHandling {
     Error,
     DelayBug,
-    Stash,
 }
 
 #[derive(Clone, Debug)]
@@ -650,9 +648,6 @@ mod sealed {
         }
     }
 }
-
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct CyclePlaceholder(pub ErrorGuaranteed);
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
