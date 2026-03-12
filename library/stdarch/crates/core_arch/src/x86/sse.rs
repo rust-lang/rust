@@ -3040,9 +3040,9 @@ mod tests {
     )*}
 }
 
-test_cvttss_si32!(test_cvttss_si32: _mm_cvttss_si32, test_mm_cvtt_ss2si: _mm_cvtt_ss2si);
+    test_cvttss_si32!(test_cvttss_si32: _mm_cvttss_si32, test_mm_cvtt_ss2si: _mm_cvtt_ss2si);
 
-macro_rules! test_mm_cvtsi32_ss {
+    macro_rules! test_mm_cvtsi32_ss {
     ($($test_name:ident : $alias:ident),*) => {$(
         #[simd_test(enable = "sse")]
         unsafe fn $test_name() {
@@ -3063,7 +3063,7 @@ macro_rules! test_mm_cvtsi32_ss {
     )*}
 }
 
-test_mm_cvtsi32_ss!(test_mm_cvtsi32_ss: _mm_cvtsi32_ss, test_mm_cvt_si2ss: _mm_cvt_si2ss);
+    test_mm_cvtsi32_ss!(test_mm_cvtsi32_ss: _mm_cvtsi32_ss, test_mm_cvt_si2ss: _mm_cvt_si2ss);
 
     #[simd_test(enable = "sse")]
     const fn test_mm_cvtss_f32() {
@@ -3077,7 +3077,7 @@ test_mm_cvtsi32_ss!(test_mm_cvtsi32_ss: _mm_cvtsi32_ss, test_mm_cvt_si2ss: _mm_c
         assert_eq_m128(r, _mm_setr_ps(4.25, 0.0, 0.0, 0.0));
     }
 
-macro_rules! test_mm_set1_ps {
+    macro_rules! test_mm_set1_ps {
     ($($test_name:ident : $alias:ident),*) => {$(
         #[simd_test(enable = "sse")]
         unsafe fn $test_name() {
@@ -3090,7 +3090,7 @@ macro_rules! test_mm_set1_ps {
     )*}
 }
 
-test_mm_set1_ps!(test_mm_set1_ps: _mm_set1_ps, test_mm_set_ps1: _mm_set_ps1);
+    test_mm_set1_ps!(test_mm_set1_ps: _mm_set1_ps, test_mm_set_ps1: _mm_set_ps1);
 
     #[simd_test(enable = "sse")]
     const fn test_mm_set_ps() {
@@ -3178,7 +3178,7 @@ test_mm_set1_ps!(test_mm_set1_ps: _mm_set1_ps, test_mm_set_ps1: _mm_set_ps1);
         assert_eq_m128(r, _mm_setr_ps(42.0, 0.0, 0.0, 0.0));
     }
 
-  macro_rules! test_mm_load1_ps {
+    macro_rules! test_mm_load1_ps {
     ($($test_name:ident : $alias:ident),*) => {$(
         #[simd_test(enable = "sse")]
         unsafe fn $test_name() {
@@ -3189,7 +3189,7 @@ test_mm_set1_ps!(test_mm_set1_ps: _mm_set1_ps, test_mm_set_ps1: _mm_set_ps1);
     )*}
 }
 
-test_mm_load1_ps!(test_mm_load1_ps: _mm_load1_ps, test_mm_load_ps1: _mm_load_ps1);
+    test_mm_load1_ps!(test_mm_load1_ps: _mm_load1_ps, test_mm_load_ps1: _mm_load_ps1);
 
     #[simd_test(enable = "sse")]
     const fn test_mm_load_ps() {
@@ -3240,7 +3240,7 @@ test_mm_load1_ps!(test_mm_load1_ps: _mm_load1_ps, test_mm_load_ps1: _mm_load_ps1
         assert_eq!(vals[2], 0.0);
     }
 
-macro_rules! test_mm_store1_ps {
+    macro_rules! test_mm_store1_ps {
     ($($test_name:ident : $alias:ident),*) => {$(
         #[simd_test(enable = "sse")]
         unsafe fn $test_name() {
@@ -3253,7 +3253,7 @@ macro_rules! test_mm_store1_ps {
     )*}
 }
 
-test_mm_store1_ps!(test_mm_store1_ps: _mm_store1_ps, test_mm_store_ps1: _mm_store_ps1);
+    test_mm_store1_ps!(test_mm_store1_ps: _mm_store1_ps, test_mm_store_ps1: _mm_store_ps1);
 
     #[simd_test(enable = "sse")]
     const fn test_mm_store_ps() {
@@ -3269,7 +3269,6 @@ test_mm_store1_ps!(test_mm_store1_ps: _mm_store1_ps, test_mm_store_ps1: _mm_stor
 
         assert_eq!(vals.data, [1.0, 2.0, 3.0, 4.0]);
     }
-
 
     #[simd_test(enable = "sse")]
     const fn test_mm_storer_ps() {
