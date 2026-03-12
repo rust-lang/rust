@@ -209,7 +209,7 @@ use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{MTLock, par_for_each_in};
+use rustc_data_structures::sync::{Lock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
@@ -251,12 +251,12 @@ pub(crate) enum MonoItemCollectionStrategy {
 /// The state that is shared across the concurrent threads that are doing collection.
 struct SharedState<'tcx> {
     /// Items that have been or are currently being recursively collected.
-    visited: MTLock<UnordSet<MonoItem<'tcx>>>,
+    visited: Lock<UnordSet<MonoItem<'tcx>>>,
     /// Items that have been or are currently being recursively treated as "mentioned", i.e., their
     /// consts are evaluated but nothing is added to the collection.
-    mentioned: MTLock<UnordSet<MonoItem<'tcx>>>,
+    mentioned: Lock<UnordSet<MonoItem<'tcx>>>,
     /// Which items are being used where, for better errors.
-    usage_map: MTLock<UsageMap<'tcx>>,
+    usage_map: Lock<UsageMap<'tcx>>,
 }
 
 pub(crate) struct UsageMap<'tcx> {
@@ -359,7 +359,7 @@ fn collect_items_root<'tcx>(
     state: &SharedState<'tcx>,
     recursion_limit: Limit,
 ) {
-    if !state.visited.lock_mut().insert(starting_item.node) {
+    if !state.visited.lock().insert(starting_item.node) {
         // We've been here already, no need to search again.
         return;
     }
@@ -568,7 +568,7 @@ fn collect_items_rec<'tcx>(
     // This is part of the output of collection and hence only relevant for "used" items.
     // ("Mentioned" items are only considered internally during collection.)
     if mode == CollectionMode::UsedItems {
-        state.usage_map.lock_mut().record_used(starting_item.node, &used_items);
+        state.usage_map.lock().record_used(starting_item.node, &used_items);
     }
 
     {
@@ -576,13 +576,13 @@ fn collect_items_rec<'tcx>(
         if mode == CollectionMode::UsedItems {
             used_items
                 .items
-                .retain(|k, _| visited.get_mut_or_init(|| state.visited.lock_mut()).insert(*k));
+                .retain(|k, _| visited.get_mut_or_init(|| state.visited.lock()).insert(*k));
         }
 
         let mut mentioned = OnceCell::default();
         mentioned_items.items.retain(|k, _| {
             !visited.get_or_init(|| state.visited.lock()).contains(k)
-                && mentioned.get_mut_or_init(|| state.mentioned.lock_mut()).insert(*k)
+                && mentioned.get_mut_or_init(|| state.mentioned.lock()).insert(*k)
         });
     }
     if mode == CollectionMode::MentionedItems {
@@ -1810,9 +1810,9 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     debug!("building mono item graph, beginning at roots");
 
     let state = SharedState {
-        visited: MTLock::new(UnordSet::default()),
-        mentioned: MTLock::new(UnordSet::default()),
-        usage_map: MTLock::new(UsageMap::new()),
+        visited: Lock::new(UnordSet::default()),
+        mentioned: Lock::new(UnordSet::default()),
+        usage_map: Lock::new(UsageMap::new()),
     };
     let recursion_limit = tcx.recursion_limit();
 

@@ -21,11 +21,6 @@
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
-//! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
-//!
-//! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
-//! of a `RefCell`. This is appropriate when interior mutability is not
-//! required.
 
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
@@ -103,38 +98,6 @@ mod mode {
 
         // Check that the mode was either uninitialized or was already set to the requested mode.
         assert!(previous.is_ok() || previous == Err(set));
-    }
-}
-
-// FIXME(parallel_compiler): Get rid of these aliases across the compiler.
-
-#[derive(Debug, Default)]
-pub struct MTLock<T>(Lock<T>);
-
-impl<T> MTLock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        MTLock(Lock::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[inline(always)]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.lock()
-    }
-
-    #[inline(always)]
-    pub fn lock_mut(&self) -> LockGuard<'_, T> {
-        self.lock()
     }
 }
 

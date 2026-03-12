@@ -20,6 +20,10 @@ pub(super) enum DelegationGenerics<T> {
     /// In free-to-trait reuse, when user specified args for trait `reuse Trait::<i32>::foo;`
     /// in this case we need to both generate `Self` and process user args.
     SelfAndUserSpecified(Option<T>),
+    /// In delegations from trait impl to other entities like free functions or trait functions,
+    /// we want to generate a function whose generics matches generics of signature function
+    /// in trait.
+    TraitImpl(Option<T>, bool /* Has user-specified args */),
 }
 
 /// Used for storing either AST generics or their lowered HIR version. Firstly we obtain
@@ -48,12 +52,29 @@ pub(super) struct GenericsGenerationResults<'hir> {
     pub(super) child: GenericsGenerationResult<'hir>,
 }
 
+pub(super) struct GenericArgsPropagationDetails {
+    pub(super) should_propagate: bool,
+    pub(super) use_args_in_sig_inheritance: bool,
+}
+
 impl<T> DelegationGenerics<T> {
-    fn is_user_specified(&self) -> bool {
-        matches!(
-            self,
-            DelegationGenerics::UserSpecified | DelegationGenerics::SelfAndUserSpecified { .. }
-        )
+    fn args_propagation_details(&self) -> GenericArgsPropagationDetails {
+        match self {
+            DelegationGenerics::UserSpecified | DelegationGenerics::SelfAndUserSpecified { .. } => {
+                GenericArgsPropagationDetails {
+                    should_propagate: false,
+                    use_args_in_sig_inheritance: true,
+                }
+            }
+            DelegationGenerics::TraitImpl(_, user_specified) => GenericArgsPropagationDetails {
+                should_propagate: !*user_specified,
+                use_args_in_sig_inheritance: false,
+            },
+            DelegationGenerics::Default(_) => GenericArgsPropagationDetails {
+                should_propagate: true,
+                use_args_in_sig_inheritance: false,
+            },
+        }
     }
 }
 
@@ -77,6 +98,12 @@ impl<'hir> HirOrAstGenerics<'hir> {
                 DelegationGenerics::SelfAndUserSpecified(generics) => {
                     DelegationGenerics::SelfAndUserSpecified(generics.as_mut().map(process_params))
                 }
+                DelegationGenerics::TraitImpl(generics, user_specified) => {
+                    DelegationGenerics::TraitImpl(
+                        generics.as_mut().map(process_params),
+                        *user_specified,
+                    )
+                }
             };
 
             *self = HirOrAstGenerics::Hir(hir_generics);
@@ -91,7 +118,8 @@ impl<'hir> HirOrAstGenerics<'hir> {
             HirOrAstGenerics::Hir(hir_generics) => match hir_generics {
                 DelegationGenerics::UserSpecified => hir::Generics::empty(),
                 DelegationGenerics::Default(generics)
-                | DelegationGenerics::SelfAndUserSpecified(generics) => {
+                | DelegationGenerics::SelfAndUserSpecified(generics)
+                | DelegationGenerics::TraitImpl(generics, _) => {
                     generics.unwrap_or(hir::Generics::empty())
                 }
             },
@@ -111,17 +139,18 @@ impl<'hir> HirOrAstGenerics<'hir> {
             HirOrAstGenerics::Hir(hir_generics) => match hir_generics {
                 DelegationGenerics::UserSpecified => None,
                 DelegationGenerics::Default(generics)
-                | DelegationGenerics::SelfAndUserSpecified(generics) => generics.map(|generics| {
+                | DelegationGenerics::SelfAndUserSpecified(generics)
+                | DelegationGenerics::TraitImpl(generics, _) => generics.map(|generics| {
                     ctx.create_generics_args_from_params(generics.params, add_lifetimes, span)
                 }),
             },
         }
     }
 
-    pub(super) fn is_user_specified(&self) -> bool {
+    pub(super) fn args_propagation_details(&self) -> GenericArgsPropagationDetails {
         match self {
-            HirOrAstGenerics::Ast(ast_generics) => ast_generics.is_user_specified(),
-            HirOrAstGenerics::Hir(hir_generics) => hir_generics.is_user_specified(),
+            HirOrAstGenerics::Ast(ast_generics) => ast_generics.args_propagation_details(),
+            HirOrAstGenerics::Hir(hir_generics) => hir_generics.args_propagation_details(),
         }
     }
 }
@@ -215,10 +244,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
         item_id: NodeId,
         span: Span,
     ) -> GenericsGenerationResults<'hir> {
-        let delegation_in_free_ctx = !matches!(
-            self.tcx.def_kind(self.tcx.local_parent(self.local_def_id(item_id))),
-            DefKind::Trait | DefKind::Impl { .. }
-        );
+        let delegation_parent_kind =
+            self.tcx.def_kind(self.tcx.local_parent(self.local_def_id(item_id)));
+
+        let segments = &delegation.path.segments;
+        let len = segments.len();
+        let child_user_specified = segments[len - 1].args.is_some();
+
+        // If we are in trait impl always generate function whose generics matches
+        // those that are defined in trait.
+        if matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }) {
+            // Considering parent generics, during signature inheritance
+            // we will take those args that are in trait impl header trait ref.
+            let parent = GenericsGenerationResult::new(DelegationGenerics::Default(None));
+
+            let generics = self.get_fn_like_generics(root_fn_id, span);
+            let child = DelegationGenerics::TraitImpl(generics, child_user_specified);
+            let child = GenericsGenerationResult::new(child);
+
+            return GenericsGenerationResults { parent, child };
+        }
+
+        let delegation_in_free_ctx =
+            !matches!(delegation_parent_kind, DefKind::Trait | DefKind::Impl { .. });
 
         let root_function_in_trait =
             matches!(self.tcx.def_kind(self.tcx.parent(root_fn_id)), DefKind::Trait);
@@ -233,9 +281,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             )
         };
-
-        let segments = &delegation.path.segments;
-        let len = segments.len();
 
         let can_add_generics_to_parent = len >= 2
             && self.get_resolution_id(segments[len - 2].id).is_some_and(|def_id| {
@@ -256,7 +301,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             DelegationGenerics::Default(None)
         };
 
-        let child_generics = if segments[len - 1].args.is_some() {
+        let child_generics = if child_user_specified {
             DelegationGenerics::UserSpecified
         } else {
             DelegationGenerics::Default(self.get_fn_like_generics(root_fn_id, span))

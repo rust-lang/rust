@@ -48,7 +48,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 | -------------------------------- | --------------------------------------------------- | ------------ |
 | Lock\<T> | (parking_lot::Mutex\<T>) | (std::cell::RefCell) |
 | RwLock\<T> | (parking_lot::RwLock\<T>) | (std::cell::RefCell) |
-| MTLock\<T> | (Lock\<T>) | (T) |
 | ReadGuard | parking_lot::RwLockReadGuard | std::cell::Ref |
 | MappedReadGuard | parking_lot::MappedRwLockReadGuard | std::cell::Ref |
 | WriteGuard | parking_lot::RwLockWriteGuard | std::cell::RefMut |

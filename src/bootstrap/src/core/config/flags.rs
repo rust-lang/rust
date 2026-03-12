@@ -570,16 +570,21 @@ impl Subcommand {
 
     pub fn test_target(&self) -> TestTarget {
         match *self {
-            Subcommand::Test { all_targets, doc, tests, .. }
-            | Subcommand::Miri { all_targets, doc, tests, .. } => match (all_targets, doc, tests) {
-                (true, true, _) | (true, _, true) | (_, true, true) => {
-                    panic!("You can only set one of `--all-targets`, `--doc` and `--tests`.")
+            Subcommand::Test { mut all_targets, doc, tests, no_doc, .. }
+            | Subcommand::Miri { mut all_targets, doc, tests, no_doc, .. } => {
+                // for backwards compatibility --no-doc keeps working
+                all_targets = all_targets || no_doc;
+
+                match (all_targets, doc, tests) {
+                    (true, true, _) | (true, _, true) | (_, true, true) => {
+                        panic!("You can only set one of `--all-targets`, `--doc` and `--tests`.")
+                    }
+                    (true, false, false) => TestTarget::AllTargets,
+                    (false, true, false) => TestTarget::DocOnly,
+                    (false, false, true) => TestTarget::Tests,
+                    (false, false, false) => TestTarget::Default,
                 }
-                (true, false, false) => TestTarget::AllTargets,
-                (false, true, false) => TestTarget::DocOnly,
-                (false, false, true) => TestTarget::Tests,
-                (false, false, false) => TestTarget::Default,
-            },
+            }
             _ => TestTarget::Default,
         }
     }
