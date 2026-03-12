@@ -1213,11 +1213,6 @@ impl Step for Enzyme {
             ldflags.push_all("-fuse-ld=lld");
         }
 
-        if target.contains("apple-darwin") && builder.llvm_link_shared() {
-            let llvm_libdir = builder.llvm_out(target).join("lib");
-            ldflags.push_all(format!("-L{}", llvm_libdir.display()));
-        }
-
         configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
 
         // Re-use the same flags as llvm to control the level of debug information
