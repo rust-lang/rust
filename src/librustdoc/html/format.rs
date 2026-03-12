@@ -511,7 +511,7 @@ fn remote_url_prefix(url: &str, is_absolute: bool, depth: usize) -> UrlPartsBuil
 /// the rest of the path. This is done by comparing `module_fqp` with `relative_to`.
 ///
 /// When generating a link for jump-to-def across crates, that won't work, because sources are
-/// stored under "src/[crate]/[path].rs". When linking jump-to-def for another crate, we just
+/// stored under `src/<crate>/<path>.rs`. When linking jump-to-def for another crate, we just
 /// write enough "../"'s to reach the doc root, then generate the entire path for `module_fqp`.
 /// The right number of "../"'s is stored in `jump_to_def_path_depth`.
 fn url_parts(
