@@ -2718,18 +2718,19 @@ impl<'test> TestCx<'test> {
         // Wrapper tools set by `runner` might provide extra output on failure,
         // for example a WebAssembly runtime might print the stack trace of an
         // `unreachable` instruction by default.
-        //
+        let compare_output_by_lines_subset = self.config.runner.is_some();
+
         // Also, some tests like `ui/parallel-rustc` have non-deterministic
         // orders of output, so we need to compare by lines.
-        let compare_output_by_lines =
-            self.props.compare_output_by_lines || self.config.runner.is_some();
+        let compare_output_by_lines = self.props.compare_output_by_lines;
 
         let tmp;
-        let (expected, actual): (&str, &str) = if compare_output_by_lines {
+        let (expected, actual): (&str, &str) = if compare_output_by_lines_subset {
             let actual_lines: HashSet<_> = actual.lines().collect();
             let expected_lines: Vec<_> = expected.lines().collect();
             let mut used = expected_lines.clone();
             used.retain(|line| actual_lines.contains(line));
+
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
                 return CompareOutcome::Same;
@@ -2738,8 +2739,19 @@ impl<'test> TestCx<'test> {
                 // if we have no lines to check, force a full overwite
                 ("", actual)
             } else {
+                // this prints/blesses the subset, not the actual
                 tmp = (expected_lines.join("\n"), used.join("\n"));
                 (&tmp.0, &tmp.1)
+            }
+        } else if compare_output_by_lines {
+            let mut actual_lines: Vec<&str> = actual.lines().collect();
+            let mut expected_lines: Vec<&str> = expected.lines().collect();
+            actual_lines.sort_unstable();
+            expected_lines.sort_unstable();
+            if actual_lines == expected_lines {
+                return CompareOutcome::Same;
+            } else {
+                (expected, actual)
             }
         } else {
             (expected, actual)
