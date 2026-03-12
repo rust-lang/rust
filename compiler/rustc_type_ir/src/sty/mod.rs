@@ -25,20 +25,20 @@ use crate::{
 };
 
 /// Use this rather than `TyKind`, whenever possible.
-#[derive_where(Copy; I: Interner, I::Interned<WithCachedTypeInfo<TyKind<I>>>: Copy)]
+#[derive_where(Copy; I: Interner, I::InternedTyKindWithCachedInfo: Copy)]
 #[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
-pub struct Ty<I: Interner>(pub I::Interned<WithCachedTypeInfo<TyKind<I>>>);
+pub struct Ty<I: Interner>(pub I::InternedTyKindWithCachedInfo);
 
 impl<I: Interner> Ty<I> {
     #[inline]
-    pub fn from_interned(interned: I::Interned<WithCachedTypeInfo<TyKind<I>>>) -> Self {
+    pub fn from_interned(interned: I::InternedTyKindWithCachedInfo) -> Self {
         Ty(interned)
     }
 
     #[inline]
-    pub fn interned(self) -> I::Interned<WithCachedTypeInfo<TyKind<I>>> {
+    pub fn interned(self) -> I::InternedTyKindWithCachedInfo {
         self.0
     }
 }
@@ -60,7 +60,7 @@ impl<CTX, I: Interner> HashStable<CTX> for Ty<I> {
 
 impl<I: Interner> fmt::Debug for Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&(*self).kind(), f)
@@ -69,7 +69,7 @@ where
 
 impl<I: Interner> IntoKind for Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
 {
     type Kind = TyKind<I>;
 
@@ -81,7 +81,7 @@ where
 
 impl<I: Interner> Flags for Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
 {
     #[inline]
     fn flags(&self) -> TypeFlags {
@@ -102,7 +102,7 @@ impl<I: Interner> TypeVisitable<I> for Ty<I> {
 
 impl<I: Interner> TypeSuperVisitable<I> for Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
     I::BoundExistentialPredicates: TypeVisitable<I>,
     I::Const: TypeVisitable<I>,
     I::ErrorGuaranteed: TypeVisitable<I>,
@@ -171,7 +171,7 @@ impl<I: Interner> TypeFoldable<I> for Ty<I> {
 
 impl<I: Interner> TypeSuperFoldable<I> for Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
     I::BoundExistentialPredicates: TypeFoldable<I>,
     I::Const: TypeFoldable<I>,
     I::GenericArgs: TypeFoldable<I>,
@@ -279,7 +279,7 @@ where
     I::Region: TypeFoldable<I> + TypeVisitable<I>,
     I::Term: From<Ty<I>>,
     I::Tys: TypeFoldable<I> + TypeVisitable<I>,
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>:
+    I::InternedTyKindWithCachedInfo:
         Copy + Clone + Debug + Hash + Eq + Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
 {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
@@ -652,7 +652,7 @@ where
 // Methods to determine what flavour `Ty` is
 impl<I: Interner> Ty<I>
 where
-    I::Interned<WithCachedTypeInfo<TyKind<I>>>: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
+    I::InternedTyKindWithCachedInfo: Deref<Target = WithCachedTypeInfo<TyKind<I>>>,
     I::BoundExistentialPredicates: TypeVisitable<I>,
     I::Const: TypeVisitable<I>,
     I::ErrorGuaranteed: TypeVisitable<I>,
