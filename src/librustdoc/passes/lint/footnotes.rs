@@ -23,13 +23,22 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         match event {
             Event::Text(text)
                 if &*text == "["
-                    && let Some((Event::Text(text), _)) = parser.peek()
-                    && text.trim_start().starts_with('^')
-                    && parser.next().is_some()
-                    && let Some((Event::Text(text), end_span)) = parser.peek()
-                    && &**text == "]" =>
+                    && let Some((Event::Text(_), range)) = parser.next()
+                    && dox[span.end..range.end].starts_with('^') =>
             {
-                missing_footnote_references.insert(Range { start: span.start, end: end_span.end });
+                loop {
+                    let Some((Event::Text(text), new_span)) = parser.peek() else { break };
+                    if &**text != "]" {
+                        parser.next();
+                        continue;
+                    }
+                    let text = &dox[span.end..new_span.end];
+                    if !text.ends_with("\\]") {
+                        missing_footnote_references
+                            .insert(Range { start: span.start, end: new_span.end });
+                    }
+                    break;
+                }
             }
             Event::FootnoteReference(label) => {
                 footnote_references.insert(label);
