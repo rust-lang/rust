@@ -2,6 +2,9 @@
 //!
 //! [ACLE documentation](https://arm-software.github.io/acle/main/acle.html#random-number-generation-intrinsics)
 
+#[cfg(test)]
+use stdarch_test::assert_instr;
+
 unsafe extern "unadjusted" {
     #[link_name = "llvm.aarch64.rndr"]
     fn rndr_() -> Tuple;
@@ -22,6 +25,7 @@ struct Tuple {
 /// is returned.
 #[inline]
 #[target_feature(enable = "rand")]
+#[cfg_attr(test, assert_instr(mrs))]
 #[unstable(feature = "stdarch_aarch64_rand", issue = "153514")]
 pub unsafe fn __rndr(value: *mut u64) -> i32 {
     let Tuple { bits, status } = rndr_();
@@ -35,29 +39,10 @@ pub unsafe fn __rndr(value: *mut u64) -> i32 {
 /// to by the input is set to zero and a non-zero value is returned.
 #[inline]
 #[target_feature(enable = "rand")]
+#[cfg_attr(test, assert_instr(mrs))]
 #[unstable(feature = "stdarch_aarch64_rand", issue = "153514")]
 pub unsafe fn __rndrrs(value: *mut u64) -> i32 {
     let Tuple { bits, status } = rndrrs_();
     unsafe { *value = bits };
     status as i32
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use stdarch_test::assert_instr;
-
-    #[cfg_attr(test, assert_instr(mrs))]
-    #[allow(dead_code)]
-    #[target_feature(enable = "rand")]
-    unsafe fn test_rndr(value: &mut u64) -> i32 {
-        __rndr(value)
-    }
-
-    #[cfg_attr(test, assert_instr(mrs))]
-    #[allow(dead_code)]
-    #[target_feature(enable = "rand")]
-    unsafe fn test_rndrrs(value: &mut u64) -> i32 {
-        __rndrrs(value)
-    }
 }

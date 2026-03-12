@@ -109,42 +109,46 @@ mod test {
     use super::*;
     use stdarch_test::assert_instr;
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(irg))] // FIXME: MSVC  `dumpbin` doesn't support MTE
+    // Instruction tests are separate because the functions use generics.
+    //
+    // FIXME: As of 2026 MSVC  `dumpbin` doesn't support MTE.
+
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(irg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_create_random_tag(src: *const (), mask: u64) -> *const () {
         __arm_mte_create_random_tag(src, mask)
     }
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(addg))]
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(addg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_increment_tag(src: *const ()) -> *const () {
         __arm_mte_increment_tag::<1, _>(src)
     }
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(gmi))]
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(gmi))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_exclude_tag(src: *const (), excluded: u64) -> u64 {
         __arm_mte_exclude_tag(src, excluded)
     }
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stg))]
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(stg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_set_tag(src: *const ()) {
         __arm_mte_set_tag(src)
     }
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldg))]
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(ldg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_get_tag(src: *const ()) -> *const () {
         __arm_mte_get_tag(src)
     }
 
-    #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(subp))]
+    #[cfg_attr(not(target_env = "msvc"), assert_instr(subp))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
     unsafe fn test_arm_mte_ptrdiff(a: *const (), b: *const ()) -> i64 {
