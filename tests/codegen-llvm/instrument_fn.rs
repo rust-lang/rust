@@ -1,12 +1,14 @@
 // Verify the #[instrument_fn] applies the correct LLVM IR function attributes.
 //
+// Limit to x86_64 as it supports all instrumentation options.
+//
 //@ revisions:XRAY MCOUNT FENTRY
 //@ add-minicore
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0 --target=x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
 //@ [XRAY] compile-flags: -Zinstrument-function=xray
 //@ [MCOUNT] compile-flags: -Zinstrument-function=mcount
-//@ [FENTRY] compile-flags: -Zinstrument-function=fentry --target=x86_64-unknown-linux-gnu
-//@ [FENTRY] needs-llvm-components: x86
+//@ [FENTRY] compile-flags: -Zinstrument-function=fentry
 
 #![feature(no_core)]
 #![crate_type = "lib"]
