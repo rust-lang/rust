@@ -299,3 +299,13 @@ fn issue9895() {
     //~^ needless_late_init
     (r = 5);
 }
+
+fn if_or_match_in_block_expr() {
+    let z;
+    //~^ needless_late_init
+    if true {
+        z = 1;
+    } else {
+        z = 2;
+    }
+}

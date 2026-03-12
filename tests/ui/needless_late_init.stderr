@@ -291,5 +291,22 @@ LL |
 LL ~     let r = 5;
    |
 
-error: aborting due to 17 previous errors
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:304:5
+   |
+LL |     let z;
+   |     ^^^^^^
+   |
+help: move the declaration `z` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let z = if true {
+LL ~         1
+LL |     } else {
+LL ~         2
+LL ~     };
+   |
+
+error: aborting due to 18 previous errors
 

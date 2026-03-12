@@ -204,7 +204,7 @@ fn assignment_suggestions<'tcx>(
 }
 
 struct Usage<'tcx> {
-    stmt: &'tcx Stmt<'tcx>,
+    span: Span,
     expr: &'tcx Expr<'tcx>,
     needs_semi: bool,
 }
@@ -226,16 +226,26 @@ fn first_usage<'tcx>(
         .find(|&stmt| is_local_used(cx, stmt, binding_id))
         .and_then(|stmt| match stmt.kind {
             StmtKind::Expr(expr) => Some(Usage {
-                stmt,
+                span: stmt.span,
                 expr,
                 needs_semi: true,
             }),
             StmtKind::Semi(expr) => Some(Usage {
-                stmt,
+                span: stmt.span,
                 expr,
                 needs_semi: false,
             }),
             _ => None,
+        })
+        .or_else(|| {
+            block
+                .expr
+                .filter(|expr| is_local_used(cx, *expr, binding_id))
+                .map(|expr| Usage {
+                    span: expr.span,
+                    expr,
+                    needs_semi: true,
+                })
         })
 }
 
@@ -300,10 +310,10 @@ fn check<'tcx>(
                 "unneeded late initialization",
                 |diag| {
                     suggestions.push((local_stmt.span, String::new()));
-                    suggestions.push((usage.stmt.span.shrink_to_lo(), format!("{let_snippet} = ")));
+                    suggestions.push((usage.span.shrink_to_lo(), format!("{let_snippet} = ")));
 
                     if usage.needs_semi {
-                        suggestions.push((usage.stmt.span.shrink_to_hi(), ";".to_owned()));
+                        suggestions.push((usage.span.shrink_to_hi(), ";".to_owned()));
                     }
 
                     diag.multipart_suggestion(
@@ -327,10 +337,10 @@ fn check<'tcx>(
                 "unneeded late initialization",
                 |diag| {
                     suggestions.push((local_stmt.span, String::new()));
-                    suggestions.push((usage.stmt.span.shrink_to_lo(), format!("{let_snippet} = ")));
+                    suggestions.push((usage.span.shrink_to_lo(), format!("{let_snippet} = ")));
 
                     if usage.needs_semi {
-                        suggestions.push((usage.stmt.span.shrink_to_hi(), ";".to_owned()));
+                        suggestions.push((usage.span.shrink_to_hi(), ";".to_owned()));
                     }
 
                     diag.multipart_suggestion(
