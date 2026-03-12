@@ -125,17 +125,18 @@ where
 fn mk_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
+    key: C::Key,
     cycle_error: CycleError,
 ) -> C::Value {
     let error = report_cycle(tcx.sess, &cycle_error);
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, key, cycle_error, guar)
         }
         CycleErrorHandling::DelayBug => {
             let guar = error.delay_as_bug();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
+            (query.value_from_cycle_error)(tcx, key, cycle_error, guar)
         }
     }
 }
@@ -219,6 +220,7 @@ where
 fn cycle_error<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
+    key: C::Key,
     try_execute: QueryJobId,
     span: Span,
 ) -> (C::Value, Option<DepNodeIndex>) {
@@ -229,7 +231,7 @@ fn cycle_error<'tcx, C: QueryCache>(
         .expect("failed to collect active queries");
 
     let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
-    (mk_cycle(query, tcx, error.lift()), None)
+    (mk_cycle(query, tcx, key, error.lift()), None)
 }
 
 #[inline(always)]
@@ -274,7 +276,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, tcx, cycle.lift()), None),
+        Err(cycle) => (mk_cycle(query, tcx, key, cycle.lift()), None),
     }
 }
 
@@ -337,7 +339,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // If we are single-threaded we know that we have cycle error,
                         // so we just return the error.
-                        cycle_error(query, tcx, id, span)
+                        cycle_error(query, tcx, key, id, span)
                     }
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),

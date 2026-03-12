@@ -136,8 +136,12 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// For `no_hash` queries, this function pointer is None.
     pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
 
-    pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> C::Value,
+    pub value_from_cycle_error: fn(
+        tcx: TyCtxt<'tcx>,
+        key: C::Key,
+        cycle_error: CycleError,
+        guar: ErrorGuaranteed,
+    ) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 
     /// Formats a human-readable description of this query and its key, as
