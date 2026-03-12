@@ -332,6 +332,7 @@ pub struct LongRunning {
 
 #[derive(Diagnostic)]
 #[diag("constant evaluation is taking a long time")]
+#[note("number of steps elapsed: {$force_duplicate}")]
 pub struct LongRunningWarn {
     #[primary_span]
     #[label("the const evaluator is currently interpreting this expression")]

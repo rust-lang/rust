@@ -138,6 +138,14 @@ impl Suggestions {
             Suggestions::Disabled => Vec::new(),
         }
     }
+
+    pub fn borrow_tag(&self) -> &[CodeSuggestion] {
+        match self {
+            Suggestions::Enabled(suggestions) => &suggestions,
+            Suggestions::Sealed(suggestions) => &suggestions,
+            Suggestions::Disabled => &[],
+        }
+    }
 }
 
 impl Default for Suggestions {
@@ -1285,8 +1293,12 @@ impl DiagCtxtInner {
                 let mut hasher = StableHasher::new();
                 diagnostic.hash(&mut hasher);
                 let diagnostic_hash = hasher.finish();
+                tracing::info!(?diagnostic.messages);
+                tracing::info!(?diagnostic.span);
+                tracing::info!(?diagnostic_hash);
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
+            tracing::info!(?already_emitted);
 
             let is_error = diagnostic.is_error();
             let is_lint = diagnostic.is_lint.is_some();

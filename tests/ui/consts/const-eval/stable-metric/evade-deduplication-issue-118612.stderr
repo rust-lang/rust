@@ -6,6 +6,7 @@ LL | /     loop {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 32
 help: the constant being evaluated
   --> $DIR/evade-deduplication-issue-118612.rs:6:1
    |
@@ -20,6 +21,7 @@ LL | /     loop {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 64
 help: the constant being evaluated
   --> $DIR/evade-deduplication-issue-118612.rs:6:1
    |
@@ -34,6 +36,7 @@ LL | /     loop {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 128
 help: the constant being evaluated
   --> $DIR/evade-deduplication-issue-118612.rs:6:1
    |
@@ -48,6 +51,7 @@ LL | /     loop {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 256
 help: the constant being evaluated
   --> $DIR/evade-deduplication-issue-118612.rs:6:1
    |
@@ -62,6 +66,7 @@ LL | /     loop {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 512
 help: the constant being evaluated
   --> $DIR/evade-deduplication-issue-118612.rs:6:1
    |
