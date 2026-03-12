@@ -12,10 +12,10 @@ use rustc_middle::query::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
+use crate::{CollectActiveJobsKind, collect_active_query_jobs};
 
 /// Map from query job IDs to job information collected by
-/// `collect_active_jobs_from_all_queries`.
+/// `collect_active_query_jobs`.
 #[derive(Debug, Default)]
 pub struct QueryJobMap<'tcx> {
     map: FxHashMap<QueryJobId, QueryJobInfo<'tcx>>,
@@ -24,7 +24,7 @@ pub struct QueryJobMap<'tcx> {
 impl<'tcx> QueryJobMap<'tcx> {
     /// Adds information about a job ID to the job map.
     ///
-    /// Should only be called by `gather_active_jobs`.
+    /// Should only be called by `collect_active_query_jobs_inner`.
     pub(crate) fn insert(&mut self, id: QueryJobId, info: QueryJobInfo<'tcx>) {
         self.map.insert(id, info);
     }
@@ -407,7 +407,7 @@ pub fn print_query_stack<'tcx>(
     let mut count_total = 0;
 
     // Make use of a partial query job map if we fail to take locks collecting active queries.
-    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::PartialAllowed);
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::PartialAllowed);
 
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "\n\nquery stack during panic:");
