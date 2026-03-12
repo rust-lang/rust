@@ -16,7 +16,7 @@ use crate::io;
 use crate::os::hermit::io::OwnedFd;
 #[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
 use crate::os::raw;
-#[cfg(all(doc, not(target_arch = "wasm32")))]
+#[cfg(all(doc, not(any(target_arch = "wasm32", target_env = "sgx"))))]
 use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
