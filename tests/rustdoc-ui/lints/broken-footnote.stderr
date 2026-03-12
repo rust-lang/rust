@@ -1,10 +1,10 @@
 error: no footnote definition matching this footnote
-  --> $DIR/broken-footnote.rs:3:45
+  --> $DIR/broken-footnote.rs:9:5
    |
-LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
-   |                                             -^^^^^
-   |                                             |
-   |                                             help: if it should not be a footnote, escape it: `\`
+LL | //! [^*] special characters can appear within footnote references
+   |     -^^^
+   |     |
+   |     help: if it should not be a footnote, escape it: `\`
    |
 note: the lint level is defined here
   --> $DIR/broken-footnote.rs:1:9
@@ -20,5 +20,21 @@ LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
    |                                   |
    |                                   help: if it should not be a footnote, escape it: `\`
 
-error: aborting due to 2 previous errors
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:3:45
+   |
+LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
+   |                                             -^^^^^
+   |                                             |
+   |                                             help: if it should not be a footnote, escape it: `\`
+
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:16:5
+   |
+LL | //! [^\_] so can escaped characters
+   |     -^^^^
+   |     |
+   |     help: if it should not be a footnote, escape it: `\`
+
+error: aborting due to 4 previous errors
 
