@@ -5,7 +5,7 @@
 
 const _: () = {
     assert!((const || true)());
-    //~^ ERROR }: [const] Fn()` is not satisfied
+    //~^ ERROR }: const Fn()` is not satisfied
 };
 
 fn main() {}
