@@ -102,6 +102,7 @@ declare_lint_pass! {
         RUST_2024_INCOMPATIBLE_PAT,
         RUST_2024_PRELUDE_COLLISIONS,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
+        SELF_LIFETIME_ELISION_NOT_APPLICABLE,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SHADOWING_SUPERTRAIT_ITEMS,
         SINGLE_USE_LIFETIMES,
@@ -2859,6 +2860,38 @@ declare_lint! {
     "detect unsupported use of `Self` from outer item",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #124186),
+    };
+}
+
+declare_lint! {
+    /// The `self_lifetime_elision_not_applicable` lint detects `self` parameters
+    /// whose type does not syntactically contain `Self`, causing lifetime
+    /// elision to rely on an unreliable name-matching heuristic.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct Foo<'a>(&'a ());
+    ///
+    /// impl<'a> Foo<'a> {
+    ///     fn get(self: &Foo<'a>) -> &() { self.0 }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When a `self` parameter uses a concrete type name instead of `Self`,
+    /// the compiler uses a name-matching heuristic to determine if self-type
+    /// lifetime elision applies. This heuristic cannot see through type
+    /// aliases, ignores generic arguments, and may silently choose an
+    /// incorrect lifetime. Use `&self` or `self: &Self` instead.
+    pub SELF_LIFETIME_ELISION_NOT_APPLICABLE,
+    Warn,
+    "self-type lifetime elision for non-`Self` type",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #140611),
     };
 }
 

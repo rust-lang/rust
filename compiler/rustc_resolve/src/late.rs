@@ -2505,6 +2505,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // Handle `self` specially.
             if index == 0 && has_self {
                 let self_lifetime = self.find_lifetime_for_self(ty);
+
+                if self.self_type_has_reference(ty) && !self.self_param_has_genuine_self(ty) {
+                    self.r.lint_buffer.buffer_lint(
+                        lint::builtin::SELF_LIFETIME_ELISION_NOT_APPLICABLE,
+                        ty.id,
+                        ty.span,
+                        lint::BuiltinLintDiag::SelfLifetimeElisionNotApplicable { span: ty.span },
+                    );
+                }
+
                 elision_lifetime = match self_lifetime {
                     // We found `self` elision.
                     Set1::One(lifetime) => Elision::Self_(lifetime),
@@ -2531,6 +2541,58 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // We do not have a candidate.
         Err((all_candidates, parameter_info))
+    }
+
+    /// Returns `true` if `ty` syntactically contains `Self`.
+    fn self_param_has_genuine_self(&self, ty: &'ast Ty) -> bool {
+        struct GenuineSelfVisitor<'a, 'ra, 'tcx> {
+            r: &'a Resolver<'ra, 'tcx>,
+            found: bool,
+        }
+        impl<'ra> Visitor<'ra> for GenuineSelfVisitor<'_, '_, '_> {
+            fn visit_ty(&mut self, ty: &'ra Ty) {
+                match ty.kind {
+                    TyKind::ImplicitSelf => self.found = true,
+                    TyKind::Path(None, _) => {
+                        if matches!(
+                            self.r.partial_res_map[&ty.id].full_res(),
+                            Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. })
+                        ) {
+                            self.found = true;
+                        }
+                    }
+                    _ => {}
+                }
+                if !self.found {
+                    visit::walk_ty(self, ty);
+                }
+            }
+            fn visit_expr(&mut self, _: &'ra Expr) {}
+        }
+        let mut visitor = GenuineSelfVisitor { r: self.r, found: false };
+        visitor.visit_ty(ty);
+        visitor.found
+    }
+
+    /// Returns `true` if `ty` contains a reference type (`&` or pinned `&`).
+    fn self_type_has_reference(&self, ty: &'ast Ty) -> bool {
+        struct RefVisitor {
+            found: bool,
+        }
+        impl<'ra> Visitor<'ra> for RefVisitor {
+            fn visit_ty(&mut self, ty: &'ra Ty) {
+                if matches!(ty.kind, TyKind::Ref(..) | TyKind::PinnedRef(..)) {
+                    self.found = true;
+                }
+                if !self.found {
+                    visit::walk_ty(self, ty);
+                }
+            }
+            fn visit_expr(&mut self, _: &'ra Expr) {}
+        }
+        let mut visitor = RefVisitor { found: false };
+        visitor.visit_ty(ty);
+        visitor.found
     }
 
     /// List all the lifetimes that appear in the provided type.

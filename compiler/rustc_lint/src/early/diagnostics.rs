@@ -298,6 +298,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 }
                 .into_diag(dcx, level)
             }
+            BuiltinLintDiag::SelfLifetimeElisionNotApplicable { span } => {
+                lints::SelfLifetimeElisionNotApplicable { span }.into_diag(dcx, level)
+            }
             BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
                 Some(wildcard_span) => {
                     lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }

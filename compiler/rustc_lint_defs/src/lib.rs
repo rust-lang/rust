@@ -742,6 +742,9 @@ pub enum BuiltinLintDiag {
         span: Span,
         lifetimes_in_scope: MultiSpan,
     },
+    SelfLifetimeElisionNotApplicable {
+        span: Span,
+    },
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
