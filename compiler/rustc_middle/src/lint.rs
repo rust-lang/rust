@@ -300,11 +300,8 @@ fn explain_lint_level_source(
 ///
 /// - [`TyCtxt::emit_node_span_lint`]
 /// - `LintContext::opt_span_lint`
-///
-/// This function will replace `lint_level` once all its callers have been replaced
-/// with `diag_lint_level`.
 #[track_caller]
-pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
+pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     sess: &'a Session,
     lint: &'static Lint,
     level: LevelAndSource,
@@ -314,7 +311,7 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
     #[track_caller]
-    fn diag_lint_level_impl<'a>(
+    fn emit_lint_base_impl<'a>(
         sess: &'a Session,
         lint: &'static Lint,
         level: LevelAndSource,
@@ -498,7 +495,7 @@ pub fn diag_lint_level<'a, D: Diagnostic<'a, ()> + 'a>(
         explain_lint_level_source(sess, lint, level, src, &mut err);
         err.emit();
     }
-    diag_lint_level_impl(
+    emit_lint_base_impl(
         sess,
         lint,
         level,

@@ -55,7 +55,7 @@ use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
-use crate::lint::diag_lint_level;
+use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
@@ -2539,7 +2539,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        diag_lint_level(self.sess, lint, level, Some(span.into()), decorator)
+        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2582,7 +2582,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, id);
-        diag_lint_level(self.sess, lint, level, None, decorator);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
