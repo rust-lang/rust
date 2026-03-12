@@ -367,6 +367,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
+  // We only support the AIX Extended Altivec ABI and not the legacy AIX ABI.
+  // This is required for using the non-volatile vector registers.
+  if (Trip.isOSAIX())
+    Options.EnableAIXExtendedAltivecABI = true;
+
 #if LLVM_VERSION_GE(21, 0)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
                                                      Options, RM, CM, OptLevel);
