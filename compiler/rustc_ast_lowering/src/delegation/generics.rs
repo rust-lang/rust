@@ -10,7 +10,7 @@ use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, Ident, Span};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::{AstOwner, LoweringContext};
+use crate::{AstOwner, LoweringContext, ResolverAstLoweringExt};
 
 pub(super) enum DelegationGenerics<T> {
     /// User-specified args are present: `reuse foo::<String>;`.
@@ -293,7 +293,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
                 p.id,
                 self.tcx
                     .create_def(
-                        self.local_def_id(item_id),
+                        self.resolver.def_id(item_id).unwrap(),
                         Some(p.ident.name),
                         match p.kind {
                             GenericParamKind::Lifetime => DefKind::LifetimeParam,

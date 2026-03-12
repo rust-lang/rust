@@ -56,8 +56,9 @@ use rustc_hir::{
     LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::extension;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{DelegationFnSig, DelegationInfo, ResolverAstLowering, TyCtxt};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -256,20 +257,60 @@ struct CombinedResolverAstLowering<'a, 'tcx> {
     mut_part: MutableResolverAstLowering,
 }
 
-impl CombinedResolverAstLowering<'_, '_> {
+impl ResolverAstLoweringExt for CombinedResolverAstLowering<'_, '_> {
     #[inline]
-    fn get_partial_res(&self, id: NodeId) -> Option<&PartialRes> {
-        let base_res = self.base.partial_res_map.get(&id);
-
-        // Partial res map is modified only in delegation for now, so it will
-        // be empty most of the time.
-        if self.mut_part.partial_res_map.is_empty() {
-            return base_res;
-        }
-
-        self.mut_part.partial_res_map.get(&id).or(base_res)
+    fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
+        self.base.legacy_const_generic_args(expr, tcx)
     }
 
+    #[inline]
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
+        self.mut_part.partial_res_map.get(&id).cloned().or_else(|| self.base.get_partial_res(id))
+    }
+
+    #[inline]
+    fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
+        self.base.get_import_res(id)
+    }
+
+    #[inline]
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
+        self.base.get_label_res(id)
+    }
+
+    #[inline]
+    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
+        self.base.get_lifetime_res(id)
+    }
+
+    #[inline]
+    fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
+        self.base.extra_lifetime_params(id)
+    }
+
+    #[inline]
+    fn delegation_fn_sig(&self, id: LocalDefId) -> Option<&DelegationFnSig> {
+        self.base.delegation_fn_sig(id)
+    }
+
+    #[inline]
+    fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
+        self.base.delegation_info(id)
+    }
+
+    #[inline]
+    fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
+        self.mut_part.node_id_to_def_id.get(&id).copied().or_else(|| self.base.def_id(id))
+    }
+
+    #[inline]
+    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
+        self.base.lifetime_elision_allowed(id)
+    }
+}
+
+#[extension(trait ResolverAstLoweringExt)]
+impl ResolverAstLowering<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
@@ -298,10 +339,27 @@ impl CombinedResolverAstLowering<'_, '_> {
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
+    #[inline]
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
+        self.partial_res_map.get(&id).copied()
+    }
+
+    /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
+    #[inline]
+    fn get_import_res(&self, id: NodeId) -> Option<&PerNS<Option<Res<NodeId>>>> {
+        self.import_res_map.get(&id)
+    }
+
+    /// Obtains resolution for a label with the given `NodeId`.
+    #[inline]
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
+
     /// Obtains resolution for a lifetime with the given `NodeId`.
     #[inline]
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.base.lifetimes_res_map.get(&id).copied()
+        self.lifetimes_res_map.get(&id).copied()
     }
 
     /// Obtain the list of lifetimes parameters to add to an item.
@@ -312,8 +370,28 @@ impl CombinedResolverAstLowering<'_, '_> {
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
     #[inline]
-    fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.base.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
+    fn extra_lifetime_params(&self, id: NodeId) -> Option<&Vec<(Ident, NodeId, LifetimeRes)>> {
+        self.extra_lifetime_params_map.get(&id)
+    }
+
+    #[inline]
+    fn delegation_fn_sig(&self, id: LocalDefId) -> Option<&DelegationFnSig> {
+        self.delegation_fn_sigs.get(&id)
+    }
+
+    #[inline]
+    fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
+        self.delegation_infos.get(&id)
+    }
+
+    #[inline]
+    fn def_id(&self, id: NodeId) -> Option<LocalDefId> {
+        self.node_id_to_def_id.get(&id).copied()
+    }
+
+    #[inline]
+    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
+        self.lifetime_elision_allowed.contains(&id)
     }
 }
 
@@ -634,12 +712,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        // We are only inserting new ids, not rewriting already existent.
-        if let Some(&def_id) = self.resolver.base.node_id_to_def_id.get(&node) {
-            return Some(def_id);
-        }
-
-        self.resolver.mut_part.node_id_to_def_id.get(&node).copied()
+        self.resolver.def_id(node)
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
@@ -814,7 +887,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        let per_ns = self.resolver.base.import_res_map.get(&id).copied().unwrap_or_default();
+        let per_ns = self.resolver.get_import_res(id).copied().unwrap_or_default();
         let per_ns = per_ns.map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
@@ -946,7 +1019,8 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     ) -> &'hir [hir::GenericParam<'hir>] {
         // Start by creating params for extra lifetimes params, as this creates the definitions
         // that may be referred to by the AST inside `generic_params`.
-        let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
+        let extra_lifetimes =
+            self.resolver.extra_lifetime_params(binder).cloned().unwrap_or_default();
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .into_iter()
@@ -1785,11 +1859,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             inputs,
             output,
             c_variadic,
-            lifetime_elision_allowed: self
-                .resolver
-                .base
-                .lifetime_elision_allowed
-                .contains(&fn_node_id),
+            lifetime_elision_allowed: self.resolver.lifetime_elision_allowed(fn_node_id),
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,

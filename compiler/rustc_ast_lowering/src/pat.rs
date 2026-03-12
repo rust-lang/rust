@@ -12,7 +12,7 @@ use rustc_span::{DesugaringKind, Ident, Span};
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
 };
-use super::{ImplTraitContext, LoweringContext, ParamMode};
+use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
 use crate::{AllowReturnTypeNotation, ImplTraitPosition};
 
 impl<'hir> LoweringContext<'_, '_, 'hir> {

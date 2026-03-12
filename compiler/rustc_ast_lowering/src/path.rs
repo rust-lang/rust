@@ -16,7 +16,7 @@ use super::errors::{
 };
 use super::{
     AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
-    LifetimeRes, LoweringContext, ParamMode,
+    LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
 impl<'hir> LoweringContext<'_, '_, 'hir> {
@@ -41,7 +41,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             });
 
         let partial_res =
-            self.resolver.get_partial_res(id).copied().unwrap_or_else(|| PartialRes::new(Res::Err));
+            self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
         let base_res = partial_res.base_res();
         let unresolved_segments = partial_res.unresolved_segments();
 

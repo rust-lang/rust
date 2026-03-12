@@ -60,7 +60,7 @@ use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationRe
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
     AllowReturnTypeNotation, CombinedResolverAstLowering, GenericArgsMode, ImplTraitContext,
-    ImplTraitPosition, LoweringContext, ParamMode,
+    ImplTraitPosition, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 
 mod generics;
@@ -139,12 +139,9 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
             DefKind::AssocFn => match def_id.as_local() {
-                Some(local_def_id) => self
-                    .resolver
-                    .base
-                    .delegation_fn_sigs
-                    .get(&local_def_id)
-                    .is_some_and(|sig| sig.has_self),
+                Some(local_def_id) => {
+                    self.resolver.delegation_fn_sig(local_def_id).is_some_and(|sig| sig.has_self)
+                }
                 None => self.tcx.associated_item(def_id).is_method(),
             },
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
@@ -160,7 +157,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 
         // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
         let ids = if let Some(delegation_info) =
-            self.resolver.base.delegation_infos.get(&self.local_def_id(item_id))
+            self.resolver.delegation_info(self.local_def_id(item_id))
         {
             self.get_delegation_ids(delegation_info.resolution_node, span)
         } else {
@@ -345,10 +342,10 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 
     fn get_attrs(&self, local_id: LocalDefId) -> &DelegationAttrs {
         // local_id can correspond either to a function or other delegation
-        if let Some(fn_sig) = self.resolver.base.delegation_fn_sigs.get(&local_id) {
+        if let Some(fn_sig) = self.resolver.delegation_fn_sig(local_id) {
             &fn_sig.attrs
         } else {
-            &self.resolver.base.delegation_infos[&local_id].attrs
+            &self.resolver.delegation_info(local_id).unwrap().attrs
         }
     }
 
@@ -379,7 +376,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             // it means that we refer to another delegation as a callee, so in order to obtain
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
-                && let Some(delegation_info) = self.resolver.base.delegation_infos.get(&local_id)
+                && let Some(delegation_info) = self.resolver.delegation_info(local_id)
             {
                 node_id = delegation_info.resolution_node;
                 if visited.contains(&node_id) {
@@ -403,7 +400,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     // Function parameter count, including C variadic `...` if present.
     fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
         if let Some(local_sig_id) = def_id.as_local() {
-            match self.resolver.base.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.delegation_fn_sig(local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
             }
@@ -458,7 +455,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
         span: Span,
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
-            match self.resolver.base.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.delegation_fn_sig(local_sig_id) {
                 Some(sig) => {
                     let parent = self.tcx.parent(sig_id);
                     // HACK: we override the default safety instead of generating attributes from the ether.
