@@ -402,6 +402,10 @@ fn receiver_accessor(receiver: &ast::Expr) -> ast::Expr {
         .unwrap_or_else(|| receiver.clone())
 }
 
+/// Given an `initial_element`, tries to expand it to include deref(s), and then references.
+/// Returns the expanded expressions, and the added prefix as a string
+///
+/// For example, if called with the `42` in `&&mut *42`, would return `(&&mut *42, "&&mut *")`.
 fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
     let mut prefix = String::new();
@@ -410,11 +414,8 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
 
     while let Some(parent_deref_element) =
         resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
+        && parent_deref_element.op_kind() == Some(ast::UnaryOp::Deref)
     {
-        if parent_deref_element.op_kind() != Some(ast::UnaryOp::Deref) {
-            break;
-        }
-
         found_ref_or_deref = true;
         resulting_element = ast::Expr::from(parent_deref_element);
 
@@ -1040,6 +1041,7 @@ fn main() {
     #[test]
     fn postfix_completion_for_references() {
         check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
+        check_edit("dbg", r#"fn main() { &&*"hello".$0 }"#, r#"fn main() { dbg!(&&*"hello") }"#);
         check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
         check_edit(
             "ifl",
