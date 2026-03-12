@@ -730,6 +730,18 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
+                    Rvalue::Reborrow(target, mutability, place) => {
+                        self.visit_ty($(& $mutability)? *target, TyContext::Location(location));
+                        self.visit_place(
+                            place,
+                            match mutability {
+                                Mutability::Not => PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow),
+                                Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                            },
+                            location
+                        );
+                    }
+
                     Rvalue::CopyForDeref(place) => {
                         self.visit_place(
                             place,
@@ -814,6 +826,8 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
+
+
                 }
             }
 

@@ -15,7 +15,7 @@ use rustc_span::{ErrorGuaranteed, Spanned};
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
 use crate::traits::solve;
-use crate::ty::adjustment::CoerceUnsizedInfo;
+use crate::ty::adjustment::{CoerceSharedInfo, CoerceUnsizedInfo};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
 
@@ -158,6 +158,10 @@ impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), rustc_errors::ErrorGua
 impl Erasable for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
     type Storage =
         [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
+}
+
+impl Erasable for Result<CoerceSharedInfo, rustc_errors::ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<CoerceSharedInfo, rustc_errors::ErrorGuaranteed>>()];
 }
 
 impl Erasable for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
@@ -381,6 +385,7 @@ impl_erasable_for_simple_types! {
     rustc_middle::traits::OverflowError,
     rustc_middle::traits::query::NoSolution,
     rustc_middle::traits::WellFormedLoc,
+    rustc_middle::ty::adjustment::CoerceSharedInfo,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::AssocContainer,

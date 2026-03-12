@@ -117,6 +117,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::TraitDef,
     rustc_middle::ty::Variance,
     rustc_middle::ty::Visibility<DefIndex>,
+    rustc_middle::ty::adjustment::CoerceSharedInfo,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_session::config::TargetModifier,

@@ -546,6 +546,18 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+    /// Use of an ADT that implements the Reborrow (for Mut) or CoerceShared traits (for Not). This
+    /// expression is produced by the [`Adjust::GenericReborrow`] in places where normally the ADT
+    /// would be moved or assigned over. Instead, this produces an [`Rvalue::Reborrow`] which
+    /// produces a bitwise copy of the source ADT and disables the source for the copy's lifetime.
+    ///
+    /// [`Adjust::GenericReborrow`]: crate::ty::adjustment::Adjust::GenericReborrow
+    /// [`Rvalue::Reborrow`]: mir::Rvalue::Reborrow
+    Reborrow {
+        source: ExprId,
+        mutability: Mutability,
+        target: Ty<'tcx>,
+    },
 }
 
 /// Represents the association of a field identifier and an expression.
