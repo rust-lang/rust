@@ -5,7 +5,7 @@ use rustc_abi::{Align, AlignFromBytesError};
 
 use super::crt_objects::CrtObjects;
 use super::{
-    Abi, Arch, BinaryFormat, CodeModel, DebuginfoKind, Env, FloatAbi, FramePointer, LinkArgsCli,
+    Arch, BinaryFormat, CfgAbi, CodeModel, DebuginfoKind, Env, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
     MergeFunctions, Os, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
@@ -69,7 +69,9 @@ impl Target {
         forward_opt!(c_enum_min_bits); // if None, matches c_int_width
         forward!(os);
         forward!(env);
-        forward!(abi);
+        if let Some(abi) = json.abi {
+            base.cfg_abi = abi;
+        }
         forward!(vendor);
         forward_opt!(linker);
         forward!(linker_flavor_json);
@@ -297,7 +299,7 @@ impl ToJson for Target {
         target_option_val!(c_int_width, "target-c-int-width");
         target_option_val!(os);
         target_option_val!(env);
-        target_option_val!(abi);
+        target_option_val!(cfg_abi, "abi");
         target_option_val!(vendor);
         target_option_val!(linker);
         target_option_val!(linker_flavor_json, "linker-flavor");
@@ -505,7 +507,7 @@ struct TargetSpecJson {
     c_enum_min_bits: Option<u64>,
     os: Option<Os>,
     env: Option<Env>,
-    abi: Option<Abi>,
+    abi: Option<CfgAbi>,
     vendor: Option<StaticCow<str>>,
     linker: Option<StaticCow<str>>,
     #[serde(rename = "linker-flavor")]

@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions,
 };
 
@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::RiscV32,
 
         options: TargetOptions {
-            abi: Abi::Ilp32e,
+            cfg_abi: CfgAbi::Ilp32e,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             cpu: "generic-rv32".into(),

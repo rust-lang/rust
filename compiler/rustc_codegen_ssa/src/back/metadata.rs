@@ -20,7 +20,7 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::spec::{Abi, Os, RelocModel, Target, ef_avr_arch};
+use rustc_target::spec::{CfgAbi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
@@ -372,7 +372,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             }
         }
         Architecture::Csky => {
-            if matches!(sess.target.options.abi, Abi::AbiV2) {
+            if matches!(sess.target.options.cfg_abi, CfgAbi::AbiV2) {
                 elf::EF_CSKY_ABIV2
             } else {
                 elf::EF_CSKY_ABIV1
