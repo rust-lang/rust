@@ -493,7 +493,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
-                    ScalableVector { .. } => {
+                    SimdScalableVector { .. } => {
                         tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
                             span,
                             name: sym::raw_eq,
@@ -1322,29 +1322,8 @@ fn codegen_autodiff<'ll, 'tcx>(
     let ret_ty = sig.output();
     let llret_ty = bx.layout_of(ret_ty).llvm_type(bx);
 
-    // Get source, diff, and attrs
-    let (source_id, source_args) = match fn_args.into_type_list(tcx)[0].kind() {
-        ty::FnDef(def_id, source_params) => (def_id, source_params),
-        _ => bug!("invalid autodiff intrinsic args"),
-    };
-
-    let fn_source = match Instance::try_resolve(tcx, bx.cx.typing_env(), *source_id, source_args) {
-        Ok(Some(instance)) => instance,
-        Ok(None) => bug!(
-            "could not resolve ({:?}, {:?}) to a specific autodiff instance",
-            source_id,
-            source_args
-        ),
-        Err(_) => {
-            // An error has already been emitted
-            return;
-        }
-    };
-
-    let source_symbol = symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
-    let Some(fn_to_diff) = bx.cx.get_function(&source_symbol) else {
-        bug!("could not find source function")
-    };
+    let source_fn_ptr_ty = fn_args.into_type_list(tcx)[0];
+    let fn_to_diff = args[0].immediate();
 
     let (diff_id, diff_args) = match fn_args.into_type_list(tcx)[1].kind() {
         ty::FnDef(def_id, diff_args) => (def_id, diff_args),
@@ -1375,13 +1354,12 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     adjust_activity_to_abi(
         tcx,
-        fn_source,
+        source_fn_ptr_ty,
         TypingEnv::fully_monomorphized(),
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree =
-        rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
+    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(

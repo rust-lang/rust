@@ -45,7 +45,7 @@ rustc_index::newtype_index! {
     /// `b` is `FieldIdx(1)` in `VariantIdx(0)`,
     /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
     /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
-    #[cfg_attr(feature = "nightly", derive(rustc_macros::HashStable_Generic))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[gate_rustc_only]
@@ -70,7 +70,7 @@ rustc_index::newtype_index! {
     ///
     /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
     /// with variant index zero, aka [`FIRST_VARIANT`].
-    #[cfg_attr(feature = "nightly", derive(rustc_macros::HashStable_Generic))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[gate_rustc_only]
@@ -210,7 +210,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         VariantIdx: Idx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     {
-        vector_type_layout(VectorKind::Scalable, self.cx.data_layout(), element, count)
+        vector_type_layout(SimdVectorKind::Scalable, self.cx.data_layout(), element, count)
     }
 
     pub fn simd_type<FieldIdx, VariantIdx, F>(
@@ -224,7 +224,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         VariantIdx: Idx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     {
-        let kind = if repr_packed { VectorKind::PackedFixed } else { VectorKind::Fixed };
+        let kind = if repr_packed { SimdVectorKind::PackedFixed } else { SimdVectorKind::Fixed };
         vector_type_layout(kind, self.cx.data_layout(), element, count)
     }
 
@@ -484,7 +484,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 BackendRepr::Scalar(..)
                 | BackendRepr::ScalarPair(..)
                 | BackendRepr::SimdVector { .. }
-                | BackendRepr::ScalableVector { .. }
+                | BackendRepr::SimdScalableVector { .. }
                 | BackendRepr::Memory { .. } => repr,
             },
         };
@@ -557,7 +557,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     hide_niches(b);
                 }
                 BackendRepr::SimdVector { element, .. }
-                | BackendRepr::ScalableVector { element, .. } => hide_niches(element),
+                | BackendRepr::SimdScalableVector { element, .. } => hide_niches(element),
                 BackendRepr::Memory { sized: _ } => {}
             }
             st.largest_niche = None;
@@ -1524,7 +1524,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     }
 }
 
-enum VectorKind {
+enum SimdVectorKind {
     /// `#[rustc_scalable_vector]`
     Scalable,
     /// `#[repr(simd, packed)]`
@@ -1534,7 +1534,7 @@ enum VectorKind {
 }
 
 fn vector_type_layout<FieldIdx, VariantIdx, F>(
-    kind: VectorKind,
+    kind: SimdVectorKind,
     dl: &TargetDataLayout,
     element: F,
     count: u64,
@@ -1559,16 +1559,16 @@ where
     let size =
         elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
     let (repr, align) = match kind {
-        VectorKind::Scalable => {
-            (BackendRepr::ScalableVector { element, count }, dl.llvmlike_vector_align(size))
+        SimdVectorKind::Scalable => {
+            (BackendRepr::SimdScalableVector { element, count }, dl.llvmlike_vector_align(size))
         }
         // Non-power-of-two vectors have padding up to the next power-of-two.
         // If we're a packed repr, remove the padding while keeping the alignment as close
         // to a vector as possible.
-        VectorKind::PackedFixed if !count.is_power_of_two() => {
+        SimdVectorKind::PackedFixed if !count.is_power_of_two() => {
             (BackendRepr::Memory { sized: true }, Align::max_aligned_factor(size))
         }
-        VectorKind::PackedFixed | VectorKind::Fixed => {
+        SimdVectorKind::PackedFixed | SimdVectorKind::Fixed => {
             (BackendRepr::SimdVector { element, count }, dl.llvmlike_vector_align(size))
         }
     };

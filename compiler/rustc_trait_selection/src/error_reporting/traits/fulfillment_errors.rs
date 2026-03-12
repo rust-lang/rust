@@ -756,11 +756,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id) => return self.report_opaque_type_auto_trait_leakage(
-                &obligation,
-                def_id,
-            ),
-
             SelectionError::TraitDynIncompatible(did) => {
                 let violations = self.tcx.dyn_compatibility_violations(did);
                 report_dyn_incompatibility(self.tcx, span, None, did, violations)
@@ -3178,6 +3173,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
+        self.suggest_shadowed_inherent_method(err, obligation, trait_predicate);
     }
 
     fn add_help_message_for_fn_trait(
@@ -3328,34 +3324,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             obligation.param_env,
             terr,
         )
-    }
-
-    fn report_opaque_type_auto_trait_leakage(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        def_id: DefId,
-    ) -> ErrorGuaranteed {
-        let name = match self.tcx.local_opaque_ty_origin(def_id.expect_local()) {
-            hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } => {
-                "opaque type".to_string()
-            }
-            hir::OpaqueTyOrigin::TyAlias { .. } => {
-                format!("`{}`", self.tcx.def_path_debug_str(def_id))
-            }
-        };
-        let mut err = self.dcx().struct_span_err(
-            obligation.cause.span,
-            format!("cannot check whether the hidden type of {name} satisfies auto traits"),
-        );
-
-        err.note(
-            "fetching the hidden types of an opaque inside of the defining scope is not supported. \
-            You can try moving the opaque type and the item that actually registers a hidden type into a new submodule",
-        );
-        err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
-
-        self.note_obligation_cause(&mut err, &obligation);
-        self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
     fn report_signature_mismatch_error(

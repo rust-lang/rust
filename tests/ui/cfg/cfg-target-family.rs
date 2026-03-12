@@ -1,5 +1,7 @@
 //@ build-pass
 //@ ignore-sgx
+//@ reference: cfg.target_family.def
+//@ reference: cfg.target_family.values
 
 
 #[cfg(target_family = "windows")]

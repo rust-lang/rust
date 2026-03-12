@@ -1,4 +1,6 @@
 //@ edition: 2024
+//@ reference: cfg.attr.syntax
+//@ reference: cfg.cfg_attr.syntax
 
 #![allow(unexpected_cfgs)]
 

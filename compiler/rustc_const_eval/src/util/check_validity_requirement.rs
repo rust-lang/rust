@@ -2,6 +2,7 @@ use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{PseudoCanonicalInput, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::DUMMY_SP;
@@ -70,13 +71,19 @@ fn check_validity_requirement_strict<'tcx>(
     // due to this.
     // The value we are validating is temporary and discarded at the end of this function, so
     // there is no point in resetting provenance and padding.
-    cx.validate_operand(
-        &allocated.into(),
-        /*recursive*/ false,
-        /*reset_provenance_and_padding*/ false,
+    // This is pretty inefficient: we do the full path tracking and even format an error message
+    // in case there is a problem, only to entirely throw that away again. For a nightly-only
+    // option this is fine, but if this is ever meant to be stable we should probably add
+    // a "fast mode" to validation.
+    with_no_trimmed_paths!(
+        cx.validate_operand(
+            &allocated.into(),
+            /*recursive*/ false,
+            /*reset_provenance_and_padding*/ false,
+        )
+        .discard_err()
+        .is_some()
     )
-    .discard_err()
-    .is_some()
 }
 
 /// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that
@@ -119,7 +126,7 @@ fn check_validity_requirement_lax<'tcx>(
             }
             BackendRepr::SimdVector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
             BackendRepr::Memory { .. } => true, // Fields are checked below.
-            BackendRepr::ScalableVector { element, .. } => scalar_allows_raw_init(element),
+            BackendRepr::SimdScalableVector { element, .. } => scalar_allows_raw_init(element),
         };
 
     if !valid {

@@ -1,11 +1,11 @@
 use std::hash::Hash;
-use std::mem;
+use std::mem::ManuallyDrop;
 
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
-use rustc_errors::{FatalError, StashKey};
+use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
@@ -16,8 +16,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::collect_active_jobs_from_all_queries;
 use crate::dep_graph::{DepNode, DepNodeIndex};
+use crate::for_each_query_vtable;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 
@@ -26,19 +26,35 @@ fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
 }
 
-/// Obtains the enclosed [`QueryJob`], or panics if this query evaluation
-/// was poisoned by a panic.
-fn expect_job<'tcx>(status: ActiveKeyStatus<'tcx>) -> QueryJob<'tcx> {
-    match status {
-        ActiveKeyStatus::Started(job) => job,
-        ActiveKeyStatus::Poisoned => {
-            panic!("job for query failed to start and was poisoned")
-        }
-    }
-}
-
 pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
     state.active.lock_shards().all(|shard| shard.is_empty())
+}
+
+/// Returns a map of currently active query jobs, collected from all queries.
+///
+/// If `require_complete` is `true`, this function locks all shards of the
+/// query results to produce a complete map, which always returns `Ok`.
+/// Otherwise, it may return an incomplete map as an error if any shard
+/// lock cannot be acquired.
+///
+/// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
+/// especially when called from within a deadlock handler, unless a
+/// complete map is needed and no deadlock is possible at this call site.
+pub fn collect_active_jobs_from_all_queries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    require_complete: bool,
+) -> Result<QueryJobMap<'tcx>, QueryJobMap<'tcx>> {
+    let mut job_map_out = QueryJobMap::default();
+    let mut complete = true;
+
+    for_each_query_vtable!(ALL, tcx, |query| {
+        let res = gather_active_jobs(query, tcx, require_complete, &mut job_map_out);
+        if res.is_none() {
+            complete = false;
+        }
+    });
+
+    if complete { Ok(job_map_out) } else { Err(job_map_out) }
 }
 
 /// Internal plumbing for collecting the set of active jobs for this query.
@@ -48,7 +64,7 @@ pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
 /// (We arbitrarily use the word "gather" when collecting the jobs for
 /// each individual query, so that we have distinct function names to
 /// grep for.)
-pub(crate) fn gather_active_jobs<'tcx, C>(
+fn gather_active_jobs<'tcx, C>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     require_complete: bool,
@@ -104,20 +120,6 @@ where
     Some(())
 }
 
-/// Guard object representing the responsibility to execute a query job and
-/// mark it as completed.
-///
-/// This will poison the relevant query key if it is dropped without calling
-/// [`Self::complete`].
-struct ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    state: &'tcx QueryState<'tcx, K>,
-    key: K,
-    key_hash: u64,
-}
-
 #[cold]
 #[inline(never)]
 fn mk_cycle<'tcx, C: QueryCache>(
@@ -135,17 +137,21 @@ fn mk_cycle<'tcx, C: QueryCache>(
             let guar = error.delay_as_bug();
             (query.value_from_cycle_error)(tcx, cycle_error, guar)
         }
-        CycleErrorHandling::Stash => {
-            let guar = if let Some(root) = cycle_error.cycle.first()
-                && let Some(span) = root.frame.info.span
-            {
-                error.stash(span, StashKey::Cycle).unwrap()
-            } else {
-                error.emit()
-            };
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
-        }
     }
+}
+
+/// Guard object representing the responsibility to execute a query job and
+/// mark it as completed.
+///
+/// This will poison the relevant query key if it is dropped without calling
+/// [`Self::complete`].
+struct ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    state: &'tcx QueryState<'tcx, K>,
+    key: K,
+    key_hash: u64,
 }
 
 impl<'tcx, K> ActiveJobGuard<'tcx, K>
@@ -154,33 +160,45 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter, and forgets the guard so it won't poison the query.
-    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
-        // Forget ourself so our destructor won't poison the query.
-        // (Extract fields by value first to make sure we don't leak anything.)
-        let Self { state, key, key_hash }: Self = self;
-        mem::forget(self);
-
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
-        cache.complete(key, result, dep_node_index);
+        cache.complete(self.key, value, dep_node_index);
 
-        let job = {
-            // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
-            // underlying shard.
-            // since unwinding also wants to look at this map, this can also prevent a double
-            // panic.
-            let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(key)) {
-                Err(_) => None,
-                Ok(occupied) => Some(occupied.remove().0.1),
+        let mut this = ManuallyDrop::new(self);
+
+        // Drop everything without poisoning the query.
+        this.drop_and_maybe_poison(/* poison */ false);
+    }
+
+    fn drop_and_maybe_poison(&mut self, poison: bool) {
+        let status = {
+            let mut shard = self.state.active.lock_shard_by_hash(self.key_hash);
+            match shard.find_entry(self.key_hash, equivalent_key(self.key)) {
+                Err(_) => {
+                    // Note: we must not panic while holding the lock, because unwinding also looks
+                    // at this map, which can result in a double panic. So drop it first.
+                    drop(shard);
+                    panic!();
+                }
+                Ok(occupied) => {
+                    let ((key, status), vacant) = occupied.remove();
+                    if poison {
+                        vacant.insert((key, ActiveKeyStatus::Poisoned));
+                    }
+                    status
+                }
             }
         };
-        let job = expect_job(job.expect("active query job entry"));
 
-        job.signal_complete();
+        // Also signal the completion of the job, so waiters will continue execution.
+        match status {
+            ActiveKeyStatus::Started(job) => job.signal_complete(),
+            ActiveKeyStatus::Poisoned => panic!(),
+        }
     }
 }
 
@@ -192,21 +210,7 @@ where
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let Self { state, key, key_hash } = *self;
-        let job = {
-            let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(key)) {
-                Err(_) => panic!(),
-                Ok(occupied) => {
-                    let ((key, value), vacant) = occupied.remove();
-                    vacant.insert((key, ActiveKeyStatus::Poisoned));
-                    expect_job(value)
-                }
-            }
-        };
-        // Also signal the completion of the job, so waiters
-        // will continue execution.
-        job.signal_complete();
+        self.drop_and_maybe_poison(/* poison */ true);
     }
 }
 

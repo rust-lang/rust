@@ -20,7 +20,7 @@ mod llvm_enzyme {
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_hir::attrs::RustcAutodiff;
-    use rustc_span::{Ident, Span, Symbol, sym};
+    use rustc_span::{Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
@@ -197,7 +197,7 @@ mod llvm_enzyme {
     /// }
     /// #[rustc_autodiff(Reverse, Duplicated, Active)]
     /// fn cos_box(x: &Box<f32>, dx: &mut Box<f32>, dret: f32) -> f32 {
-    ///     std::intrinsics::autodiff(sin::<>, cos_box::<>, (x, dx, dret))
+    ///     std::intrinsics::autodiff(sin::<> as fn(..) -> .., cos_box::<>, (x, dx, dret))
     /// }
     /// ```
     /// FIXME(ZuseZ4): Once autodiff is enabled by default, make this a doc comment which is checked
@@ -326,6 +326,7 @@ mod llvm_enzyme {
                 primal,
                 first_ident(&meta_item_vec[0]),
                 span,
+                &sig,
                 &d_sig,
                 &generics,
                 is_impl,
@@ -496,18 +497,62 @@ mod llvm_enzyme {
 
     // Generate `autodiff` intrinsic call
     // ```
-    // std::intrinsics::autodiff(source, diff, (args))
+    // std::intrinsics::autodiff(source as fn(..) -> .., diff, (args))
     // ```
     fn call_autodiff(
         ecx: &ExtCtxt<'_>,
         primal: Ident,
         diff: Ident,
         span: Span,
+        p_sig: &FnSig,
         d_sig: &FnSig,
         generics: &Generics,
         is_impl: bool,
     ) -> rustc_ast::Stmt {
         let primal_path_expr = gen_turbofish_expr(ecx, primal, generics, span, is_impl);
+
+        let self_ty = || ecx.ty_path(ast::Path::from_ident(Ident::with_dummy_span(kw::SelfUpper)));
+        let fn_ptr_params: ThinVec<ast::Param> = p_sig
+            .decl
+            .inputs
+            .iter()
+            .map(|param| {
+                let ty = match &param.ty.kind {
+                    TyKind::ImplicitSelf => self_ty(),
+                    TyKind::Ref(lt, mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => ecx.ty(
+                        span,
+                        TyKind::Ref(lt.clone(), ast::MutTy { ty: self_ty(), mutbl: mt.mutbl }),
+                    ),
+                    TyKind::Ptr(mt) if matches!(mt.ty.kind, TyKind::ImplicitSelf) => {
+                        ecx.ty(span, TyKind::Ptr(ast::MutTy { ty: self_ty(), mutbl: mt.mutbl }))
+                    }
+                    _ => param.ty.clone(),
+                };
+                ast::Param {
+                    attrs: ast::AttrVec::new(),
+                    ty,
+                    pat: Box::new(ecx.pat_wild(span)),
+                    id: ast::DUMMY_NODE_ID,
+                    span,
+                    is_placeholder: false,
+                }
+            })
+            .collect();
+        let fn_ptr_ty = ecx.ty(
+            span,
+            TyKind::FnPtr(Box::new(ast::FnPtrTy {
+                safety: p_sig.header.safety,
+                ext: p_sig.header.ext,
+                generic_params: ThinVec::new(),
+                decl: Box::new(ast::FnDecl {
+                    inputs: fn_ptr_params,
+                    output: p_sig.decl.output.clone(),
+                }),
+                decl_span: span,
+            })),
+        );
+        let primal_fn_ptr = ecx.expr(span, ast::ExprKind::Cast(primal_path_expr, fn_ptr_ty));
+
         let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span, is_impl);
 
         let tuple_expr = ecx.expr_tuple(
@@ -529,7 +574,7 @@ mod llvm_enzyme {
         let call_expr = ecx.expr_call(
             span,
             ecx.expr_path(enzyme_path),
-            vec![primal_path_expr, diff_path_expr, tuple_expr].into(),
+            vec![primal_fn_ptr, diff_path_expr, tuple_expr].into(),
         );
 
         ecx.stmt_expr(call_expr)

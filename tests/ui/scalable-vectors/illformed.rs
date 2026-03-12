@@ -1,6 +1,10 @@
 //@ compile-flags: --crate-type=lib
+//@ only-aarch64
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
+
+#[rustc_scalable_vector(4)]
+struct Valid(f32);
 
 #[rustc_scalable_vector(4)]
 struct NoFieldsStructWithElementCount {}
@@ -18,16 +22,16 @@ struct NoFieldsUnitWithElementCount;
 
 #[rustc_scalable_vector]
 struct NoFieldsStructWithoutElementCount {}
-//~^ ERROR: scalable vectors must have a single field
+//~^ ERROR: scalable vector tuples must have at least one field
 //~^^ ERROR: scalable vectors must be tuple structs
 
 #[rustc_scalable_vector]
 struct NoFieldsTupleWithoutElementCount();
-//~^ ERROR: scalable vectors must have a single field
+//~^ ERROR: scalable vector tuples must have at least one field
 
 #[rustc_scalable_vector]
 struct NoFieldsUnitWithoutElementCount;
-//~^ ERROR: scalable vectors must have a single field
+//~^ ERROR: scalable vector tuples must have at least one field
 //~^^ ERROR: scalable vectors must be tuple structs
 
 #[rustc_scalable_vector(4)]
@@ -57,3 +61,8 @@ struct MultipleFieldsTupleWithoutElementCount(f32, u32);
 #[rustc_scalable_vector(2)]
 struct SingleFieldStruct { _ty: f64 }
 //~^ ERROR: scalable vectors must be tuple structs
+
+#[rustc_scalable_vector]
+struct TooManyFieldsWithoutElementCount(
+    Valid, Valid, Valid, Valid, Valid, Valid, Valid, Valid, Valid);
+//~^^ ERROR: scalable vector tuples can have at most eight fields

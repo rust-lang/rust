@@ -165,7 +165,7 @@ fn check_inline_or_reference_unknown_redundancy(
         fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
             let Self { explicit_span, display_span, link_span, display_link } = self;
 
-            let mut diag = Diag::new(dcx, level, "redundant explicit link target")
+            Diag::new(dcx, level, "redundant explicit link target")
                 .with_span_label(
                     explicit_span,
                     "explicit target is redundant",
@@ -176,17 +176,15 @@ fn check_inline_or_reference_unknown_redundancy(
                 )
                 .with_note(
                     "when a link's destination is not specified,\nthe label is used to resolve intra-doc links"
-                );
-            // FIXME (GuillaumeGomez): We cannot use `derive(Diagnostic)` because of this method.
-            // FIXME2 (GuillaumeGomez): Why isn't there a `with_` equivalent for this method?
-            diag.span_suggestion_with_style(
-                link_span,
-                "remove explicit link target",
-                format!("[{}]", display_link),
-                Applicability::MaybeIncorrect,
-                SuggestionStyle::ShowAlways,
-            );
-            diag
+                )
+                // FIXME (GuillaumeGomez): We cannot use `derive(Diagnostic)` because of this method.
+                .with_span_suggestion_with_style(
+                    link_span,
+                    "remove explicit link target",
+                    format!("[{}]", display_link),
+                    Applicability::MaybeIncorrect,
+                    SuggestionStyle::ShowAlways,
+                )
         }
     }
 
@@ -267,7 +265,7 @@ fn check_reference_redundancy(
         fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
             let Self { explicit_span, display_span, def_span, link_span, display_link } = self;
 
-            let mut diag = Diag::new(dcx, level, "redundant explicit link target")
+            Diag::new(dcx, level, "redundant explicit link target")
                 .with_span_label(explicit_span, "explicit target is redundant")
                 .with_span_label(
                     display_span,
@@ -276,17 +274,15 @@ fn check_reference_redundancy(
                 .with_span_note(def_span, "referenced explicit link target defined here")
                 .with_note(
                     "when a link's destination is not specified,\nthe label is used to resolve intra-doc links"
-                );
-            // FIXME (GuillaumeGomez): We cannot use `derive(Diagnostic)` because of this method.
-            // FIXME2 (GuillaumeGomez): Why isn't there a `with_` equivalent for this method?
-            diag.span_suggestion_with_style(
-                link_span,
-                "remove explicit link target",
-                format!("[{}]", display_link),
-                Applicability::MaybeIncorrect,
-                SuggestionStyle::ShowAlways,
-            );
-            diag
+                )
+                // FIXME (GuillaumeGomez): We cannot use `derive(Diagnostic)` because of this method.
+                .with_span_suggestion_with_style(
+                    link_span,
+                    "remove explicit link target",
+                    format!("[{}]", display_link),
+                    Applicability::MaybeIncorrect,
+                    SuggestionStyle::ShowAlways,
+                )
         }
     }
 
