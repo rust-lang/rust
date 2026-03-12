@@ -1,5 +1,6 @@
 //@ run-rustfix
 #![allow(non_snake_case, dead_code)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 use std::pin::Pin;
 

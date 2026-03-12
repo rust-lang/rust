@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/self-lifetime-elision-not-applicable.rs:43:51
+  --> $DIR/self-lifetime-elision-not-applicable.rs:37:51
    |
 LL |     fn ref_Alias_in_foo_impl(self: &Alias<'a>) -> &() {
    |                                    ----------     ^ expected named lifetime parameter
@@ -11,7 +11,7 @@ LL |     fn ref_Alias_in_foo_impl(self: &Alias<'a>) -> &'a () {
    |                                                    ++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/self-lifetime-elision-not-applicable.rs:60:39
+  --> $DIR/self-lifetime-elision-not-applicable.rs:52:39
    |
 LL |     fn ref_Alias(self: &Alias<'a>) -> &() {
    |                        ----------     ^ expected named lifetime parameter
@@ -23,7 +23,7 @@ LL |     fn ref_Alias(self: &Alias<'a>) -> &'a () {
    |                                        ++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/self-lifetime-elision-not-applicable.rs:68:49
+  --> $DIR/self-lifetime-elision-not-applicable.rs:60:49
    |
 LL |     fn ref_Foo_in_alias_impl(self: &Foo<'a>) -> &() {
    |                                    --------     ^ expected named lifetime parameter
@@ -35,7 +35,7 @@ LL |     fn ref_Foo_in_alias_impl(self: &Foo<'a>) -> &'a () {
    |                                                  ++
 
 error: `self` parameter type does not contain `Self`
-  --> $DIR/self-lifetime-elision-not-applicable.rs:31:22
+  --> $DIR/self-lifetime-elision-not-applicable.rs:25:22
    |
 LL |     fn ref_Foo(self: &Foo<'a>) -> &() {
    |                      ^^^^^^^^
@@ -44,13 +44,13 @@ LL |     fn ref_Foo(self: &Foo<'a>) -> &() {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #140611 <https://github.com/rust-lang/rust/issues/140611>
 note: the lint level is defined here
-  --> $DIR/self-lifetime-elision-not-applicable.rs:5:9
+  --> $DIR/self-lifetime-elision-not-applicable.rs:1:9
    |
 LL | #![deny(self_lifetime_elision_not_applicable)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `self` parameter type does not contain `Self`
-  --> $DIR/self-lifetime-elision-not-applicable.rs:36:26
+  --> $DIR/self-lifetime-elision-not-applicable.rs:30:26
    |
 LL |     fn pin_ref_Foo(self: Pin<&Foo<'a>>) -> &() {
    |                          ^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |     fn pin_ref_Foo(self: Pin<&Foo<'a>>) -> &() {
    = note: for more information, see issue #140611 <https://github.com/rust-lang/rust/issues/140611>
 
 error: `self` parameter type does not contain `Self`
-  --> $DIR/self-lifetime-elision-not-applicable.rs:43:36
+  --> $DIR/self-lifetime-elision-not-applicable.rs:37:36
    |
 LL |     fn ref_Alias_in_foo_impl(self: &Alias<'a>) -> &() {
    |                                    ^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     fn ref_Alias_in_foo_impl(self: &Alias<'a>) -> &() {
    = note: for more information, see issue #140611 <https://github.com/rust-lang/rust/issues/140611>
 
 error: `self` parameter type does not contain `Self`
-  --> $DIR/self-lifetime-elision-not-applicable.rs:60:24
+  --> $DIR/self-lifetime-elision-not-applicable.rs:52:24
    |
 LL |     fn ref_Alias(self: &Alias<'a>) -> &() {
    |                        ^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     fn ref_Alias(self: &Alias<'a>) -> &() {
    = note: for more information, see issue #140611 <https://github.com/rust-lang/rust/issues/140611>
 
 error: `self` parameter type does not contain `Self`
-  --> $DIR/self-lifetime-elision-not-applicable.rs:68:36
+  --> $DIR/self-lifetime-elision-not-applicable.rs:60:36
    |
 LL |     fn ref_Foo_in_alias_impl(self: &Foo<'a>) -> &() {
    |                                    ^^^^^^^^

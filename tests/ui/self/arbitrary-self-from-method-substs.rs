@@ -1,5 +1,6 @@
 //@ revisions: default feature
 #![cfg_attr(feature, feature(arbitrary_self_types))]
+#![allow(self_lifetime_elision_not_applicable)]
 
 use std::ops::Deref;
 use std::marker::PhantomData;

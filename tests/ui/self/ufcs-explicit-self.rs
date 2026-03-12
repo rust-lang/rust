@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 #[derive(Copy, Clone)]
 struct Foo {
