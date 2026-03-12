@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions,
 };
 
@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cpu: "generic".into(),
             features: "-f,-d".into(),
-            abi: Abi::SoftFloat,
+            cfg_abi: CfgAbi::SoftFloat,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             llvm_abiname: "ilp32s".into(),
