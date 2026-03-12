@@ -128,12 +128,30 @@ fn par_slice<I: DynSend>(
     guard: &ParallelGuard,
     for_each: impl Fn(&mut I) + DynSync + DynSend,
 ) {
+    match items {
+        [] => return,
+        [item] => {
+            guard.run(|| for_each(item));
+            return;
+        }
+        _ => (),
+    }
+
     let for_each = FromDyn::from(for_each);
     let mut items = for_each.derive(items);
     rustc_thread_pool::scope(|s| {
         let proof = items.derive(());
-        let group_size = std::cmp::max(items.len() / 128, 1);
-        for group in items.chunks_mut(group_size) {
+
+        const MAX_GROUP_COUNT: usize = 128;
+        let group_size = items.len().div_ceil(MAX_GROUP_COUNT);
+        let mut groups = items.chunks_mut(group_size);
+
+        let Some(first_group) = groups.next() else { return };
+
+        // Reverse the order of the later functions since Rayon executes them in reverse
+        // order when using a single thread. This ensures the execution order matches
+        // that of a single threaded rustc.
+        for group in groups.rev() {
             let group = proof.derive(group);
             s.spawn(|_| {
                 let mut group = group;
@@ -141,6 +159,12 @@ fn par_slice<I: DynSend>(
                     guard.run(|| for_each(i));
                 }
             });
+        }
+
+        // Run the first function without spawning to
+        // ensure it executes immediately on this thread.
+        for i in first_group.iter_mut() {
+            guard.run(|| for_each(i));
         }
     });
 }
