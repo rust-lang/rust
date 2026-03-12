@@ -45,6 +45,7 @@ pub use self::value::Scalar;
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::with_no_trimmed_paths;
+use crate::ty::util::TyUtil;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 /// Uniquely identifies one of the following:

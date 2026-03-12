@@ -311,18 +311,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
     }
 
-    /// Given the `DefId`, returns the `DefId` of the innermost item that
-    /// has its own type-checking context or "inference environment".
-    ///
-    /// For example, a closure has its own `DefId`, but it is type-checked
-    /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
-    /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
     fn typeck_root_def_id(self, def_id: DefId) -> DefId {
-        let mut def_id = def_id;
-        while self.is_typeck_child(def_id) {
-            def_id = self.parent(def_id);
-        }
-        def_id
+        self.typeck_root_def_id(def_id)
     }
 
     fn debug_assert_new_dynamic_compatible(
@@ -346,7 +336,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     .map(|principal| {
                         self.associated_items(principal.def_id())
                             .in_definition_order()
-                            .filter(|item| item.is_type() || item.is_const())
+                            .filter(|item| item.is_type() || item.is_type_const())
                             .filter(|item| !item.is_impl_trait_in_trait())
                             .filter(|item| !self.generics_require_sized_self(item.def_id))
                             .count()
@@ -912,11 +902,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn get_anon_bound_ty(self, id: usize) -> Option<Vec<Ty<'tcx>>> {
-        self.types.anon_bound_tys.get(id).copied()
+        self.types.anon_bound_tys.get(id).cloned()
     }
 
     fn get_anon_canonical_bound_ty(self, id: usize) -> Option<Ty<'tcx>> {
-        self.types.anon_canonical_bound_tys.get(id.as_usize()).copied()
+        self.types.anon_canonical_bound_tys.get(id).copied()
     }
 
     fn get_generic_args_for_item(
@@ -1049,6 +1039,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         let context_args = self.mk_args(&[self.lifetimes.re_erased.into()]);
         let context_ty = Ty::new_adt(self, context_adt_ref, context_args);
         Ty::new_mut_ref(self, self.lifetimes.re_erased, context_ty)
+    }
+
+    fn new_fn_def(
+        self,
+        def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+        );
+        let args = self.check_and_mk_args(def_id, args);
+        Ty::new(self, ty::FnDef(def_id, args))
     }
 }
 

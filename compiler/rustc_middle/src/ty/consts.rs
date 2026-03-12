@@ -215,7 +215,7 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     }
 
     fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        Some(self.try_to_scalar_int()?.to_target_usize(tcx))
+        self.try_to_value()?.try_to_target_usize(tcx)
     }
 
     #[inline]

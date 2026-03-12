@@ -664,7 +664,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 #[instrument(level = "trace", skip(cx), ret)]
 pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     cx: I,
-    self_ty: I::Ty,
+    self_ty: Ty<I>,
 ) -> Result<(ty::Binder<I, (Ty<I>, Ty<I>)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {

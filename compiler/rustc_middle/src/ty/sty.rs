@@ -80,7 +80,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
     #[inline]
     fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        tcx.coroutine_variant_range(def_id, self)
+        tcx.coroutine_variant_range(def_id, self.args.as_coroutine())
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -284,7 +284,7 @@ impl<'tcx> ParamTy {
 
     #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        Ty::new_param(tcx, self.index, self.name)
+        Ty::new_param(tcx, ParamTy::new(self.index, self.name))
     }
 
     pub fn span_from_generics(self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {

@@ -207,6 +207,12 @@ impl<'tcx> AdtDef<'tcx> {
         self.0.0.repr
     }
 
+    /// Asserts this is a struct or union and returns its unique variant.
+    pub fn non_enum_variant(self) -> &'tcx VariantDef {
+        assert!(self.is_struct() || self.is_union());
+        self.variant(FIRST_VARIANT)
+    }
+
     pub fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
@@ -336,8 +342,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     /// Asserts this is a struct or union and returns its unique variant.
     fn non_enum_variant(self) -> &'tcx VariantDef {
-        assert!(self.is_struct() || self.is_union());
-        self.variant(FIRST_VARIANT)
+        self.non_enum_variant()
     }
 
     fn repr_is_simd(self) -> bool {

@@ -538,6 +538,12 @@ pub trait Interner:
 
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
     fn new_task_context(self) -> Ty<Self>;
+
+    fn new_fn_def(
+        self,
+        def_id: Self::FunctionId,
+        args: impl IntoIterator<Item: Into<Self::GenericArg>>,
+    ) -> Ty<Self>;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

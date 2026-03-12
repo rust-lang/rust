@@ -2,6 +2,7 @@ use rustc_macros::HashStable;
 use smallvec::SmallVec;
 use tracing::instrument;
 
+use crate::ty::inhabitedness::TyInhabitedHelpers;
 use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv};
 
 /// Represents whether some type is inhabited in a given context.

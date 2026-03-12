@@ -1,5 +1,6 @@
 use rustc_macros::{Decodable, Encodable, HashStable};
 
+use crate::ty::util::TyUtil;
 use crate::ty::{Ty, TyCtxt, TypingEnv};
 
 /// Summarizes how a parameter (a return place or an argument) is used inside a MIR body.

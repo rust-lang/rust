@@ -463,12 +463,11 @@ where
     }
 
     #[inline]
-    pub fn new_dynamic(
-        interner: I,
-        preds: I::BoundExistentialPredicates,
-        region: I::Region,
-    ) -> Self {
-        Self::new(interner, ty::Dynamic(preds, region))
+    pub fn new_dynamic(interner: I, obj: I::BoundExistentialPredicates, region: I::Region) -> Self {
+        if cfg!(debug_assertions) {
+            interner.debug_assert_new_dynamic_compatible(obj)
+        }
+        Self::new(interner, ty::Dynamic(obj, region))
     }
 
     #[inline]
@@ -622,8 +621,17 @@ where
     }
 
     #[inline]
-    pub fn new_fn_def(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self {
-        Self::new(interner, ty::FnDef(def_id, args))
+    pub fn new_fn_def_from_args(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self {
+        Ty::new(interner, ty::FnDef(def_id, args))
+    }
+
+    #[inline]
+    pub fn new_fn_def(
+        interner: I,
+        def_id: I::FunctionId,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+    ) -> Self {
+        interner.new_fn_def(def_id, args)
     }
 
     #[inline]
