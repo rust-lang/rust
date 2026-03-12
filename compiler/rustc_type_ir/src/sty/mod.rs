@@ -661,14 +661,17 @@ where
     I::Region: TypeVisitable<I>,
     I::Tys: TypeVisitable<I>,
 {
-    // // It would be nicer if this returned the value instead of a reference,
-    // // like how `Predicate::kind` and `Region::kind` do. (It would result in
-    // // many fewer subsequent dereferences.) But that gives a small but
-    // // noticeable performance hit. See #126069 for details.
-    // #[inline(always)]
-    // pub fn kind(&self) -> &TyKind<I> {
-    //     &self.0
-    // }
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
+    // Using `rustc::disallowed_pass_by_ref` otherwise we need to import the
+    // `IntoKind` trait everywhere and deference which is a lot of noise
+    #[expect(rustc::disallowed_pass_by_ref)]
+    #[inline(always)]
+    pub fn kind(&self) -> &TyKind<I> {
+        &self.0
+    }
 
     // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
