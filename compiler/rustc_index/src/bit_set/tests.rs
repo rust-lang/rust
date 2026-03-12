@@ -298,6 +298,108 @@ fn chunked_bitset() {
     b10000b.assert_valid();
 }
 
+/// Creates a new `ChunkedBitSet` containing all `i` for which `fill_fn(i)` is true.
+fn chunked_fill_with(domain_size: usize, fill_fn: impl Fn(usize) -> bool) -> ChunkedBitSet<usize> {
+    let mut bitset = ChunkedBitSet::new_empty(domain_size);
+    for i in 0..domain_size {
+        if fill_fn(i) {
+            bitset.insert(i);
+        }
+    }
+    bitset
+}
+
+/// Asserts that for each `i` in `0..bitset.domain_size()`, `bitset.contains(i) == expected_fn(i)`.
+#[track_caller]
+fn assert_chunked_contains(bitset: &ChunkedBitSet<usize>, expected_fn: impl Fn(usize) -> bool) {
+    for i in 0..bitset.domain_size() {
+        let expected = expected_fn(i);
+        assert_eq!(bitset.contains(i), expected, "i = {i}");
+    }
+}
+
+#[test]
+fn chunked_bulk_ops() {
+    struct ChunkedBulkOp {
+        name: &'static str,
+        op_fn: fn(&mut ChunkedBitSet<usize>, &ChunkedBitSet<usize>) -> bool,
+        spec_fn: fn(fn(usize) -> bool, fn(usize) -> bool, usize) -> bool,
+    }
+    let ops = &[
+        ChunkedBulkOp {
+            name: "union",
+            op_fn: ChunkedBitSet::union,
+            spec_fn: |fizz, buzz, i| fizz(i) || buzz(i),
+        },
+        ChunkedBulkOp {
+            name: "subtract",
+            op_fn: ChunkedBitSet::subtract,
+            spec_fn: |fizz, buzz, i| fizz(i) && !buzz(i),
+        },
+        ChunkedBulkOp {
+            name: "intersect",
+            op_fn: ChunkedBitSet::intersect,
+            spec_fn: |fizz, buzz, i| fizz(i) && buzz(i),
+        },
+    ];
+
+    let domain_sizes = [
+        CHUNK_BITS / 7, // Smaller than a full chunk.
+        CHUNK_BITS,
+        (CHUNK_BITS + CHUNK_BITS / 7), // Larger than a full chunk.
+    ];
+
+    for ChunkedBulkOp { name, op_fn, spec_fn } in ops {
+        for domain_size in domain_sizes {
+            // If true, use identical values for LHS and RHS, to test "fizz op fizz".
+            // If false, use different values, to test "fizz op buzz".
+            for identical in [false, true] {
+                // If true, make a clone of LHS before doing the op.
+                // This covers optimizations that depend on whether chunk words are shared or not.
+                for unique in [false, true] {
+                    // Print the current test case, so that we can see which one failed.
+                    println!(
+                        "Testing op={name}, domain_size={domain_size}, identical={identical}, unique={unique} ..."
+                    );
+
+                    let fizz_fn = |i| i % 3 == 0;
+                    let buzz_fn = if identical { fizz_fn } else { |i| i % 5 == 0 };
+
+                    // Check that `fizz op buzz` gives the expected results.
+                    chunked_test_inner(domain_size, unique, fizz_fn, buzz_fn, op_fn, |i| {
+                        spec_fn(fizz_fn, buzz_fn, i)
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn chunked_test_inner(
+    domain_size: usize,
+    unique: bool,
+    fizz_fn: impl Fn(usize) -> bool + Copy,
+    buzz_fn: impl Fn(usize) -> bool + Copy,
+    op_fn: impl Fn(&mut ChunkedBitSet<usize>, &ChunkedBitSet<usize>) -> bool,
+    expected_fn: impl Fn(usize) -> bool + Copy,
+) {
+    // Create two bitsets, "fizz" (LHS) and "buzz" (RHS).
+    let mut fizz = chunked_fill_with(domain_size, fizz_fn);
+    let buzz = chunked_fill_with(domain_size, buzz_fn);
+
+    // If requested, clone `fizz` so that its word Rcs are not uniquely-owned.
+    let _cloned = (!unique).then(|| fizz.clone());
+
+    // Perform the op (e.g. union/subtract/intersect), and verify that the
+    // mutated LHS contains exactly the expected values.
+    let changed = op_fn(&mut fizz, &buzz);
+    assert_chunked_contains(&fizz, expected_fn);
+
+    // Verify that the "changed" return value is correct.
+    let should_change = (0..domain_size).any(|i| fizz_fn(i) != expected_fn(i));
+    assert_eq!(changed, should_change);
+}
+
 fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
     let mut s = ChunkedBitSet::new_empty(domain_size);
     for &e in elements {
