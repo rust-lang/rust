@@ -9,7 +9,7 @@ pub enum Never {}
 
 #[no_mangle]
 pub fn make_unmake_result_never(x: i32) -> i32 {
-    // CHECK-LABEL: define i32 @make_unmake_result_never(i32{{( signext)?}} %x)
+    // CHECK-LABEL: define{{( dso_local)?}} i32 @make_unmake_result_never(i32{{( signext)?}} %x)
     // CHECK: start:
     // CHECK-NEXT: br label %[[next:bb.*]]
     // CHECK: [[next]]:
@@ -22,7 +22,7 @@ pub fn make_unmake_result_never(x: i32) -> i32 {
 
 #[no_mangle]
 pub fn extract_control_flow_never(x: ControlFlow<&str, Never>) -> &str {
-    // CHECK-LABEL: define { ptr, i64 } @extract_control_flow_never(ptr %x.0, i64 %x.1)
+    // CHECK-LABEL: define{{( dso_local)?}} { ptr, i64 } @extract_control_flow_never(ptr %x.0, i64 %x.1)
     // CHECK: start:
     // CHECK-NEXT: br label %[[next:bb.*]]
     // CHECK: [[next]]:
