@@ -3402,14 +3402,12 @@ impl Target {
                     self.abi,
                 );
             }
-            Arch::Mips => {
+            Arch::Mips | Arch::Mips32r6 => {
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on MIPS");
                 check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
                 check_matches!(
                     (&*self.llvm_abiname, &self.abi),
-                    // FIXME: we should force it to always be non-empty.
-                    ("o32", Abi::Unspecified | Abi::Other(_))
-                        | ("", Abi::Unspecified | Abi::Other(_)),
+                    ("o32", Abi::Unspecified | Abi::Other(_)),
                     "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
                      ABI name: {}\n\
                      cfg(target_abi): {}",
@@ -3422,7 +3420,9 @@ impl Target {
                 check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
                 check_matches!(
                     (&*self.llvm_abiname, &self.abi),
-                    ("n64", Abi::Abi64),
+                    // No in-tree targets use "n32" but at least for now we let out-of-tree targets
+                    // experiment with that.
+                    ("n64", Abi::Abi64) | ("n32", Abi::Unspecified | Abi::Other(_)),
                     "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
                      ABI name: {}\n\
                      cfg(target_abi): {}",
