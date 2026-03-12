@@ -34,7 +34,7 @@ pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
-pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+pub use self::mode::{is_dyn_thread_safe, FromDyn, set_dyn_thread_safe_mode};
 pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
     try_par_for_each_in,
@@ -63,6 +63,8 @@ mod atomic {
 
 mod mode {
     use std::sync::atomic::{AtomicU8, Ordering};
+
+    use crate::sync::{DynSend, DynSync};
 
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
@@ -98,6 +100,53 @@ mod mode {
 
         // Check that the mode was either uninitialized or was already set to the requested mode.
         assert!(previous.is_ok() || previous == Err(set));
+    }
+
+    #[derive(Copy, Clone)]
+    pub struct FromDyn<T>(T);
+
+    impl<T> FromDyn<T> {
+        #[inline(always)]
+        pub fn from(val: T) -> Self {
+            // Check that `sync::is_dyn_thread_safe()` is true on creation so we can
+            // implement `Send` and `Sync` for this structure when `T`
+            // implements `DynSend` and `DynSync` respectively.
+            assert!(crate::sync::is_dyn_thread_safe());
+            FromDyn(val)
+        }
+
+        #[inline(always)]
+        pub fn derive<O>(&self, val: O) -> FromDyn<O> {
+            // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
+            FromDyn(val)
+        }
+
+        #[inline(always)]
+        pub fn into_inner(self) -> T {
+            self.0
+        }
+    }
+
+    // `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
+    unsafe impl<T: DynSend> Send for FromDyn<T> {}
+
+    // `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
+    unsafe impl<T: DynSync> Sync for FromDyn<T> {}
+
+    impl<T> std::ops::Deref for FromDyn<T> {
+        type Target = T;
+
+        #[inline(always)]
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<T> std::ops::DerefMut for FromDyn<T> {
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
     }
 }
 
