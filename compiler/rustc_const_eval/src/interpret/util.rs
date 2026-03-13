@@ -29,7 +29,10 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
         );
     };
 
-    let (infcx, param_env) = ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env);
+    let (infcx, param_env) = ecx.tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv {
+        typing_mode: ty::TypingMode::Reflection,
+        ..ecx.typing_env
+    });
 
     let ocx = ObligationCtxt::new(&infcx);
     ocx.register_obligations(preds.iter().map(|pred: PolyExistentialPredicate<'_>| {

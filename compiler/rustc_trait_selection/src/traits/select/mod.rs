@@ -17,7 +17,7 @@ use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
-use rustc_infer::traits::{PredicateObligations, TraitObligation};
+use rustc_infer::traits::{ImplSource, PredicateObligations, TraitObligation};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
@@ -276,6 +276,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(SelectionError::Overflow(OverflowError::Canonical))
             }
             Err(e) => Err(e),
+            Ok(ImplSource::Builtin(..))
+                if matches!(self.infcx.typing_mode(), TypingMode::Reflection) =>
+            {
+                Err(SelectionError::Unimplemented)
+            }
             Ok(candidate) => Ok(Some(candidate)),
         }
     }
@@ -1283,6 +1288,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             match this.confirm_candidate(stack.obligation, candidate.clone()) {
                 Ok(selection) => {
                     debug!(?selection);
+                    if let ImplSource::Builtin(..) = selection
+                        && matches!(this.infcx.typing_mode(), TypingMode::Reflection)
+                    {
+                        return Ok(EvaluatedToErr);
+                    }
                     this.evaluate_predicates_recursively(
                         stack.list(),
                         selection.nested_obligations().into_iter(),
@@ -1469,6 +1479,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => return Ok(()),
         }
@@ -1521,6 +1532,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
+            // Impls that are not fully generic are completely ignored as "nonexistent"
+            // in this mode, so the results wildly differ from normal trait solving.
+            TypingMode::Reflection => false,
             // The hidden types of `defined_opaque_types` is not local to the current
             // inference context, so we can freely move this to the global cache.
             TypingMode::PostBorrowckAnalysis { .. } => true,
@@ -2039,6 +2053,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | PointerLikeCandidate
+                | TryAsDynCandidate
                 | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
@@ -2546,6 +2561,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());
         }
+        if matches!(self.infcx.typing_mode(), TypingMode::Reflection)
+            && !self.tcx().impl_is_fully_generic_for_reflection(impl_def_id)
+        {
+            debug!("reflection mode only allows fully generic impls");
+            return Err(());
+        }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
     }
@@ -2882,6 +2903,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
+            | TypingMode::Reflection
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
         }

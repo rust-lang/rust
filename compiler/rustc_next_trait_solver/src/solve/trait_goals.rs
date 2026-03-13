@@ -78,13 +78,22 @@ where
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
             },
 
             // Impl matches polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-            | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => Certainty::Yes,
+            | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
+                if let TypingMode::Reflection = ecx.typing_mode()
+                    && !cx.is_fully_generic_for_reflection(impl_def_id)
+                {
+                    return Err(NoSolution);
+                } else {
+                    Certainty::Yes
+                }
+            }
 
             // Impl doesn't match polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Negative)
@@ -845,6 +854,39 @@ where
         })
     }
 
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+        let cx = ecx.cx();
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let self_ty = goal.predicate.self_ty();
+            let ty = goal.predicate.trait_ref.args.type_at(1);
+            match self_ty.kind() {
+                ty::Dynamic(_bounds, lifetime) => {
+                    ecx.add_goal(
+                        GoalSource::Misc,
+                        goal.with(cx, ty::OutlivesPredicate(ty, lifetime)),
+                    );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+
+                ty::Bound(..)
+                | ty::Infer(
+                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+                ) => {
+                    panic!("unexpected type `{ty:?}`")
+                }
+
+                _ => Err(NoSolution),
+            }
+        })
+    }
+
     fn consider_builtin_field_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -1381,6 +1423,7 @@ where
             TypingMode::Coherence => return,
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
         }
@@ -1555,6 +1598,7 @@ where
                 }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
+                | TypingMode::Reflection
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
             }

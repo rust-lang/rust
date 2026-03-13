@@ -15,7 +15,8 @@ use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, TypingMode, elaborate,
+    self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
+    TypingMode, elaborate,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::DUMMY_SP;
@@ -131,6 +132,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation,
                         &mut candidates,
                     );
+                }
+                Some(LangItem::TryAsDyn) => {
+                    self.assemble_candidates_for_try_as_dyn(obligation, &mut candidates);
                 }
                 Some(LangItem::Field) => {
                     self.assemble_candidates_for_field_trait(obligation, &mut candidates);
@@ -1444,6 +1448,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_try_as_dyn(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match *obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Dynamic(bounds, _lifetime) => {
+                for bound in bounds {
+                    match bound.skip_binder() {
+                        ExistentialPredicate::Trait(_) => {}
+                        // FIXME(try_as_dyn): check what kind of projections we can allow
+                        ExistentialPredicate::Projection(_) => return,
+                        // Auto traits do not affect lifetimes outside of specialization,
+                        // which is disabled in reflection.
+                        ExistentialPredicate::AutoTrait(_) => {}
+                    }
+                }
+                candidates.vec.push(TryAsDynCandidate);
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                candidates.ambiguous = true;
+            }
+
+            _ => {}
         }
     }
 

@@ -340,6 +340,11 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution>;
+
     /// Consider (possibly several) candidates to upcast or unsize a type to another
     /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
@@ -533,6 +538,14 @@ where
         let cx = self.cx();
         let trait_def_id = goal.predicate.trait_def_id(cx);
 
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if let TypingMode::Reflection = self.typing_mode() {
+            return;
+        }
+
         // N.B. When assembling built-in candidates for lang items that are also
         // `auto` traits, then the auto trait candidate that is assembled in
         // `consider_auto_trait_candidate` MUST be disqualified to remain sound.
@@ -624,6 +637,9 @@ where
                 }
                 Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
+                }
+                Some(SolverTraitLangItem::TryAsDyn) => {
+                    G::consider_builtin_try_as_dyn_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::Field) => G::consider_builtin_field_candidate(self, goal),
                 _ => Err(NoSolution),
@@ -807,6 +823,14 @@ where
             return;
         }
 
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if let TypingMode::Reflection = self.typing_mode() {
+            return;
+        }
+
         let self_ty = goal.predicate.self_ty();
         let bounds = match self_ty.kind() {
             ty::Bool
@@ -939,6 +963,7 @@ where
             TypingMode::Coherence => return,
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
         }
@@ -1002,6 +1027,7 @@ where
             TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => vec![],
         };

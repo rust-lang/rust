@@ -1,3 +1,5 @@
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
 //@ run-pass
 #![feature(try_as_dyn)]
 
@@ -7,7 +9,7 @@ use std::fmt::{Error, Write};
 fn try_as_dyn_mut_write<T: 'static>(t: &mut T, s: &str) -> Result<(), Error> {
     match std::any::try_as_dyn_mut::<_, dyn Write>(t) {
         Some(w) => w.write_str(s),
-        None => Ok(())
+        None => Ok(()),
     }
 }
 

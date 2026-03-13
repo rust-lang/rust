@@ -368,6 +368,8 @@ pub trait Interner:
 
     fn impl_polarity(self, impl_def_id: Self::ImplId) -> ty::ImplPolarity;
 
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool;
+
     fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
     fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
