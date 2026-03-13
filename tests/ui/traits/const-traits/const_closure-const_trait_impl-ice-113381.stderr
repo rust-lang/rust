@@ -1,8 +1,0 @@
-error: cannot use `const` closures outside of const contexts
-  --> $DIR/const_closure-const_trait_impl-ice-113381.rs:14:6
-   |
-LL |     (const || (()).foo())();
-   |      ^^^^^
-
-error: aborting due to 1 previous error
-

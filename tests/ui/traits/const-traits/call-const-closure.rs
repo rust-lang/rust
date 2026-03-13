@@ -1,4 +1,5 @@
-//@ compile-flags: -Znext-solver
+//@[next] compile-flags: -Znext-solver
+//@ revisions: next old
 //@ edition:2021
 
 #![feature(const_trait_impl, const_closures)]
