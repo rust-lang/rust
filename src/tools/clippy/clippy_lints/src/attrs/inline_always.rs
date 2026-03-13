@@ -1,6 +1,6 @@
 use super::INLINE_ALWAYS;
 use clippy_utils::diagnostics::span_lint;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::{Attribute, find_attr};
 use rustc_lint::LateContext;
 use rustc_span::Span;
@@ -11,7 +11,7 @@ pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Att
         return;
     }
 
-    if let Some(span) = find_attr!(attrs, AttributeKind::Inline(InlineAttr::Always, span) => *span) {
+    if let Some(span) = find_attr!(attrs, Inline(InlineAttr::Always, span) => *span) {
         span_lint(
             cx,
             INLINE_ALWAYS,

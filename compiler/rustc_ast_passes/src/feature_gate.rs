@@ -1,11 +1,13 @@
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, NodeId, PatKind, attr, token};
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::errors;
@@ -427,7 +429,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 false
             }
             ast::AssocItemKind::Const(box ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { .. },
+                rhs_kind: ast::ConstItemRhsKind::TypeConst { rhs },
                 ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
@@ -438,6 +440,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     i.span,
                     "associated `type const` are unstable"
                 );
+                // Make sure associated `type const` defaults in traits are only allowed
+                // if the feature gate is enabled.
+                // #![feature(associated_type_defaults)]
+                if ctxt == AssocCtxt::Trait && rhs.is_some() {
+                    gate!(
+                        &self,
+                        associated_type_defaults,
+                        i.span,
+                        "associated type defaults are unstable"
+                    );
+                }
                 false
             }
             _ => false,
@@ -481,11 +494,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             }
         };
     }
-    gate_all!(
-        if_let_guard,
-        "`if let` guards are experimental",
-        "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
-    );
     gate_all!(
         async_trait_bounds,
         "`async` trait bounds are unstable",
@@ -580,6 +588,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(frontmatter, "frontmatters are experimental");
     gate_all!(coroutines, "coroutine syntax is experimental");
     gate_all!(const_block_items, "const block items are experimental");
+    gate_all!(final_associated_functions, "`final` on trait functions is experimental");
+    gate_all!(impl_restriction, "`impl` restrictions are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -640,17 +650,27 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
         return;
     }
     let mut errored = false;
-    for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
+
+    if let Some(Attribute::Parsed(AttributeKind::Feature(feature_idents, first_span))) =
+        AttributeParser::parse_limited(
+            sess,
+            &krate.attrs,
+            sym::feature,
+            DUMMY_SP,
+            krate.id,
+            Some(&features),
+        )
+    {
         // `feature(...)` used on non-nightly. This is definitely an error.
         let mut err = errors::FeatureOnNonNightly {
-            span: attr.span,
+            span: first_span,
             channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
             stable_features: vec![],
             sugg: None,
         };
 
         let mut all_stable = true;
-        for ident in attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident()) {
+        for ident in feature_idents {
             let name = ident.name;
             let stable_since = features
                 .enabled_lang_features()
@@ -665,7 +685,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
             }
         }
         if all_stable {
-            err.sugg = Some(attr.span);
+            err.sugg = Some(first_span);
         }
         sess.dcx().emit_err(err);
         errored = true;

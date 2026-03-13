@@ -1054,7 +1054,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
     ) -> Self::T {
         use crate::ty::{AssocKind, AssocTypeData};
         match *self {
-            ty::AssocKind::Const { name } => AssocKind::Const { name: name.to_string() },
+            ty::AssocKind::Const { name, .. } => AssocKind::Const { name: name.to_string() },
             ty::AssocKind::Fn { name, has_self } => {
                 AssocKind::Fn { name: name.to_string(), has_self }
             }

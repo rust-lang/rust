@@ -27,6 +27,7 @@ declare_clippy_lint! {
     style,
     "checks for usage of `pub(self)` and `pub(in self)`."
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `pub(<loc>)` with `in`.
@@ -49,6 +50,7 @@ declare_clippy_lint! {
     restriction,
     "disallows usage of `pub(<loc>)`, without `in`"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `pub(<loc>)` without `in`.
@@ -74,7 +76,12 @@ declare_clippy_lint! {
     restriction,
     "disallows usage of `pub(in <loc>)` with `in`"
 }
-declare_lint_pass!(Visibility => [NEEDLESS_PUB_SELF, PUB_WITH_SHORTHAND, PUB_WITHOUT_SHORTHAND]);
+
+declare_lint_pass!(Visibility => [
+    NEEDLESS_PUB_SELF,
+    PUB_WITHOUT_SHORTHAND,
+    PUB_WITH_SHORTHAND,
+]);
 
 impl EarlyLintPass for Visibility {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {

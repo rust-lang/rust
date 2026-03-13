@@ -20,7 +20,7 @@ LL | |         .unwrap_or_else(|_e| 0);
    | |_______________________________^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
-  --> tests/ui/map_unwrap_or_fixable.rs:69:20
+  --> tests/ui/map_unwrap_or_fixable.rs:66:20
    |
 LL |     println!("{}", o.map(|y| y + 1).unwrap_or(3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,13 +32,13 @@ LL +     println!("{}", o.map_or(3, |y| y + 1));
    |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
-  --> tests/ui/map_unwrap_or_fixable.rs:71:20
+  --> tests/ui/map_unwrap_or_fixable.rs:68:20
    |
 LL |     println!("{}", o.map(|y| y + 1).unwrap_or_else(|| 3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `o.map_or_else(|| 3, |y| y + 1)`
 
 error: called `map(<f>).unwrap_or(<a>)` on a `Result` value
-  --> tests/ui/map_unwrap_or_fixable.rs:73:20
+  --> tests/ui/map_unwrap_or_fixable.rs:70:20
    |
 LL |     println!("{}", r.map(|y| y + 1).unwrap_or(3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,13 +50,13 @@ LL +     println!("{}", r.map_or(3, |y| y + 1));
    |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
-  --> tests/ui/map_unwrap_or_fixable.rs:75:20
+  --> tests/ui/map_unwrap_or_fixable.rs:72:20
    |
 LL |     println!("{}", r.map(|y| y + 1).unwrap_or_else(|()| 3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `r.map_or_else(|()| 3, |y| y + 1)`
 
 error: called `map(<f>).unwrap_or(false)` on a `Result` value
-  --> tests/ui/map_unwrap_or_fixable.rs:78:20
+  --> tests/ui/map_unwrap_or_fixable.rs:75:20
    |
 LL |     println!("{}", r.map(|y| y == 1).unwrap_or(false));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL +     println!("{}", r.is_ok_and(|y| y == 1));
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
-  --> tests/ui/map_unwrap_or_fixable.rs:84:20
+  --> tests/ui/map_unwrap_or_fixable.rs:81:20
    |
 LL |     println!("{}", x.map(|y| y + 1).unwrap_or(3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL +     println!("{}", x.map_or(3, |y| y + 1));
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on a `Result` value
-  --> tests/ui/map_unwrap_or_fixable.rs:88:20
+  --> tests/ui/map_unwrap_or_fixable.rs:85:20
    |
 LL |     println!("{}", x.map(|y| y + 1).unwrap_or(3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,13 +92,13 @@ LL +     println!("{}", x.map_or(3, |y| y + 1));
    |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
-  --> tests/ui/map_unwrap_or_fixable.rs:92:20
+  --> tests/ui/map_unwrap_or_fixable.rs:89:20
    |
 LL |     println!("{}", x.map(|y| y + 1).unwrap_or_else(|| 3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.map_or_else(|| 3, |y| y + 1)`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
-  --> tests/ui/map_unwrap_or_fixable.rs:96:20
+  --> tests/ui/map_unwrap_or_fixable.rs:93:20
    |
 LL |     println!("{}", x.map(|y| y + 1).unwrap_or_else(|_| 3));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.map_or_else(|_| 3, |y| y + 1)`

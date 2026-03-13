@@ -7,8 +7,8 @@ LL |     fn by_ref(&self) {}
 note: the lint level is defined here
   --> $DIR/rustc_pass_by_value_self.rs:8:9
    |
-LL | #![deny(rustc::pass_by_value)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rustc::disallowed_pass_by_ref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing `Ty<'tcx>` by reference
   --> $DIR/rustc_pass_by_value_self.rs:30:21

@@ -585,5 +585,41 @@ LL +             return;
 LL +         };
    |
 
-error: aborting due to 37 previous errors
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:577:5
+   |
+LL | /     _ = match i {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => unsafe {
+LL | |             core::hint::unreachable_unchecked();
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider writing
+   |
+LL ~     let Ok(_) = i else { unsafe {
+LL +             core::hint::unreachable_unchecked();
+LL ~         } };;
+   |
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:585:5
+   |
+LL | /     _ = match i {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 'useless_label: {
+LL | |             panic!();
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider writing
+   |
+LL ~     let Ok(_) = i else { 'useless_label: {
+LL +             panic!();
+LL ~         } };;
+   |
+
+error: aborting due to 39 previous errors
 

@@ -1,10 +1,10 @@
-//@ build-pass
-//@ compile-flags: -Zunpretty=hir
-
-#![feature(const_block_items)]
+#![attr = Feature([const_block_items#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ build-pass
+//@ compile-flags: -Zunpretty=hir
+
 
 const _: () =
     {

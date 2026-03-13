@@ -562,12 +562,12 @@ impl<'tcx> CompilerInterface<'tcx> {
         cnst.internal(&mut *tables, cx.tcx).to_string()
     }
 
-    /// `Span` of an item.
-    pub(crate) fn span_of_an_item(&self, def_id: DefId) -> Span {
+    /// `Span` of a `DefId`.
+    pub(crate) fn span_of_a_def(&self, def_id: DefId) -> Span {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let did = tables[def_id];
-        cx.span_of_an_item(did).stable(&mut *tables, cx)
+        cx.span_of_a_def(did).stable(&mut *tables, cx)
     }
 
     pub(crate) fn ty_const_pretty(&self, ct: TyConstId) -> String {

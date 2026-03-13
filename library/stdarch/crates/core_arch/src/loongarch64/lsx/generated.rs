@@ -7,7 +7,7 @@
 // ```
 
 use crate::mem::transmute;
-use super::types::*;
+use super::super::*;
 
 #[allow(improper_ctypes)]
 unsafe extern "unadjusted" {
@@ -1324,7 +1324,7 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.loongarch.lsx.vssrln.w.d"]
     fn __lsx_vssrln_w_d(a: __v2i64, b: __v2i64) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vorn.v"]
-    fn __lsx_vorn_v(a: __v16i8, b: __v16i8) -> __v16i8;
+    fn __lsx_vorn_v(a: __v16u8, b: __v16u8) -> __v16u8;
     #[link_name = "llvm.loongarch.lsx.vldi"]
     fn __lsx_vldi(a: i32) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vshuf.b"]

@@ -296,6 +296,10 @@ impl AttributeExt for Attribute {
         }
         false
     }
+
+    fn is_rustc_doc_primitive(&self) -> bool {
+        self.has_name(sym::rustc_doc_primitive)
+    }
 }
 
 impl Attribute {
@@ -935,6 +939,9 @@ pub trait AttributeExt: Debug {
 
     /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
     fn is_doc_keyword_or_attribute(&self) -> bool;
+
+    /// Returns `true` if this is a `#[rustc_doc_primitive]` attribute.
+    fn is_rustc_doc_primitive(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding

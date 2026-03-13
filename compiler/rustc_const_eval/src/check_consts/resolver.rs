@@ -192,7 +192,6 @@ where
             }
 
             mir::Rvalue::Cast(..)
-            | mir::Rvalue::ShallowInitBox(..)
             | mir::Rvalue::Use(..)
             | mir::Rvalue::CopyForDeref(..)
             | mir::Rvalue::ThreadLocalRef(..)

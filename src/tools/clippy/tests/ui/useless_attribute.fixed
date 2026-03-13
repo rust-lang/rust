@@ -96,9 +96,7 @@ mod module {
 #[allow(unused_braces)]
 use module::{Struct};
 
-fn main() {
-    test_indented_attr();
-}
+fn main() {}
 
 // Regression test for https://github.com/rust-lang/rust-clippy/issues/4467
 #[allow(dead_code)]

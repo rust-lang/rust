@@ -2445,12 +2445,12 @@ fn is_late_bound_map(
                 )) => {
                     // See comments on `ConstrainedCollectorPostHirTyLowering` for why this arm does not
                     // just consider args to be unconstrained.
-                    let generics = self.tcx.generics_of(alias_def);
+                    let generics = self.tcx.generics_of(*alias_def);
                     let mut walker = ConstrainedCollectorPostHirTyLowering {
                         arg_is_constrained: vec![false; generics.own_params.len()]
                             .into_boxed_slice(),
                     };
-                    walker.visit_ty(self.tcx.type_of(alias_def).instantiate_identity());
+                    walker.visit_ty(self.tcx.type_of(*alias_def).instantiate_identity());
 
                     match segments.last() {
                         Some(hir::PathSegment { args: Some(args), .. }) => {

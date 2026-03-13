@@ -1,4 +1,3 @@
-//@ min-llvm-version: 21
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 //! Tests that matching + eq on `Option<FieldlessEnum>` produces a simple compare with no branching
 

@@ -38,7 +38,9 @@ declare_clippy_lint! {
   "needless parenthesis on range literals can be removed"
 }
 
-declare_lint_pass!(NeedlessParensOnRangeLiterals => [NEEDLESS_PARENS_ON_RANGE_LITERALS]);
+declare_lint_pass!(NeedlessParensOnRangeLiterals => [
+    NEEDLESS_PARENS_ON_RANGE_LITERALS,
+]);
 
 fn snippet_enclosed_in_parenthesis(snippet: &str) -> bool {
     snippet.starts_with('(') && snippet.ends_with(')')

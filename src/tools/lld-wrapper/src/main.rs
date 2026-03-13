@@ -12,10 +12,9 @@
 //! On Windows it spawns a `..\rust-lld.exe` child process.
 
 use std::env::consts::EXE_SUFFIX;
-use std::env::{self};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::{env, process};
 
 trait UnwrapOrExitWith<T> {
     fn unwrap_or_exit_with(self, context: &str) -> T;

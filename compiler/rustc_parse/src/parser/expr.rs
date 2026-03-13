@@ -25,8 +25,7 @@ use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, Spanned};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -296,12 +295,12 @@ impl<'a> Parser<'a> {
             let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
                 AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
                 AssocOp::Cast | AssocOp::Range(_) => {
@@ -409,7 +408,7 @@ impl<'a> Parser<'a> {
             }
             _ => return None,
         };
-        Some(source_map::respan(span, op))
+        Some(respan(span, op))
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -1140,7 +1139,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
+    pub(crate) fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -1309,12 +1308,13 @@ impl<'a> Parser<'a> {
                             self.dcx()
                                 .create_err(errors::ParenthesesWithStructFields {
                                     span,
-                                    r#type: path,
                                     braces_for_struct: errors::BracesForStructLiteral {
                                         first: open_paren,
                                         second: close_paren,
+                                        r#type: path.clone(),
                                     },
                                     no_fields_for_fn: errors::NoFieldsForFnCall {
+                                        r#type: path,
                                         fields: fields
                                             .into_iter()
                                             .map(|field| field.span.until(field.expr.span))
@@ -1628,8 +1628,7 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count =
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?;
+                let count = self.parse_expr_anon_const(|_, _| MgcaDisambiguation::Direct)?;
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {
@@ -2521,7 +2520,7 @@ impl<'a> Parser<'a> {
                         ret_span,
                         "explicit return type requires closure body to be enclosed in braces",
                     );
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "wrap the expression in curly braces",
                         vec![
                             (expr.span.shrink_to_lo(), "{ ".to_string()),
@@ -3207,6 +3206,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::AddBraces {
                         left: span.shrink_to_lo(),
                         right: span.shrink_to_hi(),
+                        num_statements: stmts.len(),
                     }
                 } else {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
@@ -3459,40 +3459,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Expr>>> {
-        // Used to check the `if_let_guard` feature mostly by scanning
-        // `&&` tokens.
-        fn has_let_expr(expr: &Expr) -> bool {
-            match &expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = has_let_expr(lhs);
-                    let rhs_rslt = has_let_expr(rhs);
-                    lhs_rslt || rhs_rslt
-                }
-                ExprKind::Let(..) => true,
-                _ => false,
-            }
-        }
         if !self.eat_keyword(exp!(If)) {
             // No match arm guard present.
             return Ok(None);
         }
 
-        let if_span = self.prev_token.span;
         let mut cond = self.parse_match_guard_condition()?;
 
-        let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-        checker.visit_expr(&mut cond);
+        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
 
-        if has_let_expr(&cond) {
-            let span = if_span.to(cond.span);
-            self.psess.gated_spans.gate(sym::if_let_guard, span);
-        }
-
-        Ok(Some(if let Some(guar) = checker.found_incorrect_let_chain {
-            self.mk_expr_err(cond.span, guar)
-        } else {
-            cond
-        }))
+        Ok(Some(cond))
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
@@ -3866,6 +3842,15 @@ impl<'a> Parser<'a> {
                         recovered_async = Some(guar);
                     }
 
+                    // If we encountered an error which we are recovering from, treat the struct
+                    // as if it has a `..` in it, because we don’t know what fields the user
+                    // might have *intended* it to have.
+                    //
+                    // This assignment will be overwritten if we actually parse a `..` later.
+                    //
+                    // (Note that this code is duplicated between here and below in comma parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
@@ -3916,6 +3901,10 @@ impl<'a> Parser<'a> {
                     } else if let Some(f) = field_ident(self, guar) {
                         fields.push(f);
                     }
+
+                    // See comment above on this same assignment inside of field parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     let _ = self.eat(exp!(Comma));
                 }

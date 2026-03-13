@@ -382,6 +382,7 @@ enum FlycheckCommandOrigin {
     ProjectJsonRunnable,
 }
 
+#[derive(Debug)]
 enum StateChange {
     Restart {
         generation: DiagnosticsGeneration,
@@ -435,6 +436,7 @@ enum DiagnosticsReceived {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 enum Event {
     RequestStateChange(StateChange),
     CheckEvent(Option<CheckMessage>),
@@ -445,6 +447,7 @@ const SAVED_FILE_PLACEHOLDER_DOLLAR: &str = "$saved_file";
 const LABEL_INLINE: &str = "{label}";
 const SAVED_FILE_INLINE: &str = "{saved_file}";
 
+#[derive(Debug)]
 struct Substitutions<'a> {
     label: Option<&'a str>,
     saved_file: Option<&'a str>,
@@ -556,17 +559,37 @@ impl FlycheckActor {
                     self.cancel_check_process();
                 }
                 Event::RequestStateChange(StateChange::Restart {
-                    generation,
-                    scope,
-                    saved_file,
-                    target,
+                    mut generation,
+                    mut scope,
+                    mut saved_file,
+                    mut target,
                 }) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
+
+                    // Debounce by briefly waiting for other state changes.
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
-                        // restart chained with a stop, so just cancel
-                        if let StateChange::Cancel = restart {
-                            continue 'event;
+                        match restart {
+                            StateChange::Cancel => {
+                                // We got a cancel straight after this restart request, so
+                                // don't do anything.
+                                continue 'event;
+                            }
+                            StateChange::Restart {
+                                generation: g,
+                                scope: s,
+                                saved_file: sf,
+                                target: t,
+                            } => {
+                                // We got another restart request. Take the parameters
+                                // from the last restart request in this time window,
+                                // because the most recent request is probably the most
+                                // relevant to the user.
+                                generation = g;
+                                scope = s;
+                                saved_file = sf;
+                                target = t;
+                            }
                         }
                     }
 
@@ -741,70 +764,42 @@ impl FlycheckActor {
                             flycheck_id = self.id,
                             message = diagnostic.message,
                             package_id = package_id.as_ref().map(|it| it.as_str()),
-                            scope = ?self.scope,
                             "diagnostic received"
                         );
-
-                        match &self.scope {
-                            FlycheckScope::Workspace => {
-                                if self.diagnostics_received == DiagnosticsReceived::NotYet {
-                                    self.send(FlycheckMessage::ClearDiagnostics {
-                                        id: self.id,
-                                        kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
-                                    });
-
-                                    self.diagnostics_received =
-                                        DiagnosticsReceived::AtLeastOneAndClearedWorkspace;
-                                }
-
-                                if let Some(package_id) = package_id {
-                                    tracing::warn!(
-                                        "Ignoring package label {:?} and applying diagnostics to the whole workspace",
-                                        package_id
-                                    );
-                                }
-
-                                self.send(FlycheckMessage::AddDiagnostic {
-                                    id: self.id,
-                                    generation: self.generation,
-                                    package_id: None,
-                                    workspace_root: self.root.clone(),
-                                    diagnostic,
-                                });
-                            }
-                            FlycheckScope::Package { package: flycheck_package, .. } => {
-                                if self.diagnostics_received == DiagnosticsReceived::NotYet {
-                                    self.diagnostics_received = DiagnosticsReceived::AtLeastOne;
-                                }
-
-                                // If the package has been set in the diagnostic JSON, respect that. Otherwise, use the
-                                // package that the current flycheck is scoped to. This is useful when a project is
-                                // directly using rustc for its checks (e.g. custom check commands in rust-project.json).
-                                let package_id = package_id.unwrap_or(flycheck_package.clone());
-
-                                if self.diagnostics_cleared_for.insert(package_id.clone()) {
-                                    tracing::trace!(
-                                        flycheck_id = self.id,
-                                        package_id = package_id.as_str(),
-                                        "clearing diagnostics"
-                                    );
-                                    self.send(FlycheckMessage::ClearDiagnostics {
-                                        id: self.id,
-                                        kind: ClearDiagnosticsKind::All(ClearScope::Package(
-                                            package_id.clone(),
-                                        )),
-                                    });
-                                }
-
-                                self.send(FlycheckMessage::AddDiagnostic {
-                                    id: self.id,
-                                    generation: self.generation,
-                                    package_id: Some(package_id),
-                                    workspace_root: self.root.clone(),
-                                    diagnostic,
-                                });
-                            }
+                        if self.diagnostics_received == DiagnosticsReceived::NotYet {
+                            self.diagnostics_received = DiagnosticsReceived::AtLeastOne;
                         }
+                        if let Some(package_id) = &package_id {
+                            if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                                tracing::trace!(
+                                    flycheck_id = self.id,
+                                    package_id = package_id.as_str(),
+                                    "clearing diagnostics"
+                                );
+                                self.send(FlycheckMessage::ClearDiagnostics {
+                                    id: self.id,
+                                    kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                        package_id.clone(),
+                                    )),
+                                });
+                            }
+                        } else if self.diagnostics_received
+                            != DiagnosticsReceived::AtLeastOneAndClearedWorkspace
+                        {
+                            self.diagnostics_received =
+                                DiagnosticsReceived::AtLeastOneAndClearedWorkspace;
+                            self.send(FlycheckMessage::ClearDiagnostics {
+                                id: self.id,
+                                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+                            });
+                        }
+                        self.send(FlycheckMessage::AddDiagnostic {
+                            id: self.id,
+                            generation: self.generation,
+                            package_id,
+                            workspace_root: self.root.clone(),
+                            diagnostic,
+                        });
                     }
                 },
             }
@@ -978,6 +973,7 @@ impl FlycheckActor {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 enum CheckMessage {
     /// A message from `cargo check`, including details like the path
     /// to the relevant `Cargo.toml`.

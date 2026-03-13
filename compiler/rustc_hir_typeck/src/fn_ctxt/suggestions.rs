@@ -23,8 +23,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::Spanned;
-use rustc_span::{ExpnKind, Ident, MacroKind, Span, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -156,11 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            err.multipart_suggestion_verbose(
-                format!("use parentheses to {msg}"),
-                sugg,
-                applicability,
-            );
+            err.multipart_suggestion(format!("use parentheses to {msg}"), sugg, applicability);
             return true;
         }
         false
@@ -245,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            err.multipart_suggestion_verbose("use parentheses to call these", sugg, applicability);
+            err.multipart_suggestion("use parentheses to call these", sugg, applicability);
 
             true
         } else {
@@ -298,7 +293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.multipart_suggestion_verbose(msg, suggestion, applicability);
+                err.multipart_suggestion(msg, suggestion, applicability);
             } else {
                 err.multipart_suggestion(msg, suggestion, applicability);
             }
@@ -571,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
-            let suggest_boxing = match found.kind() {
+            let suggest_boxing = match *found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
@@ -1299,7 +1294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !is_in_arm(expr, self.tcx) {
                 suggs.push((span.shrink_to_hi(), ";".to_string()));
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "you might have meant to return this value",
                 suggs,
                 Applicability::MaybeIncorrect,
@@ -1611,7 +1606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             msg,
             vec![
                 (call_ident.span, "map_or".to_owned()),
@@ -1639,7 +1634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && snippet.starts_with('{')
                 && snippet.ends_with('}')
             {
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "to create an array, use square brackets instead of curly braces",
                     vec![
                         (
@@ -1838,7 +1833,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => return false,
         };
-        if item.def_id == old_def_id || self.tcx.def_kind(item.def_id) != DefKind::AssocConst {
+        if item.def_id == old_def_id
+            || !matches!(self.tcx.def_kind(item.def_id), DefKind::AssocConst { .. })
+        {
             // Same item
             return false;
         }
@@ -2383,7 +2380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && match expr.kind {
                     ExprKind::Path(QPath::Resolved(
                         None,
-                        Path { res: Res::Def(DefKind::Const, _), .. },
+                        Path { res: Res::Def(DefKind::Const { .. }, _), .. },
                     )) => true,
                     ExprKind::Call(
                         Expr {
@@ -2604,7 +2601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => { /* No variants to format */ }
                 [(variant, ctor_kind, field_name, note)] => {
                     // Just a single matching variant.
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
@@ -3110,6 +3107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
+                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =
@@ -3375,7 +3373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     (msg, suggestion)
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         let suggest_to_change_suffix_or_into =
@@ -3410,7 +3408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     into_suggestion.clone()
                 };
-                err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
+                err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
             };
 
         match (expected_ty.kind(), checked_ty.kind()) {
@@ -3464,14 +3462,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{cast_msg}, producing the closest possible value"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3481,14 +3479,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("{msg}, rounding the float towards zero"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -3499,7 +3497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Uint(found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{msg}, producing the floating point representation of the integer",
                         ),
@@ -3507,14 +3505,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{cast_msg}, producing the floating point representation of the integer, \
                                  rounded if necessary",
@@ -3528,7 +3526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Float(exp), ty::Int(found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer",
                             msg.clone(),
@@ -3537,14 +3535,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if literal_is_ty_suffixed(expr) {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         lit_msg,
                         suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     // Missing try_into implementation for `{integer}` to `{float}`
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!(
                             "{}, producing the floating point representation of the integer, \
                                 rounded if necessary",
@@ -3561,7 +3559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | &ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
                 &ty::Char,
             ) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("{cast_msg}, since a `char` always occupies 4 bytes"),
                     cast_suggestion,
                     Applicability::MachineApplicable,

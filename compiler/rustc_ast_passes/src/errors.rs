@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -156,6 +156,24 @@ pub(crate) struct ForbiddenDefault {
     #[primary_span]
     pub span: Span,
     #[label("`default` because of this")]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`final` is only allowed on associated functions in traits")]
+pub(crate) struct ForbiddenFinal {
+    #[primary_span]
+    pub span: Span,
+    #[label("`final` because of this")]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`final` is only allowed on associated functions if they have a body")]
+pub(crate) struct ForbiddenFinalWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[label("`final` because of this")]
     pub def_span: Span,
 }
 
@@ -653,7 +671,7 @@ pub(crate) struct MissingUnsafeOnExtern {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("extern blocks should be unsafe")]
 pub(crate) struct MissingUnsafeOnExternLint {
     #[suggestion(
@@ -821,17 +839,6 @@ pub(crate) struct ConstAndCoroutine {
     #[label("{\"\"}")]
     pub span: Span,
     pub coroutine_kind: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("functions cannot be both `const` and C-variadic")]
-pub(crate) struct ConstAndCVariadic {
-    #[primary_span]
-    pub spans: Vec<Span>,
-    #[label("`const` because of this")]
-    pub const_span: Span,
-    #[label("C-variadic because of this")]
-    pub variadic_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1020,7 +1027,7 @@ pub(crate) struct MissingAbi {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`extern` declarations without an explicit ABI are deprecated")]
 pub(crate) struct MissingAbiSugg {
     #[suggestion(
@@ -1123,6 +1130,13 @@ pub(crate) struct AbiX86Interrupt {
 #[derive(Diagnostic)]
 #[diag("scalable vectors must be tuple structs")]
 pub(crate) struct ScalableVectorNotTupleStruct {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("scalable vectors are not supported on this architecture")]
+pub(crate) struct ScalableVectorBadArch {
     #[primary_span]
     pub span: Span,
 }

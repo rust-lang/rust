@@ -20,8 +20,8 @@ use minicore::*;
 #[repr(align(16384))]
 struct Kitten;
 
-#[repr(align(32768))] //[msp430]~ ERROR alignment must not be greater than `isize::MAX`
+#[repr(align(32768))] //[msp430]~ ERROR invalid `repr(align)` attribute: alignment larger than `isize::MAX` bytes (32767 for the current target) [E0589]
 struct Cat;
 
-#[repr(align(65536))] //[msp430]~ ERROR alignment must not be greater than `isize::MAX`
+#[repr(align(65536))] //[msp430]~ ERROR invalid `repr(align)` attribute: alignment larger than `isize::MAX` bytes (32767 for the current target) [E0589]
 struct BigCat;

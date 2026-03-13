@@ -169,7 +169,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let is_shared = flags == shared;
         let timeout = clock_timeout.map(|(_, anchor, timeout)| {
-            // The only clock that is currenlty supported is the monotonic clock.
+            // The only clock that is currently supported is the monotonic clock.
             // While the deadline argument of `os_sync_wait_on_address_with_deadline`
             // is actually not in nanoseconds but in the units of `mach_current_time`,
             // the two are equivalent in miri.

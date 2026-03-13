@@ -2,7 +2,6 @@ use super::EMPTY_LOOP;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{is_in_panic_handler, is_no_std_crate};
 
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Block, Expr, ItemKind, Node, find_attr};
 use rustc_lint::LateContext;
 
@@ -11,7 +10,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, loop_block: &Block<'_
     if let Node::Item(parent_node) = cx.tcx.hir_node(parent_hir_id)
         && matches!(parent_node.kind, ItemKind::Fn { .. })
         && let attrs = cx.tcx.hir_attrs(parent_hir_id)
-        && find_attr!(attrs, AttributeKind::RustcIntrinsic)
+        && find_attr!(attrs, RustcIntrinsic)
     {
         // Intrinsic functions are expanded into an empty loop when lowering the AST
         // to simplify the job of later passes which might expect any function to have a body.

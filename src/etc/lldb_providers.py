@@ -9,6 +9,7 @@ from lldb import (
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedChar,
     eFormatChar,
+    eTypeIsInteger,
 )
 
 from rust_types import is_tuple_fields
@@ -88,6 +89,12 @@ def unwrap_unique_or_non_null(unique_or_nonnull: SBValue) -> SBValue:
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull.GetChildMemberWithName("pointer")
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
+
+
+def unwrap_scalar_wrappers(wrapper: SBValue) -> SBValue:
+    while (wrapper.type.GetTypeFlags() & eTypeIsInteger) == 0:
+        wrapper = wrapper.GetChildAtIndex(0)
+    return wrapper
 
 
 class DefaultSyntheticProvider:
@@ -1246,12 +1253,9 @@ class StdRcSyntheticProvider:
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
     struct RcInner<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
-    struct Cell<T> { value: UnsafeCell<T> }
-    struct UnsafeCell<T> { value: T }
 
     struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
-    struct ArcInner<T> { strong: atomic::AtomicUsize, weak: atomic::AtomicUsize, data: T }
-    struct AtomicUsize { v: UnsafeCell<usize> }
+    struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
@@ -1261,16 +1265,8 @@ class StdRcSyntheticProvider:
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
-        self.strong = (
-            self.ptr.GetChildMemberWithName("strong")
-            .GetChildAtIndex(0)
-            .GetChildMemberWithName("value")
-        )
-        self.weak = (
-            self.ptr.GetChildMemberWithName("weak")
-            .GetChildAtIndex(0)
-            .GetChildMemberWithName("value")
-        )
+        self.strong = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("strong"))
+        self.weak = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("weak"))
 
         self.value_builder = ValueBuilder(valobj)
 

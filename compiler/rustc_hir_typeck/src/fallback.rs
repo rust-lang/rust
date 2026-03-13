@@ -2,8 +2,8 @@ use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
-use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;

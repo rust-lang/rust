@@ -3,11 +3,11 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use std::borrow::Cow;
+use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, ScalableElt, VariantIdx};
-use rustc_data_structures::debug_assert_matches;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -26,8 +26,8 @@ use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region, Ty,
-    TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
+    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -488,6 +488,35 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_field_representing_type(
+        tcx: TyCtxt<'tcx>,
+        base: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> Ty<'tcx> {
+        let Some(did) = tcx.lang_items().field_representing_type() else {
+            bug!("could not locate the `FieldRepresentingType` lang item")
+        };
+        let def = tcx.adt_def(did);
+        let args = tcx.mk_args(&[
+            base.into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, variant.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+            Const::new_value(
+                tcx,
+                ValTree::from_scalar_int(tcx, field.as_u32().into()),
+                tcx.types.u32,
+            )
+            .into(),
+        ]);
+        Ty::new_adt(tcx, def, args)
+    }
+
+    #[inline]
     #[instrument(level = "debug", skip(tcx))]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
@@ -613,12 +642,12 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::TyParam
                 | DefKind::Fn
-                | DefKind::Const
+                | DefKind::Const { .. }
                 | DefKind::ConstParam
                 | DefKind::Static { .. }
                 | DefKind::Ctor(..)
                 | DefKind::AssocFn
-                | DefKind::AssocConst
+                | DefKind::AssocConst { .. }
                 | DefKind::Macro(..)
                 | DefKind::ExternCrate
                 | DefKind::Use
@@ -1336,6 +1365,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type, pinnedness, mutability, and the region of a reference (`&T` or `&mut T`)
+    /// or a pinned-reference type (`Pin<&T>` or `Pin<&mut T>`).
+    ///
+    /// Regarding the [`pin_ergonomics`] feature, one of the goals is to make pinned references
+    /// (`Pin<&T>` and `Pin<&mut T>`) behaves similar to normal references (`&T` and `&mut T`).
+    /// This function is useful when references and pinned references are processed similarly.
+    ///
+    /// [`pin_ergonomics`]: https://github.com/rust-lang/rust/issues/130494
     pub fn maybe_pinned_ref(
         self,
     ) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability, Region<'tcx>)> {
@@ -1563,13 +1600,23 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Iterates over tuple fields.
+    /// Returns a list of tuple type arguments.
+    ///
     /// Panics when called on anything but a tuple.
     #[inline]
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(args) => args,
             _ => bug!("tuple_fields called on non-tuple: {self:?}"),
+        }
+    }
+
+    /// Returns a list of tuple type arguments, or `None` if `self` isn't a tuple.
+    #[inline]
+    pub fn opt_tuple_fields(self) -> Option<&'tcx List<Ty<'tcx>>> {
+        match self.kind() {
+            Tuple(args) => Some(args),
+            _ => None,
         }
     }
 

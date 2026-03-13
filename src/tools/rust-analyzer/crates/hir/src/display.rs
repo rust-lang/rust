@@ -172,7 +172,12 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
 
     write_generic_params(GenericDefId::FunctionId(func_id), f)?;
 
+    let too_long_param = data.params.len() > 4;
     f.write_char('(')?;
+
+    if too_long_param {
+        f.write_str("\n    ")?;
+    }
 
     let mut first = true;
     let mut skip_self = 0;
@@ -182,11 +187,12 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
         skip_self = 1;
     }
 
+    let comma = if too_long_param { ",\n    " } else { ", " };
     // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
     let body = db.body(func_id.into());
     for (type_ref, param) in data.params.iter().zip(func.assoc_fn_params(db)).skip(skip_self) {
         if !first {
-            f.write_str(", ")?;
+            f.write_str(comma)?;
         } else {
             first = false;
         }
@@ -201,11 +207,14 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
 
     if data.is_varargs() {
         if !first {
-            f.write_str(", ")?;
+            f.write_str(comma)?;
         }
         f.write_str("...")?;
     }
 
+    if too_long_param {
+        f.write_char('\n')?;
+    }
     f.write_char(')')?;
 
     // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.

@@ -164,11 +164,11 @@ impl<'db> InferenceContext<'_, 'db> {
             let value_or_partial = path_ctx.resolve_path_in_value_ns(hygiene)?;
 
             match value_or_partial {
-                ResolveValueResult::ValueNs(it, _) => {
+                ResolveValueResult::ValueNs(it) => {
                     drop_ctx(ctx, no_diagnostics);
                     (it, None)
                 }
-                ResolveValueResult::Partial(def, remaining_index, _) => {
+                ResolveValueResult::Partial(def, remaining_index) => {
                     // there may be more intermediate segments between the resolved one and
                     // the end. Only the last segment needs to be resolved to a value; from
                     // the segments before that, we need to get either a type or a trait ref.

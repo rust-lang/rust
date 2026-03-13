@@ -1308,6 +1308,29 @@ impl<T: Clone> Clone for Foo<T> {
     }
 
     #[test]
+    fn add_custom_impl_clone_generic_tuple_struct_with_associated() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone, derive, deref
+#[derive(Clo$0ne)]
+struct Foo<T: core::ops::Deref>(T::Target);
+"#,
+            r#"
+struct Foo<T: core::ops::Deref>(T::Target);
+
+impl<T: core::ops::Deref + Clone> Clone for Foo<T>
+where T::Target: Clone
+{
+    $0fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn test_ignore_derive_macro_without_input() {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,

@@ -1,4 +1,4 @@
-#![feature(adt_const_params, min_generic_const_args)]
+#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
 #![expect(incomplete_features)]
 
 use std::marker::ConstParamTy;
@@ -10,17 +10,22 @@ struct Foo {
 
 fn foo<const F: Foo>() {}
 
+fn bar<const B: &'static str>() {}
+
 fn main() {
     foo::<{ Foo { field: -1_usize } }>();
     //~^ ERROR: type annotations needed for the literal
     foo::<{ Foo { field: { -1_usize } } }>();
-    //~^ ERROR: complex const arguments must be placed inside of a `const` block
+    //~^ ERROR: type annotations needed for the literal
     foo::<{ Foo { field: -true } }>();
-    //~^ ERROR: the constant `true` is not of type `isize`
+    //~^ ERROR negated literal must be an integer
     foo::<{ Foo { field: { -true } } }>();
-    //~^ ERROR: complex const arguments must be placed inside of a `const` block
+    //~^ ERROR negated literal must be an integer
     foo::<{ Foo { field: -"<3" } }>();
-    //~^ ERROR: the constant `"<3"` is not of type `isize`
+    //~^ ERROR negated literal must be an integer
     foo::<{ Foo { field: { -"<3" } } }>();
-    //~^ ERROR: complex const arguments must be placed inside of a `const` block
+    //~^ ERROR negated literal must be an integer
+
+    bar::<{ -"hi" }>();
+    //~^ ERROR: negated literal must be an integer
 }

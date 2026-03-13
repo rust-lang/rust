@@ -2,7 +2,7 @@
 //! such as, a function, a trait, an enum, and any other definitions.
 
 use crate::ty::{GenericArgs, Span, Ty, index_impl};
-use crate::{AssocItems, Crate, Symbol, ThreadLocalIndex, with};
+use crate::{Crate, Symbol, ThreadLocalIndex, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -33,6 +33,10 @@ impl DefId {
     /// crate.
     pub fn parent(&self) -> Option<DefId> {
         with(|cx| cx.def_parent(*self))
+    }
+
+    pub fn span(&self) -> Span {
+        with(|cx| cx.span_of_a_def(*self))
     }
 }
 
@@ -68,8 +72,7 @@ pub trait CrateDef {
 
     /// Return the span of this definition.
     fn span(&self) -> Span {
-        let def_id = self.def_id();
-        with(|cx| cx.span_of_an_item(def_id))
+        self.def_id().span()
     }
 
     /// Return registered tool attributes with the given attribute name.
@@ -105,14 +108,6 @@ pub trait CrateDefType: CrateDef {
     /// This will panic if instantiation fails.
     fn ty_with_args(&self, args: &GenericArgs) -> Ty {
         with(|cx| cx.def_ty_with_args(self.def_id(), args))
-    }
-}
-
-/// A trait for retrieving all items from a definition within a crate.
-pub trait CrateDefItems: CrateDef {
-    /// Retrieve all associated items from a definition.
-    fn associated_items(&self) -> AssocItems {
-        with(|cx| cx.associated_items(self.def_id()))
     }
 }
 
@@ -169,11 +164,5 @@ macro_rules! crate_def_with_ty {
         }
 
         impl CrateDefType for $name {}
-    };
-}
-
-macro_rules! impl_crate_def_items {
-    ( $name:ident $(;)? ) => {
-        impl CrateDefItems for $name {}
     };
 }

@@ -6,12 +6,11 @@
 //! function parameters.
 
 use std::borrow::Borrow;
-use std::mem;
 use std::sync::Arc;
+use std::{debug_assert_matches, mem};
 
 use itertools::{Itertools, Position};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
@@ -2941,12 +2940,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match pat.ctor() {
             Constructor::Variant(variant_index) => {
-                let ValTreeKind::Branch(box [actual_variant_idx]) = *valtree else {
+                let ValTreeKind::Branch(branch) = *valtree else {
                     bug!("malformed valtree for an enum")
                 };
-
-                let ValTreeKind::Leaf(actual_variant_idx) = *actual_variant_idx.to_value().valtree
-                else {
+                if branch.len() != 1 {
+                    bug!("malformed valtree for an enum")
+                };
+                let ValTreeKind::Leaf(actual_variant_idx) = **branch[0].to_value().valtree else {
                     bug!("malformed valtree for an enum")
                 };
 

@@ -5,7 +5,7 @@ enum Never {}
 fn main() {
     unsafe {
         match *std::ptr::null::<Result<Never, Never>>() {
-        //~^ ERROR: read discriminant of an uninhabited enum variant
+            //~^ ERROR: read discriminant of an uninhabited enum variant
             Ok(_) => {
                 lol();
             }

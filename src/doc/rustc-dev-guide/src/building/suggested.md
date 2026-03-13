@@ -442,6 +442,9 @@ If you're using the flake, make sure to also update it with the following comman
 nix flake update --flake ./src/tools/nix-dev-shell
 ```
 
+The shell creates a command named `x` that runs the `./x.py` script with all dependencies
+set up correctly.
+
 ### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set

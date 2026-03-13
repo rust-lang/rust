@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_span::symbol::sym;
 
 use super::CMP_OWNED;
 
@@ -100,10 +100,10 @@ fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Exp
 
             let mut applicability = Applicability::MachineApplicable;
             let (arg_snip, _) = snippet_with_context(cx, arg_span, expr.span.ctxt(), "..", &mut applicability);
-            let (expr_snip, eq_impl) = if with_deref.is_implemented() && !arg_ty.peel_refs().is_str() {
-                (format!("*{arg_snip}"), with_deref)
-            } else {
+            let (expr_snip, eq_impl) = if without_deref.is_implemented() {
                 (arg_snip.to_string(), without_deref)
+            } else {
+                (format!("*{arg_snip}"), with_deref)
             };
 
             let (span, hint) = if (eq_impl.ty_eq_other && left) || (eq_impl.other_eq_ty && !left) {

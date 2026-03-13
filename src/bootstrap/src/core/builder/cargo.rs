@@ -2,8 +2,6 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-use build_helper::ci::CiEnv;
-
 use super::{Builder, Kind};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
@@ -551,9 +549,17 @@ impl Builder<'_> {
             assert_eq!(target, compiler.host);
         }
 
-        // Remove make-related flags to ensure Cargo can correctly set things up
-        cargo.env_remove("MAKEFLAGS");
-        cargo.env_remove("MFLAGS");
+        // Bootstrap only supports modern FIFO jobservers. Older pipe-based jobservers can run into
+        // "invalid file descriptor" errors, as the jobserver file descriptors are not inherited by
+        // scripts like bootstrap.py, while the environment variable is propagated. So, we pass
+        // MAKEFLAGS only if we detect a FIFO jobserver, otherwise we clear it.
+        let has_modern_jobserver = env::var("MAKEFLAGS")
+            .map(|flags| flags.contains("--jobserver-auth=fifo:"))
+            .unwrap_or(false);
+
+        if !has_modern_jobserver {
+            cargo.env_remove("MAKEFLAGS");
+        }
 
         cargo
     }
@@ -773,6 +779,10 @@ impl Builder<'_> {
                         .rustc_cmd(compiler)
                         .arg("--target")
                         .arg(target.rustc_target_arg())
+                        // FIXME(#152709): -Zunstable-options is to handle JSON targets.
+                        // Remove when JSON targets are stabilized.
+                        .arg("-Zunstable-options")
+                        .env("RUSTC_BOOTSTRAP", "1")
                         .arg("--print=file-names")
                         .arg("--crate-type=proc-macro")
                         .arg("-")
@@ -999,8 +1009,18 @@ impl Builder<'_> {
             cargo.env("UPDATE_EXPECT", "1");
         }
 
-        if !mode.is_tool() {
-            cargo.env("RUSTC_FORCE_UNSTABLE", "1");
+        // Set an environment variable that tells the rustc/rustdoc wrapper
+        // binary to pass `-Zforce-unstable-if-unmarked` to the real compiler.
+        match mode {
+            // Any library crate that's part of the sysroot should be marked unstable
+            // (including third-party dependencies), unless it uses a staged_api
+            // `#![stable(..)]` attribute to explicitly mark itself stable.
+            Mode::Std | Mode::Codegen | Mode::Rustc => {
+                cargo.env("RUSTC_FORCE_UNSTABLE", "1");
+            }
+
+            // For everything else, crate stability shouldn't matter, so don't set a flag.
+            Mode::ToolBootstrap | Mode::ToolRustcPrivate | Mode::ToolStd | Mode::ToolTarget => {}
         }
 
         if let Some(x) = self.crt_static(target) {
@@ -1316,7 +1336,7 @@ impl Builder<'_> {
         // Try to use a sysroot-relative bindir, in case it was configured absolutely.
         cargo.env("RUSTC_INSTALL_BINDIR", self.config.bindir_relative());
 
-        if CiEnv::is_ci() {
+        if self.config.is_running_on_ci() {
             // Tell cargo to use colored output for nicer logs in CI, even
             // though CI isn't printing to a terminal.
             // Also set an explicit `TERM=xterm` so that cargo doesn't warn

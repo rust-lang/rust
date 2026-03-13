@@ -3,17 +3,15 @@ use std::io::prelude::*;
 use std::iter::Peekable;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::{io, str};
+use std::{assert_matches, io, str};
 
 use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::assert_matches;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::OutputTheme;
-use rustc_errors::translation::Translator;
 use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -42,11 +40,10 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
 fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = Translator::new();
     let shared: Box<dyn Write + Send> = Box::new(Shared { data: output.clone() });
     let auto_stream = AutoStream::never(shared);
     let dcx = DiagCtxt::new(Box::new(
-        AnnotateSnippetEmitter::new(auto_stream, translator)
+        AnnotateSnippetEmitter::new(auto_stream)
             .sm(Some(source_map.clone()))
             .diagnostic_width(Some(140))
             .theme(theme),
@@ -2326,7 +2323,7 @@ fn string_to_tts_1() {
         let expected = TokenStream::new(vec![
             TokenTree::token_alone(token::Ident(kw::Fn, IdentIsRaw::No), sp(0, 2)),
             TokenTree::token_joint_hidden(
-                token::Ident(Symbol::intern("a"), IdentIsRaw::No),
+                token::Ident(sym::character('a'), IdentIsRaw::No),
                 sp(3, 4),
             ),
             TokenTree::Delimited(
@@ -2337,7 +2334,7 @@ fn string_to_tts_1() {
                 Delimiter::Parenthesis,
                 TokenStream::new(vec![
                     TokenTree::token_joint(
-                        token::Ident(Symbol::intern("b"), IdentIsRaw::No),
+                        token::Ident(sym::character('b'), IdentIsRaw::No),
                         sp(5, 6),
                     ),
                     TokenTree::token_alone(token::Colon, sp(6, 7)),
@@ -2357,7 +2354,7 @@ fn string_to_tts_1() {
                 Delimiter::Brace,
                 TokenStream::new(vec![
                     TokenTree::token_joint(
-                        token::Ident(Symbol::intern("b"), IdentIsRaw::No),
+                        token::Ident(sym::character('b'), IdentIsRaw::No),
                         sp(15, 16),
                     ),
                     // `Alone` because the `;` is followed by whitespace.
@@ -2545,10 +2542,10 @@ fn look(p: &Parser<'_>, dist: usize, kind: rustc_ast::token::TokenKind) {
 #[test]
 fn look_ahead() {
     create_default_session_globals_then(|| {
-        let sym_f = Symbol::intern("f");
-        let sym_x = Symbol::intern("x");
+        let sym_f = sym::character('f');
+        let sym_x = sym::character('x');
         #[allow(non_snake_case)]
-        let sym_S = Symbol::intern("S");
+        let sym_S = sym::character('S');
         let raw_no = IdentIsRaw::No;
 
         let psess = ParseSess::new();
@@ -2620,10 +2617,10 @@ fn look_ahead() {
 #[test]
 fn look_ahead_non_outermost_stream() {
     create_default_session_globals_then(|| {
-        let sym_f = Symbol::intern("f");
-        let sym_x = Symbol::intern("x");
+        let sym_f = sym::character('f');
+        let sym_x = sym::character('x');
         #[allow(non_snake_case)]
-        let sym_S = Symbol::intern("S");
+        let sym_S = sym::character('S');
         let raw_no = IdentIsRaw::No;
 
         let psess = ParseSess::new();

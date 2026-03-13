@@ -59,10 +59,15 @@ macro_rules! already_send {
 
 // These structures are already `Send`.
 already_send!(
-    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File][std::panic::Location<'_>]
-        [rustc_arena::DroplessArena][jobserver_crate::Client][jobserver_crate::HelperThread]
-        [crate::memmap::Mmap][crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
+    [std::sync::atomic::AtomicBool][std::sync::atomic::AtomicUsize][std::sync::atomic::AtomicU8]
+        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr]
+        [std::io::Error][std::fs::File][std::panic::Location<'_>][rustc_arena::DroplessArena]
+        [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
+        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );
+
+#[cfg(target_has_atomic = "64")]
+already_send!([std::sync::atomic::AtomicU64]);
 
 macro_rules! impl_dyn_send {
     ($($($attr: meta)* [$ty: ty where $($generics2: tt)*])*) => {

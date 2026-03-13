@@ -742,7 +742,7 @@ impl CrateGraphBuilder {
         deps.into_iter()
     }
 
-    /// Returns all crates in the graph, sorted in topological order (ie. dependencies of a crate
+    /// Returns all crates in the graph, sorted in topological order (i.e. dependencies of a crate
     /// come before the crate itself).
     fn crates_in_topological_order(&self) -> Vec<CrateBuilderId> {
         let mut res = Vec::new();

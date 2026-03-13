@@ -16,8 +16,7 @@ error[E0507]: cannot move out of a shared reference
 LL |     with_positive(|&n| ());
    |                    ^-
    |                     |
-   |                     data moved here
-   |                     move occurs because `n` has type `S`, which does not implement the `Copy` trait
+   |                     data moved here because `n` has type `S`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |

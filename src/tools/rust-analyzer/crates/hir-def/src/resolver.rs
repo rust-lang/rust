@@ -32,7 +32,7 @@ use crate::{
         BindingId, ExprId, LabelId,
         generics::{GenericParams, TypeOrConstParamData},
     },
-    item_scope::{BUILTIN_SCOPE, BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, ItemScope},
+    item_scope::{BUILTIN_SCOPE, BuiltinShadowMode, ImportOrExternCrate, ItemScope},
     lang_item::LangItemTarget,
     nameres::{DefMap, LocalDefMap, MacroSubNs, ResolvePathResultPrefixInfo, block_def_map},
     per_ns::PerNs,
@@ -111,8 +111,8 @@ pub enum TypeNs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult {
-    ValueNs(ValueNs, Option<ImportOrGlob>),
-    Partial(TypeNs, usize, Option<ImportOrExternCrate>),
+    ValueNs(ValueNs),
+    Partial(TypeNs, usize),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -332,20 +332,17 @@ impl<'db> Resolver<'db> {
             Path::Normal(it) => &it.mod_path,
             Path::LangItem(l, None) => {
                 return Some((
-                    ResolveValueResult::ValueNs(
-                        match *l {
-                            LangItemTarget::FunctionId(it) => ValueNs::FunctionId(it),
-                            LangItemTarget::StaticId(it) => ValueNs::StaticId(it),
-                            LangItemTarget::StructId(it) => ValueNs::StructId(it),
-                            LangItemTarget::EnumVariantId(it) => ValueNs::EnumVariantId(it),
-                            LangItemTarget::UnionId(_)
-                            | LangItemTarget::ImplId(_)
-                            | LangItemTarget::TypeAliasId(_)
-                            | LangItemTarget::TraitId(_)
-                            | LangItemTarget::EnumId(_) => return None,
-                        },
-                        None,
-                    ),
+                    ResolveValueResult::ValueNs(match *l {
+                        LangItemTarget::FunctionId(it) => ValueNs::FunctionId(it),
+                        LangItemTarget::StaticId(it) => ValueNs::StaticId(it),
+                        LangItemTarget::StructId(it) => ValueNs::StructId(it),
+                        LangItemTarget::EnumVariantId(it) => ValueNs::EnumVariantId(it),
+                        LangItemTarget::UnionId(_)
+                        | LangItemTarget::ImplId(_)
+                        | LangItemTarget::TypeAliasId(_)
+                        | LangItemTarget::TraitId(_)
+                        | LangItemTarget::EnumId(_) => return None,
+                    }),
                     ResolvePathResultPrefixInfo::default(),
                 ));
             }
@@ -363,7 +360,7 @@ impl<'db> Resolver<'db> {
                 };
                 // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((
-                    ResolveValueResult::Partial(type_ns, 0, None),
+                    ResolveValueResult::Partial(type_ns, 0),
                     ResolvePathResultPrefixInfo::default(),
                 ));
             }
@@ -388,10 +385,7 @@ impl<'db> Resolver<'db> {
 
                         if let Some(e) = entry {
                             return Some((
-                                ResolveValueResult::ValueNs(
-                                    ValueNs::LocalBinding(e.binding()),
-                                    None,
-                                ),
+                                ResolveValueResult::ValueNs(ValueNs::LocalBinding(e.binding())),
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
@@ -404,14 +398,14 @@ impl<'db> Resolver<'db> {
                             && *first_name == sym::Self_
                         {
                             return Some((
-                                ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_), None),
+                                ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_)),
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                         if let Some(id) = params.find_const_by_name(first_name, *def) {
                             let val = ValueNs::GenericParam(id);
                             return Some((
-                                ResolveValueResult::ValueNs(val, None),
+                                ResolveValueResult::ValueNs(val),
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
@@ -431,7 +425,7 @@ impl<'db> Resolver<'db> {
                         if let &GenericDefId::ImplId(impl_) = def {
                             if *first_name == sym::Self_ {
                                 return Some((
-                                    ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1, None),
+                                    ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1),
                                     ResolvePathResultPrefixInfo::default(),
                                 ));
                             }
@@ -440,14 +434,14 @@ impl<'db> Resolver<'db> {
                         {
                             let ty = TypeNs::AdtSelfType(adt);
                             return Some((
-                                ResolveValueResult::Partial(ty, 1, None),
+                                ResolveValueResult::Partial(ty, 1),
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                         if let Some(id) = params.find_type_by_name(first_name, *def) {
                             let ty = TypeNs::GenericParam(id);
                             return Some((
-                                ResolveValueResult::Partial(ty, 1, None),
+                                ResolveValueResult::Partial(ty, 1),
                                 ResolvePathResultPrefixInfo::default(),
                             ));
                         }
@@ -473,7 +467,7 @@ impl<'db> Resolver<'db> {
             && let Some(builtin) = BuiltinType::by_name(first_name)
         {
             return Some((
-                ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None),
+                ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1),
                 ResolvePathResultPrefixInfo::default(),
             ));
         }
@@ -488,7 +482,7 @@ impl<'db> Resolver<'db> {
         hygiene: HygieneId,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path, hygiene)? {
-            ResolveValueResult::ValueNs(it, _) => Some(it),
+            ResolveValueResult::ValueNs(it) => Some(it),
             ResolveValueResult::Partial(..) => None,
         }
     }
@@ -1153,12 +1147,12 @@ impl<'db> ModuleItemMap<'db> {
         );
         match unresolved_idx {
             None => {
-                let (value, import) = to_value_ns(module_def)?;
-                Some((ResolveValueResult::ValueNs(value, import), prefix_info))
+                let value = to_value_ns(module_def, self.def_map)?;
+                Some((ResolveValueResult::ValueNs(value), prefix_info))
             }
             Some(unresolved_idx) => {
-                let def = module_def.take_types_full()?;
-                let ty = match def.def {
+                let def = module_def.take_types()?;
+                let ty = match def {
                     ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
                     ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
                     ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
@@ -1171,7 +1165,7 @@ impl<'db> ModuleItemMap<'db> {
                     | ModuleDefId::MacroId(_)
                     | ModuleDefId::StaticId(_) => return None,
                 };
-                Some((ResolveValueResult::Partial(ty, unresolved_idx, def.import), prefix_info))
+                Some((ResolveValueResult::Partial(ty, unresolved_idx), prefix_info))
             }
         }
     }
@@ -1194,8 +1188,13 @@ impl<'db> ModuleItemMap<'db> {
     }
 }
 
-fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
-    let (def, import) = per_ns.take_values_import()?;
+fn to_value_ns(per_ns: PerNs, def_map: &DefMap) -> Option<ValueNs> {
+    let def = per_ns.take_values().or_else(|| {
+        let Some(MacroId::ProcMacroId(proc_macro)) = per_ns.take_macros() else { return None };
+        // If we cannot resolve to value ns, but we can resolve to a proc macro, and this is the crate
+        // defining this proc macro - inside this crate, we should treat the macro as a function.
+        def_map.proc_macro_as_fn(proc_macro).map(ModuleDefId::FunctionId)
+    })?;
     let res = match def {
         ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
         ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
@@ -1210,7 +1209,7 @@ fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
         | ModuleDefId::MacroId(_)
         | ModuleDefId::ModuleId(_) => return None,
     };
-    Some((res, import))
+    Some(res)
 }
 
 fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {

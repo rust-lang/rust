@@ -20,12 +20,13 @@ fn main() {
         let x: &[u8; 2] = &[21, 37];
         let y: &Exhaustive = std::mem::transmute(x);
         match y {
-            Exhaustive::A(_) => {},
+            Exhaustive::A(_) => {}
         }
 
         let y: &NonExhaustive = std::mem::transmute(x);
-        match y { //~ ERROR: enum value has invalid tag
-            NonExhaustive::A(_) => {},
+        match y {
+            //~^ ERROR: enum value has invalid tag
+            NonExhaustive::A(_) => {}
         }
     }
 }

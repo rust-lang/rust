@@ -571,3 +571,21 @@ mod issue15914 {
         };
     }
 }
+
+fn issue16602(i: Result<i32, i32>) {
+    //~v manual_let_else
+    _ = match i {
+        Ok(i) => i,
+        Err(_) => unsafe {
+            core::hint::unreachable_unchecked();
+        },
+    };
+
+    //~v manual_let_else
+    _ = match i {
+        Ok(i) => i,
+        Err(_) => 'useless_label: {
+            panic!();
+        },
+    };
+}

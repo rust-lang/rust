@@ -52,8 +52,8 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
     }
 }
 
-pub(crate) struct AllowConstFnUnstableParser;
-impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
+pub(crate) struct RustcAllowConstFnUnstableParser;
+impl<S: Stage> CombineAttributeParser<S> for RustcAllowConstFnUnstableParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_const_fn_unstable];
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> =

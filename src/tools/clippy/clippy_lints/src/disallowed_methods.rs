@@ -61,6 +61,8 @@ declare_clippy_lint! {
     "use of a disallowed method call"
 }
 
+impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
+
 pub struct DisallowedMethods {
     disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
 }
@@ -83,8 +85,6 @@ impl DisallowedMethods {
         Self { disallowed }
     }
 }
-
-impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

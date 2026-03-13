@@ -23,6 +23,11 @@ path = "hex.rs"
 name = "connect5"
 path = "connect5.rs"
 
+# Hexagon-only: requires --target hexagon-unknown-linux-musl
+[[bin]]
+name = "gaussian"
+path = "gaussian.rs"
+
 [[example]]
 name = "wasm"
 crate-type = ["cdylib"]

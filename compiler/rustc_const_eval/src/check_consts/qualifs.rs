@@ -237,8 +237,7 @@ where
         Rvalue::Use(operand)
         | Rvalue::Repeat(operand, _)
         | Rvalue::UnaryOp(_, operand)
-        | Rvalue::Cast(_, operand, _)
-        | Rvalue::ShallowInitBox(operand, _) => in_operand::<Q, _>(cx, in_local, operand),
+        | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
         Rvalue::BinaryOp(_, box (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)

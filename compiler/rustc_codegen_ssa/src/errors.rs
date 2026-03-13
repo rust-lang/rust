@@ -10,7 +10,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{FloatTy, Ty};
 use rustc_span::{Span, Symbol};
@@ -1164,7 +1164,7 @@ pub(crate) struct XcrunSdkPathWarning {
     pub stderr: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("enabling the `neon` target feature on the current target is unsound due to ABI issues")]
 pub(crate) struct Aarch64SoftfloatNeon;
 
@@ -1248,8 +1248,21 @@ pub(crate) struct FeatureNotValid<'a> {
     #[primary_span]
     #[label("`{$feature}` is not valid for this target")]
     pub span: Span,
-    #[help("consider removing the leading `+` in the feature name")]
-    pub plus_hint: bool,
+    #[subdiagnostic]
+    pub plus_hint: Option<RemovePlusFromFeatureName<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider removing the leading `+` in the feature name",
+    code = "enable = \"{stripped}\"",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub struct RemovePlusFromFeatureName<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub stripped: &'a str,
 }
 
 #[derive(Diagnostic)]

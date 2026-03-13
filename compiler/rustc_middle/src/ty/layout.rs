@@ -1,15 +1,16 @@
 use std::ops::Bound;
 use std::{cmp, fmt};
 
+use rustc_abi as abi;
 use rustc_abi::{
     AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
-use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
+use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
@@ -18,7 +19,6 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use tracing::debug;
-use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
@@ -264,53 +264,6 @@ pub enum LayoutError<'tcx> {
     Cycle(ErrorGuaranteed),
 }
 
-impl<'tcx> LayoutError<'tcx> {
-    pub fn diagnostic_message(&self) -> DiagMessage {
-        use LayoutError::*;
-
-        match self {
-            Unknown(_) => msg!("the type `{$ty}` has an unknown layout"),
-            SizeOverflow(_) => {
-                msg!("values of the type `{$ty}` are too big for the target architecture")
-            }
-            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
-                msg!("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")
-            }
-            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => {
-                msg!("the SIMD type `{$ty}` has zero elements")
-            }
-            TooGeneric(_) => msg!("the type `{$ty}` does not have a fixed layout"),
-            NormalizationFailure(_, _) => msg!(
-                "unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized"
-            ),
-            Cycle(_) => msg!("a cycle occurred during layout computation"),
-            ReferencesError(_) => msg!("the type has an unknown layout"),
-        }
-    }
-
-    pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
-        use LayoutError::*;
-
-        use crate::error::LayoutError as E;
-        match self {
-            Unknown(ty) => E::Unknown { ty },
-            SizeOverflow(ty) => E::Overflow { ty },
-            InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) } => {
-                E::SimdTooManyLanes { ty, max_lanes }
-            }
-            InvalidSimd { ty, kind: SimdLayoutError::ZeroLength } => E::SimdZeroLength { ty },
-            TooGeneric(ty) => E::TooGeneric { ty },
-            NormalizationFailure(ty, e) => {
-                E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
-            }
-            Cycle(_) => E::Cycle,
-            ReferencesError(_) => E::ReferencesError,
-        }
-    }
-}
-
-// FIXME: Once the other errors that embed this error have been converted to translatable
-// diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -1022,41 +975,80 @@ where
         let tcx = cx.tcx();
         let typing_env = cx.typing_env();
 
+        // Use conservative pointer kind if not optimizing. This saves us the
+        // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+        // attributes in LLVM have compile-time cost even in unoptimized builds).
+        let optimize = tcx.sess.opts.optimize != OptLevel::No;
+
         let pointee_info = match *this.ty.kind() {
-            ty::RawPtr(p_ty, _) if offset.bytes() == 0 => {
-                tcx.layout_of(typing_env.as_query_input(p_ty)).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
-                    align: layout.align.abi,
-                    safe: None,
-                })
-            }
-            ty::FnPtr(..) if offset.bytes() == 0 => {
-                tcx.layout_of(typing_env.as_query_input(this.ty)).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
-                    align: layout.align.abi,
-                    safe: None,
-                })
+            ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => {
+                Some(PointeeInfo { safe: None, size: Size::ZERO, align: Align::ONE })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                // Use conservative pointer kind if not optimizing. This saves us the
-                // Freeze/Unpin queries, and can save time in the codegen backend (noalias
-                // attributes in LLVM have compile-time cost even in unoptimized builds).
-                let optimize = tcx.sess.opts.optimize != OptLevel::No;
-                let kind = match mt {
-                    hir::Mutability::Not => {
-                        PointerKind::SharedRef { frozen: optimize && ty.is_freeze(tcx, typing_env) }
-                    }
-                    hir::Mutability::Mut => PointerKind::MutableRef {
-                        unpin: optimize
-                            && ty.is_unpin(tcx, typing_env)
-                            && ty.is_unsafe_unpin(tcx, typing_env),
-                    },
-                };
+                tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
+                    let (size, kind);
+                    match mt {
+                        hir::Mutability::Not => {
+                            let frozen = optimize && ty.is_freeze(tcx, typing_env);
 
-                tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
+                            // Non-frozen shared references are not necessarily dereferenceable for the entire duration of the function
+                            // (see <https://github.com/rust-lang/rust/pull/98017>)
+                            // (if we had "dereferenceable on entry", we could support this)
+                            size = if frozen { layout.size } else { Size::ZERO };
+
+                            kind = PointerKind::SharedRef { frozen };
+                        }
+                        hir::Mutability::Mut => {
+                            let unpin = optimize
+                                && ty.is_unpin(tcx, typing_env)
+                                && ty.is_unsafe_unpin(tcx, typing_env);
+
+                            // Mutable references to potentially self-referential types are not
+                            // necessarily dereferenceable for the entire duration of the function
+                            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>)
+                            // (if we had "dereferenceable on entry", we could support this)
+                            size = if unpin { layout.size } else { Size::ZERO };
+
+                            kind = PointerKind::MutableRef { unpin };
+                        }
+                    };
+                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                })
+            }
+
+            ty::Adt(..)
+                if offset.bytes() == 0
+                    && let Some(pointee) = this.ty.boxed_ty() =>
+            {
+                tcx.layout_of(typing_env.as_query_input(pointee)).ok().map(|layout| PointeeInfo {
+                    safe: Some(PointerKind::Box {
+                        // Same logic as for mutable references above.
+                        unpin: optimize
+                            && pointee.is_unpin(tcx, typing_env)
+                            && pointee.is_unsafe_unpin(tcx, typing_env),
+                        global: this.ty.is_box_global(tcx),
+                    }),
+
+                    // `Box` are not necessarily dereferenceable for the entire duration of the function as
+                    // they can be deallocated at any time.
+                    // (if we had "dereferenceable on entry", we could support this)
+                    size: Size::ZERO,
+
                     align: layout.align.abi,
-                    safe: Some(kind),
+                })
+            }
+
+            ty::Adt(adt_def, ..) if adt_def.is_maybe_dangling() => {
+                Self::ty_and_layout_pointee_info_at(this.field(cx, 0), cx, offset).map(|info| {
+                    PointeeInfo {
+                        // Mark the pointer as raw
+                        // (thus removing noalias/readonly/etc in case of the llvm backend)
+                        safe: None,
+                        // Make sure we don't assert dereferenceability of the pointer.
+                        size: Size::ZERO,
+                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
+                        align: info.align,
+                    }
                 })
             }
 
@@ -1098,7 +1090,7 @@ where
                         }
                     }
                     Variants::Multiple { .. } => None,
-                    _ => Some(this),
+                    Variants::Empty | Variants::Single { .. } => Some(this),
                 };
 
                 if let Some(variant) = data_variant
@@ -1132,24 +1124,6 @@ where
                                 break;
                             }
                         }
-                    }
-                }
-
-                // Fixup info for the first field of a `Box`. Recursive traversal will have found
-                // the raw pointer, so size and align are set to the boxed type, but `pointee.safe`
-                // will still be `None`.
-                if let Some(ref mut pointee) = result {
-                    if offset.bytes() == 0
-                        && let Some(boxed_ty) = this.ty.boxed_ty()
-                    {
-                        debug_assert!(pointee.safe.is_none());
-                        let optimize = tcx.sess.opts.optimize != OptLevel::No;
-                        pointee.safe = Some(PointerKind::Box {
-                            unpin: optimize
-                                && boxed_ty.is_unpin(tcx, typing_env)
-                                && boxed_ty.is_unsafe_unpin(tcx, typing_env),
-                            global: this.ty.is_box_global(tcx),
-                        });
                     }
                 }
 
@@ -1311,7 +1285,7 @@ pub enum FnAbiError<'tcx> {
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
-            Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
+            Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
         }
     }
 }
@@ -1369,11 +1343,56 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         )
     }
 
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI might not include all possible
+    /// codegen optimization attributes (such as `ReadOnly` or `CapturesNone`), as deducing these
+    /// requires inspection of function bodies that can lead to cycles when performed during typeck.
+    /// Post typeck, you should prefer the optimized ABI returned by `fn_abi_of_instance`.
     ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    /// NB: the ABI returned by this query must not differ from that returned by
+    ///     `fn_abi_of_instance` in any other way.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    #[inline]
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn fn_abi_of_instance_no_deduced_attrs(
+        &self,
+        instance: ty::Instance<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> Self::FnAbiOfResult {
+        // FIXME(eddyb) get a better `span` here.
+        let span = self.layout_tcx_at_span();
+        let tcx = self.tcx().at(span);
+
+        MaybeResult::from(
+            tcx.fn_abi_of_instance_no_deduced_attrs(
+                self.typing_env().as_query_input((instance, extra_args)),
+            )
+            .map_err(|err| {
+                // HACK(eddyb) at least for definitions of/calls to `Instance`s,
+                // we can get some kind of span even if one wasn't provided.
+                // However, we don't do this early in order to avoid calling
+                // `def_span` unconditionally (which may have a perf penalty).
+                let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
+                self.handle_fn_abi_err(
+                    *err,
+                    span,
+                    FnAbiRequest::OfInstance { instance, extra_args },
+                )
+            }),
+        )
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI will include applicable
+    /// codegen optimization attributes, including `ReadOnly` and `CapturesNone` -- deduction of
+    /// which requires inspection of function bodies that can lead to cycles when performed during
+    /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
+    /// `fn_abi_of_instance_no_deduced_attrs`.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     #[inline]
     #[tracing::instrument(level = "debug", skip(self))]
     fn fn_abi_of_instance(

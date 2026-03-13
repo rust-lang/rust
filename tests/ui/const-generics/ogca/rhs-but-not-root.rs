@@ -5,8 +5,7 @@
 
 // Anon consts must be the root of the RHS to be OGCA.
 type const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
-//~^ ERROR generic parameters may not be used in const operations
-
+//~^ ERROR generic parameters in const blocks are only allowed as the direct value of a `type const`
 type const ID<const N: usize>: usize = N;
 
 fn main() {}

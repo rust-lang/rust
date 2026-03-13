@@ -308,8 +308,8 @@ reapplied to the most recent version of `main`.
 In other words, Git tries to
 pretend that the changes you made to the old version of `main` were instead
 made to the new version of `main`.
-During this process, you should expect to
-encounter at least one "rebase conflict". This happens when Git's attempt to
+During this process, you should expect to encounter at least one "rebase conflict".
+This happens when Git's attempt to
 reapply the changes fails because your changes conflicted with other changes that have been made.
 You can tell that this happened because you'll see lines in the output that look like
 
@@ -383,6 +383,13 @@ Both the upside and downside of this is that it simplifies the history.
 On the one hand, you lose track of the steps in which changes were made, but
 the history becomes easier to work with.
 
+The easiest way to squash your commits in a PR on the `rust-lang/rust` repository is to use the `@bors squash` command in a comment on the PR.
+By default, [bors] combines all commit messages of the PR into the squashed commit message.
+To customize the commit message, use `@bors squash msg=<commit message>`.
+
+
+If you want to squash commits using local git operations, read on below.
+
 If there are no conflicts and you are just squashing to clean up the history,
 use `git rebase --interactive --keep-base main`.
 This keeps the fork point of your PR the same, making it easier to review the diff of what happened
@@ -409,6 +416,8 @@ You also may want to squash just the last few commits together, possibly
 because they only represent "fixups" and not real changes.
 For example,
 `git rebase --interactive HEAD~2` will allow you to edit the two commits only.
+
+[bors]: https://github.com/rust-lang/bors
 
 ### `git range-diff`
 
@@ -472,8 +481,8 @@ command useful, especially their ["Examples" section][range-diff-example-docs].
 
 ## No-Merge Policy
 
-The rust-lang/rust repo uses what is known as a "rebase workflow". This means
-that merge commits in PRs are not accepted.
+The rust-lang/rust repo uses what is known as a "rebase workflow".
+This means that merge commits in PRs are not accepted.
 As a result, if you are running
 `git merge` locally, chances are good that you should be rebasing instead.
 Of course, this is not always true; if your merge will just be a fast-forward,

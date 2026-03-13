@@ -1956,6 +1956,19 @@ impl Arch {
             | X86_64 | Xtensa => true,
         }
     }
+
+    /// Whether `#[rustc_scalable_vector]` is supported for a target architecture
+    pub fn supports_scalable_vectors(&self) -> bool {
+        use Arch::*;
+
+        match self {
+            AArch64 | RiscV32 | RiscV64 => true,
+            AmdGpu | Arm | Arm64EC | Avr | Bpf | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | S390x | Sparc | Sparc64 | SpirV | Wasm32 | Wasm64 | X86 | X86_64
+            | Xtensa | Other(_) => false,
+        }
+    }
 }
 
 crate::target_spec_enum! {
@@ -2210,8 +2223,10 @@ pub struct TargetOptions {
     pub env: Env,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
-    /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
-    /// However, parts of the backend do check this field for specific values to enable special behavior.
+    /// This field is *not* forwarded directly to LLVM and therefore does not control which ABI (in
+    /// the sense of function calling convention) is actually used; its primary purpose is
+    /// `cfg(target_abi)`. The actual calling convention is controlled by `llvm_abiname`,
+    /// `llvm_floatabi`, and `rustc_abi`.
     pub abi: Abi,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     #[rustc_lint_opt_deny_field_access(
@@ -3194,6 +3209,27 @@ impl Target {
                     "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
                 )
             }
+            // PowerPC64 targets that are not AIX must set their ABI to either ELFv1 or ELFv2
+            Arch::PowerPC64 => {
+                if self.os == Os::Aix {
+                    check!(
+                        self.llvm_abiname.is_empty(),
+                        "AIX targets always use the AIX ABI and `llvm_abiname` should be left empty",
+                    );
+                } else if self.endian == Endian::Big {
+                    check_matches!(
+                        &*self.llvm_abiname,
+                        "elfv1" | "elfv2",
+                        "invalid PowerPC64 ABI name: {}",
+                        self.llvm_abiname,
+                    );
+                } else {
+                    check!(
+                        self.llvm_abiname == "elfv2",
+                        "little-endian PowerPC64 targets only support the `elfv2` ABI",
+                    );
+                }
+            }
             _ => {}
         }
 
@@ -3207,8 +3243,8 @@ impl Target {
                 ),
                 RustcAbi::Softfloat => check_matches!(
                     self.arch,
-                    Arch::X86 | Arch::X86_64 | Arch::S390x,
-                    "`softfloat` ABI is only valid for x86 and s390x targets"
+                    Arch::X86 | Arch::X86_64 | Arch::S390x | Arch::AArch64,
+                    "`softfloat` ABI is only valid for x86, s390x, and aarch64 targets"
                 ),
             }
         }

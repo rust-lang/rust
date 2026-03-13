@@ -7,12 +7,21 @@
 
 use std::fmt;
 
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 
 use crate::fingerprint::Fingerprint;
-use crate::stable_hasher;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_NoContext, Decodable_NoContext, Hash)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Debug,
+    Encodable_NoContext,
+    Decodable_NoContext,
+    Hash,
+    HashStable_NoContext
+)]
 pub struct Svh {
     hash: Fingerprint,
 }
@@ -37,13 +46,5 @@ impl Svh {
 impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(&self.to_hex())
-    }
-}
-
-impl<T> stable_hasher::HashStable<T> for Svh {
-    #[inline]
-    fn hash_stable(&self, ctx: &mut T, hasher: &mut stable_hasher::StableHasher) {
-        let Svh { hash } = *self;
-        hash.hash_stable(ctx, hasher);
     }
 }

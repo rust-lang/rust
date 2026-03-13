@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core, sym};
 use itertools::Itertools;
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -14,9 +14,34 @@ use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, St
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, Spanned, SyntaxContext};
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `foo = bar; bar = foo` sequences.
+    ///
+    /// ### Why is this bad?
+    /// This looks like a failed attempt to swap.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// a = b;
+    /// b = a;
+    /// ```
+    /// If swapping is intended, use `swap()` instead:
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ALMOST_SWAPPED,
+    correctness,
+    "`foo = bar; bar = foo` sequence"
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,33 +74,7 @@ declare_clippy_lint! {
     "manual swap of two variables"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `foo = bar; bar = foo` sequences.
-    ///
-    /// ### Why is this bad?
-    /// This looks like a failed attempt to swap.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// a = b;
-    /// b = a;
-    /// ```
-    /// If swapping is intended, use `swap()` instead:
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// std::mem::swap(&mut a, &mut b);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ALMOST_SWAPPED,
-    correctness,
-    "`foo = bar; bar = foo` sequence"
-}
-
-declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
+declare_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {

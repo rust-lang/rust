@@ -923,6 +923,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.resolve_ident_in_module(module, ident, ns, parent_scope, None, None, ignore_import)
     }
 
+    fn resolve_super_in_module(
+        &self,
+        ident: Ident,
+        module: Option<Module<'ra>>,
+        parent_scope: &ParentScope<'ra>,
+    ) -> Option<Module<'ra>> {
+        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+        module
+            .unwrap_or_else(|| self.resolve_self(&mut ctxt, parent_scope.module))
+            .parent
+            .map(|parent| self.resolve_self(&mut ctxt, parent))
+    }
+
+    pub(crate) fn path_root_is_crate_root(&self, ident: Ident) -> bool {
+        ident.name == kw::PathRoot && ident.span.is_rust_2015() && self.tcx.sess.is_rust_2015()
+    }
+
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_module<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
@@ -936,6 +953,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<Decl<'ra>, Determinacy> {
         match module {
             ModuleOrUniformRoot::Module(module) => {
+                if ns == TypeNS
+                    && ident.name == kw::Super
+                    && let Some(module) =
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                {
+                    return Ok(module.self_decl.unwrap());
+                }
+
                 let (ident_key, def) = IdentKey::new_adjusted(ident, module.expansion);
                 let adjusted_parent_scope = match def {
                     Some(def) => ParentScope { module: self.expn_def_scope(def), ..*parent_scope },
@@ -976,7 +1001,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             ModuleOrUniformRoot::CurrentScope => {
                 if ns == TypeNS {
-                    if ident.name == kw::Crate || ident.name == kw::DollarCrate {
+                    if ident.name == kw::SelfLower {
+                        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+                        let module = self.resolve_self(&mut ctxt, parent_scope.module);
+                        return Ok(module.self_decl.unwrap());
+                    }
+                    if ident.name == kw::Super
+                        && let Some(module) =
+                            self.resolve_super_in_module(ident, None, parent_scope)
+                    {
+                        return Ok(module.self_decl.unwrap());
+                    }
+                    if ident.name == kw::Crate
+                        || ident.name == kw::DollarCrate
+                        || self.path_root_is_crate_root(ident)
+                    {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_decl.unwrap());
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
@@ -1256,7 +1295,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .tcx
                             .associated_item_def_ids(def_id)
                             .iter()
-                            .map(|field_id| self.tcx.visibility(field_id))
+                            .map(|&field_id| self.tcx.visibility(field_id))
                             .collect();
                         (ctor_res, ctor_vis, field_visibilities)
                     })
@@ -1515,6 +1554,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
+                                                is_ogca: self
+                                                    .tcx
+                                                    .features()
+                                                    .opaque_generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1606,6 +1649,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
+                                                is_ogca: self
+                                                    .tcx
+                                                    .features()
+                                                    .opaque_generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,
@@ -1754,19 +1801,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
-                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
-                    let self_module = match segment_idx {
-                        0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
-                        _ => match module {
-                            Some(ModuleOrUniformRoot::Module(module)) => Some(module),
-                            _ => None,
-                        },
+                    let parent = if segment_idx == 0 {
+                        self.resolve_super_in_module(ident, None, parent_scope)
+                    } else if let Some(ModuleOrUniformRoot::Module(module)) = module {
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                    } else {
+                        None
                     };
-                    if let Some(self_module) = self_module
-                        && let Some(parent) = self_module.parent
-                    {
-                        module =
-                            Some(ModuleOrUniformRoot::Module(self.resolve_self(&mut ctxt, parent)));
+                    if let Some(parent) = parent {
+                        module = Some(ModuleOrUniformRoot::Module(parent));
                         continue;
                     }
                     return PathResult::failed(
@@ -1775,7 +1818,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.is_some(),
                         module_had_parse_errors,
                         module,
-                        || ("there are too many leading `super` keywords".to_string(), None),
+                        || {
+                            (
+                                "too many leading `super` keywords".to_string(),
+                                "there are too many leading `super` keywords".to_string(),
+                                None,
+                            )
+                        },
                     );
                 }
                 if segment_idx == 0 {
@@ -1823,16 +1872,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     module,
                     || {
                         let name_str = if name == kw::PathRoot {
-                            "crate root".to_string()
+                            "the crate root".to_string()
                         } else {
                             format!("`{name}`")
                         };
-                        let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                            format!("global paths cannot start with {name_str}")
+                        let (message, label) = if segment_idx == 1
+                            && path[0].ident.name == kw::PathRoot
+                        {
+                            (
+                                format!("global paths cannot start with {name_str}"),
+                                "cannot start with this".to_string(),
+                            )
                         } else {
-                            format!("{name_str} in paths can only be used in start position")
+                            (
+                                format!("{name_str} in paths can only be used in start position"),
+                                "can only be used in path start position".to_string(),
+                            )
                         };
-                        (label, None)
+                        (message, label, None)
                     },
                 );
             }
@@ -1948,7 +2005,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     res.article(),
                                     res.descr()
                                 );
-                                (label, None)
+                                let scope = match &path[..segment_idx] {
+                                    [.., prev] => {
+                                        if prev.ident.name == kw::PathRoot {
+                                            format!("the crate root")
+                                        } else {
+                                            format!("`{}`", prev.ident)
+                                        }
+                                    }
+                                    _ => format!("this scope"),
+                                };
+                                // FIXME: reword, as the reason we expected a module is because of
+                                // the following path segment.
+                                let message = format!("cannot find module `{ident}` in {scope}");
+                                (message, label, None)
                             },
                         );
                     }

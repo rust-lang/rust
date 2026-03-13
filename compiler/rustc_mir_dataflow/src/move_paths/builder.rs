@@ -391,15 +391,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);
-                if let RvalueInitializationState::Shallow = rval.initialization_state() {
-                    // Box starts out uninitialized - need to create a separate
-                    // move-path for the interior so it will be separate from
-                    // the exterior.
-                    self.create_move_path(self.tcx.mk_place_deref(*place));
-                    self.gather_init(place.as_ref(), InitKind::Shallow);
-                } else {
-                    self.gather_init(place.as_ref(), InitKind::Deep);
-                }
+                self.gather_init(place.as_ref(), InitKind::Deep);
                 self.gather_rvalue(rval);
             }
             StatementKind::FakeRead(box (_, place)) => {
@@ -435,7 +427,6 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
-            | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand)
             | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
             Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {

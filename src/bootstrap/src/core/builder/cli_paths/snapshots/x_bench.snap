@@ -79,7 +79,6 @@ expression: bench
     - Set({bench::compiler/rustc_public})
     - Set({bench::compiler/rustc_public_bridge})
     - Set({bench::compiler/rustc_query_impl})
-    - Set({bench::compiler/rustc_query_system})
     - Set({bench::compiler/rustc_resolve})
     - Set({bench::compiler/rustc_sanitizers})
     - Set({bench::compiler/rustc_serialize})

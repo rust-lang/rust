@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rustc_abi::ExternAbi;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::{AttributeKind, NativeLibKind, PeImportNameType};
+use rustc_hir::attrs::{NativeLibKind, PeImportNameType};
 use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
@@ -61,6 +61,8 @@ pub fn walk_native_lib_search_dirs<R>(
     // library directory instead of the self-contained directories.
     // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
     // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
+    // Finally there is shared LLVM library, which unlike compiler libraries, is linked by the name,
+    // therefore requiring the search path for the linker.
     // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
     // and sanitizers to self-contained directory, and stop adding this search path.
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
@@ -71,6 +73,9 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
         || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
+        || sess.target.os == Os::Windows
+            && sess.target.env == Env::Gnu
+            && sess.target.abi == Abi::Llvm
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
@@ -209,10 +214,7 @@ impl<'tcx> Collector<'tcx> {
         }
 
         for attr in
-            find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::Link(links, _) => links)
-                .iter()
-                .map(|v| v.iter())
-                .flatten()
+            find_attr!(self.tcx, def_id, Link(links, _) => links).iter().map(|v| v.iter()).flatten()
         {
             let dll_imports = match attr.kind {
                 NativeLibKind::RawDylib { .. } => foreign_items
@@ -227,7 +229,8 @@ impl<'tcx> Collector<'tcx> {
                     .collect(),
                 _ => {
                     for &child_item in foreign_items {
-                        if let Some(span) = find_attr!(self.tcx.get_all_attrs(child_item), AttributeKind::LinkOrdinal {span, ..} => *span)
+                        if let Some(span) =
+                            find_attr!(self.tcx, child_item, LinkOrdinal {span, ..} => *span)
                         {
                             sess.dcx().emit_err(errors::LinkOrdinalRawDylib { span });
                         }

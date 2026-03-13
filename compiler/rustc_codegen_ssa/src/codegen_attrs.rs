@@ -1,20 +1,16 @@
-use std::str::FromStr;
-
 use rustc_abi::{Align, ExternAbi};
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
-use rustc_ast::{LitKind, MetaItem, MetaItemInner};
 use rustc_hir::attrs::{
     AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, find_attr};
+use rustc_macros::Diagnostic;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -80,7 +76,7 @@ fn process_builtin_attrs(
                 interesting_spans.inline = Some(*span);
             }
             AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-            AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+            AttributeKind::RustcAlign { align, .. } => codegen_fn_attrs.alignment = Some(*align),
             AttributeKind::LinkName { name, .. } => {
                 // FIXME Remove check for foreign functions once #[link_name] on non-foreign
                 // functions is a hard error
@@ -223,16 +219,14 @@ fn process_builtin_attrs(
             AttributeKind::RustcObjcSelector { methname, .. } => {
                 codegen_fn_attrs.objc_selector = Some(*methname);
             }
-            AttributeKind::EiiForeignItem => {
+            AttributeKind::RustcEiiForeignItem => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
             }
             AttributeKind::EiiImpls(impls) => {
                 for i in impls {
                     let foreign_item = match i.resolution {
                         EiiImplResolution::Macro(def_id) => {
-                            let Some(extern_item) = find_attr!(
-                                tcx.get_all_attrs(def_id),
-                                AttributeKind::EiiDeclaration(target) => target.foreign_item
+                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
                             ) else {
                                 tcx.dcx().span_delayed_bug(
                                     i.span,
@@ -352,8 +346,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
 
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
-    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-    let no_builtins = find_attr!(crate_attrs, AttributeKind::NoBuiltins);
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
     if no_builtins {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
     }
@@ -392,6 +385,17 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("non-default `sanitize` will have no effect after inlining")]
+struct SanitizeOnInline {
+    #[note("inlining requested here")]
+    inline_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the async executor can run blocking code, without realtime sanitizer catching it")]
+struct AsyncBlocking;
 
 fn check_result(
     tcx: TyCtxt<'_>,
@@ -433,10 +437,12 @@ fn check_result(
             (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, sanitize_span, |lint| {
-            lint.primary_message("non-default `sanitize` will have no effect after inlining");
-            lint.span_note(inline_span, "inlining requested here");
-        })
+        tcx.emit_node_span_lint(
+            lint::builtin::INLINE_NO_SANITIZE,
+            hir_id,
+            sanitize_span,
+            SanitizeOnInline { inline_span },
+        )
     }
 
     // warn for nonblocking async functions, blocks and closures.
@@ -453,13 +459,11 @@ fn check_result(
                     != rustc_hir::ClosureKind::Closure))
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             lint::builtin::RTSAN_NONBLOCKING_ASYNC,
             hir_id,
             sanitize_span,
-            |lint| {
-                lint.primary_message(r#"the async executor can run blocking code, without realtime sanitizer catching it"#);
-            }
+            AsyncBlocking,
         );
     }
 
@@ -483,9 +487,8 @@ fn check_result(
             .map(|features| (features.name.as_str(), true))
             .collect(),
     ) {
-        let span =
-            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature{attr_span: span, ..} => *span)
-                .unwrap_or_else(|| tcx.def_span(did));
+        let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
+            .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
             .create_err(errors::TargetFeatureDisableOrEnable {
@@ -504,7 +507,7 @@ fn handle_lang_items(
     attrs: &[Attribute],
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) {
-    let lang_item = find_attr!(attrs, AttributeKind::Lang(lang, _) => lang);
+    let lang_item = find_attr!(attrs, Lang(lang, _) => lang);
 
     // Weak lang items have the same semantics as "std internal" symbols in the
     // sense that they're preserved through all our LTO passes and only
@@ -583,7 +586,8 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some((on_set, off_set, rtsan)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
+    if let Some((on_set, off_set, rtsan)) =
+        find_attr!(tcx, did, Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
@@ -615,115 +619,6 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// attribute on the method prototype (if any).
 fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
     tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
-}
-
-/// We now check the #\[rustc_autodiff\] attributes which we generated from the #[autodiff(...)]
-/// macros. There are two forms. The pure one without args to mark primal functions (the functions
-/// being differentiated). The other form is #[rustc_autodiff(Mode, ActivityList)] on top of the
-/// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
-/// panic, unless we introduced a bug when parsing the autodiff macro.
-//FIXME(jdonszelmann): put in the main loop. No need to have two..... :/ Let's do that when we make autodiff parsed.
-pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
-    let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
-
-    let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();
-
-    // check for exactly one autodiff attribute on placeholder functions.
-    // There should only be one, since we generate a new placeholder per ad macro.
-    let attr = match &attrs[..] {
-        [] => return None,
-        [attr] => attr,
-        _ => {
-            span_bug!(attrs[1].span(), "cg_ssa: rustc_autodiff should only exist once per source");
-        }
-    };
-
-    let list = attr.meta_item_list().unwrap_or_default();
-
-    // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
-    if list.is_empty() {
-        return Some(AutoDiffAttrs::source());
-    }
-
-    let [mode, width_meta, input_activities @ .., ret_activity] = &list[..] else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode, width and activities");
-    };
-    let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
-        p1.segments.first().unwrap().ident
-    } else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode");
-    };
-
-    // parse mode
-    let mode = match mode.as_str() {
-        "Forward" => DiffMode::Forward,
-        "Reverse" => DiffMode::Reverse,
-        _ => {
-            span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
-        }
-    };
-
-    let width: u32 = match width_meta {
-        MetaItemInner::MetaItem(MetaItem { path: p1, .. }) => {
-            let w = p1.segments.first().unwrap().ident;
-            match w.as_str().parse() {
-                Ok(val) => val,
-                Err(_) => {
-                    span_bug!(w.span, "rustc_autodiff width should fit u32");
-                }
-            }
-        }
-        MetaItemInner::Lit(lit) => {
-            if let LitKind::Int(val, _) = lit.kind {
-                match val.get().try_into() {
-                    Ok(val) => val,
-                    Err(_) => {
-                        span_bug!(lit.span, "rustc_autodiff width should fit u32");
-                    }
-                }
-            } else {
-                span_bug!(lit.span, "rustc_autodiff width should be an integer");
-            }
-        }
-    };
-
-    // First read the ret symbol from the attribute
-    let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain the return activity");
-    };
-    let ret_symbol = p1.segments.first().unwrap().ident;
-
-    // Then parse it into an actual DiffActivity
-    let Ok(ret_activity) = DiffActivity::from_str(ret_symbol.as_str()) else {
-        span_bug!(ret_symbol.span, "invalid return activity");
-    };
-
-    // Now parse all the intermediate (input) activities
-    let mut arg_activities: Vec<DiffActivity> = vec![];
-    for arg in input_activities {
-        let arg_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p2, .. }) = arg {
-            match p2.segments.first() {
-                Some(x) => x.ident,
-                None => {
-                    span_bug!(
-                        arg.span(),
-                        "rustc_autodiff attribute must contain the input activity"
-                    );
-                }
-            }
-        } else {
-            span_bug!(arg.span(), "rustc_autodiff attribute must contain the input activity");
-        };
-
-        match DiffActivity::from_str(arg_symbol.as_str()) {
-            Ok(arg_activity) => arg_activities.push(arg_activity),
-            Err(_) => {
-                span_bug!(arg_symbol.span, "invalid input activity");
-            }
-        }
-    }
-
-    Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

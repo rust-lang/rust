@@ -3,10 +3,17 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
+
+fn default_track_feature(_: Symbol) {}
+
+/// Recording used features in the dependency graph so incremental can
+/// replay used features when needed.
+pub static TRACK_FEATURE: AtomicRef<fn(Symbol)> = AtomicRef::new(&(default_track_feature as _));
 
 #[derive(PartialEq)]
 enum FeatureStatus {
@@ -64,8 +71,6 @@ pub struct EnabledLibFeature {
 }
 
 impl Features {
-    /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
-    /// attribute, indicating since when they are stable.
     pub fn set_enabled_lang_feature(&mut self, lang_feat: EnabledLangFeature) {
         self.enabled_lang_features.push(lang_feat);
         self.enabled_features.insert(lang_feat.gate_name);
@@ -105,7 +110,12 @@ impl Features {
 
     /// Is the given feature enabled (via `#[feature(...)]`)?
     pub fn enabled(&self, feature: Symbol) -> bool {
-        self.enabled_features.contains(&feature)
+        if self.enabled_features.contains(&feature) {
+            TRACK_FEATURE(feature);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -126,7 +136,7 @@ macro_rules! declare_features {
         impl Features {
             $(
                 pub fn $feature(&self) -> bool {
-                    self.enabled_features.contains(&sym::$feature)
+                    self.enabled(sym::$feature)
                 }
             )*
 
@@ -223,6 +233,8 @@ declare_features! (
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items
     (internal, eii_internals, "1.94.0", None),
+    /// Implementation details of field representing types.
+    (internal, field_representing_type_raw, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the #[rustc_intrinsic] attribute.
@@ -245,6 +257,8 @@ declare_features! (
     (internal, rustc_attrs, "1.0.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
+    /// Perma-unstable, only used to test the `incomplete_features` lint.
+    (incomplete, test_incomplete_feature, "CURRENT_RUSTC_VERSION", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
@@ -289,10 +303,6 @@ declare_features! (
     (internal, panic_runtime, "1.10.0", Some(32837)),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
-    /// Allows using `#[rustc_allow_const_fn_unstable]`.
-    /// This is an attribute on `const fn` for the same
-    /// purpose as `#[allow_internal_unstable]`.
-    (internal, rustc_allow_const_fn_unstable, "1.49.0", Some(69399)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
     /// Allows using internal rustdoc features like `doc(keyword)`.
@@ -374,7 +384,7 @@ declare_features! (
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Target features on avr.
-    (unstable, avr_target_feature, "CURRENT_RUSTC_VERSION", Some(146889)),
+    (unstable, avr_target_feature, "1.95.0", Some(146889)),
     /// Allows using Intel AVX10 target features and intrinsics
     (unstable, avx10_target_feature, "1.88.0", Some(138843)),
     /// Target features on bpf.
@@ -394,8 +404,6 @@ declare_features! (
     (unstable, cfg_sanitize, "1.41.0", Some(39699)),
     /// Allows `cfg(sanitizer_cfi_generalize_pointers)` and `cfg(sanitizer_cfi_normalize_integers)`.
     (unstable, cfg_sanitizer_cfi, "1.77.0", Some(89653)),
-    /// Provides a native way to easily manage multiple conditional flags without having to rewrite each clause multiple times.
-    (unstable, cfg_select, "CURRENT_RUSTC_VERSION", Some(115585)),
     /// Allows `cfg(target(abi = "..."))`.
     (unstable, cfg_target_compact, "1.63.0", Some(96901)),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
@@ -419,7 +427,9 @@ declare_features! (
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const { ... }` as a shorthand for `const _: () = const { ... };` for module items.
-    (unstable, const_block_items, "CURRENT_RUSTC_VERSION", Some(149226)),
+    (unstable, const_block_items, "1.95.0", Some(149226)),
+    /// Allows defining and calling c-variadic functions in const contexts.
+    (unstable, const_c_variadic, "1.95.0", Some(151787)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
@@ -457,7 +467,7 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
-    (incomplete, deref_patterns, "1.79.0", Some(87121)),
+    (unstable, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
@@ -492,6 +502,10 @@ declare_features! (
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
+    /// Experimental field projections.
+    (incomplete, field_projections, "CURRENT_RUSTC_VERSION", Some(145383)),
+    /// Allows marking trait functions as `final` to prevent overriding impls
+    (unstable, final_associated_functions, "1.95.0", Some(131179)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -520,8 +534,8 @@ declare_features! (
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Target features on hexagon.
     (unstable, hexagon_target_feature, "1.27.0", Some(150250)),
-    /// Allows `if let` guard in match arms.
-    (unstable, if_let_guard, "1.47.0", Some(51114)),
+    /// Allows `impl(crate) trait Foo` restrictions.
+    (incomplete, impl_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` in bindings (`let`).
@@ -560,7 +574,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
-    (incomplete, mgca_type_const_syntax, "CURRENT_RUSTC_VERSION", Some(132980)),
+    (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
     /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
     (incomplete, min_generic_const_args, "1.84.0", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
@@ -606,7 +620,7 @@ declare_features! (
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
-    (unstable, opaque_generic_const_args, "CURRENT_RUSTC_VERSION", Some(151972)),
+    (unstable, opaque_generic_const_args, "1.95.0", Some(151972)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
@@ -641,7 +655,7 @@ declare_features! (
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows `extern "rust-preserve-none"`.
-    (unstable, rust_preserve_none_cc, "CURRENT_RUSTC_VERSION", Some(151401)),
+    (unstable, rust_preserve_none_cc, "1.95.0", Some(151401)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.
@@ -777,8 +791,9 @@ impl Features {
     }
 }
 
-/// Some features are not allowed to be used together at the same time, if
-/// the two are present, produce an error.
+/// Some features are not allowed to be used together at the same time.
+///
+/// If the two are present, produce an error.
 pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
     // boolean logic required to tell which typing rules to use.

@@ -3,7 +3,9 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
+};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
@@ -80,6 +82,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
+        struct UnreachableItem<'a, 'b> {
+            kind: &'a str,
+            span: Span,
+            orig_span: Span,
+            custom_note: Option<&'b str>,
+        }
+
+        impl<'a, 'b, 'c> Diagnostic<'a, ()> for UnreachableItem<'b, 'c> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { kind, span, orig_span, custom_note } = self;
+                let msg = format!("unreachable {kind}");
+                Diag::new(dcx, level, msg.clone()).with_span_label(span, msg).with_span_label(
+                    orig_span,
+                    custom_note.map(|c| c.to_owned()).unwrap_or_else(|| {
+                        "any code following this expression is unreachable".to_owned()
+                    }),
+                )
+            }
+        }
+
         let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
             return;
         };
@@ -102,14 +124,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-        let msg = format!("unreachable {kind}");
-        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-            lint.primary_message(msg.clone());
-            lint.span_label(span, msg).span_label(
-                orig_span,
-                custom_note.unwrap_or("any code following this expression is unreachable"),
-            );
-        })
+        self.tcx().emit_node_span_lint(
+            lint::builtin::UNREACHABLE_CODE,
+            id,
+            span,
+            UnreachableItem { kind, span, orig_span, custom_note },
+        );
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx
@@ -310,6 +330,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Adjust::Deref(DerefAdjustKind::Builtin) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
+                }
+                Adjust::Deref(DerefAdjustKind::Pin) => {
+                    // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
                 }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
@@ -988,7 +1011,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
                 err_extend = GenericsArgsErrExtend::DefVariant(segments);
             }
-            Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn | DefKind::AssocConst { .. }, def_id) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let container = assoc_item.container;
                 let container_id = assoc_item.container_id(tcx);
@@ -1118,7 +1141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
             // self type has any generic types during rustc_resolve, which is what we use
             // to determine if this is a hard error or warning.
-            if std::iter::successors(Some(self.body_id.to_def_id()), |def_id| {
+            if std::iter::successors(Some(self.body_id.to_def_id()), |&def_id| {
                 self.tcx.generics_of(def_id).parent
             })
             .all(|def_id| def_id != impl_def_id)
@@ -1314,7 +1337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
 
-        let args_for_user_type = if let Res::Def(DefKind::AssocConst, def_id) = res {
+        let args_for_user_type = if let Res::Def(DefKind::AssocConst { .. }, def_id) = res {
             self.transform_args_for_inherent_type_const(def_id, args_raw)
         } else {
             args_raw
@@ -1362,7 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_instantiated);
 
-        let args = if let Res::Def(DefKind::AssocConst, def_id) = res {
+        let args = if let Res::Def(DefKind::AssocConst { .. }, def_id) = res {
             self.transform_args_for_inherent_type_const(def_id, args)
         } else {
             args

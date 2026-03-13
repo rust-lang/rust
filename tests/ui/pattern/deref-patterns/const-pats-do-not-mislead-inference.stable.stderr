@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/const-pats-do-not-mislead-inference.rs:33:12
+  --> $DIR/const-pats-do-not-mislead-inference.rs:32:12
    |
 LL |     if let b"..." = &&x {}
    |            ^^^^^^   --- this expression has type `&&_`
@@ -10,7 +10,7 @@ LL |     if let b"..." = &&x {}
               found reference `&'static [u8; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/const-pats-do-not-mislead-inference.rs:39:12
+  --> $DIR/const-pats-do-not-mislead-inference.rs:38:12
    |
 LL |     if let "..." = &Box::new(x) {}
    |            ^^^^^   ------------ this expression has type `&Box<_>`
@@ -25,7 +25,7 @@ LL |     if let "..." = &*Box::new(x) {}
    |                     +
 
 error[E0308]: mismatched types
-  --> $DIR/const-pats-do-not-mislead-inference.rs:45:12
+  --> $DIR/const-pats-do-not-mislead-inference.rs:44:12
    |
 LL |     if let b"..." = Box::new(&x) {}
    |            ^^^^^^   ------------ this expression has type `Box<&_>`
@@ -40,7 +40,7 @@ LL |     if let b"..." = *Box::new(&x) {}
    |                     +
 
 error[E0308]: mismatched types
-  --> $DIR/const-pats-do-not-mislead-inference.rs:51:12
+  --> $DIR/const-pats-do-not-mislead-inference.rs:50:12
    |
 LL |     if let "..." = &mut x {}
    |            ^^^^^   ------ this expression has type `&mut _`

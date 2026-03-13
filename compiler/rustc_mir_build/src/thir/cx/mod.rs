@@ -4,7 +4,6 @@
 
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -105,8 +104,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
             typeck_results,
             body_owner: def.to_def_id(),
-            apply_adjustments:
-                !find_attr!(tcx.hir_attrs(hir_id), AttributeKind::CustomMir(..) => ()).is_some(),
+            apply_adjustments: !find_attr!(tcx.hir_attrs(hir_id), CustomMir(..) => ()).is_some(),
         }
     }
 

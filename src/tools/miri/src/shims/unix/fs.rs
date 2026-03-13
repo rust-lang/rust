@@ -7,7 +7,7 @@ use std::fs::{
     rename,
 };
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::time::SystemTime;
 
 use rustc_abi::Size;
@@ -354,8 +354,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let path_raw = this.read_pointer(path_raw)?;
-        let path = this.read_path_from_c_str(path_raw)?;
         let flag = this.read_scalar(flag)?.to_i32()?;
+
+        let path = this.read_path_from_c_str(path_raw)?;
+        // Files in `/proc` won't work properly.
+        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::Illumos | Os::Solaris)
+            && path::absolute(&path).is_ok_and(|path| path.starts_with("/proc"))
+        {
+            this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
+        }
 
         let mut options = OpenOptions::new();
 

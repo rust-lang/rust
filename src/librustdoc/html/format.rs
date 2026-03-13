@@ -22,8 +22,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_span::Symbol;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -386,32 +386,32 @@ fn generate_macro_def_id_path(
     } else {
         ItemType::Macro
     };
-    let mut path = clean::inline::get_item_path(tcx, def_id, item_type);
-    if path.len() < 2 {
-        // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that `relative` was empty, which is an error.
-        debug!("macro path cannot be empty!");
+    let path = clean::inline::get_item_path(tcx, def_id, item_type);
+    // The minimum we can have is the crate name followed by the macro name. If shorter, then
+    // it means that `relative` was empty, which is an error.
+    let [module_path @ .., last] = path.as_slice() else {
+        debug!("macro path is empty!");
+        return Err(HrefError::NotInExternalCache);
+    };
+    if module_path.is_empty() {
+        debug!("macro path too short: missing crate prefix (got 1 element, need at least 2)");
         return Err(HrefError::NotInExternalCache);
     }
 
-    // FIXME: Try to use `iter().chain().once()` instead.
-    let mut prev = None;
-    if let Some(last) = path.pop() {
-        path.push(Symbol::intern(&format!("{}.{last}.html", item_type.as_str())));
-        prev = Some(last);
-    }
-
     let url = match cache.extern_locations[&def_id.krate] {
-        ExternalLocation::Remote(ref s) => {
-            // `ExternalLocation::Remote` always end with a `/`.
-            format!("{s}{path}", path = fmt::from_fn(|f| path.iter().joined("/", f)))
+        ExternalLocation::Remote { ref url, is_absolute } => {
+            let mut prefix = remote_url_prefix(url, is_absolute, cx.current.len());
+            prefix.extend(module_path.iter().copied());
+            prefix.push_fmt(format_args!("{}.{last}.html", item_type.as_str()));
+            prefix.finish()
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
-                "{root_path}{path}",
+                "{root_path}{path}/{item_type}.{last}.html",
                 root_path = root_path.unwrap_or(""),
-                path = fmt::from_fn(|f| path.iter().joined("/", f))
+                path = fmt::from_fn(|f| module_path.iter().joined("/", f)),
+                item_type = item_type.as_str(),
             )
         }
         ExternalLocation::Unknown => {
@@ -419,10 +419,6 @@ fn generate_macro_def_id_path(
             return Err(HrefError::NotInExternalCache);
         }
     };
-    if let Some(prev) = prev {
-        path.pop();
-        path.push(prev);
-    }
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
@@ -458,15 +454,15 @@ fn generate_item_def_id_path(
 
     let shortty = ItemType::from_def_id(def_id, tcx);
     let module_fqp = to_module_fqp(shortty, &fqp);
-    let mut is_remote = false;
 
-    let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
-    let mut url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
+    let (parts, is_absolute) = url_parts(cx.cache(), def_id, module_fqp, &cx.current)?;
+    let mut url = make_href(root_path, shortty, parts, &fqp, is_absolute);
+
     if def_id != original_def_id {
         let kind = ItemType::from_def_id(original_def_id, tcx);
-        url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
+        url = format!("{url}#{kind}.{}", tcx.item_name(original_def_id))
     };
-    Ok(HrefInfo { url: url_parts, kind: shortty, rust_path: fqp })
+    Ok(HrefInfo { url, kind: shortty, rust_path: fqp })
 }
 
 /// Checks if the given defid refers to an item that is unnamable, such as one defined in a const block.
@@ -493,22 +489,31 @@ fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
     if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
 }
 
+fn remote_url_prefix(url: &str, is_absolute: bool, depth: usize) -> UrlPartsBuilder {
+    let url = url.trim_end_matches('/');
+    if is_absolute {
+        UrlPartsBuilder::singleton(url)
+    } else {
+        let extra = depth.saturating_sub(1);
+        let mut b: UrlPartsBuilder = iter::repeat_n("..", extra).collect();
+        b.push(url);
+        b
+    }
+}
+
 fn url_parts(
     cache: &Cache,
     def_id: DefId,
     module_fqp: &[Symbol],
     relative_to: &[Symbol],
-    is_remote: &mut bool,
-) -> Result<UrlPartsBuilder, HrefError> {
+) -> Result<(UrlPartsBuilder, bool), HrefError> {
     match cache.extern_locations[&def_id.krate] {
-        ExternalLocation::Remote(ref s) => {
-            *is_remote = true;
-            let s = s.trim_end_matches('/');
-            let mut builder = UrlPartsBuilder::singleton(s);
+        ExternalLocation::Remote { ref url, is_absolute } => {
+            let mut builder = remote_url_prefix(url, is_absolute, relative_to.len());
             builder.extend(module_fqp.iter().copied());
-            Ok(builder)
+            Ok((builder, is_absolute))
         }
-        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to)),
+        ExternalLocation::Local => Ok((href_relative_parts(module_fqp, relative_to), false)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
     }
 }
@@ -518,9 +523,10 @@ fn make_href(
     shortty: ItemType,
     mut url_parts: UrlPartsBuilder,
     fqp: &[Symbol],
-    is_remote: bool,
+    is_absolute: bool,
 ) -> String {
-    if !is_remote && let Some(root_path) = root_path {
+    // FIXME: relative extern URLs may break when prefixed with root_path
+    if !is_absolute && let Some(root_path) = root_path {
         let root = root_path.trim_end_matches('/');
         url_parts.push_front(root);
     }
@@ -545,7 +551,7 @@ pub(crate) fn href_with_root_path(
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
     let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
             // documented on their parent's page
             tcx.parent(original_did)
         }
@@ -583,13 +589,17 @@ pub(crate) fn href_with_root_path(
         }
     }
 
-    let mut is_remote = false;
-    let (fqp, shortty, url_parts) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (fqp, shortty, {
-            let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-            debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to)
-        }),
+    let (fqp, shortty, url_parts, is_absolute) = match cache.paths.get(&did) {
+        Some(&(ref fqp, shortty)) => (
+            fqp,
+            shortty,
+            {
+                let module_fqp = to_module_fqp(shortty, fqp.as_slice());
+                debug!(?fqp, ?shortty, ?module_fqp);
+                href_relative_parts(module_fqp, relative_to)
+            },
+            false,
+        ),
         None => {
             // Associated items are handled differently with "jump to def". The anchor is generated
             // directly here whereas for intra-doc links, we have some extra computation being
@@ -597,7 +607,8 @@ pub(crate) fn href_with_root_path(
             let def_id_to_get = if root_path.is_some() { original_did } else { did };
             if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
                 let module_fqp = to_module_fqp(shortty, fqp);
-                (fqp, shortty, url_parts(cache, did, module_fqp, relative_to, &mut is_remote)?)
+                let (parts, is_absolute) = url_parts(cache, did, module_fqp, relative_to)?;
+                (fqp, shortty, parts, is_absolute)
             } else if matches!(def_kind, DefKind::Macro(_)) {
                 return generate_macro_def_id_path(did, cx, root_path);
             } else if did.is_local() {
@@ -608,7 +619,7 @@ pub(crate) fn href_with_root_path(
         }
     };
     Ok(HrefInfo {
-        url: make_href(root_path, shortty, url_parts, fqp, is_remote),
+        url: make_href(root_path, shortty, url_parts, fqp, is_absolute),
         kind: shortty,
         rust_path: fqp.clone(),
     })
@@ -627,8 +638,8 @@ pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) ->
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..];
-            return iter::repeat_n(sym::dotdot, dissimilar_part_count)
-                .chain(fqp_module.iter().copied())
+            return iter::repeat_n("..", dissimilar_part_count)
+                .chain(fqp_module.iter().map(|s| s.as_str()))
                 .collect();
         }
     }
@@ -640,7 +651,7 @@ pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) ->
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            iter::repeat_n(sym::dotdot, dissimilar_part_count).collect()
+            iter::repeat_n("..", dissimilar_part_count).collect()
         }
         Ordering::Equal => {
             // linking to the same module
@@ -762,21 +773,19 @@ fn primitive_link_fragment(
             }
             Some(&def_id) => {
                 let loc = match m.extern_locations[&def_id.krate] {
-                    ExternalLocation::Remote(ref s) => {
+                    ExternalLocation::Remote { ref url, is_absolute } => {
                         let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
-                        let builder: UrlPartsBuilder =
-                            [s.as_str().trim_end_matches('/'), cname_sym.as_str()]
-                                .into_iter()
-                                .collect();
+                        let mut builder = remote_url_prefix(url, is_absolute, cx.current.len());
+                        builder.push(cname_sym.as_str());
                         Some(builder)
                     }
                     ExternalLocation::Local => {
                         let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
                         Some(if cx.current.first() == Some(&cname_sym) {
-                            iter::repeat_n(sym::dotdot, cx.current.len() - 1).collect()
+                            iter::repeat_n("..", cx.current.len() - 1).collect()
                         } else {
-                            iter::repeat_n(sym::dotdot, cx.current.len())
-                                .chain(iter::once(cname_sym))
+                            iter::repeat_n("..", cx.current.len())
+                                .chain(iter::once(cname_sym.as_str()))
                                 .collect()
                         })
                     }
@@ -837,7 +846,7 @@ pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let def_kind = tcx.def_kind(did);
         match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
                 let item_type = ItemType::from_def_id(did, tcx);
                 write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
             }
@@ -957,6 +966,11 @@ fn fmt_type(
         clean::Type::Pat(t, pat) => {
             fmt::Display::fmt(&print_type(t, cx), f)?;
             write!(f, " is {pat}")
+        }
+        clean::Type::FieldOf(t, field) => {
+            write!(f, "field_of!(")?;
+            fmt::Display::fmt(&print_type(t, cx), f)?;
+            write!(f, ", {field})")
         }
         clean::Array(box clean::Generic(name), n) if !f.alternate() => primitive_link(
             f,
@@ -1564,10 +1578,6 @@ pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     })
-}
-
-pub(crate) fn print_default_space(v: bool) -> &'static str {
-    if v { "default " } else { "" }
 }
 
 fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl Display {

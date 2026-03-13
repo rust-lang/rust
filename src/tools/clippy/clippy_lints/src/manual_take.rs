@@ -38,6 +38,9 @@ declare_clippy_lint! {
     complexity,
     "manual `mem::take` implementation"
 }
+
+impl_lint_pass!(ManualTake => [MANUAL_TAKE]);
+
 pub struct ManualTake {
     msrv: Msrv,
 }
@@ -47,8 +50,6 @@ impl ManualTake {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualTake => [MANUAL_TAKE]);
 
 impl LateLintPass<'_> for ManualTake {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

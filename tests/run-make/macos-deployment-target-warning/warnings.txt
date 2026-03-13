@@ -1,0 +1,11 @@
+warning: ld: warning: object file (TEST_DIR/libfoo.a[2](foo.o)) was built for newer 'macOS' version (15.5) than being linked (11.2)
+         
+  |
+note: the lint level is defined here
+ --> main.rs:1:9
+  |
+1 | #![warn(linker_info, linker_messages)]
+  |         ^^^^^^^^^^^
+
+warning: 1 warning emitted
+

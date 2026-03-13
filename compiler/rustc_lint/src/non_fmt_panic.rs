@@ -1,5 +1,6 @@
 use rustc_ast as ast;
-use rustc_errors::{Applicability, msg};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::{bug, ty};
@@ -85,49 +86,26 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
     }
 }
 
-fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
-    if let hir::ExprKind::Lit(lit) = &arg.kind {
-        if let ast::LitKind::Str(sym, _) = lit.node {
-            // The argument is a string literal.
-            check_panic_str(cx, f, arg, sym.as_str());
-            return;
-        }
-    }
+struct PanicMessageNotLiteral<'a, 'tcx> {
+    arg_span: Span,
+    symbol: Symbol,
+    span: Span,
+    arg_macro: Option<DefId>,
+    cx: &'a LateContext<'tcx>,
+    arg: &'tcx hir::Expr<'tcx>,
+    panic: Option<Symbol>,
+}
 
-    // The argument is *not* a string literal.
-
-    let (span, panic, symbol) = panic_call(cx, f);
-
-    if span.in_external_macro(cx.sess().source_map()) {
-        // Nothing that can be done about it in the current crate.
-        return;
-    }
-
-    // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
-    // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
-    // We don't use source_callsite(), because this `panic!(..)` might itself
-    // be expanded from another macro, in which case we want to stop at that
-    // expansion.
-    let mut arg_span = arg.span;
-    let mut arg_macro = None;
-    while !span.contains(arg_span) {
-        let ctxt = arg_span.ctxt();
-        if ctxt.is_root() {
-            break;
-        }
-        let expn = ctxt.outer_expn_data();
-        arg_macro = expn.macro_def_id;
-        arg_span = expn.call_site;
-    }
-
-    cx.span_lint(NON_FMT_PANICS, arg_span, |lint| {
-        lint.primary_message(msg!("panic message is not a string literal"));
-        lint.arg("name", symbol);
-        lint.note(msg!("this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"));
-        lint.note(msg!("for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>"));
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for PanicMessageNotLiteral<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { arg_span, symbol, span, arg_macro, cx, arg, panic } = self;
+        let mut lint = Diag::new(dcx, level, "panic message is not a string literal")
+            .with_arg("name", symbol)
+            .with_note(msg!("this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"))
+            .with_note("for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>");
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
-            return;
+            return lint;
         }
         if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
@@ -215,7 +193,50 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 }
             }
         }
-    });
+        lint
+    }
+}
+
+fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
+    if let hir::ExprKind::Lit(lit) = &arg.kind {
+        if let ast::LitKind::Str(sym, _) = lit.node {
+            // The argument is a string literal.
+            check_panic_str(cx, f, arg, sym.as_str());
+            return;
+        }
+    }
+
+    // The argument is *not* a string literal.
+
+    let (span, panic, symbol) = panic_call(cx, f);
+
+    if span.in_external_macro(cx.sess().source_map()) {
+        // Nothing that can be done about it in the current crate.
+        return;
+    }
+
+    // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
+    // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
+    // We don't use source_callsite(), because this `panic!(..)` might itself
+    // be expanded from another macro, in which case we want to stop at that
+    // expansion.
+    let mut arg_span = arg.span;
+    let mut arg_macro = None;
+    while !span.contains(arg_span) {
+        let ctxt = arg_span.ctxt();
+        if ctxt.is_root() {
+            break;
+        }
+        let expn = ctxt.outer_expn_data();
+        arg_macro = expn.macro_def_id;
+        arg_span = expn.call_site;
+    }
+
+    cx.emit_span_lint(
+        NON_FMT_PANICS,
+        arg_span,
+        PanicMessageNotLiteral { arg_span, symbol, span, arg_macro, cx, arg, panic },
+    );
 }
 
 fn check_panic_str<'tcx>(

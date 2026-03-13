@@ -71,7 +71,7 @@ fn main() {
 
     // check_version warnings are not printed during setup, or during CI
     let changelog_suggestion = if matches!(config.cmd, Subcommand::Setup { .. })
-        || config.is_running_on_ci
+        || config.is_running_on_ci()
         || config.dry_run()
     {
         None

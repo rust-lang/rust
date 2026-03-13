@@ -70,7 +70,7 @@ LL -     let _ = foo.bar;
 LL +     let _ = foo::bar;
    |
 
-error[E0423]: expected value, found struct `std::cell::Cell`
+error[E0423]: expected value, found struct `::std::cell::Cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell
@@ -86,7 +86,7 @@ LL -     Type!().get();
 LL +     <Type!()>::get();
    |
 
-error[E0423]: expected value, found struct `std::cell::Cell`
+error[E0423]: expected value, found struct `::std::cell::Cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell
@@ -166,7 +166,7 @@ LL -         Vec.new
 LL +         Vec::new
    |
 
-error[E0423]: expected value, found struct `std::cell::Cell`
+error[E0423]: expected value, found struct `::std::cell::Cell`
   --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell

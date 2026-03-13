@@ -229,6 +229,7 @@ impl<T, S> HashSet<T, S> {
     /// set.insert(2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
@@ -261,6 +262,7 @@ impl<T, S> HashSet<T, S> {
     /// set.insert(1);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, hasher) }
@@ -281,6 +283,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashSet` to be useful, see its documentation for details.
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_hasher_in(hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_hasher_in(hasher, alloc) }
@@ -301,6 +304,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashSet` to be useful, see its documentation for details.
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_capacity_and_hasher_in(capacity, hasher, alloc) }

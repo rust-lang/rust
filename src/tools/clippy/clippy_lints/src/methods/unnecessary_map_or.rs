@@ -154,7 +154,7 @@ pub(super) fn check<'a>(
         expr.span,
         "this `map_or` can be simplified",
         |diag| {
-            diag.multipart_suggestion_verbose(format!("use {method} instead"), sugg, applicability);
+            diag.multipart_suggestion(format!("use {method} instead"), sugg, applicability);
         },
     );
 }

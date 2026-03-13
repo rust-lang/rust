@@ -1,5 +1,3 @@
-//@no-rustfix
-
 #![warn(clippy::unconditional_recursion)]
 #![allow(
     clippy::partialeq_ne_impl,

@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry;
-use std::mem;
 use std::sync::Arc;
+use std::{fmt, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
@@ -11,20 +11,18 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, Stab
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
-use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
 };
-use rustc_span::source_map::Spanned;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
-    SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
+    SourceFile, Span, SpanDecoder, SpanEncoder, Spanned, StableSourceFileId, Symbol,
 };
 
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::mono::MonoItem;
 use crate::mir::{self, interpret};
@@ -203,20 +201,9 @@ impl OnDiskCache {
         }
     }
 
-    /// Execute all cache promotions and release the serialized backing Mmap.
-    ///
-    /// Cache promotions require invoking queries, which needs to read the serialized data.
-    /// In order to serialize the new on-disk cache, the former on-disk cache file needs to be
-    /// deleted, hence we won't be able to refer to its memmapped data.
-    pub fn drop_serialized_data(&self, tcx: TyCtxt<'_>) {
-        // Load everything into memory so we can write it out to the on-disk
-        // cache. The vast majority of cacheable query results should already
-        // be in memory, so this should be a cheap operation.
-        // Do this *before* we clone 'latest_foreign_def_path_hashes', since
-        // loading existing queries may cause us to create new DepNodes, which
-        // may in turn end up invoking `store_foreign_def_id_hash`
-        tcx.dep_graph.exec_cache_promotions(tcx);
-
+    /// Release the serialized backing `Mmap`.
+    pub fn close_serialized_data_mmap(&self) {
+        // Obtain a write lock, and replace the mmap with None to drop it.
         *self.serialized_data.write() = None;
     }
 
@@ -262,7 +249,7 @@ impl OnDiskCache {
             tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                (tcx.query_system.fns.encode_query_results)(tcx, enc, qri);
+                tcx.encode_all_query_results(enc, qri);
             });
 
             // Encode side effects.
@@ -509,7 +496,7 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
 // tag matches and the correct amount of bytes was read.
 fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> V
 where
-    T: Decodable<D> + Eq + std::fmt::Debug,
+    T: Decodable<D> + Eq + fmt::Debug,
     V: Decodable<D>,
     D: Decoder,
 {
@@ -828,6 +815,13 @@ pub struct CacheEncoder<'a, 'tcx> {
     hygiene_context: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+}
+
+impl<'a, 'tcx> fmt::Debug for CacheEncoder<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Add more details here if/when necessary.
+        f.write_str("CacheEncoder")
+    }
 }
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {

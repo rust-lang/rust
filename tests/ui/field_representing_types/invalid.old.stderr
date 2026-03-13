@@ -1,0 +1,71 @@
+error: unexpected end of macro invocation
+  --> $DIR/invalid.rs:23:28
+   |
+LL |     let _: field_of!(Struct);
+   |                            ^ missing tokens in macro arguments
+   |
+note: while trying to match `,`
+  --> $SRC_DIR/core/src/field.rs:LL:COL
+
+error: unexpected end of macro invocation
+  --> $DIR/invalid.rs:24:29
+   |
+LL |     let _: field_of!(Struct,);
+   |                             ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:expr`
+  --> $SRC_DIR/core/src/field.rs:LL:COL
+
+error: no rules expected `extra`
+  --> $DIR/invalid.rs:25:37
+   |
+LL |     let _: field_of!(Struct, field, extra);
+   |                                     ^^^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/invalid.rs:27:28
+   |
+LL |     let _: field_of!(Enum, Variant..field);
+   |                            ^^^^^^^^^^^^^^
+
+error: `field_of!` expects dot-separated field and variant names
+  --> $DIR/invalid.rs:27:12
+   |
+LL |     let _: field_of!(Enum, Variant..field);
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            in this macro invocation
+   |            this macro call doesn't expand to a type
+   |
+   = note: this error originates in the macro `field_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/invalid.rs:29:30
+   |
+LL |     let _: field_of!(Struct, [42]);
+   |                              ^^^^
+
+error: `field_of!` expects dot-separated field and variant names
+  --> $DIR/invalid.rs:29:12
+   |
+LL |     let _: field_of!(Struct, [42]);
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            in this macro invocation
+   |            this macro call doesn't expand to a type
+   |
+   = note: this error originates in the macro `field_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `field_of!` only supports a single field or a variant with a field
+  --> $DIR/invalid.rs:31:30
+   |
+LL |     let _: field_of!(Struct, field1.field2.field3);
+   |            ------------------^^^^^^-^^^^^^-^^^^^^-
+   |            |
+   |            in this macro invocation
+   |            this macro call doesn't expand to a type
+
+error: aborting due to 8 previous errors
+

@@ -482,15 +482,11 @@ fn get_input_traits_and_projections<'tcx>(
     let mut projection_predicates = Vec::new();
     for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
-            ClauseKind::Trait(trait_predicate) => {
-                if trait_predicate.trait_ref.self_ty() == input {
-                    trait_predicates.push(trait_predicate);
-                }
+            ClauseKind::Trait(trait_predicate) if trait_predicate.trait_ref.self_ty() == input => {
+                trait_predicates.push(trait_predicate);
             },
-            ClauseKind::Projection(projection_predicate) => {
-                if projection_predicate.projection_term.self_ty() == input {
-                    projection_predicates.push(projection_predicate);
-                }
+            ClauseKind::Projection(projection_predicate) if projection_predicate.projection_term.self_ty() == input => {
+                projection_predicates.push(projection_predicate);
             },
             _ => {},
         }
@@ -702,8 +698,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
             sym::to_vec => cx
                 .tcx
                 .impl_of_assoc(method_def_id)
-                .filter(|&impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice())
-                .is_some(),
+                .is_some_and(|impl_did| cx.tcx.type_of(impl_did).instantiate_identity().is_slice()),
             _ => false,
         }
         && let original_arg_ty = cx.typeck_results().node_type(caller.hir_id).peel_refs()

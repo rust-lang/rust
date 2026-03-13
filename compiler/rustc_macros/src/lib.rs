@@ -64,7 +64,7 @@ decl_derive!(
     hash_stable::hash_stable_generic_derive
 );
 decl_derive!(
-    [HashStable_NoContext] =>
+    [HashStable_NoContext, attributes(stable_hasher)] =>
     /// `HashStable` implementation that has no `HashStableContext` bound and
     /// which adds `where` bounds for `HashStable` based off of fields and not
     /// generics. This is suitable for use in crates like `rustc_type_ir`.
@@ -197,25 +197,6 @@ decl_derive!(
         suggestion_verbose)] => diagnostics::diagnostic_derive
 );
 decl_derive!(
-    [LintDiagnostic, attributes(
-        // struct attributes
-        diag,
-        help,
-        help_once,
-        note,
-        note_once,
-        warning,
-        // field attributes
-        skip_arg,
-        primary_span,
-        label,
-        subdiagnostic,
-        suggestion,
-        suggestion_short,
-        suggestion_hidden,
-        suggestion_verbose)] => diagnostics::lint_diagnostic_derive
-);
-decl_derive!(
     [Subdiagnostic, attributes(
         // struct/variant attributes
         label,
@@ -232,7 +213,6 @@ decl_derive!(
         multipart_suggestion,
         multipart_suggestion_short,
         multipart_suggestion_hidden,
-        multipart_suggestion_verbose,
         // field attributes
         skip_arg,
         primary_span,

@@ -563,7 +563,7 @@ fn report_conflicting_impls<'tcx>(
     match used_to_be_allowed {
         None => {
             let reported = if overlap.with_impl.is_local()
-                || tcx.ensure_ok().orphan_check_impl(impl_def_id).is_ok()
+                || tcx.ensure_result().orphan_check_impl(impl_def_id).is_ok()
             {
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
@@ -578,10 +578,15 @@ fn report_conflicting_impls<'tcx>(
             let lint = match kind {
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
-                err.primary_message(msg());
-                decorate(tcx, &overlap, impl_span, err);
-            });
+            tcx.emit_node_span_lint(
+                lint,
+                tcx.local_def_id_to_hir_id(impl_def_id),
+                impl_span,
+                rustc_errors::DiagDecorator(|err| {
+                    err.primary_message(msg());
+                    decorate(tcx, &overlap, impl_span, err);
+                }),
+            );
             Ok(())
         }
     }

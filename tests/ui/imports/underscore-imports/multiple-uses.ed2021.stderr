@@ -32,11 +32,14 @@ error[E0432]: unresolved imports `std::b`, `std::c`
   --> $DIR/multiple-uses.rs:9:15
    |
 LL | pub use std::{b, _, c};
-   |               ^     ^
-   |               |     |
-   |               |     no `c` in the root
-   |               |     help: a similar name exists in the module: `rc`
+   |               ^     ^ no `c` in the root
+   |               |
    |               no `b` in the root
+   |
+help: a similar name exists in the module
+   |
+LL | pub use std::{b, _, rc};
+   |                     +
 
 error[E0432]: unresolved import `std::d`
   --> $DIR/multiple-uses.rs:12:18

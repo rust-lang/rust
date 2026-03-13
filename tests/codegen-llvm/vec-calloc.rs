@@ -1,6 +1,4 @@
-//@ revisions: normal llvm21
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
-//@ [llvm21] min-llvm-version: 21
 //@ only-x86_64
 
 #![crate_type = "lib"]
@@ -178,25 +176,24 @@ pub fn vec_option_i32(n: usize) -> Vec<Option<i32>> {
     vec![None; n]
 }
 
-// LLVM21-LABEL: @vec_array
-#[cfg(llvm21)]
+// CHECK-LABEL: @vec_array
 #[no_mangle]
 pub fn vec_array(n: usize) -> Vec<[u32; 1_000_000]> {
-    // LLVM21-NOT: call {{.*}}alloc::vec::from_elem
-    // LLVM21-NOT: call {{.*}}reserve
-    // LLVM21-NOT: call {{.*}}__rust_alloc(
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
 
-    // LLVM21: call {{.*}}__rust_alloc_zeroed(
+    // CHECK: call {{.*}}__rust_alloc_zeroed(
 
-    // LLVM21-NOT: call {{.*}}alloc::vec::from_elem
-    // LLVM21-NOT: call {{.*}}reserve
-    // LLVM21-NOT: call {{.*}}__rust_alloc(
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
 
-    // LLVM21: ret void
+    // CHECK: ret void
     vec![[0; 1_000_000]; 3]
 }
 
 // Ensure that __rust_alloc_zeroed gets the right attributes for LLVM to optimize it away.
 // CHECK: declare noalias noundef ptr @{{.*}}__rust_alloc_zeroed(i64 noundef, i64 allocalign noundef range(i64 1, -9223372036854775807)) unnamed_addr [[RUST_ALLOC_ZEROED_ATTRS:#[0-9]+]]
 
-// CHECK-DAG: attributes [[RUST_ALLOC_ZEROED_ATTRS]] = { {{.*}} allockind("alloc,zeroed,aligned") allocsize(0) uwtable "alloc-family"="__rust_alloc" {{.*}} }
+// CHECK-DAG: attributes [[RUST_ALLOC_ZEROED_ATTRS]] = { {{.*}} allockind("alloc,zeroed,aligned") allocsize(0) {{(uwtable )?}}"alloc-family"="__rust_alloc" {{.*}} }

@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{AttributeKind, RustcAbiAttrKind};
+use rustc_hir::attrs::RustcAbiAttrKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
@@ -6,7 +6,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
@@ -18,7 +17,8 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir_crate_items(()).definitions() {
-        let Some((attr_span, attr_kind)) = find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcAbi{ attr_span, kind } => (*attr_span, *kind))
+        let Some((attr_span, attr_kind)) =
+            find_attr!(tcx, id, RustcAbi{ attr_span, kind } => (*attr_span, *kind))
         else {
             continue;
         };
@@ -44,10 +44,7 @@ fn unwrap_fn_abi<'tcx>(
     match abi {
         Ok(abi) => abi,
         Err(FnAbiError::Layout(layout_error)) => {
-            tcx.dcx().emit_fatal(Spanned {
-                node: layout_error.into_diagnostic(),
-                span: tcx.def_span(item_def_id),
-            });
+            tcx.dcx().span_fatal(tcx.def_span(item_def_id), layout_error.to_string());
         }
     }
 }
@@ -65,11 +62,7 @@ fn dump_abi_of_fn_item(
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?
             let ty = tcx.type_of(item_def_id).instantiate_identity();
-            tcx.dcx().emit_fatal(Spanned {
-                node: LayoutError::Unknown(ty).into_diagnostic(),
-
-                span: tcx.def_span(item_def_id),
-            });
+            tcx.dcx().span_fatal(tcx.def_span(item_def_id), LayoutError::Unknown(ty).to_string());
         }
         Err(_guaranteed) => return,
     };

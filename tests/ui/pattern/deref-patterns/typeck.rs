@@ -1,6 +1,5 @@
 //@ check-pass
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 use std::rc::Rc;
 

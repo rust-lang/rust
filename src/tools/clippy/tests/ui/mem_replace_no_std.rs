@@ -47,11 +47,7 @@ fn dont_lint_primitive() {
     let _ = mem::replace(&mut pint, 0);
 }
 
-fn main() {
-    replace_option_with_none();
-    replace_with_default();
-    dont_lint_primitive();
-}
+fn main() {}
 
 fn issue9824() {
     struct Foo<'a>(Option<&'a str>);

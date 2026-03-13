@@ -8,8 +8,10 @@ use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, MacroKinds};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
@@ -41,7 +43,6 @@ use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 use crate::eii::EiiMapEncodedKeyValue;
@@ -476,7 +477,6 @@ define_tables! {
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
-    is_rhs_type_const: Table<DefIndex, LazyValue<bool>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

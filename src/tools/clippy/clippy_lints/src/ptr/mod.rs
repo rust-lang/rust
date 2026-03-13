@@ -9,42 +9,6 @@ mod ptr_eq;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for function arguments of type `&String`, `&Vec`,
-    /// `&PathBuf`, and `Cow<_>`. It will also suggest you replace `.clone()` calls
-    /// with the appropriate `.to_owned()`/`to_string()` calls.
-    ///
-    /// ### Why is this bad?
-    /// Requiring the argument to be of the specific type
-    /// makes the function less useful for no benefit; slices in the form of `&[T]`
-    /// or `&str` usually suffice and can be obtained from other types, too.
-    ///
-    /// ### Known problems
-    /// There may be `fn(&Vec)`-typed references pointing to your function.
-    /// If you have them, you will get a compiler error after applying this lint's
-    /// suggestions. You then have the choice to undo your changes or change the
-    /// type of the reference.
-    ///
-    /// Note that if the function is part of your public interface, there may be
-    /// other crates referencing it, of which you may not be aware. Carefully
-    /// deprecate the function before applying the lint suggestions in this case.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// fn foo(&Vec<u32>) { .. }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```ignore
-    /// fn foo(&[u32]) { .. }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub PTR_ARG,
-    style,
-    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// This lint checks for equality comparisons with `ptr::null` or `ptr::null_mut`
     ///
     /// ### Why is this bad?
@@ -108,6 +72,42 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// This lint checks for function arguments of type `&String`, `&Vec`,
+    /// `&PathBuf`, and `Cow<_>`. It will also suggest you replace `.clone()` calls
+    /// with the appropriate `.to_owned()`/`to_string()` calls.
+    ///
+    /// ### Why is this bad?
+    /// Requiring the argument to be of the specific type
+    /// makes the function less useful for no benefit; slices in the form of `&[T]`
+    /// or `&str` usually suffice and can be obtained from other types, too.
+    ///
+    /// ### Known problems
+    /// There may be `fn(&Vec)`-typed references pointing to your function.
+    /// If you have them, you will get a compiler error after applying this lint's
+    /// suggestions. You then have the choice to undo your changes or change the
+    /// type of the reference.
+    ///
+    /// Note that if the function is part of your public interface, there may be
+    /// other crates referencing it, of which you may not be aware. Carefully
+    /// deprecate the function before applying the lint suggestions in this case.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// fn foo(&Vec<u32>) { .. }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// fn foo(&[u32]) { .. }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub PTR_ARG,
+    style,
+    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Use `std::ptr::eq` when applicable
     ///
     /// ### Why is this bad?
@@ -135,7 +135,7 @@ declare_clippy_lint! {
     "use `std::ptr::eq` when comparing raw pointers"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, PTR_EQ]);
+declare_lint_pass!(Ptr => [CMP_NULL, MUT_FROM_REF, PTR_ARG, PTR_EQ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {

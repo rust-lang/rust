@@ -128,20 +128,14 @@ pub fn parse_cfg_select(
         }
     }
 
-    if let Some(features) = features
-        && features.enabled(sym::cfg_select)
-    {
-        let it = branches
-            .reachable
-            .iter()
-            .map(|(entry, _, _)| CfgSelectPredicate::Cfg(entry.clone()))
-            .chain(branches.wildcard.as_ref().map(|(t, _, _)| CfgSelectPredicate::Wildcard(*t)))
-            .chain(
-                branches.unreachable.iter().map(|(entry, _, _)| CfgSelectPredicate::clone(entry)),
-            );
+    let it = branches
+        .reachable
+        .iter()
+        .map(|(entry, _, _)| CfgSelectPredicate::Cfg(entry.clone()))
+        .chain(branches.wildcard.as_ref().map(|(t, _, _)| CfgSelectPredicate::Wildcard(*t)))
+        .chain(branches.unreachable.iter().map(|(entry, _, _)| CfgSelectPredicate::clone(entry)));
 
-        lint_unreachable(p, it, lint_node_id);
-    }
+    lint_unreachable(p, it, lint_node_id);
 
     Ok(branches)
 }

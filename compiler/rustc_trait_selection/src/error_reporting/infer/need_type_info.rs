@@ -1030,12 +1030,15 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         let args = self.node_args_opt(expr.hir_id)?;
                         let span = tcx.hir_span(segment.hir_id);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
+                        let have_turbofish = segment.args.is_some_and(|args| {
+                            args.args.iter().any(|arg| arg.is_ty_or_const())
+                        });
                         InsertableGenericArgs {
                             insert_span,
                             args,
                             generics_def_id: def_id,
                             def_id,
-                            have_turbofish: false,
+                            have_turbofish,
                         }
                     };
                     return Box::new(insertable.into_iter());

@@ -43,6 +43,7 @@ declare_clippy_lint! {
     pedantic,
     "using if to convert bool to int"
 }
+
 declare_lint_pass!(BoolToIntWithIf => [BOOL_TO_INT_WITH_IF]);
 
 impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {

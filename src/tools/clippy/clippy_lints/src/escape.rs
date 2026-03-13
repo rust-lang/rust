@@ -50,6 +50,8 @@ declare_clippy_lint! {
     "using `Box<T>` where unnecessary"
 }
 
+impl_lint_pass!(BoxedLocal => [BOXED_LOCAL]);
+
 fn is_non_trait_box(ty: Ty<'_>) -> bool {
     ty.boxed_ty().is_some_and(|boxed| !boxed.is_trait())
 }
@@ -60,8 +62,6 @@ struct EscapeDelegate<'a, 'tcx> {
     trait_self_ty: Option<Ty<'tcx>>,
     too_large_for_stack: u64,
 }
-
-impl_lint_pass!(BoxedLocal => [BOXED_LOCAL]);
 
 impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
     fn check_fn(

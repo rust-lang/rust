@@ -1,6 +1,6 @@
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifiersAndPath};
 use rustc_middle::ty::{self, BottomUpFolder, Ty, TypeFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -201,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("opaque type `{$ty}` does not satisfy its associated type bounds")]
 struct OpaqueHiddenInferredBoundLint<'tcx> {
     ty: Ty<'tcx>,

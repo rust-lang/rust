@@ -4,7 +4,6 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -53,10 +52,7 @@ impl SymbolNamesTest<'_> {
         // to test the entirety of the string, if they choose, or else just
         // some subset.
 
-        if let Some(attr_span) = find_attr!(
-            tcx.get_all_attrs(def_id),
-            AttributeKind::RustcSymbolName(span) => span
-        ) {
+        if let Some(attr_span) = find_attr!(tcx, def_id, RustcSymbolName(span) => span) {
             let def_id = def_id.to_def_id();
             let instance = Instance::new_raw(
                 def_id,
@@ -83,8 +79,8 @@ impl SymbolNamesTest<'_> {
         }
 
         if let Some(attr_span) = find_attr!(
-            tcx.get_all_attrs(def_id),
-            AttributeKind::RustcDefPath(span) => span
+            tcx, def_id,
+            RustcDefPath(span) => span
         ) {
             tcx.dcx().emit_err(TestOutput {
                 span: *attr_span,

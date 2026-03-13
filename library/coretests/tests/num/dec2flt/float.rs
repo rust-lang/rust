@@ -1,4 +1,4 @@
-use core::num::dec2flt::float::RawFloat;
+use core::num::imp::dec2flt::float::RawFloat;
 
 use crate::num::{ldexp_f32, ldexp_f64};
 

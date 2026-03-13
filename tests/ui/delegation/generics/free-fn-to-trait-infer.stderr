@@ -1,0 +1,40 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/free-fn-to-trait-infer.rs:12:15
+   |
+LL | reuse Trait::<_>::foo::<i32> as generic_arguments1;
+   |               ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/free-fn-to-trait-infer.rs:14:20
+   |
+LL | reuse <u8 as Trait<_>>::foo as generic_arguments2;
+   |                    ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/free-fn-to-trait-infer.rs:17:19
+   |
+LL | reuse <_ as Trait<_>>::foo as generic_arguments3;
+   |                   ^ not allowed in type signatures
+
+error[E0308]: mismatched types
+  --> $DIR/free-fn-to-trait-infer.rs:14:25
+   |
+LL | reuse <u8 as Trait<_>>::foo as generic_arguments2;
+   |                         ^^^
+   |                         |
+   |                         expected `&u8`, found `&Self`
+   |                         found this type parameter
+   |                         arguments to this function are incorrect
+   |
+   = note: expected reference `&u8`
+              found reference `&Self`
+note: method defined here
+  --> $DIR/free-fn-to-trait-infer.rs:7:8
+   |
+LL |     fn foo<U>(&self, _: U, _: T) {}
+   |        ^^^    -----
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0121, E0308.
+For more information about an error, try `rustc --explain E0121`.

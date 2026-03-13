@@ -179,12 +179,4 @@ async fn debug_await() {
     }.await);
 }
 
-fn main() {
-    func_non_mutable();
-    func_mutable();
-    method_non_mutable();
-    method_mutable();
-
-    misc();
-    debug_await();
-}
+fn main() {}

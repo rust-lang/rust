@@ -53,11 +53,11 @@ use std::{cmp, fmt, iter};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -299,7 +299,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let trait_def_id = alias.trait_def_id(tcx);
                 let rebased_args = alias.args.rebase_onto(tcx, trait_def_id, impl_substs);
 
+                // The impl is erroneous missing a definition for the associated type.
+                // Skipping it since calling `TyCtxt::type_of` on its assoc ty will trigger an ICE.
+                if !leaf_def.item.defaultness(tcx).has_value() {
+                    return false;
+                }
+
                 let impl_item_def_id = leaf_def.item.def_id;
+                if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
+                    return false;
+                }
                 let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
 
                 self.infcx.can_eq(param_env, impl_assoc_ty, concrete)

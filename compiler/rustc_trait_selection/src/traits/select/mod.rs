@@ -3,16 +3,14 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
+use std::{assert_matches, cmp};
 
 use hir::def::DefKind;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
@@ -22,7 +20,7 @@ use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{PredicateObligations, TraitObligation};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
+use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
@@ -878,7 +876,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
+                                if a.def == b.def
+                                    && matches!(
+                                        tcx.def_kind(a.def),
+                                        DefKind::AssocConst { .. }
+                                    ) =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -1399,7 +1401,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> R,
     {
-        self.tcx().dep_graph.with_anon_task(self.tcx(), dep_kinds::TraitSelect, || op(self))
+        self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self))
     }
 
     /// filter_impls filters candidates that have a positive impl for a negative
@@ -1445,7 +1447,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
         {
             if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(_, message) => *message);
+                let message = find_attr!(tcx, def_id, RustcReservationImpl(_, message) => *message);
                 if let Some(message) = message {
                     debug!(
                         "filter_reservation_impls: \
@@ -2402,15 +2404,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
-                    match self.tcx().type_of_opaque(def_id) {
-                        Ok(ty) => ty::Binder::dummy(AutoImplConstituents {
-                            types: vec![ty.instantiate(self.tcx(), args)],
-                            assumptions: vec![],
-                        }),
-                        Err(_) => {
-                            return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
-                        }
-                    }
+                    let ty = self.tcx().type_of_opaque(def_id);
+                    ty::Binder::dummy(AutoImplConstituents {
+                        types: vec![ty.instantiate(self.tcx(), args)],
+                        assumptions: vec![],
+                    })
                 }
             }
         })

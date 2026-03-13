@@ -322,8 +322,8 @@ pub(crate) enum ModuleSorting {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
-    Toolchain,
-    InvocationSpecific,
+    HtmlStaticFiles,
+    HtmlNonStaticFiles,
     DepInfo(Option<OutFileName>),
 }
 
@@ -332,8 +332,12 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "toolchain-shared-resources" => Ok(Self::Toolchain),
-            "invocation-specific" => Ok(Self::InvocationSpecific),
+            // old nightly-only choices that are going away soon
+            "toolchain-shared-resources" => Ok(Self::HtmlStaticFiles),
+            "invocation-specific" => Ok(Self::HtmlNonStaticFiles),
+            // modern choices
+            "html-static-files" => Ok(Self::HtmlStaticFiles),
+            "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
             "dep-info" => Ok(Self::DepInfo(None)),
             option => match option.strip_prefix("dep-info=") {
                 Some("-") => Ok(Self::DepInfo(Some(OutFileName::Stdout))),
@@ -346,7 +350,7 @@ impl FromStr for EmitType {
 
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
-        self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+        self.emit.is_empty() || self.emit.contains(&EmitType::HtmlNonStaticFiles)
     }
 
     pub(crate) fn dep_info(&self) -> Option<Option<&OutFileName>> {

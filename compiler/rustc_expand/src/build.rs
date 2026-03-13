@@ -5,8 +5,7 @@ use rustc_ast::{
     self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind,
     MgcaDisambiguation, PatKind, UnOp, attr, token, tokenstream,
 };
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
@@ -729,7 +728,7 @@ impl<'a> ExtCtxt<'a> {
         ty: Box<ast::Ty>,
         rhs_kind: ast::ConstItemRhsKind,
     ) -> Box<ast::Item> {
-        let defaultness = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Implicit;
         self.item(
             span,
             AttrVec::new(),

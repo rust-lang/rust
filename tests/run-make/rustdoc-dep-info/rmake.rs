@@ -7,6 +7,8 @@ use run_make_support::assertion_helpers::assert_contains;
 use run_make_support::{path, rfs, rustdoc};
 
 fn main() {
+    rfs::create_dir("doc");
+
     // We're only emitting dep info, so we shouldn't be running static analysis to
     // figure out that this program is erroneous.
     // Ensure that all kinds of input reading flags end up in dep-info.
@@ -20,7 +22,7 @@ fn main() {
         .emit("dep-info")
         .run();
 
-    let content = rfs::read_to_string("foo.d");
+    let content = rfs::read_to_string("doc/foo.d");
     assert_contains(&content, "lib.rs:");
     assert_contains(&content, "foo.rs:");
     assert_contains(&content, "bar.rs:");

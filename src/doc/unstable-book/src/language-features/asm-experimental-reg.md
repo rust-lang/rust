@@ -22,6 +22,9 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
 | s390x | `vreg` | `vector` | `i32`, `f32`, `i64`, `f64`, `i128`, `f128`, `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
+| x86 | `xmm_reg` | `sse` | `i128` |
+| x86 | `ymm_reg` | `avx` | `i128` |
+| x86 | `zmm_reg` | `avx512f` | `i128` |
 
 ## Register aliases
 

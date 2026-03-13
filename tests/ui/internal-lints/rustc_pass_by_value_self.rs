@@ -5,7 +5,7 @@
 // Considering that all other `internal-lints` are tested here
 // this seems like the cleaner solution though.
 #![feature(rustc_attrs)]
-#![deny(rustc::pass_by_value)]
+#![deny(rustc::disallowed_pass_by_ref)]
 #![allow(unused)]
 
 #[rustc_pass_by_value]

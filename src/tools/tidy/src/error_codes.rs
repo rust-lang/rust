@@ -36,11 +36,11 @@ const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E07
 const IGNORE_UI_TEST_CHECK: &[&str] =
     &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
 
-pub fn check(root_path: &Path, search_paths: &[&Path], ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
+pub fn check(root_path: &Path, search_paths: &[&Path], tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("error_codes");
 
     // Check that no error code explanation was removed.
-    check_removed_error_code_explanation(ci_info, &mut check);
+    check_removed_error_code_explanation(&tidy_ctx.base_commit, &mut check);
 
     // Stage 1: create list
     let error_codes = extract_error_codes(root_path, &mut check);
@@ -57,8 +57,8 @@ pub fn check(root_path: &Path, search_paths: &[&Path], ci_info: &crate::CiInfo, 
     check_error_codes_used(search_paths, &error_codes, &mut check, &no_longer_emitted);
 }
 
-fn check_removed_error_code_explanation(ci_info: &crate::CiInfo, check: &mut RunningCheck) {
-    let Some(base_commit) = &ci_info.base_commit else {
+fn check_removed_error_code_explanation(base_commit: &Option<String>, check: &mut RunningCheck) {
+    let Some(base_commit) = base_commit else {
         check.verbose_msg("Skipping error code explanation removal check");
         return;
     };

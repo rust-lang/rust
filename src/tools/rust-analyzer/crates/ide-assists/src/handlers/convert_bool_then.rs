@@ -102,6 +102,11 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
             };
+            let cond = if invert_cond {
+                invert_boolean_expression(&make, cond)
+            } else {
+                cond.clone_for_update()
+            };
 
             let parenthesize = matches!(
                 cond,
@@ -123,11 +128,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     | ast::Expr::WhileExpr(_)
                     | ast::Expr::YieldExpr(_)
             );
-            let cond = if invert_cond {
-                invert_boolean_expression(&make, cond)
-            } else {
-                cond.clone_for_update()
-            };
+
             let cond = if parenthesize { make.expr_paren(cond).into() } else { cond };
             let arg_list = make.arg_list(Some(make.expr_closure(None, closure_body).into()));
             let mcall = make.expr_method_call(cond, make.name_ref("then"), arg_list);
@@ -587,6 +588,25 @@ fn main() {
     } else {
         None
     }
+}
+",
+        );
+    }
+    #[test]
+    fn convert_if_to_bool_then_invert_method_call() {
+        check_assist(
+            convert_if_to_bool_then,
+            r"
+//- minicore:option
+fn main() {
+    let test = &[()];
+    let value = if$0 test.is_empty() { None } else { Some(()) };
+}
+",
+            r"
+fn main() {
+    let test = &[()];
+    let value = (!test.is_empty()).then(|| ());
 }
 ",
         );

@@ -1,11 +1,11 @@
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic, msg,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
 use crate::late::PatternSource;
@@ -51,6 +51,7 @@ pub(crate) struct GenericParamsFromOuterItemInnerItem {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) descr: String,
+    pub(crate) is_self: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -249,22 +250,6 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag("`self` import can only appear once in an import list", code = E0430)]
-pub(crate) struct SelfImportCanOnlyAppearOnceInTheList {
-    #[primary_span]
-    #[label("can only appear once in an import list")]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`self` import can only appear in an import list with a non-empty prefix", code = E0431)]
-pub(crate) struct SelfImportOnlyInImportListWithNonEmptyPrefix {
-    #[primary_span]
-    #[label("can only appear in an import list with a non-empty prefix")]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("can't capture dynamic environment in a fn item", code = E0434)]
 #[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
@@ -421,7 +406,12 @@ pub(crate) struct SelfInConstGenericTy {
 }
 
 #[derive(Diagnostic)]
-#[diag("generic parameters may not be used in const operations")]
+#[diag(
+    "{$is_ogca ->
+    [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
+    *[false] generic parameters may not be used in const operations
+}"
+)]
 pub(crate) struct ParamInNonTrivialAnonConst {
     #[primary_span]
     #[label("cannot perform const operation using `{$name}`")]
@@ -431,6 +421,11 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
+    pub(crate) is_ogca: bool,
+    #[help(
+        "consider factoring the expression into a `type const` item and use it as the const argument instead"
+    )]
+    pub(crate) help_ogca: bool,
 }
 
 #[derive(Debug)]
@@ -620,7 +615,7 @@ pub(crate) struct ProcMacroSameCrate {
     pub(crate) is_test: bool,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot find {$ns_descr} `{$ident}` in this scope")]
 pub(crate) struct ProcMacroDeriveResolutionFallback {
     #[label("names from parent modules are not accessible without an explicit import")]
@@ -629,20 +624,13 @@ pub(crate) struct ProcMacroDeriveResolutionFallback {
     pub ident: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths"
 )]
 pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
     #[note("the macro is defined here")]
     pub definition: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`$crate` may not be imported")]
-pub(crate) struct CrateImported {
-    #[primary_span]
-    pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -836,7 +824,7 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("extern crate `{$ident}` is private and cannot be re-exported", code = E0365)]
 pub(crate) struct PrivateExternCrateReexport {
     pub ident: Ident,
@@ -973,11 +961,25 @@ pub(crate) struct ArgumentsMacroUseNotAllowed {
     pub(crate) span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "try renaming it with a name",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnnamedImportSugg {
+    #[suggestion_part(code = "{ident} as name")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
 #[derive(Diagnostic)]
-#[diag("crate root imports need to be explicitly named: `use crate as name;`")]
-pub(crate) struct UnnamedCrateRootImport {
+#[diag("imports need to be explicitly named")]
+pub(crate) struct UnnamedImport {
     #[primary_span]
     pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) sugg: Option<UnnamedImportSugg>,
 }
 
 #[derive(Diagnostic)]
@@ -1125,11 +1127,13 @@ pub(crate) enum NameDefinedMultipleTimeLabel {
     Reimported {
         #[primary_span]
         span: Span,
+        name: Symbol,
     },
     #[label("`{$name}` redefined here")]
     Redefined {
         #[primary_span]
         span: Span,
+        name: Symbol,
     },
 }
 
@@ -1140,12 +1144,14 @@ pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
         #[primary_span]
         span: Span,
         old_kind: &'static str,
+        name: Symbol,
     },
     #[label("previous definition of the {$old_kind} `{$name}` here")]
     Definition {
         #[primary_span]
         span: Span,
         old_kind: &'static str,
+        name: Symbol,
     },
 }
 
@@ -1208,15 +1214,6 @@ pub(crate) struct ToolWasAlreadyRegistered {
     pub(crate) tool: Ident,
     #[label("already registered here")]
     pub(crate) old_ident_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$tool}` only accepts identifiers")]
-pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[primary_span]
-    #[label("not an identifier")]
-    pub(crate) span: Span,
-    pub(crate) tool: Symbol,
 }
 
 #[derive(Subdiagnostic)]
@@ -1368,12 +1365,10 @@ impl Subdiagnostic for FoundItemConfigureOut {
         let mut multispan: MultiSpan = self.span.into();
         match self.item_was {
             ItemWas::BehindFeature { feature, span } => {
-                let key = "feature".into();
                 let value = feature.into_diag_arg(&mut None);
-                let msg = diag.dcx.eagerly_translate_to_string(
-                    msg!("the item is gated behind the `{$feature}` feature"),
-                    [(&key, &value)].into_iter(),
-                );
+                let msg = msg!("the item is gated behind the `{$feature}` feature")
+                    .arg("feature", value)
+                    .format();
                 multispan.push_span_label(span, msg);
             }
             ItemWas::CfgOut { span } => {
@@ -1397,14 +1392,14 @@ pub(crate) struct TraitImplMismatch {
     pub(crate) trait_item_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("derive helper attribute is used before it is introduced")]
 pub(crate) struct LegacyDeriveHelpers {
     #[label("the attribute is introduced here")]
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused extern crate")]
 pub(crate) struct UnusedExternCrate {
     #[label("unused")]
@@ -1418,7 +1413,7 @@ pub(crate) struct UnusedExternCrate {
     pub removal_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$kind} `{$name}` from private dependency '{$krate}' is re-exported")]
 pub(crate) struct ReexportPrivateDependency {
     pub name: Symbol,
@@ -1426,32 +1421,32 @@ pub(crate) struct ReexportPrivateDependency {
     pub krate: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused label")]
 pub(crate) struct UnusedLabel;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused `#[macro_use]` import")]
 pub(crate) struct UnusedMacroUse;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("applying the `#[macro_use]` attribute to an `extern crate` item is deprecated")]
 #[help("remove it and import macros at use sites with a `use` item instead")]
 pub(crate) struct MacroUseDeprecated;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("macro `{$ident}` is private")]
 pub(crate) struct MacroIsPrivate {
     pub ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused macro definition: `{$name}`")]
 pub(crate) struct UnusedMacroDefinition {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("rule #{$n} of macro `{$name}` is never used")]
 pub(crate) struct MacroRuleNeverUsed {
     pub n: usize,
@@ -1462,13 +1457,14 @@ pub(crate) struct UnstableFeature {
     pub msg: DiagMessage,
 }
 
-impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(self.msg);
+impl<'a> Diagnostic<'a, ()> for UnstableFeature {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { msg } = self;
+        Diag::new(dcx, level, msg)
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`extern crate` is not idiomatic in the new edition")]
 pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(
@@ -1481,7 +1477,7 @@ pub(crate) struct ExternCrateNotIdiomatic {
     pub code: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot find macro `{$path}` in the current scope when looking from {$location}")]
 #[help("import `macro_rules` with `use` to make it callable above its definition")]
 pub(crate) struct OutOfScopeMacroCalls {
@@ -1491,7 +1487,7 @@ pub(crate) struct OutOfScopeMacroCalls {
     pub location: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough"
 )]
@@ -1504,7 +1500,7 @@ pub(crate) struct RedundantImportVisibility {
     pub max_vis: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unknown diagnostic attribute")]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]
@@ -1534,43 +1530,48 @@ pub(crate) struct Ambiguity {
     pub b1_help_msgs: Vec<String>,
     pub b2_note: Spanned<String>,
     pub b2_help_msgs: Vec<String>,
-}
-
-impl Ambiguity {
-    fn decorate<'a>(self, diag: &mut Diag<'a, impl EmissionGuarantee>) {
-        if let Some(ambig_vis) = self.ambig_vis {
-            diag.primary_message(format!("ambiguous import visibility: {ambig_vis}"));
-        } else {
-            diag.primary_message(format!("`{}` is ambiguous", self.ident));
-            diag.span_label(self.ident.span, "ambiguous name");
-        }
-        diag.note(format!("ambiguous because of {}", self.kind));
-        diag.span_note(self.b1_note.span, self.b1_note.node);
-        if let Some(help) = self.help {
-            for help in help {
-                diag.help(*help);
-            }
-        }
-        for help_msg in self.b1_help_msgs {
-            diag.help(help_msg);
-        }
-        diag.span_note(self.b2_note.span, self.b2_note.node);
-        for help_msg in self.b2_help_msgs {
-            diag.help(help_msg);
-        }
-    }
+    /// If false, then it's a lint, if true, then it's an error with the `E0659` error code.
+    pub is_error: bool,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, "").with_span(self.ident.span).with_code(E0659);
-        self.decorate(&mut diag);
-        diag
-    }
-}
+        let Self {
+            ident,
+            ambig_vis,
+            kind,
+            help,
+            b1_note,
+            b1_help_msgs,
+            b2_note,
+            b2_help_msgs,
+            is_error,
+        } = self;
 
-impl<'a> LintDiagnostic<'a, ()> for Ambiguity {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        self.decorate(diag);
+        let mut diag = Diag::new(dcx, level, "").with_span(ident.span);
+        if is_error {
+            diag.code(E0659);
+        }
+        if let Some(ambig_vis) = ambig_vis {
+            diag.primary_message(format!("ambiguous import visibility: {ambig_vis}"));
+        } else {
+            diag.primary_message(format!("`{}` is ambiguous", ident));
+            diag.span_label(ident.span, "ambiguous name");
+        }
+        diag.note(format!("ambiguous because of {}", kind));
+        diag.span_note(b1_note.span, b1_note.node);
+        if let Some(help) = help {
+            for help in help {
+                diag.help(*help);
+            }
+        }
+        for help_msg in b1_help_msgs {
+            diag.help(help_msg);
+        }
+        diag.span_note(b2_note.span, b2_note.node);
+        for help_msg in b2_help_msgs {
+            diag.help(help_msg);
+        }
+        diag
     }
 }

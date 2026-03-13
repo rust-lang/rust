@@ -7,21 +7,15 @@ use parking_lot::{Condvar, Mutex};
 use rustc_span::Span;
 
 use crate::query::plumbing::CycleError;
-use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
+use crate::query::stack::QueryStackFrame;
 use crate::ty::TyCtxt;
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
-pub struct QueryInfo<I> {
+pub struct QueryInfo<'tcx> {
     /// The span corresponding to the reason for which this query was required.
     pub span: Span,
-    pub frame: QueryStackFrame<I>,
-}
-
-impl<'tcx> QueryInfo<QueryStackDeferred<'tcx>> {
-    pub(crate) fn lift(&self) -> QueryInfo<QueryStackFrameExtra> {
-        QueryInfo { span: self.span, frame: self.frame.lift() }
-    }
+    pub frame: QueryStackFrame<'tcx>,
 }
 
 /// A value uniquely identifying an active query job.
@@ -74,25 +68,18 @@ pub struct QueryWaiter<'tcx> {
     pub query: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
-    pub cycle: Mutex<Option<CycleError<QueryStackDeferred<'tcx>>>>,
-}
-
-#[derive(Debug)]
-pub struct QueryLatchInfo<'tcx> {
-    pub complete: bool,
-    pub waiters: Vec<Arc<QueryWaiter<'tcx>>>,
+    pub cycle: Mutex<Option<CycleError<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct QueryLatch<'tcx> {
-    pub info: Arc<Mutex<QueryLatchInfo<'tcx>>>,
+    /// The `Option` is `Some(..)` when the job is active, and `None` once completed.
+    pub waiters: Arc<Mutex<Option<Vec<Arc<QueryWaiter<'tcx>>>>>>,
 }
 
 impl<'tcx> QueryLatch<'tcx> {
     fn new() -> Self {
-        QueryLatch {
-            info: Arc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
-        }
+        QueryLatch { waiters: Arc::new(Mutex::new(Some(Vec::new()))) }
     }
 
     /// Awaits for the query job to complete.
@@ -101,10 +88,32 @@ impl<'tcx> QueryLatch<'tcx> {
         tcx: TyCtxt<'tcx>,
         query: Option<QueryJobId>,
         span: Span,
-    ) -> Result<(), CycleError<QueryStackDeferred<'tcx>>> {
+    ) -> Result<(), CycleError<'tcx>> {
+        let mut waiters_guard = self.waiters.lock();
+        let Some(waiters) = &mut *waiters_guard else {
+            return Ok(()); // already complete
+        };
+
         let waiter =
             Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
-        self.wait_on_inner(tcx, &waiter);
+
+        // We push the waiter on to the `waiters` list. It can be accessed inside
+        // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
+        // Both of these will remove it from the `waiters` list before resuming
+        // this thread.
+        waiters.push(Arc::clone(&waiter));
+
+        // Awaits the caller on this latch by blocking the current thread.
+        // If this detects a deadlock and the deadlock handler wants to resume this thread
+        // we have to be in the `wait` call. This is ensured by the deadlock handler
+        // getting the self.info lock.
+        rustc_thread_pool::mark_blocked();
+        tcx.jobserver_proxy.release_thread();
+        waiter.condvar.wait(&mut waiters_guard);
+        // Release the lock before we potentially block in `acquire_thread`
+        drop(waiters_guard);
+        tcx.jobserver_proxy.acquire_thread();
+
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot
         // use Arc::get_mut
@@ -115,35 +124,12 @@ impl<'tcx> QueryLatch<'tcx> {
         }
     }
 
-    /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, tcx: TyCtxt<'tcx>, waiter: &Arc<QueryWaiter<'tcx>>) {
-        let mut info = self.info.lock();
-        if !info.complete {
-            // We push the waiter on to the `waiters` list. It can be accessed inside
-            // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
-            // Both of these will remove it from the `waiters` list before resuming
-            // this thread.
-            info.waiters.push(Arc::clone(waiter));
-
-            // If this detects a deadlock and the deadlock handler wants to resume this thread
-            // we have to be in the `wait` call. This is ensured by the deadlock handler
-            // getting the self.info lock.
-            rustc_thread_pool::mark_blocked();
-            tcx.jobserver_proxy.release_thread();
-            waiter.condvar.wait(&mut info);
-            // Release the lock before we potentially block in `acquire_thread`
-            drop(info);
-            tcx.jobserver_proxy.acquire_thread();
-        }
-    }
-
     /// Sets the latch and resumes all waiters on it
     fn set(&self) {
-        let mut info = self.info.lock();
-        debug_assert!(!info.complete);
-        info.complete = true;
+        let mut waiters_guard = self.waiters.lock();
+        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
         let registry = rustc_thread_pool::Registry::current();
-        for waiter in info.waiters.drain(..) {
+        for waiter in waiters {
             rustc_thread_pool::mark_unblocked(&registry);
             waiter.condvar.notify_one();
         }
@@ -152,9 +138,9 @@ impl<'tcx> QueryLatch<'tcx> {
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
     pub fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<'tcx>> {
-        let mut info = self.info.lock();
-        debug_assert!(!info.complete);
+        let mut waiters_guard = self.waiters.lock();
+        let waiters = waiters_guard.as_mut().expect("non-empty waiters vec");
         // Remove the waiter from the list of waiters
-        info.waiters.remove(waiter)
+        waiters.remove(waiter)
     }
 }

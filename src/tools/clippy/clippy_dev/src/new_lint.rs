@@ -526,18 +526,14 @@ fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     let mut captures = [Capture::EMPTY];
     while let Some(name) = cursor.find_any_ident() {
         match cursor.get_text(name) {
-            "declare_clippy_lint" => {
-                if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) {
-                    decl_end = Some(cursor.pos());
-                }
+            "declare_clippy_lint" if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) => {
+                decl_end = Some(cursor.pos());
             },
-            "impl" => {
-                if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) {
-                    match cursor.get_text(captures[0]) {
-                        "LateLintPass" => context = Some("LateContext"),
-                        "EarlyLintPass" => context = Some("EarlyContext"),
-                        _ => {},
-                    }
+            "impl" if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) => {
+                match cursor.get_text(captures[0]) {
+                    "LateLintPass" => context = Some("LateContext"),
+                    "EarlyLintPass" => context = Some("EarlyContext"),
+                    _ => {},
                 }
             },
             _ => {},

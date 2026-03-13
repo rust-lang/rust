@@ -88,7 +88,10 @@ declare_clippy_lint! {
     "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait"
 }
 
-declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_SHADOW_DISPLAY]);
+declare_lint_pass!(InherentToString => [
+    INHERENT_TO_STRING,
+    INHERENT_TO_STRING_SHADOW_DISPLAY,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for InherentToString {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {

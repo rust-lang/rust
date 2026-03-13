@@ -65,7 +65,7 @@ pub fn change_field_order_struct_like() -> Enum {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail6")]
 // FIXME(michaelwoerister):Interesting. I would have thought that that changes the MIR. And it
 // would if it were not all constants

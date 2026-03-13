@@ -16,13 +16,14 @@ use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
 
-fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, Option<DebugContext>) {
-    let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
-
+fn create_jit_module(
+    tcx: TyCtxt<'_>,
+    crate_info: &CrateInfo,
+) -> (UnwindModule<JITModule>, Option<DebugContext>) {
     let isa = crate::build_isa(tcx.sess, true);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
-    jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info));
+    jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info.clone()));
     let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
 
     let cx = DebugContext::new(tcx, jit_module.isa(), false, "dummy_cgu_name");
@@ -32,14 +33,14 @@ fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, Option<DebugC
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, crate_info: &CrateInfo, jit_args: Vec<String>) -> ! {
     if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
     let output_filenames = tcx.output_filenames(());
     let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
-    let (mut jit_module, mut debug_context) = create_jit_module(tcx);
+    let (mut jit_module, mut debug_context) = create_jit_module(tcx, crate_info);
     let mut cached_context = Context::new();
 
     let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;

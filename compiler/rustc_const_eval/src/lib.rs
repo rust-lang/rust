@@ -1,9 +1,7 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(array_try_map)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]
@@ -23,8 +21,6 @@ use std::sync::atomic::AtomicBool;
 
 use rustc_middle::ty;
 use rustc_middle::util::Providers;
-
-pub use self::errors::ReportErrorExt;
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(&mut providers.queries);

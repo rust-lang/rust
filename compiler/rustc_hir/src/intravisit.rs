@@ -830,7 +830,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr_field, fields);
             match optional_base {
                 StructTailExpr::Base(base) => try_visit!(visitor.visit_expr(base)),
-                StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
+                StructTailExpr::None
+                | StructTailExpr::NoneWithError(_)
+                | StructTailExpr::DefaultFields(_) => {}
             }
         }
         ExprKind::Tup(subexpressions) => {
@@ -1046,6 +1048,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
         TyKind::Pat(ty, pat) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_pattern_type_pattern(pat));
+        }
+        TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+            try_visit!(visitor.visit_ty_unambig(ty));
+            visit_opt!(visitor, visit_ident, *variant);
+            try_visit!(visitor.visit_ident(*field));
         }
     }
     V::Result::output()

@@ -1,7 +1,6 @@
 //! Checks validity of naked functions.
 
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirIdSet, StmtKind, find_attr};
@@ -21,7 +20,7 @@ pub(crate) fn typeck_naked_fn<'tcx>(
     def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
 ) {
-    debug_assert!(find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)));
+    debug_assert!(find_attr!(tcx, def_id, Naked(..)));
     check_no_patterns(tcx, body.params);
     check_no_parameters_use(tcx, body);
     check_asm(tcx, def_id, body);

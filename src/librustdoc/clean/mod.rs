@@ -197,7 +197,7 @@ fn generate_item_with_correct_attrs(
             // itself matter), for non-inlined re-exports see #85043.
             let import_is_inline = find_attr!(
                 inline::load_attrs(cx, import_id.to_def_id()),
-                AttributeKind::Doc(d)
+                Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(cx.tcx, import_id)
                 && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
@@ -1007,7 +1007,7 @@ fn clean_proc_macro<'tcx>(
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     }
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let Some((trait_name, helper_attrs)) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
+    let Some((trait_name, helper_attrs)) = find_attr!(attrs, ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
     else {
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     };
@@ -1026,11 +1026,11 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
+    let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
         Some(MacroKind::Bang)
-    } else if find_attr!(attrs, AttributeKind::ProcMacroDerive { .. }) {
+    } else if find_attr!(attrs, ProcMacroDerive { .. }) {
         Some(MacroKind::Derive)
-    } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
+    } else if find_attr!(attrs, ProcMacroAttribute(..)) {
         Some(MacroKind::Attr)
     } else {
         None
@@ -1050,8 +1050,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
-    let Some(indexes) =
-        find_attr!(attrs, AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
+    let Some(indexes) = find_attr!(attrs, RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
     else {
         return;
     };
@@ -1222,11 +1221,11 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body));
-                MethodItem(m, None)
+                MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
                 let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Idents(idents));
-                RequiredMethodItem(m)
+                RequiredMethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1271,7 +1270,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                     hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
                     hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
                 };
-                MethodItem(m, Some(defaultness))
+                MethodItem(m, Defaultness::from_impl_item(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
@@ -1353,18 +1352,20 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
 
-            let provided = match assoc_item.container {
-                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
-                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+            let defaultness = assoc_item.defaultness(tcx);
+            let (provided, defaultness) = match assoc_item.container {
+                ty::AssocContainer::Trait => {
+                    (defaultness.has_value(), Defaultness::from_trait_item(defaultness))
+                }
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
+                    (true, Defaultness::from_impl_item(defaultness))
+                }
             };
+
             if provided {
-                let defaultness = match assoc_item.container {
-                    ty::AssocContainer::TraitImpl(_) => Some(assoc_item.defaultness(tcx)),
-                    ty::AssocContainer::InherentImpl | ty::AssocContainer::Trait => None,
-                };
                 MethodItem(item, defaultness)
             } else {
-                RequiredMethodItem(item)
+                RequiredMethodItem(item, defaultness)
             }
         }
         ty::AssocKind::Type { .. } => {
@@ -1808,6 +1809,14 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
+        TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
+            let field_str = if let Some(variant) = variant {
+                format!("{variant}.{field}")
+            } else {
+                format!("{field}")
+            };
+            Type::FieldOf(Box::new(clean_ty(ty, cx)), field_str.into())
+        }
         TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
@@ -2700,7 +2709,29 @@ fn add_without_unwanted_attributes<'hir>(
             }
             hir::Attribute::Parsed(AttributeKind::Doc(box d)) => {
                 // Remove attributes from `normal` that should not be inherited by `use` re-export.
-                let DocAttribute { hidden, inline, cfg, .. } = d;
+                let DocAttribute {
+                    aliases,
+                    hidden,
+                    inline,
+                    cfg,
+                    auto_cfg: _,
+                    auto_cfg_change: _,
+                    fake_variadic: _,
+                    keyword: _,
+                    attribute: _,
+                    masked: _,
+                    notable_trait: _,
+                    search_unbox: _,
+                    html_favicon_url: _,
+                    html_logo_url: _,
+                    html_playground_url: _,
+                    html_root_url: _,
+                    html_no_source: _,
+                    issue_tracker_base_url: _,
+                    rust_logo: _,
+                    test_attrs: _,
+                    no_crate_inject: _,
+                } = d;
                 let mut attr = DocAttribute::default();
                 if is_inline {
                     attr.cfg = cfg.clone();
@@ -2708,6 +2739,7 @@ fn add_without_unwanted_attributes<'hir>(
                     attr.inline = inline.clone();
                     attr.hidden = hidden.clone();
                 }
+                attr.aliases = aliases.clone();
                 attrs.push((
                     Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
                     import_parent,
@@ -3020,7 +3052,7 @@ fn clean_use_statement_inner<'tcx>(
     let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = find_attr!(
         attrs,
-        AttributeKind::Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
+        Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
     )
     .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);

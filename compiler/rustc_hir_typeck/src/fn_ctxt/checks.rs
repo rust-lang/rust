@@ -2,9 +2,11 @@ use std::ops::Deref;
 use std::{fmt, iter};
 
 use itertools::Itertools;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
+use rustc_hir as hir;
 use rustc_hir::attrs::DivergingBlockBehavior;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -25,7 +27,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 use smallvec::SmallVec;
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
@@ -82,7 +83,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::ExprKind::ConstBlock(..) => return None,
                     hir::ExprKind::Path(qpath) => {
                         let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                        if let Res::Def(DefKind::Const | DefKind::AssocConst, _) = res {
+                        if let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, _) = res
+                        {
                             return None;
                         }
                     }
@@ -1994,7 +1996,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                             ),
                         );
                         err.code(self.err_code.to_owned());
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
                                 (lo.shrink_to_lo(), "(".to_string()),
@@ -2649,7 +2651,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("remove the extra argument{}", if plural { "s" } else { "" }),
                     suggestions,
                     Applicability::HasPlaceholders,

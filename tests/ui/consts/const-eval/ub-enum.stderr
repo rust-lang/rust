@@ -86,7 +86,7 @@ LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+error[E0080]: constructing invalid value at .<enum-tag>: encountered 0x03, but expected a valid enum tag
   --> $DIR/ub-enum.rs:85:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };

@@ -20,7 +20,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 extern crate rustc_macros;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
@@ -137,7 +137,7 @@ struct MessageWrongType {
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
+    //~| ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
 
@@ -495,18 +495,6 @@ struct LabelWithTrailingList {
     span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct LintsGood {}
-
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct PrimarySpanOnLint {
-    #[primary_span]
-    //~^ ERROR `#[primary_span]` is not a valid attribute
-    span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag("this is an example message", code = E0123)]
 struct ErrorWithMultiSpan {
@@ -541,13 +529,6 @@ struct WarnAttribute {}
 //~| ERROR diagnostic message not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnSessionDiag {}
-
-#[derive(LintDiagnostic)]
-#[lint("this is an example message", code = E0123)]
-//~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR diagnostic message not specified
-//~| ERROR cannot find attribute `lint` in this scope
-struct LintAttributeOnLintDiag {}
 
 #[derive(Diagnostic)]
 #[diag("this is an example message", code = E0123)]
@@ -666,14 +647,6 @@ struct SubdiagnosticBadTwice {
 #[diag("this is an example message")]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
-    note: Note,
-}
-
-#[derive(LintDiagnostic)]
-#[diag("this is an example message")]
-struct SubdiagnosticEagerLint {
-    #[subdiagnostic(eager)]
     //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }

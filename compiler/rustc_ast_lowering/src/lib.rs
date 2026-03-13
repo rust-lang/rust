@@ -32,7 +32,7 @@
 
 // tidy-alphabetical-start
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 use std::mem;
@@ -47,7 +47,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
@@ -90,7 +89,16 @@ pub mod stability;
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a mut ResolverAstLowering,
+
+    // During lowering of delegation we need to access AST of other functions
+    // in order to properly propagate generics, we could have done it at resolve
+    // stage, however it will require either to firstly identify functions that
+    // are being reused and store their generics, or to store generics of all functions
+    // in resolver. This approach helps with those problems, as functions that are reused
+    // will be in AST index.
+    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+
+    resolver: &'a mut ResolverAstLowering<'hir>,
     disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -124,7 +132,7 @@ struct LoweringContext<'a, 'hir> {
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
-    trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
+    trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
@@ -150,11 +158,16 @@ struct LoweringContext<'a, 'hir> {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
+    fn new(
+        tcx: TyCtxt<'hir>,
+        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+        resolver: &'a mut ResolverAstLowering<'hir>,
+    ) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             // Pseudo-globals.
             tcx,
+            ast_index,
             resolver,
             disambiguator: DisambiguatorState::new(),
             arena: tcx.hir_arena,
@@ -234,7 +247,7 @@ impl SpanLowerer {
 }
 
 #[extension(trait ResolverAstLoweringExt)]
-impl ResolverAstLowering {
+impl ResolverAstLowering<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'_>) -> Option<Vec<usize>> {
         let ExprKind::Path(None, path) = &expr.kind else {
             return None;
@@ -255,10 +268,10 @@ impl ResolverAstLowering {
             return None;
         }
 
+        // we can use parsed attrs here since for other crates they're already available
         find_attr!(
-            // we can use parsed attrs here since for other crates they're already available
-            tcx.get_all_attrs(def_id),
-            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+            tcx, def_id,
+            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
@@ -734,8 +747,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
+        if let Some(&traits) = self.resolver.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, traits);
         }
 
         // Check whether the same `NodeId` is lowered more than once.
@@ -1497,6 +1510,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Pat(ty, pat) => {
                 hir::TyKind::Pat(self.lower_ty_alloc(ty, itctx), self.lower_ty_pat(pat, ty.span))
             }
+            TyKind::FieldOf(ty, variant, field) => hir::TyKind::FieldOf(
+                self.lower_ty_alloc(ty, itctx),
+                self.arena.alloc(hir::TyFieldPath {
+                    variant: variant.map(|variant| self.lower_ident(variant)),
+                    field: self.lower_ident(*field),
+                }),
+            ),
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
             }
@@ -2522,16 +2542,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Block(block, _) => {
                 if let [stmt] = block.stmts.as_slice()
                     && let StmtKind::Expr(expr) = &stmt.kind
-                    && matches!(
-                        expr.kind,
-                        ExprKind::Block(..)
-                            | ExprKind::Path(..)
-                            | ExprKind::Struct(..)
-                            | ExprKind::Call(..)
-                            | ExprKind::Tup(..)
-                            | ExprKind::Array(..)
-                            | ExprKind::ConstBlock(..)
-                    )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
                 }
@@ -2553,6 +2563,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             {
                 let span = expr.span;
                 let literal = self.lower_lit(literal, span);
+
+                if !matches!(literal.node, LitKind::Int(..)) {
+                    let err =
+                        self.dcx().struct_span_err(expr.span, "negated literal must be an integer");
+
+                    return ConstArg {
+                        hir_id: self.next_id(),
+                        kind: hir::ConstArgKind::Error(err.emit()),
+                        span,
+                    };
+                }
 
                 ConstArg {
                     hir_id: self.lower_node_id(expr.id),

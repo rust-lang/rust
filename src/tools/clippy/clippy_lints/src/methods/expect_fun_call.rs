@@ -3,12 +3,11 @@ use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macr
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks};
+use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 

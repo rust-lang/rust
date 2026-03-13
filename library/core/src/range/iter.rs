@@ -153,7 +153,7 @@ impl<A: Step> IntoIterator for Range<A> {
 }
 
 /// By-value [`RangeInclusive`] iterator.
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[derive(Debug, Clone)]
 pub struct RangeInclusiveIter<A>(legacy::RangeInclusive<A>);
 
@@ -161,7 +161,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// If the iterator is exhausted or empty, returns `None`.
-    #[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
@@ -171,7 +171,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     }
 }
 
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 impl<A: Step> Iterator for RangeInclusiveIter<A> {
     type Item = A;
 
@@ -227,7 +227,7 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
     }
 }
 
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -248,10 +248,10 @@ impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeInclusiveIter<A> {}
 
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 impl<A: Step> FusedIterator for RangeInclusiveIter<A> {}
 
-#[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 impl<A: Step> IntoIterator for RangeInclusive<A> {
     type Item = A;
     type IntoIter = RangeInclusiveIter<A>;
@@ -278,7 +278,7 @@ macro_rules! range_exact_iter_impl {
 
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "new_range_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
         impl ExactSizeIterator for RangeInclusiveIter<$t> { }
     )*)
 }

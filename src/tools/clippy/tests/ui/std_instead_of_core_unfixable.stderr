@@ -1,5 +1,5 @@
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core_unfixable.rs:9:43
+  --> tests/ui/std_instead_of_core_unfixable.rs:7:43
    |
 LL |     use std::{collections::HashMap, hash::Hash};
    |                                           ^^^^
@@ -9,7 +9,7 @@ LL |     use std::{collections::HashMap, hash::Hash};
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_core)]`
 
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core_unfixable.rs:15:22
+  --> tests/ui/std_instead_of_core_unfixable.rs:13:22
    |
 LL |     use std::{error::Error, vec::Vec, fs::File};
    |                      ^^^^^
@@ -17,7 +17,7 @@ LL |     use std::{error::Error, vec::Vec, fs::File};
    = help: consider importing the item from `core`
 
 error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core_unfixable.rs:15:34
+  --> tests/ui/std_instead_of_core_unfixable.rs:13:34
    |
 LL |     use std::{error::Error, vec::Vec, fs::File};
    |                                  ^^^

@@ -8,7 +8,6 @@
 //! is computed by selecting an idea from this table.
 
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
@@ -79,20 +78,14 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         if self.tcx.features().rustc_attrs() {
-            if !find_attr!(
-                self.tcx.get_all_attrs(ty_def_id),
-                AttributeKind::RustcHasIncoherentInherentImpls
-            ) {
+            if !find_attr!(self.tcx, ty_def_id, RustcHasIncoherentInherentImpls) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
             }
 
             let items = self.tcx.associated_item_def_ids(impl_def_id);
             for &impl_item in items {
-                if !find_attr!(
-                    self.tcx.get_all_attrs(impl_item),
-                    AttributeKind::RustcAllowIncoherentImpl(_)
-                ) {
+                if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                     let impl_span = self.tcx.def_span(impl_def_id);
                     return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
                         span: impl_span,
@@ -138,10 +131,7 @@ impl<'tcx> InherentCollect<'tcx> {
         if !self.tcx.hir_rustc_coherence_is_core() {
             if self.tcx.features().rustc_attrs() {
                 for &impl_item in items {
-                    if !find_attr!(
-                        self.tcx.get_all_attrs(impl_item),
-                        AttributeKind::RustcAllowIncoherentImpl(_)
-                    ) {
+                    if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                         let span = self.tcx.def_span(impl_def_id);
                         return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {
                             span,

@@ -1,77 +1,78 @@
 //! This contains documentation which is linked from query modifiers used in the `rustc_queries!` proc macro.
+//!
+//! The dummy items in this module are used to enable hover documentation for
+//! modifier names in the query list, and to allow find-all-references to list
+//! all queries that use a particular modifier.
 #![allow(unused, non_camel_case_types)]
-// FIXME: Update and clarify documentation for these modifiers.
 
-/// # `desc` query modifier
+// tidy-alphabetical-start
+//
+/// # `anon` query modifier
 ///
-/// The description of the query. This modifier is required on every query.
-pub struct desc;
+/// Generate a dep node based not on the query key, but on the query's dependencies.
+pub(crate) struct anon;
 
 /// # `arena_cache` query modifier
 ///
-/// Use this type for the in-memory cache.
-pub struct arena_cache;
-
-/// # `cache_on_disk_if` query modifier
+/// Query return values must impl `Copy` and be small, but some queries must return values that
+/// doesn't meet those criteria. Queries marked with this modifier have their values allocated in
+/// an arena and the query returns a reference to the value. There are two cases.
+/// - If the provider function returns `T` then the query will return `&'tcx T`.
+/// - If the provider function returns `Option<T>` then the query will return `Option<&'tcx T>`.
 ///
-/// Cache the query to disk if the `Block` returns true.
-pub struct cache_on_disk_if;
+/// The query plumbing takes care of the arenas and the type manipulations.
+pub(crate) struct arena_cache;
 
-/// # `cycle_fatal` query modifier
+/// # `cache_on_disk_if { ... }` query modifier
 ///
-/// A cycle error for this query aborting the compilation with a fatal error.
-pub struct cycle_fatal;
+/// Cache the query result to disk if the provided block evaluates to true. The query key
+/// identifier is available for use within the block, as is `tcx`.
+pub(crate) struct cache_on_disk_if;
 
 /// # `cycle_delay_bug` query modifier
 ///
-/// A cycle error results in a delay_bug call
-pub struct cycle_delay_bug;
-
-/// # `cycle_stash` query modifier
-///
-/// A cycle error results in a stashed cycle error that can be unstashed and canceled later
-pub struct cycle_stash;
-
-/// # `no_hash` query modifier
-///
-/// Don't hash the result, instead just mark a query red if it runs
-pub struct no_hash;
-
-/// # `anon` query modifier
-///
-/// Generate a dep node based on the dependencies of the query
-pub struct anon;
-
-/// # `eval_always` query modifier
-///
-/// Always evaluate the query, ignoring its dependencies
-pub struct eval_always;
+/// If a dependency cycle is detected, emit a delayed bug instead of a normal error.
+pub(crate) struct cycle_delay_bug;
 
 /// # `depth_limit` query modifier
 ///
-/// Whether the query has a call depth limit
-pub struct depth_limit;
+/// Impose a recursion call depth limit on the query to prevent stack overflow.
+pub(crate) struct depth_limit;
 
-/// # `separate_provide_extern` query modifier
+/// # `desc { ... }` query modifier
 ///
-/// Use a separate query provider for local and extern crates
-pub struct separate_provide_extern;
+/// The human-readable description of the query, for diagnostics and profiling. Required for every
+/// query. The block should contain a `format!`-style string literal followed by optional
+/// arguments. The query key identifier is available for use within the block, as is `tcx`.
+pub(crate) struct desc;
+
+/// # `eval_always` query modifier
+///
+/// Queries with this modifier do not track their dependencies, and are treated as always having a
+/// red (dirty) dependency instead. This is necessary for queries that interact with state that
+/// isn't tracked by the query system.
+///
+/// It can also improve performance for queries that are so likely to be dirtied by any change that
+/// it's not worth tracking their actual dependencies at all.
+///
+/// As with all queries, the return value is still cached in memory for the rest of the compiler
+/// session.
+pub(crate) struct eval_always;
 
 /// # `feedable` query modifier
 ///
 /// Generate a `feed` method to set the query's value from another query.
-pub struct feedable;
+pub(crate) struct feedable;
 
-/// # `return_result_from_ensure_ok` query modifier
+/// # `no_hash` query modifier
 ///
-/// When this query is called via `tcx.ensure_ok()`, it returns
-/// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
-/// be executed, and that execution returns an error, the error result is
-/// returned to the caller.
+/// Do not hash the query's return value for incremental compilation. If the value needs to be
+/// recomputed, always mark its node as red (dirty).
+pub(crate) struct no_hash;
+
+/// # `separate_provide_extern` query modifier
 ///
-/// If execution is skipped, a synthetic `Ok(())` is returned, on the
-/// assumption that a query with all-green inputs must have succeeded.
-///
-/// Can only be applied to queries with a return value of
-/// `Result<_, ErrorGuaranteed>`.
-pub struct return_result_from_ensure_ok;
+/// Use separate query provider functions for local and extern crates.
+pub(crate) struct separate_provide_extern;
+
+// tidy-alphabetical-end

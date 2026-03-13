@@ -5,14 +5,14 @@ use std::sync::Arc;
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::{Translator, to_fluent_args};
-use rustc_errors::{Applicability, DiagCtxt, DiagInner};
+use rustc_errors::formatting::format_diag_message;
+use rustc_errors::{Applicability, Diag, DiagCtxt, DiagCtxtHandle, DiagInner, Diagnostic, Level};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{DUMMY_SP, FileName, InnerSpan};
+use rustc_span::{DUMMY_SP, FileName, InnerSpan, Span};
 
 use crate::clean;
 use crate::core::DocContext;
@@ -34,13 +34,72 @@ fn check_rust_syntax(
     dox: &str,
     code_block: RustCodeBlock,
 ) {
+    struct CodeblockError<'a> {
+        buffer: &'a Buffer,
+        code_block: RustCodeBlock,
+        span: Span,
+        is_precise_span: bool,
+    }
+
+    impl<'a, 'b> Diagnostic<'a, ()> for CodeblockError<'b> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { buffer, code_block, span, is_precise_span } = self;
+
+            let mut lint = Diag::new(
+                dcx,
+                level,
+                if buffer.has_errors {
+                    "could not parse code block as Rust code"
+                } else {
+                    "Rust code block is empty"
+                },
+            );
+
+            let empty_block = code_block.lang_string == Default::default() && code_block.is_fenced;
+            let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;
+
+            let explanation = if is_ignore {
+                "`ignore` code blocks require valid Rust code for syntax highlighting; \
+                 mark blocks that do not contain Rust code as text"
+            } else {
+                "mark blocks that do not contain Rust code as text"
+            };
+
+            if is_precise_span {
+                if is_ignore {
+                    // Giving an accurate suggestion is hard because `ignore` might not have come
+                    // first in the list. Just give a `help` instead.
+                    lint.span_help(
+                        span.from_inner(InnerSpan::new(0, 3)),
+                        format!("{explanation}: ```text"),
+                    );
+                } else if empty_block {
+                    lint.span_suggestion(
+                        span.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
+                        explanation,
+                        "text",
+                        Applicability::MachineApplicable,
+                    );
+                }
+            } else if empty_block || is_ignore {
+                lint.help(format!("{explanation}: ```text"));
+            }
+
+            // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
+            for message in buffer.messages.iter() {
+                lint.note(message.clone());
+            }
+
+            lint
+        }
+    }
+
     let buffer = Arc::new(Lock::new(Buffer::default()));
-    let translator = rustc_driver::default_translator();
-    let emitter = BufferEmitter { buffer: Arc::clone(&buffer), translator };
+    let emitter = BufferEmitter { buffer: Arc::clone(&buffer) };
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-    let source = dox[code_block.code]
+    let source = dox[code_block.code.clone()]
         .lines()
         .map(|line| crate::html::markdown::map_line(line).for_code())
         .intersperse(Cow::Borrowed("\n"))
@@ -76,11 +135,8 @@ fn check_rust_syntax(
         return;
     };
 
-    let empty_block = code_block.lang_string == Default::default() && code_block.is_fenced;
-    let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;
-
     // The span and whether it is precise or not.
-    let (sp, precise_span) = match source_span_for_markdown_range(
+    let (span, is_precise_span) = match source_span_for_markdown_range(
         cx.tcx,
         dox,
         &code_block.range,
@@ -90,51 +146,16 @@ fn check_rust_syntax(
         None => (item.attr_span(cx.tcx), false),
     };
 
-    let msg = if buffer.has_errors {
-        "could not parse code block as Rust code"
-    } else {
-        "Rust code block is empty"
-    };
-
     // Finally build and emit the completed diagnostic.
     // All points of divergence have been handled earlier so this can be
     // done the same way whether the span is precise or not.
     let hir_id = cx.tcx.local_def_id_to_hir_id(local_id);
-    cx.tcx.node_span_lint(crate::lint::INVALID_RUST_CODEBLOCKS, hir_id, sp, |lint| {
-        lint.primary_message(msg);
-
-        let explanation = if is_ignore {
-            "`ignore` code blocks require valid Rust code for syntax highlighting; \
-                    mark blocks that do not contain Rust code as text"
-        } else {
-            "mark blocks that do not contain Rust code as text"
-        };
-
-        if precise_span {
-            if is_ignore {
-                // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
-                // just give a `help` instead.
-                lint.span_help(
-                    sp.from_inner(InnerSpan::new(0, 3)),
-                    format!("{explanation}: ```text"),
-                );
-            } else if empty_block {
-                lint.span_suggestion(
-                    sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
-                    explanation,
-                    "text",
-                    Applicability::MachineApplicable,
-                );
-            }
-        } else if empty_block || is_ignore {
-            lint.help(format!("{explanation}: ```text"));
-        }
-
-        // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
-        for message in buffer.messages.iter() {
-            lint.note(message.clone());
-        }
-    });
+    cx.tcx.emit_node_span_lint(
+        crate::lint::INVALID_RUST_CODEBLOCKS,
+        hir_id,
+        span,
+        CodeblockError { buffer: &buffer, code_block, span, is_precise_span },
+    );
 }
 
 #[derive(Default)]
@@ -145,18 +166,13 @@ struct Buffer {
 
 struct BufferEmitter {
     buffer: Arc<Lock<Buffer>>,
-    translator: Translator,
 }
 
 impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: DiagInner) {
         let mut buffer = self.buffer.borrow_mut();
 
-        let fluent_args = to_fluent_args(diag.args.iter());
-        let translated_main_message = self
-            .translator
-            .translate_message(&diag.messages[0].0, &fluent_args)
-            .unwrap_or_else(|e| panic!("{e}"));
+        let translated_main_message = format_diag_message(&diag.messages[0].0, &diag.args);
 
         buffer.messages.push(format!("error from rustc: {translated_main_message}"));
         if diag.is_error() {
@@ -166,9 +182,5 @@ impl Emitter for BufferEmitter {
 
     fn source_map(&self) -> Option<&SourceMap> {
         None
-    }
-
-    fn translator(&self) -> &Translator {
-        &self.translator
     }
 }

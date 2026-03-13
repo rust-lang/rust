@@ -65,7 +65,7 @@ impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_fields_are_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
@@ -142,7 +142,7 @@ impl ::core::cmp::Eq for Point {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -230,7 +230,7 @@ impl ::core::cmp::Eq for PackedPoint {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -313,7 +313,7 @@ impl ::core::cmp::Eq for TupleSingleField {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -388,7 +388,7 @@ impl ::core::cmp::Eq for SingleField {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<bool>;
     }
 }
@@ -493,7 +493,7 @@ impl ::core::cmp::Eq for Big {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -757,7 +757,7 @@ impl ::core::cmp::Eq for Unsized {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<[u32]>;
     }
 }
@@ -852,7 +852,7 @@ impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
         let _: ::core::cmp::AssertParamIsEq<U>;
@@ -974,7 +974,7 @@ impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<T::A>;
         let _: ::core::cmp::AssertParamIsEq<U>;
@@ -1059,7 +1059,7 @@ impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_fields_are_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
@@ -1129,7 +1129,7 @@ impl ::core::cmp::Eq for Enum1 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -1195,7 +1195,7 @@ impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_fields_are_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
@@ -1272,7 +1272,7 @@ impl ::core::cmp::Eq for Fieldless {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_fields_are_eq(&self) {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
@@ -1382,7 +1382,7 @@ impl ::core::cmp::Eq for Mixed {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1580,7 +1580,7 @@ impl ::core::cmp::Eq for Fielded {
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<bool>;
         let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
@@ -1702,7 +1702,7 @@ impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     #[inline]
     #[doc(hidden)]
     #[coverage(off)]
-    fn assert_receiver_is_total_eq(&self) {
+    fn assert_fields_are_eq(&self) {
         let _: ::core::cmp::AssertParamIsEq<T>;
         let _: ::core::cmp::AssertParamIsEq<U>;
     }

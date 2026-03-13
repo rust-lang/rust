@@ -344,9 +344,15 @@ pub(crate) fn print_src(
         lines += line_info.start_line as usize;
     }
     let code = fmt::from_fn(move |fmt| {
-        let current_href = context
-            .href_from_span(clean::Span::new(file_span), false)
-            .expect("only local crates should have sources emitted");
+        // For scraped examples, use the URL from ScrapedInfo directly.
+        // For regular sources, derive it from the span.
+        let current_href = if let SourceContext::Embedded(info) = source_context {
+            info.url.to_string()
+        } else {
+            context
+                .href_from_span(clean::Span::new(file_span), false)
+                .expect("only local crates should have sources emitted")
+        };
         highlight::write_code(
             fmt,
             s,

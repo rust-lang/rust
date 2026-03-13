@@ -67,7 +67,7 @@ fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-    summary: &StaticFields,
+    summary: &StaticFields<'_>,
 ) -> BlockOrExpr {
     let expr = match summary {
         Unnamed(_, IsTuple::No) => cx.expr_ident(trait_span, substr.type_ident),
@@ -78,16 +78,16 @@ fn default_struct_substructure(
         Named(fields) => {
             let default_fields = fields
                 .iter()
-                .map(|(ident, span, default_val)| {
+                .map(|&(ident, span, default_val)| {
                     let value = match default_val {
                         // We use `Default::default()`.
-                        None => default_call(cx, *span),
+                        None => default_call(cx, span),
                         // We use the field default const expression.
                         Some(val) => {
                             cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
                         }
                     };
-                    cx.field_imm(*span, *ident, value)
+                    cx.field_imm(span, ident, value)
                 })
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)

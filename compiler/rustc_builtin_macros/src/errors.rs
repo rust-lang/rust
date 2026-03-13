@@ -1,28 +1,29 @@
 use rustc_errors::codes::*;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
     Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.intel_syntax`, Intel syntax is the default")]
 pub(crate) struct AvoidIntelSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("avoid using `.att_syntax`, prefer using `options(att_syntax)` instead")]
 pub(crate) struct AvoidAttSyntax;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("include macro expected single expression in source")]
 pub(crate) struct IncompleteInclude;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot test inner items")]
 pub(crate) struct UnnameableTestItems;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("duplicated attribute")]
 pub(crate) struct DuplicateMacroAttribute;
 
@@ -544,6 +545,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessag
 #[derive(Diagnostic)]
 pub(crate) enum EnvNotDefined<'a> {
     #[diag("environment variable `{$var}` not defined at compile time")]
+    #[help("`{$var}` may not be available for the current Cargo target")]
     #[help(
         "Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead"
     )]
@@ -763,15 +765,17 @@ pub(crate) struct FormatUnusedArg {
 // form of diagnostic.
 impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.arg("named", self.named);
-        let msg = diag.eagerly_translate(msg!(
-            "{$named ->
-                [true] named argument
-                *[false] argument
-            } never used"
-        ));
-        diag.remove_arg("named");
-        diag.span_label(self.span, msg);
+        diag.span_label(
+            self.span,
+            msg!(
+                "{$named ->
+                    [true] named argument
+                    *[false] argument
+                } never used"
+            )
+            .arg("named", self.named)
+            .format(),
+        );
     }
 }
 
@@ -946,17 +950,14 @@ pub(crate) struct AsmClobberNoReg {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = dcx.eagerly_translate_to_string(msg!("clobber_abi"), [].into_iter());
-        let lbl2 = dcx.eagerly_translate_to_string(msg!("generic outputs"), [].into_iter());
         Diag::new(
             dcx,
             level,
             msg!("asm with `clobber_abi` must specify explicit registers for outputs"),
         )
         .with_span(self.spans.clone())
-        .with_span_labels(self.clobbers, &lbl1)
-        .with_span_labels(self.spans, &lbl2)
+        .with_span_labels(self.clobbers, "clobber_abi")
+        .with_span_labels(self.spans, "generic outputs")
     }
 }
 

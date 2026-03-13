@@ -8,7 +8,8 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, E0806, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
+use rustc_hir::attrs::EiiImplResolution;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
@@ -37,6 +38,14 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
+    // Error recovery can resolve the EII target to another value item with the same name,
+    // such as a tuple-struct constructor. Skip the comparison in that case and rely on the
+    // earlier name-resolution error instead of ICEing while building EII diagnostics.
+    // See <https://github.com/rust-lang/rust/issues/153502>.
+    if !is_foreign_function(tcx, foreign_item) {
+        return Ok(());
+    }
+
     check_is_structurally_compatible(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
 
     let external_impl_span = tcx.def_span(external_impl);
@@ -177,9 +186,7 @@ fn check_no_generics<'tcx>(
         // since in that case it looks like a duplicate error: the declaration of the EII already can't contain generics.
         // So, we check here if at least one of the eii impls has ImplResolution::Macro, which indicates it's
         // not generated as part of the declaration.
-        && find_attr!(
-            tcx.get_all_attrs(external_impl),
-            AttributeKind::EiiImpls(impls) if impls.iter().any(|i| matches!(i.resolution, EiiImplResolution::Macro(_)))
+        && find_attr!(tcx, external_impl, EiiImpls(impls) if impls.iter().any(|i| matches!(i.resolution, EiiImplResolution::Macro(_)))
         )
     {
         tcx.dcx().emit_err(EiiWithGenerics {
@@ -443,4 +450,8 @@ fn extract_spans_for_error_reporting<'tcx>(
 fn get_declaration_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Option<&'tcx FnSig<'tcx>> {
     let hir_id: HirId = tcx.local_def_id_to_hir_id(def_id);
     tcx.hir_fn_sig_by_hir_id(hir_id)
+}
+
+fn is_foreign_function(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.is_foreign_item(def_id) && matches!(tcx.def_kind(def_id), DefKind::Fn)
 }

@@ -86,7 +86,7 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
-    hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
+    hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::{
         LocalDefMap,
         assoc::{ImplItems, TraitItems},
@@ -553,15 +553,25 @@ pub struct TypeOrConstParamId {
 pub struct TypeParamId(TypeOrConstParamId);
 
 impl TypeParamId {
+    #[inline]
     pub fn parent(&self) -> GenericDefId {
         self.0.parent
     }
+
+    #[inline]
     pub fn local_id(&self) -> LocalTypeOrConstParamId {
         self.0.local_id
     }
-}
 
-impl TypeParamId {
+    #[inline]
+    pub fn trait_self(trait_: TraitId) -> TypeParamId {
+        TypeParamId::from_unchecked(TypeOrConstParamId {
+            parent: trait_.into(),
+            local_id: GenericParams::SELF_PARAM_ID_IN_SELF,
+        })
+    }
+
+    #[inline]
     /// Caller should check if this toc id really belongs to a type
     pub fn from_unchecked(it: TypeOrConstParamId) -> Self {
         Self(it)

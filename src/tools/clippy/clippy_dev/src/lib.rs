@@ -1,6 +1,5 @@
 #![feature(
     exit_status_error,
-    if_let_guard,
     new_range,
     new_range_api,
     os_str_slice,
@@ -19,6 +18,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 extern crate rustc_arena;
+extern crate rustc_data_structures;
 #[expect(unused_extern_crates, reason = "required to link to rustc crates")]
 extern crate rustc_driver;
 extern crate rustc_lexer;
@@ -32,8 +32,8 @@ pub mod release;
 pub mod serve;
 pub mod setup;
 pub mod sync;
-pub mod update_lints;
 
+mod generate;
 mod parse;
 mod utils;
 

@@ -1,5 +1,5 @@
 use core::mem::ManuallyDrop;
-use core::ptr::{self};
+use core::ptr;
 
 use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 

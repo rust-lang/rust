@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
@@ -285,6 +286,19 @@ fn run_passes_inner<'tcx>(
                 continue;
             };
 
+            if is_optimization_stage(body, phase_change, optimizations)
+                && let Some(limit) = &tcx.sess.opts.unstable_opts.mir_opt_bisect_limit
+            {
+                if limited_by_opt_bisect(
+                    tcx,
+                    tcx.def_path_debug_str(body.source.def_id()),
+                    *limit,
+                    *pass,
+                ) {
+                    continue;
+                }
+            }
+
             let dumper = if pass.is_mir_dump_enabled()
                 && let Some(dumper) = MirDumper::new(tcx, pass_name, body)
             {
@@ -355,4 +369,47 @@ pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tc
     if let Some(dumper) = MirDumper::new(tcx, body.phase.name(), body) {
         dumper.set_show_pass_num().set_disambiguator(&"after").dump_mir(body)
     }
+}
+
+fn is_optimization_stage(
+    body: &Body<'_>,
+    phase_change: Option<MirPhase>,
+    optimizations: Optimizations,
+) -> bool {
+    optimizations == Optimizations::Allowed
+        && body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup)
+        && phase_change == Some(MirPhase::Runtime(RuntimePhase::Optimized))
+}
+
+fn limited_by_opt_bisect<'tcx, P>(
+    tcx: TyCtxt<'tcx>,
+    def_path: String,
+    limit: usize,
+    pass: &P,
+) -> bool
+where
+    P: MirPass<'tcx> + ?Sized,
+{
+    let current_opt_bisect_count =
+        tcx.sess.mir_opt_bisect_eval_count.fetch_add(1, Ordering::Relaxed);
+
+    let can_run = current_opt_bisect_count < limit;
+
+    if can_run {
+        eprintln!(
+            "BISECT: running pass ({}) {} on {}",
+            current_opt_bisect_count + 1,
+            pass.name(),
+            def_path
+        );
+    } else {
+        eprintln!(
+            "BISECT: NOT running pass ({}) {} on {}",
+            current_opt_bisect_count + 1,
+            pass.name(),
+            def_path
+        );
+    }
+
+    !can_run
 }

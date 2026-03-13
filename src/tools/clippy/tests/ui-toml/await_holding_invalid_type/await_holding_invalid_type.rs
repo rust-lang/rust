@@ -39,9 +39,4 @@ fn block_bad() -> impl std::future::Future<Output = u32> {
     }
 }
 
-fn main() {
-    good();
-    bad();
-    bad_reason();
-    block_bad();
-}
+fn main() {}

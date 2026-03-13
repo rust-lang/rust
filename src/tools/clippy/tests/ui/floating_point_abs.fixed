@@ -73,18 +73,4 @@ fn not_fake_abs5(a: A) -> f64 {
     if a.a > 0.0 { a.a } else { -a.b }
 }
 
-fn main() {
-    fake_abs1(5.0);
-    fake_abs2(5.0);
-    fake_abs3(A { a: 5.0, b: 5.0 });
-    fake_abs4(5.0);
-    fake_abs5(A { a: 5.0, b: 5.0 });
-    fake_nabs1(5.0);
-    fake_nabs2(5.0);
-    fake_nabs3(A { a: 5.0, b: 5.0 });
-    not_fake_abs1(5.0);
-    not_fake_abs2(5.0);
-    not_fake_abs3(5.0, 5.0);
-    not_fake_abs4(A { a: 5.0, b: 5.0 });
-    not_fake_abs5(A { a: 5.0, b: 5.0 });
-}
+fn main() {}

@@ -22,7 +22,6 @@
 //@ [future_feature] compile-flags: -Z unstable-options
 
 #![cfg_attr(future_feature, feature(explicit_extern_abis))]
-#![cfg_attr(current_feature, feature(explicit_extern_abis))]
 
 extern fn _foo() {}
 //[current]~^ WARN `extern` declarations without an explicit ABI are deprecated

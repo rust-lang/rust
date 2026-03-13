@@ -6,7 +6,6 @@
 
 use std::iter;
 
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -138,10 +137,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 {
                     // Don't transform repr(transparent) types with an user-defined CFI encoding to
                     // preserve the user-defined CFI encoding.
-                    if find_attr!(
-                        self.tcx.get_all_attrs(adt_def.did()),
-                        AttributeKind::CfiEncoding { .. }
-                    ) {
+                    if find_attr!(self.tcx, adt_def.did(), CfiEncoding { .. }) {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();

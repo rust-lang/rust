@@ -253,9 +253,6 @@ impl RequestDispatcher<'_> {
         tracing::debug!(?params);
 
         let world = self.global_state.snapshot();
-        self.global_state
-            .cancellation_tokens
-            .insert(req.id.clone(), world.analysis.cancellation_token());
         if RUSTFMT {
             &mut self.global_state.fmt_pool.handle
         } else {
@@ -268,19 +265,7 @@ impl RequestDispatcher<'_> {
             });
             match thread_result_to_response::<R>(req.id.clone(), result) {
                 Ok(response) => Task::Response(response),
-                Err(HandlerCancelledError::Inner(
-                    Cancelled::PendingWrite | Cancelled::PropagatedPanic,
-                )) if ALLOW_RETRYING => Task::Retry(req),
-                // Note: Technically the return value here does not matter as we have already responded to the client with this error.
-                Err(HandlerCancelledError::Inner(Cancelled::Local)) => Task::Response(Response {
-                    id: req.id,
-                    result: None,
-                    error: Some(ResponseError {
-                        code: lsp_server::ErrorCode::RequestCanceled as i32,
-                        message: "canceled by client".to_owned(),
-                        data: None,
-                    }),
-                }),
+                Err(_cancelled) if ALLOW_RETRYING => Task::Retry(req),
                 Err(_cancelled) => {
                     let error = on_cancelled();
                     Task::Response(Response { id: req.id, result: None, error: Some(error) })
@@ -429,7 +414,8 @@ impl NotificationDispatcher<'_> {
         let params = match not.extract::<N::Params>(N::METHOD) {
             Ok(it) => it,
             Err(ExtractError::JsonError { method, error }) => {
-                panic!("Invalid request\nMethod: {method}\n error: {error}",)
+                tracing::error!(method = %method, error = %error, "invalid notification");
+                return self;
             }
             Err(ExtractError::MethodMismatch(not)) => {
                 self.not = Some(not);

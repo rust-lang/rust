@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![allow(stable_features)]
 
 // Test that we handle projection types which wind up important for
 // resolving methods. This test was reduced from a larger example; the
@@ -9,8 +8,6 @@
 // winnowing stage of method resolution failed to handle an associated
 // type projection.
 
-
-#![feature(associated_types)]
 
 trait Hasher {
     type Output;

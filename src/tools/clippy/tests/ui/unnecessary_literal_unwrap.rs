@@ -152,12 +152,4 @@ fn unwrap_unchecked() {
     //~^ unnecessary_literal_unwrap
 }
 
-fn main() {
-    unwrap_option_some();
-    unwrap_option_none();
-    unwrap_result_ok();
-    unwrap_result_err();
-    unwrap_methods_option();
-    unwrap_methods_result();
-    unwrap_unchecked();
-}
+fn main() {}

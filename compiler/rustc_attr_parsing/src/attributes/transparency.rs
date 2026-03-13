@@ -2,9 +2,9 @@ use rustc_span::hygiene::Transparency;
 
 use super::prelude::*;
 
-pub(crate) struct TransparencyParser;
+pub(crate) struct RustcMacroTransparencyParser;
 
-impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
+impl<S: Stage> SingleAttributeParser<S> for RustcMacroTransparencyParser {
     const PATH: &[Symbol] = &[sym::rustc_macro_transparency];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Custom(|cx, used, unused| {

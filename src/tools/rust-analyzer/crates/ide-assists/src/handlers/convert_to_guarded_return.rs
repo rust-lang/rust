@@ -942,6 +942,32 @@ fn main() {
     }
 
     #[test]
+    fn convert_let_ref_stmt_inside_fn() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+fn foo() -> &'static Option<i32> {
+    &None
+}
+
+fn main() {
+    let x$0 = foo();
+}
+"#,
+            r#"
+fn foo() -> &'static Option<i32> {
+    &None
+}
+
+fn main() {
+    let Some(x) = foo() else { return };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn convert_let_stmt_inside_fn_return_option() {
         check_assist(
             convert_to_guarded_return,

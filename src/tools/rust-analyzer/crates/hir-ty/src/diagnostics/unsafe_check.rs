@@ -430,7 +430,7 @@ impl<'db> UnsafeVisitor<'db> {
     fn mark_unsafe_path(&mut self, node: ExprOrPatId, path: &Path) {
         let hygiene = self.body.expr_or_pat_path_hygiene(node);
         let value_or_partial = self.resolver.resolve_path_in_value_ns(self.db, path, hygiene);
-        if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
+        if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id))) = value_or_partial {
             let static_data = self.db.static_signature(id);
             if static_data.flags.contains(StaticFlags::MUTABLE) {
                 self.on_unsafe_op(node, UnsafetyReason::MutableStatic);

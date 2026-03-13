@@ -7,8 +7,6 @@ fn allow_inconsistent_digit_grouping() {
 }
 
 fn main() {
-    allow_inconsistent_digit_grouping();
-
     let _pass1 = 100_200_300.100_200_300;
     let _pass2 = 1.123456789;
     let _pass3 = 1.0;

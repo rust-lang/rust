@@ -31,6 +31,7 @@ mod inhabitedness;
 mod lower;
 pub mod next_solver;
 mod opaques;
+mod representability;
 mod specialization;
 mod target_feature;
 mod utils;
@@ -57,9 +58,12 @@ mod test_db;
 #[cfg(test)]
 mod tests;
 
-use std::hash::Hash;
+use std::{hash::Hash, ops::ControlFlow};
 
-use hir_def::{CallableDefId, TypeOrConstParamId, type_ref::Rawness};
+use hir_def::{
+    CallableDefId, GenericDefId, TypeAliasId, TypeOrConstParamId, TypeParamId,
+    hir::generics::GenericParams, resolver::TypeNs, type_ref::Rawness,
+};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
@@ -77,10 +81,11 @@ use crate::{
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     infer::unify::InferenceTable,
+    lower::SupertraitsInfo,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
-        CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, FnSig, GenericArgs,
-        PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
+        CanonicalVarKind, CanonicalVars, ClauseKind, Const, ConstKind, DbInterner, FnSig,
+        GenericArgs, PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
     },
 };
 
@@ -94,7 +99,7 @@ pub use infer::{
 };
 pub use lower::{
     GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
-    associated_type_shorthand_candidates, diagnostics::*,
+    diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
@@ -476,6 +481,55 @@ where
         max_universe: rustc_type_ir::UniverseIndex::ZERO,
         variables: CanonicalVars::new_from_slice(&error_replacer.vars),
     }
+}
+
+/// To be used from `hir` only.
+pub fn associated_type_shorthand_candidates(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    res: TypeNs,
+    mut cb: impl FnMut(&Name, TypeAliasId) -> bool,
+) -> Option<TypeAliasId> {
+    let interner = DbInterner::new_no_crate(db);
+    let (def, param) = match res {
+        TypeNs::GenericParam(param) => (def, param),
+        TypeNs::SelfType(impl_) => {
+            let impl_trait = db.impl_trait(impl_)?.skip_binder().def_id.0;
+            let param = TypeParamId::from_unchecked(TypeOrConstParamId {
+                parent: impl_trait.into(),
+                local_id: GenericParams::SELF_PARAM_ID_IN_SELF,
+            });
+            (impl_trait.into(), param)
+        }
+        _ => return None,
+    };
+
+    let mut dedup_map = FxHashSet::default();
+    let param_ty = Ty::new_param(interner, param, param_idx(db, param.into()).unwrap() as u32);
+    // We use the ParamEnv and not the predicates because the ParamEnv elaborates bounds.
+    let param_env = db.trait_environment(def);
+    for clause in param_env.clauses {
+        let ClauseKind::Trait(trait_clause) = clause.kind().skip_binder() else { continue };
+        if trait_clause.self_ty() != param_ty {
+            continue;
+        }
+        let trait_id = trait_clause.def_id().0;
+        dedup_map.extend(
+            SupertraitsInfo::query(db, trait_id)
+                .defined_assoc_types
+                .iter()
+                .map(|(name, id)| (name, *id)),
+        );
+    }
+
+    dedup_map
+        .into_iter()
+        .try_for_each(
+            |(name, id)| {
+                if cb(name, id) { ControlFlow::Break(id) } else { ControlFlow::Continue(()) }
+            },
+        )
+        .break_value()
 }
 
 /// To be used from `hir` only.

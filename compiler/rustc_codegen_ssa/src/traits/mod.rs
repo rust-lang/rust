@@ -48,7 +48,7 @@ pub use self::type_::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, DerivedTypeCodegenMethods,
     LayoutTypeCodegenMethods, TypeCodegenMethods, TypeMembershipCodegenMethods,
 };
-pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
+pub use self::write::{ModuleBufferMethods, WriteBackendMethods};
 
 pub trait CodegenObject = Copy + fmt::Debug;
 

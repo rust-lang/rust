@@ -153,9 +153,9 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     }
 }
 
-pub(crate) struct ObjcClassParser;
+pub(crate) struct RustcObjcClassParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
+impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
@@ -185,9 +185,9 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
     }
 }
 
-pub(crate) struct ObjcSelectorParser;
+pub(crate) struct RustcObjcSelectorParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
+impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
@@ -709,13 +709,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisPa
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
 }
 
-pub(crate) struct EiiForeignItemParser;
+pub(crate) struct RustcEiiForeignItemParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for EiiForeignItemParser {
+impl<S: Stage> NoArgsAttributeParser<S> for RustcEiiForeignItemParser {
     const PATH: &[Symbol] = &[sym::rustc_eii_foreign_item];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::EiiForeignItem;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEiiForeignItem;
 }
 
 pub(crate) struct PatchableFunctionEntryParser;

@@ -7,7 +7,7 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
@@ -528,7 +528,7 @@ pub(crate) struct SoftFloatIgnored;
 #[note("see issue #129893 <https://github.com/rust-lang/rust/issues/129893> for more information")]
 pub(crate) struct SoftFloatDeprecated;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unexpected `--cfg {$cfg}` flag")]
 #[note("config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`")]
 #[note("manually setting a built-in cfg can and does create incoherent behaviors")]
@@ -539,7 +539,7 @@ pub(crate) struct UnexpectedBuiltinCfg {
 }
 
 #[derive(Diagnostic)]
-#[diag("ThinLTO is not supported by the codegen backend")]
+#[diag("ThinLTO is not supported by the codegen backend, using fat LTO instead")]
 pub(crate) struct ThinLtoNotSupportedByBackend;
 
 #[derive(Diagnostic)]

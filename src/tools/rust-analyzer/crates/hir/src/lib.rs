@@ -2244,6 +2244,39 @@ impl DefWithBody {
             acc.push(diag.into())
         }
     }
+
+    /// Returns an iterator over the inferred types of all expressions in this body.
+    pub fn expression_types<'db>(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> impl Iterator<Item = Type<'db>> {
+        self.id().into_iter().flat_map(move |def_id| {
+            let infer = InferenceResult::for_body(db, def_id);
+            let resolver = def_id.resolver(db);
+
+            infer.expression_types().map(move |(_, ty)| Type::new_with_resolver(db, &resolver, ty))
+        })
+    }
+
+    /// Returns an iterator over the inferred types of all patterns in this body.
+    pub fn pattern_types<'db>(self, db: &'db dyn HirDatabase) -> impl Iterator<Item = Type<'db>> {
+        self.id().into_iter().flat_map(move |def_id| {
+            let infer = InferenceResult::for_body(db, def_id);
+            let resolver = def_id.resolver(db);
+
+            infer.pattern_types().map(move |(_, ty)| Type::new_with_resolver(db, &resolver, ty))
+        })
+    }
+
+    /// Returns an iterator over the inferred types of all bindings in this body.
+    pub fn binding_types<'db>(self, db: &'db dyn HirDatabase) -> impl Iterator<Item = Type<'db>> {
+        self.id().into_iter().flat_map(move |def_id| {
+            let infer = InferenceResult::for_body(db, def_id);
+            let resolver = def_id.resolver(db);
+
+            infer.binding_types().map(move |(_, ty)| Type::new_with_resolver(db, &resolver, ty))
+        })
+    }
 }
 
 fn expr_store_diagnostics<'db>(
@@ -5919,7 +5952,16 @@ impl<'db> Type<'db> {
     ) -> R {
         let module = resolver.module();
         let interner = DbInterner::new_with(db, module.krate(db));
-        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        // Most IDE operations want to operate in PostAnalysis mode, revealing opaques. This makes
+        // for a nicer IDE experience. However, method resolution is always done on real code (either
+        // existing code or code to be inserted), and there using PostAnalysis is dangerous - we may
+        // suggest invalid methods. So we're using the TypingMode of the body we're in.
+        let typing_mode = if let Some(body_owner) = resolver.body_owner() {
+            TypingMode::analysis_in_body(interner, body_owner.into())
+        } else {
+            TypingMode::non_body_analysis()
+        };
+        let infcx = interner.infer_ctxt().build(typing_mode);
         let unstable_features =
             MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
         let environment = param_env_from_resolver(db, resolver);
@@ -6068,11 +6110,7 @@ impl<'db> Type<'db> {
 
             match name {
                 Some(name) => {
-                    match ctx.probe_for_name(
-                        method_resolution::Mode::MethodCall,
-                        name.clone(),
-                        self_ty,
-                    ) {
+                    match ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), self_ty) {
                         Ok(candidate)
                         | Err(method_resolution::MethodError::PrivateMatch(candidate)) => {
                             let id = candidate.item.into();
@@ -6120,6 +6158,13 @@ impl<'db> Type<'db> {
         Some(adt.into())
     }
 
+    /// Holes in the args can come from lifetime/const params.
+    pub fn as_adt_with_args(&self) -> Option<(Adt, Vec<Option<Type<'db>>>)> {
+        let (adt, args) = self.ty.as_adt()?;
+        let args = args.iter().map(|arg| Some(self.derived(arg.ty()?))).collect();
+        Some((adt.into(), args))
+    }
+
     pub fn as_builtin(&self) -> Option<BuiltinType> {
         self.ty.as_builtin().map(|inner| BuiltinType { inner })
     }
@@ -6138,6 +6183,7 @@ impl<'db> Type<'db> {
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db, dyn_trait_id))
+            .copied()
             .map(Trait::from)
     }
 
@@ -6155,6 +6201,7 @@ impl<'db> Type<'db> {
                         _ => None,
                     })
                     .flat_map(|t| hir_ty::all_super_traits(db, t))
+                    .copied()
             })
             .map(Trait::from)
     }

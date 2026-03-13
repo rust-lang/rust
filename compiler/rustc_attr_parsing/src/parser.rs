@@ -522,6 +522,13 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             return self.parser.dcx().create_err(err);
         }
 
+        if let ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden } = self.should_emit {
+            // Do not attempt to suggest anything in `Recovery::Forbidden` mode.
+            // Malformed diagnostic-attr arguments that start with an `if` expression can lead to
+            // an ICE (https://github.com/rust-lang/rust/issues/152744), because callers may cancel the `InvalidMetaItem` error.
+            return self.parser.dcx().create_err(err);
+        }
+
         // Suggest quoting idents, e.g. in `#[cfg(key = value)]`. We don't use `Token::ident` and
         // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
         // when macro metavariables are involved.

@@ -1,5 +1,5 @@
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:49:5
+  --> $DIR/coerce-loop-issue-122561.rs:51:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -7,10 +7,29 @@ LL |     while true {
    = note: `#[warn(while_true)]` on by default
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:73:5
+  --> $DIR/coerce-loop-issue-122561.rs:75:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
+
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:43:33
+   |
+LL | fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
+   |                                 ^^^^ required by a bound introduced by this call
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::Range<{integer}>` to implement `const IntoIterator`
+
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:43:33
+   |
+LL | fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
+   |                                 ^^^^
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
 
 error[E0308]: mismatched types
   --> $DIR/coerce-loop-issue-122561.rs:43:24
@@ -112,7 +131,7 @@ LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` val
    |                                                               ++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:49:5
+  --> $DIR/coerce-loop-issue-122561.rs:51:5
    |
 LL |   fn while_inifinite() -> bool {
    |                           ---- expected `bool` because of return type
@@ -131,7 +150,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:58:5
+  --> $DIR/coerce-loop-issue-122561.rs:60:5
    |
 LL |   fn while_finite() -> bool {
    |                        ---- expected `bool` because of return type
@@ -151,7 +170,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:66:5
+  --> $DIR/coerce-loop-issue-122561.rs:68:5
    |
 LL |   fn while_zero_times() -> bool {
    |                            ---- expected `bool` because of return type
@@ -169,7 +188,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:73:5
+  --> $DIR/coerce-loop-issue-122561.rs:75:5
    |
 LL |   fn while_never_type() -> ! {
    |                            - expected `!` because of return type
@@ -187,11 +206,30 @@ LL ~     }
 LL +     /* `loop {}` or `panic!("...")` */
    |
 
+error[E0277]: the trait bound `std::ops::RangeFrom<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:89:14
+   |
+LL |     for i in 0.. {
+   |              ^^^ required by a bound introduced by this call
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::RangeFrom<{integer}>` to implement `const IntoIterator`
+
+error[E0277]: the trait bound `std::ops::RangeFrom<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:89:14
+   |
+LL |     for i in 0.. {
+   |              ^^^
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:87:5
+  --> $DIR/coerce-loop-issue-122561.rs:89:5
    |
 LL | /     for i in 0.. {
-LL | |
+...  |
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |
@@ -202,11 +240,30 @@ LL ~     }
 LL +     /* `i32` value */
    |
 
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:98:18
+   |
+LL |         for i in 0..5 {
+   |                  ^^^^ required by a bound introduced by this call
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::Range<{integer}>` to implement `const IntoIterator`
+
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:98:18
+   |
+LL |         for i in 0..5 {
+   |                  ^^^^
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:94:9
+  --> $DIR/coerce-loop-issue-122561.rs:98:9
    |
 LL | /         for i in 0..5 {
-LL | |
+...  |
 LL | |         }
    | |_________^ expected `usize`, found `()`
    |
@@ -218,7 +275,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:100:9
+  --> $DIR/coerce-loop-issue-122561.rs:106:9
    |
 LL | /         while false {
 LL | |
@@ -232,8 +289,27 @@ LL ~         }
 LL +         /* `usize` value */
    |
 
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:112:32
+   |
+LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
+   |                                ^^^^ required by a bound introduced by this call
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::Range<{integer}>` to implement `const IntoIterator`
+
+error[E0277]: the trait bound `std::ops::Range<{integer}>: const Iterator` is not satisfied
+  --> $DIR/coerce-loop-issue-122561.rs:112:32
+   |
+LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
+   |                                ^^^^
+   |
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:106:23
+  --> $DIR/coerce-loop-issue-122561.rs:112:23
    |
 LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
    |                       ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
@@ -244,6 +320,7 @@ help: consider returning a value here
 LL |     let _ = |a: &[(); for x in 0..2 {} /* `usize` value */]| {};
    |                                        +++++++++++++++++++
 
-error: aborting due to 14 previous errors; 2 warnings emitted
+error: aborting due to 22 previous errors; 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

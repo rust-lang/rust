@@ -2,26 +2,28 @@
 #![feature(rustc_attrs)]
 #![allow(unused)]
 
-#[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
+#[rustc_on_unimplemented(label = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`")]
 trait Foo<Bar, Baz, Quux> {}
 
-#[rustc_on_unimplemented = "a collection of type `{Self}` cannot \
- be built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented(label = "a collection of type `{Self}` cannot \
+ be built from an iterator over elements of type `{A}`")]
 trait MyFromIterator<A> {
     /// Builds a container with elements from an external iterator.
     fn my_from_iter<T: Iterator<Item = A>>(iterator: T) -> Self;
 }
 
 #[rustc_on_unimplemented]
-//~^ ERROR malformed `rustc_on_unimplemented` attribute
+//~^ WARN missing options for `on_unimplemented` attribute
+//~| NOTE part of
 trait NoContent {}
 
-#[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-//~^ ERROR cannot find parameter C on this trait
+#[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{C}>`")]
+//~^ WARN there is no parameter `C` on trait `ParameterNotPresent`
+//~| NOTE part of
 trait ParameterNotPresent<A, B> {}
 
-#[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
-//~^ ERROR positional format arguments are not allowed here
+#[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{}>`")]
+//~^ WARN positional format arguments are not allowed here
 trait NoPositionalArgs<A, B> {}
 
 #[rustc_on_unimplemented(lorem = "")]
@@ -43,9 +45,8 @@ trait Invalid {}
 trait DuplicateMessage {}
 
 #[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^ ERROR invalid flag in `on`-clause
+//~| NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `desugared`
 trait OnInWrongPosition {}
 
 #[rustc_on_unimplemented(on(), message = "y")]
@@ -60,6 +61,9 @@ trait EmptyOn {}
 trait ExpectedPredicateInOn {}
 
 #[rustc_on_unimplemented(on(Self = "y"), message = "y")]
+//~^ ERROR this attribute must have a value
+//~| NOTE expected value here
+//~| NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
 trait OnWithoutDirectives {}
 
 #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
@@ -109,11 +113,9 @@ trait InvalidPredicate {}
 trait InvalidFlag {}
 
 #[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
-//~^ ERROR invalid name in `on`-clause
-//~^^ NOTE expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `_Self`
+//~^ WARN there is no parameter `_Self` on trait `InvalidName`
 trait InvalidName {}
 
 #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
-//~^ ERROR invalid name in `on`-clause
-//~^^ NOTE expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `abc`
+//~^ WARN there is no parameter `abc` on trait `InvalidName2`
 trait InvalidName2 {}

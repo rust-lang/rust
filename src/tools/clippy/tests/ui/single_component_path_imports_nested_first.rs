@@ -13,6 +13,7 @@ fn main() {
 }
 
 mod root_nested_use_mod {
+    #[rustfmt::skip]
     use {regex, serde};
     //~^ single_component_path_imports
     //~| single_component_path_imports

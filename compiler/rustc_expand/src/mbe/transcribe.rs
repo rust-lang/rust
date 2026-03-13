@@ -6,7 +6,7 @@ use rustc_ast::token::{
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
+use rustc_errors::{Diag, DiagCtxtHandle, PResult, listify, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
@@ -18,7 +18,8 @@ use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
     CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    MveUnrecognizedVar, NoSyntaxVarsExprRepeat,
+    MveUnrecognizedVar, NoRepeatableVar, NoSyntaxVarsExprRepeat, VarNoTypo,
+    VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable, VarTypoSuggestionUnrepeatableLabel,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
@@ -246,7 +247,7 @@ pub(super) fn transcribe<'a>(
         match tree {
             // Replace the sequence with its expansion.
             seq @ mbe::TokenTree::Sequence(_, seq_rep) => {
-                transcribe_sequence(&mut tscx, seq, seq_rep)?;
+                transcribe_sequence(&mut tscx, seq, seq_rep, interp)?;
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
@@ -293,6 +294,8 @@ fn transcribe_sequence<'tx, 'itp>(
     tscx: &mut TranscrCtx<'tx, 'itp>,
     seq: &mbe::TokenTree,
     seq_rep: &'itp mbe::SequenceRepetition,
+    // Used only for better diagnostics in the face of typos.
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'tx, ()> {
     let dcx = tscx.psess.dcx();
 
@@ -301,7 +304,66 @@ fn transcribe_sequence<'tx, 'itp>(
     // macro writer has made a mistake.
     match lockstep_iter_size(seq, tscx.interp, &tscx.repeats) {
         LockstepIterSize::Unconstrained => {
-            return Err(dcx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
+            let mut repeatables = Vec::new();
+            let mut non_repeatables = Vec::new();
+
+            #[allow(rustc::potential_query_instability)]
+            for (name, matcher) in interp.iter() {
+                if matcher.is_repeatable() {
+                    repeatables.push(name);
+                } else {
+                    non_repeatables.push(name);
+                }
+            }
+
+            let repeatable_names: Vec<Symbol> =
+                repeatables.iter().map(|&name| name.symbol()).collect();
+            let non_repeatable_names: Vec<Symbol> =
+                non_repeatables.iter().map(|&name| name.symbol()).collect();
+            let mut meta_vars = vec![];
+            seq.meta_vars(&mut meta_vars);
+            let mut typo_repeatable = None;
+            let mut typo_unrepeatable = None;
+            let mut typo_unrepeatable_label = None;
+            let mut var_no_typo = None;
+            let mut no_repeatable_var = None;
+
+            for ident in meta_vars {
+                if let Some(name) = rustc_span::edit_distance::find_best_match_for_name(
+                    &repeatable_names[..],
+                    ident.name,
+                    None,
+                ) {
+                    typo_repeatable = Some(VarTypoSuggestionRepeatable { span: ident.span, name });
+                } else if let Some(name) = rustc_span::edit_distance::find_best_match_for_name(
+                    &non_repeatable_names[..],
+                    ident.name,
+                    None,
+                ) {
+                    typo_unrepeatable = Some(VarTypoSuggestionUnrepeatable { span: ident.span });
+                    if let Some(&orig_ident) = non_repeatables.iter().find(|n| n.symbol() == name) {
+                        typo_unrepeatable_label = Some(VarTypoSuggestionUnrepeatableLabel {
+                            span: orig_ident.ident().span,
+                        });
+                    }
+                } else {
+                    if !repeatable_names.is_empty()
+                        && let Some(msg) = listify(&repeatable_names, |s| format!("`${s}`"))
+                    {
+                        var_no_typo = Some(VarNoTypo { span: ident.span, msg });
+                    } else {
+                        no_repeatable_var = Some(NoRepeatableVar { span: ident.span });
+                    }
+                }
+            }
+            return Err(dcx.create_err(NoSyntaxVarsExprRepeat {
+                span: seq.span(),
+                typo_unrepeatable,
+                typo_repeatable,
+                typo_unrepeatable_label,
+                var_no_typo,
+                no_repeatable_var,
+            }));
         }
 
         LockstepIterSize::Contradiction(msg) => {

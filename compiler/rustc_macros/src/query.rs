@@ -10,6 +10,7 @@ use syn::{
 };
 
 mod kw {
+    syn::custom_keyword!(non_query);
     syn::custom_keyword!(query);
 }
 
@@ -30,35 +31,78 @@ fn check_attributes(attrs: Vec<Attribute>) -> Result<Vec<Attribute>> {
     attrs.into_iter().map(inner).collect()
 }
 
-/// A compiler query. `query ... { ... }`
+/// Declaration of a compiler query.
+///
+/// ```ignore (illustrative)
+/// /// Doc comment for `my_query`.
+/// //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^              doc_comments
+/// query my_query(key: DefId) -> Value { anon }
+/// //    ^^^^^^^^                               name
+/// //             ^^^                           key_pat
+/// //                  ^^^^^                    key_ty
+/// //                         ^^^^^^^^          return_ty
+/// //                                    ^^^^   modifiers
+/// ```
 struct Query {
     doc_comments: Vec<Attribute>,
-    modifiers: QueryModifiers,
     name: Ident,
-    key: Pat,
-    arg: Type,
-    result: ReturnType,
+
+    /// Parameter name for the key, or an arbitrary irrefutable pattern (e.g. `_`).
+    key_pat: Pat,
+    key_ty: Type,
+    return_ty: ReturnType,
+
+    modifiers: QueryModifiers,
 }
 
-impl Parse for Query {
+/// Declaration of a non-query dep kind.
+/// ```ignore (illustrative)
+/// /// Doc comment for `MyNonQuery`.
+/// //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  doc_comments
+/// non_query MyNonQuery
+/// //        ^^^^^^^^^^               name
+/// ```
+struct NonQuery {
+    doc_comments: Vec<Attribute>,
+    name: Ident,
+}
+
+enum QueryEntry {
+    Query(Query),
+    NonQuery(NonQuery),
+}
+
+impl Parse for QueryEntry {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut doc_comments = check_attributes(input.call(Attribute::parse_outer)?)?;
 
+        // Try the non-query case first.
+        if input.parse::<kw::non_query>().is_ok() {
+            let name: Ident = input.parse()?;
+            return Ok(QueryEntry::NonQuery(NonQuery { doc_comments, name }));
+        }
+
         // Parse the query declaration. Like `query type_of(key: DefId) -> Ty<'tcx>`
-        input.parse::<kw::query>()?;
+        if input.parse::<kw::query>().is_err() {
+            return Err(input.error("expected `query` or `non_query`"));
+        }
         let name: Ident = input.parse()?;
-        let arg_content;
-        parenthesized!(arg_content in input);
-        let key = Pat::parse_single(&arg_content)?;
-        arg_content.parse::<Token![:]>()?;
-        let arg = arg_content.parse()?;
-        let _ = arg_content.parse::<Option<Token![,]>>()?;
-        let result = input.parse()?;
+
+        // `(key: DefId)`
+        let parens_content;
+        parenthesized!(parens_content in input);
+        let key_pat = Pat::parse_single(&parens_content)?;
+        parens_content.parse::<Token![:]>()?;
+        let key_ty = parens_content.parse::<Type>()?;
+        let _trailing_comma = parens_content.parse::<Option<Token![,]>>()?;
+
+        // `-> Value`
+        let return_ty = input.parse::<ReturnType>()?;
 
         // Parse the query modifiers
-        let content;
-        braced!(content in input);
-        let modifiers = parse_query_modifiers(&content)?;
+        let braces_content;
+        braced!(braces_content in input);
+        let modifiers = parse_query_modifiers(&braces_content)?;
 
         // If there are no doc-comments, give at least some idea of what
         // it does by showing the query description.
@@ -66,7 +110,7 @@ impl Parse for Query {
             doc_comments.push(doc_comment_from_desc(&modifiers.desc.expr_list)?);
         }
 
-        Ok(Query { doc_comments, modifiers, name, key, arg, result })
+        Ok(QueryEntry::Query(Query { doc_comments, modifiers, name, key_pat, key_ty, return_ty }))
     }
 }
 
@@ -85,80 +129,41 @@ impl<T: Parse> Parse for List<T> {
 
 struct Desc {
     modifier: Ident,
-    tcx_binding: Option<Ident>,
     expr_list: Punctuated<Expr, Token![,]>,
 }
 
 struct CacheOnDiskIf {
     modifier: Ident,
-    tcx_binding: Option<Pat>,
     block: Block,
 }
 
+/// See `rustc_middle::query::modifiers` for documentation of each query modifier.
 struct QueryModifiers {
-    /// The description of the query.
-    desc: Desc,
-
-    /// Use this type for the in-memory cache.
-    arena_cache: Option<Ident>,
-
-    /// Cache the query to disk if the `Block` returns true.
-    cache_on_disk_if: Option<CacheOnDiskIf>,
-
-    /// A cycle error for this query aborting the compilation with a fatal error.
-    cycle_fatal: Option<Ident>,
-
-    /// A cycle error results in a delay_bug call
-    cycle_delay_bug: Option<Ident>,
-
-    /// A cycle error results in a stashed cycle error that can be unstashed and canceled later
-    cycle_stash: Option<Ident>,
-
-    /// Don't hash the result, instead just mark a query red if it runs
-    no_hash: Option<Ident>,
-
-    /// Generate a dep node based on the dependencies of the query
+    // tidy-alphabetical-start
     anon: Option<Ident>,
-
-    /// Always evaluate the query, ignoring its dependencies
-    eval_always: Option<Ident>,
-
-    /// Whether the query has a call depth limit
+    arena_cache: Option<Ident>,
+    cache_on_disk_if: Option<CacheOnDiskIf>,
+    cycle_delay_bug: Option<Ident>,
     depth_limit: Option<Ident>,
-
-    /// Use a separate query provider for local and extern crates
-    separate_provide_extern: Option<Ident>,
-
-    /// Generate a `feed` method to set the query's value from another query.
+    desc: Desc,
+    eval_always: Option<Ident>,
     feedable: Option<Ident>,
-
-    /// When this query is called via `tcx.ensure_ok()`, it returns
-    /// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
-    /// be executed, and that execution returns an error, the error result is
-    /// returned to the caller.
-    ///
-    /// If execution is skipped, a synthetic `Ok(())` is returned, on the
-    /// assumption that a query with all-green inputs must have succeeded.
-    ///
-    /// Can only be applied to queries with a return value of
-    /// `Result<_, ErrorGuaranteed>`.
-    return_result_from_ensure_ok: Option<Ident>,
+    no_hash: Option<Ident>,
+    separate_provide_extern: Option<Ident>,
+    // tidy-alphabetical-end
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
     let mut cache_on_disk_if = None;
     let mut desc = None;
-    let mut cycle_fatal = None;
     let mut cycle_delay_bug = None;
-    let mut cycle_stash = None;
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut feedable = None;
-    let mut return_result_from_ensure_ok = None;
 
     while !input.is_empty() {
         let modifier: Ident = input.parse()?;
@@ -174,43 +179,20 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
 
         if modifier == "desc" {
             // Parse a description modifier like:
-            // `desc { |tcx| "foo {}", tcx.item_path(key) }`
+            // `desc { "foo {}", tcx.item_path(key) }`
             let attr_content;
             braced!(attr_content in input);
-            let tcx_binding = if attr_content.peek(Token![|]) {
-                attr_content.parse::<Token![|]>()?;
-                let tcx = attr_content.parse()?;
-                attr_content.parse::<Token![|]>()?;
-                Some(tcx)
-            } else {
-                None
-            };
             let expr_list = attr_content.parse_terminated(Expr::parse, Token![,])?;
-            try_insert!(desc = Desc { modifier, tcx_binding, expr_list });
+            try_insert!(desc = Desc { modifier, expr_list });
         } else if modifier == "cache_on_disk_if" {
             // Parse a cache-on-disk modifier like:
-            //
-            // `cache_on_disk_if { true }`
-            // `cache_on_disk_if { key.is_local() }`
-            // `cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }`
-            let tcx_binding = if input.peek(token::Paren) {
-                let args;
-                parenthesized!(args in input);
-                let tcx = Pat::parse_single(&args)?;
-                Some(tcx)
-            } else {
-                None
-            };
+            // `cache_on_disk_if { tcx.is_typeck_child(key.to_def_id()) }`
             let block = input.parse()?;
-            try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, tcx_binding, block });
+            try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
-        } else if modifier == "cycle_fatal" {
-            try_insert!(cycle_fatal = modifier);
         } else if modifier == "cycle_delay_bug" {
             try_insert!(cycle_delay_bug = modifier);
-        } else if modifier == "cycle_stash" {
-            try_insert!(cycle_stash = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
         } else if modifier == "anon" {
@@ -223,8 +205,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(separate_provide_extern = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
-        } else if modifier == "return_result_from_ensure_ok" {
-            try_insert!(return_result_from_ensure_ok = modifier);
         } else {
             return Err(Error::new(modifier.span(), "unknown query modifier"));
         }
@@ -236,17 +216,88 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         arena_cache,
         cache_on_disk_if,
         desc,
-        cycle_fatal,
         cycle_delay_bug,
-        cycle_stash,
         no_hash,
         anon,
         eval_always,
         depth_limit,
         separate_provide_extern,
         feedable,
-        return_result_from_ensure_ok,
     })
+}
+
+// Does `ret_ty` match `Result<_, ErrorGuaranteed>`?
+fn returns_error_guaranteed(ret_ty: &ReturnType) -> bool {
+    use ::syn::*;
+    if let ReturnType::Type(_, ret_ty) = ret_ty
+        && let Type::Path(type_path) = ret_ty.as_ref()
+        && let Some(PathSegment { ident, arguments }) = type_path.path.segments.last()
+        && ident == "Result"
+        && let PathArguments::AngleBracketed(args) = arguments
+        && args.args.len() == 2
+        && let GenericArgument::Type(ty) = &args.args[1]
+        && let Type::Path(type_path) = ty
+        && type_path.path.is_ident("ErrorGuaranteed")
+    {
+        true
+    } else {
+        false
+    }
+}
+
+fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
+    let QueryModifiers {
+        // tidy-alphabetical-start
+        anon,
+        arena_cache,
+        cache_on_disk_if,
+        cycle_delay_bug,
+        depth_limit,
+        desc: _,
+        eval_always,
+        feedable,
+        no_hash,
+        separate_provide_extern,
+        // tidy-alphabetical-end
+    } = &query.modifiers;
+
+    let anon = anon.is_some();
+    let arena_cache = arena_cache.is_some();
+    let cache_on_disk = cache_on_disk_if.is_some();
+
+    let cycle_error_handling = if cycle_delay_bug.is_some() {
+        quote! { DelayBug }
+    } else {
+        quote! { Error }
+    };
+
+    let depth_limit = depth_limit.is_some();
+    let eval_always = eval_always.is_some();
+    let feedable = feedable.is_some();
+    let no_hash = no_hash.is_some();
+    let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
+    let separate_provide_extern = separate_provide_extern.is_some();
+
+    // Giving an input span to the modifier names in the modifier list seems
+    // to give slightly more helpful errors when one of the callback macros
+    // fails to parse the modifier list.
+    let query_name_span = query.name.span();
+    quote_spanned! {
+        query_name_span =>
+        // Search for (QMODLIST) to find all occurrences of this query modifier list.
+        // tidy-alphabetical-start
+        anon: #anon,
+        arena_cache: #arena_cache,
+        cache_on_disk: #cache_on_disk,
+        cycle_error_handling: #cycle_error_handling,
+        depth_limit: #depth_limit,
+        eval_always: #eval_always,
+        feedable: #feedable,
+        no_hash: #no_hash,
+        returns_error_guaranteed: #returns_error_guaranteed,
+        separate_provide_extern: #separate_provide_extern,
+        // tidy-alphabetical-end
+    }
 }
 
 fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attribute> {
@@ -288,31 +339,27 @@ struct HelperTokenStreams {
 }
 
 fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
-    let Query { name, key, modifiers, arg, .. } = &query;
+    let Query { name, key_pat, key_ty, modifiers, .. } = &query;
 
     // Replace span for `name` to make rust-analyzer ignore it.
     let mut erased_name = name.clone();
     erased_name.set_span(Span::call_site());
 
     // Generate a function to check whether we should cache the query to disk, for some key.
-    if let Some(CacheOnDiskIf { tcx_binding, block, .. }) = modifiers.cache_on_disk_if.as_ref() {
-        let tcx = tcx_binding.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
-        // we're taking `key` by reference, but some rustc types usually prefer being passed by value
+    if let Some(CacheOnDiskIf { block, .. }) = modifiers.cache_on_disk_if.as_ref() {
         streams.cache_on_disk_if_fns_stream.extend(quote! {
-            #[allow(unused_variables, rustc::pass_by_value)]
+            #[allow(unused_variables)]
             #[inline]
-            pub fn #erased_name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::queries::#name::Key<'tcx>) -> bool
+            pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: #key_ty) -> bool
             #block
         });
     }
 
-    let Desc { tcx_binding, expr_list, .. } = &modifiers.desc;
-    let tcx = tcx_binding.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
+    let Desc { expr_list, .. } = &modifiers.desc;
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, key: #arg) -> String {
-            let (#tcx, #key) = (tcx, key);
+        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: #key_ty) -> String {
             format!(#expr_list)
         }
     };
@@ -355,16 +402,13 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 
     doc_link!(
         arena_cache,
-        cycle_fatal,
         cycle_delay_bug,
-        cycle_stash,
         no_hash,
         anon,
         eval_always,
         depth_limit,
         separate_provide_extern,
         feedable,
-        return_result_from_ensure_ok,
     );
 
     let name = &query.name;
@@ -373,16 +417,16 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     let mut erased_name = name.clone();
     erased_name.set_span(Span::call_site());
 
-    let result = &query.result;
+    let result = &query.return_ty;
 
     // This dead code exists to instruct rust-analyzer about the link between the `rustc_queries`
     // query names and the corresponding produced provider. The issue is that by nature of this
     // macro producing a higher order macro that has all its token in the macro declaration we lose
     // any meaningful spans, resulting in rust-analyzer being unable to make the connection between
     // the query name and the corresponding providers field. The trick to fix this is to have
-    // `rustc_queries` emit a field access with the given name's span which allows it to successfully
-    // show references / go to definition to the corresponding provider assignment which is usually
-    // the more interesting place.
+    // `rustc_queries` emit a field access with the given name's span which allows it to
+    // successfully show references / go to definition to the corresponding provider assignment
+    // which is usually the more interesting place.
     let ra_hint = quote! {
         let crate::query::Providers { #name: _, .. };
     };
@@ -398,11 +442,11 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 }
 
 pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
-    let queries = parse_macro_input!(input as List<Query>);
+    let queries = parse_macro_input!(input as List<QueryEntry>);
 
     let mut query_stream = quote! {};
+    let mut non_query_stream = quote! {};
     let mut helpers = HelperTokenStreams::default();
-    let mut feedable_queries = quote! {};
     let mut analyzer_stream = quote! {};
     let mut errors = quote! {};
 
@@ -417,57 +461,33 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     for query in queries.0 {
-        let Query { name, arg, modifiers, .. } = &query;
-        let result_full = &query.result;
-        let result = match query.result {
-            ReturnType::Default => quote! { -> () },
-            _ => quote! { #result_full },
+        let query = match query {
+            QueryEntry::Query(query) => query,
+            QueryEntry::NonQuery(NonQuery { doc_comments, name }) => {
+                // Get the exceptional non-query case out of the way first.
+                non_query_stream.extend(quote! {
+                    #(#doc_comments)*
+                    #name,
+                });
+                continue;
+            }
         };
 
-        let mut attributes = Vec::new();
+        let Query { doc_comments, name, key_ty, return_ty, modifiers, .. } = &query;
 
-        macro_rules! passthrough {
-            ( $( $modifier:ident ),+ $(,)? ) => {
-                $( if let Some($modifier) = &modifiers.$modifier {
-                    attributes.push(quote! { (#$modifier) });
-                }; )+
-            }
-        }
+        // Normalize an absent return type into `-> ()` to make macro-rules parsing easier.
+        let return_ty = match return_ty {
+            ReturnType::Default => quote! { -> () },
+            ReturnType::Type(..) => quote! { #return_ty },
+        };
 
-        passthrough!(
-            arena_cache,
-            cycle_fatal,
-            cycle_delay_bug,
-            cycle_stash,
-            no_hash,
-            anon,
-            eval_always,
-            feedable,
-            depth_limit,
-            separate_provide_extern,
-            return_result_from_ensure_ok,
-        );
+        let modifiers_stream = make_modifiers_stream(&query);
 
-        // If there was a `cache_on_disk_if` modifier in the real input, pass
-        // on a synthetic `(cache_on_disk)` modifier that can be inspected by
-        // macro-rules macros.
-        if modifiers.cache_on_disk_if.is_some() {
-            attributes.push(quote! { (cache_on_disk) });
-        }
-
-        // This uses the span of the query definition for the commas,
-        // which can be important if we later encounter any ambiguity
-        // errors with any of the numerous macro_rules! macros that
-        // we use. Using the call-site span would result in a span pointing
-        // at the entire `rustc_queries!` invocation, which wouldn't
-        // be very useful.
-        let span = name.span();
-        let attribute_stream = quote_spanned! {span=> #(#attributes),*};
-        let doc_comments = &query.doc_comments;
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
-            [#attribute_stream] fn #name(#arg) #result,
+            fn #name(#key_ty) #return_ty
+            { #modifiers_stream }
         });
 
         if let Some(feedable) = &modifiers.feedable {
@@ -481,9 +501,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 feedable.span(),
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
-            feedable_queries.extend(quote! {
-                [#attribute_stream] fn #name(#arg) #result,
-            });
         }
 
         add_to_analyzer_stream(&query, &mut analyzer_stream);
@@ -493,30 +510,19 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     let HelperTokenStreams { description_fns_stream, cache_on_disk_if_fns_stream } = helpers;
 
     TokenStream::from(quote! {
-        /// Higher-order macro that invokes the specified macro with a prepared
-        /// list of all query signatures (including modifiers).
-        ///
-        /// This allows multiple simpler macros to each have access to the list
-        /// of queries.
+        /// Higher-order macro that invokes the specified macro with (a) a list of all query
+        /// signatures (including modifiers), and (b) a list of non-query names. This allows
+        /// multiple simpler macros to each have access to these lists.
         #[macro_export]
         macro_rules! rustc_with_all_queries {
             (
-                // The macro to invoke once, on all queries (plus extras).
+                // The macro to invoke once, on all queries and non-queries.
                 $macro:ident!
-
-                // Within [], an optional list of extra "query" signatures to
-                // pass to the given macro, in addition to the actual queries.
-                $( [$($extra_fake_queries:tt)*] )?
             ) => {
                 $macro! {
-                    $( $($extra_fake_queries)* )?
-                    #query_stream
+                    queries { #query_stream }
+                    non_queries { #non_query_stream }
                 }
-            }
-        }
-        macro_rules! rustc_feedable_queries {
-            ( $macro:ident! ) => {
-                $macro!(#feedable_queries);
             }
         }
 

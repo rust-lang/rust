@@ -1,6 +1,7 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
+//@ reference: asm.operand-type.supported-operands.const
 
 use std::arch::{asm, global_asm};
 

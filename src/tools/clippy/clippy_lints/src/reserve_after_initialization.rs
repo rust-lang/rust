@@ -31,6 +31,7 @@ declare_clippy_lint! {
     complexity,
     "`reserve` called immediately after `Vec` creation"
 }
+
 impl_lint_pass!(ReserveAfterInitialization => [RESERVE_AFTER_INITIALIZATION]);
 
 #[derive(Default)]

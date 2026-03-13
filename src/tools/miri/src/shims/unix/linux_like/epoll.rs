@@ -176,7 +176,7 @@ impl EpollInterestTable {
         if let Some(epolls) = self.0.remove(&id) {
             for epoll in epolls.iter().filter_map(|(_id, epoll)| epoll.upgrade()) {
                 // This is a still-live epoll with interest in this FD. Remove all
-                // relevent interests (including from the ready set).
+                // relevant interests (including from the ready set).
                 epoll
                     .interest_list
                     .borrow_mut()

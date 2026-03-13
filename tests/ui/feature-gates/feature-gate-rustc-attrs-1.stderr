@@ -12,12 +12,12 @@ LL | #[rustc_nonnull_optimization_guaranteed]
 error[E0658]: use of an internal attribute
   --> $DIR/feature-gate-rustc-attrs-1.rs:10:1
    |
-LL | #[rustc_variance]
-   | ^^^^^^^^^^^^^^^^^
+LL | #[rustc_dump_variances]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: the `#[rustc_variance]` attribute is an internal implementation detail that will never be stable
-   = note: the `#[rustc_variance]` attribute is used for rustc unit tests
+   = note: the `#[rustc_dump_variances]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_dump_variances]` attribute is used for rustc unit tests
 
 error: aborting due to 2 previous errors
 

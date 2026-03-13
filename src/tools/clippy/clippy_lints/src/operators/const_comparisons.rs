@@ -7,8 +7,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 
 use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_note;

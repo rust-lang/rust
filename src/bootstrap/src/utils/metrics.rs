@@ -222,7 +222,7 @@ impl BuildMetrics {
             format_version: CURRENT_FORMAT_VERSION,
             system_stats,
             invocations,
-            ci_metadata: get_ci_metadata(CiEnv::current()),
+            ci_metadata: get_ci_metadata(build.config.ci_env),
         };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));

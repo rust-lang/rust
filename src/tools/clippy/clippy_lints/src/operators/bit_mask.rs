@@ -71,15 +71,13 @@ fn check_bit_mask(
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
                 }
             },
-            BinOpKind::BitOr => {
-                if mask_value | cmp_value != cmp_value {
-                    span_lint(
-                        cx,
-                        BAD_BIT_MASK,
-                        span,
-                        format!("incompatible bit mask: `_ | {mask_value}` can never be equal to `{cmp_value}`"),
-                    );
-                }
+            BinOpKind::BitOr if mask_value | cmp_value != cmp_value => {
+                span_lint(
+                    cx,
+                    BAD_BIT_MASK,
+                    span,
+                    format!("incompatible bit mask: `_ | {mask_value}` can never be equal to `{cmp_value}`"),
+                );
             },
             _ => (),
         },

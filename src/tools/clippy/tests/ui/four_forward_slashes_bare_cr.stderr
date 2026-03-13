@@ -1,5 +1,5 @@
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes_bare_cr.rs:5:1
+  --> tests/ui/four_forward_slashes_bare_cr.rs:4:1
    |
 LL | / //// nondoc comment with bare CR: '␍'
 LL | | fn main() {}

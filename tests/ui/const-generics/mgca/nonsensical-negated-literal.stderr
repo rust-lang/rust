@@ -1,38 +1,44 @@
-error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/nonsensical-negated-literal.rs:16:26
-   |
-LL |     foo::<{ Foo { field: { -1_usize } } }>();
-   |                          ^^^^^^^^^^^^
-
-error: complex const arguments must be placed inside of a `const` block
+error: negated literal must be an integer
   --> $DIR/nonsensical-negated-literal.rs:20:26
    |
-LL |     foo::<{ Foo { field: { -true } } }>();
-   |                          ^^^^^^^^^
+LL |     foo::<{ Foo { field: -true } }>();
+   |                          ^^^^^
 
-error: complex const arguments must be placed inside of a `const` block
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:22:28
+   |
+LL |     foo::<{ Foo { field: { -true } } }>();
+   |                            ^^^^^
+
+error: negated literal must be an integer
   --> $DIR/nonsensical-negated-literal.rs:24:26
    |
+LL |     foo::<{ Foo { field: -"<3" } }>();
+   |                          ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:26:28
+   |
 LL |     foo::<{ Foo { field: { -"<3" } } }>();
-   |                          ^^^^^^^^^
+   |                            ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:29:13
+   |
+LL |     bar::<{ -"hi" }>();
+   |             ^^^^^
 
 error: type annotations needed for the literal
-  --> $DIR/nonsensical-negated-literal.rs:14:26
+  --> $DIR/nonsensical-negated-literal.rs:16:26
    |
 LL |     foo::<{ Foo { field: -1_usize } }>();
    |                          ^^^^^^^^
 
-error: the constant `true` is not of type `isize`
-  --> $DIR/nonsensical-negated-literal.rs:18:13
+error: type annotations needed for the literal
+  --> $DIR/nonsensical-negated-literal.rs:18:28
    |
-LL |     foo::<{ Foo { field: -true } }>();
-   |             ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `bool`
+LL |     foo::<{ Foo { field: { -1_usize } } }>();
+   |                            ^^^^^^^^
 
-error: the constant `"<3"` is not of type `isize`
-  --> $DIR/nonsensical-negated-literal.rs:22:13
-   |
-LL |     foo::<{ Foo { field: -"<3" } }>();
-   |             ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `&'static str`
-
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

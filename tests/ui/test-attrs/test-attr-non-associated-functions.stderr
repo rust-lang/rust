@@ -1,5 +1,5 @@
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-attr-non-associated-functions.rs:6:5
+  --> $DIR/test-attr-non-associated-functions.rs:7:5
    |
 LL |     #[test]
    |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -11,7 +11,7 @@ LL +     #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-attr-non-associated-functions.rs:11:5
+  --> $DIR/test-attr-non-associated-functions.rs:12:5
    |
 LL |     #[test]
    |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions

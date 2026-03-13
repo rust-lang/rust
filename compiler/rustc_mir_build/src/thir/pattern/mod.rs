@@ -4,12 +4,12 @@ mod check_match;
 mod const_to_pat;
 mod migration;
 
+use std::assert_matches;
 use std::cmp::Ordering;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
 use rustc_ast::LitKind;
-use rustc_data_structures::assert_matches;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -635,7 +635,8 @@ impl<'tcx> PatCtxt<'tcx> {
         let res = self.typeck_results.qpath_res(qpath, id);
 
         let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::Const { .. }, def_id)
+            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
                 (def_id, self.typeck_results.user_provided_types().get(id))
             }
 

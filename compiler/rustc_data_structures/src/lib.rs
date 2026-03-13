@@ -10,15 +10,12 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(cold_path))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(auto_traits)]
-#![feature(cfg_select)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
@@ -28,6 +25,8 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(pattern_type_macro)]
+#![feature(pattern_types)]
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
@@ -37,15 +36,10 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
-// Temporarily re-export `assert_matches!`, so that the rest of the compiler doesn't
-// have to worry about it being moved to a different module in std during stabilization.
-// FIXME(#151359): Remove this when `feature(assert_matches)` is stable in stage0.
-// (This doesn't necessarily need to be fixed during the beta bump itself.)
-#[cfg(bootstrap)]
-pub use std::assert_matches::{assert_matches, debug_assert_matches};
+// This allows derive macros to reference this crate
+extern crate self as rustc_data_structures;
+
 use std::fmt;
-#[cfg(not(bootstrap))]
-pub use std::{assert_matches, debug_assert_matches};
 
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};

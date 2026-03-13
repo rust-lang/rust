@@ -4,13 +4,13 @@ error: `&` without an explicit lifetime name cannot be used here
 LL |     const STATIC: &str = "";
    |                   ^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: cannot automatically infer `'static` because of other lifetimes in scope
   --> $DIR/elided-lifetime.rs:5:10
    |
 LL | impl Foo<'_> {
    |          ^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: the lint level is defined here
   --> $DIR/elided-lifetime.rs:1:9
    |
@@ -27,13 +27,13 @@ error: `&` without an explicit lifetime name cannot be used here
 LL |     const STATIC: &str = "";
    |                   ^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 note: cannot automatically infer `'static` because of other lifetimes in scope
   --> $DIR/elided-lifetime.rs:15:18
    |
 LL | impl Bar for Foo<'_> {
    |                  ^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
 help: use the `'static` lifetime
    |
 LL |     const STATIC: &'static str = "";

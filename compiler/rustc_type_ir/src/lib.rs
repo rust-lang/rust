@@ -13,6 +13,7 @@ extern crate self as rustc_type_ir;
 use std::fmt;
 use std::hash::Hash;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
@@ -122,7 +123,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     #[encodable]
     #[orderable]
     #[debug_format = "DebruijnIndex({})"]
@@ -332,7 +333,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -387,7 +388,7 @@ impl Default for UniverseIndex {
 }
 
 rustc_index::newtype_index! {
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[debug_format = "{}"]
@@ -439,4 +440,13 @@ impl fmt::Display for ClosureKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
     }
+}
+
+pub struct FieldInfo<I: Interner> {
+    pub base: I::Ty,
+    pub ty: I::Ty,
+    pub variant: Option<I::Symbol>,
+    pub variant_idx: VariantIdx,
+    pub name: I::Symbol,
+    pub field_idx: FieldIdx,
 }

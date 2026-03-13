@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/rpit-hide-lifetime-for-swap.rs:27:38
+  --> $DIR/rpit-hide-lifetime-for-swap.rs:33:38
    |
 LL |     let x = [1, 2, 3];
    |         - binding `x` declared here

@@ -133,12 +133,13 @@ fn main() {
     aaa() as u32;
     //~^ unnecessary_cast
     let x = aaa();
-    aaa() as u32;
+    x as u32;
     //~^ unnecessary_cast
-    // Will not lint currently.
     bbb() as u32;
+    //~^ unnecessary_cast
     let x = bbb();
-    bbb() as u32;
+    x as u32;
+    //~^ unnecessary_cast
 
     let i8_ptr: *const i8 = &1;
     let u8_ptr: *const u8 = &1;

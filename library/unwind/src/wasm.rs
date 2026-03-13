@@ -2,6 +2,30 @@
 
 #![allow(nonstandard_style)]
 
+// Define the __cpp_exception tag that LLVM's wasm exception handling requires.
+// In particular it is required to use either of:
+//  1. the wasm_throw llvm intrinsic, or
+//  2. the Rust try intrinsic.
+//
+// This must be provided since LLVM commit
+// aee99e8015daa9f53ab1fd4e5b24cc4c694bdc4a which changed the tag from being
+// weakly defined in each object file to being an external reference that must
+// be linked from somewhere.
+//
+// We only define this for wasm32-unknown-unknown because on Emscripten/WASI
+// targets, this symbol should be defined by the external toolchain. In
+// particular, defining this on Emscripten would break Emscripten dynamic
+// libraries.
+#[cfg(all(target_os = "unknown", panic = "unwind"))]
+core::arch::global_asm!(
+    ".globl __cpp_exception",
+    #[cfg(target_pointer_width = "64")]
+    ".tagtype __cpp_exception i64",
+    #[cfg(target_pointer_width = "32")]
+    ".tagtype __cpp_exception i32",
+    "__cpp_exception:",
+);
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum _Unwind_Reason_Code {

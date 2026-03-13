@@ -2,6 +2,7 @@
 
 //@ check-pass
 //@ aux-build: cfg_false_lib_no_std_after.rs
+//@ reference: cfg.attr.crate-level-attrs
 
 #![no_std]
 

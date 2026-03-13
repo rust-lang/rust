@@ -1,5 +1,5 @@
 error: manual implementation of `mem::take`
-  --> tests/ui/manual_take.rs:9:25
+  --> tests/ui/manual_take.rs:7:25
    |
 LL |       let _lint_negated = if x {
    |  _________________________^
@@ -26,7 +26,7 @@ LL +     let _lint_negated = !std::mem::take(&mut x);
    |
 
 error: manual implementation of `mem::take`
-  --> tests/ui/manual_take.rs:62:5
+  --> tests/ui/manual_take.rs:60:5
    |
 LL | /     if x {
 LL | |

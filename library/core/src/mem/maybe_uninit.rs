@@ -1532,7 +1532,7 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> From<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn from(arr: [MaybeUninit<T>; N]) -> Self {
@@ -1540,7 +1540,7 @@ impl<T, const N: usize> From<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>; N] {
@@ -1549,7 +1549,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>] {
@@ -1557,7 +1557,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsMut<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_mut(&mut self) -> &mut [MaybeUninit<T>; N] {
@@ -1566,7 +1566,7 @@ impl<T, const N: usize> AsMut<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
@@ -1574,7 +1574,7 @@ impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> From<MaybeUninit<[T; N]>> for [MaybeUninit<T>; N] {
     #[inline]
     fn from(arr: MaybeUninit<[T; N]>) -> Self {

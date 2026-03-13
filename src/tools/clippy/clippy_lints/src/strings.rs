@@ -11,30 +11,29 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for string appends of the form `x = x + y` (without
-    /// `let`!).
+    /// This lint checks for `.to_string()` method calls on values of type `&str`.
     ///
-    /// ### Why is this bad?
-    /// It's not really bad, but some people think that the
-    /// `.push_str(_)` method is more readable.
+    /// ### Why restrict this?
+    /// The `to_string` method is also used on other types to convert them to a string.
+    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be
+    /// more specifically expressed with `.to_owned()`.
     ///
     /// ### Example
     /// ```no_run
-    /// let mut x = "Hello".to_owned();
-    /// x = x + ", World";
-    ///
-    /// // More readable
-    /// x += ", World";
-    /// x.push_str(", World");
+    /// let _ = "str".to_string();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = "str".to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub STRING_ADD_ASSIGN,
-    pedantic,
-    "using `x = x + ..` where x is a `String` instead of `push_str()`"
+    pub STR_TO_STRING,
+    restriction,
+    "using `to_string()` on a `&str`, which should be `to_owned()`"
 }
 
 declare_clippy_lint! {
@@ -69,6 +68,52 @@ declare_clippy_lint! {
     pub STRING_ADD,
     restriction,
     "using `x + ..` where x is a `String` instead of `push_str()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for string appends of the form `x = x + y` (without
+    /// `let`!).
+    ///
+    /// ### Why is this bad?
+    /// It's not really bad, but some people think that the
+    /// `.push_str(_)` method is more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut x = "Hello".to_owned();
+    /// x = x + ", World";
+    ///
+    /// // More readable
+    /// x += ", World";
+    /// x.push_str(", World");
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub STRING_ADD_ASSIGN,
+    pedantic,
+    "using `x = x + ..` where x is a `String` instead of `push_str()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check if the string is transformed to byte array and casted back to string.
+    ///
+    /// ### Why is this bad?
+    /// It's unnecessary, the string can be used directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// &"Hello World!"[6..11];
+    /// ```
+    #[clippy::version = "1.50.0"]
+    pub STRING_FROM_UTF8_AS_BYTES,
+    complexity,
+    "casting string slices to byte slices and back"
 }
 
 declare_clippy_lint! {
@@ -141,7 +186,37 @@ declare_clippy_lint! {
     "slicing a string"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
+    ///
+    /// ### Why is this bad?
+    /// `split_whitespace` already ignores leading and trailing whitespace.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// " A B C ".trim().split_whitespace();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// " A B C ".split_whitespace();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub TRIM_SPLIT_WHITESPACE,
+    style,
+    "using `str::trim()` or alike before `str::split_whitespace`"
+}
+
+declare_lint_pass!(StrToString => [STR_TO_STRING]);
+
 declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
+
+declare_lint_pass!(StringLitAsBytes => [
+    STRING_FROM_UTF8_AS_BYTES,
+    STRING_LIT_AS_BYTES,
+]);
+
+declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -155,36 +230,32 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 },
                 left,
                 _,
-            ) => {
-                if is_string(cx, left) {
-                    if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
-                        let parent = get_parent_expr(cx, e);
-                        if let Some(p) = parent
+            ) if is_string(cx, left) => {
+                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
+                    let parent = get_parent_expr(cx, e);
+                    if let Some(p) = parent
                             && let ExprKind::Assign(target, _, _) = p.kind
                                 // avoid duplicate matches
                                 && SpanlessEq::new(cx).eq_expr(target, left)
-                        {
-                            return;
-                        }
+                    {
+                        return;
                     }
-                    span_lint(
-                        cx,
-                        STRING_ADD,
-                        e.span,
-                        "you added something to a string. Consider using `String::push_str()` instead",
-                    );
                 }
+                span_lint(
+                    cx,
+                    STRING_ADD,
+                    e.span,
+                    "you added something to a string. Consider using `String::push_str()` instead",
+                );
             },
-            ExprKind::Assign(target, src, _) => {
-                if is_string(cx, target) && is_add(cx, src, target) {
-                    span_lint(
-                        cx,
-                        STRING_ADD_ASSIGN,
-                        e.span,
-                        "you assigned the result of adding something to this string. Consider using \
+            ExprKind::Assign(target, src, _) if is_string(cx, target) && is_add(cx, src, target) => {
+                span_lint(
+                    cx,
+                    STRING_ADD_ASSIGN,
+                    e.span,
+                    "you assigned the result of adding something to this string. Consider using \
                          `String::push_str()` instead",
-                    );
-                }
+                );
             },
             ExprKind::Index(target, _idx, _) => {
                 let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
@@ -222,32 +293,8 @@ fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
     }
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Check if the string is transformed to byte array and casted back to string.
-    ///
-    /// ### Why is this bad?
-    /// It's unnecessary, the string can be used directly.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// &"Hello World!"[6..11];
-    /// ```
-    #[clippy::version = "1.50.0"]
-    pub STRING_FROM_UTF8_AS_BYTES,
-    complexity,
-    "casting string slices to byte slices and back"
-}
-
 // Max length a b"foo" string can take
 const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
-
-declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -362,31 +409,6 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     }
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// This lint checks for `.to_string()` method calls on values of type `&str`.
-    ///
-    /// ### Why restrict this?
-    /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be
-    /// more specifically expressed with `.to_owned()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = "str".to_string();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let _ = "str".to_owned();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub STR_TO_STRING,
-    restriction,
-    "using `to_string()` on a `&str`, which should be `to_owned()`"
-}
-
-declare_lint_pass!(StrToString => [STR_TO_STRING]);
-
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
@@ -417,6 +439,8 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && args.iter().any(|a| a.hir_id == expr.hir_id)
             && let Res::Def(DefKind::AssocFn, def_id) = expr.res(cx)
             && cx.tcx.is_diagnostic_item(sym::to_string_method, def_id)
+            && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
+            && args.type_at(0).is_str()
         {
             // Detected `ToString::to_string` passed as an argument (generic: any call or method call)
             span_lint_and_sugg(
@@ -425,34 +449,12 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
                 expr.span,
                 "`ToString::to_string` used as `&str` to `String` converter",
                 "try",
-                "ToOwned::to_owned".to_string(),
+                "str::to_owned".to_string(),
                 Applicability::MachineApplicable,
             );
         }
     }
 }
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
-    ///
-    /// ### Why is this bad?
-    /// `split_whitespace` already ignores leading and trailing whitespace.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// " A B C ".trim().split_whitespace();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// " A B C ".split_whitespace();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub TRIM_SPLIT_WHITESPACE,
-    style,
-    "using `str::trim()` or alike before `str::split_whitespace`"
-}
-declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
 
 impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {

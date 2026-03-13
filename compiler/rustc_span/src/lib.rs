@@ -18,9 +18,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
-#![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -91,6 +89,20 @@ use sha2::Sha256;
 
 #[cfg(test)]
 mod tests;
+
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned { node: t, span: sp }
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
+}
 
 /// Per-session global variables: this struct is stored in thread-local storage
 /// in such a way that it is accessible without any kind of handle to all
@@ -2653,7 +2665,7 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, HashStable_Generic)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2674,12 +2686,6 @@ impl<S: Encoder> Encodable<S> for BytePos {
 impl<D: Decoder> Decodable<D> for BytePos {
     fn decode(d: &mut D) -> BytePos {
         BytePos(d.read_u32())
-    }
-}
-
-impl<H: HashStableContext> HashStable<H> for RelativeBytePos {
-    fn hash_stable(&self, hcx: &mut H, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
     }
 }
 

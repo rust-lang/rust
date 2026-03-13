@@ -64,7 +64,6 @@ use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
@@ -84,8 +83,7 @@ use rustc_mir_dataflow::{
     Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::source_map::dummy_spanned;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, dummy_spanned};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -1988,9 +1986,7 @@ fn check_must_not_suspend_def(
     hir_id: hir::HirId,
     data: SuspendCheckData<'_>,
 ) -> bool {
-    if let Some(reason_str) =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::MustNotSupend {reason} => reason)
-    {
+    if let Some(reason_str) = find_attr!(tcx, def_id, MustNotSupend {reason} => reason) {
         let reason =
             reason_str.map(|s| errors::MustNotSuspendReason { span: data.source_span, reason: s });
         tcx.emit_node_span_lint(

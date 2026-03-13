@@ -2,9 +2,9 @@
 
 There are many ways to contribute to Rustfmt. This document lays out what they
 are and has information on how to get started. If you have any questions about
-contributing or need help with anything, please ask in the WG-Rustfmt channel
-on [Discord](https://discordapp.com/invite/rust-lang). Feel free to also ask questions
-on issues, or file new issues specifically to get help.
+contributing or need help with anything, please ask in the Rustfmt team [Zulip
+channel `#t-rustfmt`][rustfmt-zulip]. Feel free to also ask questions on issues,
+or file new issues specifically to get help.
 
 All contributors are expected to follow our [Code of
 Conduct](CODE_OF_CONDUCT.md).
@@ -268,3 +268,11 @@ the config struct and parse a config file, etc. Checking an option is done by
 accessing the correct field on the config struct, e.g., `config.max_width()`. Most
 functions have a `Config`, or one can be accessed via a visitor or context of
 some kind.
+
+## Subtree syncs
+
+Refer to [*Subtree sync procedure*](./Subtree%20sync%20procedure.md).
+
+
+[rustfmt-zulip]:
+    https://rust-lang.zulipchat.com/#narrow/channel/357797-t-rustfmt

@@ -95,6 +95,13 @@ pub(crate) fn goto_definition(
             continue;
         }
 
+        let parent = token.value.parent()?;
+
+        if let Some(question_mark_conversion) = goto_question_mark_conversions(sema, &parent) {
+            navs.extend(def_to_nav(sema, question_mark_conversion.into()));
+            continue;
+        }
+
         if let Some(token) = ast::String::cast(token.value.clone())
             && let Some(original_token) = ast::String::cast(original_token.clone())
             && let Some((analysis, fixture_analysis)) =
@@ -112,8 +119,6 @@ pub(crate) fn goto_definition(
                 navs.upmap_from_ra_fixture(&fixture_analysis, virtual_file_id, file_id).ok()
             });
         }
-
-        let parent = token.value.parent()?;
 
         let token_file_id = token.file_id;
         if let Some(token) = ast::String::cast(token.value.clone())
@@ -147,6 +152,45 @@ pub(crate) fn goto_definition(
     let navs = navs.into_iter().unique().collect();
 
     Some(RangeInfo::new(original_token.text_range(), navs))
+}
+
+/// When the `?` operator is used on `Result`, go to the `From` impl if it exists as this provides more value.
+fn goto_question_mark_conversions(
+    sema: &Semantics<'_, RootDatabase>,
+    node: &SyntaxNode,
+) -> Option<hir::Function> {
+    let node = ast::TryExpr::cast(node.clone())?;
+    let try_expr_ty = sema.type_of_expr(&node.expr()?)?.adjusted();
+
+    let fd = FamousDefs(sema, try_expr_ty.krate(sema.db));
+    let result_enum = fd.core_result_Result()?.into();
+
+    let (try_expr_ty_adt, try_expr_ty_args) = try_expr_ty.as_adt_with_args()?;
+    if try_expr_ty_adt != result_enum {
+        // FIXME: Support `Poll<Result>`.
+        return None;
+    }
+    let original_err_ty = try_expr_ty_args.get(1)?.clone()?;
+
+    let returned_ty = sema.try_expr_returned_type(&node)?;
+    let (returned_adt, returned_ty_args) = returned_ty.as_adt_with_args()?;
+    if returned_adt != result_enum {
+        return None;
+    }
+    let returned_err_ty = returned_ty_args.get(1)?.clone()?;
+
+    if returned_err_ty.could_unify_with_deeply(sema.db, &original_err_ty) {
+        return None;
+    }
+
+    let from_trait = fd.core_convert_From()?;
+    let from_fn = from_trait.function(sema.db, sym::from)?;
+    sema.resolve_trait_impl_method(
+        returned_err_ty.clone(),
+        from_trait,
+        from_fn,
+        [returned_err_ty, original_err_ty],
+    )
 }
 
 // If the token is into(), try_into(), search the definition of From, TryFrom.
@@ -4033,5 +4077,26 @@ where
 }
 "#,
         )
+    }
+
+    #[test]
+    fn question_mark_on_result_goes_to_conversion() {
+        check(
+            r#"
+//- minicore: try, result, from
+
+struct Foo;
+struct Bar;
+impl From<Foo> for Bar {
+    fn from(_: Foo) -> Bar { Bar }
+    // ^^^^
+}
+
+fn foo() -> Result<(), Bar> {
+    Err(Foo)?$0;
+    Ok(())
+}
+        "#,
+        );
     }
 }

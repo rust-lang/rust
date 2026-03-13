@@ -29,18 +29,16 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, LintDiagnostic, MultiSpan};
-use rustc_hir::attrs::AttributeKind;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_query_system::ich::StableHashingContext;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_macros::Diagnostic;
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -55,8 +53,9 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
-use crate::lint::lint_level;
+use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
@@ -565,7 +564,7 @@ impl<'tcx> CommonConsts<'tcx> {
             ))
         };
 
-        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(Box::default()));
+        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(List::empty()));
         let valtree_true = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::TRUE));
         let valtree_false = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::FALSE));
 
@@ -915,8 +914,8 @@ impl<'tcx> TyCtxt<'tcx> {
         } else if matches!(
             def_kind,
             DefKind::AnonConst
-                | DefKind::AssocConst
-                | DefKind::Const
+                | DefKind::AssocConst { .. }
+                | DefKind::Const { .. }
                 | DefKind::InlineConst
                 | DefKind::GlobalAsm
         ) {
@@ -994,8 +993,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let start = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeStart(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
-        let end = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeEnd(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        let start = find_attr!(self, def_id, RustcLayoutScalarValidRangeStart(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        let end =
+            find_attr!(self, def_id, RustcLayoutScalarValidRangeEnd(n, _) => Bound::Included(**n))
+                .unwrap_or(Bound::Unbounded);
         (start, end)
     }
 
@@ -1113,13 +1114,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Check if the given `def_id` is a `type const` (mgca)
     pub fn is_type_const<I: Copy + IntoQueryParam<DefId>>(self, def_id: I) -> bool {
         // No need to call the query directly in this case always false.
-        if !(matches!(
-            self.def_kind(def_id.into_query_param()),
-            DefKind::Const | DefKind::AssocConst
-        )) {
-            return false;
+        let def_kind = self.def_kind(def_id.into_query_param());
+        match def_kind {
+            DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
+                is_type_const
+            }
+            _ => false,
         }
-        self.is_rhs_type_const(def_id)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
@@ -1220,7 +1221,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_crate_hash(self) -> bool {
         // Why is the crate hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
-        //   `rustc_query_system::query::plumbing::execute_job`.
+        //   `rustc_query_impl::execution::execute_job`.
         // - incremental: for query lookups.
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see
@@ -1330,8 +1331,8 @@ impl<'tcx> TyCtxt<'tcx> {
         caller: DefId,
     ) -> Option<ty::Binder<'tcx, ty::FnSig<'tcx>>> {
         let fun_features = &self.codegen_fn_attrs(fun_def).target_features;
-        let callee_features = &self.codegen_fn_attrs(caller).target_features;
-        if self.is_target_feature_call_safe(&fun_features, &callee_features) {
+        let caller_features = &self.body_codegen_attrs(caller).target_features;
+        if self.is_target_feature_call_safe(&fun_features, &caller_features) {
             return Some(fun_sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Safe, ..sig }));
         }
         None
@@ -1492,10 +1493,6 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl FnOnce(StableHashingContext<'_>) -> R,
     ) -> R {
         f(StableHashingContext::new(self.sess, &self.untracked))
-    }
-
-    pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
-        self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
 
     #[inline]
@@ -1685,6 +1682,40 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
+    }
+
+    pub fn report_unused_features(self) {
+        #[derive(Diagnostic)]
+        #[diag("feature `{$feature}` is declared but not used")]
+        struct UnusedFeature {
+            feature: Symbol,
+        }
+
+        // Collect first to avoid holding the lock while linting.
+        let used_features = self.sess.used_features.lock();
+        let unused_features = self
+            .features()
+            .enabled_features_iter_stable_order()
+            .filter(|(f, _)| {
+                !used_features.contains_key(f)
+                // FIXME: `restricted_std` is used to tell a standard library built
+                // for a platform that it doesn't know how to support. But it
+                // could only gate a private mod (see `__restricted_std_workaround`)
+                // with `cfg(not(restricted_std))`, so it cannot be recorded as used
+                // in downstream crates. It should never be linted, but should we
+                // hack this in the linter to ignore it?
+                && f.as_str() != "restricted_std"
+            })
+            .collect::<Vec<_>>();
+
+        for (feature, span) in unused_features {
+            self.emit_node_span_lint(
+                rustc_session::lint::builtin::UNUSED_FEATURES,
+                CRATE_HIR_ID,
+                span,
+                UnusedFeature { feature },
+            );
         }
     }
 }
@@ -2085,7 +2116,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
+        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
@@ -2150,9 +2181,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // ATPITs) do not.
         let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
             && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-            && self.is_type_const(def_id);
+        let is_inherent_assoc_type_const =
+            matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
         let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
             if generics.own_params.len() + 1 != args.len() {
                 return false;
@@ -2197,9 +2228,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
             let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
                 && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-            let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-                && self.is_type_const(def_id);
+            let is_inherent_assoc_type_const =
+                matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                    && matches!(
+                        self.def_kind(self.parent(def_id)),
+                        DefKind::Impl { of_trait: false }
+                    );
             if is_inherent_assoc_ty || is_inherent_assoc_type_const {
                 bug!(
                     "args not compatible with generics for {}: args={:#?}, generics={:#?}",
@@ -2494,35 +2528,18 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_outlives(xs))
     }
 
-    /// Emit a lint at `span` from a lint struct (some type that implements `LintDiagnostic`,
-    /// typically generated by `#[derive(LintDiagnostic)]`).
+    /// Emit a lint at `span` from a lint struct (some type that implements `Diagnostic`,
+    /// typically generated by `#[derive(Diagnostic)]`).
     #[track_caller]
     pub fn emit_node_span_lint(
         self,
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-            decorator.decorate_lint(lint);
-        })
-    }
-
-    /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), decorate);
+        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2555,35 +2572,20 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Emit a lint from a lint struct (some type that implements `LintDiagnostic`, typically
-    /// generated by `#[derive(LintDiagnostic)]`).
+    /// Emit a lint from a lint struct (some type that implements `Diagnostic`, typically generated
+    /// by `#[derive(Diagnostic)]`).
     #[track_caller]
     pub fn emit_node_lint(
         self,
         lint: &'static Lint,
         id: HirId,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
-    ) {
-        self.node_lint(lint, id, |lint| {
-            decorator.decorate_lint(lint);
-        })
-    }
-
-    /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_lint(
-        self,
-        lint: &'static Lint,
-        id: HirId,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, None, decorate);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 
-    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
+    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
         let map = self.in_scope_traits_map(id.owner)?;
         let candidates = map.get(&id.local_id)?;
         Some(candidates)
@@ -2746,7 +2748,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).extern_crate_map.get(&def_id).copied()
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
+    pub fn resolver_for_lowering(
+        self,
+    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 
@@ -2768,7 +2772,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
-        find_attr!(self.get_all_attrs(def_id), AttributeKind::DoNotRecommend { .. })
+        find_attr!(self, def_id, DoNotRecommend { .. })
     }
 
     pub fn is_trivial_const<P>(self, def_id: P) -> bool
@@ -2794,10 +2798,8 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.is_panic_runtime =
-        |tcx, LocalCrate| find_attr!(tcx.hir_krate_attrs(), AttributeKind::PanicRuntime);
-    providers.is_compiler_builtins =
-        |tcx, LocalCrate| find_attr!(tcx.hir_krate_attrs(), AttributeKind::CompilerBuiltins);
+    providers.is_panic_runtime = |tcx, LocalCrate| find_attr!(tcx, crate, PanicRuntime);
+    providers.is_compiler_builtins = |tcx, LocalCrate| find_attr!(tcx, crate, CompilerBuiltins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())

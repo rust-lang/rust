@@ -184,7 +184,7 @@ static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
 
 impl GenericParams {
     /// The index of the self param in the generic of the non-parent definition.
-    pub(crate) const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
+    pub const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
         LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
     pub fn new(db: &dyn DefDatabase, def: GenericDefId) -> Arc<GenericParams> {

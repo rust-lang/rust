@@ -1,15 +1,7 @@
-use super::{itron, unsupported};
+use super::unsupported;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{self, PathBuf};
 use crate::{fmt, io};
-
-// `solid` directly maps `errno`s to μITRON error codes.
-impl itron::error::ItronError {
-    #[inline]
-    pub(crate) fn as_io_error(self) -> crate::io::Error {
-        crate::io::Error::from_raw_os_error(self.as_raw())
-    }
-}
 
 pub fn getcwd() -> io::Result<PathBuf> {
     unsupported()
@@ -61,12 +53,4 @@ pub fn temp_dir() -> PathBuf {
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn exit(code: i32) -> ! {
-    rtabort!("exit({}) called", code);
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids on this platform")
 }

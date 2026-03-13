@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::paths;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{AttrStyle, DelimArgs};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
@@ -93,10 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
         }
 
         // Is it derived?
-        if !find_attr!(
-            cx.tcx.get_all_attrs(item.owner_id),
-            AttributeKind::AutomaticallyDerived(..)
-        ) {
+        if !find_attr!(cx.tcx.hir_attrs(item.hir_id()), AutomaticallyDerived(..)) {
             return;
         }
 

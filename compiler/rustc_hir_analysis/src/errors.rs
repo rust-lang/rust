@@ -7,7 +7,7 @@ use rustc_errors::{
     MultiSpan, listify, msg,
 };
 use rustc_hir::limit::Limit;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Ident, Span, Symbol};
 pub(crate) mod wrong_number_of_generic_args;
@@ -88,6 +88,8 @@ pub(crate) enum AssocItemNotFoundLabel<'a> {
     NotFound {
         #[primary_span]
         span: Span,
+        assoc_ident: Ident,
+        assoc_kind: &'static str,
     },
     #[label(
         "there is {$identically_named ->
@@ -149,6 +151,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
         trait_ref: String,
         suggested_name: Symbol,
         identically_named: bool,
+        assoc_kind: &'static str,
         #[applicability]
         applicability: Applicability,
     },
@@ -733,14 +736,6 @@ pub(crate) enum CannotCaptureLateBound {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$variances}")]
-pub(crate) struct VariancesOf {
-    #[primary_span]
-    pub span: Span,
-    pub variances: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$ty}")]
 pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
@@ -888,9 +883,19 @@ pub(crate) enum ImplNotMarkedDefault {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("this item cannot be used as its where bounds are not satisfied for the `Self` type")]
 pub(crate) struct UselessImplItem;
+
+#[derive(Diagnostic)]
+#[diag("cannot override `{$ident}` because it already has a `final` definition in the trait")]
+pub(crate) struct OverridingFinalTraitFunction {
+    #[primary_span]
+    pub impl_span: Span,
+    #[note("`{$ident}` is marked final here")]
+    pub trait_span: Span,
+    pub ident: Ident,
+}
 
 #[derive(Diagnostic)]
 #[diag("not all trait items implemented, missing: `{$missing_items_msg}`", code = E0046)]
@@ -1104,7 +1109,7 @@ pub(crate) enum LateBoundInApit {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unnecessary associated type bound for dyn-incompatible associated type")]
 #[note(
     "this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`"
@@ -1114,7 +1119,7 @@ pub(crate) struct UnusedAssociatedTypeBounds {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("impl trait in impl method signature does not match trait method signature")]
 #[note(
     "add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate"
@@ -1122,7 +1127,7 @@ pub(crate) struct UnusedAssociatedTypeBounds {
 #[note(
     "we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information"
 )]
-pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
+pub(crate) struct ReturnPositionImplTraitInTraitRefined {
     #[suggestion(
         "replace the return type so that it matches the trait",
         applicability = "maybe-incorrect",
@@ -1136,10 +1141,10 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
 
     pub pre: &'static str,
     pub post: &'static str,
-    pub return_ty: Ty<'tcx>,
+    pub return_ty: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("impl trait in impl method captures fewer lifetimes than in trait")]
 #[note(
     "add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate"
@@ -1436,6 +1441,15 @@ pub struct NoVariantNamed<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+#[derive(Diagnostic)]
+#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
+pub struct NoFieldOnType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub field: Ident,
+}
+
 // FIXME(fmease): Deduplicate:
 
 #[derive(Diagnostic)]
@@ -1457,7 +1471,7 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
     pub local_type: Ty<'tcx>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("type parameter `{$param}` must be covered by another type when it appears before the first local type (`{$local_type}`)", code = E0210)]
 #[note(
     "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type"
@@ -1489,7 +1503,7 @@ pub(crate) struct TyParamSome {
     pub param: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("type parameter `{$param}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param}>`)", code = E0210)]
 #[note(
     "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local"
@@ -1795,7 +1809,7 @@ pub(crate) struct BadReturnTypeNotation {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
 pub(crate) struct SupertraitItemShadowing {
     pub item: Symbol,

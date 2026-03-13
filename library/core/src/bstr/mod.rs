@@ -6,7 +6,7 @@ mod traits;
 pub use traits::{impl_partial_eq, impl_partial_eq_n, impl_partial_eq_ord};
 
 use crate::borrow::{Borrow, BorrowMut};
-use crate::fmt;
+use crate::fmt::{self, Alignment};
 use crate::ops::{Deref, DerefMut, DerefPure};
 
 /// A wrapper for `&[u8]` representing a human-readable string that's conventionally, but not
@@ -174,44 +174,85 @@ impl fmt::Debug for ByteStr {
 #[unstable(feature = "bstr", issue = "134915")]
 impl fmt::Display for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn fmt_nopad(this: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            for chunk in this.utf8_chunks() {
+        fn emit(byte_str: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            for chunk in byte_str.utf8_chunks() {
                 f.write_str(chunk.valid())?;
                 if !chunk.invalid().is_empty() {
                     f.write_str("\u{FFFD}")?;
                 }
             }
+
             Ok(())
         }
 
-        let Some(align) = f.align() else {
-            return fmt_nopad(self, f);
-        };
-        let nchars: usize = self
-            .utf8_chunks()
-            .map(|chunk| {
-                chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
-            })
-            .sum();
-        let padding = f.width().unwrap_or(0).saturating_sub(nchars);
-        let fill = f.fill();
-        let (lpad, rpad) = match align {
-            fmt::Alignment::Left => (0, padding),
-            fmt::Alignment::Right => (padding, 0),
-            fmt::Alignment::Center => {
-                let half = padding / 2;
-                (half, half + padding % 2)
-            }
-        };
-        for _ in 0..lpad {
-            write!(f, "{fill}")?;
-        }
-        fmt_nopad(self, f)?;
-        for _ in 0..rpad {
-            write!(f, "{fill}")?;
+        let requested_width = f.width().unwrap_or(0);
+        if requested_width == 0 && f.precision().is_none() {
+            // Avoid counting the characters if no truncation or padding was
+            // requested.
+            return emit(self, f);
         }
 
-        Ok(())
+        let (truncated, actual_width) = match f.precision() {
+            // The entire string is truncated away. Weird, but ok.
+            Some(0) => (ByteStr::new(&[]), 0),
+            // Advance through string until we run out of space.
+            Some(precision) => {
+                let mut remaining_width = precision;
+                let mut chunks = self.utf8_chunks();
+                let mut current_width = 0;
+                let mut offset = 0;
+                loop {
+                    let Some(chunk) = chunks.next() else {
+                        // We reached the end of the string without running out
+                        // of space, so print the entire string.
+                        break (self, current_width);
+                    };
+
+                    let mut chars = chunk.valid().char_indices();
+                    let Err(remaining) = chars.advance_by(remaining_width) else {
+                        // We've counted off `precision` characters, so truncate
+                        // the string at the current offset.
+                        break (&self[..offset + chars.offset()], precision);
+                    };
+
+                    offset += chunk.valid().len();
+                    current_width += remaining_width - remaining.get();
+                    remaining_width = remaining.get();
+
+                    // `remaining_width` cannot be zero, there is still space
+                    // remaining. So next, count the � character emitted for
+                    // the invalid chunk (if it exists).
+                    if !chunk.invalid().is_empty() {
+                        offset += chunk.invalid().len();
+                        current_width += 1;
+                        remaining_width -= 1;
+
+                        if remaining_width == 0 {
+                            break (&self[..offset], precision);
+                        }
+                    }
+                }
+            }
+            // The string shouldn't be truncated at all, so just count the number
+            // of characters to calculate the padding.
+            None => {
+                let actual_width = self
+                    .utf8_chunks()
+                    .map(|chunk| {
+                        chunk.valid().chars().count()
+                            + if chunk.invalid().is_empty() { 0 } else { 1 }
+                    })
+                    .sum();
+                (self, actual_width)
+            }
+        };
+
+        // The width is originally stored as a 16-bit number, so this cannot fail.
+        let padding = u16::try_from(requested_width.saturating_sub(actual_width)).unwrap();
+
+        let post_padding = f.padding(padding, Alignment::Left)?;
+        emit(truncated, f)?;
+        post_padding.write(f)
     }
 }
 

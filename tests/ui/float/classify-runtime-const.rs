@@ -6,8 +6,6 @@
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-#![feature(f16)]
-#![feature(f128)]
 
 use std::num::FpCategory::*;
 

@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, path: &Expr<'_>, args
             expr.span,
             "this can be `std::io::Error::other(_)`",
             |diag| {
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "use `std::io::Error::other`",
                     vec![
                         (new_segment.ident.span, "other".to_owned()),

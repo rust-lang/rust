@@ -39,6 +39,8 @@ declare_clippy_lint! {
     "useless use of `format!`"
 }
 
+impl_lint_pass!(UselessFormat => [USELESS_FORMAT]);
+
 pub struct UselessFormat {
     format_args: FormatArgsStorage,
 }
@@ -48,8 +50,6 @@ impl UselessFormat {
         Self { format_args }
     }
 }
-
-impl_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

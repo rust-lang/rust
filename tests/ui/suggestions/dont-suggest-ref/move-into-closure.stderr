@@ -9,8 +9,7 @@ LL |     consume_fn(|| {
 LL |         let X(_t) = x;
    |               --    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -34,8 +33,7 @@ LL |     consume_fn(|| {
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -59,8 +57,7 @@ LL |     consume_fn(|| {
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -85,10 +82,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -113,10 +107,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -140,8 +131,7 @@ LL |     consume_fn(|| {
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -165,8 +155,7 @@ LL |     consume_fn(|| {
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -190,8 +179,7 @@ LL |     consume_fn(|| {
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -216,10 +204,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -244,10 +229,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:14:18
@@ -270,8 +252,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         let X(_t) = x;
    |               --    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -295,8 +276,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -320,8 +300,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -346,10 +325,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -374,10 +350,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -401,8 +374,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -426,8 +398,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -451,8 +422,7 @@ LL |     <() as T>::consume_fn(|| {
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -477,10 +447,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -505,10 +472,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:40:22
@@ -531,8 +495,7 @@ LL |     ().method_consume_fn(|| {
 LL |         let X(_t) = x;
    |               --    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -556,8 +519,7 @@ LL |     ().method_consume_fn(|| {
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -581,8 +543,7 @@ LL |     ().method_consume_fn(|| {
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -607,10 +568,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -635,10 +593,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -662,8 +617,7 @@ LL |     ().method_consume_fn(|| {
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -687,8 +641,7 @@ LL |     ().method_consume_fn(|| {
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -712,8 +665,7 @@ LL |     ().method_consume_fn(|| {
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -738,10 +690,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -766,10 +715,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:51:29
@@ -792,8 +738,7 @@ LL |     consume_fnmut(|| {
 LL |         let X(_t) = x;
    |               --    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -817,8 +762,7 @@ LL |     consume_fnmut(|| {
 LL |         if let Either::One(_t) = e { }
    |                            --    ^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -842,8 +786,7 @@ LL |     consume_fnmut(|| {
 LL |         while let Either::One(_t) = e { }
    |                               --    ^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -868,10 +811,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t)
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -896,10 +836,7 @@ LL |         match e {
    |               ^
 ...
 LL |             Either::One(_t) => (),
-   |                         --
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -923,8 +860,7 @@ LL |     consume_fnmut(|| {
 LL |         let X(mut _t) = x;
    |               ------    ^
    |               |
-   |               data moved here
-   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -948,8 +884,7 @@ LL |     consume_fnmut(|| {
 LL |         if let Either::One(mut _t) = em { }
    |                            ------    ^^
    |                            |
-   |                            data moved here
-   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -973,8 +908,7 @@ LL |     consume_fnmut(|| {
 LL |         while let Either::One(mut _t) = em { }
    |                               ------    ^^
    |                               |
-   |                               data moved here
-   |                               move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                               data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -999,10 +933,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t)
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -1027,10 +958,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21
@@ -1055,10 +983,7 @@ LL |         match em {
    |               ^^
 ...
 LL |             Either::One(mut _t) => (),
-   |                         ------
-   |                         |
-   |                         data moved here
-   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         ------ data moved here because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/move-into-closure.rs:26:21

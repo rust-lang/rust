@@ -644,7 +644,8 @@ pub fn expr_await(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{expr}.await"))
 }
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::MatchExpr {
-    expr_from_text(&format!("match {expr} {match_arm_list}"))
+    let ws = block_whitespace(&expr);
+    expr_from_text(&format!("match {expr}{ws}{match_arm_list}"))
 }
 pub fn expr_if(
     condition: ast::Expr,
@@ -656,14 +657,17 @@ pub fn expr_if(
         Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {if_expr}"),
         None => String::new(),
     };
-    expr_from_text(&format!("if {condition} {then_branch} {else_branch}"))
+    let ws = block_whitespace(&condition);
+    expr_from_text(&format!("if {condition}{ws}{then_branch} {else_branch}"))
 }
 pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::ForExpr {
-    expr_from_text(&format!("for {pat} in {expr} {block}"))
+    let ws = block_whitespace(&expr);
+    expr_from_text(&format!("for {pat} in {expr}{ws}{block}"))
 }
 
 pub fn expr_while_loop(condition: ast::Expr, block: ast::BlockExpr) -> ast::WhileExpr {
-    expr_from_text(&format!("while {condition} {block}"))
+    let ws = block_whitespace(&condition);
+    expr_from_text(&format!("while {condition}{ws}{block}"))
 }
 
 pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
@@ -722,6 +726,9 @@ pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::BinExpr {
 }
 fn expr_from_text<E: Into<ast::Expr> + AstNode>(text: &str) -> E {
     ast_from_text(&format!("const C: () = {text};"))
+}
+fn block_whitespace(after: &impl AstNode) -> &'static str {
+    if after.syntax().text().contains_char('\n') { "\n" } else { " " }
 }
 pub fn expr_let(pattern: ast::Pat, expr: ast::Expr) -> ast::LetExpr {
     ast_from_text(&format!("const _: () = while let {pattern} = {expr} {{}};"))
@@ -880,23 +887,11 @@ pub fn ref_pat(pat: ast::Pat) -> ast::RefPat {
 
 pub fn match_arm(pat: ast::Pat, guard: Option<ast::MatchGuard>, expr: ast::Expr) -> ast::MatchArm {
     let comma_str = if expr.is_block_like() { "" } else { "," };
+    let ws = guard.as_ref().filter(|_| expr.is_block_like()).map_or(" ", block_whitespace);
     return match guard {
-        Some(guard) => from_text(&format!("{pat} {guard} => {expr}{comma_str}")),
+        Some(guard) => from_text(&format!("{pat} {guard} =>{ws}{expr}{comma_str}")),
         None => from_text(&format!("{pat} => {expr}{comma_str}")),
     };
-
-    fn from_text(text: &str) -> ast::MatchArm {
-        ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))
-    }
-}
-
-pub fn match_arm_with_guard(
-    pats: impl IntoIterator<Item = ast::Pat>,
-    guard: ast::Expr,
-    expr: ast::Expr,
-) -> ast::MatchArm {
-    let pats_str = pats.into_iter().join(" | ");
-    return from_text(&format!("{pats_str} if {guard} => {expr}"));
 
     fn from_text(text: &str) -> ast::MatchArm {
         ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))

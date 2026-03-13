@@ -1,10 +1,10 @@
 #![warn(clippy::str_to_string)]
 
 fn main() {
-    let hello = "hello world".to_owned();
+    let hello: String = "hello world".to_owned();
     //~^ str_to_string
 
-    let msg = &hello[..];
+    let msg: &str = &hello[..];
     msg.to_owned();
     //~^ str_to_string
 }
@@ -19,7 +19,7 @@ fn issue16271(key: &[u8]) {
         };
     }
 
-    let _value = t!(str::from_utf8(key)).to_owned();
+    let _value: String = t!(str::from_utf8(key)).to_owned();
     //~^ str_to_string
 }
 
@@ -32,22 +32,27 @@ impl<T> GenericWrapper<T> {
 }
 
 fn issue16511(x: Option<&str>) {
-    let _ = x.map(ToOwned::to_owned);
+    let _: Option<String> = x.map(str::to_owned);
     //~^ str_to_string
 
-    let _ = x.map(ToOwned::to_owned);
+    let _: Option<String> = x.map(str::to_owned);
     //~^ str_to_string
 
-    let _ = ["a", "b"].iter().map(ToOwned::to_owned);
-    //~^ str_to_string
+    // This should not trigger the lint because ToOwned::to_owned would produce &str, not String.
+    let _: Vec<String> = ["a", "b"].iter().map(ToString::to_string).collect();
 
     fn mapper<F: Fn(&str) -> String>(f: F) -> String {
         f("hello")
     }
-    let _ = mapper(ToOwned::to_owned);
+    let _: String = mapper(str::to_owned);
     //~^ str_to_string
 
-    let w = GenericWrapper("hello");
-    let _ = w.mapper(ToOwned::to_owned);
+    let w: GenericWrapper<&str> = GenericWrapper("hello");
+    let _: String = w.mapper(str::to_owned);
     //~^ str_to_string
+}
+
+// No lint: non-str types should not trigger str_to_string. See #16569
+fn no_lint_non_str() {
+    let _: Vec<String> = [1, 2].iter().map(i32::to_string).collect();
 }

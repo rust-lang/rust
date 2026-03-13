@@ -39,6 +39,7 @@ declare_clippy_lint! {
     suspicious,
     "using `Arc` with a type that does not implement `Send` and `Sync`"
 }
+
 declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
 
 impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {

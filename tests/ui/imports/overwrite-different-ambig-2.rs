@@ -1,5 +1,3 @@
-//@ check-pass
-
 mod m1 {
     mod inner {
         pub struct S {}
@@ -21,6 +19,6 @@ use m1::*;
 use m2::*;
 
 fn main() {
-    let _: m1::S = S {}; //~ WARN `S` is ambiguous
+    let _: m1::S = S {}; //~ ERROR `S` is ambiguous
                          //~| WARN this was previously accepted
 }

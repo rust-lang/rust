@@ -386,10 +386,8 @@ fn sugg_with_curlies<'a>(
             | Node::Expr(Expr {
                 kind: ExprKind::Block(..) | ExprKind::ConstBlock(..),
                 ..
-            }) => {
-                if needs_var_binding && is_var_binding_used_later {
-                    add_curlies();
-                }
+            }) if needs_var_binding && is_var_binding_used_later => {
+                add_curlies();
             },
             Node::Expr(..)
             | Node::AnonConst(..)

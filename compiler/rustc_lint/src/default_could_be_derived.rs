@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
@@ -147,50 +147,59 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
 
         let hir_id = cx.tcx.local_def_id_to_hir_id(impl_id);
         let span = cx.tcx.hir_span_with_body(hir_id);
-        cx.tcx.node_span_lint(DEFAULT_OVERRIDES_DEFAULT_FIELDS, hir_id, span, |diag| {
-            mk_lint(cx.tcx, diag, type_def_id, orig_fields, fields, span);
-        });
+        cx.tcx.emit_node_span_lint(
+            DEFAULT_OVERRIDES_DEFAULT_FIELDS,
+            hir_id,
+            span,
+            WrongDefaultImpl { tcx: cx.tcx, type_def_id, orig_fields, fields, impl_span: span },
+        );
     }
 }
 
-fn mk_lint(
-    tcx: TyCtxt<'_>,
-    diag: &mut Diag<'_, ()>,
+struct WrongDefaultImpl<'a, 'hir, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-    orig_fields: FxHashMap<Symbol, &hir::FieldDef<'_>>,
-    fields: &[hir::ExprField<'_>],
+    orig_fields: FxHashMap<Symbol, &'a hir::FieldDef<'hir>>,
+    fields: &'a [hir::ExprField<'hir>],
     impl_span: Span,
-) {
-    diag.primary_message("`Default` impl doesn't use the declared default field values");
+}
 
-    // For each field in the struct expression
-    //   - if the field in the type has a default value, it should be removed
-    //   - elif the field is an expression that could be a default value, it should be used as the
-    //     field's default value (FIXME: not done).
-    //   - else, we wouldn't touch this field, it would remain in the manual impl
-    let mut removed_all_fields = true;
-    for field in fields {
-        if orig_fields.get(&field.ident.name).and_then(|f| f.default).is_some() {
-            diag.span_label(field.expr.span, "this field has a default value");
-        } else {
-            removed_all_fields = false;
+impl<'a, 'b, 'hir, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'hir, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { tcx, type_def_id, orig_fields, fields, impl_span } = self;
+        let mut diag =
+            Diag::new(dcx, level, "`Default` impl doesn't use the declared default field values");
+
+        // For each field in the struct expression
+        //   - if the field in the type has a default value, it should be removed
+        //   - elif the field is an expression that could be a default value, it should be used as the
+        //     field's default value (FIXME: not done).
+        //   - else, we wouldn't touch this field, it would remain in the manual impl
+        let mut removed_all_fields = true;
+        for field in fields {
+            if orig_fields.get(&field.ident.name).and_then(|f| f.default).is_some() {
+                diag.span_label(field.expr.span, "this field has a default value");
+            } else {
+                removed_all_fields = false;
+            }
         }
-    }
 
-    if removed_all_fields {
-        let msg = "to avoid divergence in behavior between `Struct { .. }` and \
-                   `<Struct as Default>::default()`, derive the `Default`";
-        diag.multipart_suggestion_verbose(
-            msg,
-            vec![
-                (tcx.def_span(type_def_id).shrink_to_lo(), "#[derive(Default)] ".to_string()),
-                (impl_span, String::new()),
-            ],
-            Applicability::MachineApplicable,
-        );
-    } else {
-        let msg = "use the default values in the `impl` with `Struct { mandatory_field, .. }` to \
-                   avoid them diverging over time";
-        diag.help(msg);
+        if removed_all_fields {
+            diag.multipart_suggestion(
+                "to avoid divergence in behavior between `Struct { .. }` and \
+                 `<Struct as Default>::default()`, derive the `Default`",
+                vec![
+                    (tcx.def_span(type_def_id).shrink_to_lo(), "#[derive(Default)] ".to_string()),
+                    (impl_span, String::new()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.help(
+                "use the default values in the `impl` with `Struct { mandatory_field, .. }` to \
+                       avoid them diverging over time",
+            );
+        }
+        diag
     }
 }

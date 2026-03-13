@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of undeclared type `Complete`
+error[E0433]: cannot find type `Complete` in this scope
  --> foo.rs:3:12
   |
 3 |     x.push(Complete::Item { name: "hello" });

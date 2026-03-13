@@ -2,7 +2,7 @@ use std::any::Any;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -16,7 +16,6 @@ use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
-use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     TerminalUrl,
@@ -161,6 +160,17 @@ pub struct Session {
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
+
+    /// Global per-session counter for MIR optimization pass applications.
+    ///
+    /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
+    /// optimization-pass execution candidate during this compilation.
+    pub mir_opt_bisect_eval_count: AtomicUsize,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, u32>>,
 }
 
 #[derive(Clone, Copy)]
@@ -610,9 +620,9 @@ impl Session {
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
                 if !self.thin_lto_supported {
-                    // Backend doesn't support ThinLTO, disable LTO.
+                    // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
-                    return config::Lto::No;
+                    return config::Lto::Fat;
                 }
                 return config::Lto::Thin;
             }
@@ -908,11 +918,7 @@ impl Session {
 
 // JUSTIFICATION: part of session construction
 #[allow(rustc::bad_opt_access)]
-fn default_emitter(
-    sopts: &config::Options,
-    source_map: Arc<SourceMap>,
-    translator: Translator,
-) -> Box<DynEmitter> {
+fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
     let terminal_url = match sopts.unstable_opts.terminal_urls {
@@ -934,21 +940,17 @@ fn default_emitter(
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => {
-                let emitter =
-                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
-                        .sm(source_map)
-                        .short_message(short)
-                        .diagnostic_width(sopts.diagnostic_width)
-                        .macro_backtrace(macro_backtrace)
-                        .track_diagnostics(track_diagnostics)
-                        .terminal_url(terminal_url)
-                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                        .ignored_directories_in_source_blocks(
-                            sopts
-                                .unstable_opts
-                                .ignore_directory_in_diagnostics_source_blocks
-                                .clone(),
-                        );
+                let emitter = AnnotateSnippetEmitter::new(stderr_destination(color_config))
+                    .sm(source_map)
+                    .short_message(short)
+                    .diagnostic_width(sopts.diagnostic_width)
+                    .macro_backtrace(macro_backtrace)
+                    .track_diagnostics(track_diagnostics)
+                    .terminal_url(terminal_url)
+                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+                    .ignored_directories_in_source_blocks(
+                        sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
+                    );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -956,7 +958,6 @@ fn default_emitter(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
-                translator,
                 pretty,
                 json_rendered,
                 color_config,
@@ -978,7 +979,6 @@ fn default_emitter(
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
-    fluent_bundle: Option<Arc<rustc_errors::FluentBundle>>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
     cfg_version: &'static str,
@@ -996,9 +996,8 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let translator = Translator { fluent_bundle };
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, Arc::clone(&source_map), translator);
+    let emitter = default_emitter(&sopts, Arc::clone(&source_map));
 
     let mut dcx =
         DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
@@ -1101,6 +1100,8 @@ pub fn build_session(
         invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
+        mir_opt_bisect_eval_count: AtomicUsize::new(0),
+        used_features: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1440,13 +1441,10 @@ impl EarlyDiagCtxt {
 }
 
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
-    // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
-    // need to reference every crate that might emit an early error for translation to work.
-    let translator = Translator::new();
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => Box::new(
-                AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .short_message(short),
             ),
@@ -1455,7 +1453,6 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),
-                translator,
                 pretty,
                 json_rendered,
                 color_config,

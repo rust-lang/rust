@@ -129,7 +129,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     diag.span_label(last.span, "the wildcard arm");
 
                     let s = if prev.len() > 1 { "s" } else { "" };
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("otherwise remove the non-wildcard arm{s}"),
                         prev.iter()
                             .map(|(_, arm)| (adjusted_arm_span(cx, arm.span), String::new()))
@@ -158,7 +158,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                             .chain([(dest.pat.span, pat_snippets.iter().join(" | "))])
                             .collect_vec();
 
-                        diag.multipart_suggestion_verbose(
+                        diag.multipart_suggestion(
                             "otherwise merge the patterns into a single arm",
                             suggs,
                             Applicability::MaybeIncorrect,

@@ -15,7 +15,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, Mutability, Safety};
+use rustc_hir::{Attribute, Mutability, Safety, find_attr};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
@@ -125,9 +125,10 @@ impl Res {
             DefKind::Trait => "trait",
             DefKind::Union => "union",
             DefKind::Mod => "mod",
-            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
-                "const"
-            }
+            DefKind::Const { .. }
+            | DefKind::ConstParam
+            | DefKind::AssocConst { .. }
+            | DefKind::AnonConst => "const",
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
@@ -393,7 +394,10 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             return Ok(match res {
                 Res::Def(
-                    DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
+                    DefKind::AssocFn
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocTy
+                    | DefKind::Variant,
                     def_id,
                 ) => {
                     vec![(Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id))]
@@ -490,7 +494,7 @@ fn resolve_self_ty<'tcx>(
 
     let self_id = match tcx.def_kind(item_id) {
         def_kind @ (DefKind::AssocFn
-        | DefKind::AssocConst
+        | DefKind::AssocConst { .. }
         | DefKind::AssocTy
         | DefKind::Variant
         | DefKind::Field) => {
@@ -1109,7 +1113,7 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecation { span: depr_span, deprecation }) =
+            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
                 attr
             else {
                 continue;
@@ -1127,14 +1131,8 @@ impl LinkCollector<'_, '_> {
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
             let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && tcx.get_all_attrs(inline_stmt_id).iter().any(|attr| {
-                    matches!(
-                        attr,
-                        Attribute::Parsed(AttributeKind::Deprecation {
-                            span: attr_span, ..
-                        }) if attr_span == depr_span,
-                    )
-                }) {
+                && find_attr!(tcx, inline_stmt_id, Deprecated { span, ..} if span == depr_span)
+            {
                 inline_stmt_id.to_def_id()
             } else {
                 item.item_id.expect_def_id()
@@ -1216,7 +1214,7 @@ impl LinkCollector<'_, '_> {
         let tcx = self.cx.tcx;
         let def_kind = tcx.def_kind(original_did);
         let did = match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
                 // documented on their parent's page
                 tcx.parent(original_did)
             }
@@ -1404,7 +1402,13 @@ impl LinkCollector<'_, '_> {
         // Disallow e.g. linking to enums with `struct@`
         debug!("saw kind {kind:?} with disambiguator {disambiguator:?}");
         match (kind, disambiguator) {
-                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                | (
+                    DefKind::Const { .. }
+                    | DefKind::ConstParam
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AnonConst,
+                    Some(Disambiguator::Kind(DefKind::Const { .. })),
+                )
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
                 | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
@@ -1727,7 +1731,7 @@ impl Disambiguator {
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
-                "const" | "constant" => Kind(DefKind::Const),
+                "const" | "constant" => Kind(DefKind::Const { is_type_const: false }),
                 "static" => Kind(DefKind::Static {
                     mutability: Mutability::Not,
                     nested: false,
@@ -1910,61 +1914,70 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.node_span_lint(lint, hir_id, sp, |lint| {
-        lint.primary_message(msg);
+    tcx.emit_node_span_lint(
+        lint,
+        hir_id,
+        sp,
+        rustc_errors::DiagDecorator(|lint| {
+            lint.primary_message(msg);
 
-        let (span, link_range) = match link_range {
-            MarkdownLinkRange::Destination(md_range) => {
-                let mut md_range = md_range.clone();
-                let sp =
-                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|(mut sp, _)| {
-                            while dox.as_bytes().get(md_range.start) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.start) == Some(&b'`')
-                            {
-                                md_range.start += 1;
-                                sp = sp.with_lo(sp.lo() + BytePos(1));
-                            }
-                            while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
-                            {
-                                md_range.end -= 1;
-                                sp = sp.with_hi(sp.hi() - BytePos(1));
-                            }
-                            sp
-                        });
-                (sp, MarkdownLinkRange::Destination(md_range))
-            }
-            MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
-                    .map(|(sp, _)| sp),
-                link_range.clone(),
-            ),
-        };
+            let (span, link_range) = match link_range {
+                MarkdownLinkRange::Destination(md_range) => {
+                    let mut md_range = md_range.clone();
+                    let sp = source_span_for_markdown_range(
+                        tcx,
+                        dox,
+                        &md_range,
+                        &item.attrs.doc_strings,
+                    )
+                    .map(|(mut sp, _)| {
+                        while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                        {
+                            md_range.start += 1;
+                            sp = sp.with_lo(sp.lo() + BytePos(1));
+                        }
+                        while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                        {
+                            md_range.end -= 1;
+                            sp = sp.with_hi(sp.hi() - BytePos(1));
+                        }
+                        sp
+                    });
+                    (sp, MarkdownLinkRange::Destination(md_range))
+                }
+                MarkdownLinkRange::WholeLink(md_range) => (
+                    source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                        .map(|(sp, _)| sp),
+                    link_range.clone(),
+                ),
+            };
 
-        if let Some(sp) = span {
-            lint.span(sp);
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let md_range = link_range.inner_range().clone();
-            let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+            if let Some(sp) = span {
+                lint.span(sp);
+            } else {
+                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                //                       ^     ~~~~
+                //                       |     link_range
+                //                       last_new_line_offset
+                let md_range = link_range.inner_range().clone();
+                let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
+                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `md_range` and manually mark it with '^'s.
-            lint.note(format!(
-                "the link appears in this line:\n\n{line}\n\
+                // Print the line containing the `md_range` and manually mark it with '^'s.
+                lint.note(format!(
+                    "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
-                indicator = "",
-                before = md_range.start - last_new_line_offset,
-                found = md_range.len(),
-            ));
-        }
+                    indicator = "",
+                    before = md_range.start - last_new_line_offset,
+                    found = md_range.len(),
+                ));
+            }
 
-        decorate(lint, span, link_range);
-    });
+            decorate(lint, span, link_range);
+        }),
+    );
 }
 
 /// Reports a link that failed to resolve.
@@ -2128,11 +2141,11 @@ fn resolution_failure(
                             | Field
                             | Closure
                             | AssocTy
-                            | AssocConst
+                            | AssocConst { .. }
                             | AssocFn
                             | Fn
                             | Macro(_)
-                            | Const
+                            | Const { .. }
                             | ConstParam
                             | ExternCrate
                             | Use

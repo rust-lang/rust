@@ -35,12 +35,12 @@ declare_clippy_lint! {
     "unnecessary semicolon after expression returning `()`"
 }
 
+impl_lint_pass!(UnnecessarySemicolon => [UNNECESSARY_SEMICOLON]);
+
 #[derive(Default)]
 pub struct UnnecessarySemicolon {
     last_statements: Vec<(HirId, bool)>,
 }
-
-impl_lint_pass!(UnnecessarySemicolon => [UNNECESSARY_SEMICOLON]);
 
 impl UnnecessarySemicolon {
     /// Enter or leave a block, remembering the last statement of the block.

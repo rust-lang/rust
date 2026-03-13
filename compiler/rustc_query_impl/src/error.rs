@@ -35,9 +35,9 @@ pub(crate) struct CycleStack {
 #[derive(Subdiagnostic)]
 pub(crate) enum StackCount {
     #[note("...which immediately requires {$stack_bottom} again")]
-    Single,
+    Single { stack_bottom: String },
     #[note("...which again requires {$stack_bottom}, completing the cycle")]
-    Multiple,
+    Multiple { stack_bottom: String },
 }
 
 #[derive(Subdiagnostic)]

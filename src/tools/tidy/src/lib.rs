@@ -6,12 +6,6 @@
 use std::ffi::OsStr;
 use std::process::Command;
 
-use build_helper::ci::CiEnv;
-use build_helper::git::{GitConfig, get_closest_upstream_commit};
-use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
-
-use crate::diagnostics::{RunningCheck, TidyCtx};
-
 macro_rules! static_regex {
     ($re:literal) => {{
         static RE: ::std::sync::LazyLock<::regex::Regex> =
@@ -42,60 +36,6 @@ macro_rules! t {
     };
 }
 
-pub struct CiInfo {
-    pub git_merge_commit_email: String,
-    pub nightly_branch: String,
-    pub base_commit: Option<String>,
-    pub ci_env: CiEnv,
-}
-
-impl CiInfo {
-    pub fn new(tidy_ctx: TidyCtx) -> Self {
-        let mut check = tidy_ctx.start_check("CI history");
-
-        let stage0 = parse_stage0_file();
-        let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
-
-        let mut info = Self {
-            nightly_branch,
-            git_merge_commit_email,
-            ci_env: CiEnv::current(),
-            base_commit: None,
-        };
-        let base_commit = match get_closest_upstream_commit(None, &info.git_config(), info.ci_env) {
-            Ok(Some(commit)) => Some(commit),
-            Ok(None) => {
-                info.error_if_in_ci("no base commit found", &mut check);
-                None
-            }
-            Err(error) => {
-                info.error_if_in_ci(
-                    &format!("failed to retrieve base commit: {error}"),
-                    &mut check,
-                );
-                None
-            }
-        };
-        info.base_commit = base_commit;
-        info
-    }
-
-    pub fn git_config(&self) -> GitConfig<'_> {
-        GitConfig {
-            nightly_branch: &self.nightly_branch,
-            git_merge_commit_email: &self.git_merge_commit_email,
-        }
-    }
-
-    pub fn error_if_in_ci(&self, msg: &str, check: &mut RunningCheck) {
-        if self.ci_env.is_running_in_ci() {
-            check.error(msg);
-        } else {
-            check.warning(format!("{msg}. Some checks will be skipped."));
-        }
-    }
-}
-
 pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<String> {
     let output = Command::new("git").arg("diff").arg(base_commit).arg(extra_arg).output().ok()?;
     Some(String::from_utf8_lossy(&output.stdout).into())
@@ -107,15 +47,16 @@ pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<Stri
 ///
 /// if in CI, no elements will be removed.
 pub fn files_modified_batch_filter<T>(
-    ci_info: &CiInfo,
+    base_commit: &Option<String>,
+    is_ci: bool,
     items: &mut Vec<T>,
     pred: impl Fn(&T, &str) -> bool,
 ) {
-    if CiEnv::is_ci() {
+    if is_ci {
         // assume everything is modified on CI because we really don't want false positives there.
         return;
     }
-    let Some(base_commit) = &ci_info.base_commit else {
+    let Some(base_commit) = base_commit else {
         eprintln!("No base commit, assuming all files are modified");
         return;
     };
@@ -150,9 +91,13 @@ pub fn files_modified_batch_filter<T>(
 }
 
 /// Returns true if any modified file matches the predicate, if we are in CI, or if unable to list modified files.
-pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
+pub fn files_modified(
+    base_commit: &Option<String>,
+    is_ci: bool,
+    pred: impl Fn(&str) -> bool,
+) -> bool {
     let mut v = vec![()];
-    files_modified_batch_filter(ci_info, &mut v, |_, p| pred(p));
+    files_modified_batch_filter(base_commit, is_ci, &mut v, |_, p| pred(p));
     !v.is_empty()
 }
 

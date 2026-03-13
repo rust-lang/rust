@@ -23,7 +23,7 @@ lto = "off"
 frame-pointers = true
 # Compiler contributors often want to build rustc even without any changes to
 # e.g. check that it builds locally and check the baseline behavior of a
-# compiler built from latest `master` commit.
+# compiler built from latest `main` commit.
 download-rustc = false
 
 [llvm]

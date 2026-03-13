@@ -1,18 +1,10 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/derive-expect-issue-150553-3.rs:6:10
+  --> $DIR/derive-expect-issue-150553-3.rs:8:10
    |
 LL | #[expect(unexpected_cfgs)]
    |          ^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unfulfilled_lint_expectations)]` on by default
 
-warning: this lint expectation is unfulfilled
-  --> $DIR/derive-expect-issue-150553-3.rs:6:10
-   |
-LL | #[expect(unexpected_cfgs)]
-   |          ^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 

@@ -268,8 +268,16 @@ LL | |         1
 LL | |     } else {
    | |_____^
    |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/bad-let-else-statement.rs:98:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |         return;
+LL | |     };
+   | |_____^
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: irrefutable `let...else` pattern
@@ -281,8 +289,16 @@ LL | |         x
 LL | |     } else {
    | |_____^
    |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/bad-let-else-statement.rs:163:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |         return;
+LL | |     };
+   | |_____^
 
 warning: irrefutable `let...else` pattern
   --> $DIR/bad-let-else-statement.rs:170:5
@@ -290,8 +306,12 @@ warning: irrefutable `let...else` pattern
 LL |     let ok = format_args!("") else { return; };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/bad-let-else-statement.rs:170:36
+   |
+LL |     let ok = format_args!("") else { return; };
+   |                                    ^^^^^^^^^^^
 
 warning: irrefutable `let...else` pattern
   --> $DIR/bad-let-else-statement.rs:173:5
@@ -299,8 +319,12 @@ warning: irrefutable `let...else` pattern
 LL |     let bad = format_args! {""} else { return; };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/bad-let-else-statement.rs:173:38
+   |
+LL |     let bad = format_args! {""} else { return; };
+   |                                      ^^^^^^^^^^^
 
 warning: irrefutable `let...else` pattern
   --> $DIR/bad-let-else-statement.rs:204:5
@@ -311,8 +335,16 @@ LL | |         8
 LL | |     } else {
    | |_____^
    |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
+   = note: this pattern always matches, so the else clause is unreachable
+help: remove this `else` block
+  --> $DIR/bad-let-else-statement.rs:207:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |
+LL | |         return;
+LL | |     };
+   | |_____^
 
 error: aborting due to 19 previous errors; 5 warnings emitted
 

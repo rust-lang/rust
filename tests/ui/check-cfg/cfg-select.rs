@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(cfg_select)]
 #![crate_type = "lib"]
 
 cfg_select! {

@@ -61,8 +61,6 @@ fn foo(baz: Baz) {
             en Baz
             en Result
             md core
-            ev Err
-            ev Ok
             bn Baz::Bar Baz::Bar$0
             bn Baz::Foo Baz::Foo$0
             bn Err(…)    Err($1)$0
@@ -89,10 +87,6 @@ fn foo(baz: Baz) {
             en Baz
             en Result
             md core
-            ev Bar
-            ev Err
-            ev Foo
-            ev Ok
             bn Bar        Bar$0
             bn Err(…) Err($1)$0
             bn Foo        Foo$0

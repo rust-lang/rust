@@ -1,6 +1,5 @@
 //@check-pass
 #![warn(clippy::match_like_matches_macro)]
-#![feature(if_let_guard)]
 
 #[expect(clippy::option_option)]
 fn issue15841(opt: Option<Option<Option<i32>>>, value: i32) {

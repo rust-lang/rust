@@ -35,6 +35,7 @@ declare_clippy_lint! {
     suspicious,
     "creating a `Box` from a void raw pointer"
 }
+
 declare_lint_pass!(FromRawWithVoidPtr => [FROM_RAW_WITH_VOID_PTR]);
 
 impl LateLintPass<'_> for FromRawWithVoidPtr {

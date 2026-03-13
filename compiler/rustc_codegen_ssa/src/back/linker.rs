@@ -527,7 +527,8 @@ impl<'a> Linker for GccLinker<'a> {
     ) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld && self.is_gnu {
+                // noop on windows w/ gcc, warning w/ clang
+                if !self.is_ld && self.is_gnu && !self.sess.target.is_like_windows {
                     self.cc_arg("-no-pie");
                 }
             }

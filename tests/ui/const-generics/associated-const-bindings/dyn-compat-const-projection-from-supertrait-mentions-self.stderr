@@ -5,7 +5,12 @@ LL |     type const K: usize;
    |     ------------------- `K` defined here
 ...
 LL |     let _: dyn X<Q = 10>;
-   |                ^^^^^^^^^ help: specify the associated constant: `X<Q = 10, K = /* CONST */>`
+   |                ^^^^^^^^^
+   |
+help: specify the associated constant
+   |
+LL |     let _: dyn X<Q = 10, K = /* CONST */>;
+   |                        +++++++++++++++++
 
 error: aborting due to 1 previous error
 

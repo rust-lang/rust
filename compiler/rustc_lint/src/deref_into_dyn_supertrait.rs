@@ -87,7 +87,10 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
                     ty::AssocTag::Type,
                     item.owner_id.to_def_id(),
                 )
-                .map(|label| SupertraitAsDerefTargetLabel { label: tcx.def_span(label.def_id) });
+                .map(|label| SupertraitAsDerefTargetLabel {
+                    label: tcx.def_span(label.def_id),
+                    self_ty,
+                });
             let span = tcx.def_span(item.owner_id.def_id);
             cx.emit_span_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,

@@ -4,7 +4,7 @@ use rustc_span::Span;
 use crate::comment::recover_comment_removed;
 use crate::config::StyleEdition;
 use crate::expr::{ExprType, format_expr, is_simple_block};
-use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
 use crate::spanned::Spanned;
@@ -62,7 +62,7 @@ impl<'a> Stmt<'a> {
             result.push(Stmt {
                 inner: iter.next().unwrap(),
                 is_last: iter.peek().is_none(),
-            })
+            });
         }
         result
     }
@@ -132,9 +132,7 @@ fn format_stmt(
                 ""
             };
 
-            let shape = shape
-                .sub_width(suffix.len())
-                .max_width_error(shape.width, ex.span())?;
+            let shape = shape.sub_width(suffix.len(), ex.span())?;
             format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
         }
         ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => {

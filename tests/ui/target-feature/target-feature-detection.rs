@@ -4,9 +4,6 @@
 //@ run-pass
 //@ ignore-i586 (no SSE2)
 
-#![allow(stable_features)]
-#![feature(cfg_target_feature)]
-
 fn main() {
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         assert!(

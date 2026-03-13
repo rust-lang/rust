@@ -1,3 +1,4 @@
+#![attr = Feature([diagnostic_on_const#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
@@ -5,10 +6,27 @@ use ::std::prelude::rust_2015::*;
 //@ check-pass
 //@ edition: 2015
 
-#[diagnostic::on_unimplemented(message =
-"My Message for `ImportantTrait<{A}>` implemented for `{Self}`", label =
-"My Label", note = "Note 1", note = "Note 2")]
+#[attr = OnUnimplemented {directive: Directive {is_rustc_attr: false,
+subcommands: [],
+message: FormatString {input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",
+pieces: [Lit("My Message for `ImportantTrait<"),
+Arg(GenericParam {generic_param: "A"}), Lit(">` implemented for `"),
+Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",
+pieces: [Lit("My Label")]}, notes: [FormatString {input: "Note 1",
+pieces: [Lit("Note 1")]}, FormatString {input: "Note 2",
+pieces: [Lit("Note 2")]}]}}]
 trait ImportantTrait<A> { }
 
 #[attr = DoNotRecommend]
 impl <T> ImportantTrait<T> for T where T: Clone { }
+
+struct X;
+
+#[attr = OnConst {directive: Directive {is_rustc_attr: false, subcommands: [],
+message: FormatString {input: "My Message for `ImportantTrait<u8>` implemented for `{Self}`",
+pieces: [Lit("My Message for `ImportantTrait<u8>` implemented for `"),
+Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",
+pieces: [Lit("My Label")]}, notes: [FormatString {input: "Note 1",
+pieces: [Lit("Note 1")]}, FormatString {input: "Note 2",
+pieces: [Lit("Note 2")]}]}}]
+impl ImportantTrait<u8> for X { }

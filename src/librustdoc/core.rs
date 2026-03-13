@@ -157,11 +157,10 @@ pub(crate) fn new_dcx(
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
 ) -> rustc_errors::DiagCtxt {
-    let translator = rustc_driver::default_translator();
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => Box::new(
-                AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .diagnostic_width(diagnostic_width)
@@ -178,7 +177,6 @@ pub(crate) fn new_dcx(
                 JsonEmitter::new(
                     Box::new(io::BufWriter::new(io::stderr())),
                     Some(source_map),
-                    translator,
                     pretty,
                     json_rendered,
                     color_config,
@@ -234,6 +232,9 @@ pub(crate) fn create_config(
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
         rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
+        rustc_lint::builtin::DUPLICATE_FEATURES.name.to_string(),
+        rustc_lint::builtin::UNUSED_FEATURES.name.to_string(),
+        rustc_lint::builtin::STABLE_FEATURES.name.to_string(),
         // this lint is needed to support `#[expect]` attributes
         rustc_lint::builtin::UNFULFILLED_LINT_EXPECTATIONS.name.to_string(),
     ];
@@ -287,7 +288,11 @@ pub(crate) fn create_config(
         crate_check_cfg: check_cfgs,
         input,
         output_file: None,
-        output_dir: None,
+        output_dir: if render_options.output_to_stdout {
+            None
+        } else {
+            Some(render_options.output.clone())
+        },
         file_loader: None,
         lint_caps,
         psess_created: None,
@@ -349,7 +354,7 @@ pub(crate) fn run_global_ctxt(
     // (see `override_queries` in the `config`)
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
-    let _ = tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
+    tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
 
     tcx.dcx().abort_if_errors();
 
@@ -398,16 +403,16 @@ pub(crate) fn run_global_ctxt(
             {}/rustdoc/how-to-write-documentation.html",
             crate::DOC_RUST_LANG_ORG_VERSION
         );
-        tcx.node_lint(
+        tcx.emit_node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            |lint| {
+            rustc_errors::DiagDecorator(|lint| {
                 if let Some(local_def_id) = krate.module.item_id.as_local_def_id() {
                     lint.span(tcx.def_span(local_def_id));
                 }
                 lint.primary_message("no documentation found for this crate's top-level module");
                 lint.help(help);
-            },
+            }),
         );
     }
 

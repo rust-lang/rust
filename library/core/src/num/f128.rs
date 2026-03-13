@@ -275,6 +275,70 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     pub const NEG_INFINITY: f128 = -1.0_f128 / 0.0_f128;
 
+    /// Maximum integer that can be represented exactly in an [`f128`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i128`] and [`f128`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f128`] and back to
+    /// [`i128`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f128`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f128::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f128::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// # #[cfg(target_has_reliable_f128)] {
+    /// let max_exact_int = f128::MAX_EXACT_INTEGER;
+    /// assert_eq!(max_exact_int, max_exact_int as f128 as i128);
+    /// assert_eq!(max_exact_int + 1, (max_exact_int + 1) as f128 as i128);
+    /// assert_ne!(max_exact_int + 2, (max_exact_int + 2) as f128 as i128);
+    ///
+    /// // Beyond `f128::MAX_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((max_exact_int + 1) as f128, (max_exact_int + 2) as f128);
+    /// # }}
+    /// ```
+    // #[unstable(feature = "f128", issue = "116909")]
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MAX_EXACT_INTEGER: i128 = (1 << Self::MANTISSA_DIGITS) - 1;
+
+    /// Minimum integer that can be represented exactly in an [`f128`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i128`] and [`f128`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f128`] and back to
+    /// [`i128`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f128`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// This constant is equivalent to `-MAX_EXACT_INTEGER`.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f128::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f128::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// # #[cfg(target_has_reliable_f128)] {
+    /// let min_exact_int = f128::MIN_EXACT_INTEGER;
+    /// assert_eq!(min_exact_int, min_exact_int as f128 as i128);
+    /// assert_eq!(min_exact_int - 1, (min_exact_int - 1) as f128 as i128);
+    /// assert_ne!(min_exact_int - 2, (min_exact_int - 2) as f128 as i128);
+    ///
+    /// // Below `f128::MIN_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((min_exact_int - 1) as f128, (min_exact_int - 2) as f128);
+    /// # }}
+    /// ```
+    // #[unstable(feature = "f128", issue = "116909")]
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MIN_EXACT_INTEGER: i128 = -Self::MAX_EXACT_INTEGER;
+
     /// Sign bit
     pub(crate) const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 

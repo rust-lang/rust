@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
@@ -22,8 +23,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -1309,12 +1309,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && !spans.is_empty()
                     {
                         let mut span: MultiSpan = spans.clone().into();
-                        err.arg("ty", param_ty.to_string());
-                        let msg = err.dcx.eagerly_translate_to_string(
-                            msg!("`{$ty}` is made to be an `FnOnce` closure here"),
-                            err.args.iter(),
-                        );
-                        err.remove_arg("ty");
+                        let msg = msg!("`{$ty}` is made to be an `FnOnce` closure here")
+                            .arg("ty", param_ty.to_string())
+                            .format();
                         for sp in spans {
                             span.push_span_label(sp, msg.clone());
                         }
@@ -1511,11 +1508,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                         )
                                     }
                                 };
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
                                 for error in errors {
                                     if let FulfillmentErrorCode::Select(
                                         SelectionError::Unimplemented,

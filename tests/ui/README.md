@@ -440,10 +440,6 @@ Everything to do with `--diagnostic-width`.
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
-## `tests/ui/diagnostics-infra`
-
-This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
-
 ## `tests/ui/did_you_mean/`
 
 Tests for miscellaneous suggestions.
@@ -502,10 +498,6 @@ See:
 
 Previously known as "object safety".
 
-## `tests/ui/dyn-drop/`: `dyn Drop`
-
-**FIXME**: Contains a single test, used only to check the `dyn_drop` lint (which is normally `warn` level).
-
 ## `tests/ui/dyn-keyword/`: `dyn` and Dynamic Dispatch
 
 The `dyn` keyword is used to highlight that calls to methods on the associated Trait are dynamically dispatched. To use the trait this way, it must be dyn-compatible - tests about dyn-compatibility belong in `tests/ui/dyn-compatibility/`, while more general tests on dynamic dispatch belong here.
@@ -521,10 +513,6 @@ These tests run in specific Rust editions, such as Rust 2015 or Rust 2018, and c
 ## `tests/ui/eii`: Externally Implementable Items
 
 Exercises `eii` keyword.
-
-## `tests/ui/empty/`: Various tests related to the concept of "empty"
-
-**FIXME**: These tests need better homes, this is not very informative.
 
 ## `tests/ui/entry-point/`: `main` function
 
@@ -600,6 +588,12 @@ See:
 
 - [`ffi_const` | The Unstable book](https://doc.rust-lang.org/unstable-book/language-features/ffi-const.html)
 - [`ffi_pure` | The Unstable book](https://doc.rust-lang.org/beta/unstable-book/language-features/ffi-pure.html)
+
+## `tests/ui/field_representing_types`: `#![feature(field_projections)]`
+
+Tests for field representing types `field_of!(Struct, field)`.
+
+See: [Tracking Issue for Field Projections #145383](https://github.com/rust-lang/rust/issues/145383)
 
 ## `tests/ui/float`
 
@@ -702,6 +696,11 @@ This test category revolves around trait objects with `Sized` having illegal ope
 ## `tests/ui/impl-header-lifetime-elision/`
 
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
+
+## `tests/ui/impl-restriction/`
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
+](https://github.com/rust-lang/rust/issues/105077).
+
 
 ## `tests/ui/impl-trait/`
 
@@ -933,12 +932,6 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
 
-## `tests/ui/missing-trait-bounds/`
-
-Tests for checking missing trait bounds, and their diagnostics.
-
-**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
-
 ## `tests/ui/modules/`
 
 Tests on the module system.
@@ -1165,12 +1158,6 @@ See [Tracking Issue for Reborrow trait lang experiment #145612](https://github.c
 Broad category of tests exercising recursions (compile test and run time), in functions, macros, `type` definitions, and more.
 
 Also exercises the `#![recursion_limit = ""]` attribute.
-
-## `tests/ui/recursion_limit/`: `#![recursion_limit = ""]`
-
-Sets a recursion limit on recursive code.
-
-**FIXME**: Should be merged with `tests/ui/recursion/`.
 
 ## `tests/ui/reflection/`
 
@@ -1593,10 +1580,6 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
-
-## `tests/ui/version/`
-
-**FIXME**: Contains a single test described as "Check that rustc accepts various version info flags.", should be rehomed.
 
 ## `tests/ui/wasm/`
 

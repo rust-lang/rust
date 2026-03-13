@@ -1,0 +1,40 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:17:9
+   |
+LL |         fn bar(&self, r: &mut Re);
+   |         -------------------------- expected `fn(&'1 plain::Foo, &'2 mut plain::Re<'3>)`
+...
+LL |         fn bar<'a, 'b>(&'a self, _r: &'b mut Re<'a>) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 plain::Foo, &'2 mut plain::Re<'1>)`
+   |
+   = note: expected signature `fn(&'1 plain::Foo, &'2 mut plain::Re<'3>)`
+              found signature `fn(&'1 plain::Foo, &'2 mut plain::Re<'1>)`
+   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+note: `Re` here is elided as `Re<'_>`
+  --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:11:31
+   |
+LL |         fn bar(&self, r: &mut Re);
+   |                               ^^
+
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:40:9
+   |
+LL |         fn bar(&self, r: &mut Re<u8>);
+   |         ------------------------------ expected `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'3, u8>)`
+...
+LL |         fn bar<'a, 'b>(&'a self, _r: &'b mut Re<'a, u8>) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'1, u8>)`
+   |
+   = note: expected signature `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'3, u8>)`
+              found signature `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'1, u8>)`
+   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+note: `Re` here is elided as `Re<'_, u8>`
+  --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:34:31
+   |
+LL |         fn bar(&self, r: &mut Re<u8>);
+   |                               ^^
+
+error: aborting due to 2 previous errors
+

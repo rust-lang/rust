@@ -39,6 +39,8 @@ declare_clippy_lint! {
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
 }
 
+impl_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
+
 pub struct ExplicitWrite {
     format_args: FormatArgsStorage,
 }
@@ -48,8 +50,6 @@ impl ExplicitWrite {
         Self { format_args }
     }
 }
-
-impl_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
 impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

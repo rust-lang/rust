@@ -9,7 +9,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata, ignore_publish: b
     for package in &metadata.packages {
         // only run the lint if publish is `None` (`publish = true` or skipped entirely)
         // or if the vector isn't empty (`publish = ["something"]`)
-        if package.publish.as_ref().filter(|publish| publish.is_empty()).is_none() || ignore_publish {
+        if package.publish.as_ref().is_none_or(|publish| !publish.is_empty()) || ignore_publish {
             if is_empty_str(package.description.as_ref()) {
                 missing_warning(cx, package, "package.description");
             }

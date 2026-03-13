@@ -389,7 +389,7 @@ impl<'tcx> StoreBuffer {
             })
             .filter(|&store_elem| {
                 if is_seqcst && store_elem.is_seqcst {
-                    // An SC load needs to ignore all but last store maked SC (stores not marked SC are not
+                    // An SC load needs to ignore all but last store marked SC (stores not marked SC are not
                     // affected)
                     let include = !found_sc;
                     found_sc = true;

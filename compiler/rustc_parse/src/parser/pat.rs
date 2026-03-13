@@ -12,8 +12,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
@@ -364,6 +363,7 @@ impl<'a> Parser<'a> {
                     start: lo,
                     suggestion: TrailingVertSuggestion {
                         span: self.prev_token.span.shrink_to_hi().with_hi(self.token.span.hi()),
+                        token: self.token,
                     },
                     token: self.token,
                     note_double_vert: self.token.kind == token::OrOr,

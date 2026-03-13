@@ -100,7 +100,7 @@ LL |     (0..).all(|x| x == 24);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> tests/ui/infinite_iter.rs:107:31
+  --> tests/ui/infinite_iter.rs:104:31
    |
 LL |         let _: HashSet<i32> = (0..).collect();
    |                               ^^^^^^^^^^^^^^^

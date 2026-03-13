@@ -11,8 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Spanned, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 
@@ -306,7 +305,7 @@ pub enum FakeBorrowKind {
 /// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
 /// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
 /// causing an ICE if they are violated.
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum StatementKind<'tcx> {
     /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
@@ -1457,13 +1456,6 @@ pub enum Rvalue<'tcx> {
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
     /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
-
-    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
-    ///
-    /// This is different from a normal transmute because dataflow analysis will treat the box as
-    /// initialized but its content as uninitialized. Like other pointer casts, this in general
-    /// affects alias analysis.
-    ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
 
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it

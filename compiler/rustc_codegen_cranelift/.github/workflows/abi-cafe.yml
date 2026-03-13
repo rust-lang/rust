@@ -49,6 +49,12 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: cat /proc/cpuinfo
 
+    - name: Free disk space
+      if: runner.os == 'Linux'
+      env:
+        RUNNER_ENVIRONMENT: github-hosted
+      run: .github/scripts/free-disk-space.sh
+
     - name: Cache cargo target dir
       uses: actions/cache@v4
       with:

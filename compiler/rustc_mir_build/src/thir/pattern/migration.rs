@@ -55,10 +55,15 @@ impl<'a> PatMigration<'a> {
             self.format_subdiagnostics(&mut err);
             err.emit();
         } else {
-            tcx.node_span_lint(lint::builtin::RUST_2024_INCOMPATIBLE_PAT, pat_id, spans, |diag| {
-                diag.primary_message(primary_message);
-                self.format_subdiagnostics(diag);
-            });
+            tcx.emit_node_span_lint(
+                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
+                pat_id,
+                spans,
+                rustc_errors::DiagDecorator(|diag| {
+                    diag.primary_message(primary_message);
+                    self.format_subdiagnostics(diag);
+                }),
+            );
         }
     }
 
@@ -129,7 +134,7 @@ impl<'a> PatMigration<'a> {
         // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
         debug_assert!(!self.suggestion.is_empty());
         if !self.suggestion.is_empty() {
-            diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
+            diag.multipart_suggestion(msg, self.suggestion, applicability);
         }
     }
 

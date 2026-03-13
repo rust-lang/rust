@@ -1,16 +1,16 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::{is_from_proc_macro, sym};
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
+use rustc_span::Symbol;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,6 +34,9 @@ declare_clippy_lint! {
     style,
     "checks for usage of legacy std numeric constants and methods"
 }
+
+impl_lint_pass!(LegacyNumericConstants => [LEGACY_NUMERIC_CONSTANTS]);
+
 pub struct LegacyNumericConstants {
     msrv: Msrv,
 }
@@ -43,8 +46,6 @@ impl LegacyNumericConstants {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(LegacyNumericConstants => [LEGACY_NUMERIC_CONSTANTS]);
 
 impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

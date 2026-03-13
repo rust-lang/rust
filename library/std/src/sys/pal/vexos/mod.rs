@@ -1,3 +1,4 @@
+#[path = "../unsupported/os.rs"]
 pub mod os;
 
 #[expect(dead_code)]

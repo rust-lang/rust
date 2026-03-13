@@ -7,7 +7,7 @@ use crate::dep_graph;
 use crate::dep_graph::{DepKind, DepNodeKey};
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::plumbing::QueryVTable;
-use crate::query::{QueryCache, QueryMode};
+use crate::query::{EnsureMode, QueryCache, QueryMode};
 use crate::ty::TyCtxt;
 
 /// Checks whether there is already a value for this key in the in-memory
@@ -15,11 +15,11 @@ use crate::ty::TyCtxt;
 ///
 /// (Also performs some associated bookkeeping, if a value was found.)
 #[inline(always)]
-fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: &C::Key) -> Option<C::Value>
+fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: C::Key) -> Option<C::Value>
 where
     C: QueryCache,
 {
-    match cache.lookup(key) {
+    match cache.lookup(&key) {
         Some((value, index)) => {
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
@@ -32,92 +32,94 @@ where
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
 #[inline(always)]
-pub(crate) fn query_get_at<'tcx, Cache>(
+pub(crate) fn query_get_at<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
     span: Span,
-    key: Cache::Key,
-) -> Cache::Value
+    query: &'tcx QueryVTable<'tcx, C>,
+    key: C::Key,
+) -> C::Value
 where
-    Cache: QueryCache,
+    C: QueryCache,
 {
-    match try_get_cached(tcx, query_cache, &key) {
+    match try_get_cached(tcx, &query.cache, key) {
         Some(value) => value,
-        None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
+        None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
     }
 }
 
-/// Shared implementation of `tcx.ensure_ok().$query(..)` for most queries,
-/// and `tcx.ensure_done().$query(..)` for all queries.
+/// Shared implementation of `tcx.ensure_ok().$query(..)` and
+/// `tcx.ensure_done().$query(..)` for all queries.
 #[inline]
-pub(crate) fn query_ensure<'tcx, Cache>(
+pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
-    key: Cache::Key,
-    check_cache: bool,
+    query: &'tcx QueryVTable<'tcx, C>,
+    key: C::Key,
+    ensure_mode: EnsureMode,
 ) where
-    Cache: QueryCache,
+    C: QueryCache,
 {
-    if try_get_cached(tcx, query_cache, &key).is_none() {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
+    match try_get_cached(tcx, &query.cache, key) {
+        Some(_value) => {}
+        None => {
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+        }
     }
 }
 
-/// Shared implementation of `tcx.ensure_ok().$query(..)` for queries that
-/// have the `return_result_from_ensure_ok` modifier.
+/// Implementation of `tcx.ensure_result().$query(..)` for queries that
+/// return `Result<_, ErrorGuaranteed>`.
 #[inline]
-pub(crate) fn query_ensure_error_guaranteed<'tcx, Cache, T>(
+pub(crate) fn query_ensure_result<'tcx, C, T>(
     tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
-    key: Cache::Key,
-    check_cache: bool,
+    query: &'tcx QueryVTable<'tcx, C>,
+    key: C::Key,
 ) -> Result<(), ErrorGuaranteed>
 where
-    Cache: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
+    C: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
     Result<T, ErrorGuaranteed>: Erasable,
 {
-    if let Some(res) = try_get_cached(tcx, query_cache, &key) {
-        erase::restore_val(res).map(drop)
-    } else {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
-            .map(erase::restore_val)
-            .map(|res| res.map(drop))
-            // Either we actually executed the query, which means we got a full `Result`,
-            // or we can just assume the query succeeded, because it was green in the
-            // incremental cache. If it is green, that means that the previous compilation
-            // that wrote to the incremental cache compiles successfully. That is only
-            // possible if the cache entry was `Ok(())`, so we emit that here, without
-            // actually encoding the `Result` in the cache or loading it from there.
-            .unwrap_or(Ok(()))
+    match try_get_cached(tcx, &query.cache, key) {
+        Some(value) => erase::restore_val(value).map(drop),
+        None => (query.execute_query_fn)(
+            tcx,
+            DUMMY_SP,
+            key,
+            QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
+        )
+        .map(erase::restore_val)
+        .map(|value| value.map(drop))
+        // Either we actually executed the query, which means we got a full `Result`,
+        // or we can just assume the query succeeded, because it was green in the
+        // incremental cache. If it is green, that means that the previous compilation
+        // that wrote to the incremental cache compiles successfully. That is only
+        // possible if the cache entry was `Ok(())`, so we emit that here, without
+        // actually encoding the `Result` in the cache or loading it from there.
+        .unwrap_or(Ok(())),
     }
 }
 
 /// Common implementation of query feeding, used by `define_feedable!`.
-pub(crate) fn query_feed<'tcx, Cache>(
+pub(crate) fn query_feed<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     dep_kind: DepKind,
-    query_vtable: &QueryVTable<'tcx, Cache>,
-    cache: &Cache,
-    key: Cache::Key,
-    value: Cache::Value,
+    query_vtable: &QueryVTable<'tcx, C>,
+    key: C::Key,
+    value: C::Value,
 ) where
-    Cache: QueryCache,
-    Cache::Key: DepNodeKey<'tcx>,
+    C: QueryCache,
+    C::Key: DepNodeKey<'tcx>,
 {
     let format_value = query_vtable.format_value;
 
     // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, cache, &key) {
+    match try_get_cached(tcx, &query_vtable.cache, key) {
         Some(old) => {
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
-            if let Some(hasher_fn) = query_vtable.hash_result {
+            if let Some(hash_value_fn) = query_vtable.hash_value_fn {
                 let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hasher_fn(hcx, &old), hasher_fn(hcx, &value))
+                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
                 });
                 if old_hash != value_hash {
                     // We have an inconsistency. This can happen if one of the two
@@ -150,10 +152,10 @@ pub(crate) fn query_feed<'tcx, Cache>(
                 dep_node,
                 tcx,
                 &value,
-                query_vtable.hash_result,
+                query_vtable.hash_value_fn,
                 query_vtable.format_value,
             );
-            cache.complete(key, value, dep_node_index);
+            query_vtable.cache.complete(key, value, dep_node_index);
         }
     }
 }

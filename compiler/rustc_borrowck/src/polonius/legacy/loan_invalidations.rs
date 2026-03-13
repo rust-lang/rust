@@ -297,8 +297,9 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/) => {
+                self.consume_operand(location, operand)
+            }
 
             &Rvalue::Discriminant(place) => {
                 self.access_place(

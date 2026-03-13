@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 #[cfg(any(
     target_os = "aix",

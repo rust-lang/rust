@@ -27,9 +27,9 @@ use std::io::Write;
 use std::ops::ControlFlow;
 
 use rustc_public::crate_def::CrateDef;
-use rustc_public::mir::Body;
 use rustc_public::mir::alloc::GlobalAlloc;
 use rustc_public::mir::mono::{Instance, StaticDef};
+use rustc_public::mir::{Body, Operand, Rvalue, StatementKind};
 use rustc_public::ty::{Allocation, ConstantKind};
 use rustc_public::{CrateItem, CrateItems, ItemKind};
 
@@ -106,7 +106,7 @@ fn check_other_consts(item: CrateItem) {
     // Instance body will force constant evaluation.
     let body = Instance::try_from(item).unwrap().body().unwrap();
     let assigns = collect_consts(&body);
-    assert_eq!(assigns.len(), 10);
+    assert_eq!(assigns.len(), 11);
     let mut char_id = None;
     let mut bool_id = None;
     for (name, alloc) in assigns {
@@ -167,17 +167,44 @@ fn check_other_consts(item: CrateItem) {
     assert_ne!(bool_id, char_id);
 }
 
-/// Collects all the constant assignments.
+/// Collects all constant allocations from `fn other_consts()`. The returned map
+/// maps variable names to their corresponding constant allocation.
 pub fn collect_consts(body: &Body) -> HashMap<String, &Allocation> {
-    body.var_debug_info
+    let local_to_const_alloc = body
+        .blocks
         .iter()
-        .filter_map(|info| {
-            info.constant().map(|const_op| {
-                let ConstantKind::Allocated(alloc) = const_op.const_.kind() else { unreachable!() };
-                (info.name.clone(), alloc)
-            })
+        .flat_map(|block| block.statements.iter())
+        .filter_map(|statement| {
+            let StatementKind::Assign(place, Rvalue::Use(Operand::Constant(const_op))) =
+                &statement.kind
+            else {
+                return None;
+            };
+            let ConstantKind::Allocated(alloc) = const_op.const_.kind() else { return None };
+            Some((place.local, alloc))
         })
-        .collect::<HashMap<_, _>>()
+        .collect::<HashMap<_, _>>();
+
+    let mut allocations = HashMap::new();
+    for info in &body.var_debug_info {
+        // MIR optimzations sometimes gets rid of assignments. Look up the
+        // constant allocation directly in this case.
+        if let Some(const_op) = info.constant() {
+            let ConstantKind::Allocated(alloc) = const_op.const_.kind() else { unreachable!() };
+            allocations.insert(info.name.clone(), alloc);
+        }
+
+        // If MIR optimzations didn't get rid of the assignment, then we can
+        // find the constant allocation as an rvalue of the corresponding
+        // assignment.
+        if let Some(local) = info.local() {
+            if let Some(alloc) = local_to_const_alloc.get(&local) {
+                allocations.insert(info.name.clone(), alloc);
+            }
+        }
+    }
+
+    allocations
 }
 
 /// Check the allocation data for `LEN`.

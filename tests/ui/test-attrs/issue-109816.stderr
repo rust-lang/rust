@@ -1,5 +1,5 @@
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/issue-109816.rs:4:5
+  --> $DIR/issue-109816.rs:5:5
    |
 LL |     #[test]
    |     ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions

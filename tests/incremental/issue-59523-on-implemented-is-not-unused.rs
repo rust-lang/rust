@@ -9,13 +9,12 @@
 #![feature(rustc_attrs)]
 #![deny(unused_attributes)]
 
-#[rustc_on_unimplemented = "invalid"]
+#[rustc_on_unimplemented(label ="invalid")]
 trait Index<Idx: ?Sized> {
     type Output: ?Sized;
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
-#[rustc_on_unimplemented = "a usize is required to index into a slice"]
 impl Index<usize> for [i32] {
     type Output = i32;
     fn index(&self, index: usize) -> &i32 {

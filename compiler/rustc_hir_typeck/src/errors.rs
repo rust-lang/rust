@@ -11,11 +11,10 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::FnCtxt;
 
@@ -215,7 +214,7 @@ pub(crate) struct MissingParenthesesInRange<'tcx> {
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help("specify the type explicitly")]
     #[diag("never type fallback affects this call to an `unsafe` function")]
@@ -249,7 +248,7 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     },
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[help("specify the types explicitly")]
 #[diag("this function depends on never type fallback being `()`")]
 pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
@@ -304,7 +303,7 @@ impl Subdiagnostic for SuggestAnnotations {
             }
         }
 
-        diag.multipart_suggestion_verbose(
+        diag.multipart_suggestion(
             "use `()` annotations to avoid fallback changes",
             suggestions,
             Applicability::MachineApplicable,
@@ -372,7 +371,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
 #[help(
     "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
@@ -411,7 +410,7 @@ pub(crate) struct LossyProvenanceInt2PtrSuggestion {
     pub hi: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`"
 )]
@@ -491,15 +490,6 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
-pub(crate) struct NoFieldOnType<'tcx> {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) field: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag("no field named `{$field}` on enum variant `{$container}::{$ident}`", code = E0609)]
 pub(crate) struct NoFieldOnVariant<'tcx> {
     #[primary_span]
@@ -567,6 +557,14 @@ pub(crate) struct InvalidCallee<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub found: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("scalable vector types cannot be initialised using their constructor")]
+pub(crate) struct ScalableVectorCtor<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
@@ -761,7 +759,7 @@ pub(crate) struct SuggestPtrNullMut {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "trivial {$numeric ->
         [true] numeric cast
@@ -988,13 +986,17 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_translate(msg!("needs more type information"));
+                let msg = msg!("needs more type information");
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.span_label(span, msg);
             }
         }
@@ -1101,7 +1103,7 @@ pub(crate) struct InnerItem {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("can't reference `Self` constructor from outer item")]
 pub(crate) struct SelfCtorFromOuterItemLint {
     #[label(
@@ -1206,7 +1208,7 @@ pub(crate) struct ReplaceCommaWithSemicolon {
     pub descr: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
 pub(crate) struct SupertraitItemShadowing {
     pub item: Symbol,

@@ -21,8 +21,7 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
-use rustc_span::source_map::respan;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]
@@ -380,13 +379,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
-    type Value = RValue<'gcc>;
-    type Metadata = RValue<'gcc>;
     type Function = Function<'gcc>;
-
     type BasicBlock = Block<'gcc>;
-    type Type = Type<'gcc>;
     type Funclet = (); // TODO(antoyo)
+
+    type Value = RValue<'gcc>;
+    type Type = Type<'gcc>;
+    type FunctionSignature = Type<'gcc>;
 
     type DIScope = (); // TODO(antoyo)
     type DILocation = Location<'gcc>;
@@ -539,7 +538,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         | LayoutError::InvalidSimd { .. }
         | LayoutError::ReferencesError(_) = err
         {
-            self.tcx.dcx().emit_fatal(respan(span, err.into_diagnostic()))
+            self.tcx.dcx().span_fatal(span, err.to_string())
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }

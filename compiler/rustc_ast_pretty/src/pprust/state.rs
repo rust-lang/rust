@@ -20,9 +20,11 @@ use rustc_ast::{
     RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::IdentPrinter;
-use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{
+    BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Spanned, Symbol, kw, sym,
+};
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, BoxMarker, Breaks};
@@ -1110,6 +1112,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_visibility(v))
     }
 
+    fn impl_restriction_to_string(&self, r: &ast::ImplRestriction) -> String {
+        Self::to_string(|s| s.print_impl_restriction(r))
+    }
+
     fn block_to_string(&self, blk: &ast::Block) -> String {
         Self::to_string(|s| {
             let (cb, ib) = s.head("");
@@ -1377,6 +1383,23 @@ impl<'a> State<'a> {
                 self.word(" is ");
                 self.print_ty_pat(pat);
             }
+            ast::TyKind::FieldOf(ty, variant, field) => {
+                self.word("builtin # field_of");
+                self.popen();
+                let ib = self.ibox(0);
+                self.print_type(ty);
+                self.word(",");
+                self.space();
+
+                if let Some(variant) = variant {
+                    self.print_ident(*variant);
+                    self.word(".");
+                }
+                self.print_ident(*field);
+
+                self.end(ib);
+                self.pclose();
+            }
         }
         self.end(ib);
     }
@@ -1394,6 +1417,9 @@ impl<'a> State<'a> {
     }
 
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) {
+        if let ast::Parens::Yes = t.parens {
+            self.popen();
+        }
         self.print_formal_generic_params(&t.bound_generic_params);
 
         let ast::TraitBoundModifiers { constness, asyncness, polarity } = t.modifiers;
@@ -1416,7 +1442,10 @@ impl<'a> State<'a> {
             }
         }
 
-        self.print_trait_ref(&t.trait_ref)
+        self.print_trait_ref(&t.trait_ref);
+        if let ast::Parens::Yes = t.parens {
+            self.pclose();
+        }
     }
 
     fn print_stmt(&mut self, st: &ast::Stmt) {

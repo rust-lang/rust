@@ -8,17 +8,6 @@ use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 
-// Add a few symbols not in upstream `libc` just yet.
-pub mod libc {
-    pub use libc::*;
-
-    unsafe extern "C" {
-        pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
-        pub fn chdir(dir: *const c_char) -> c_int;
-        pub fn __wasilibc_get_environ() -> *mut *mut c_char;
-    }
-}
-
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
@@ -89,55 +78,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-#[allow(dead_code)]
-pub fn page_size() -> usize {
-    unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
-}
-
 pub fn temp_dir() -> PathBuf {
     panic!("no filesystem on wasm")
 }
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn exit(code: i32) -> ! {
-    unsafe { libc::exit(code) }
-}
-
-pub fn getpid() -> u32 {
-    panic!("unsupported");
-}
-
-#[doc(hidden)]
-pub trait IsMinusOne {
-    fn is_minus_one(&self) -> bool;
-}
-
-macro_rules! impl_is_minus_one {
-    ($($t:ident)*) => ($(impl IsMinusOne for $t {
-        fn is_minus_one(&self) -> bool {
-            *self == -1
-        }
-    })*)
-}
-
-impl_is_minus_one! { i8 i16 i32 i64 isize }
-
-pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
-    if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
-}
-
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-where
-    T: IsMinusOne,
-    F: FnMut() -> T,
-{
-    loop {
-        match cvt(f()) {
-            Err(ref e) if e.is_interrupted() => {}
-            other => return other,
-        }
-    }
 }

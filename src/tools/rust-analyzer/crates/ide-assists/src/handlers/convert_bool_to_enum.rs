@@ -11,9 +11,10 @@ use ide_db::{
     source_change::SourceChangeBuilder,
 };
 use itertools::Itertools;
+use syntax::ast::edit::AstNodeEdit;
 use syntax::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
-    ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, make},
+    ast::{self, HasName, edit::IndentLevel, make},
 };
 
 use crate::{
@@ -479,10 +480,9 @@ fn add_enum_def(
             ctx.sema.scope(name.syntax()).map(|scope| scope.module())
         })
         .any(|module| module.nearest_non_block_module(ctx.db()) != *target_module);
-    let enum_def = make_bool_enum(make_enum_pub);
 
     let indent = IndentLevel::from_node(&insert_before);
-    enum_def.reindent_to(indent);
+    let enum_def = make_bool_enum(make_enum_pub).reset_indent().indent(indent);
 
     edit.insert(
         insert_before.text_range().start(),

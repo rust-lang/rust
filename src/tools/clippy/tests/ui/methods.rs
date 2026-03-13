@@ -145,7 +145,7 @@ fn filter_next_back() {
                                 *x < 0
                             }
                    ).next_back();
-    
+
     // Check that we don't lint if the caller is not an `Iterator`.
     let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.filter().next_back();
@@ -154,7 +154,4 @@ fn filter_next_back() {
     let _ = foo.filter(42).next_back();
 }
 
-fn main() {
-    filter_next();
-    filter_next_back();
-}
+fn main() {}

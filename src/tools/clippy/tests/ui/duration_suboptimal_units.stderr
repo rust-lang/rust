@@ -148,5 +148,17 @@ LL -         Duration::from_secs(300)
 LL +         Duration::from_mins(5)
    |
 
-error: aborting due to 12 previous errors
+error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
+  --> tests/ui/duration_suboptimal_units.rs:105:9
+   |
+LL |     _ = Duration::from_secs(67_768_040_922_076_800);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try using from_hours
+   |
+LL -     _ = Duration::from_secs(67_768_040_922_076_800);
+LL +     _ = Duration::from_hours(18824455811688);
+   |
+
+error: aborting due to 13 previous errors
 

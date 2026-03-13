@@ -4,9 +4,9 @@ error: static of uninhabited type
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^
    |
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
-   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 note: the lint level is defined here
   --> $DIR/uninhabited-static.rs:2:9
    |
@@ -19,9 +19,9 @@ error: static of uninhabited type
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^^
    |
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
-   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 
 error: static of uninhabited type
   --> $DIR/uninhabited-static.rs:6:5
@@ -29,9 +29,9 @@ error: static of uninhabited type
 LL |     static VOID: Void;
    |     ^^^^^^^^^^^^^^^^^
    |
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
-   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 
 error: static of uninhabited type
   --> $DIR/uninhabited-static.rs:8:5
@@ -39,9 +39,9 @@ error: static of uninhabited type
 LL |     static NEVER: !;
    |     ^^^^^^^^^^^^^^^
    |
+   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
-   = note: uninhabited statics cannot be initialized, and any access would be an immediate error
 
 error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
   --> $DIR/uninhabited-static.rs:12:31

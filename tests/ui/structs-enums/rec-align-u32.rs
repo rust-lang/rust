@@ -3,7 +3,7 @@
 #![allow(unused_unsafe)]
 // Issue #2303
 
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 use std::mem;
 

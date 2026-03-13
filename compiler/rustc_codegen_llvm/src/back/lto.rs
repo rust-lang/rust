@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::ptr::NonNull;
 use std::sync::Arc;
 use std::{io, iter, slice};
 
@@ -13,7 +12,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -25,7 +24,8 @@ use rustc_session::config::{self, Lto};
 use tracing::{debug, info};
 
 use crate::back::write::{
-    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
+    self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
+    save_temp_bitcode,
 };
 use crate::errors::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
@@ -187,7 +187,7 @@ pub(crate) fn run_thin(
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
-    modules: Vec<(String, ThinBuffer)>,
+    modules: Vec<(String, ModuleBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
     let (symbols_below_threshold, upstream_modules) =
@@ -201,12 +201,6 @@ pub(crate) fn run_thin(
         );
     }
     thin_lto(cgcx, prof, dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
-}
-
-pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
-    let name = module.name;
-    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
-    (name, buffer)
 }
 
 fn fat_lto(
@@ -297,7 +291,7 @@ fn fat_lto(
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
         for module in in_memory {
-            let buffer = ModuleBuffer::new(module.module_llvm.llmod());
+            let buffer = ModuleBuffer::new(module.module_llvm.llmod(), false);
             let llmod_id = CString::new(&module.name[..]).unwrap();
             serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
         }
@@ -400,7 +394,7 @@ fn thin_lto(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
-    modules: Vec<(String, ThinBuffer)>,
+    modules: Vec<(String, ModuleBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     symbols_below_threshold: &[*const libc::c_char],
@@ -634,7 +628,9 @@ pub(crate) fn run_pass_manager(
     };
 
     unsafe {
-        write::llvm_optimize(cgcx, prof, dcx, module, None, config, opt_level, opt_stage, stage);
+        write::llvm_optimize(
+            cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,
+        );
     }
 
     if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
@@ -643,7 +639,7 @@ pub(crate) fn run_pass_manager(
         if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {
             unsafe {
                 write::llvm_optimize(
-                    cgcx, prof, dcx, module, None, config, opt_level, opt_stage, stage,
+                    cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,
                 );
             }
         }
@@ -658,31 +654,26 @@ pub(crate) fn run_pass_manager(
     debug!("lto done");
 }
 
-pub struct ModuleBuffer(&'static mut llvm::ModuleBuffer);
+#[repr(transparent)]
+pub(crate) struct Buffer(&'static mut llvm::Buffer);
 
-unsafe impl Send for ModuleBuffer {}
-unsafe impl Sync for ModuleBuffer {}
+unsafe impl Send for Buffer {}
+unsafe impl Sync for Buffer {}
 
-impl ModuleBuffer {
-    pub(crate) fn new(m: &llvm::Module) -> ModuleBuffer {
-        ModuleBuffer(unsafe { llvm::LLVMRustModuleBufferCreate(m) })
-    }
-}
-
-impl ModuleBufferMethods for ModuleBuffer {
-    fn data(&self) -> &[u8] {
+impl Buffer {
+    pub(crate) fn data(&self) -> &[u8] {
         unsafe {
-            let ptr = llvm::LLVMRustModuleBufferPtr(self.0);
-            let len = llvm::LLVMRustModuleBufferLen(self.0);
+            let ptr = llvm::LLVMRustBufferPtr(self.0);
+            let len = llvm::LLVMRustBufferLen(self.0);
             slice::from_raw_parts(ptr, len)
         }
     }
 }
 
-impl Drop for ModuleBuffer {
+impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustModuleBufferFree(&mut *(self.0 as *mut _));
+            llvm::LLVMRustBufferFree(&mut *(self.0 as *mut _));
         }
     }
 }
@@ -700,58 +691,32 @@ impl Drop for ThinData {
     }
 }
 
-pub struct ThinBuffer(&'static mut llvm::ThinLTOBuffer);
+pub struct ModuleBuffer {
+    data: Buffer,
+}
 
-unsafe impl Send for ThinBuffer {}
-unsafe impl Sync for ThinBuffer {}
-
-impl ThinBuffer {
-    pub(crate) fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
+impl ModuleBuffer {
+    pub(crate) fn new(m: &llvm::Module, is_thin: bool) -> ModuleBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
-            ThinBuffer(buffer)
-        }
-    }
-
-    pub(crate) unsafe fn from_raw_ptr(ptr: *mut llvm::ThinLTOBuffer) -> ThinBuffer {
-        let mut ptr = NonNull::new(ptr).unwrap();
-        ThinBuffer(unsafe { ptr.as_mut() })
-    }
-
-    pub(crate) fn thin_link_data(&self) -> &[u8] {
-        unsafe {
-            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
-            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
-            slice::from_raw_parts(ptr, len)
+            let buffer = llvm::LLVMRustModuleSerialize(m, is_thin);
+            ModuleBuffer { data: Buffer(buffer) }
         }
     }
 }
 
-impl ThinBufferMethods for ThinBuffer {
+impl ModuleBufferMethods for ModuleBuffer {
     fn data(&self) -> &[u8] {
-        unsafe {
-            let ptr = llvm::LLVMRustThinLTOBufferPtr(self.0) as *const _;
-            let len = llvm::LLVMRustThinLTOBufferLen(self.0);
-            slice::from_raw_parts(ptr, len)
-        }
+        self.data.data()
     }
 }
 
-impl Drop for ThinBuffer {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustThinLTOBufferFree(&mut *(self.0 as *mut _));
-        }
-    }
-}
-
-pub(crate) fn optimize_thin_module(
+pub(crate) fn optimize_and_codegen_thin_module(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     thin_module: ThinModule<LlvmCodegenBackend>,
-) -> ModuleCodegen<ModuleLlvm> {
+) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
@@ -830,7 +795,7 @@ pub(crate) fn optimize_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }
-    module
+    codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
 }
 
 /// Maps LLVM module identifiers to their corresponding LLVM LTO cache keys

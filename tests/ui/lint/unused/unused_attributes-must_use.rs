@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-#![allow(dead_code, path_statements)]
+#![allow(dead_code, path_statements, unused_features)]
 #![deny(unused_attributes, unused_must_use)]
 #![feature(asm_experimental_arch, stmt_expr_attributes, trait_alias)]
 

@@ -12,8 +12,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -215,19 +214,18 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
-                if fx.mir[self.bb].is_cleanup && base::wants_new_eh_instructions(fx.cx.tcx().sess) {
+                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(fx.cx.tcx().sess) {
+                    // For wasm, we need to generate a nested `cleanuppad within %outer_pad`
+                    // to catch exceptions during cleanup and call `panic_in_cleanup`.
+                    Some(fx.terminate_block(reason, Some(self.bb)))
+                } else if fx.mir[self.bb].is_cleanup
+                    && base::wants_new_eh_instructions(fx.cx.tcx().sess)
+                {
                     // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
-
-                    // FIXME(@mirkootter): For wasm, we currently do not support terminate during
-                    // cleanup, because this requires a few more changes: The current code
-                    // caches the `terminate_block` for each function; funclet based code - however -
-                    // requires a different terminate_block for each funclet
-                    // Until this is implemented, we just do not unwind inside cleanup blocks
-
                     None
                 } else {
-                    Some(fx.terminate_block(reason))
+                    Some(fx.terminate_block(reason, None))
                 }
             }
         };
@@ -239,7 +237,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
         if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -310,7 +308,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) -> MergingSucc {
         let unwind_target = match unwind {
             mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
-            mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason)),
+            mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason, None)),
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
         };
@@ -318,7 +316,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         if operands.iter().any(|x| matches!(x, InlineAsmOperandRef::Label { .. })) {
             assert!(unwind_target.is_none());
             let ret_llbb = if let Some(target) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -335,7 +333,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             MergingSucc::False
         } else if let Some(cleanup) = unwind_target {
             let ret_llbb = if let Some(target) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -1020,10 +1018,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(hir_id) =
                             terminator.source_info.scope.lint_root(&self.mir.source_scopes)
                         {
-                            let msg = "tail calling a function marked with `#[track_caller]` has no special effect";
-                            bx.tcx().node_lint(TAIL_CALL_TRACK_CALLER, hir_id, |d| {
-                                _ = d.primary_message(msg).span(fn_span)
-                            });
+                            bx.tcx().emit_node_lint(TAIL_CALL_TRACK_CALLER, hir_id, rustc_errors::DiagDecorator(|d| {
+                                _ = d.primary_message("tail calling a function marked with `#[track_caller]` has no special effect").span(fn_span)
+                            }));
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
@@ -1147,19 +1144,51 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
+        // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+        //
+        // Normally an indirect argument with `on_stack: false` would be passed as a pointer into
+        // the caller's stack frame. For tail calls, that would be unsound, because the caller's
+        // stack frame is overwritten by the callee's stack frame.
+        //
+        // Therefore we store the argument for the callee in the corresponding caller's slot.
+        // Because guaranteed tail calls demand that the caller's signature matches the callee's,
+        // the corresponding slot has the correct type.
+        //
+        // To handle cases like the one below, the tail call arguments must first be copied to a
+        // temporary, and only then copied to the caller's argument slots.
+        //
+        // ```
+        // // A struct big enough that it is not passed via registers.
+        // pub struct Big([u64; 4]);
+        //
+        // fn swapper(a: Big, b: Big) -> (Big, Big) {
+        //     become swapper_helper(b, a);
+        // }
+        // ```
+        let mut tail_call_temporaries = vec![];
+        if kind == CallKind::Tail {
+            tail_call_temporaries = vec![None; first_args.len()];
+            // Copy the arguments that use `PassMode::Indirect { on_stack: false , ..}`
+            // to temporary stack allocations. See the comment above.
+            for (i, arg) in first_args.iter().enumerate() {
+                if !matches!(fn_abi.args[i].mode, PassMode::Indirect { on_stack: false, .. }) {
+                    continue;
+                }
+
+                let op = self.codegen_operand(bx, &arg.node);
+                let tmp = PlaceRef::alloca(bx, op.layout);
+                bx.lifetime_start(tmp.val.llval, tmp.layout.size);
+                op.store_with_annotation(bx, tmp);
+
+                tail_call_temporaries[i] = Some(tmp);
+            }
+        }
+
         // When generating arguments we sometimes introduce temporary allocations with lifetime
         // that extend for the duration of a call. Keep track of those allocations and their sizes
         // to generate `lifetime_end` when the call returns.
         let mut lifetime_ends_after_call: Vec<(Bx::Value, Size)> = Vec::new();
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            if kind == CallKind::Tail && matches!(fn_abi.args[i].mode, PassMode::Indirect { .. }) {
-                // FIXME: https://github.com/rust-lang/rust/pull/144232#discussion_r2218543841
-                span_bug!(
-                    fn_span,
-                    "arguments using PassMode::Indirect are currently not supported for tail calls"
-                );
-            }
-
             let mut op = self.codegen_operand(bx, &arg.node);
 
             if let (0, Some(ty::InstanceKind::Virtual(_, idx))) = (i, instance.map(|i| i.def)) {
@@ -1210,18 +1239,54 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            // The callee needs to own the argument memory if we pass it
-            // by-ref, so make a local copy of non-immediate constants.
-            match (&arg.node, op.val) {
-                (&mir::Operand::Copy(_), Ref(PlaceValue { llextra: None, .. }))
-                | (&mir::Operand::Constant(_), Ref(PlaceValue { llextra: None, .. })) => {
-                    let tmp = PlaceRef::alloca(bx, op.layout);
-                    bx.lifetime_start(tmp.val.llval, tmp.layout.size);
-                    op.store_with_annotation(bx, tmp);
-                    op.val = Ref(tmp.val);
-                    lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
+            match kind {
+                CallKind::Normal => {
+                    // The callee needs to own the argument memory if we pass it
+                    // by-ref, so make a local copy of non-immediate constants.
+                    if let &mir::Operand::Copy(_) | &mir::Operand::Constant(_) = &arg.node
+                        && let Ref(PlaceValue { llextra: None, .. }) = op.val
+                    {
+                        let tmp = PlaceRef::alloca(bx, op.layout);
+                        bx.lifetime_start(tmp.val.llval, tmp.layout.size);
+                        op.store_with_annotation(bx, tmp);
+                        op.val = Ref(tmp.val);
+                        lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
+                    }
                 }
-                _ => {}
+                CallKind::Tail => {
+                    if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode {
+                        let Some(tmp) = tail_call_temporaries[i].take() else {
+                            span_bug!(
+                                fn_span,
+                                "missing temporary for indirect tail call argument #{i}"
+                            )
+                        };
+
+                        let local = self.mir.args_iter().nth(i).unwrap();
+
+                        match &self.locals[local] {
+                            LocalRef::Place(arg) => {
+                                bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
+                                op.val = Ref(arg.val);
+                            }
+                            LocalRef::Operand(arg) => {
+                                let Ref(place_value) = arg.val else {
+                                    bug!("only `Ref` should use `PassMode::Indirect`");
+                                };
+                                bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
+                                op.val = arg.val;
+                            }
+                            LocalRef::UnsizedPlace(_) => {
+                                span_bug!(fn_span, "unsized types are not supported")
+                            }
+                            LocalRef::PendingOperand => {
+                                span_bug!(fn_span, "argument local should not be pending")
+                            }
+                        };
+
+                        bx.lifetime_end(tmp.val.llval, tmp.layout.size);
+                    }
+                }
             }
 
             self.codegen_argument(
@@ -1830,8 +1895,39 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    fn terminate_block(&mut self, reason: UnwindTerminateReason) -> Bx::BasicBlock {
-        if let Some((cached_bb, cached_reason)) = self.terminate_block
+    fn terminate_block(
+        &mut self,
+        reason: UnwindTerminateReason,
+        outer_catchpad_bb: Option<mir::BasicBlock>,
+    ) -> Bx::BasicBlock {
+        // mb_funclet_bb should be present if and only if the target is wasm and
+        // we're terminating because of an unwind in a cleanup block. In that
+        // case we have nested funclets and the inner catch_switch needs to know
+        // what outer catch_pad it is contained in.
+        debug_assert!(
+            outer_catchpad_bb.is_some()
+                == (base::wants_wasm_eh(self.cx.tcx().sess)
+                    && reason == UnwindTerminateReason::InCleanup)
+        );
+
+        // When we aren't in a wasm InCleanup block, there's only one terminate
+        // block needed so we cache at START_BLOCK index.
+        let mut cache_bb = mir::START_BLOCK;
+        // In wasm eh InCleanup, use the outer funclet's cleanup BB as the cache
+        // key.
+        if let Some(outer_bb) = outer_catchpad_bb {
+            let cleanup_kinds =
+                self.cleanup_kinds.as_ref().expect("cleanup_kinds required for funclets");
+            cache_bb = cleanup_kinds[outer_bb]
+                .funclet_bb(outer_bb)
+                .expect("funclet_bb should be in a funclet");
+
+            // Ensure the outer funclet is created first
+            if self.funclets[cache_bb].is_none() {
+                self.landing_pad_for(cache_bb);
+            }
+        }
+        if let Some((cached_bb, cached_reason)) = self.terminate_blocks[cache_bb]
             && reason == cached_reason
         {
             return cached_bb;
@@ -1869,12 +1965,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             //      cp_terminate:
             //         %cp = catchpad within %cs [null, i32 64, null]
             //         ...
+            //
+            // By contrast, on WebAssembly targets, we specifically _do_ want to
+            // catch foreign exceptions. The situation with MSVC is a
+            // regrettable hack which we don't want to extend to other targets
+            // unless necessary. For WebAssembly, to generate catch(...) and
+            // catch only C++ exception instead of generating a catch_all, we
+            // need to call the intrinsics @llvm.wasm.get.exception and
+            // @llvm.wasm.get.ehselector in the catch pad. Since we don't do
+            // this, we generate a catch_all. We originally got this behavior
+            // by accident but it luckily matches our intention.
 
             llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
-            let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
 
             let mut cs_bx = Bx::build(self.cx, llbb);
-            let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
+
+            // For wasm InCleanup blocks, our catch_switch is nested within the
+            // outer catchpad, so we need to provide it as the parent value to
+            // catch_switch.
+            let mut outer_cleanuppad = None;
+            if outer_catchpad_bb.is_some() {
+                // Get the outer funclet's catchpad
+                let outer_funclet = self.funclets[cache_bb]
+                    .as_ref()
+                    .expect("landing_pad_for didn't create funclet");
+                outer_cleanuppad = Some(cs_bx.get_funclet_cleanuppad(outer_funclet));
+            }
+            let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
+            let cs = cs_bx.catch_switch(outer_cleanuppad, None, &[cp_llbb]);
+            drop(cs_bx);
 
             bx = Bx::build(self.cx, cp_llbb);
             let null =
@@ -1895,13 +2014,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 // Specifying more arguments than necessary usually doesn't
                 // hurt, but the `WasmEHPrepare` LLVM pass does not recognize
-                // anything other than a single `null` as a `catch (...)` block,
+                // anything other than a single `null` as a `catch_all` block,
                 // leading to problems down the line during instruction
                 // selection.
                 &[null] as &[_]
             };
 
             funclet = Some(bx.catch_pad(cs, args));
+            // On wasm, if we wanted to generate a catch(...) and only catch C++
+            // exceptions, we'd call @llvm.wasm.get.exception and
+            // @llvm.wasm.get.ehselector selectors here. We want a catch_all so
+            // we leave them out. This is intentionally diverging from the MSVC
+            // behavior.
         } else {
             llbb = Bx::append_block(self.cx, self.llfn, "terminate");
             bx = Bx::build(self.cx, llbb);
@@ -1927,7 +2051,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         bx.unreachable();
 
-        self.terminate_block = Some((llbb, reason));
+        self.terminate_blocks[cache_bb] = Some((llbb, reason));
         llbb
     }
 

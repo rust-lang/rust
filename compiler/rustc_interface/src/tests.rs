@@ -71,7 +71,6 @@ where
         let sess = build_session(
             sessopts,
             io,
-            None,
             Default::default(),
             target,
             "",
@@ -796,7 +795,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_metadata, false);
     tracked!(embed_source, true);
-    tracked!(emit_thin_lto, false);
     tracked!(emscripten_wasm_eh, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
@@ -824,6 +822,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(min_function_alignment, Some(Align::EIGHT));
+    tracked!(min_recursion_limit, Some(256));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));

@@ -77,7 +77,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::autodiff
         | sym::bitreverse
         | sym::black_box
-        | sym::box_new
         | sym::breakpoint
         | sym::bswap
         | sym::caller_location
@@ -118,6 +117,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fabsf128
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
+        | sym::field_offset
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -214,15 +214,16 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf128
         | sym::type_id
         | sym::type_id_eq
+        | sym::type_id_vtable
         | sym::type_name
         | sym::type_of
         | sym::ub_checks
         | sym::va_copy
         | sym::variant_count
-        | sym::vtable_for
         | sym::wrapping_add
         | sym::wrapping_mul
         | sym::wrapping_sub
+        | sym::write_box_via_move
         // tidy-alphabetical-end
         => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
@@ -297,6 +298,7 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
         sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
+        sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
@@ -322,6 +324,25 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_eq => {
             let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
+        }
+        sym::type_id_vtable => {
+            let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
+            let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
+            let dyn_metadata_args =
+                tcx.mk_args(&[Ty::new_ptr(tcx, tcx.types.unit, ty::Mutability::Not).into()]);
+            let dyn_ty = Ty::new_adt(tcx, dyn_metadata_adt_ref, dyn_metadata_args);
+
+            let option_did = tcx.require_lang_item(LangItem::Option, span);
+            let option_adt_ref = tcx.adt_def(option_did);
+            let option_args = tcx.mk_args(&[dyn_ty.into()]);
+            let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
+
+            (
+                0,
+                0,
+                vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap(); 2],
+                ret_ty,
+            )
         }
         sym::type_of => (
             0,
@@ -584,6 +605,13 @@ pub(crate) fn check_intrinsic_type(
         sym::write_via_move => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
         }
+        sym::write_box_via_move => {
+            let t = param(0);
+            let maybe_uninit_t = Ty::new_maybe_uninit(tcx, t);
+            let box_mu_t = Ty::new_box(tcx, maybe_uninit_t);
+
+            (1, 0, vec![box_mu_t, param(0)], box_mu_t)
+        }
 
         sym::typed_swap_nonoverlapping => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit)
@@ -668,28 +696,12 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
         }
 
-        sym::vtable_for => {
-            let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
-            let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
-            let dyn_metadata_args = tcx.mk_args(&[param(1).into()]);
-            let dyn_ty = Ty::new_adt(tcx, dyn_metadata_adt_ref, dyn_metadata_args);
-
-            let option_did = tcx.require_lang_item(LangItem::Option, span);
-            let option_adt_ref = tcx.adt_def(option_did);
-            let option_args = tcx.mk_args(&[dyn_ty.into()]);
-            let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
-
-            (2, 0, vec![], ret_ty)
-        }
-
         // This type check is not particularly useful, but the `where` bounds
         // on the definition in `core` do the heavy lifting for checking it.
         sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
         sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
         sym::ub_checks | sym::overflow_checks => (0, 0, Vec::new(), tcx.types.bool),
-
-        sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
         // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
         sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),

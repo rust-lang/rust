@@ -1,7 +1,7 @@
 #![feature(rustc_attrs)]
 
-#[rustc_outlives]
-enum Foo<'a, U> { //~ ERROR rustc_outlives
+#[rustc_dump_inferred_outlives]
+enum Foo<'a, U> { //~ ERROR rustc_dump_inferred_outlives
     One(Bar<'a, U>)
 }
 

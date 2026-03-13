@@ -11,7 +11,7 @@ pub mod backtrace;
 pub mod cmath;
 pub mod env;
 pub mod env_consts;
-pub mod exit_guard;
+pub mod exit;
 pub mod fd;
 pub mod fs;
 pub mod io;

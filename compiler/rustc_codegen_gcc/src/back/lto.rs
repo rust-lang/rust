@@ -26,7 +26,7 @@ use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::SerializedModule;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
@@ -34,7 +34,7 @@ use rustc_log::tracing::info;
 use rustc_session::config::Lto;
 use tempfile::{TempDir, tempdir};
 
-use crate::back::write::save_temp_bitcode;
+use crate::back::write::{codegen, save_temp_bitcode};
 use crate::errors::LtoBitcodeFromRlib;
 use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
 
@@ -112,7 +112,7 @@ pub(crate) fn run_fat(
     shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
-) -> ModuleCodegen<GccContext> {
+) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
@@ -132,12 +132,12 @@ pub(crate) fn run_fat(
 fn fat_lto(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
-    _dcx: DiagCtxtHandle<'_>,
+    dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
-) -> ModuleCodegen<GccContext> {
+) -> CompiledModule {
     let _timer = prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
 
@@ -260,7 +260,7 @@ fn fat_lto(
     // of now.
     module.module_llvm.temp_dir = Some(tmp_path);
 
-    module
+    codegen(cgcx, prof, dcx, module, &cgcx.module_config)
 }
 
 pub struct ModuleBuffer(PathBuf);

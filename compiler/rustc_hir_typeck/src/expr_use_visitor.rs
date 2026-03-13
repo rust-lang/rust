@@ -673,7 +673,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         let with_expr = match *opt_with {
             hir::StructTailExpr::Base(w) => &*w,
-            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
+            hir::StructTailExpr::DefaultFields(_)
+            | hir::StructTailExpr::None
+            | hir::StructTailExpr::NoneWithError(_) => {
                 return Ok(());
             }
         };
@@ -734,7 +736,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                 }
 
-                adjustment::Adjust::Deref(DerefAdjustKind::Builtin) => {}
+                adjustment::Adjust::Deref(DerefAdjustKind::Builtin | DerefAdjustKind::Pin) => {}
 
                 // Autoderefs for overloaded Deref calls in fact reference
                 // their receiver. That is, if we have `(*x)` where `x`
@@ -789,7 +791,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 );
             }
 
-            adjustment::AutoBorrow::RawPtr(m) => {
+            adjustment::AutoBorrow::RawPtr(m) | adjustment::AutoBorrow::Pin(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
                 self.delegate.borrow_mut().borrow(
@@ -908,7 +910,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                     let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                     match res {
-                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
+                        Res::Def(DefKind::Const { .. }, _)
+                        | Res::Def(DefKind::AssocConst { .. }, _) => {
                             // Named constants have to be equated with the value
                             // being matched, so that's a read of the value being matched.
                             //
@@ -1405,9 +1408,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match res {
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const
+                | DefKind::Const { .. }
                 | DefKind::ConstParam
-                | DefKind::AssocConst
+                | DefKind::AssocConst { .. }
                 | DefKind::Fn
                 | DefKind::AssocFn,
                 _,

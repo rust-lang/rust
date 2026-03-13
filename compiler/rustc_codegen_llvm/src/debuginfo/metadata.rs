@@ -480,8 +480,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
         ty::Pat(base, _) => return type_di_node(cx, base),
-        // FIXME(unsafe_binders): impl debug info
-        ty::UnsafeBinder(_) => unimplemented!(),
+        ty::UnsafeBinder(_) => build_unsafe_binder_type_di_node(cx, t, unique_type_id),
         ty::Alias(..)
         | ty::Param(_)
         | ty::Bound(..)
@@ -1486,6 +1485,56 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
         NO_GENERICS,
     )
     .di_node
+}
+
+/// Creates the debuginfo node for `unsafe<'a> T` binder types.
+///
+/// We treat an unsafe binder like a struct with a single field named `inner`
+/// rather than delegating to the inner type's DI node directly. This way the
+/// debugger shows the binder's own type name, and the wrapped value is still
+/// accessible through the `inner` field.
+fn build_unsafe_binder_type_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    binder_type: Ty<'tcx>,
+    unique_type_id: UniqueTypeId<'tcx>,
+) -> DINodeCreationResult<'ll> {
+    let ty::UnsafeBinder(inner) = binder_type.kind() else {
+        bug!(
+            "Only ty::UnsafeBinder is valid for build_unsafe_binder_type_di_node. Found {:?} instead.",
+            binder_type
+        )
+    };
+    let inner_type = inner.skip_binder();
+    let inner_type_di_node = type_di_node(cx, inner_type);
+
+    let type_name = compute_debuginfo_type_name(cx.tcx, binder_type, true);
+    type_map::build_type_with_children(
+        cx,
+        type_map::stub(
+            cx,
+            Stub::Struct,
+            unique_type_id,
+            &type_name,
+            None,
+            cx.size_and_align_of(binder_type),
+            NO_SCOPE_METADATA,
+            DIFlags::FlagZero,
+        ),
+        |cx, unsafe_binder_type_di_node| {
+            let inner_layout = cx.layout_of(inner_type);
+            smallvec![build_field_di_node(
+                cx,
+                unsafe_binder_type_di_node,
+                "inner",
+                inner_layout,
+                Size::ZERO,
+                DIFlags::FlagZero,
+                inner_type_di_node,
+                None,
+            )]
+        },
+        NO_GENERICS,
+    )
 }
 
 /// Get the global variable for the vtable.

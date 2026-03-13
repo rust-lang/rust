@@ -7,7 +7,8 @@
 #![no_main]
 #![allow(internal_features)]
 
-use minicore::ptr;
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub fn main() -> ! {
@@ -19,34 +20,5 @@ pub fn main() -> ! {
     loop {
         unsafe { ptr::write_volatile(port_b, 1) };
         unsafe { ptr::write_volatile(port_b, 2) };
-    }
-}
-
-// FIXME: replace with proper minicore once available (#130693)
-mod minicore {
-    #[lang = "pointee_sized"]
-    pub trait PointeeSized {}
-
-    #[lang = "meta_sized"]
-    pub trait MetaSized: PointeeSized {}
-
-    #[lang = "sized"]
-    pub trait Sized: MetaSized {}
-
-    #[lang = "copy"]
-    pub trait Copy {}
-    impl Copy for u32 {}
-    impl Copy for &u32 {}
-    impl<T: PointeeSized> Copy for *mut T {}
-
-    pub mod ptr {
-        #[inline]
-        #[rustc_diagnostic_item = "ptr_write_volatile"]
-        pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-            #[rustc_intrinsic]
-            pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
-
-            unsafe { volatile_store(dst, src) };
-        }
     }
 }

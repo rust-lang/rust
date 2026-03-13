@@ -33,6 +33,7 @@ declare_clippy_lint! {
     complexity,
     "checks for empty if branches"
 }
+
 declare_lint_pass!(NeedlessIfs => [NEEDLESS_IFS]);
 
 impl LateLintPass<'_> for NeedlessIfs {

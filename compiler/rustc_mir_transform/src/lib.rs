@@ -1,11 +1,10 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(file_buffered)]
-#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(iterator_try_collect)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -28,8 +27,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Spanned, sym};
 use tracing::debug;
 
 #[macro_use]
@@ -443,8 +441,8 @@ fn mir_promoted(
         {
             tcx.mir_const_qualif(def)
         }
-        DefKind::AssocConst
-        | DefKind::Const
+        DefKind::AssocConst { .. }
+        | DefKind::Const { .. }
         | DefKind::Static { .. }
         | DefKind::InlineConst
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
@@ -561,9 +559,9 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         DefKind::Fn
         | DefKind::AssocFn
         | DefKind::Static { .. }
-        | DefKind::Const
-        | DefKind::AssocConst => {
-            if let Err(guar) = tcx.ensure_ok().check_well_formed(root.expect_local()) {
+        | DefKind::Const { .. }
+        | DefKind::AssocConst { .. } => {
+            if let Err(guar) = tcx.ensure_result().check_well_formed(root.expect_local()) {
                 body.tainted_by_errors = Some(guar);
             }
         }

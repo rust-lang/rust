@@ -200,7 +200,7 @@ LL -     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
 LL +     fn from_iter<T>(_: T) -> Self where T::Item = K, T: IntoIterator,
    |
 
-error[E0433]: failed to resolve: use of undeclared type `I`
+error[E0433]: cannot find type `I` in this scope
   --> $DIR/equality-bound.rs:9:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Item, ItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -85,7 +84,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
         };
         if cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && let attrs = cx.tcx.hir_attrs(item.hir_id())
-            && !find_attr!(attrs, AttributeKind::NonExhaustive(..))
+            && !find_attr!(attrs, NonExhaustive(..))
             && fields.iter().all(|f| cx.tcx.visibility(f.def_id).is_public())
         {
             span_lint_and_then(cx, lint, item.span, msg, |diag| {

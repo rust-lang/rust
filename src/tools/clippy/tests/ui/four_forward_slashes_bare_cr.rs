@@ -1,4 +1,3 @@
-//@no-rustfix
 #![warn(clippy::four_forward_slashes)]
 
 //~v four_forward_slashes

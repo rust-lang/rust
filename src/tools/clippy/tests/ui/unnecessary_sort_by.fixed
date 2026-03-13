@@ -106,11 +106,7 @@ mod issue_6001 {
     }
 }
 
-fn main() {
-    unnecessary_sort_by();
-    issue_5754::test();
-    issue_6001::test();
-}
+fn main() {}
 
 fn issue16405() {
     let mut v: Vec<(i32, &str)> = vec![(1, "foo"), (2, "bar")];

@@ -60,6 +60,23 @@ fn split_paths_unix() {
 }
 
 #[test]
+#[cfg(target_os = "uefi")]
+fn split_paths_uefi() {
+    use std::path::PathBuf;
+
+    fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
+        split_paths(unparsed).collect::<Vec<_>>()
+            == parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
+    }
+
+    assert!(check_parse("", &mut [""]));
+    assert!(check_parse(";;", &mut ["", "", ""]));
+    assert!(check_parse(r"fs0:\", &mut [r"fs0:\"]));
+    assert!(check_parse(r"fs0:\;", &mut [r"fs0:\", ""]));
+    assert!(check_parse(r"fs0:\;fs0:\boot\", &mut [r"fs0:\", r"fs0:\boot\"]));
+}
+
+#[test]
 #[cfg(unix)]
 fn join_paths_unix() {
     use std::ffi::OsStr;

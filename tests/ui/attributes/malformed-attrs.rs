@@ -2,7 +2,6 @@
 // We enable a bunch of features to not get feature-gate errs in this test.
 #![deny(invalid_doc_attributes)]
 #![feature(rustc_attrs)]
-#![feature(rustc_allow_const_fn_unstable)]
 #![feature(allow_internal_unstable)]
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]

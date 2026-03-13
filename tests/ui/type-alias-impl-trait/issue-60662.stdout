@@ -1,11 +1,11 @@
+#![attr = Feature([type_alias_impl_trait#0])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 //@ check-pass
 //@ compile-flags: -Z unpretty=hir
 //@ edition: 2015
 
-#![feature(type_alias_impl_trait)]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 trait Animal { }
 

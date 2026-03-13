@@ -63,7 +63,7 @@
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-    test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
+    test(no_crate_inject, attr(allow(unused_variables, duplicate_features), deny(warnings)))
 )]
 #![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
 #![doc(rust_logo)]
@@ -182,7 +182,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(optimize_attribute)]
-#![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(slice_internals)]
 #![feature(staged_api)]
@@ -224,6 +223,7 @@ pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;
 pub mod fmt;
+pub mod intrinsics;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

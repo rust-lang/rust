@@ -4,7 +4,7 @@
 //@ build-pass
 //@ no-prefer-dynamic
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, associated_type_defaults)]
 #![expect(incomplete_features)]
 
 trait Trait {

@@ -1,8 +1,8 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:13:33
+  --> $DIR/explicit_anon_consts.rs:13:35
    |
 LL | type Adt4<const N: usize> = Foo<{ 1 + 1 }>;
-   |                                 ^^^^^^^^^
+   |                                   ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
   --> $DIR/explicit_anon_consts.rs:21:34
@@ -17,22 +17,22 @@ LL |     let _4 = [(); 1 + 1];
    |                   ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:45:43
+  --> $DIR/explicit_anon_consts.rs:45:45
    |
 LL | type const ITEM4<const N: usize>: usize = { 1 + 1 };
-   |                                           ^^^^^^^^^
+   |                                             ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:62:23
+  --> $DIR/explicit_anon_consts.rs:62:25
    |
 LL |     T4: Trait<ASSOC = { 1 + 1 }>,
-   |                       ^^^^^^^^^
+   |                         ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:71:50
+  --> $DIR/explicit_anon_consts.rs:71:52
    |
 LL | struct Default4<const N: usize, const M: usize = { 1 + 1 }>;
-   |                                                  ^^^^^^^^^
+   |                                                    ^^^^^
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:42:51

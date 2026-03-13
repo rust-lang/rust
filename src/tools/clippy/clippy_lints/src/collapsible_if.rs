@@ -14,38 +14,6 @@ use rustc_span::{BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for nested `if` statements which can be collapsed
-    /// by `&&`-combining their conditions.
-    ///
-    /// ### Why is this bad?
-    /// Each `if`-statement adds one level of nesting, which
-    /// makes code look more complex than it really is.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x {
-    ///     if y {
-    ///         // …
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let (x, y) = (true, true);
-    /// if x && y {
-    ///     // …
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub COLLAPSIBLE_IF,
-    style,
-    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for collapsible `else { if ... }` expressions
     /// that can be collapsed to `else if ...`.
     ///
@@ -79,6 +47,40 @@ declare_clippy_lint! {
     pedantic,
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"
 }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for nested `if` statements which can be collapsed
+    /// by `&&`-combining their conditions.
+    ///
+    /// ### Why is this bad?
+    /// Each `if`-statement adds one level of nesting, which
+    /// makes code look more complex than it really is.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x {
+    ///     if y {
+    ///         // …
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let (x, y) = (true, true);
+    /// if x && y {
+    ///     // …
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub COLLAPSIBLE_IF,
+    style,
+    "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
+}
+
+impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_ELSE_IF, COLLAPSIBLE_IF]);
 
 pub struct CollapsibleIf {
     msrv: Msrv,
@@ -259,8 +261,6 @@ impl CollapsibleIf {
     }
 }
 
-impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
-
 impl LateLintPass<'_> for CollapsibleIf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::If(cond, then, else_) = &expr.kind
@@ -307,7 +307,7 @@ fn expr_block<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
 }
 
 /// If the expression is a `||`, suggest parentheses around it.
-fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
+pub(super) fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
     if let ExprKind::Binary(op, _, _) = expr.peel_drop_temps().kind
         && op.node == BinOpKind::Or
     {
@@ -334,7 +334,7 @@ fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Spa
 }
 
 /// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
-fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
+pub(super) fn peel_parens(sm: &SourceMap, mut span: Span) -> (Span, Span, Span) {
     use crate::rustc_span::Pos;
 
     let start = span.shrink_to_lo();

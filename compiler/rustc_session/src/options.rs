@@ -7,7 +7,7 @@ use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
+use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_hir::attrs::CollapseMacroDebuginfo;
@@ -611,7 +611,7 @@ macro_rules! options {
         $parse:ident,
         [$dep_tracking_marker:ident $( $tmod:ident )?],
         $desc:expr
-        $(, deprecated_do_nothing: $dnn:literal )?)
+        $(, is_deprecated_and_do_nothing: $dnn:literal )?)
      ),* ,) =>
 (
     #[derive(Clone)]
@@ -760,7 +760,7 @@ fn build_options<O: Default>(
                     match value {
                         None => early_dcx.early_fatal(
                             format!(
-                                "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
+                                "{outputname} option `{key}` requires {type_desc} (`-{prefix} {key}=<value>`)"
                             ),
                         ),
                         Some(value) => early_dcx.early_fatal(
@@ -790,7 +790,6 @@ mod desc {
     pub(crate) const parse_string: &str = "a string";
     pub(crate) const parse_opt_string: &str = parse_string;
     pub(crate) const parse_string_push: &str = parse_string;
-    pub(crate) const parse_opt_langid: &str = "a language identifier";
     pub(crate) const parse_opt_pathbuf: &str = "a path";
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
@@ -992,17 +991,6 @@ pub mod parse {
         match v {
             Some(s) => {
                 *slot = Some(s.to_string());
-                true
-            }
-            None => false,
-        }
-    }
-
-    /// Parse an optional language identifier, e.g. `en-US` or `zh-CN`.
-    pub(crate) fn parse_opt_langid(slot: &mut Option<LanguageIdentifier>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                *slot = rustc_errors::LanguageIdentifier::from_str(s).ok();
                 true
             }
             None => false,
@@ -2071,7 +2059,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
@@ -2110,7 +2098,7 @@ options! {
     inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
         "this option is deprecated and does nothing \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -2151,7 +2139,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
         "this option is deprecated and does nothing",
-        deprecated_do_nothing: true),
+        is_deprecated_and_do_nothing: true),
     no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
     no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
@@ -2335,8 +2323,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emit_thin_lto: bool = (true, parse_bool, [TRACKED],
-        "emit the bc module with thin LTO info (default: yes)"),
     emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
@@ -2470,6 +2456,8 @@ options! {
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
     min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
         "align all functions to at least this many bytes. Must be a power of 2"),
+    min_recursion_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "set a minimum recursion limit (final limit = max(this, recursion_limit_from_crate))"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
@@ -2481,6 +2469,9 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
+    mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "limit the number of MIR optimization pass executions (global across all bodies). \
+        Pass executions after this limit are skipped and reported. (default: no limit)"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
@@ -2712,15 +2703,6 @@ written to standard error output)"),
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
-    // Diagnostics are considered side-effects of a query (see `QuerySideEffect`) and are saved
-    // alongside query results and changes to translation options can affect diagnostics - so
-    // translation options should be tracked.
-    translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "additional fluent translation to preferentially use (for testing translation)"),
-    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
-        "emit directionality isolation markers in translated diagnostics"),
-    translate_lang: Option<LanguageIdentifier> = (None, parse_opt_langid, [TRACKED],
-        "language identifier for diagnostic output"),
     translate_remapped_path_to_local_path: bool = (true, parse_bool, [TRACKED],
         "translate remapped paths into local paths when possible (default: yes)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],

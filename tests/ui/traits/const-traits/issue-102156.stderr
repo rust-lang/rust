@@ -1,22 +1,27 @@
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/issue-102156.rs:5:5
    |
 LL | use core::convert::{From, TryFrom};
-   |     ^^^^
-   |     |
-   |     you might be missing crate `core`
-   |     help: try using `std` instead of `core`: `std`
+   |     ^^^^ you might be missing crate `core`
+   |
+help: try using `std` instead of `core`
+   |
+LL - use core::convert::{From, TryFrom};
+LL + use std::convert::{From, TryFrom};
+   |
 
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/issue-102156.rs:5:5
    |
 LL | use core::convert::{From, TryFrom};
-   |     ^^^^
-   |     |
-   |     you might be missing crate `core`
-   |     help: try using `std` instead of `core`: `std`
+   |     ^^^^ you might be missing crate `core`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: try using `std` instead of `core`
+   |
+LL - use core::convert::{From, TryFrom};
+LL + use std::convert::{From, TryFrom};
+   |
 
 error: aborting due to 2 previous errors
 

@@ -14,7 +14,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::{Mutability, Pinnedness};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
@@ -24,8 +24,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
 use tracing::{debug, trace};
 
 pub use self::query::*;
@@ -840,7 +839,7 @@ impl SourceInfo {
 // Variables and temps
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "_{}"]
@@ -891,7 +890,7 @@ pub struct VarBindingForm<'tcx> {
     pub introductions: Vec<VarBindingIntroduction>,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
@@ -907,24 +906,6 @@ pub struct VarBindingIntroduction {
     pub span: Span,
     /// Is that introduction a shorthand struct pattern, i.e. `Foo { x }`.
     pub is_shorthand: bool,
-}
-
-mod binding_form_impl {
-    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-    use rustc_query_system::ich::StableHashingContext;
-
-    impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-            use super::BindingForm::*;
-            std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-            match self {
-                Var(binding) => binding.hash_stable(hcx, hasher),
-                ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
-                RefForGuard(local) => local.hash_stable(hcx, hasher),
-            }
-        }
-    }
 }
 
 /// `BlockTailInfo` is attached to the `LocalDecl` for temporaries
@@ -1282,7 +1263,7 @@ rustc_index::newtype_index! {
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
     /// [`CriticalCallEdges`]: ../../rustc_mir_transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "bb{}"]
@@ -1416,7 +1397,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 // Scopes
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
@@ -1555,7 +1536,7 @@ pub struct UserTypeProjection {
 }
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "promoted[{}]"]

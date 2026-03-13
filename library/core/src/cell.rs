@@ -689,7 +689,7 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[Cell<T>; N] {
@@ -697,7 +697,7 @@ impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[Cell<T>] {
@@ -705,7 +705,7 @@ impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T> AsRef<[Cell<T>]> for Cell<[T]> {
     #[inline]
     fn as_ref(&self) -> &[Cell<T>] {

@@ -38,10 +38,46 @@ LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<u8>::clone(&try_opt!(Some(rc)))`
 
 error: using `.clone()` on a ref-counted pointer
-  --> tests/ui/clone_on_ref_ptr.rs:65:23
+  --> tests/ui/clone_on_ref_ptr.rs:61:23
    |
 LL |             let rec = rec.clone() as Weak<dyn Fn(u32) -> u32>;
-   |                       ^^^^^^^^^^^ help: try: `std::rc::Weak::</* generic */>::clone(&rec)`
+   |                       ^^^^^^^^^^^ help: try: `std::rc::Weak::</* generic */>::clone(rec)`
 
-error: aborting due to 7 previous errors
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:80:5
+   |
+LL |     rc.clone();
+   |     ^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(&rc)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:82:5
+   |
+LL |     ref_rc.clone();
+   |     ^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(ref_rc)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:84:5
+   |
+LL |     refmut_rc.clone();
+   |     ^^^^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(refmut_rc)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:93:9
+   |
+LL |         (rc).clone();
+   |         ^^^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(&(rc))`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:95:9
+   |
+LL |         (&rc).clone();
+   |         ^^^^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(&rc)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:97:9
+   |
+LL |         (&mut rc).clone();
+   |         ^^^^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(&mut rc)`
+
+error: aborting due to 13 previous errors
 

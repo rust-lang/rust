@@ -44,7 +44,7 @@ macro_rules! thir_with_elements {
     ) => {
         $(
             newtype_index! {
-                #[derive(HashStable)]
+                #[stable_hash]
                 #[debug_format = $format]
                 pub struct $id {}
             }
@@ -266,10 +266,6 @@ pub enum ExprKind<'tcx> {
     Scope {
         region_scope: region::Scope,
         hir_id: HirId,
-        value: ExprId,
-    },
-    /// A `box <value>` expression.
-    Box {
         value: ExprId,
     },
     /// An `if` expression.

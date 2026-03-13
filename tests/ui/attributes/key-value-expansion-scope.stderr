@@ -132,9 +132,9 @@ error: cannot find macro `in_root` in the current scope when looking from the cr
 LL | #![doc = in_root!()]
    |          ^^^^^^^ not found from the crate root
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: cannot find macro `in_mod_escape` in the current scope when looking from the crate root
@@ -143,9 +143,9 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL | #![doc = in_mod_escape!()]
    |          ^^^^^^^^^^^^^ not found from the crate root
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
 
 error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
   --> $DIR/key-value-expansion-scope.rs:31:9
@@ -153,9 +153,9 @@ error: cannot find macro `in_mod` in the current scope when looking from module 
 LL | #[doc = in_mod!()]
    |         ^^^^^^ not found from module `macros_stay`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
 
 error: cannot find macro `in_mod` in the current scope when looking from module `macros_stay`
   --> $DIR/key-value-expansion-scope.rs:34:14
@@ -163,9 +163,9 @@ error: cannot find macro `in_mod` in the current scope when looking from module 
 LL |     #![doc = in_mod!()]
    |              ^^^^^^ not found from module `macros_stay`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
 
 error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
   --> $DIR/key-value-expansion-scope.rs:46:9
@@ -173,9 +173,9 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL | #[doc = in_mod_escape!()]
    |         ^^^^^^^^^^^^^ not found from module `macros_escape`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
 
 error: cannot find macro `in_mod_escape` in the current scope when looking from module `macros_escape`
   --> $DIR/key-value-expansion-scope.rs:49:14
@@ -183,9 +183,9 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL |     #![doc = in_mod_escape!()]
    |              ^^^^^^^^^^^^^ not found from module `macros_escape`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
 
 error: attribute value must be a literal
   --> $DIR/key-value-expansion-scope.rs:3:10
@@ -292,9 +292,9 @@ error: cannot find macro `in_root` in the current scope when looking from the cr
 LL | #![doc = in_root!()]
    |          ^^^^^^^ not found from the crate root
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -304,9 +304,9 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL | #![doc = in_mod_escape!()]
    |          ^^^^^^^^^^^^^ not found from the crate root
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -316,9 +316,9 @@ error: cannot find macro `in_mod` in the current scope when looking from module 
 LL | #[doc = in_mod!()]
    |         ^^^^^^ not found from module `macros_stay`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -328,9 +328,9 @@ error: cannot find macro `in_mod` in the current scope when looking from module 
 LL |     #![doc = in_mod!()]
    |              ^^^^^^ not found from module `macros_stay`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -340,9 +340,9 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL | #[doc = in_mod_escape!()]
    |         ^^^^^^^^^^^^^ not found from module `macros_escape`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -352,8 +352,8 @@ error: cannot find macro `in_mod_escape` in the current scope when looking from 
 LL |     #![doc = in_mod_escape!()]
    |              ^^^^^^^^^^^^^ not found from module `macros_escape`
    |
+   = help: import `macro_rules` with `use` to make it callable above its definition
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124535 <https://github.com/rust-lang/rust/issues/124535>
-   = help: import `macro_rules` with `use` to make it callable above its definition
    = note: `#[deny(out_of_scope_macro_calls)]` (part of `#[deny(future_incompatible)]`) on by default
 

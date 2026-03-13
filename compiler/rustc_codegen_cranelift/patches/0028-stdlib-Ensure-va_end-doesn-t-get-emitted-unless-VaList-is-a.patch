@@ -1,0 +1,25 @@
+From 116abc64add4d617104993a7a3011f20bcf31ef2 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Mon, 26 Jan 2026 16:20:58 +0000
+Subject: [PATCH] Ensure va_end doesn't get emitted unless VaList is actually
+ used
+
+---
+ library/core/src/ffi/va_list.rs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/library/core/src/ffi/va_list.rs b/library/core/src/ffi/va_list.rs
+index d0f1553..75129af 100644
+--- a/library/core/src/ffi/va_list.rs
++++ b/library/core/src/ffi/va_list.rs
+@@ -217,6 +217,7 @@ impl Clone for VaList<'_> {
+
+ #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+ impl<'f> const Drop for VaList<'f> {
++    #[inline]
+     fn drop(&mut self) {
+         // SAFETY: this variable argument list is being dropped, so won't be read from again.
+         unsafe { va_end(self) }
+-- 
+2.43.0
+

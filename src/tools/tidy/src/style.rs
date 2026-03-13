@@ -227,8 +227,6 @@ fn should_ignore(line: &str) -> bool {
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
 fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, line: &str) -> bool {
     match extension {
-        // fluent files are allowed to be any length
-        "ftl" => true,
         // non-error code markdown is allowed to be any length
         "md" if !is_error_code => true,
         // HACK(Ezrashaw): there is no way to split a markdown header over multiple lines
@@ -357,7 +355,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             return false;
         }
 
-        let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "ftl", "goml"];
+        let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "goml"];
 
         // NB: don't skip paths without extensions (or else we'll skip all directories and will only check top level files)
         if path.extension().is_none_or(|ext| !extensions.iter().any(|e| ext == OsStr::new(e))) {
@@ -602,12 +600,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err(DOUBLE_SPACE_AFTER_DOT)
                 }
 
-                if filename.ends_with(".ftl") {
-                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
-                    if line_backticks % 2 == 1 {
-                        suppressible_tidy_err!(err, skip_odd_backticks, "odd number of backticks");
-                    }
-                } else if trimmed.contains("//") {
+                if trimmed.contains("//") {
                     let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
                     let comment_text = trimmed.split("//").nth(1).unwrap();

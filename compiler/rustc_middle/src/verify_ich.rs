@@ -1,10 +1,10 @@
 use std::cell::Cell;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_query_system::ich::StableHashingContext;
 use tracing::instrument;
 
 use crate::dep_graph::{DepGraphData, SerializedDepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::ty::TyCtxt;
 
 #[inline]
@@ -25,7 +25,7 @@ pub fn incremental_verify_ich<'tcx, V>(
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
 
-    let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
+    let old_hash = dep_graph_data.prev_value_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
         incremental_verify_ich_failed(tcx, prev_index, &|| format_value(result));

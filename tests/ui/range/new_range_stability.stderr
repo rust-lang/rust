@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:19:5
+  --> $DIR/new_range_stability.rs:28:5
    |
 LL | use std::range::legacy;
    |     ^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | use std::range::legacy;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:23:5
+  --> $DIR/new_range_stability.rs:32:5
    |
 LL | use std::range::RangeFrom;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | use std::range::RangeFrom;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:24:5
+  --> $DIR/new_range_stability.rs:33:5
    |
 LL | use std::range::Range;
    |     ^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | use std::range::Range;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:25:5
+  --> $DIR/new_range_stability.rs:34:5
    |
 LL | use std::range::RangeFromIter;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | use std::range::RangeFromIter;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `new_range_api`
-  --> $DIR/new_range_stability.rs:26:5
+  --> $DIR/new_range_stability.rs:35:5
    |
 LL | use std::range::RangeIter;
    |     ^^^^^^^^^^^^^^^^^^^^^

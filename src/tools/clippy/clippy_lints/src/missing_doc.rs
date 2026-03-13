@@ -29,6 +29,8 @@ declare_clippy_lint! {
     "detects missing documentation for private members"
 }
 
+impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
+
 pub struct MissingDoc {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
@@ -98,8 +100,6 @@ impl MissingDoc {
         !cx.tcx.hir_attrs(hir_id).iter().any(is_doc_attr)
     }
 }
-
-impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_attributes(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {

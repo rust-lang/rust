@@ -2292,6 +2292,26 @@ fn display_format_flags() {
 }
 
 #[test]
+fn display_path_with_padding_no_align() {
+    assert_eq!(format!("{:10}", Path::new("/foo/bar").display()), "/foo/bar  ");
+}
+
+#[test]
+fn display_path_with_padding_align_left() {
+    assert_eq!(format!("{:<10}", Path::new("/foo/bar").display()), "/foo/bar  ");
+}
+
+#[test]
+fn display_path_with_padding_align_right() {
+    assert_eq!(format!("{:>10}", Path::new("/foo/bar").display()), "  /foo/bar");
+}
+
+#[test]
+fn display_path_with_padding_align_center() {
+    assert_eq!(format!("{:^10}", Path::new("/foo/bar").display()), " /foo/bar ");
+}
+
+#[test]
 fn into_rc() {
     let orig = "hello/world";
     let path = Path::new(orig);

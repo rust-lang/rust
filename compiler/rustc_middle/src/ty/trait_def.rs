@@ -2,7 +2,6 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{self as hir, find_attr};
@@ -241,7 +240,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 /// Query provider for `incoherent_impls`.
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     if let Some(def_id) = simp.def()
-        && !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcHasIncoherentInherentImpls)
+        && !find_attr!(tcx, def_id, RustcHasIncoherentInherentImpls)
     {
         return &[];
     }

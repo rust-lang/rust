@@ -290,7 +290,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
         if suggestions.len() > 0 {
             suggestions.dedup();
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 msg!("consider restricting the type parameter to the `'static` lifetime"),
                 suggestions,
                 Applicability::MaybeIncorrect,
@@ -902,7 +902,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
             }
 
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 format!(
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
                 ),
@@ -926,7 +926,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let ConstraintCategory::CallArgument(Some(func_ty)) = category else { return };
-        let ty::FnDef(fn_did, args) = func_ty.kind() else { return };
+        let ty::FnDef(fn_did, args) = *func_ty.kind() else { return };
         debug!(?fn_did, ?args);
 
         // Only suggest this on function calls, not closures
@@ -938,7 +938,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
             self.infcx.typing_env(self.infcx.param_env),
-            *fn_did,
+            fn_did,
             self.infcx.resolve_vars_if_possible(args),
         ) else {
             return;

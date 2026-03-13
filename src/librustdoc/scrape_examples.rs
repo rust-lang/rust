@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir};
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};

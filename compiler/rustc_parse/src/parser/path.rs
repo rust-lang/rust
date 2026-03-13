@@ -915,28 +915,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let mgca_disambiguation = self.mgca_direct_lit_hack(&expr);
-        Ok((expr, mgca_disambiguation))
-    }
-
-    /// Under `min_generic_const_args` we still allow *some* anon consts to be written without
-    /// a `const` block as it makes things quite a lot nicer. This function is useful for contexts
-    /// where we would like to use `MgcaDisambiguation::Direct` but need to fudge it to be `AnonConst`
-    /// in the presence of literals.
-    //
-    /// FIXME(min_generic_const_args): In the long term it would be nice to have a way to directly
-    /// represent literals in `hir::ConstArgKind` so that we can remove this special case by not
-    /// needing an anon const.
-    pub fn mgca_direct_lit_hack(&self, expr: &Expr) -> MgcaDisambiguation {
-        match &expr.kind {
-            ast::ExprKind::Lit(_) => MgcaDisambiguation::AnonConst,
-            ast::ExprKind::Unary(ast::UnOp::Neg, expr)
-                if matches!(expr.kind, ast::ExprKind::Lit(_)) =>
-            {
-                MgcaDisambiguation::AnonConst
-            }
-            _ => MgcaDisambiguation::Direct,
-        }
+        Ok((expr, MgcaDisambiguation::Direct))
     }
 
     /// Parse a generic argument in a path segment.

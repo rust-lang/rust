@@ -403,6 +403,12 @@ fn inline(
             .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
         {
             let replace_with = t.clone_subtree().syntax().clone_for_update();
+            if !is_in_type_path(&self_tok)
+                && let Some(ty) = ast::Type::cast(replace_with.clone())
+                && let Some(generic_arg_list) = ty.generic_arg_list()
+            {
+                ted::remove(generic_arg_list.syntax());
+            }
             ted::replace(self_tok, replace_with);
         }
     }
@@ -586,6 +592,17 @@ fn inline(
             _ => ast::Expr::BlockExpr(body),
         },
     }
+}
+
+fn is_in_type_path(self_tok: &syntax::SyntaxToken) -> bool {
+    self_tok
+        .parent_ancestors()
+        .skip_while(|it| !ast::Path::can_cast(it.kind()))
+        .map_while(ast::Path::cast)
+        .last()
+        .and_then(|it| it.syntax().parent())
+        .and_then(ast::PathType::cast)
+        .is_some()
 }
 
 fn path_expr_as_record_field(usage: &PathExpr) -> Option<ast::RecordExprField> {
@@ -1689,6 +1706,41 @@ fn main() {
         let a = a;
         a as A
     };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_trait_method_call_with_lifetimes() {
+        check_assist(
+            inline_call,
+            r#"
+trait Trait {
+    fn f() -> Self;
+}
+struct Foo<'a>(&'a ());
+impl<'a> Trait for Foo<'a> {
+    fn f() -> Self { Self(&()) }
+}
+impl Foo<'_> {
+    fn new() -> Self {
+        Self::$0f()
+    }
+}
+"#,
+            r#"
+trait Trait {
+    fn f() -> Self;
+}
+struct Foo<'a>(&'a ());
+impl<'a> Trait for Foo<'a> {
+    fn f() -> Self { Self(&()) }
+}
+impl Foo<'_> {
+    fn new() -> Self {
+        Foo(&())
+    }
 }
 "#,
         )

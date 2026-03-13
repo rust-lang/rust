@@ -430,6 +430,13 @@ where
     ) -> Vec<Candidate<I>> {
         unreachable!("Unsize is not const")
     }
+
+    fn consider_builtin_field_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<<D as SolverDelegate>::Interner, Self>,
+    ) -> Result<Candidate<<D as SolverDelegate>::Interner>, NoSolution> {
+        unreachable!("Field is not const")
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>

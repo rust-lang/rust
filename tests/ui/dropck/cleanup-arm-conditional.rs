@@ -1,12 +1,8 @@
 //@ run-pass
 
-#![allow(stable_features)]
 #![allow(unused_imports)]
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
-
-
-#![feature(os)]
 
 use std::os;
 

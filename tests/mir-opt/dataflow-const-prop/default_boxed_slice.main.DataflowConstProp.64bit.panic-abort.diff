@@ -20,15 +20,6 @@
                       scope 8 (inlined std::ptr::Alignment::as_nonzero) {
                       }
                       scope 9 (inlined NonNull::<[bool; 0]>::without_provenance) {
-                          let _6: *const [bool; 0];
-                          scope 10 {
-                          }
-                          scope 11 (inlined NonZero::<usize>::get) {
-                          }
-                          scope 12 (inlined std::ptr::without_provenance::<[bool; 0]>) {
-                              scope 13 (inlined without_provenance_mut::<[bool; 0]>) {
-                              }
-                          }
                       }
                   }
                   scope 7 (inlined std::ptr::Alignment::of::<[bool; 0]>) {
@@ -43,10 +34,7 @@
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
-          StorageLive(_6);
-          _6 = const {0x1 as *const [bool; 0]};
           _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
-          StorageDead(_6);
           _4 = const std::ptr::Unique::<[bool; 0]> {{ pointer: NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }}, _marker: PhantomData::<[bool; 0]> }};
           StorageDead(_5);
           _3 = const std::ptr::Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }};

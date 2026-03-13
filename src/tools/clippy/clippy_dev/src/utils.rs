@@ -1,5 +1,6 @@
 use core::fmt::{self, Display};
 use core::marker::PhantomData;
+use core::mem;
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::range::Range;
@@ -599,4 +600,30 @@ pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::
             .file_name()
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
     })
+}
+
+pub fn slice_groups_mut<T>(
+    slice: &mut [T],
+    split_idx: impl FnMut(&T, &[T]) -> usize,
+) -> impl Iterator<Item = &mut [T]> {
+    struct I<'a, T, F> {
+        slice: &'a mut [T],
+        split_idx: F,
+    }
+    impl<'a, T, F: FnMut(&T, &[T]) -> usize> Iterator for I<'a, T, F> {
+        type Item = &'a mut [T];
+        fn next(&mut self) -> Option<Self::Item> {
+            let (head, tail) = self.slice.split_first()?;
+            let idx = (self.split_idx)(head, tail) + 1;
+            // `mem::take` makes it so `self.slice` isn't reborrowed.
+            if let Some((head, tail)) = mem::take(&mut self.slice).split_at_mut_checked(idx) {
+                self.slice = tail;
+                Some(head)
+            } else {
+                self.slice = &mut [];
+                None
+            }
+        }
+    }
+    I { slice, split_idx }
 }

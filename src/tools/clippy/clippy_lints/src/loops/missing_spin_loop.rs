@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
         && let ExprKind::MethodCall(method, callee, ..) = unpack_cond(cond).kind
         && [sym::load, sym::compare_exchange, sym::compare_exchange_weak].contains(&method.ident.name)
         && let callee_ty = cx.typeck_results().expr_ty(callee)
-        && callee_ty.is_diag_item(cx, sym::AtomicBool)
+        && callee_ty.is_diag_item(cx, sym::Atomic)
         && let Some(std_or_core) = std_or_core(cx)
     {
         span_lint_and_sugg(

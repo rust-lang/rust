@@ -33,6 +33,7 @@ declare_clippy_lint! {
     nursery,
     "struct with a trailing zero-sized array but without `#[repr(C)]` or another `repr` attribute"
 }
+
 declare_lint_pass!(TrailingEmptyArray => [TRAILING_EMPTY_ARRAY]);
 
 impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {

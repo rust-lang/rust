@@ -13,7 +13,9 @@ use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, ClauseKind, CollectAndApply, Interner, PredicateKind, UpcastFrom};
+use crate::{
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
+};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
@@ -290,12 +292,6 @@ pub trait Const<I: Interner<Const = Self>>:
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
     fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
-}
-
-// FIXME(mgca): This trait can be removed once we're not using a `Box` in `Branch`
-pub trait ValTree<I: Interner<ValTree = Self>>: Copy + Debug + Hash + Eq {
-    // This isnt' `IntoKind` because then we can't return a reference
-    fn kind(&self) -> &ty::ValTreeKind<I>;
 }
 
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
@@ -577,6 +573,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_struct(self) -> bool;
 
+    fn is_packed(self) -> bool;
+
     /// Returns the type of the struct tail.
     ///
     /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.
@@ -585,6 +583,12 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn is_phantom_data(self) -> bool;
 
     fn is_manually_drop(self) -> bool;
+
+    fn field_representing_type_info(
+        self,
+        interner: I,
+        args: I::GenericArgs,
+    ) -> Option<FieldInfo<I>>;
 
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;

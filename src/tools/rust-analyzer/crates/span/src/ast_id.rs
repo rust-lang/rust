@@ -88,7 +88,6 @@ impl fmt::Debug for ErasedFileAstId {
             Module,
             Static,
             Trait,
-            TraitAlias,
             Variant,
             Const,
             Fn,
@@ -129,7 +128,6 @@ enum ErasedFileAstIdKind {
     Module,
     Static,
     Trait,
-    TraitAlias,
     // Until here associated with `ErasedHasNameFileAstId`.
     // The following are associated with `ErasedAssocItemFileAstId`.
     Variant,

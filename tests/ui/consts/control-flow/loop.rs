@@ -51,14 +51,14 @@ const _: i32 = {
     let mut x = 0;
 
     for i in 0..4 {
-        //~^ ERROR: cannot use `for`
-        //~| ERROR: cannot use `for`
+        //~^ ERROR: `std::ops::Range<{integer}>: const Iterator` is not satisfied
+        //~| ERROR: `std::ops::Range<{integer}>: const Iterator` is not satisfied
         x += i;
     }
 
     for i in 0..4 {
-        //~^ ERROR: cannot use `for`
-        //~| ERROR: cannot use `for`
+        //~^ ERROR: `std::ops::Range<{integer}>: const Iterator` is not satisfied
+        //~| ERROR: `std::ops::Range<{integer}>: const Iterator` is not satisfied
         x += i;
     }
 

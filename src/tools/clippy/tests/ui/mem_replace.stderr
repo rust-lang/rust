@@ -131,37 +131,37 @@ LL |     let _ = std::mem::replace(&mut slice, &[]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut slice)`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> tests/ui/mem_replace.rs:119:13
+  --> tests/ui/mem_replace.rs:115:13
    |
 LL |     let _ = std::mem::replace(&mut s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace.rs:150:13
+  --> tests/ui/mem_replace.rs:146:13
    |
 LL |     let _ = std::mem::replace(&mut f.0, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace.rs:152:13
+  --> tests/ui/mem_replace.rs:148:13
    |
 LL |     let _ = std::mem::replace(&mut *f, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
 
 error: replacing an `Option` with `None`
-  --> tests/ui/mem_replace.rs:154:13
+  --> tests/ui/mem_replace.rs:150:13
    |
 LL |     let _ = std::mem::replace(&mut b.opt, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> tests/ui/mem_replace.rs:157:13
+  --> tests/ui/mem_replace.rs:153:13
    |
 LL |     let _ = std::mem::replace(&mut b.val, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut b.val)`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:164:20
+  --> tests/ui/mem_replace.rs:160:20
    |
 LL |     let replaced = mem::replace(&mut an_option, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
@@ -170,19 +170,19 @@ LL |     let replaced = mem::replace(&mut an_option, Some(1));
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_some)]`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:168:20
+  --> tests/ui/mem_replace.rs:164:20
    |
 LL |     let replaced = mem::replace(an_option, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:173:20
+  --> tests/ui/mem_replace.rs:169:20
    |
 LL |     let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `(if b { &mut opt1 } else { &mut opt2 }).replace(1)`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> tests/ui/mem_replace.rs:185:20
+  --> tests/ui/mem_replace.rs:181:20
    |
 LL |     let replaced = std::mem::replace(dbg!(&mut text), String::default());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(dbg!(&mut text))`

@@ -3,7 +3,9 @@
 use std::cell::Cell;
 use std::fmt::Write;
 
+use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
+use rustc_hir_pretty as pprust_hir;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
@@ -13,7 +15,6 @@ use rustc_session::Session;
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_span::{FileName, Ident};
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;

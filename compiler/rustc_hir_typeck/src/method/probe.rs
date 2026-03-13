@@ -1,18 +1,18 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
+use std::debug_assert_matches;
 use std::ops::Deref;
 
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
@@ -36,7 +36,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use self::CandidateKind::*;
@@ -99,7 +99,7 @@ impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
 pub(crate) struct Candidate<'tcx> {
     pub(crate) item: ty::AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
-    pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
+    pub(crate) import_ids: &'tcx [LocalDefId],
 }
 
 #[derive(Debug, Clone)]
@@ -206,7 +206,7 @@ impl PickConstraintsForShadowed {
 pub(crate) struct Pick<'tcx> {
     pub item: ty::AssocItem,
     pub kind: PickKind<'tcx>,
-    pub import_ids: SmallVec<[LocalDefId; 1]>,
+    pub import_ids: &'tcx [LocalDefId],
 
     /// Indicates that the source expression should be autoderef'd N times
     /// ```ignore (not-rust)
@@ -390,6 +390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
+        #[derive(Diagnostic)]
+        #[diag("type annotations needed")]
+        struct MissingTypeAnnot;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -472,13 +476,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
-                self.tcx.node_span_lint(
+                self.tcx.emit_node_span_lint(
                     lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
-                    |lint| {
-                        lint.primary_message("type annotations needed");
-                    },
+                    MissingTypeAnnot,
                 );
             } else {
                 // Ended up encountering a type variable when doing autoderef,
@@ -490,6 +492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
+                    _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
                         // We want to get the variable name that the method
                         // is being called on. If it is a method call.
@@ -571,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::Binder::dummy(trait_ref),
                                 false,
                             ),
-                            import_ids: smallvec![],
+                            import_ids: &[],
                         },
                         false,
                     );
@@ -890,7 +893,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Tuple(..) => {
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps)
             }
-            _ => {}
+            ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Infer(..)
+            | ty::Pat(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => {}
         }
     }
 
@@ -930,7 +946,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 Candidate {
                     item,
                     kind: InherentImplCandidate { impl_def_id, receiver_steps },
-                    import_ids: smallvec![],
+                    import_ids: &[],
                 },
                 true,
             );
@@ -963,11 +979,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             traits::supertraits(self.tcx, trait_ref),
             |this, new_trait_ref, item| {
                 this.push_candidate(
-                    Candidate {
-                        item,
-                        kind: ObjectCandidate(new_trait_ref),
-                        import_ids: smallvec![],
-                    },
+                    Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: &[] },
                     true,
                 );
             },
@@ -1002,11 +1014,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
-                Candidate {
-                    item,
-                    kind: WhereClauseCandidate(poly_trait_ref),
-                    import_ids: smallvec![],
-                },
+                Candidate { item, kind: WhereClauseCandidate(poly_trait_ref), import_ids: &[] },
                 true,
             );
         });
@@ -1056,11 +1064,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(
-                    &smallvec![],
-                    trait_info.def_id,
-                    false,
-                );
+                self.assemble_extension_candidates_for_trait(&[], trait_info.def_id, false);
             }
         }
     }
@@ -1084,7 +1088,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: &SmallVec<[LocalDefId; 1]>,
+        import_ids: &'tcx [LocalDefId],
         trait_def_id: DefId,
         lint_ambiguous: bool,
     ) {
@@ -1107,7 +1111,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         self.push_candidate(
                             Candidate {
                                 item,
-                                import_ids: import_ids.clone(),
+                                import_ids,
                                 kind: TraitCandidate(bound_trait_ref, lint_ambiguous),
                             },
                             false,
@@ -1130,7 +1134,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.push_candidate(
                     Candidate {
                         item,
-                        import_ids: import_ids.clone(),
+                        import_ids,
                         kind: TraitCandidate(ty::Binder::dummy(trait_ref), lint_ambiguous),
                     },
                     false,
@@ -1810,47 +1814,68 @@ impl<'tcx> Pick<'tcx> {
         span: Span,
         scope_expr_id: HirId,
     ) {
+        struct ItemMaybeBeAddedToStd<'a, 'tcx> {
+            this: &'a Pick<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            span: Span,
+        }
+
+        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for ItemMaybeBeAddedToStd<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { this, tcx, span } = self;
+                let def_kind = this.item.as_def_kind();
+                let mut lint = Diag::new(
+                    dcx,
+                    level,
+                    format!(
+                        "{} {} with this name may be added to the standard library in the future",
+                        tcx.def_kind_descr_article(def_kind, this.item.def_id),
+                        tcx.def_kind_descr(def_kind, this.item.def_id),
+                    ),
+                );
+
+                match (this.item.kind, this.item.container) {
+                    (ty::AssocKind::Fn { .. }, _) => {
+                        // FIXME: This should be a `span_suggestion` instead of `help`
+                        // However `this.span` only
+                        // highlights the method name, so we can't use it. Also consider reusing
+                        // the code from `report_method_error()`.
+                        lint.help(format!(
+                            "call with fully qualified syntax `{}(...)` to keep using the current \
+                                 method",
+                            tcx.def_path_str(this.item.def_id),
+                        ));
+                    }
+                    (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
+                        let def_id = this.item.container_id(tcx);
+                        lint.span_suggestion(
+                            span,
+                            "use the fully qualified path to the associated const",
+                            format!("<{} as {}>::{}", this.self_ty, tcx.def_path_str(def_id), name),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
+                tcx.disabled_nightly_features(
+                    &mut lint,
+                    this.unstable_candidates.iter().map(|(candidate, feature)| {
+                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                    }),
+                );
+                lint
+            }
+        }
+
         if self.unstable_candidates.is_empty() {
             return;
         }
-        let def_kind = self.item.as_def_kind();
-        tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
-            lint.primary_message(format!(
-                "{} {} with this name may be added to the standard library in the future",
-                tcx.def_kind_descr_article(def_kind, self.item.def_id),
-                tcx.def_kind_descr(def_kind, self.item.def_id),
-            ));
-
-            match (self.item.kind, self.item.container) {
-                (ty::AssocKind::Fn { .. }, _) => {
-                    // FIXME: This should be a `span_suggestion` instead of `help`
-                    // However `self.span` only
-                    // highlights the method name, so we can't use it. Also consider reusing
-                    // the code from `report_method_error()`.
-                    lint.help(format!(
-                        "call with fully qualified syntax `{}(...)` to keep using the current \
-                             method",
-                        tcx.def_path_str(self.item.def_id),
-                    ));
-                }
-                (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
-                    let def_id = self.item.container_id(tcx);
-                    lint.span_suggestion(
-                        span,
-                        "use the fully qualified path to the associated const",
-                        format!("<{} as {}>::{}", self.self_ty, tcx.def_path_str(def_id), name),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                _ => {}
-            }
-            tcx.disabled_nightly_features(
-                lint,
-                self.unstable_candidates.iter().map(|(candidate, feature)| {
-                    (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                }),
-            );
-        });
+        tcx.emit_node_span_lint(
+            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            scope_expr_id,
+            span,
+            ItemMaybeBeAddedToStd { this: self, tcx, span },
+        );
     }
 }
 
@@ -2316,7 +2341,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Some(Pick {
             item: probes[0].0.item,
             kind: TraitPick(lint_ambiguous),
-            import_ids: probes[0].0.import_ids.clone(),
+            import_ids: probes[0].0.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2393,7 +2418,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         Some(Pick {
             item: child_candidate.item,
             kind: TraitPick(lint_ambiguous),
-            import_ids: child_candidate.import_ids.clone(),
+            import_ids: child_candidate.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2577,7 +2602,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
 
-        if let Some(d) = find_attr!(attrs, AttributeKind::Doc(d) => d)
+        if let Some(d) = find_attr!(attrs, Doc(d) => d)
             && d.aliases.contains_key(&method.name)
         {
             return true;
@@ -2670,7 +2695,7 @@ impl<'tcx> Candidate<'tcx> {
                     WhereClausePick(trait_ref)
                 }
             },
-            import_ids: self.import_ids.clone(),
+            import_ids: self.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,

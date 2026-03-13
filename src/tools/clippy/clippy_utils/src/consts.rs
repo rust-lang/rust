@@ -753,7 +753,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             QPath::Resolved(None, path)
                 if path.span.ctxt() == self.ctxt.get()
                     && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
-                    && let Res::Def(DefKind::Const, did) = path.res
+                    && let Res::Def(DefKind::Const { .. }, did) = path.res
                     && (matches!(
                         self.tcx.get_diagnostic_name(did),
                         Some(
@@ -841,11 +841,13 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id) =>
+                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id) =>
             {
                 did
             },
-            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id) => {
+            _ if let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) =
+                self.typeck.qpath_res(qpath, id) =>
+            {
                 self.source.set(ConstantSource::NonLocal);
                 did
             },

@@ -1,9 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![allow(stable_features)]
-
-#![feature(issue_5723_bootstrap)]
 
 trait Foo {
     fn dummy(&self) { }

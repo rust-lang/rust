@@ -1,3 +1,4 @@
+use rustc_hir::find_attr;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
@@ -34,7 +35,7 @@ pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
         return;
     }
 
-    if tcx.has_attr(body.source.def_id(), sym::rustc_do_not_const_check) {
+    if find_attr!(tcx, body.source.def_id(), RustcDoNotConstCheck) {
         return;
     }
 

@@ -146,7 +146,7 @@ impl Visibility {
 
     /// Returns the most permissive visibility of `self` and `other`.
     ///
-    /// If there is no subset relation between `self` and `other`, returns `None` (ie. they're only
+    /// If there is no subset relation between `self` and `other`, returns `None` (i.e. they're only
     /// visible in unrelated modules).
     pub(crate) fn max(
         self,
@@ -212,7 +212,7 @@ impl Visibility {
 
     /// Returns the least permissive visibility of `self` and `other`.
     ///
-    /// If there is no subset relation between `self` and `other`, returns `None` (ie. they're only
+    /// If there is no subset relation between `self` and `other`, returns `None` (i.e. they're only
     /// visible in unrelated modules).
     pub(crate) fn min(
         self,
@@ -234,7 +234,7 @@ impl Visibility {
                 if mod_.krate(db) == krate { Some(Visibility::Module(mod_, exp)) } else { None }
             }
             (Visibility::Module(mod_a, expl_a), Visibility::Module(mod_b, expl_b)) => {
-                if mod_a.krate(db) != mod_b.krate(db) {
+                if mod_a == mod_b {
                     // Most module visibilities are `pub(self)`, and assuming no errors
                     // this will be the common and thus fast path.
                     return Some(Visibility::Module(

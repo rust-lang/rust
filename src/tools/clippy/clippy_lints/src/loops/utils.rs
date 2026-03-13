@@ -8,7 +8,7 @@ use rustc_hir::{AssignOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetSt
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_span::symbol::{Symbol, sym};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -57,19 +57,17 @@ impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
                 }
 
                 match parent.kind {
-                    ExprKind::AssignOp(op, lhs, rhs) => {
-                        if lhs.hir_id == expr.hir_id {
-                            *state = if op.node == AssignOpKind::AddAssign
-                                && is_integer_const(self.cx, rhs, 1)
-                                && *state == IncrementVisitorVarState::Initial
-                                && self.depth == 0
-                            {
-                                IncrementVisitorVarState::IncrOnce
-                            } else {
-                                // Assigned some other value or assigned multiple times
-                                IncrementVisitorVarState::DontWarn
-                            };
-                        }
+                    ExprKind::AssignOp(op, lhs, rhs) if lhs.hir_id == expr.hir_id => {
+                        *state = if op.node == AssignOpKind::AddAssign
+                            && is_integer_const(self.cx, rhs, 1)
+                            && *state == IncrementVisitorVarState::Initial
+                            && self.depth == 0
+                        {
+                            IncrementVisitorVarState::IncrOnce
+                        } else {
+                            // Assigned some other value or assigned multiple times
+                            IncrementVisitorVarState::DontWarn
+                        };
                     },
                     ExprKind::Assign(lhs, _, _) if lhs.hir_id == expr.hir_id => {
                         *state = IncrementVisitorVarState::DontWarn;

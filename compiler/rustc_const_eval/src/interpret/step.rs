@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_target::callconv::FnAbi;
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
@@ -86,7 +86,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             span = ?stmt.source_info.span,
             tracing_separate_thread = Empty,
         )
-        .or_if_tracing_disabled(|| info!(stmt = ?stmt.kind));
+        .or_if_tracing_disabled(|| info!("{:?}", stmt.kind));
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -247,12 +247,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
-            }
-
-            ShallowInitBox(ref operand, _) => {
-                let src = self.eval_operand(operand, None)?;
-                let v = self.read_immediate(&src)?;
-                self.write_immediate(*v, &dest)?;
             }
 
             Cast(cast_kind, ref operand, cast_ty) => {
@@ -476,7 +470,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let instance = self.resolve(def_id, args)?;
                 (
                     FnVal::Instance(instance),
-                    self.fn_abi_of_instance(instance, extra_args)?,
+                    self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }
@@ -496,7 +490,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             span = ?terminator.source_info.span,
             tracing_separate_thread = Empty,
         )
-        .or_if_tracing_disabled(|| info!(terminator = ?terminator.kind));
+        .or_if_tracing_disabled(|| info!("{:?}", terminator.kind));
 
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {

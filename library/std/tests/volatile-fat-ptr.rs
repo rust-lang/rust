@@ -1,5 +1,3 @@
-#![allow(stable_features)]
-
 use std::ptr::{read_volatile, write_volatile};
 
 #[test]

@@ -7,12 +7,6 @@ use crate::ffi::{OsStr, OsString};
 use crate::path::PathBuf;
 use crate::{fmt, io, path};
 
-// Hardcoded to return 4096, since `sysconf` is only implemented as a stub.
-pub fn page_size() -> usize {
-    // unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize };
-    4096
-}
-
 // Everything below are stubs and copied from unsupported.rs
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -65,12 +59,4 @@ pub fn temp_dir() -> PathBuf {
 
 pub fn home_dir() -> Option<PathBuf> {
     None
-}
-
-pub fn exit(_code: i32) -> ! {
-    panic!("TA should not call `exit`")
-}
-
-pub fn getpid() -> u32 {
-    panic!("no pids on this platform")
 }

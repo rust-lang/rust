@@ -1199,7 +1199,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`_Unwind_RaiseException` is not supported on non-MinGW Windows",
                     );
                 }
-                // This function looks and behaves excatly like miri_start_unwind.
+                // This function looks and behaves exactly like miri_start_unwind.
                 let [payload] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _) -> unwind::libunwind::_Unwind_Reason_Code),
                     link_name,

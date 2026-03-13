@@ -1689,6 +1689,21 @@ pub mod iter {
             }
         }
 
+        pub struct Filter<I, P> {
+            iter: I,
+            predicate: P,
+        }
+        impl<I: Iterator, P> Iterator for Filter<I, P>
+        where
+            P: FnMut(&I::Item) -> bool,
+        {
+            type Item = I::Item;
+
+            fn next(&mut self) -> Option<I::Item> {
+                loop {}
+            }
+        }
+
         pub struct FilterMap<I, F> {
             iter: I,
             f: F,
@@ -1705,7 +1720,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::{FilterMap, Take};
+    pub use self::adapters::{Filter, FilterMap, Take};
 
     mod sources {
         mod repeat {
@@ -1753,6 +1768,13 @@ pub mod iter {
                 fn take(self, n: usize) -> crate::iter::Take<Self>
                 where
                     Self: Sized,
+                {
+                    loop {}
+                }
+                fn filter<P>(self, predicate: P) -> crate::iter::Filter<Self, P>
+                where
+                    Self: Sized,
+                    P: FnMut(&Self::Item) -> bool,
                 {
                     loop {}
                 }

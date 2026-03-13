@@ -1,10 +1,9 @@
 //! A pool of proc-macro server processes
 use std::sync::Arc;
 
-use crate::{
-    MacroDylib, ProcMacro, ServerError, bidirectional_protocol::SubCallback,
-    process::ProcMacroServerProcess,
-};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+
+use crate::{MacroDylib, ProcMacro, ServerError, process::ProcMacroServerProcess};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ProcMacroServerPool {
@@ -50,11 +49,7 @@ impl ProcMacroServerPool {
         })
     }
 
-    pub(crate) fn load_dylib(
-        &self,
-        dylib: &MacroDylib,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Vec<ProcMacro>, ServerError> {
+    pub(crate) fn load_dylib(&self, dylib: &MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
         let _span = tracing::info_span!("ProcMacroServer::load_dylib").entered();
 
         let dylib_path = Arc::new(dylib.path.clone());
@@ -64,14 +59,17 @@ impl ProcMacroServerPool {
         let (first, rest) = self.workers.split_first().expect("worker pool must not be empty");
 
         let macros = first
-            .find_proc_macros(&dylib.path, callback)?
+            .find_proc_macros(&dylib.path)?
             .map_err(|e| ServerError { message: e, io: None })?;
 
-        for worker in rest {
-            worker
-                .find_proc_macros(&dylib.path, callback)?
-                .map_err(|e| ServerError { message: e, io: None })?;
-        }
+        rest.into_par_iter()
+            .map(|worker| {
+                worker
+                    .find_proc_macros(&dylib.path)?
+                    .map(|_| ())
+                    .map_err(|e| ServerError { message: e, io: None })
+            })
+            .collect::<Result<(), _>>()?;
 
         Ok(macros
             .into_iter()

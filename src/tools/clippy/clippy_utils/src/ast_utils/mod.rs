@@ -449,6 +449,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 constness: lc,
                 is_auto: la,
                 safety: lu,
+                impl_restriction: liprt,
                 ident: li,
                 generics: lg,
                 bounds: lb,
@@ -458,6 +459,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 constness: rc,
                 is_auto: ra,
                 safety: ru,
+                impl_restriction: riprt,
                 ident: ri,
                 generics: rg,
                 bounds: rb,
@@ -467,6 +469,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
                 && la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
+                && eq_impl_restriction(liprt, riprt)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
@@ -819,7 +822,9 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
 pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
     matches!(
         (l, r),
-        (Defaultness::Final, Defaultness::Final) | (Defaultness::Default(_), Defaultness::Default(_))
+        (Defaultness::Implicit, Defaultness::Implicit)
+            | (Defaultness::Default(_), Defaultness::Default(_))
+            | (Defaultness::Final(_), Defaultness::Final(_))
     )
 }
 
@@ -828,6 +833,29 @@ pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {
     match (&l.kind, &r.kind) {
         (Public, Public) | (Inherited, Inherited) => true,
         (Restricted { path: l, .. }, Restricted { path: r, .. }) => eq_path(l, r),
+        _ => false,
+    }
+}
+
+pub fn eq_impl_restriction(l: &ImplRestriction, r: &ImplRestriction) -> bool {
+    eq_restriction_kind(&l.kind, &r.kind)
+}
+
+fn eq_restriction_kind(l: &RestrictionKind, r: &RestrictionKind) -> bool {
+    match (l, r) {
+        (RestrictionKind::Unrestricted, RestrictionKind::Unrestricted) => true,
+        (
+            RestrictionKind::Restricted {
+                path: l_path,
+                shorthand: l_short,
+                id: _,
+            },
+            RestrictionKind::Restricted {
+                path: r_path,
+                shorthand: r_short,
+                id: _,
+            },
+        ) => l_short == r_short && eq_path(l_path, r_path),
         _ => false,
     }
 }

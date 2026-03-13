@@ -18,11 +18,10 @@ RUN sh /scripts/sccache.sh
 
 ENV HOSTS=aarch64-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-full-tools \
+ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --disable-docs \
       --musl-root-aarch64=/usr/local/aarch64-linux-musl \
       --enable-sanitizers \
       --enable-profiler \
-      --set target.aarch64-unknown-linux-musl.crt-static=false
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+      --set target.aarch64-unknown-linux-musl.crt-static=false"
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

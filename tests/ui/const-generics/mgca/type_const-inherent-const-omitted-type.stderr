@@ -9,5 +9,11 @@ help: provide a type for the item
 LL |     type const B: <type> = 4;
    |                 ++++++++
 
-error: aborting due to 1 previous error
+error: type annotations needed for the literal
+  --> $DIR/type_const-inherent-const-omitted-type.rs:7:20
+   |
+LL |     type const B = 4;
+   |                    ^
+
+error: aborting due to 2 previous errors
 

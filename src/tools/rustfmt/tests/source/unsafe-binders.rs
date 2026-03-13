@@ -1,3 +1,5 @@
+#![feature(unsafe_binders)]
+
 fn foo() -> unsafe<'a>
 &'a () {}
 

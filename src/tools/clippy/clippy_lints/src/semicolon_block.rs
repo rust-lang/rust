@@ -36,6 +36,7 @@ declare_clippy_lint! {
     restriction,
     "add a semicolon inside the block"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     ///
@@ -64,6 +65,7 @@ declare_clippy_lint! {
     restriction,
     "add a semicolon outside the block"
 }
+
 impl_lint_pass!(SemicolonBlock => [SEMICOLON_INSIDE_BLOCK, SEMICOLON_OUTSIDE_BLOCK]);
 
 pub struct SemicolonBlock {

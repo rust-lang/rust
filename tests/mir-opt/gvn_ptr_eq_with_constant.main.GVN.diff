@@ -12,27 +12,19 @@
                   scope 5 (inlined std::ptr::Alignment::as_nonzero) {
                   }
                   scope 6 (inlined NonNull::<u8>::without_provenance) {
-                      scope 7 {
-                      }
-                      scope 8 (inlined NonZero::<usize>::get) {
-                      }
-                      scope 9 (inlined std::ptr::without_provenance::<u8>) {
-                          scope 10 (inlined without_provenance_mut::<u8>) {
-                          }
-                      }
                   }
               }
               scope 4 (inlined std::ptr::Alignment::of::<u8>) {
               }
           }
-          scope 11 (inlined NonNull::<u8>::as_ptr) {
+          scope 7 (inlined NonNull::<u8>::as_ptr) {
           }
       }
-      scope 12 (inlined Foo::<u8>::cmp_ptr) {
+      scope 8 (inlined Foo::<u8>::cmp_ptr) {
           let mut _4: *const u8;
           let mut _5: *mut u8;
           let mut _6: *const u8;
-          scope 13 (inlined std::ptr::eq::<u8>) {
+          scope 9 (inlined std::ptr::eq::<u8>) {
           }
       }
   

@@ -1,7 +1,7 @@
 #![feature(associated_type_defaults)]
 
 // Associated type defaults may not be assumed inside the trait defining them.
-// ie. they only resolve to `<Self as Tr>::A`, not the actual type `()`
+// i.e. they only resolve to `<Self as Tr>::A`, not the actual type `()`
 trait Tr {
     type A = (); //~ NOTE associated type defaults can't be assumed inside the trait defining them
 

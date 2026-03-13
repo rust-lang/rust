@@ -183,7 +183,44 @@ crate::cfg_select! {
     }
 }
 
-/// A variable argument list, equivalent to `va_list` in C.
+/// A variable argument list, ABI-compatible with `va_list` in C.
+///
+/// This type is created in c-variadic functions when `...` is desugared. A `VaList`
+/// is automatically initialized (equivalent to calling `va_start` in C).
+///
+/// ```
+/// #![feature(c_variadic)]
+///
+/// use std::ffi::VaList;
+///
+/// /// # Safety
+/// /// Must be passed at least `count` arguments of type `i32`.
+/// unsafe extern "C" fn my_func(count: u32, ap: ...) -> i32 {
+///     unsafe { vmy_func(count, ap) }
+/// }
+///
+/// /// # Safety
+/// /// Must be passed at least `count` arguments of type `i32`.
+/// unsafe fn vmy_func(count: u32, mut ap: VaList<'_>) -> i32 {
+///     let mut sum = 0;
+///     for _ in 0..count {
+///         sum += unsafe { ap.arg::<i32>() };
+///     }
+///     sum
+/// }
+///
+/// assert_eq!(unsafe { my_func(1, 42i32) }, 42);
+/// assert_eq!(unsafe { my_func(3, 42i32, -7i32, 20i32) }, 55);
+/// ```
+///
+/// The [`VaList::arg`] method can be used to read an argument from the list. This method
+/// automatically advances the `VaList` to the next argument. The C equivalent is `va_arg`.
+///
+/// Cloning a `VaList` performs the equivalent of C `va_copy`, producing an independent cursor
+/// that arguments can be read from without affecting the original. Dropping a `VaList` performs
+/// the equivalent of C `va_end`.
+///
+/// This can be used across an FFI boundary, and fully matches the platform's `va_list`.
 #[repr(transparent)]
 #[lang = "va_list"]
 pub struct VaList<'a> {
@@ -200,12 +237,13 @@ impl fmt::Debug for VaList<'_> {
 
 impl VaList<'_> {
     // Helper used in the implementation of the `va_copy` intrinsic.
-    pub(crate) fn duplicate(&self) -> Self {
-        Self { inner: self.inner.clone(), _marker: self._marker }
+    pub(crate) const fn duplicate(&self) -> Self {
+        Self { inner: self.inner, _marker: self._marker }
     }
 }
 
-impl Clone for VaList<'_> {
+#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+impl<'f> const Clone for VaList<'f> {
     #[inline]
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
@@ -216,7 +254,8 @@ impl Clone for VaList<'_> {
     }
 }
 
-impl<'f> Drop for VaList<'f> {
+#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+impl<'f> const Drop for VaList<'f> {
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
@@ -276,22 +315,20 @@ unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
 
 impl<'f> VaList<'f> {
-    /// Advance to and read the next variable argument.
+    /// Read an argument from the variable argument list, and advance to the next argument.
+    ///
+    /// Only types that implement [`VaArgSafe`] can be read from a variable argument list.
     ///
     /// # Safety
     ///
-    /// This function is only sound to call when:
-    ///
-    /// - there is a next variable argument available.
-    /// - the next argument's type must be ABI-compatible with the type `T`.
-    /// - the next argument must have a properly initialized value of type `T`.
+    /// This function is only sound to call when there is another argument to read, and that
+    /// argument is a properly initialized value of the type `T`.
     ///
     /// Calling this function with an incompatible type, an invalid value, or when there
     /// are no more variable arguments, is unsound.
-    ///
-    /// [valid]: https://doc.rust-lang.org/nightly/nomicon/what-unsafe-does.html
     #[inline]
-    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+    #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+    pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }

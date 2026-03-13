@@ -181,26 +181,6 @@ impl ConstValue {
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 
-    /// Check if a constant may contain provenance information. This is used by MIR opts.
-    /// Can return `true` even if there is no provenance.
-    pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Size) -> bool {
-        match *self {
-            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
-            ConstValue::Scalar(Scalar::Ptr(..)) => return true,
-            // It's hard to find out the part of the allocation we point to;
-            // just conservatively check everything.
-            ConstValue::Slice { alloc_id, meta: _ } => {
-                !tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty()
-            }
-            ConstValue::Indirect { alloc_id, offset } => !tcx
-                .global_alloc(alloc_id)
-                .unwrap_memory()
-                .inner()
-                .provenance()
-                .range_empty(AllocRange::from(offset..offset + size), &tcx),
-        }
-    }
-
     /// Check if a constant only contains uninitialized bytes.
     pub fn all_bytes_uninit(&self, tcx: TyCtxt<'_>) -> bool {
         let ConstValue::Indirect { alloc_id, .. } = self else {
@@ -473,39 +453,6 @@ impl<'tcx> Const<'tcx> {
     pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
         let val = ConstValue::Scalar(s);
         Self::Val(val, ty)
-    }
-
-    /// Return true if any evaluation of this constant always returns the same value,
-    /// taking into account even pointer identity tests.
-    pub fn is_deterministic(&self) -> bool {
-        // Some constants may generate fresh allocations for pointers they contain,
-        // so using the same constant twice can yield two different results.
-        // Notably, valtrees purposefully generate new allocations.
-        match self {
-            Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Param(..) => true,
-                // A valtree may be a reference. Valtree references correspond to a
-                // different allocation each time they are evaluated. Valtrees for primitive
-                // types are fine though.
-                ty::ConstKind::Value(cv) => cv.ty.is_primitive(),
-                ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
-                // This can happen if evaluation of a constant failed. The result does not matter
-                // much since compilation is doomed.
-                ty::ConstKind::Error(..) => false,
-                // Should not appear in runtime MIR.
-                ty::ConstKind::Infer(..)
-                | ty::ConstKind::Bound(..)
-                | ty::ConstKind::Placeholder(..) => bug!(),
-            },
-            Const::Unevaluated(..) => false,
-            Const::Val(
-                ConstValue::Slice { .. }
-                | ConstValue::ZeroSized
-                | ConstValue::Scalar(_)
-                | ConstValue::Indirect { .. },
-                _,
-            ) => true,
-        }
     }
 }
 

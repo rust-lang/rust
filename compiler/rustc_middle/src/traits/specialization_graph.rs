@@ -1,6 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::find_attr;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -62,7 +61,7 @@ pub enum OverlapMode {
 impl OverlapMode {
     pub fn get(tcx: TyCtxt<'_>, trait_id: DefId) -> OverlapMode {
         let with_negative_coherence = tcx.features().with_negative_coherence();
-        let strict_coherence = find_attr!(tcx.get_all_attrs(trait_id), AttributeKind::RustcStrictCoherence(span) => *span);
+        let strict_coherence = find_attr!(tcx, trait_id, RustcStrictCoherence(span) => *span);
 
         if with_negative_coherence {
             if strict_coherence.is_some() { OverlapMode::Strict } else { OverlapMode::WithNegative }
@@ -176,7 +175,7 @@ pub struct LeafDef {
     /// The node in the specialization graph containing the definition of `item`.
     pub defining_node: Node,
 
-    /// The "top-most" (ie. least specialized) specialization graph node that finalized the
+    /// The "top-most" (i.e. least specialized) specialization graph node that finalized the
     /// definition of `item`.
     ///
     /// Example:
@@ -211,7 +210,7 @@ impl LeafDef {
 }
 
 impl<'tcx> Ancestors<'tcx> {
-    /// Finds the bottom-most (ie. most specialized) definition of an associated
+    /// Finds the bottom-most (i.e. most specialized) definition of an associated
     /// item.
     pub fn leaf_def(mut self, tcx: TyCtxt<'tcx>, trait_item_def_id: DefId) -> Option<LeafDef> {
         let mut finalizing_node = None;

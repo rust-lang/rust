@@ -293,6 +293,60 @@ fn bar(bar$0) {}
 }
 
 #[test]
+fn not_shows_fully_equal_inside_pattern_params() {
+    check(
+        r#"
+fn foo(bar: u32) {}
+fn bar((a, bar$0)) {}
+"#,
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
+fn not_shows_locals_inside_pattern_params() {
+    check(
+        r#"
+fn outer() {
+    let foo = 3;
+    {
+        let bar = 3;
+        |($0)| {};
+        let baz = 3;
+        let qux = 3;
+    }
+    let fez = 3;
+}
+"#,
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn outer() {
+    let foo = 3;
+    {
+        let bar = 3;
+        fn inner(($0)) {}
+        let baz = 3;
+        let qux = 3;
+    }
+    let fez = 3;
+}
+"#,
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
+    );
+}
+
+#[test]
 fn completes_for_params_with_attributes() {
     check(
         r#"

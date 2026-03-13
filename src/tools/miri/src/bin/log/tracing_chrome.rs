@@ -50,9 +50,8 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::log::tracing_chrome_instant::TracingChromeInstant;
-
 /// Contains thread-local data for threads that send tracing spans or events.
+#[derive(Clone)]
 struct ThreadData {
     /// A unique ID for this thread, will populate "tid" field in the output trace file.
     tid: usize,
@@ -61,7 +60,7 @@ struct ThreadData {
     out: Sender<Message>,
     /// The instant in time this thread was started. All events happening on this thread will be
     /// saved to the trace file with a timestamp (the "ts" field) measured relative to this instant.
-    start: TracingChromeInstant,
+    start: std::time::Instant,
 }
 
 thread_local! {
@@ -562,28 +561,46 @@ where
     #[inline(always)]
     fn with_elapsed_micros_subtracting_tracing(&self, f: impl Fn(f64, usize, &Sender<Message>)) {
         THREAD_DATA.with(|value| {
-            let mut thread_data = value.borrow_mut();
-            let (ThreadData { tid, out, start }, new_thread) = match thread_data.as_mut() {
-                Some(thread_data) => (thread_data, false),
-                None => {
-                    let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
-                    let out = self.out.lock().unwrap().clone();
-                    let start = TracingChromeInstant::setup_for_thread_and_start(tid);
-                    *thread_data = Some(ThreadData { tid, out, start });
-                    (thread_data.as_mut().unwrap(), true)
+            // Make sure not to keep `value` borrowed when calling `f` below, since the user tracing
+            // code that `f` might invoke (e.g. fmt::Debug argument formatting) may contain nested
+            // tracing calls that would cause `value` to be doubly-borrowed mutably.
+            let (ThreadData { tid, out, start }, new_thread) = {
+                let mut thread_data = value.borrow_mut();
+                match thread_data.as_mut() {
+                    Some(thread_data) => (thread_data.clone(), false),
+                    None => {
+                        let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
+                        let out = self.out.lock().unwrap().clone();
+                        let start = std::time::Instant::now();
+                        *thread_data = Some(ThreadData { tid, out: out.clone(), start });
+                        (ThreadData { tid, out, start }, true)
+                    }
                 }
             };
 
-            start.with_elapsed_micros_subtracting_tracing(|ts| {
-                if new_thread {
-                    let name = match std::thread::current().name() {
-                        Some(name) => name.to_owned(),
-                        None => tid.to_string(),
-                    };
-                    let _ignored = out.send(Message::NewThread(*tid, name));
-                }
-                f(ts, *tid, out);
-            });
+            // Obtain the current time (before executing `f`).
+            let instant_before_f = std::time::Instant::now();
+
+            // Using the current time (`instant_before_f`), calculate the elapsed time (in
+            // microseconds) since `start` was instantiated, accounting for any time that was
+            // previously spent executing `f`. The "accounting" part is not computed in this
+            // line, but is rather done by shifting forward the `start` down below.
+            let ts = (instant_before_f - start).as_nanos() as f64 / 1000.0;
+
+            // Run the function (supposedly a function internal to the tracing infrastructure).
+            if new_thread {
+                let name = match std::thread::current().name() {
+                    Some(name) => name.to_owned(),
+                    None => tid.to_string(),
+                };
+                let _ignored = out.send(Message::NewThread(tid, name));
+            }
+            f(ts, tid, &out);
+
+            // Measure how much time was spent executing `f` and shift `start` forward
+            // by that amount. This "removes" that time from the trace.
+            // See comment at the top of this function for why we have to re-borrow here.
+            value.borrow_mut().as_mut().unwrap().start += std::time::Instant::now() - instant_before_f;
         });
     }
 }

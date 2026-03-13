@@ -267,7 +267,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         return;
     }
 
-    match ty.kind() {
+    match *ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)
@@ -287,7 +287,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, *ety, constraints)
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ety, constraints)
             });
         }
 

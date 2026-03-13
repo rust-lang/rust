@@ -247,6 +247,8 @@ impl CandidateHeadUsages {
     pub fn merge_usages(&mut self, other: CandidateHeadUsages) {
         if let Some(other_usages) = other.usages {
             if let Some(ref mut self_usages) = self.usages {
+                // Each head is merged independently, so the final usage counts are the same
+                // regardless of hash iteration order.
                 #[allow(rustc::potential_query_instability)]
                 for (head_index, head) in other_usages.into_iter() {
                     let HeadUsages { inductive, unknown, coinductive, forced_ambiguity } = head;
@@ -501,6 +503,8 @@ impl<X: Cx> NestedGoals<X> {
     /// to all nested goals of that nested goal are also inductive. Otherwise the paths are
     /// the same as for the child.
     fn extend_from_child(&mut self, step_kind: PathKind, nested_goals: &NestedGoals<X>) {
+        // Each nested goal is updated independently, and `insert` only unions paths for that
+        // goal, so traversal order cannot affect the result.
         #[allow(rustc::potential_query_instability)]
         for (input, paths_to_nested) in nested_goals.iter() {
             let paths_to_nested = paths_to_nested.extend_with(step_kind);
@@ -508,6 +512,8 @@ impl<X: Cx> NestedGoals<X> {
         }
     }
 
+    // This helper intentionally exposes unstable hash iteration so each caller must opt in
+    // locally and justify why its traversal is order-insensitive.
     #[cfg_attr(feature = "nightly", rustc_lint_query_instability)]
     #[allow(rustc::potential_query_instability)]
     fn iter(&self) -> impl Iterator<Item = (X::Input, PathsToNested)> + '_ {
@@ -710,6 +716,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     pub fn ignore_candidate_head_usages(&mut self, usages: CandidateHeadUsages) {
         if let Some(usages) = usages.usages {
             let (entry_index, entry) = self.stack.last_mut_with_index().unwrap();
+            // Ignoring usages only mutates the state for the current `head_index`, so the
+            // resulting per-head state is unchanged by iteration order.
             #[allow(rustc::potential_query_instability)]
             for (head_index, usages) in usages.into_iter() {
                 if head_index == entry_index {
@@ -901,6 +909,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// don't depend on its value.
     fn clear_dependent_provisional_results_for_rerun(&mut self) {
         let rerun_index = self.stack.next_index();
+        // Each cached entry is filtered independently based on whether it depends on
+        // `rerun_index`, so bucket traversal order does not matter.
         #[allow(rustc::potential_query_instability)]
         self.provisional_cache.retain(|_, entries| {
             entries.retain(|entry| {
@@ -916,10 +926,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 /// heads from the stack. This may not necessarily mean that we've actually
 /// reached a fixpoint for that cycle head, which impacts the way we rebase
 /// provisional cache entries.
-#[derive_where(Debug; X: Cx)]
-enum RebaseReason<X: Cx> {
+#[derive(Debug)]
+enum RebaseReason {
     NoCycleUsages,
-    Ambiguity(X::AmbiguityInfo),
     Overflow,
     /// We've actually reached a fixpoint.
     ///
@@ -956,9 +965,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         cx: X,
         stack_entry: &StackEntry<X>,
-        rebase_reason: RebaseReason<X>,
+        rebase_reason: RebaseReason,
     ) {
         let popped_head_index = self.stack.next_index();
+        // Rebasing decisions depend only on each provisional entry and the current stack state,
+        // so traversing the cache in hash order cannot change the final cache contents.
         #[allow(rustc::potential_query_instability)]
         self.provisional_cache.retain(|&input, entries| {
             entries.retain_mut(|entry| {
@@ -1035,9 +1046,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         // is not actually equal to the final provisional result. We
                         // need to discard the provisional cache entry in this case.
                         RebaseReason::NoCycleUsages => return false,
-                        RebaseReason::Ambiguity(info) => {
-                            *result = D::propagate_ambiguity(cx, input, info);
-                        }
                         RebaseReason::Overflow => *result = D::fixpoint_overflow_result(cx, input),
                         RebaseReason::ReachedFixpoint(None) => {}
                         RebaseReason::ReachedFixpoint(Some(path_kind)) => {
@@ -1143,6 +1151,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
 
         // The global cache entry is also invalid if there's a provisional cache entry
         // would apply for any of its nested goals.
+        // Any matching provisional entry rejects the candidate,
+        // so iteration order only affects when we return `false`, not the final answer.
         #[allow(rustc::potential_query_instability)]
         for (input, path_from_global_entry) in nested_goals.iter() {
             let Some(entries) = self.provisional_cache.get(&input) else {
@@ -1351,27 +1361,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 );
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }
-
-            // If computing this goal results in ambiguity with no constraints,
-            // we do not rerun it. It's incredibly difficult to get a different
-            // response in the next iteration in this case. These changes would
-            // likely either be caused by incompleteness or can change the maybe
-            // cause from ambiguity to overflow. Returning ambiguity always
-            // preserves soundness and completeness even if the goal is be known
-            // to succeed or fail.
-            //
-            // This prevents exponential blowup affecting multiple major crates.
-            // As we only get to this branch if we haven't yet reached a fixpoint,
-            // we also taint all provisional cache entries which depend on the
-            // current goal.
-            if let Some(info) = D::is_ambiguous_result(result) {
-                self.rebase_provisional_cache_entries(
-                    cx,
-                    &stack_entry,
-                    RebaseReason::Ambiguity(info),
-                );
-                return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
-            };
 
             // If we've reached the fixpoint step limit, we bail with overflow and taint all
             // provisional cache entries which depend on the current goal.

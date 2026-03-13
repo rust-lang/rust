@@ -91,7 +91,7 @@ where
                 }
             }
         },
-        BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
+        BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
             return Err(CannotUseFpConv);
         }
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {

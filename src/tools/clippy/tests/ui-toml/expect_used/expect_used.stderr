@@ -1,5 +1,5 @@
 error: used `expect()` on an `Option` value
-  --> tests/ui-toml/expect_used/expect_used.rs:8:13
+  --> tests/ui-toml/expect_used/expect_used.rs:7:13
    |
 LL |     let _ = opt.expect("");
    |             ^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = opt.expect("");
    = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `expect()` on a `Result` value
-  --> tests/ui-toml/expect_used/expect_used.rs:14:13
+  --> tests/ui-toml/expect_used/expect_used.rs:13:13
    |
 LL |     let _ = res.expect("");
    |             ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _ = res.expect("");
    = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on an `Option` value
-  --> tests/ui-toml/expect_used/expect_used.rs:23:28
+  --> tests/ui-toml/expect_used/expect_used.rs:19:28
    |
 LL |     const UNWRAPPED: i32 = SOME.expect("Not three?");
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     const UNWRAPPED: i32 = SOME.expect("Not three?");
    = note: if this value is `None`, it will panic
 
 error: used `expect()` on an `Option` value
-  --> tests/ui-toml/expect_used/expect_used.rs:26:9
+  --> tests/ui-toml/expect_used/expect_used.rs:22:9
    |
 LL |         SOME.expect("Still not three?");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

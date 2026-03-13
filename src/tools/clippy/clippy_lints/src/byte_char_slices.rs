@@ -27,6 +27,7 @@ declare_clippy_lint! {
     style,
     "hard to read byte char slice"
 }
+
 declare_lint_pass!(ByteCharSlice => [BYTE_CHAR_SLICES]);
 
 impl EarlyLintPass for ByteCharSlice {

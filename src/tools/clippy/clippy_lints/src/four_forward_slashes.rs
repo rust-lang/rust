@@ -35,6 +35,7 @@ declare_clippy_lint! {
     suspicious,
     "comments with 4 forward slashes (`////`) likely intended to be doc comments (`///`)"
 }
+
 declare_lint_pass!(FourForwardSlashes => [FOUR_FORWARD_SLASHES]);
 
 impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {

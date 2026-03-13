@@ -1,7 +1,7 @@
 //! See docs in builder/expr/mod.rs
 
 use rustc_abi::Size;
-use rustc_ast::{self as ast};
+use rustc_ast as ast;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;

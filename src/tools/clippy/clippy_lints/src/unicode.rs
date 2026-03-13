@@ -72,7 +72,11 @@ declare_clippy_lint! {
     "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
-declare_lint_pass!(Unicode => [INVISIBLE_CHARACTERS, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
+declare_lint_pass!(Unicode => [
+    INVISIBLE_CHARACTERS,
+    NON_ASCII_LITERAL,
+    UNICODE_NOT_NFC,
+]);
 
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {

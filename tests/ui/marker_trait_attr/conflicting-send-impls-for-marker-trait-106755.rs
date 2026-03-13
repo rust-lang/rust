@@ -1,5 +1,3 @@
-//@ compile-flags:-Ztranslate-lang=en_US
-
 #![feature(negative_impls)]
 #![feature(marker_trait_attr)]
 

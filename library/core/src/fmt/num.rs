@@ -2,7 +2,7 @@
 
 use crate::fmt::NumBuffer;
 use crate::mem::MaybeUninit;
-use crate::num::fmt as numfmt;
+use crate::num::imp::fmt as numfmt;
 use crate::{fmt, str};
 
 /// Formatting of integers with a non-decimal radix.

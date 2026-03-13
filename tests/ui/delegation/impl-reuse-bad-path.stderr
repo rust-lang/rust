@@ -16,7 +16,7 @@ error: expected trait, found module `TraitModule`
 LL |     reuse impl TraitModule for S { self.0 }
    |                ^^^^^^^^^^^ not a trait
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved`
+error[E0433]: cannot find module or crate `unresolved` in this scope
   --> $DIR/impl-reuse-bad-path.rs:6:16
    |
 LL |     reuse impl unresolved for S { self.0 }

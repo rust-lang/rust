@@ -174,7 +174,6 @@ fn recurse_build<'tcx>(
         | ExprKind::LoopMatch { .. } => {
             error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
-        ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
         ExprKind::ByUse { .. } => {
             error(GenericConstantTooComplexSub::ByUseNotSupported(node.span))?
         }
@@ -260,7 +259,6 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
                 count.has_non_region_param()
             }
             thir::ExprKind::Scope { .. }
-            | thir::ExprKind::Box { .. }
             | thir::ExprKind::If { .. }
             | thir::ExprKind::Call { .. }
             | thir::ExprKind::ByUse { .. }

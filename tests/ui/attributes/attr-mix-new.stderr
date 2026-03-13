@@ -1,4 +1,4 @@
-warning: crate-level attribute should be in the root module
+warning: the `#![feature]` attribute can only be used at the crate root
   --> $DIR/attr-mix-new.rs:7:3
    |
 LL |   #![feature(globs)]

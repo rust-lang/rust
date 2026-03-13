@@ -1,7 +1,6 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -273,18 +272,21 @@ impl<T> Trait<T> for X {
                                 values.found, values.expected,
                             )
                         };
-                        if !(self.suggest_constraining_opaque_associated_type(
-                            diag,
-                            msg,
-                            proj_ty,
-                            values.expected,
-                        ) || self.suggest_constraint(
-                            diag,
-                            &msg,
-                            body_owner_def_id,
-                            proj_ty,
-                            values.expected,
-                        )) {
+                        let suggested_projection_constraint = proj_ty.kind(tcx)
+                            == ty::AliasTyKind::Projection
+                            && (self.suggest_constraining_opaque_associated_type(
+                                diag,
+                                msg,
+                                proj_ty,
+                                values.expected,
+                            ) || self.suggest_constraint(
+                                diag,
+                                &msg,
+                                body_owner_def_id,
+                                proj_ty,
+                                values.expected,
+                            ));
+                        if !suggested_projection_constraint {
                             diag.help(msg());
                             diag.note(
                                 "for more information, visit \
@@ -358,9 +360,9 @@ impl<T> Trait<T> for X {
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
                                     | DefKind::Static { .. }
-                                    | DefKind::Const
+                                    | DefKind::Const { .. }
                                     | DefKind::AssocFn
-                                    | DefKind::AssocConst
+                                    | DefKind::AssocConst { .. }
                             )
                             && matches!(
                                 tcx.opaque_ty_origin(opaque_ty.def_id),
@@ -533,7 +535,7 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature{attr_span: span, was_forced: false, ..} => *span);
+                let target_spans = find_attr!(tcx, def_id, TargetFeature{attr_span: span, was_forced: false, ..} => *span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );

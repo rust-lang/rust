@@ -26,7 +26,6 @@ fn main() {
     //~^ unchecked_time_subtraction
 
     let _ = Duration::from_secs(10) - Duration::from_secs(5);
-    //~^ unchecked_time_subtraction
 
     let _ = second - dur1;
     //~^ unchecked_time_subtraction
@@ -55,8 +54,17 @@ fn issue16234() {
         };
     }
 
-    duration!(0).sub(duration!(1));
+    let d = duration!(0);
+    d.sub(duration!(1));
     //~^ unchecked_time_subtraction
-    let _ = duration!(0) - duration!(1);
+    let _ = d - duration!(1);
     //~^ unchecked_time_subtraction
+}
+
+fn issue16499() {
+    let _ = Duration::from_millis(2) - Duration::from_millis(1);
+    let _ = Duration::new(10000, 0) - Duration::from_secs(1);
+    let _ = Duration::from_nanos_u128(1000) - Duration::from_nanos(100);
+    let _ = Duration::from_secs_f32(1.5) - Duration::from_secs_f64(0.5);
+    let _ = Duration::from_mins(70) - Duration::from_hours(1);
 }
