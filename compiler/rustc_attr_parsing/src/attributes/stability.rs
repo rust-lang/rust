@@ -452,8 +452,6 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
-            // Validate that unstable attributes don't use already-stable language features
-            
             if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
                 cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
                     attr_span: cx.attr_span,
@@ -461,7 +459,7 @@ pub(crate) fn parse_unstability<S: Stage>(
                 });
                 return None;
             }
-            
+
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,

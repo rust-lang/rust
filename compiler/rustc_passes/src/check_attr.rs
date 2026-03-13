@@ -16,9 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey, msg};
-use rustc_feature::{
-    AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute,
-};
+use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
@@ -29,8 +27,7 @@ use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
-    Item, ItemKind, MethodKind, Node, ParamName, PartialConstStability, Safety, Stability,
-    StabilityLevel, Target, TraitItem, find_attr,
+    Item, ItemKind, MethodKind, Node, ParamName, Safety, Target, TraitItem, find_attr,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -156,14 +153,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
                 Attribute::Parsed(
-                    AttributeKind::Stability {
-                        span: attr_span,
-                        stability: Stability { level, feature },
-                    }
-                    | AttributeKind::RustcConstStability {
-                        span: attr_span,
-                        stability: PartialConstStability { level, feature, .. },
-                    },
+                    AttributeKind::Stability { .. }
+                    | AttributeKind::RustcConstStability { .. },
                 ) => {}
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {

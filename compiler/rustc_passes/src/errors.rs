@@ -872,17 +872,6 @@ pub(crate) struct CannotStabilizeDeprecated {
 }
 
 #[derive(Diagnostic)]
-#[diag("can't mark as unstable using an already stable feature")]
-pub(crate) struct UnstableAttrForAlreadyStableFeature {
-    #[primary_span]
-    #[label("this feature is already stable")]
-    #[help("consider removing the attribute")]
-    pub attr_span: Span,
-    #[label("the stability attribute annotates this item")]
-    pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$descr} has missing stability attribute")]
 pub(crate) struct MissingStabilityAttr<'a> {
     #[primary_span]
