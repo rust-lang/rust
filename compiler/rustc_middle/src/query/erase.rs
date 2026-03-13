@@ -383,7 +383,6 @@ impl_erasable_for_simple_types! {
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,
-    rustc_middle::ty::Representability,
     rustc_middle::ty::UnusedGenericParams,
     rustc_middle::ty::util::AlwaysRequiresDrop,
     rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,
