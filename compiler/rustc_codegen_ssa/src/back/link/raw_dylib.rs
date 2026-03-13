@@ -387,7 +387,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
         sh_size: 0,
         sh_link: 0,
         sh_info: 0,
-        sh_addralign: 1,
+        sh_addralign: 16,
         sh_entsize: 0,
     });
     // And also a dummy .data section for our dummy data symbols.
@@ -413,6 +413,10 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
 
     // .dynsym
     stub.write_null_dynamic_symbol();
+    // Linkers like LLD require at least somewhat reasonable symbol values rather than zero,
+    // otherwise all the symbols might get put at the same address. Thus we increment the value
+    // every time we write a symbol.
+    let mut st_value = 0;
     for (_name, dynstr, _ver, symbol_type, size) in syms.iter().copied() {
         let sym_type = match symbol_type {
             DllImportSymbolType::Function => elf::STT_FUNC,
@@ -427,9 +431,10 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
             st_other: elf::STV_DEFAULT,
             section: Some(section),
             st_shndx: 0, // ignored by object in favor of the `section` field
-            st_value: 0,
+            st_value,
             st_size: size.bytes(),
         });
+        st_value += 8;
     }
 
     // .dynstr
