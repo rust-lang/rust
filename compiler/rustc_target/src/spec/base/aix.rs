@@ -7,7 +7,7 @@ use crate::spec::{
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        abi: Abi::VecExtAbi,
+        abi: Abi::VecDefault,
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: Os::Aix,
