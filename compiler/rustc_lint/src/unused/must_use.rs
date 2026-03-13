@@ -193,11 +193,27 @@ pub fn is_ty_must_use<'tcx>(
         {
             IsTyMustUse::Trivial
         }
+        // Suppress warnings on `Result<Uninhabited, ()>` (e.g. `Result<!, ()>`).
+        ty::Adt(def, args)
+            if cx.tcx.is_diagnostic_item(sym::Result, def.did())
+                && is_uninhabited(args.type_at(0))
+                && args.type_at(1).is_unit() =>
+        {
+            IsTyMustUse::Trivial
+        }
         // Suppress warnings on `ControlFlow<Uninhabited, ()>` (e.g. `ControlFlow<!, ()>`).
         ty::Adt(def, args)
             if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
                 && args.type_at(1).is_unit()
                 && is_uninhabited(args.type_at(0)) =>
+        {
+            IsTyMustUse::Trivial
+        }
+        // Suppress warnings on `ControlFlow<(), Uninhabited>` (e.g. `ControlFlow<(), !>`).
+        ty::Adt(def, args)
+            if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
+                && args.type_at(0).is_unit()
+                && is_uninhabited(args.type_at(1)) =>
         {
             IsTyMustUse::Trivial
         }

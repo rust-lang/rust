@@ -16,42 +16,6 @@ LL |     let _ = result_unit_unit();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:81:5
-   |
-LL |     result_infallible_unit();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_infallible_unit();
-   |     +++++++
-
-error: unused `Result` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:82:5
-   |
-LL |     result_never_unit();
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_never_unit();
-   |     +++++++
-
-error: unused `Result` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:83:5
-   |
-LL |     result_myuninhabited_unit();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_myuninhabited_unit();
-   |     +++++++
-
-error: unused `Result` that must be used
   --> $DIR/must_use-result-uninhabited-unit.rs:84:5
    |
 LL |     result_myuninhabited_nonexhaustive_unit();
@@ -64,18 +28,6 @@ LL |     let _ = result_myuninhabited_nonexhaustive_unit();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:85:5
-   |
-LL |     result_unit_assoctype(S1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_unit_assoctype(S1);
-   |     +++++++
-
-error: unused `Result` that must be used
   --> $DIR/must_use-result-uninhabited-unit.rs:86:5
    |
 LL |     result_unit_assoctype(S2);
@@ -85,18 +37,6 @@ LL |     result_unit_assoctype(S2);
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = result_unit_assoctype(S2);
-   |     +++++++
-
-error: unused `Result` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:87:5
-   |
-LL |     S1.method_use_assoc_type();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = S1.method_use_assoc_type();
    |     +++++++
 
 error: unused `Result` that must be used
@@ -122,28 +62,6 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = controlflow_unit_unit();
    |     +++++++
 
-error: unused `ControlFlow` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:91:5
-   |
-LL |     controlflow_unit_infallible();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = controlflow_unit_infallible();
-   |     +++++++
-
-error: unused `ControlFlow` that must be used
-  --> $DIR/must_use-result-uninhabited-unit.rs:92:5
-   |
-LL |     controlflow_unit_never();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = controlflow_unit_never();
-   |     +++++++
-
 error: unused `Result` that must be used
   --> $DIR/must_use-result-uninhabited-unit.rs:99:9
    |
@@ -156,5 +74,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |         let _ = self.generate();
    |         +++++++
 
-error: aborting due to 13 previous errors
+error: aborting due to 6 previous errors
 

@@ -78,18 +78,18 @@ fn controlflow_unit_never() -> ControlFlow<(), !> {
 
 fn main() {
     result_unit_unit(); //~ ERROR: unused `Result` that must be used
-    result_infallible_unit(); //~ ERROR: unused `Result` that must be used
-    result_never_unit(); //~ ERROR: unused `Result` that must be used
-    result_myuninhabited_unit(); //~ ERROR: unused `Result` that must be used
+    result_infallible_unit();
+    result_never_unit();
+    result_myuninhabited_unit();
     result_myuninhabited_nonexhaustive_unit(); //~ ERROR: unused `Result` that must be used
-    result_unit_assoctype(S1); //~ ERROR: unused `Result` that must be used
+    result_unit_assoctype(S1);
     result_unit_assoctype(S2); //~ ERROR: unused `Result` that must be used
-    S1.method_use_assoc_type(); //~ ERROR: unused `Result` that must be used
+    S1.method_use_assoc_type();
     S2.method_use_assoc_type(); //~ ERROR: unused `Result` that must be used
 
     controlflow_unit_unit(); //~ ERROR: unused `ControlFlow` that must be used
-    controlflow_unit_infallible(); //~ ERROR: unused `ControlFlow` that must be used
-    controlflow_unit_never(); //~ ERROR: unused `ControlFlow` that must be used
+    controlflow_unit_infallible();
+    controlflow_unit_never();
 }
 
 trait AssocTypeBeforeMonomorphisation {
