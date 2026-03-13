@@ -7,6 +7,7 @@ mod files;
 mod math;
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib;
+mod simd;
 mod unix;
 mod windows;
 mod x86;
