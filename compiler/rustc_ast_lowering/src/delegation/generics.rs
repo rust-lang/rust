@@ -289,22 +289,22 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             // Note that we use self.disambiguator here, if we will create new every time
             // we will get ICE if params have the same name.
-            let def_id = self
-                .tcx
-                .create_def(
-                    self.resolver.def_id(item_id).unwrap(),
-                    Some(p.ident.name),
-                    match p.kind {
-                        GenericParamKind::Lifetime => DefKind::LifetimeParam,
-                        GenericParamKind::Type { .. } => DefKind::TyParam,
-                        GenericParamKind::Const { .. } => DefKind::ConstParam,
-                    },
-                    None,
-                    &mut self.disambiguator,
-                )
-                .def_id();
-
-            self.resolver.insert_new_def_id(p.id, def_id);
+            self.resolver.insert_new_def_id(
+                p.id,
+                self.tcx
+                    .create_def(
+                        self.resolver.def_id(item_id).expect("Must have def_id"),
+                        Some(p.ident.name),
+                        match p.kind {
+                            GenericParamKind::Lifetime => DefKind::LifetimeParam,
+                            GenericParamKind::Type { .. } => DefKind::TyParam,
+                            GenericParamKind::Const { .. } => DefKind::ConstParam,
+                        },
+                        None,
+                        &mut self.disambiguator,
+                    )
+                    .def_id(),
+            );
         }
 
         // Fallback to default generic param lowering, we modified them in the loop above.

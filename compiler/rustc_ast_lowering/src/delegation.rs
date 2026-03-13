@@ -37,6 +37,7 @@
 //! also be emitted during HIR ty lowering.
 
 use std::iter;
+use std::marker::PhantomData;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
@@ -571,6 +572,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         resolver: this.resolver,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
+                        phantom: PhantomData,
                     };
                     self_resolver.visit_block(block);
                     // Target expr needs to lower `self` path.
@@ -814,13 +816,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     }
 }
 
-struct SelfResolver<'a, 'tcx> {
-    resolver: &'a mut dyn ResolverAstLoweringExt<'tcx>,
+struct SelfResolver<'a, 'tcx, R: ResolverAstLoweringExt<'tcx>> {
+    resolver: &'a mut R,
     path_id: NodeId,
     self_param_id: NodeId,
+    phantom: PhantomData<&'tcx ()>,
 }
 
-impl SelfResolver<'_, '_> {
+impl<'tcx, R: ResolverAstLoweringExt<'tcx>> SelfResolver<'_, 'tcx, R> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
@@ -832,7 +835,7 @@ impl SelfResolver<'_, '_> {
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_> {
+impl<'ast, 'a, 'tcx, R: ResolverAstLoweringExt<'tcx>> Visitor<'ast> for SelfResolver<'a, 'tcx, R> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }
