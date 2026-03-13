@@ -713,8 +713,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             found_outlived_universal_region = true;
             debug!("universal_region_outlived_by ur={:?}", ur);
-            let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
+            let mut non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!(?non_local_ub);
+
+            // We don't need to propagate every `T: 'ub` for soundness:
+            // Say we have the following outlives constraints given (`'b: 'a` == `a -> b`):
+            //
+            // a
+            //  \
+            //   -> c
+            //  /
+            // b
+            //
+            // And we are doing the type test `T: 'a`.
+            //
+            // The `lower_bound_universal_regions` of `'a` are `['a, 'c]`. The `upper_bounds` of `'a`
+            // is `['a]`, so we propagate `T: 'a`.
+            // The `upper_bounds` of `'c` are `['a, 'b]`, propagating `T: 'a` is correct;
+            // `T: 'b` is redundant because it provides no value to proving `T: 'a`.
+            //
+            // So we filter the set of upper_bounds to regions already outliving `lower_bound`,
+            // but if this subset is empty, we fall back to the original one.
+            let subset: Vec<_> = non_local_ub
+                .iter()
+                .copied()
+                .filter(|ub| self.eval_outlives(*ub, lower_bound))
+                .collect();
+            non_local_ub = if subset.is_empty() { non_local_ub } else { subset };
+            debug!(?non_local_ub, "upper_bounds after filtering");
 
             // This is slightly too conservative. To show T: '1, given `'2: '1`
             // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
