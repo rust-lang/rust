@@ -506,7 +506,7 @@ impl Iterator for LookupHost {
     }
 }
 
-pub fn lookup_host_string(addr: impl Into<String>) -> io::Result<LookupHost> {
+pub(crate) fn lookup_host_string(addr: impl Into<String>) -> io::Result<LookupHost> {
     Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host: addr.into() }))
 }
 

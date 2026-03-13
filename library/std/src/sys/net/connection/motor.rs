@@ -395,8 +395,6 @@ pub struct LookupHost {
     addresses: alloc::collections::VecDeque<netc::sockaddr>,
 }
 
-pub(crate) use crate::net::lookup_host_string;
-
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
     let (_port, addresses) = moto_rt::net::lookup_host(host, port).map_err(map_motor_error)?;
     Ok(LookupHost { addresses })
