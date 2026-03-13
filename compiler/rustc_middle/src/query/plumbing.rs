@@ -322,7 +322,6 @@ macro_rules! define_callbacks {
         non_queries { $($_:tt)* }
     ) => {
         $(
-            #[allow(unused_lifetimes)]
             pub mod $name {
                 use super::*;
                 use $crate::query::erase::{self, Erased};
