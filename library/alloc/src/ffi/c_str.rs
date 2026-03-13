@@ -321,6 +321,10 @@ impl CString {
     /// assertion is made that `v` contains no 0 bytes, and it requires an
     /// actual byte vector, not anything that can be converted to one with Into.
     ///
+    /// # Safety
+    ///
+    /// The caller must ensure `v` contains no nul bytes in its contents.
+    ///
     /// # Examples
     ///
     /// ```
