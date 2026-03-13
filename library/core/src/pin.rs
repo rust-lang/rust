@@ -600,7 +600,7 @@
 //! automatically called [`Pin::get_unchecked_mut`].
 //!
 //! This can never cause a problem in purely safe code because creating a pinning pointer to
-//! a type which has an address-sensitive (thus does not implement `Unpin`) requires `unsafe`,
+//! a type which has address-sensitive states (and thus does not implement `Unpin`) requires `unsafe`,
 //! but it is important to note that choosing to take advantage of pinning-related guarantees
 //! to justify validity in the implementation of your type has consequences for that type's
 //! [`Drop`][Drop] implementation as well: if an element of your type could have been pinned,
