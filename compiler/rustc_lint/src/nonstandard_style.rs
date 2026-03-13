@@ -13,7 +13,7 @@ use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{BytePos, Ident, Span, sym};
+use rustc_span::{Ident, Span, sym};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -320,34 +320,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             return;
         }
 
-        let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
-            Some(Ident::from_str(name))
-        } else {
-            find_attr!(cx.tcx, crate, CrateName{name, name_span,..} => (name, name_span)).map(
-                |(&name, &span)| {
-                    // Discard the double quotes surrounding the literal.
-                    let sp = cx
-                        .sess()
-                        .source_map()
-                        .span_to_snippet(span)
-                        .ok()
-                        .and_then(|snippet| {
-                            let left = snippet.find('"')?;
-                            let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
-
-                            Some(
-                                span.with_lo(span.lo() + BytePos(left as u32 + 1))
-                                    .with_hi(span.hi() - BytePos(right as u32)),
-                            )
-                        })
-                        .unwrap_or(span);
-
-                    Ident::new(name, sp)
-                },
-            )
-        };
-
-        if let Some(ident) = &crate_ident {
+        if let Some(ident) = &cx.tcx.local_crate_ident() {
             self.check_snake_case(cx, "crate", ident);
         }
     }

@@ -51,17 +51,12 @@ impl ExtractedDocTests {
             scraped_test;
 
         let doctest = BuildDocTestBuilder::new(&text)
-            .crate_name(&opts.crate_name)
+            .crate_name(&opts.name_for_doctest())
             .global_crate_attrs(global_crate_attrs)
             .edition(edition)
             .lang_str(&langstr)
             .build(None);
-        let (wrapped, _size) = doctest.generate_unique_doctest(
-            &text,
-            langstr.test_harness,
-            opts,
-            Some(&opts.crate_name),
-        );
+        let (wrapped, _size) = doctest.generate_unique_doctest(&text, langstr.test_harness, opts);
         self.doctests.push(ExtractedDocTest {
             file: filename.display(RemapPathScopeComponents::DOCUMENTATION).to_string(),
             line,

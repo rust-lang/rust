@@ -312,7 +312,6 @@ impl DocTestBuilder {
         test_code: &str,
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
-        crate_name: Option<&str>,
     ) -> (DocTestWrapResult, usize) {
         if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
@@ -363,7 +362,7 @@ impl DocTestBuilder {
         // compiler.
         if !self.already_has_extern_crate &&
             !opts.no_crate_inject &&
-            let Some(crate_name) = crate_name &&
+            let Some(crate_name) = &opts.crate_name &&
             crate_name != "std" &&
             // Don't inject `extern crate` if the crate is never used.
             // NOTE: this is terribly inaccurate because it doesn't actually

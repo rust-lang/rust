@@ -517,8 +517,14 @@ impl<'tcx> Context<'tcx> {
         };
         // If user passed in `--playground-url` arg, we fill in crate name here
         let mut playground = None;
+        let crate_name = Some(tcx.sess.crate_name().to_string());
+        let filestem = tcx.sess.filestem();
         if let Some(url) = playground_url {
-            playground = Some(markdown::Playground { crate_name: Some(krate.name(tcx)), url });
+            playground = Some(markdown::Playground {
+                crate_name: crate_name.clone(),
+                filestem: filestem.to_owned(),
+                url,
+            });
         }
         let krate_version = cache.crate_version.as_deref().unwrap_or_default();
         let mut layout = layout::Layout {
@@ -546,7 +552,9 @@ impl<'tcx> Context<'tcx> {
             }
             if let Some((html_playground_url, _)) = d.html_playground_url {
                 playground = Some(markdown::Playground {
-                    crate_name: Some(krate.name(tcx)),
+                    crate_name: crate_name.clone(),
+                    filestem: filestem.to_owned(),
+                    // FIXME: is it intentional that this overrides `--playground-url`?
                     url: html_playground_url.to_string(),
                 });
             }

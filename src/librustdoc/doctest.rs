@@ -22,7 +22,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIn
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Attribute, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
@@ -77,8 +76,16 @@ impl MergedDoctestTimes {
 /// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone)]
 pub(crate) struct GlobalTestOptions {
-    /// Name of the crate (for regular `rustdoc`) or Markdown file (for `rustdoc foo.md`).
-    pub(crate) crate_name: String,
+    /// Name of the crate (when invoked on a Rust file)
+    ///
+    /// This can't be a `Symbol` because it's used outside the thread-local context of an
+    /// interner.
+    pub(crate) crate_name: Option<String>,
+    /// Filestem of the output.
+    ///
+    /// When invoked on a Rust file, this is based on crate name and input filestem.
+    /// When invoked on a Markdown file, this is only based on filestem.
+    pub(crate) filestem: String,
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     pub(crate) no_crate_inject: bool,
     /// Whether inserting extra indent spaces in code block,
@@ -86,6 +93,18 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) insert_indent_space: bool,
     /// Path to file containing arguments for the invocation of rustc.
     pub(crate) args_file: PathBuf,
+}
+
+impl GlobalTestOptions {
+    /// Suitable for passing to [`BuildDocTestBuilder::crate_name`].
+    ///
+    /// NOTE: the returned name is not normalized and may not be a valid Rust identifier.
+    fn name_for_doctest(&self) -> &str {
+        match &self.crate_name {
+            Some(input_name) => input_name.as_str(),
+            None => &self.filestem,
+        }
+    }
 }
 
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
@@ -169,6 +188,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
+        #[expect(deprecated)]
         crate_name: options.crate_name.clone(),
         remap_path_prefix: options.remap_path_prefix.clone(),
         unstable_opts: options.unstable_opts.clone(),
@@ -217,8 +237,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
-            let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-            let opts = scrape_test_config(tcx, crate_name, args_path);
+            let opts = scrape_test_config(tcx, args_path);
 
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
@@ -392,7 +411,6 @@ pub(crate) fn run_tests(
                 &scraped_test.text,
                 scraped_test.langstr.test_harness,
                 &opts,
-                Some(&opts.crate_name),
             );
             standalone_tests.push(generate_test_desc_and_fn(
                 doctest,
@@ -432,13 +450,10 @@ pub(crate) fn run_tests(
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(
-    tcx: TyCtxt<'_>,
-    crate_name: String,
-    args_file: PathBuf,
-) -> GlobalTestOptions {
+fn scrape_test_config(tcx: TyCtxt<'_>, args_file: PathBuf) -> GlobalTestOptions {
     let mut opts = GlobalTestOptions {
-        crate_name,
+        crate_name: Some(tcx.sess.crate_name().to_string()),
+        filestem: tcx.sess.filestem().to_owned(),
         no_crate_inject: false,
         insert_indent_space: false,
         args_file,
@@ -1047,7 +1062,7 @@ impl CreateRunnableDocTests {
 
         let edition = scraped_test.edition(&self.rustdoc_options);
         let doctest = BuildDocTestBuilder::new(&scraped_test.text)
-            .crate_name(&self.opts.crate_name)
+            .crate_name(self.opts.name_for_doctest())
             .global_crate_attrs(scraped_test.global_crate_attrs.clone())
             .edition(edition)
             .can_merge_doctests(self.can_merge_doctests)
@@ -1155,7 +1170,6 @@ fn doctest_run_fn(
         &scraped_test.text,
         scraped_test.langstr.test_harness,
         &global_opts,
-        Some(&global_opts.crate_name),
     );
     let runnable_test = RunnableDocTest {
         full_test_code: wrapped.to_string(),

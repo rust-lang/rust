@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::{Arc, OnceLock};
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -41,6 +41,7 @@ use crate::config::{
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
+use crate::output::validate_crate_name;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -83,9 +84,39 @@ pub trait DynLintStore: Any + DynSync + DynSend {
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CrateName {
+    pub normalized: Symbol,
+    /// See [`Session::filestem`] for why this exists.
+    pub unnormalized: Symbol,
+}
+
+impl CrateName {
+    pub fn from_normalized(sess: &Session, name: Symbol, span: Option<Span>) -> Self {
+        validate_crate_name(sess, name, span);
+        CrateName { normalized: name, unnormalized: name }
+    }
+
+    pub fn from_unnormalized(sess: &Session, unnormalized: &str, span: Option<Span>) -> Self {
+        let normalized = Symbol::intern(&unnormalized.replace('-', "_"));
+        validate_crate_name(sess, normalized, span);
+
+        CrateName { normalized, unnormalized: Symbol::intern(unnormalized) }
+    }
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
+    #[deprecated = "use `Session::crate_name()` instead"]
+    /// The name of the current crate.
+    ///
+    /// We need a `OnceLock` here because we may not have the crate name available extremely early
+    /// in `Session` construction. I tried moving `#![crate_attr]` parsing earlier before the
+    /// Session was constructed, but that didn't have a way to support mutating the `ast::Crate` in
+    /// `Callbacks::after_crate_root_parsing`.
+    pub crate_name: OnceLock<CrateName>,
+
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
@@ -1021,6 +1052,7 @@ pub fn build_session(
 
         let profiler = SelfProfiler::new(
             directory,
+            #[expect(deprecated, reason = "need a profiler before we parse the crate attributes")]
             sopts.crate_name.as_deref(),
             sopts.unstable_opts.self_profile_events.as_deref(),
             &sopts.unstable_opts.self_profile_counter,
@@ -1076,6 +1108,8 @@ pub fn build_session(
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let sess = Session {
+        #[expect(deprecated, reason = "session construction")]
+        crate_name: OnceLock::new(),
         target,
         host,
         opts: sopts,

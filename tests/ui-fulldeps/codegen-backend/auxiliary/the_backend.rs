@@ -57,7 +57,7 @@ impl CodegenBackend for TheBackend {
         &self,
         sess: &Session,
         _compiled_modules: CompiledModules,
-        crate_info: CrateInfo,
+        _crate_info: CrateInfo,
         _metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
@@ -66,12 +66,11 @@ impl CodegenBackend for TheBackend {
         use rustc_session::config::{CrateType, OutFileName};
         use rustc_session::output::out_filename;
 
-        let crate_name = crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
                 sess.dcx().fatal(format!("Crate type is {:?}", crate_type));
             }
-            let output_name = out_filename(sess, crate_type, &outputs, crate_name);
+            let output_name = out_filename(sess, crate_type, &outputs);
             match output_name {
                 OutFileName::Real(ref path) => {
                     let mut out_file = ::std::fs::File::create(path).unwrap();

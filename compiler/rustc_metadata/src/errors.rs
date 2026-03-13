@@ -492,7 +492,7 @@ pub struct CannotFindCrate {
     pub crate_name: Symbol,
     pub add_info: String,
     pub missing_core: bool,
-    pub current_crate: String,
+    pub current_crate: Symbol,
     pub is_nightly_build: bool,
     pub profiler_runtime: Symbol,
     pub locator_triple: TargetTuple,

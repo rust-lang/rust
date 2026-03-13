@@ -88,15 +88,16 @@ pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> 
         Input::Str { name: _, input } => input.clone(),
     };
 
-    // Obviously not a real crate name, but close enough for purposes of doctests.
-    let crate_name = input.filestem().to_string();
+    #[expect(deprecated, reason = "don't have a Session when running markdown files")]
+    let filestem = input.filestem().to_string();
     let temp_dir =
         tempdir().map_err(|error| format!("failed to create temporary directory: {error:?}"))?;
     let args_file = temp_dir.path().join("rustdoc-cfgs");
     generate_args_file(&args_file, &options)?;
 
     let opts = GlobalTestOptions {
-        crate_name,
+        crate_name: None,
+        filestem,
         no_crate_inject: true,
         insert_indent_space: false,
         args_file,

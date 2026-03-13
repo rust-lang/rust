@@ -12,9 +12,8 @@ pub fn out_filename(
     sess: &Session,
     crate_type: CrateType,
     outputs: &OutputFilenames,
-    crate_name: Symbol,
 ) -> OutFileName {
-    let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
+    let default_filename = filename_for_input(sess, crate_type, outputs);
     let out_filename = outputs
         .outputs
         .get(&OutputType::Exe)
@@ -87,10 +86,9 @@ pub fn filename_for_metadata(sess: &Session, outputs: &OutputFilenames) -> OutFi
 pub fn filename_for_input(
     sess: &Session,
     crate_type: CrateType,
-    crate_name: Symbol,
     outputs: &OutputFilenames,
 ) -> OutFileName {
-    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+    let libname = format!("{}{}", sess.crate_name(), sess.opts.cg.extra_filename);
 
     match crate_type {
         CrateType::Rlib => {

@@ -45,8 +45,8 @@ use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_resolve::rustdoc::pulldown_cmark::{
     self, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
+use rustc_span::Span;
 use rustc_span::edition::Edition;
-use rustc_span::{Span, Symbol};
 use tracing::{debug, trace};
 
 use crate::clean::RenderedLink;
@@ -204,7 +204,10 @@ fn slugify(c: char) -> Option<char> {
 
 #[derive(Debug)]
 pub struct Playground {
-    pub crate_name: Option<Symbol>,
+    /// See [`GlobalTestOptions::crate_name`].
+    pub crate_name: Option<String>,
+    /// See [`GlobalTestOptions::filestem`].
+    pub filestem: String,
     pub url: String,
 }
 
@@ -287,7 +290,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let edition = edition.unwrap_or(self.edition);
 
         let playground_button = self.playground.as_ref().and_then(|playground| {
-            let krate = &playground.crate_name;
             let url = &playground.url;
             if url.is_empty() {
                 return None;
@@ -297,22 +299,22 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
                 .collect::<String>();
-            let krate = krate.as_ref().map(|s| s.as_str());
 
             // FIXME: separate out the code to make a code block into runnable code
             //        from the complicated doctest logic
             let opts = GlobalTestOptions {
-                crate_name: krate.map(String::from).unwrap_or_default(),
+                crate_name: playground.crate_name.clone(),
+                filestem: playground.filestem.clone(),
                 no_crate_inject: false,
                 insert_indent_space: true,
                 args_file: PathBuf::new(),
             };
             let mut builder = doctest::BuildDocTestBuilder::new(&test).edition(edition);
-            if let Some(krate) = krate {
-                builder = builder.crate_name(krate);
+            if let Some(krate) = &playground.crate_name {
+                builder = builder.crate_name(krate.as_str());
             }
             let doctest = builder.build(None);
-            let (wrapped, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
+            let (wrapped, _) = doctest.generate_unique_doctest(&test, false, &opts);
             let test = wrapped.to_string();
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
