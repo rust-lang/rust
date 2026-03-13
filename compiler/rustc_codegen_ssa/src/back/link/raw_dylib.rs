@@ -296,6 +296,8 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     stub.reserve_shstrtab_section_index();
     let text_section_name = stub.add_section_name(".text".as_bytes());
     let text_section = stub.reserve_section_index();
+    let data_section_name = stub.add_section_name(".data".as_bytes());
+    let data_section = stub.reserve_section_index();
     stub.reserve_dynsym_section_index();
     stub.reserve_dynstr_section_index();
     if !vers.is_empty() {
@@ -375,7 +377,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // Section headers
     stub.write_null_section_header();
     stub.write_shstrtab_section_header();
-    // Create a dummy .text section for our dummy symbols.
+    // Create a dummy .text section for our dummy non-data symbols.
     stub.write_section_header(&write::SectionHeader {
         name: Some(text_section_name),
         sh_type: elf::SHT_PROGBITS,
@@ -386,6 +388,19 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
         sh_link: 0,
         sh_info: 0,
         sh_addralign: 1,
+        sh_entsize: 0,
+    });
+    // And also a dummy .data section for our dummy data symbols.
+    stub.write_section_header(&write::SectionHeader {
+        name: Some(data_section_name),
+        sh_type: elf::SHT_PROGBITS,
+        sh_flags: (elf::SHF_WRITE | elf::SHF_ALLOC) as u64,
+        sh_addr: 0,
+        sh_offset: 0,
+        sh_size: 0,
+        sh_link: 0,
+        sh_info: 0,
+        sh_addralign: 16,
         sh_entsize: 0,
     });
     stub.write_dynsym_section_header(0, 1);
@@ -405,11 +420,13 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
             DllImportSymbolType::ThreadLocal => elf::STT_TLS,
             DllImportSymbolType::Unknown => elf::STT_NOTYPE,
         };
+        let section =
+            if symbol_type == DllImportSymbolType::Static { data_section } else { text_section };
         stub.write_dynamic_symbol(&write::Sym {
             name: Some(dynstr),
             st_info: (elf::STB_GLOBAL << 4) | sym_type,
             st_other: elf::STV_DEFAULT,
-            section: Some(text_section),
+            section: Some(section),
             st_shndx: 0, // ignored by object in favor of the `section` field
             st_value: 0,
             st_size: size.bytes(),
