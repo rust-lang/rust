@@ -1,0 +1,8 @@
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/generic-self-in-discr-ice.rs:7:9
+   |
+LL |     X = size_of::<*mut Self>(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
