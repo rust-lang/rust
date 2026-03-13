@@ -7,7 +7,7 @@ pub use self::plumbing::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, IntoQueryParam, QueryMode,
     QueryState, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
-pub use self::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
+pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;
 use crate::ty::TyCtxt;
 

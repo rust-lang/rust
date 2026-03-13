@@ -48,7 +48,7 @@ pub fn collect_active_jobs_from_all_queries<'tcx>(
     let mut complete = true;
 
     for_each_query_vtable!(ALL, tcx, |query| {
-        let res = gather_active_jobs(query, tcx, require_complete, &mut job_map_out);
+        let res = gather_active_jobs(query, require_complete, &mut job_map_out);
         if res.is_none() {
             complete = false;
         }
@@ -66,7 +66,6 @@ pub fn collect_active_jobs_from_all_queries<'tcx>(
 /// grep for.)
 fn gather_active_jobs<'tcx, C>(
     query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
     require_complete: bool,
     job_map_out: &mut QueryJobMap<'tcx>, // Out-param; job info is gathered into this map
 ) -> Option<()>
@@ -113,7 +112,7 @@ where
     // Call `make_frame` while we're not holding a `state.active` lock as `make_frame` may call
     // queries leading to a deadlock.
     for (key, job) in active {
-        let frame = crate::plumbing::create_deferred_query_stack_frame(tcx, query, key);
+        let frame = crate::plumbing::create_query_stack_frame(query, key);
         job_map_out.insert(job.id, QueryJobInfo { frame, job });
     }
 
@@ -126,9 +125,9 @@ fn mk_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
-    cycle_error: CycleError,
+    cycle_error: CycleError<'tcx>,
 ) -> C::Value {
-    let error = report_cycle(tcx.sess, &cycle_error);
+    let error = report_cycle(tcx, &cycle_error);
     match query.cycle_error_handling {
         CycleErrorHandling::Error => {
             let guar = error.emit();
@@ -231,7 +230,7 @@ fn cycle_error<'tcx, C: QueryCache>(
         .expect("failed to collect active queries");
 
     let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
-    (mk_cycle(query, tcx, key, error.lift()), None)
+    (mk_cycle(query, tcx, key, error), None)
 }
 
 #[inline(always)]
@@ -275,7 +274,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, tcx, key, cycle.lift()), None),
+        Err(cycle) => (mk_cycle(query, tcx, key, cycle), None),
     }
 }
 

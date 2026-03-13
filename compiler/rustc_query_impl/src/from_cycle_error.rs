@@ -45,7 +45,11 @@ pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
         |tcx, _, cycle, guar| erase_val(layout_of(tcx, cycle, guar));
 }
 
-pub(crate) fn default<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError, query_name: &str) -> ! {
+pub(crate) fn default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cycle_error: CycleError<'tcx>,
+    query_name: &str,
+) -> ! {
     let Some(guar) = tcx.sess.dcx().has_errors() else {
         bug!(
             "`from_cycle_error_default` on query `{query_name}` called without errors: {:#?}",
@@ -82,7 +86,7 @@ fn fn_sig<'tcx>(
 
 fn check_representability<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError,
+    cycle_error: CycleError<'tcx>,
     _guar: ErrorGuaranteed,
 ) -> ! {
     let mut item_and_field_ids = Vec::new();
@@ -91,7 +95,7 @@ fn check_representability<'tcx>(
         if info.frame.dep_kind == DepKind::check_representability
             && let Some(field_id) = info.frame.def_id
             && let Some(field_id) = field_id.as_local()
-            && let Some(DefKind::Field) = info.frame.info.def_kind
+            && let Some(DefKind::Field) = info.frame.tagged_key.def_kind(tcx)
         {
             let parent_id = tcx.parent(field_id.to_def_id());
             let item_id = match tcx.def_kind(parent_id) {
@@ -118,7 +122,7 @@ fn check_representability<'tcx>(
 
 fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError,
+    cycle_error: CycleError<'tcx>,
     _guar: ErrorGuaranteed,
 ) -> &'tcx [ty::Variance] {
     search_for_cycle_permutation(
@@ -164,7 +168,7 @@ fn search_for_cycle_permutation<Q, T>(
 
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError,
+    cycle_error: CycleError<'tcx>,
     _guar: ErrorGuaranteed,
 ) -> Result<TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
     let diag = search_for_cycle_permutation(
@@ -205,7 +209,7 @@ fn layout_of<'tcx>(
                         continue;
                     };
                     let frame_span =
-                        info.frame.info.default_span(cycle[(i + 1) % cycle.len()].span);
+                        info.frame.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
                     if frame_span.is_dummy() {
                         continue;
                     }
@@ -239,7 +243,7 @@ fn layout_of<'tcx>(
                 ControlFlow::Continue(())
             }
         },
-        || report_cycle(tcx.sess, &cycle_error),
+        || report_cycle(tcx, &cycle_error),
     );
 
     let guar = diag.emit();
