@@ -516,7 +516,7 @@ pub trait LintContext {
     ///
     /// [`emit_lint_base`]: rustc_middle::lint::emit_lint_base#decorate-signature
     #[track_caller]
-    fn opt_span_diag_lint<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
@@ -532,7 +532,7 @@ pub trait LintContext {
         span: S,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        self.opt_span_diag_lint(lint, Some(span), decorator);
+        self.opt_span_lint(lint, Some(span), decorator);
     }
 
     /// This returns the lint level for the given lint at the current location.
@@ -588,7 +588,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         self.tcx.sess
     }
 
-    fn opt_span_diag_lint<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
@@ -613,13 +613,13 @@ impl LintContext for EarlyContext<'_> {
         self.builder.sess()
     }
 
-    fn opt_span_diag_lint<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        self.builder.opt_span_diag_lint(lint, span.map(|s| s.into()), decorator)
+        self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
