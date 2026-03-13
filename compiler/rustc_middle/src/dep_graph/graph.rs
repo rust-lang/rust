@@ -465,58 +465,12 @@ impl DepGraphData {
 }
 
 impl DepGraph {
-    #[inline]
+    // Note: this method is called in `query_get_at`, which is (a) very hot, and (b) instantiated
+    // many times. So we inline only this outer check so it can fail fast with minimal code bloat.
+    #[inline(always)]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            read_deps(|task_deps| {
-                let mut task_deps = match task_deps {
-                    TaskDepsRef::Allow(deps) => deps.lock(),
-                    TaskDepsRef::EvalAlways => {
-                        // We don't need to record dependencies of eval_always
-                        // queries. They are re-evaluated unconditionally anyway.
-                        return;
-                    }
-                    TaskDepsRef::Ignore => return,
-                    TaskDepsRef::Forbid => {
-                        // Reading is forbidden in this context. ICE with a useful error message.
-                        panic_on_forbidden_read(data, dep_node_index)
-                    }
-                };
-                let task_deps = &mut *task_deps;
-
-                if cfg!(debug_assertions) {
-                    data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
-                }
-
-                // Has `dep_node_index` been seen before? Use either a linear scan or a hashset
-                // lookup to determine this. See `TaskDeps::read_set` for details.
-                let new_read = if task_deps.reads.len() <= TaskDeps::LINEAR_SCAN_MAX {
-                    !task_deps.reads.contains(&dep_node_index)
-                } else {
-                    task_deps.read_set.insert(dep_node_index)
-                };
-                if new_read {
-                    task_deps.reads.push(dep_node_index);
-                    if task_deps.reads.len() == TaskDeps::LINEAR_SCAN_MAX + 1 {
-                        // Fill `read_set` with what we have so far. Future lookups will use it.
-                        task_deps.read_set.extend(task_deps.reads.iter().copied());
-                    }
-
-                    #[cfg(debug_assertions)]
-                    {
-                        if let Some(target) = task_deps.node
-                            && let Some(ref forbidden_edge) = data.current.forbidden_edge
-                        {
-                            let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
-                            if forbidden_edge.test(&src, &target) {
-                                panic!("forbidden edge {:?} -> {:?} created", src, target)
-                            }
-                        }
-                    }
-                } else if cfg!(debug_assertions) {
-                    data.current.total_duplicate_read_count.fetch_add(1, Ordering::Relaxed);
-                }
-            })
+            data.read_index(dep_node_index);
         }
     }
 
@@ -636,6 +590,58 @@ impl DepGraph {
 }
 
 impl DepGraphData {
+    fn read_index(&self, dep_node_index: DepNodeIndex) {
+        read_deps(|task_deps| {
+            let mut task_deps = match task_deps {
+                TaskDepsRef::Allow(deps) => deps.lock(),
+                TaskDepsRef::EvalAlways => {
+                    // We don't need to record dependencies of eval_always
+                    // queries. They are re-evaluated unconditionally anyway.
+                    return;
+                }
+                TaskDepsRef::Ignore => return,
+                TaskDepsRef::Forbid => {
+                    // Reading is forbidden in this context. ICE with a useful error message.
+                    panic_on_forbidden_read(self, dep_node_index)
+                }
+            };
+            let task_deps = &mut *task_deps;
+
+            if cfg!(debug_assertions) {
+                self.current.total_read_count.fetch_add(1, Ordering::Relaxed);
+            }
+
+            // Has `dep_node_index` been seen before? Use either a linear scan or a hashset
+            // lookup to determine this. See `TaskDeps::read_set` for details.
+            let new_read = if task_deps.reads.len() <= TaskDeps::LINEAR_SCAN_MAX {
+                !task_deps.reads.contains(&dep_node_index)
+            } else {
+                task_deps.read_set.insert(dep_node_index)
+            };
+            if new_read {
+                task_deps.reads.push(dep_node_index);
+                if task_deps.reads.len() == TaskDeps::LINEAR_SCAN_MAX + 1 {
+                    // Fill `read_set` with what we have so far. Future lookups will use it.
+                    task_deps.read_set.extend(task_deps.reads.iter().copied());
+                }
+
+                #[cfg(debug_assertions)]
+                {
+                    if let Some(target) = task_deps.node
+                        && let Some(ref forbidden_edge) = self.current.forbidden_edge
+                    {
+                        let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                        if forbidden_edge.test(&src, &target) {
+                            panic!("forbidden edge {:?} -> {:?} created", src, target)
+                        }
+                    }
+                }
+            } else if cfg!(debug_assertions) {
+                self.current.total_duplicate_read_count.fetch_add(1, Ordering::Relaxed);
+            }
+        })
+    }
+
     fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
         &self,
         sess: &Session,
