@@ -12,9 +12,9 @@ pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
-use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
+use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
+use crate::query::stack::QueryStackFrame;
 use crate::query::{QueryCache, QueryInfo, QueryJob};
 use crate::ty::TyCtxt;
 
@@ -60,19 +60,10 @@ pub enum CycleErrorHandling {
 }
 
 #[derive(Clone, Debug)]
-pub struct CycleError<I = QueryStackFrameExtra> {
+pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame<I>)>,
-    pub cycle: Vec<QueryInfo<I>>,
-}
-
-impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
-    pub fn lift(&self) -> CycleError<QueryStackFrameExtra> {
-        CycleError {
-            usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift())),
-            cycle: self.cycle.iter().map(|info| info.lift()).collect(),
-        }
-    }
+    pub usage: Option<(Span, QueryStackFrame<'tcx>)>,
+    pub cycle: Vec<QueryInfo<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -139,16 +130,12 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub value_from_cycle_error: fn(
         tcx: TyCtxt<'tcx>,
         key: C::Key,
-        cycle_error: CycleError,
+        cycle_error: CycleError<'tcx>,
         guar: ErrorGuaranteed,
     ) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 
-    /// Formats a human-readable description of this query and its key, as
-    /// specified by the `desc` query modifier.
-    ///
-    /// Used when reporting query cycle errors and similar problems.
-    pub description_fn: fn(TyCtxt<'tcx>, C::Key) -> String,
+    pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
 
     /// Function pointer that is called by the query methods on [`TyCtxt`] and
     /// friends[^1], after they have checked the in-memory cache and found no
@@ -522,6 +509,69 @@ macro_rules! define_callbacks {
                 }
             }
         )*
+
+        /// Identifies a query by kind and key. This is in contrast to `QueryJobId` which is just a number.
+        #[allow(non_camel_case_types)]
+        #[derive(Clone, Debug)]
+        pub enum TaggedQueryKey<'tcx> {
+            $(
+                $name($name::Key<'tcx>),
+            )*
+        }
+
+        impl<'tcx> TaggedQueryKey<'tcx> {
+            /// Formats a human-readable description of this query and its key, as
+            /// specified by the `desc` query modifier.
+            ///
+            /// Used when reporting query cycle errors and similar problems.
+            pub fn description(&self, tcx: TyCtxt<'tcx>) -> String {
+                let (name, description) = ty::print::with_no_queries!(match self {
+                    $(
+                        TaggedQueryKey::$name(key) => (stringify!($name), _description_fns::$name(tcx, *key)),
+                    )*
+                });
+                if tcx.sess.verbose_internals() {
+                    format!("{description} [{name:?}]")
+                } else {
+                    description
+                }
+            }
+
+            /// Returns the default span for this query if `span` is a dummy span.
+            pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
+                if !span.is_dummy() {
+                    return span
+                }
+                if let TaggedQueryKey::def_span(..) = self {
+                    // The `def_span` query is used to calculate `default_span`,
+                    // so exit to avoid infinite recursion.
+                    return DUMMY_SP
+                }
+                match self {
+                    $(
+                        TaggedQueryKey::$name(key) => crate::query::QueryKey::default_span(key, tcx),
+                    )*
+                }
+            }
+
+            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
+                // This is used to reduce code generation as it
+                // can be reused for queries with the same key type.
+                fn inner<'tcx>(key: &impl crate::query::QueryKey, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
+                    key.key_as_def_id().and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
+                }
+
+                if let TaggedQueryKey::def_kind(..) = self {
+                    // Try to avoid infinite recursion.
+                    return None
+                }
+                match self {
+                    $(
+                        TaggedQueryKey::$name(key) => inner(key, tcx),
+                    )*
+                }
+            }
+        }
 
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
