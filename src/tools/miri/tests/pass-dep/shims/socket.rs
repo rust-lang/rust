@@ -9,9 +9,9 @@ fn main() {
 }
 
 fn create_ipv4_listener() {
-    let _listener_ipv4 = TcpListener::bind("127.0.0.1:3456").unwrap();
+    let _listener_ipv4 = TcpListener::bind("127.0.0.1:0").unwrap();
 }
 
 fn create_ipv6_listener() {
-    let _listener_ipv6 = TcpListener::bind("[::1]:2345").unwrap();
+    let _listener_ipv6 = TcpListener::bind("[::1]:0").unwrap();
 }
