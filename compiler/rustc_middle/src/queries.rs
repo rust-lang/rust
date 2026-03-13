@@ -198,12 +198,7 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) ->
-        (
-            &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>,
-            &'tcx ty::ResolverGlobalCtxt
-        )
-    {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }

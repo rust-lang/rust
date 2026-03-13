@@ -1842,13 +1842,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            next_node_id: self.next_node_id,
-            lint_buffer: Steal::new(self.lint_buffer),
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
+            next_node_id: self.next_node_id,
             node_id_to_def_id: self
                 .node_id_to_def_id
                 .into_items()
@@ -1856,6 +1855,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .collect(),
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
+            lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,
             delegation_infos: self.delegation_infos,
         };
