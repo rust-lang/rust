@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3
-//@ min-llvm-version: 21
 
 #![crate_type = "lib"]
 #![allow(unused_assignments, unused_variables)]

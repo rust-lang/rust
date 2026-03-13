@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-20-tools \
-  llvm-20-dev \
+  llvm-21-tools \
+  llvm-21-dev \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -42,7 +42,7 @@ ENV EXTERNAL_LLVM="1"
 
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS="--build=aarch64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-20 \
+      --llvm-root=/usr/lib/llvm-21 \
       --enable-llvm-link-shared \
       --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10"
