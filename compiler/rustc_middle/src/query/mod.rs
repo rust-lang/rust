@@ -4,8 +4,8 @@ pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCac
 pub use self::job::{QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, IntoQueryParam, QueryMode,
-    QueryState, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
+    ActiveKeyStatus, CycleError, EnsureMode, IntoQueryParam, QueryMode, QueryState, TyCtxtAt,
+    TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
 pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;

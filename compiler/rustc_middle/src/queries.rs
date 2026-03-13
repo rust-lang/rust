@@ -564,13 +564,13 @@ rustc_queries! {
     }
 
     /// Checks whether a type is representable or infinitely sized
-    query check_representability(key: LocalDefId) -> rustc_middle::ty::Representability {
+    //
+    // Infinitely sized types will cause a cycle. The `value_from_cycle_error` impl will print
+    // a custom error about the infinite size and then abort compilation. (In the past we
+    // recovered and continued, but in practice that leads to confusing subsequent error
+    // messages about cycles that then abort.)
+    query check_representability(key: LocalDefId) {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
-        // Infinitely sized types will cause a cycle. The custom `FromCycleError` impl for
-        // `Representability` will print a custom error about the infinite size and then abort
-        // compilation. (In the past we recovered and continued, but in practice that leads to
-        // confusing subsequent error messages about cycles that then abort.)
-        cycle_delay_bug
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
         // entire cycle to be in memory for diagnostics. This means we can't
@@ -580,9 +580,8 @@ rustc_queries! {
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
-    query check_representability_adt_ty(key: Ty<'tcx>) -> rustc_middle::ty::Representability {
+    query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
-        cycle_delay_bug
         anon
     }
 
@@ -1027,7 +1026,6 @@ rustc_queries! {
         desc { "computing the variances of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
-        cycle_delay_bug
     }
 
     /// Gets a map with the inferred outlives-predicates of every item in the local crate.
@@ -1160,7 +1158,6 @@ rustc_queries! {
         desc { "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
-        cycle_delay_bug
     }
 
     /// Performs lint checking for the module.
@@ -1751,8 +1748,6 @@ rustc_queries! {
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
-        // we emit our own error during query cycle handling
-        cycle_delay_bug
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
