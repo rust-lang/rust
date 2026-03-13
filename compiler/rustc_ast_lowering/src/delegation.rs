@@ -58,8 +58,8 @@ use smallvec::SmallVec;
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
-    AllowReturnTypeNotation, CombinedResolverAstLowering, GenericArgsMode, ImplTraitContext,
-    ImplTraitPosition, LoweringContext, ParamMode, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
+    ParamMode, ResolverAstLoweringExt,
 };
 
 mod generics;
@@ -105,7 +105,7 @@ static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
     },
 ];
 
-impl<'hir> LoweringContext<'_, '_, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
@@ -677,25 +677,25 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     }
 }
 
-struct SelfResolver<'a, 'b, 'hir> {
-    resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
+struct SelfResolver<'a, 'tcx> {
+    resolver: &'a mut dyn ResolverAstLoweringExt<'tcx>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'a, 'b, 'hir> SelfResolver<'a, 'b, 'hir> {
+impl SelfResolver<'_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.resolver.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
             let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.resolver.mut_part.partial_res_map.insert(id, new_res);
+            self.resolver.insert_partial_res(id, new_res);
         }
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_, '_> {
+impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }

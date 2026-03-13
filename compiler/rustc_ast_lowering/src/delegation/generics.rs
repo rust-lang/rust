@@ -79,9 +79,9 @@ impl<T> DelegationGenerics<T> {
 }
 
 impl<'hir> HirOrAstGenerics<'hir> {
-    pub(super) fn into_hir_generics(
+    pub(super) fn into_hir_generics<R: ResolverAstLoweringExt<'hir>>(
         &mut self,
-        ctx: &mut LoweringContext<'_, '_, 'hir>,
+        ctx: &mut LoweringContext<'_, 'hir, R>,
         item_id: NodeId,
         span: Span,
     ) -> &mut HirOrAstGenerics<'hir> {
@@ -126,9 +126,9 @@ impl<'hir> HirOrAstGenerics<'hir> {
         }
     }
 
-    pub(super) fn into_generic_args(
+    pub(super) fn into_generic_args<R: ResolverAstLoweringExt<'hir>>(
         &self,
-        ctx: &mut LoweringContext<'_, '_, 'hir>,
+        ctx: &mut LoweringContext<'_, 'hir, R>,
         add_lifetimes: bool,
         span: Span,
     ) -> Option<&'hir hir::GenericArgs<'hir>> {
@@ -165,11 +165,11 @@ impl<'a> GenericsGenerationResult<'a> {
 }
 
 impl<'hir> GenericsGenerationResults<'hir> {
-    pub(super) fn all_params(
+    pub(super) fn all_params<R: ResolverAstLoweringExt<'hir>>(
         &mut self,
         item_id: NodeId,
         span: Span,
-        ctx: &mut LoweringContext<'_, '_, 'hir>,
+        ctx: &mut LoweringContext<'_, 'hir, R>,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -207,11 +207,11 @@ impl<'hir> GenericsGenerationResults<'hir> {
     /// and `generate_lifetime_predicate` functions) we need to add them to delegation generics.
     /// Those predicates will not affect resulting predicate inheritance and folding
     /// in `rustc_hir_analysis`, as we inherit all predicates from delegation signature.
-    pub(super) fn all_predicates(
+    pub(super) fn all_predicates<R: ResolverAstLoweringExt<'hir>>(
         &mut self,
         item_id: NodeId,
         span: Span,
-        ctx: &mut LoweringContext<'_, '_, 'hir>,
+        ctx: &mut LoweringContext<'_, 'hir, R>,
     ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -236,7 +236,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, '_, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(super) fn lower_delegation_generics(
         &mut self,
         delegation: &Delegation,
@@ -258,7 +258,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             // we will take those args that are in trait impl header trait ref.
             let parent = GenericsGenerationResult::new(DelegationGenerics::Default(None));
 
-            let generics = self.get_fn_like_generics(root_fn_id, span);
+            let generics = self.get_fn_like_generics(delegee_id, span);
             let child = DelegationGenerics::TraitImpl(generics, child_user_specified);
             let child = GenericsGenerationResult::new(child);
 
@@ -334,7 +334,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 
             // Note that we use self.disambiguator here, if we will create new every time
             // we will get ICE if params have the same name.
-            self.resolver.mut_part.node_id_to_def_id.insert(
+            self.resolver.insert_new_def_id(
                 p.id,
                 self.tcx
                     .create_def(
@@ -542,7 +542,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
 
         let node_id = self.next_node_id();
 
-        self.resolver.mut_part.partial_res_map.insert(node_id, hir::def::PartialRes::new(res));
+        self.resolver.insert_partial_res(node_id, hir::def::PartialRes::new(res));
 
         GenericParamKind::Const {
             ty: Box::new(Ty {

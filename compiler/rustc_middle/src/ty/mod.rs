@@ -194,7 +194,9 @@ pub struct ResolverGlobalCtxt {
     pub stripped_cfg_items: Vec<StrippedCfgItem>,
 }
 
-#[derive(Debug, Default)]
+/// Resolutions that should only be used for lowering.
+/// This struct is meant to be consumed by lowering.
+#[derive(Debug)]
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
@@ -207,23 +209,19 @@ pub struct ResolverAstLowering<'tcx> {
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
-    // Information about delegations which is used when handling recursive delegations
-    pub delegation_infos: LocalDefIdMap<DelegationInfo>,
+    pub next_node_id: ast::NodeId,
+
     pub node_id_to_def_id: NodeMap<LocalDefId>,
 
     pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
-}
 
-/// Resolutions that should only be used for lowering.
-/// This struct is meant to be consumed by lowering.
-#[derive(Debug)]
-pub struct AstLoweringResolutionContext<'tcx> {
-    pub resolver: ResolverAstLowering<'tcx>,
-    pub next_node_id: ast::NodeId,
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
+
+    // Information about delegations which is used when handling recursive delegations
+    pub delegation_infos: LocalDefIdMap<DelegationInfo>,
 }
 
 #[derive(Debug)]

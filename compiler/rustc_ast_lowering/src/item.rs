@@ -25,18 +25,17 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
-use crate::CombinedResolverAstLowering;
 
-pub(super) enum Owners<'b, 'hir> {
-    IndexVec(&'b mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>),
-    Map(&'b mut FxIndexMap<LocalDefId, hir::MaybeOwner<'hir>>),
+pub(super) enum Owners<'a, 'hir> {
+    IndexVec(&'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>),
+    Map(&'a mut FxIndexMap<LocalDefId, hir::MaybeOwner<'hir>>),
 }
 
-pub(super) struct ItemLowerer<'a, 'b, 'hir> {
+pub(super) struct ItemLowerer<'a, 'hir, R: ResolverAstLoweringExt<'hir>> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'b mut CombinedResolverAstLowering<'a, 'hir>,
-    pub(super) ast_index: &'b IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: Owners<'b, 'hir>,
+    pub(super) resolver: &'a mut R,
+    pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+    pub(super) owners: Owners<'a, 'hir>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -58,11 +57,11 @@ fn add_ty_alias_where_clause(
         if before.0 || !after.0 { before } else { after };
 }
 
-impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, '_, 'hir>) -> hir::OwnerNode<'hir>,
+        f: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::OwnerNode<'hir>,
     ) {
         let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
@@ -96,7 +95,10 @@ impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
             match node {
                 AstOwner::NonOwner => {}
                 AstOwner::Crate(c) => {
-                    assert_eq!(self.resolver.def_id(CRATE_NODE_ID).unwrap(), CRATE_DEF_ID);
+                    assert_eq!(
+                        self.resolver.def_id(CRATE_NODE_ID).expect("Must have def_id"),
+                        CRATE_DEF_ID
+                    );
                     self.with_lctx(CRATE_NODE_ID, |lctx| {
                         let module = lctx.lower_mod(&c.items, &c.spans);
                         // FIXME(jdonszelman): is dummy span ever a problem here?
@@ -118,7 +120,7 @@ impl<'a, 'b, 'hir> ItemLowerer<'a, 'b, 'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, '_, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[Box<Item>],
@@ -1494,7 +1496,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
     pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'_, '_, 'hir>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1631,7 +1633,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'_, '_, 'hir>| {
+        let mkbody = |this: &mut LoweringContext<'_, 'hir, R>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 
@@ -1849,8 +1851,7 @@ impl<'hir> LoweringContext<'_, '_, 'hir> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes =
-            self.resolver.extra_lifetime_params(parent_node_id).cloned().unwrap_or_default();
+        let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
         params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,
