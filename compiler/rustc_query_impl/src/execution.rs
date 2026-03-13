@@ -240,6 +240,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
+    key_hash: u64,
     latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
 ) -> (C::Value, Option<DepNodeIndex>) {
@@ -248,8 +249,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     // self-profiler.
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
-    // With parallel queries we might just have to wait on some other
-    // thread.
+    // With parallel queries we might just have to wait on some other thread.
     let result = latch.wait_on(tcx, current, span);
 
     match result {
@@ -258,7 +258,6 @@ fn wait_for_query<'tcx, C: QueryCache>(
                 outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
-                    let key_hash = sharded::make_hash(&key);
                     let shard = query.state.active.lock_shard_by_hash(key_hash);
                     match shard.find(key_hash, equivalent_key(key)) {
                         // The query we waited on panicked. Continue unwinding here.
@@ -311,16 +310,37 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
     match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
-            // Nothing has computed or is computing the query, so we start a new job and insert it in the
-            // state map.
+            // Nothing has computed or is computing the query, so we start a new job and insert it
+            // in the state map.
             let id = next_job_id(tcx);
             let job = QueryJob::new(id, span, current_job_id);
             entry.insert((key, ActiveKeyStatus::Started(job)));
 
-            // Drop the lock before we start executing the query
+            // Drop the lock before we start executing the query.
             drop(state_lock);
 
-            execute_job::<C, INCR>(query, tcx, key, key_hash, id, dep_node)
+            // Set up a guard object that will automatically poison the query if a
+            // panic occurs while executing the query (or any intermediate plumbing).
+            let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+            debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
+
+            // Delegate to another function to actually execute the query job.
+            let (value, dep_node_index) = if INCR {
+                execute_job_incr(query, tcx, key, dep_node, id)
+            } else {
+                execute_job_non_incr(query, tcx, key, id)
+            };
+
+            if query.feedable {
+                check_feedable_consistency(tcx, query, key, &value);
+            }
+
+            // Tell the guard to insert `value` in the cache and remove the status entry from
+            // `query.state`.
+            job_guard.complete(&query.cache, value, dep_node_index);
+
+            (value, Some(dep_node_index))
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
@@ -332,7 +352,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
                     } else {
                         let id = job.id;
                         drop(state_lock);
@@ -349,67 +369,44 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 }
 
 #[inline(always)]
-fn execute_job<'tcx, C: QueryCache, const INCR: bool>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn check_feedable_consistency<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
-    key_hash: u64,
-    id: QueryJobId,
-    dep_node: Option<DepNode>,
-) -> (C::Value, Option<DepNodeIndex>) {
-    // Set up a guard object that will automatically poison the query if a
-    // panic occurs while executing the query (or any intermediate plumbing).
-    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+    value: &C::Value,
+) {
+    // We should not compute queries that also got a value via feeding.
+    // This can't happen, as query feeding adds the very dependencies to the fed query
+    // as its feeding query had. So if the fed query is red, so is its feeder, which will
+    // get evaluated first, and re-feed the query.
+    let Some((cached_value, _)) = query.cache.lookup(&key) else { return };
 
-    debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
-
-    // Delegate to another function to actually execute the query job.
-    let (value, dep_node_index) = if INCR {
-        execute_job_incr(query, tcx, key, dep_node, id)
-    } else {
-        execute_job_non_incr(query, tcx, key, id)
+    let Some(hash_value_fn) = query.hash_value_fn else {
+        panic!(
+            "no_hash fed query later has its value computed.\n\
+            Remove `no_hash` modifier to allow recomputation.\n\
+            The already cached value: {}",
+            (query.format_value)(&cached_value)
+        );
     };
 
-    let cache = &query.cache;
-    if query.feedable {
-        // We should not compute queries that also got a value via feeding.
-        // This can't happen, as query feeding adds the very dependencies to the fed query
-        // as its feeding query had. So if the fed query is red, so is its feeder, which will
-        // get evaluated first, and re-feed the query.
-        if let Some((cached_value, _)) = cache.lookup(&key) {
-            let Some(hash_value_fn) = query.hash_value_fn else {
-                panic!(
-                    "no_hash fed query later has its value computed.\n\
-                    Remove `no_hash` modifier to allow recomputation.\n\
-                    The already cached value: {}",
-                    (query.format_value)(&cached_value)
-                );
-            };
-
-            let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-                (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, &value))
-            });
-            let formatter = query.format_value;
-            if old_hash != new_hash {
-                // We have an inconsistency. This can happen if one of the two
-                // results is tainted by errors.
-                assert!(
-                    tcx.dcx().has_errors().is_some(),
-                    "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
-                        computed={:#?}\nfed={:#?}",
-                    query.dep_kind,
-                    key,
-                    formatter(&value),
-                    formatter(&cached_value),
-                );
-            }
-        }
+    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
+        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
+    });
+    let formatter = query.format_value;
+    if old_hash != new_hash {
+        // We have an inconsistency. This can happen if one of the two
+        // results is tainted by errors.
+        assert!(
+            tcx.dcx().has_errors().is_some(),
+            "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                computed={:#?}\nfed={:#?}",
+            query.dep_kind,
+            key,
+            formatter(value),
+            formatter(&cached_value),
+        );
     }
-
-    // Tell the guard to perform completion bookkeeping, and also to not poison the query.
-    job_guard.complete(cache, value, dep_node_index);
-
-    (value, Some(dep_node_index))
 }
 
 // Fast path for when incr. comp. is off.

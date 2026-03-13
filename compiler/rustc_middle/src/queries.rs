@@ -23,26 +23,10 @@
 //! ## Query Modifiers
 //!
 //! Query modifiers are special flags that alter the behavior of a query. They are parsed and processed by the `rustc_macros`
-//! The main modifiers are:
 //!
-//! - `desc { ... }`: Sets the human-readable description for diagnostics and profiling. Required
-//!   for every query. The block should contain a `format!`-style string literal followed by
-//!   optional arguments. The query key identifier is available for use within the block, as is
-//!   `tcx`.
-//! - `arena_cache`: Use an arena for in-memory caching of the query result.
-//! - `cache_on_disk_if { ... }`: Cache the query result to disk if the provided block evaluates to
-//!   true. The query key identifier is available for use within the block, as is `tcx`.
-//! - `cycle_delay_bug`: If a dependency cycle is detected, emit a delayed bug instead of aborting immediately.
-//! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
-//! - `anon`: Make the query anonymous in the dependency graph (no dep node is created).
-//! - `eval_always`: Always evaluate the query, ignoring its dependencies and cached results.
-//! - `depth_limit`: Impose a recursion depth limit on the query to prevent stack overflows.
-//! - `separate_provide_extern`: Use separate provider functions for local and external crates.
-//! - `feedable`: Allow the query result to be set from another query ("fed" externally).
+//! For the list of modifiers, see [`rustc_middle::query::modifiers`].
 //!
-//! For the up-to-date list, see the `QueryModifiers` struct in
-//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
-//! and for more details in incremental compilation, see the
+//! For more details on incremental compilation, see the
 //! [Query modifiers in incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html#query-modifiers) section of the rustc-dev-guide.
 //!
 //! ## Query Expansion and Code Generation
