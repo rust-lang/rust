@@ -55,21 +55,66 @@ class RoaringBitmap {
             this.consumed_len_bytes = pspecial - i;
             return this;
         } else if (u8array[i] > 0xe0) {
-            // Special representation of tiny sets that are runs
-            const lspecial = u8array[i] & 0x0f;
-            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
-            i += 1;
-            const key = u8array[i + 2] | (u8array[i + 3] << 8);
-            const value = u8array[i] | (u8array[i + 1] << 8);
-            const container = new RoaringBitmapRun(1, new Uint8Array(4));
-            container.array[0] = value & 0xFF;
-            container.array[1] = (value >> 8) & 0xFF;
-            container.array[2] = lspecial - 1;
-            this.containers.push(container);
-            this.keysAndCardinalities[0] = key & 0xFF;
-            this.keysAndCardinalities[1] = (key >> 8) & 0xFF;
-            this.keysAndCardinalities[2] = lspecial - 1;
-            this.consumed_len_bytes = 5;
+            // Special representation of a node with multiple runs
+            const run_count_m1 = (u8array[i] & 0x0f);
+            const run_count = run_count_m1 + 1;
+            this.keysAndCardinalities = new Uint8Array(run_count * 4);
+            // the run keys and values
+            let pspecial = i + 1;
+            // the run lengths
+            let pnspecial = pspecial + (run_count * 4);
+            /** @type {number|null} */
+            let previous_key = null;
+            /** @type {RoaringBitmapRun|null} */
+            let previous_container = null;
+            for (let j = 0; j < run_count; j += 1) {
+                const key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
+                const value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
+                const run_length_m1 = j % 2 === 0 ?
+                    (u8array[pnspecial] >> 4) :
+                    (u8array[pnspecial] & 0x0f);
+                if (j % 2 !== 0) {
+                    pnspecial += 1;
+                }
+                pspecial += 4;
+                if (key === previous_key && previous_container !== null) {
+                    const new_container_array = new Uint8Array(
+                        (previous_container.runcount + 1) * 4,
+                    );
+                    new_container_array.set(previous_container.array);
+                    new_container_array[previous_container.runcount * 4] = value & 0xFF;
+                    new_container_array[(previous_container.runcount * 4) + 1] =
+                        (value >> 8) & 0xFF;
+                    new_container_array[(previous_container.runcount * 4) + 2] =
+                        run_length_m1;
+                    previous_container.array = new_container_array;
+                    previous_container.runcount += 1;
+                    let cardinalitym1 =
+                        this.keysAndCardinalities[(this.containers.length * 4) - 2] |
+                        (this.keysAndCardinalities[(this.containers.length * 4) - 1] << 8);
+                    cardinalitym1 += run_length_m1 + 1;
+                    this.keysAndCardinalities[(this.containers.length * 4) - 2] =
+                        cardinalitym1 & 0xFF;
+                    this.keysAndCardinalities[(this.containers.length * 4) - 1] =
+                        (cardinalitym1 >> 8) & 0xFF;
+                } else {
+                    previous_key = key;
+                    previous_container = new RoaringBitmapRun(1, Uint8Array.of(
+                        value & 0xFF,
+                        (value >> 8) & 0xFF,
+                        run_length_m1,
+                        0,
+                    ));
+                    this.containers.push(previous_container);
+                    this.keysAndCardinalities[(this.containers.length * 4) - 4] = key & 0xFF;
+                    this.keysAndCardinalities[(this.containers.length * 4) - 3] = (key >> 8) & 0xFF;
+                    this.keysAndCardinalities[(this.containers.length * 4) - 2] = run_length_m1;
+                }
+            }
+            if (run_count % 2 !== 0) {
+                pnspecial += 1;
+            }
+            this.consumed_len_bytes = pnspecial - i;
             return this;
         } else if (u8array[i] > 0xd0) {
             // Special representation of tiny sets that are close together
@@ -99,6 +144,26 @@ class RoaringBitmap {
                 pspecial += 1;
             }
             this.consumed_len_bytes = pspecial - i;
+            return this;
+        } else if (u8array[i] > 0x80) {
+            // Special representation of tiny sets that are runs
+            const lspecial = u8array[i] & 0x3f;
+            const lspecialm1 = lspecial - 1;
+            this.keysAndCardinalities = new Uint8Array(4);
+            i += 1;
+            const key = u8array[i + 2] | (u8array[i + 3] << 8);
+            const value = u8array[i] | (u8array[i + 1] << 8);
+            const container = new RoaringBitmapRun(1, new Uint8Array(4));
+            container.array[0] = value & 0xFF;
+            container.array[1] = (value >> 8) & 0xFF;
+            container.array[2] = lspecialm1 & 0xFF;
+            container.array[3] = lspecialm1 >> 8;
+            this.containers.push(container);
+            this.keysAndCardinalities[0] = key & 0xFF;
+            this.keysAndCardinalities[1] = (key >> 8) & 0xFF;
+            this.keysAndCardinalities[2] = lspecialm1 & 0xFF;
+            this.keysAndCardinalities[3] = lspecialm1 >> 8;
+            this.consumed_len_bytes = 5;
             return this;
         } else if (u8array[i] < 0x3a) {
             // Special representation of tiny sets with arbitrary 32-bit integers
@@ -801,7 +866,7 @@ class HashTable {
         for (let i = 0; i < l; i += 1) {
             const value = values[i];
             if (value !== undefined) {
-                yield [keys.subarray(i * 6, (i + 1) * 6), value];
+                yield [keys.subarray(i * 5, (i + 1) * 5), value];
             }
         }
     }
@@ -818,7 +883,7 @@ class HashTable {
             const l = values.length;
             this.capacityClass += 1;
             const capacity = 1 << this.capacityClass;
-            this.keys = new Uint8Array(capacity * 6);
+            this.keys = new Uint8Array(capacity * 5);
             this.values = [];
             for (let i = 0; i < capacity; i += 1) {
                 this.values.push(undefined);
@@ -827,7 +892,7 @@ class HashTable {
             for (let i = 0; i < l; i += 1) {
                 const oldValue = values[i];
                 if (oldValue !== undefined) {
-                    this.setNoGrow(keys, i * 6, oldValue);
+                    this.setNoGrow(keys, i * 5, oldValue);
                 }
             }
         }
@@ -844,25 +909,24 @@ class HashTable {
         const values = this.values;
         const l = 1 << this.capacityClass;
         // because we know that our values are already hashed,
-        // just chop off the lower four bytes
+        // just chop off the first byte
         let slot = (
-            (key[start + 2] << 24) |
-            (key[start + 3] << 16) |
-            (key[start + 4] << 8) |
-            key[start + 5]
+            (key[start + 1] << 24) |
+            (key[start + 2] << 16) |
+            (key[start + 3] << 8) |
+            key[start + 4]
         ) & mask;
         for (let distance = 0; distance < l; ) {
-            const j = slot * 6;
+            const j = slot * 5;
             const otherValue = values[slot];
             if (otherValue === undefined) {
                 values[slot] = value;
-                const keysStart = slot * 6;
+                const keysStart = slot * 5;
                 keys[keysStart + 0] = key[start + 0];
                 keys[keysStart + 1] = key[start + 1];
                 keys[keysStart + 2] = key[start + 2];
                 keys[keysStart + 3] = key[start + 3];
                 keys[keysStart + 4] = key[start + 4];
-                keys[keysStart + 5] = key[start + 5];
                 this.size += 1;
                 break;
             } else if (
@@ -870,15 +934,14 @@ class HashTable {
                 key[start + 1] === keys[j + 1] &&
                 key[start + 2] === keys[j + 2] &&
                 key[start + 3] === keys[j + 3] &&
-                key[start + 4] === keys[j + 4] &&
-                key[start + 5] === keys[j + 5]
+                key[start + 4] === keys[j + 4]
             ) {
                 values[slot] = value;
                 break;
             } else {
                 const otherPreferredSlot = (
-                    (keys[j + 2] << 24) | (keys[j + 3] << 16) |
-                    (keys[j + 4] << 8) | keys[j + 5]
+                    (keys[j + 1] << 24) | (keys[j + 2] << 16) |
+                    (keys[j + 3] << 8) | keys[j + 4]
                 ) & mask;
                 const otherDistance = otherPreferredSlot <= slot ?
                     slot - otherPreferredSlot :
@@ -888,7 +951,7 @@ class HashTable {
                     // then insert our node in its place and swap
                     //
                     // https://cglab.ca/~abeinges/blah/robinhood-part-1/
-                    const otherKey = keys.slice(j, j + 6);
+                    const otherKey = keys.slice(j, j + 5);
                     values[slot] = value;
                     value = otherValue;
                     keys[j + 0] = key[start + 0];
@@ -896,7 +959,6 @@ class HashTable {
                     keys[j + 2] = key[start + 2];
                     keys[j + 3] = key[start + 3];
                     keys[j + 4] = key[start + 4];
-                    keys[j + 5] = key[start + 5];
                     key = otherKey;
                     start = 0;
                     distance = otherDistance;
@@ -912,7 +974,7 @@ class HashTable {
      * @returns {T|undefined}
      */
     get(key) {
-        if (key.length !== 6) {
+        if (key.length !== 5) {
             throw "invalid key";
         }
         return this.getWithOffsetKey(key, 0);
@@ -931,13 +993,13 @@ class HashTable {
         // because we know that our values are already hashed,
         // just chop off the lower four bytes
         let slot = (
-            (key[start + 2] << 24) |
-            (key[start + 3] << 16) |
-            (key[start + 4] << 8) |
-            key[start + 5]
+            (key[start + 1] << 24) |
+            (key[start + 2] << 16) |
+            (key[start + 3] << 8) |
+            key[start + 4]
         ) & mask;
         for (let distance = 0; distance < l; distance += 1) {
-            const j = slot * 6;
+            const j = slot * 5;
             const value = values[slot];
             if (value === undefined) {
                 break;
@@ -946,14 +1008,13 @@ class HashTable {
                 key[start + 1] === keys[j + 1] &&
                 key[start + 2] === keys[j + 2] &&
                 key[start + 3] === keys[j + 3] &&
-                key[start + 4] === keys[j + 4] &&
-                key[start + 5] === keys[j + 5]
+                key[start + 4] === keys[j + 4]
             ) {
                 return value;
             } else {
                 const otherPreferredSlot = (
-                    (keys[j + 2] << 24) | (keys[j + 3] << 16) |
-                    (keys[j + 4] << 8) | keys[j + 5]
+                    (keys[j + 1] << 24) | (keys[j + 2] << 16) |
+                    (keys[j + 3] << 8) | keys[j + 4]
                 ) & mask;
                 const otherDistance = otherPreferredSlot <= slot ?
                     slot - otherPreferredSlot :
@@ -1133,61 +1194,56 @@ function loadDatabase(hooks) {
         dataColumns: new Map(),
         dataColumnsBuckets: new HashTable(),
         searchTreeLoadByNodeID: function(nodeid) {
-            const existingPromise = registry.searchTreePromises.get(nodeid);
-            if (existingPromise) {
-                return existingPromise;
-            }
             /** @type {Promise<SearchTree>} */
             let newPromise;
             if ((nodeid[0] & 0x80) !== 0) {
-                const isWhole = (nodeid[0] & 0x40) !== 0;
-                let leaves;
-                if ((nodeid[0] & 0x10) !== 0) {
-                    let id1 = (nodeid[2] << 8) | nodeid[3];
-                    if ((nodeid[0] & 0x20) !== 0) {
-                        // when data is present, id1 can be up to 20 bits
-                        id1 |= ((nodeid[1] & 0x0f) << 16);
-                    } else {
-                        // otherwise, we fit in 28
-                        id1 |= ((nodeid[0] & 0x0f) << 24) | (nodeid[1] << 16);
-                    }
-                    const id2 = id1 + ((nodeid[4] << 8) | nodeid[5]);
-                    leaves = RoaringBitmap.makeSingleton(id1)
-                        .union(RoaringBitmap.makeSingleton(id2));
-                } else if (!isWhole && (nodeid[0] & 0xf0) === 0x80) {
-                    const id1 = ((nodeid[0] & 0x0f) << 16) | (nodeid[1] << 8) | nodeid[2];
-                    const id2 = id1 + ((nodeid[3] << 4) | ((nodeid[4] >> 4) & 0x0f));
-                    const id3 = id2 + (((nodeid[4] & 0x0f) << 8) | nodeid[5]);
-                    leaves = RoaringBitmap.makeSingleton(id1)
-                        .union(RoaringBitmap.makeSingleton(id2))
-                        .union(RoaringBitmap.makeSingleton(id3));
+                const isSuffixOnly = (nodeid[0] & 0x40) !== 0;
+                const isRun = (nodeid[0] & 0x20) !== 0;
+                const lengthOrData = nodeid[0] & 0x1F;
+                const id = (nodeid[1] << 24) | (nodeid[2] << 16) | (nodeid[3] << 8) | nodeid[4];
+                let bitmap;
+                if (isRun) {
+                    bitmap = new RoaringBitmap(null);
+                    bitmap.containers.push(new RoaringBitmapRun(
+                        1,
+                        Uint8Array.of(
+                            id & 0xFF,
+                            (id >> 8) & 0xFF,
+                            lengthOrData,
+                            0,
+                        ),
+                    ));
+                    bitmap.keysAndCardinalities = Uint8Array.of(
+                        (id >> 16) & 0xff,
+                        (id >> 24) & 0xff,
+                        lengthOrData,
+                        0,
+                    );
                 } else {
-                    leaves = RoaringBitmap.makeSingleton(
-                        (nodeid[2] << 24) | (nodeid[3] << 16) |
-                        (nodeid[4] << 8) | nodeid[5],
+                    bitmap = RoaringBitmap.makeSingleton(id);
+                }
+                let tree;
+                if (isSuffixOnly) {
+                    tree = new SuffixSearchTree(
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        isRun ? 0 : (lengthOrData + 1),
+                        bitmap,
+                    );
+                } else {
+                    tree = new PrefixSearchTree(
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        isRun ? EMPTY_UINT8 : Uint8Array.of(LONG_ALPHABET.chars[lengthOrData]),
+                        bitmap,
+                        EMPTY_BITMAP,
                     );
                 }
-                if (isWhole) {
-                    const data = (nodeid[0] & 0x20) !== 0 ?
-                        Uint8Array.of(((nodeid[0] & 0x0f) << 4) | (nodeid[1] >> 4)) :
-                        EMPTY_UINT8;
-                    newPromise = Promise.resolve(new PrefixSearchTree(
-                        EMPTY_SEARCH_TREE_BRANCHES,
-                        EMPTY_SEARCH_TREE_BRANCHES,
-                        data,
-                        leaves,
-                        EMPTY_BITMAP,
-                    ));
-                } else {
-                    const data = (nodeid[0] & 0xf0) === 0x80 ? 0 : (
-                        ((nodeid[0] & 0x0f) << 4) | (nodeid[1] >> 4));
-                    newPromise = Promise.resolve(new SuffixSearchTree(
-                        EMPTY_SEARCH_TREE_BRANCHES,
-                        data,
-                        leaves,
-                    ));
-                }
+                newPromise = Promise.resolve(tree);
             } else {
+                const existingPromise = registry.searchTreePromises.get(nodeid);
+                if (existingPromise) {
+                    return existingPromise;
+                }
                 const hashHex = makeHexFromUint8Array(nodeid);
                 newPromise = new Promise((resolve, reject) => {
                     const cb = registry.searchTreeLoadPromiseCallbacks.get(nodeid);
@@ -1211,8 +1267,8 @@ function loadDatabase(hooks) {
                         hooks.loadTreeByHash(hashHex);
                     }
                 });
+                registry.searchTreePromises.set(nodeid, newPromise);
             }
-            registry.searchTreePromises.set(nodeid, newPromise);
             return newPromise;
         },
         dataLoadByNameAndHash: function(name, hash) {
@@ -1277,8 +1333,8 @@ function loadDatabase(hooks) {
         getNodeID(i) {
             return new Uint8Array(
                 this.nodeids.buffer,
-                this.nodeids.byteOffset + (i * 6),
-                6,
+                this.nodeids.byteOffset + (i * 5),
+                5,
             );
         }
         // https://github.com/microsoft/TypeScript/issues/17227
@@ -1385,112 +1441,309 @@ function loadDatabase(hooks) {
         EMPTY_UINT8,
     );
 
-    /** @type {number[]} */
-    const SHORT_ALPHABITMAP_CHARS = [];
+    class Alphabet {
+        constructor() {
+            /** @type {number[]} */
+            this.chars = [];
+            /** @type {number} */
+            this.len = 0;
+            /** @type {number} */
+            this.bytes = 0;
+            /** @type {number} */
+            this.flag = 0;
+            /** @type {number} */
+            this.bitwidth = 0;
+        }
+        /**
+         * @param {number} c
+         * @returns {boolean}
+         */
+        contains(c) {
+            return this.chars.indexOf(c) !== -1;
+        }
+        /**
+         * @param {number} c
+         * @returns {number}
+         */
+        index(c) {
+            return this.chars.indexOf(c);
+        }
+    }
+
+    /** @type {Alphabet} */
+    const VOWELONLY_ALPHABITMAP = Object.assign(
+        new Alphabet(),
+        {
+            chars: [0x61, 0x65, 0x69, 0x6f, 0x75],
+            len: 5,
+            bytes: 0,
+            flag: 0x80,
+        },
+    );
+
+    /** @type {Alphabet} */
+    const CONSONANTSONLY_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [],
+            len: 21,
+            bytes: 2,
+            flag: 0xc0,
+        },
+    );
+    for (let i = 0x61; i <= 0x7A; ++i) {
+        if (i === 0x61 || i === 0x65 || i === 0x69 || i === 0x6f || i === 0x75) {
+            // 21 bits, 26 letters, so skip aeiou
+            continue;
+        }
+        CONSONANTSONLY_ALPHABET.chars.push(i);
+    }
+
+    /** @type {Alphabet} */
+    const HEX_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [],
+            len: 16,
+            bytes: 2,
+            flag: 0xfc,
+        },
+    );
+    for (let i = 0x30; i <= 0x39; ++i) {
+        HEX_ALPHABET.chars.push(i);
+    }
+    for (let i = 0x61; i <= 0x66; ++i) {
+        HEX_ALPHABET.chars.push(i);
+    }
+
+    /** @type {Alphabet} */
+    const SHORT_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [],
+            len: 24,
+            bytes: 3,
+            flag: 0xfd,
+        },
+    );
     for (let i = 0x61; i <= 0x7A; ++i) {
         if (i === 0x76 || i === 0x71) {
             // 24 entries, 26 letters, so we skip q and v
             continue;
         }
-        SHORT_ALPHABITMAP_CHARS.push(i);
+        SHORT_ALPHABET.chars.push(i);
     }
 
-    /** @type {number[]} */
-    const LONG_ALPHABITMAP_CHARS = [0x31, 0x32, 0x33, 0x34, 0x35, 0x36];
+    /** @type {Alphabet} */
+    const LONG_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [0x31, 0x32, 0x33, 0x34, 0x35, 0x36],
+            len: 32,
+            bytes: 4,
+            flag: 0xfe,
+        },
+    );
     for (let i = 0x61; i <= 0x7A; ++i) {
-        LONG_ALPHABITMAP_CHARS.push(i);
+        LONG_ALPHABET.chars.push(i);
+    }
+
+    /** @type {Alphabet} */
+    const ASCII_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [],
+            len: 128,
+            bytes: 16,
+            flag: 0xf0,
+            /**
+             * @param {number} c
+             * @returns {boolean}
+             */
+            contains(c) {
+                return c <= 0x7f;
+            },
+            /**
+             * @param {number} c
+             * @returns {number}
+             */
+            index(c) {
+                return c;
+            },
+        },
+    );
+    for (let i = 0x00; i <= 0x7f; ++i) {
+        ASCII_ALPHABET.chars.push(i);
+    }
+
+    /** @type {Alphabet} */
+    const RAWBYTE_ALPHABET = Object.assign(
+        new Alphabet(),
+        {
+            chars: [],
+            len: 256,
+            bytes: 32,
+            flag: 0xff,
+            /**
+             * @param {number} _c
+             * @returns {boolean}
+             */
+            contains(_c) {
+                return true;
+            },
+            /**
+             * @param {number} c
+             * @returns {number}
+             */
+            index(c) {
+                return c;
+            },
+        },
+    );
+    for (let i = 0x00; i <= 0xff; ++i) {
+        RAWBYTE_ALPHABET.chars.push(i);
     }
 
     /**
-     * @template ST
-     * @param {number[]} alphabitmap_chars
-     * @param {number} width
-     * @return {(typeof SearchTreeBranches<ST>)&{"ALPHABITMAP_CHARS": number[], "width": number}}
+     * Parse an alphabet and buffer where the flag is right at the beginning.
+     * @param {number} start
+     * @param {Uint8Array} buf
+     * @returns {{"alphabet": Alphabet, "consumed_len_bytes": number, "len": number}?}
      */
-    function makeSearchTreeBranchesAlphaBitmapClass(alphabitmap_chars, width) {
-        const bitwidth = width * 8;
+    Alphabet.parse = function(start, buf) {
+        const flag = buf[start];
+        const parsed = Alphabet.parseFlag(flag, start + 1, buf);
+        if (!parsed) {
+            return null;
+        }
+        parsed.consumed_len_bytes += 1;
+        return parsed;
+    };
+
+    /**
+     * Parse an alphabet and buffer where the flag is not at the beginning.
+     * @param {number} flag
+     * @param {number} i
+     * @param {Uint8Array} buf
+     * @returns {{"alphabet": Alphabet, "consumed_len_bytes": number, "len": number}?}
+     */
+    Alphabet.parseFlag = function(flag, i, buf) {
+        if (flag <= 0x80) {
+            return null;
+        }
+        const alphabet = flag === RAWBYTE_ALPHABET.flag ? RAWBYTE_ALPHABET : (
+            flag === ASCII_ALPHABET.flag ? ASCII_ALPHABET : (
+            flag === LONG_ALPHABET.flag ? LONG_ALPHABET : (
+            flag === SHORT_ALPHABET.flag ? SHORT_ALPHABET : (
+            flag === HEX_ALPHABET.flag ? HEX_ALPHABET : (
+            flag >= CONSONANTSONLY_ALPHABET.flag ? CONSONANTSONLY_ALPHABET : VOWELONLY_ALPHABITMAP
+        )))));
+        let len = alphabet === CONSONANTSONLY_ALPHABET || alphabet === VOWELONLY_ALPHABITMAP ?
+            bitCount(flag & 0x1f) : 0;
+        for (let ix = 0; ix < alphabet.bytes; ++ix) {
+            len += bitCount(buf[i]);
+            i += 1;
+        }
+        return {alphabet, consumed_len_bytes: alphabet.bytes, len};
+    };
+
+    /**
+     * @template ST
+     * @extends SearchTreeBranches<ST>
+     */
+    class SearchTreeBranchesAlphaBitmap extends SearchTreeBranches {
         /**
-         * @extends SearchTreeBranches<ST>
+         * @param {Alphabet} alphabet
+         * @param {Uint8Array} buffer
+         * @param {Uint8Array} nodeids
          */
-        const cls = class SearchTreeBranchesAlphaBitmap extends SearchTreeBranches {
-            /**
-             * @param {number} bitmap
-             * @param {Uint8Array} nodeids
-             */
-            constructor(bitmap, nodeids) {
-                super(nodeids.length / 6, nodeids);
-                if (nodeids.length / 6 !== bitCount(bitmap)) {
-                    throw new Error(`mismatch ${bitmap} ${nodeids}`);
+        constructor(alphabet, buffer, nodeids) {
+            let bitmap;
+            if (alphabet === VOWELONLY_ALPHABITMAP) {
+                bitmap = new Uint8Array(1);
+                bitmap[0] = buffer[0] & 0x1f;
+            } else if (alphabet === CONSONANTSONLY_ALPHABET) {
+                bitmap = new Uint8Array(3);
+                bitmap[0] = buffer[1];
+                bitmap[1] = buffer[2];
+                bitmap[2] = buffer[0] & 0x1f;
+            } else {
+                bitmap = buffer.subarray(1);
+            }
+            let cardinality = 0;
+            for (let i = 0; i < bitmap.length; ++i) {
+                cardinality += bitCount(bitmap[i]);
+            }
+            super(cardinality, nodeids);
+            this.bitmap = bitmap;
+            this.alphabet = alphabet;
+        }
+        /**
+         * Yields [character, SearchTree] pairs.
+         * @returns {Generator<[number, Promise<ST>|null]>}
+         */
+        * entries() {
+            let i = 0;
+            let j = 0;
+            while (i < this.alphabet.len) {
+                if (this.bitmap[i >> 3] & (1 << (i & 0x07))) {
+                    yield [this.alphabet.chars[i], this.subtrees[j]];
+                    j += 1;
                 }
-                this.bitmap = bitmap;
-                this.nodeids = nodeids;
+                i += 1;
             }
-            /** @returns {Generator<[number, Promise<ST>|null]>} */
-            * entries() {
-                let i = 0;
-                let j = 0;
-                while (i < bitwidth) {
-                    if (this.bitmap & (1 << i)) {
-                        yield [alphabitmap_chars[i], this.subtrees[j]];
-                        j += 1;
-                    }
-                    i += 1;
-                }
+        }
+        /**
+         * Given a character, returns the numbered index of the search
+         * tree, or -1 if there isn't one.
+         * @param {number} c
+         * @returns {number}
+         */
+        getIndex(c) {
+            //return this.getKeys().indexOf(c);
+            if (!this.alphabet.contains(c)) {
+                return -1;
             }
-            /**
-             * @param {number} k
-             * @returns {number}
-             */
-            getIndex(k) {
-                //return this.getKeys().indexOf(k);
-                const ix = alphabitmap_chars.indexOf(k);
-                if (ix < 0) {
-                    return ix;
-                }
-                const result = bitCount(~(0xffffffff << ix) & this.bitmap);
-                return result >= this.subtrees.length ? -1 : result;
-            }
-            /**
-             * @param {number} branch_index
-             * @returns {number}
-             */
-            getKey(branch_index) {
-                return this.getKeys()[branch_index];
-            }
-            /**
-             * @returns {Uint8Array}
-             */
-            getKeys() {
-                const length = bitCount(this.bitmap);
-                const result = new Uint8Array(length);
-                let result_index = 0;
-                for (let alpha_index = 0; alpha_index < bitwidth; ++alpha_index) {
-                    if (this.bitmap & (1 << alpha_index)) {
-                        result[result_index] = alphabitmap_chars[alpha_index];
-                        result_index += 1;
-                    }
+            const k = this.alphabet.index(c);
+            if (this.bitmap[k >> 3] & (1 << (k & 0x07))) {
+                let result = bitCount(~(0xff << (k & 0x07)) & this.bitmap[k >> 3]);
+                for (let ix = 0; ix < (k >> 3); ++ix) {
+                    result += bitCount(this.bitmap[ix]);
                 }
                 return result;
+            } else {
+                return -1;
             }
-        };
-        cls.ALPHABITMAP_CHARS = alphabitmap_chars;
-        cls.width = width;
-        return cls;
+        }
+        /**
+         * Given the numbered index of a search tree, returns the key.
+         * This is the exact opposite of getIndex().
+         * @param {number} branch_index
+         * @returns {number}
+         */
+        getKey(branch_index) {
+            return this.getKeys()[branch_index];
+        }
+        /**
+         * Returns a list of one-byte keys.
+         * @returns {Uint8Array}
+         */
+        getKeys() {
+            let length = 0;
+            for (let i = 0; i < this.bitmap.length; ++i) {
+                length += bitCount(this.bitmap[i]);
+            }
+            const result = new Uint8Array(length);
+            let result_index = 0;
+            for (let ix = 0; ix < this.alphabet.len; ++ix) {
+                if (this.bitmap[ix >> 3] & (1 << (ix & 0x07))) {
+                    result[result_index] = this.alphabet.chars[ix];
+                    result_index += 1;
+                }
+            }
+            return result;
+        }
     }
-
-    /**
-     * @template ST
-     * @type {(typeof SearchTreeBranches<any>)&{"ALPHABITMAP_CHARS": number[], "width": number}}
-     */
-    const SearchTreeBranchesShortAlphaBitmap =
-        makeSearchTreeBranchesAlphaBitmapClass(SHORT_ALPHABITMAP_CHARS, 3);
-
-    /**
-     * @template ST
-     * @type {(typeof SearchTreeBranches<any>)&{"ALPHABITMAP_CHARS": number[], "width": number}}
-     */
-    const SearchTreeBranchesLongAlphaBitmap =
-        makeSearchTreeBranchesAlphaBitmapClass(LONG_ALPHABITMAP_CHARS, 4);
 
     /**
      * @typedef {PrefixSearchTree|SuffixSearchTree|InlineNeighborsTree} SearchTree
@@ -2347,19 +2600,15 @@ function loadDatabase(hooks) {
             const has_branches = (encoded[i] & 0x04) !== 0;
             /** @type {boolean} */
             const is_suffixes_only = (encoded[i] & 0x01) !== 0;
-            let leaves_count = ((encoded[i] >> 4) & 0x07) + 1;
-            let leaves_is_run = (encoded[i] >> 7) !== 0;
+            const leaves_count = (encoded[i] >> 4) & 0x07;
+            const leaves_is_run = (encoded[i] >> 7) !== 0;
             i += 1;
-            let branch_count = 0;
+            let branch_flag = 0;
             if (has_branches) {
-                branch_count = encoded[i] + 1;
+                branch_flag = encoded[i];
                 i += 1;
             }
             const dlen = encoded[i] & 0x3f;
-            if ((encoded[i] & 0x80) !== 0) {
-                leaves_count = 0;
-                leaves_is_run = false;
-            }
             i += 1;
             /** @type {Uint8Array} */
             let data = EMPTY_UINT8;
@@ -2367,13 +2616,25 @@ function loadDatabase(hooks) {
                 data = encoded.subarray(i, i + dlen);
                 i += dlen;
             }
+            const branch_flag_alphabet = Alphabet.parseFlag(branch_flag, i, encoded);
+            let branch_alphabitmap = EMPTY_UINT8;
+            if (branch_flag_alphabet) {
+                branch_alphabitmap = new Uint8Array(branch_flag_alphabet.consumed_len_bytes + 1);
+                branch_alphabitmap[0] = branch_flag;
+                branch_alphabitmap.set(
+                    encoded.subarray(i, i + branch_flag_alphabet.consumed_len_bytes),
+                    1,
+                );
+                i += branch_flag_alphabet.consumed_len_bytes;
+            }
+            const branch_count = branch_flag_alphabet ? branch_flag_alphabet.len : branch_flag;
             const leaf_value_upper = encoded[i] | (encoded[i + 1] << 8);
             i += 2;
             /** @type {Promise<SearchTree>[]} */
             const branch_nodes = [];
             for (let j = 0; j < branch_count; j += 1) {
                 const branch_dlen = encoded[i] & 0x0f;
-                const branch_leaves_count = ((encoded[i] >> 4) & 0x07) + 1;
+                const branch_leaves_count = (encoded[i] >> 4) & 0x07;
                 const branch_leaves_is_run = (encoded[i] >> 7) !== 0;
                 i += 1;
                 /** @type {Uint8Array} */
@@ -2427,14 +2688,22 @@ function loadDatabase(hooks) {
                         ),
                 ));
             }
-            /** @type {SearchTreeBranchesArray<SearchTree>} */
+            /** @type {SearchTreeBranches<SearchTree>} */
             const branches = branch_count === 0 ?
                 EMPTY_SEARCH_TREE_BRANCHES :
-                new SearchTreeBranchesArray(
-                    encoded.subarray(i, i + branch_count),
-                    EMPTY_UINT8,
-                );
-            i += branch_count;
+                branch_flag_alphabet ?
+                    new SearchTreeBranchesAlphaBitmap(
+                        branch_flag_alphabet.alphabet,
+                        branch_alphabitmap,
+                        EMPTY_UINT8,
+                    ) :
+                    new SearchTreeBranchesArray(
+                        encoded.subarray(i, i + branch_count),
+                        EMPTY_UINT8,
+                    );
+            if (!branch_flag_alphabet) {
+                i += branch_count;
+            }
             branches.subtrees = branch_nodes;
             let leaves = EMPTY_BITMAP;
             if (leaves_count !== 0) {
@@ -2556,7 +2825,7 @@ function loadDatabase(hooks) {
                     k += 1;
                 }
                 const end = k;
-                const bucket = {hash: hashes.subarray(i * 6, (i + 1) * 6), data: null, end, count};
+                const bucket = {hash: hashes.subarray(i * 5, (i + 1) * 5), data: null, end, count};
                 this.buckets.push(bucket);
                 this.bucket_keys.push(start);
             }
@@ -2698,7 +2967,7 @@ function loadDatabase(hooks) {
      */
     function loadColumnFromBytes(data) {
         const hashBuf = Uint8Array.of(0, 0, 0, 0, 0, 0, 0, 0);
-        const truncatedHash = hashBuf.subarray(2, 8);
+        const truncatedHash = hashBuf.subarray(3, 8);
         siphashOfBytes(data, 0, 0, 0, 0, hashBuf);
         const cb = registry.dataColumnLoadPromiseCallbacks.get(truncatedHash);
         if (cb) {
@@ -2744,7 +3013,7 @@ function loadDatabase(hooks) {
         /** @type {HashTable<SearchTree>} */
         const stash = new HashTable();
         const hash = Uint8Array.of(0, 0, 0, 0, 0, 0, 0, 0);
-        const truncatedHash = new Uint8Array(hash.buffer, 2, 6);
+        const truncatedHash = hash.subarray(3, 8);
         // used for handling compressed (that is, relative-offset) nodes
         /** @type {{hash: Uint8Array, used: boolean}[]} */
         const hash_history = [];
@@ -2764,12 +3033,12 @@ function loadDatabase(hooks) {
          * @param {number} i
          * @param {number} compression_tag
          * @returns {{
-         *     "cpbranches": Uint8Array,
-         *     "csbranches": Uint8Array,
          *     "might_have_prefix_branches": SearchTreeBranches<SearchTree>,
          *     "branches": SearchTreeBranches<SearchTree>,
+         *     "branches_header": Uint8Array,
          *     "cpnodes": Uint8Array,
          *     "csnodes": Uint8Array,
+         *     "branches_keys": Uint8Array,
          *     "consumed_len_bytes": number,
          * }}
          */
@@ -2786,49 +3055,63 @@ function loadDatabase(hooks) {
             const any_children_are_compressed =
                 (compression_tag & 0xF0) !== 0x00 || is_long_compressed;
             const start_point = i;
-            let cplen;
-            let cslen;
             /**
-             * @type {(
-             *   typeof SearchTreeBranches<SearchTree> &
-             *   {"ALPHABITMAP_CHARS": number[], "width": number}
-             * )?}
+             * @type {Alphabet|null}
              */
-            let alphabitmap = null;
+            let cpalphabet = null;
+            /**
+             * @type {Uint8Array}
+             */
+            let cpalphabitmap = EMPTY_UINT8;
+            /**
+             * @type {number}
+             */
+            let cplen;
+            /**
+             * @type {Alphabet|null}
+             */
+            let csalphabet = null;
+            /**
+             * @type {Uint8Array}
+             */
+            let csalphabitmap = EMPTY_UINT8;
+            /**
+             * @type {number}
+             */
+            let cslen;
+            // might-have-prefix nodes
             if (is_pure_suffixes_only_node) {
                 cplen = 0;
-                cslen = input[i];
-                i += 1;
-                if (cslen >= 0xc0) {
-                    alphabitmap = SearchTreeBranchesLongAlphaBitmap;
-                    cslen = cslen & 0x3F;
-                } else if (cslen >= 0x80) {
-                    alphabitmap = SearchTreeBranchesShortAlphaBitmap;
-                    cslen = cslen & 0x7F;
-                }
             } else {
-                cplen = input[i];
-                i += 1;
-                cslen = input[i];
-                i += 1;
-                if (cplen === 0xff && cslen === 0xff) {
-                    cplen = 0x100;
-                    cslen = 0;
-                } else if (cplen >= 0xc0 && cslen >= 0xc0) {
-                    alphabitmap = SearchTreeBranchesLongAlphaBitmap;
-                    cplen = cplen & 0x3F;
-                    cslen = cslen & 0x3F;
-                } else if (cplen >= 0x80 && cslen >= 0x80) {
-                    alphabitmap = SearchTreeBranchesShortAlphaBitmap;
-                    cplen = cplen & 0x7F;
-                    cslen = cslen & 0x7F;
+                const parsed = Alphabet.parse(i, input);
+                if (parsed) {
+                    cpalphabitmap = input.subarray(i, i + parsed.consumed_len_bytes);
+                    cpalphabet = parsed.alphabet;
+                    cplen = parsed.len;
+                    i += parsed.consumed_len_bytes;
+                } else {
+                    cplen = input[i];
+                    i += 1;
                 }
             }
+            // suffix-only nodes
+            const parsed = Alphabet.parse(i, input);
+            if (parsed) {
+                csalphabitmap = input.subarray(i, i + parsed.consumed_len_bytes);
+                csalphabet = parsed.alphabet;
+                cslen = parsed.len;
+                i += parsed.consumed_len_bytes;
+            } else {
+                cslen = input[i];
+                i += 1;
+            }
+            const branches_header = input.subarray(start_point, i);
+            // now process the hashes, offsets, or stack
             let j = 0;
             /** @type {Uint8Array} */
             let cpnodes;
             if (any_children_are_compressed) {
-                cpnodes = cplen === 0 ? EMPTY_UINT8 : new Uint8Array(cplen * 6);
+                cpnodes = cplen === 0 ? EMPTY_UINT8 : new Uint8Array(cplen * 5);
                 while (j < cplen) {
                     const is_compressed = all_children_are_compressed ||
                         ((0x10 << j) & compression_tag) !== 0;
@@ -2845,29 +3128,28 @@ function loadDatabase(hooks) {
                         hash_history[slot].used = true;
                         cpnodes.set(
                             hash_history[slot].hash,
-                            j * 6,
+                            j * 5,
                         );
                     } else {
-                        const joff = j * 6;
+                        const joff = j * 5;
                         cpnodes[joff + 0] = input[i + 0];
                         cpnodes[joff + 1] = input[i + 1];
                         cpnodes[joff + 2] = input[i + 2];
                         cpnodes[joff + 3] = input[i + 3];
                         cpnodes[joff + 4] = input[i + 4];
-                        cpnodes[joff + 5] = input[i + 5];
-                        i += 6;
+                        i += 5;
                     }
                     j += 1;
                 }
             } else {
-                cpnodes = cplen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cplen * 6));
-                i += cplen * 6;
+                cpnodes = cplen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cplen * 5));
+                i += cplen * 5;
             }
             j = 0;
             /** @type {Uint8Array} */
             let csnodes;
             if (any_children_are_compressed) {
-                csnodes = cslen === 0 ? EMPTY_UINT8 : new Uint8Array(cslen * 6);
+                csnodes = cslen === 0 ? EMPTY_UINT8 : new Uint8Array(cslen * 5);
                 while (j < cslen) {
                     const is_compressed = all_children_are_compressed ||
                         ((0x10 << (cplen + j)) & compression_tag) !== 0;
@@ -2884,138 +3166,146 @@ function loadDatabase(hooks) {
                         hash_history[slot].used = true;
                         csnodes.set(
                             hash_history[slot].hash,
-                            j * 6,
+                            j * 5,
                         );
                     } else {
-                        const joff = j * 6;
+                        const joff = j * 5;
                         csnodes[joff + 0] = input[i + 0];
                         csnodes[joff + 1] = input[i + 1];
                         csnodes[joff + 2] = input[i + 2];
                         csnodes[joff + 3] = input[i + 3];
                         csnodes[joff + 4] = input[i + 4];
-                        csnodes[joff + 5] = input[i + 5];
-                        i += 6;
+                        i += 5;
                     }
                     j += 1;
                 }
             } else {
-                csnodes = cslen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cslen * 6));
-                i += cslen * 6;
+                csnodes = cslen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cslen * 5));
+                i += cslen * 5;
             }
-            let cpbranches;
+            const start_point_keys = i;
             let might_have_prefix_branches;
             if (cplen === 0) {
-                cpbranches = EMPTY_UINT8;
                 might_have_prefix_branches = EMPTY_SEARCH_TREE_BRANCHES;
-            } else if (alphabitmap) {
-                cpbranches = new Uint8Array(input.buffer, i + input.byteOffset, alphabitmap.width);
-                const branchset = (alphabitmap.width === 4 ? (input[i + 3] << 24) : 0) |
-                    (input[i + 2] << 16) |
-                    (input[i + 1] << 8) |
-                    input[i];
-                might_have_prefix_branches = new alphabitmap(branchset, cpnodes);
-                i += alphabitmap.width;
+            } else if (cpalphabet) {
+                might_have_prefix_branches = new SearchTreeBranchesAlphaBitmap(
+                    cpalphabet,
+                    cpalphabitmap,
+                    cpnodes,
+                );
             } else {
-                cpbranches = new Uint8Array(input.buffer, i + input.byteOffset, cplen);
-                might_have_prefix_branches = new SearchTreeBranchesArray(cpbranches, cpnodes);
+                might_have_prefix_branches = new SearchTreeBranchesArray(
+                    new Uint8Array(input.buffer, i + input.byteOffset, cplen),
+                    cpnodes,
+                );
                 i += cplen;
             }
-            let csbranches;
             let branches;
             if (cslen === 0) {
-                csbranches = EMPTY_UINT8;
                 branches = might_have_prefix_branches;
-            } else if (alphabitmap) {
-                csbranches = new Uint8Array(input.buffer, i + input.byteOffset, alphabitmap.width);
-                const branchset = (alphabitmap.width === 4 ? (input[i + 3] << 24) : 0) |
-                    (input[i + 2] << 16) |
-                    (input[i + 1] << 8) |
-                    input[i];
-                if (cplen === 0) {
-                    branches = new alphabitmap(branchset, csnodes);
-                } else {
-                    const cpoffset = i - alphabitmap.width;
-                    const cpbranchset =
-                        (alphabitmap.width === 4 ? (input[cpoffset + 3] << 24) : 0) |
-                        (input[cpoffset + 2] << 16) |
-                        (input[cpoffset + 1] << 8) |
-                        input[cpoffset];
-                    const hashes = new Uint8Array((cplen + cslen) * 6);
-                    let cpi = 0;
-                    let csi = 0;
-                    let j = 0;
-                    for (let k = 0; k < alphabitmap.ALPHABITMAP_CHARS.length; k += 1) {
-                        if (branchset & (1 << k)) {
-                            hashes[j + 0] = csnodes[csi + 0];
-                            hashes[j + 1] = csnodes[csi + 1];
-                            hashes[j + 2] = csnodes[csi + 2];
-                            hashes[j + 3] = csnodes[csi + 3];
-                            hashes[j + 4] = csnodes[csi + 4];
-                            hashes[j + 5] = csnodes[csi + 5];
-                            j += 6;
-                            csi += 6;
-                        } else if (cpbranchset & (1 << k)) {
-                            hashes[j + 0] = cpnodes[cpi + 0];
-                            hashes[j + 1] = cpnodes[cpi + 1];
-                            hashes[j + 2] = cpnodes[cpi + 2];
-                            hashes[j + 3] = cpnodes[cpi + 3];
-                            hashes[j + 4] = cpnodes[cpi + 4];
-                            hashes[j + 5] = cpnodes[cpi + 5];
-                            j += 6;
-                            cpi += 6;
-                        }
-                    }
-                    branches = new alphabitmap(branchset | cpbranchset, hashes);
-                }
-                i += alphabitmap.width;
             } else {
-                csbranches = new Uint8Array(input.buffer, i + input.byteOffset, cslen);
-                if (cplen === 0) {
-                    branches = new SearchTreeBranchesArray(csbranches, csnodes);
+                if (csalphabet) {
+                    branches = new SearchTreeBranchesAlphaBitmap(
+                        csalphabet,
+                        csalphabitmap,
+                        csnodes,
+                    );
                 } else {
-                    const branchset = new Uint8Array(cplen + cslen);
-                    const hashes = new Uint8Array((cplen + cslen) * 6);
-                    let cpi = 0;
-                    let csi = 0;
-                    let j = 0;
-                    while (cpi < cplen || csi < cslen) {
-                        if (cpi >= cplen || (csi < cslen && cpbranches[cpi] > csbranches[csi])) {
-                            branchset[j] = csbranches[csi];
-                            const joff = j * 6;
-                            const csioff = csi * 6;
-                            hashes[joff + 0] = csnodes[csioff + 0];
-                            hashes[joff + 1] = csnodes[csioff + 1];
-                            hashes[joff + 2] = csnodes[csioff + 2];
-                            hashes[joff + 3] = csnodes[csioff + 3];
-                            hashes[joff + 4] = csnodes[csioff + 4];
-                            hashes[joff + 5] = csnodes[csioff + 5];
-                            csi += 1;
-                        } else {
-                            branchset[j] = cpbranches[cpi];
-                            const joff = j * 6;
-                            const cpioff = cpi * 6;
-                            hashes[joff + 0] = cpnodes[cpioff + 0];
-                            hashes[joff + 1] = cpnodes[cpioff + 1];
-                            hashes[joff + 2] = cpnodes[cpioff + 2];
-                            hashes[joff + 3] = cpnodes[cpioff + 3];
-                            hashes[joff + 4] = cpnodes[cpioff + 4];
-                            hashes[joff + 5] = cpnodes[cpioff + 5];
-                            cpi += 1;
-                        }
-                        j += 1;
-                    }
-                    branches = new SearchTreeBranchesArray(branchset, hashes);
+                    branches = new SearchTreeBranchesArray(
+                        new Uint8Array(input.buffer, i + input.byteOffset, cslen),
+                        csnodes,
+                    );
+                    i += cslen;
                 }
-                i += cslen;
+                if (cplen !== 0) {
+                    const hashes = new Uint8Array((cplen + cslen) * 5);
+                    if (cplen + cslen > 32) {
+                        const raw_bits = new Uint8Array(RAWBYTE_ALPHABET.bytes + 1);
+                        raw_bits[0] = RAWBYTE_ALPHABET.flag;
+                        const bits = raw_bits.subarray(1);
+                        const mhp_keys = might_have_prefix_branches.getKeys();
+                        const so_keys = branches.getKeys();
+                        let mhp_i = 0;
+                        let so_i = 0;
+                        let j = 0;
+                        while (mhp_i < cplen || so_i < cslen) {
+                            if (so_i === cslen || mhp_keys[mhp_i] < so_keys[so_i]) {
+                                const joff = j * 5;
+                                const mhp_off = mhp_i * 5;
+                                hashes[joff + 0] = cpnodes[mhp_off + 0];
+                                hashes[joff + 1] = cpnodes[mhp_off + 1];
+                                hashes[joff + 2] = cpnodes[mhp_off + 2];
+                                hashes[joff + 3] = cpnodes[mhp_off + 3];
+                                hashes[joff + 4] = cpnodes[mhp_off + 4];
+                                const ix = mhp_keys[mhp_i];
+                                bits[ix >> 3] |= 1 << (ix & 0x07);
+                                mhp_i += 1;
+                            } else {
+                                const joff = j * 5;
+                                const so_off = so_i * 5;
+                                hashes[joff + 0] = csnodes[so_off + 0];
+                                hashes[joff + 1] = csnodes[so_off + 1];
+                                hashes[joff + 2] = csnodes[so_off + 2];
+                                hashes[joff + 3] = csnodes[so_off + 3];
+                                hashes[joff + 4] = csnodes[so_off + 4];
+                                const ix = so_keys[so_i];
+                                bits[ix >> 3] |= 1 << (ix & 0x07);
+                                so_i += 1;
+                            }
+                            j += 1;
+                        }
+                        branches = new SearchTreeBranchesAlphaBitmap(
+                            RAWBYTE_ALPHABET,
+                            raw_bits,
+                            hashes,
+                        );
+                    } else {
+                        const merged_keys = new Uint8Array(cplen + cslen);
+                        const mhp_keys = might_have_prefix_branches.getKeys();
+                        const so_keys = branches.getKeys();
+                        let mhp_i = 0;
+                        let so_i = 0;
+                        let j = 0;
+                        while (mhp_i < cplen || so_i < cslen) {
+                            if (so_i === cslen || mhp_keys[mhp_i] < so_keys[so_i]) {
+                                const joff = j * 5;
+                                const mhp_off = mhp_i * 5;
+                                hashes[joff + 0] = cpnodes[mhp_off + 0];
+                                hashes[joff + 1] = cpnodes[mhp_off + 1];
+                                hashes[joff + 2] = cpnodes[mhp_off + 2];
+                                hashes[joff + 3] = cpnodes[mhp_off + 3];
+                                hashes[joff + 4] = cpnodes[mhp_off + 4];
+                                merged_keys[j] = mhp_keys[mhp_i];
+                                mhp_i += 1;
+                            } else {
+                                const joff = j * 5;
+                                const so_off = so_i * 5;
+                                hashes[joff + 0] = csnodes[so_off + 0];
+                                hashes[joff + 1] = csnodes[so_off + 1];
+                                hashes[joff + 2] = csnodes[so_off + 2];
+                                hashes[joff + 3] = csnodes[so_off + 3];
+                                hashes[joff + 4] = csnodes[so_off + 4];
+                                merged_keys[j] = so_keys[so_i];
+                                so_i += 1;
+                            }
+                            j += 1;
+                        }
+                        branches = new SearchTreeBranchesArray(
+                            merged_keys,
+                            hashes,
+                        );
+                    }
+                }
             }
+            const branches_keys = input.subarray(start_point_keys, i);
             return {
                 consumed_len_bytes: i - start_point,
-                cpbranches,
-                csbranches,
                 cpnodes,
                 csnodes,
                 branches,
                 might_have_prefix_branches,
+                branches_header,
+                branches_keys,
             };
         }
         while (i < l) {
@@ -3038,26 +3328,23 @@ function loadDatabase(hooks) {
             /** @type {number} */
             let no_leaves_flag;
             /** @type {number} */
-            let inline_neighbors_flag;
+            let no_branches_flag;
             if (is_data_compressed && is_pure_suffixes_only_node) {
                 dlen = 0;
                 no_leaves_flag = 0x80;
-                inline_neighbors_flag = 0;
+                no_branches_flag = 0;
             } else {
                 dlen = input[i] & 0x3F;
                 no_leaves_flag = input[i] & 0x80;
-                inline_neighbors_flag = input[i] & 0x40;
+                no_branches_flag = input[i] & 0x40;
                 i += 1;
             }
-            if (inline_neighbors_flag !== 0) {
+            if (no_leaves_flag !== 0 && no_branches_flag !== 0) {
                 // node with packed leaves and common 16bit prefix
-                const leaves_count = no_leaves_flag !== 0 ?
-                    0 :
-                    ((compression_tag >> 4) & 0x07) + 1;
-                const leaves_is_run = no_leaves_flag === 0 &&
-                    ((compression_tag >> 4) & 0x08) !== 0;
-                const branch_count = is_long_compressed ?
-                    ((compression_tag >> 8) & 0xff) + 1 :
+                const leaves_count = (compression_tag >> 4) & 0x07;
+                const leaves_is_run = ((compression_tag >> 4) & 0x08) !== 0;
+                const branch_flag = is_long_compressed ?
+                    (compression_tag >> 8) & 0xff :
                     0;
                 if (is_data_compressed) {
                     data = data_history[data_history.length - dlen - 1];
@@ -3071,12 +3358,17 @@ function loadDatabase(hooks) {
                     i += dlen;
                 }
                 const branches_start = i;
+                const branch_flag_alphabet = Alphabet.parseFlag(branch_flag, i, input);
+                const branch_count = branch_flag_alphabet ? branch_flag_alphabet.len : branch_flag;
+                if (branch_flag_alphabet) {
+                    i += branch_flag_alphabet.consumed_len_bytes;
+                }
                 // leaf_value_upper
                 i += 2;
                 // branch_nodes
                 for (let j = 0; j < branch_count; j += 1) {
                     const branch_dlen = input[i] & 0x0f;
-                    const branch_leaves_count = ((input[i] >> 4) & 0x0f) + 1;
+                    const branch_leaves_count = (input[i] >> 4) & 0x0f;
                     const branch_leaves_is_run = (input[i] >> 7) !== 0;
                     i += 1;
                     if (!is_pure_suffixes_only_node) {
@@ -3089,7 +3381,9 @@ function loadDatabase(hooks) {
                     }
                 }
                 // branch keys
-                i += branch_count;
+                if (!branch_flag_alphabet) {
+                    i += branch_count;
+                }
                 // leaves
                 if (leaves_is_run) {
                     i += 2;
@@ -3099,7 +3393,7 @@ function loadDatabase(hooks) {
                 if (is_data_compressed) {
                     const clen = (
                         1 + // first compression header byte
-                        (is_long_compressed ? 1 : 0) + // branch count
+                        (is_long_compressed ? 1 : 0) + // branch flag
                         1 + // data length and other flags
                         dlen + // data
                         (i - branches_start) // branches and leaves
@@ -3112,7 +3406,7 @@ function loadDatabase(hooks) {
                         canonical[ci] = input[start + ci];
                         ci += 1;
                     }
-                    canonical[ci] = dlen | no_leaves_flag | 0x40;
+                    canonical[ci] = dlen | 0xc0;
                     ci += 1;
                     for (let j = 0; j < dlen; j += 1) {
                         canonical[ci] = data[j];
@@ -3145,16 +3439,25 @@ function loadDatabase(hooks) {
                         new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
-                const coffset = i;
                 const {
-                    cpbranches,
-                    csbranches,
                     cpnodes,
                     csnodes,
                     consumed_len_bytes: branches_consumed_len_bytes,
                     branches,
                     might_have_prefix_branches,
-                } = makeBranchesFromBinaryData(input, i, compression_tag);
+                    branches_header,
+                    branches_keys,
+                } = no_branches_flag !== 0 ?
+                    {
+                        cpnodes: EMPTY_UINT8,
+                        csnodes: EMPTY_UINT8,
+                        consumed_len_bytes: 0,
+                        branches: EMPTY_SEARCH_TREE_BRANCHES,
+                        might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
+                        branches_header: EMPTY_UINT8,
+                        branches_keys: EMPTY_UINT8,
+                    } :
+                    makeBranchesFromBinaryData(input, i, compression_tag);
                 i += branches_consumed_len_bytes;
                 let whole;
                 let suffix;
@@ -3175,10 +3478,11 @@ function loadDatabase(hooks) {
                     );
                     const clen = (
                         // lengths of children and data
-                        (is_data_compressed ? 2 : 3) +
+                        (is_data_compressed ? 1 : 2) +
                         // branches
+                        branches_header.length +
                         csnodes.length +
-                        csbranches.length +
+                        branches_keys.length +
                         // leaves
                         suffix.consumed_len_bytes
                     );
@@ -3192,15 +3496,15 @@ function loadDatabase(hooks) {
                     } else {
                         canonical[ci] = 1;
                         ci += 1;
-                        canonical[ci] = dlen | no_leaves_flag;
+                        canonical[ci] = dlen | no_leaves_flag | no_branches_flag;
                         ci += 1;
                     }
-                    canonical[ci] = input[coffset]; // suffix child count
-                    ci += 1;
+                    canonical.set(branches_header, ci);
+                    ci += branches_header.length;
                     canonical.set(csnodes, ci);
                     ci += csnodes.length;
-                    canonical.set(csbranches, ci);
-                    ci += csbranches.length;
+                    canonical.set(branches_keys, ci);
+                    ci += branches_keys.length;
                     const leavesOffset = i - suffix.consumed_len_bytes;
                     for (let j = leavesOffset; j < i; j += 1) {
                         canonical[ci + j - leavesOffset] = input[j];
@@ -3228,10 +3532,11 @@ function loadDatabase(hooks) {
                         suffix,
                     );
                     const clen = (
-                        4 + // lengths of children and data
+                        2 + // lengths of children and data
                         dlen +
+                        branches_header.length +
                         cpnodes.length + csnodes.length +
-                        cpbranches.length + csbranches.length +
+                        branches_keys.length +
                         whole.consumed_len_bytes +
                         suffix.consumed_len_bytes
                     );
@@ -3241,22 +3546,18 @@ function loadDatabase(hooks) {
                     let ci = 0;
                     canonical[ci] = 0;
                     ci += 1;
-                    canonical[ci] = dlen | no_leaves_flag;
+                    canonical[ci] = dlen | no_leaves_flag | no_branches_flag;
                     ci += 1;
                     canonical.set(data, ci);
                     ci += data.length;
-                    canonical[ci] = input[coffset]; // prefix child count
-                    ci += 1;
-                    canonical[ci] = input[coffset + 1]; // suffix child count
-                    ci += 1;
+                    canonical.set(branches_header, ci);
+                    ci += branches_header.length;
                     canonical.set(cpnodes, ci);
                     ci += cpnodes.length;
                     canonical.set(csnodes, ci);
                     ci += csnodes.length;
-                    canonical.set(cpbranches, ci);
-                    ci += cpbranches.length;
-                    canonical.set(csbranches, ci);
-                    ci += csbranches.length;
+                    canonical.set(branches_keys, ci);
+                    ci += branches_keys.length;
                     const leavesOffset = i - whole.consumed_len_bytes - suffix.consumed_len_bytes;
                     for (let j = leavesOffset; j < i; j += 1) {
                         canonical[ci + j - leavesOffset] = input[j];
@@ -3275,7 +3576,13 @@ function loadDatabase(hooks) {
                     consumed_len_bytes: branches_consumed_len_bytes,
                     branches,
                     might_have_prefix_branches,
-                } = makeBranchesFromBinaryData(input, i, compression_tag);
+                } = no_branches_flag !== 0 ?
+                    {
+                        consumed_len_bytes: 0,
+                        branches: EMPTY_SEARCH_TREE_BRANCHES,
+                        might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
+                    } :
+                    makeBranchesFromBinaryData(input, i, compression_tag);
                 i += branches_consumed_len_bytes;
                 let whole;
                 let suffix;
@@ -3317,7 +3624,7 @@ function loadDatabase(hooks) {
                         suffix,
                     );
             }
-            hash[2] &= 0x7f;
+            hash[3] &= 0x7f;
             hash_history.push({hash: truncatedHash.slice(), used: false});
             if (data.length !== 0) {
                 data_history.push(data);
@@ -3330,8 +3637,8 @@ function loadDatabase(hooks) {
                 while (j < lb) {
                     // node id with a 1 in its most significant bit is inlined, and, so
                     // it won't be in the stash
-                    if ((tree_branch_nodeids[j * 6] & 0x80) === 0) {
-                        const subtree = stash.getWithOffsetKey(tree_branch_nodeids, j * 6);
+                    if ((tree_branch_nodeids[j * 5] & 0x80) === 0) {
+                        const subtree = stash.getWithOffsetKey(tree_branch_nodeids, j * 5);
                         if (subtree !== undefined) {
                             tree_branch_subtrees[j] = Promise.resolve(subtree);
                         }
@@ -3347,8 +3654,8 @@ function loadDatabase(hooks) {
                 while (j < lb) {
                     // node id with a 1 in its most significant bit is inlined, and, so
                     // it won't be in the stash
-                    if ((tree_mhp_branch_nodeids[j * 6] & 0x80) === 0) {
-                        const subtree = stash.getWithOffsetKey(tree_mhp_branch_nodeids, j * 6);
+                    if ((tree_mhp_branch_nodeids[j * 5] & 0x80) === 0) {
+                        const subtree = stash.getWithOffsetKey(tree_mhp_branch_nodeids, j * 5);
                         if (subtree !== undefined) {
                             tree_mhp_branch_subtrees[j] = Promise.resolve(subtree);
                         }
