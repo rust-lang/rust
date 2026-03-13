@@ -31,6 +31,17 @@ pub(super) enum Owners<'a, 'hir> {
     Map(&'a mut FxIndexMap<LocalDefId, hir::MaybeOwner<'hir>>),
 }
 
+impl<'hir> Owners<'_, 'hir> {
+    fn get_or_insert_mut(&mut self, def_id: LocalDefId) -> &mut hir::MaybeOwner<'hir> {
+        match self {
+            Owners::IndexVec(index_vec) => {
+                index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)
+            }
+            Owners::Map(hash_map) => hash_map.entry(def_id).or_insert(hir::MaybeOwner::Phantom),
+        }
+    }
+}
+
 pub(super) struct ItemLowerer<'a, 'hir, R: ResolverAstLoweringExt<'hir>> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut R,
@@ -67,12 +78,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
-            let owner = match &mut self.owners {
-                Owners::IndexVec(index_vec) => {
-                    index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)
-                }
-                Owners::Map(hash_map) => hash_map.entry(def_id).or_insert(hir::MaybeOwner::Phantom),
-            };
+            let owner = self.owners.get_or_insert_mut(def_id);
 
             assert!(
                 matches!(owner, hir::MaybeOwner::Phantom),
@@ -83,12 +89,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
     }
 
     pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
-        let owner = match &mut self.owners {
-            Owners::IndexVec(index_vec) => {
-                index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)
-            }
-            Owners::Map(hash_map) => hash_map.get(&def_id).unwrap_or(&hir::MaybeOwner::Phantom),
-        };
+        let owner = self.owners.get_or_insert_mut(def_id);
 
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
