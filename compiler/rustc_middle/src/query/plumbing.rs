@@ -8,7 +8,7 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
-use rustc_span::Span;
+use rustc_span::{Span, Spanned};
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
@@ -16,7 +16,7 @@ use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::stack::QueryStackFrame;
-use crate::query::{QueryCache, QueryInfo, QueryJob};
+use crate::query::{QueryCache, QueryJob};
 use crate::ty::TyCtxt;
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
@@ -50,11 +50,13 @@ pub enum ActiveKeyStatus<'tcx> {
     Poisoned,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame<'tcx>)>,
-    pub cycle: Vec<QueryInfo<'tcx>>,
+    pub usage: Option<Spanned<QueryStackFrame<'tcx>>>,
+
+    /// The span here corresponds to the reason for which this query was required.
+    pub cycle: Vec<Spanned<QueryStackFrame<'tcx>>>,
 }
 
 #[derive(Debug)]
