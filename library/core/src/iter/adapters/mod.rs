@@ -155,6 +155,9 @@ where
     for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
     R: Residual<U>,
 {
+    // FIXME(#11084): we might be able to get rid of GenericShunt in favor of
+    // Iterator::scan, as performance should be comparable
+
     let mut residual = None;
     let shunt = GenericShunt { iter, residual: &mut residual };
     let value = f(shunt);
