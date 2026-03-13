@@ -366,7 +366,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
-            sess.dcx().emit_warn(errors::Finalize { path: &incr_comp_session_dir, err: e });
+            sess.dcx().emit_note(errors::Finalize { path: &incr_comp_session_dir, err: e });
 
             debug!("finalize_session_directory() - error, marking as invalid");
             // Drop the file lock, so we can garage collect
