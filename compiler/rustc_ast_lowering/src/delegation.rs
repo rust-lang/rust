@@ -346,7 +346,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         if let Some(fn_sig) = self.resolver.delegation_fn_sig(local_id) {
             &fn_sig.attrs
         } else {
-            &self.resolver.delegation_info(local_id).unwrap().attrs
+            &self.resolver.delegation_info(local_id).expect("Processing delegation").attrs
         }
     }
 

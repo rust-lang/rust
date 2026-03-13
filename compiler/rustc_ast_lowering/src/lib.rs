@@ -548,6 +548,7 @@ fn compute_hir_hash(
 }
 
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
+    let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -575,7 +576,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     drop(ast_index);
 
     // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-    let prof = tcx.sess.prof.clone();
+    let prof = sess.prof.clone();
     spawn(move || {
         let _timer = prof.verbose_generic_activity("drop_ast");
         drop(krate);

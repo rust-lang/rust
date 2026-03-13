@@ -77,7 +77,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
             match node {
                 AstOwner::NonOwner => {}
                 AstOwner::Crate(c) => {
-                    assert_eq!(self.resolver.def_id(CRATE_NODE_ID).unwrap(), CRATE_DEF_ID);
+                    assert_eq!(
+                        self.resolver.def_id(CRATE_NODE_ID).expect("Must have def_id"),
+                        CRATE_DEF_ID
+                    );
                     self.with_lctx(CRATE_NODE_ID, |lctx| {
                         let module = lctx.lower_mod(&c.items, &c.spans);
                         // FIXME(jdonszelman): is dummy span ever a problem here?
@@ -1830,8 +1833,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes =
-            self.resolver.extra_lifetime_params(parent_node_id).cloned().unwrap_or_default();
+        let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
         params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,
