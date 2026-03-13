@@ -169,8 +169,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 DefKind::Macro(macro_kinds)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(use_tree) => {
-                self.create_def(i.id, None, DefKind::Use, use_tree.span());
+            ItemKind::Use(_) => {
+                self.create_def(i.id, None, DefKind::Use, i.span);
                 return visit::walk_item(self, i);
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
