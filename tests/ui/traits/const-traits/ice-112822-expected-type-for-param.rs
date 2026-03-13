@@ -1,8 +1,9 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_closures)]
+#![allow(incomplete_features)]
 
 const fn test() -> impl [const] Fn() {
     //~^ ERROR: }: [const] Fn()` is not satisfied
-    const move || { //~ ERROR const closures are experimental
+    const move || {
         let sl: &[u8] = b"foo";
 
         match sl {
