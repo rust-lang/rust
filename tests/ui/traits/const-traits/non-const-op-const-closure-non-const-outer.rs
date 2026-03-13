@@ -1,5 +1,4 @@
 #![feature(const_closures, const_trait_impl)]
-#![allow(incomplete_features)]
 
 trait Foo {
     fn foo(&self);

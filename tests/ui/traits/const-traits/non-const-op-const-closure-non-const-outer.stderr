@@ -1,5 +1,5 @@
 error: cannot use `const` closures outside of const contexts
-  --> $DIR/non-const-op-const-closure-non-const-outer.rs:15:6
+  --> $DIR/non-const-op-const-closure-non-const-outer.rs:14:6
    |
 LL |     (const || { (()).foo() })();
    |      ^^^^^

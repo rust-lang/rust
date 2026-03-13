@@ -1,4 +1,3 @@
-#![allow(incomplete_features)]
 #![feature(const_closures, const_trait_impl)]
 
 const fn create_array<const N: usize>(mut f: impl FnMut(usize) -> u32 + Copy) -> [u32; N] {

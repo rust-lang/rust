@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const function `core::panicking::assert_failed::<&u8, &u8>` in constant functions
-  --> $DIR/ice-112822-expected-type-for-param.rs:10:17
+  --> $DIR/ice-112822-expected-type-for-param.rs:9:17
    |
 LL |                 assert_eq!(first, &b'f');
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
