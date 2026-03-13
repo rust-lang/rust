@@ -3,7 +3,8 @@
 fn main() {
     const { (const || {})() };
     //~^ ERROR: const closures are experimental
-    //~| ERROR: the trait bound `{closure@$DIR/gate.rs:4:14: 4:22}: const Fn()` is not satisfied
+    //~| ERROR: cannot call conditionally-const closure in constants
+    //~| ERROR:  `Fn` is not yet stable as a const trait
 }
 
 macro_rules! e {

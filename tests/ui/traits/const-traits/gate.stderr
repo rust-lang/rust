@@ -9,7 +9,7 @@ LL |     const { (const || {})() };
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const closures are experimental
-  --> $DIR/gate.rs:13:5
+  --> $DIR/gate.rs:14:5
    |
 LL | e!((const || {}));
    |     ^^^^^
@@ -18,13 +18,29 @@ LL | e!((const || {}));
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0277]: the trait bound `{closure@$DIR/gate.rs:4:14: 4:22}: const Fn()` is not satisfied
+error[E0658]: cannot call conditionally-const closure in constants
   --> $DIR/gate.rs:4:13
    |
 LL |     const { (const || {})() };
    |             ^^^^^^^^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error: `Fn` is not yet stable as a const trait
+  --> $DIR/gate.rs:4:13
+   |
+LL |     const { (const || {})() };
+   |             ^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   |
+LL + #![feature(const_trait_impl)]
+   |
 
-Some errors have detailed explanations: E0277, E0658.
-For more information about an error, try `rustc --explain E0277`.
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
