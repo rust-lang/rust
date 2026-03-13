@@ -3313,39 +3313,15 @@ pub const fn maximumf128(x: f128, y: f128) -> f128 {
     }
 }
 
-/// Returns the absolute value of an `f16`.
+/// Returns the absolute value of a floating-point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::abs`](../../std/primitive.f16.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn fabsf16(x: f16) -> f16;
-
-/// Returns the absolute value of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::abs`](../../std/primitive.f32.html#method.abs)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `abs` method. For example,
+/// [`f32::abs`]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn fabsf32(x: f32) -> f32;
-
-/// Returns the absolute value of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::abs`](../../std/primitive.f64.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-pub const fn fabsf64(x: f64) -> f64;
-
-/// Returns the absolute value of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::abs`](../../std/primitive.f128.html#method.abs)
-#[rustc_nounwind]
-#[rustc_intrinsic]
-pub const fn fabsf128(x: f128) -> f128;
+pub const fn fabs<T: Copy>(x: T) -> T;
 
 /// Copies the sign from `y` to `x` for `f16` values.
 ///

@@ -346,10 +346,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::log10f32 => ("log10f", 1, fx.tcx.types.f32, types::F32),
         sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
         sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
-        sym::fabsf16 => ("fabsf16", 1, fx.tcx.types.f16, types::F16),
-        sym::fabsf32 => ("fabsf", 1, fx.tcx.types.f32, types::F32),
-        sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
-        sym::fabsf128 => ("fabsf128", 1, fx.tcx.types.f128, types::F128),
         sym::fmaf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
@@ -441,11 +437,7 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::copysignf32 | sym::copysignf64 => {
             CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
         }
-        sym::fabsf16 => CValue::by_val(codegen_f16_f128::abs_f16(fx, args[0]), layout),
-        sym::fabsf128 => CValue::by_val(codegen_f16_f128::abs_f128(fx, args[0]), layout),
-        sym::fabsf32
-        | sym::fabsf64
-        | sym::floorf32
+        sym::floorf32
         | sym::floorf64
         | sym::ceilf32
         | sym::ceilf64
@@ -456,7 +448,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         | sym::sqrtf32
         | sym::sqrtf64 => {
             let val = match intrinsic {
-                sym::fabsf32 | sym::fabsf64 => fx.bcx.ins().fabs(args[0]),
                 sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
                 sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
                 sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
@@ -1177,6 +1168,23 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
+        }
+
+        sym::fabs => {
+            intrinsic_args!(fx, args => (arg); intrinsic);
+            let x = arg.load_scalar(fx);
+
+            let layout = arg.layout();
+            let val = match layout.ty.kind() {
+                ty::Float(FloatTy::F32) | ty::Float(FloatTy::F64) => fx.bcx.ins().fabs(x),
+                // FIXME(bytecodealliance/wasmtime#8312): Use `fabsf16` once Cranelift
+                // backend lowerings are implemented.
+                ty::Float(FloatTy::F16) => codegen_f16_f128::abs_f16(fx, x),
+                ty::Float(FloatTy::F128) => codegen_f16_f128::abs_f128(fx, x),
+                _ => bug!("expected float type for fabs intrinsic: {:?}", layout.ty),
+            };
+            let val = CValue::by_val(val, layout);
+            ret.write_cvalue(fx, val);
         }
 
         sym::minimumf16 => {

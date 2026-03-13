@@ -111,10 +111,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::expf32
         | sym::expf64
         | sym::expf128
-        | sym::fabsf16
-        | sym::fabsf32
-        | sym::fabsf64
-        | sym::fabsf128
+        | sym::fabs
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::field_offset
@@ -463,10 +460,7 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
         }
 
-        sym::fabsf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::fabsf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::fabsf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::fabsf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::fabs => (1, 0, vec![param(0)], param(0)),
 
         sym::minnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),

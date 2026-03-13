@@ -1568,7 +1568,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
-        intrinsics::fabsf32(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
