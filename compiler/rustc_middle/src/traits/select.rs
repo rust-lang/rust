@@ -163,9 +163,6 @@ pub enum SelectionCandidate<'tcx> {
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate,
 
-    /// Builtin impl of the `PointerLike` trait.
-    PointerLikeCandidate,
-
     TraitAliasCandidate,
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the

@@ -2758,9 +2758,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
     fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
-
         iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
