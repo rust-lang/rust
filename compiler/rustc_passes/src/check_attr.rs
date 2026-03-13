@@ -17,8 +17,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey, msg};
 use rustc_feature::{
-    ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
-    BuiltinAttribute,
+    AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute,
 };
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
@@ -165,7 +164,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         span: attr_span,
                         stability: PartialConstStability { level, feature, .. },
                     },
-                ) => self.check_stability(*attr_span, span, level, *feature),
+                ) => {}
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
                     self.check_inline(hir_id, *attr_span, kind, target)
@@ -1551,8 +1550,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
-    /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
         &self,
         hir_id: HirId,
@@ -1567,24 +1564,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    fn check_stability(
-        &self,
-        attr_span: Span,
-        item_span: Span,
-        level: &StabilityLevel,
-        feature: Symbol,
-    ) {
-        // Stable *language* features shouldn't be used as unstable library features.
-        // (Not doing this for stable library features is checked by tidy.)
-        if level.is_unstable()
-            && ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature).is_some()
-        {
-            self.tcx
-                .dcx()
-                .emit_err(errors::UnstableAttrForAlreadyStableFeature { attr_span, item_span });
         }
     }
 
