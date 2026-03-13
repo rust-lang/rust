@@ -3,20 +3,9 @@ use std::iter;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::{self as ty, Ty, TyCtxt};
+use crate::ty::{self as ty, TyCtxt};
 
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for Ty<'tcx> {
-    #[inline]
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        relation: &mut R,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        relation.tys(a, b)
-    }
-}
 
 impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
     #[inline]

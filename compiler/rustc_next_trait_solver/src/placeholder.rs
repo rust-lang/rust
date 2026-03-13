@@ -3,7 +3,7 @@ use core::panic;
 use rustc_type_ir::data_structures::IndexMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType,
+    self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType, Ty,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -113,7 +113,7 @@ where
         }
     }
 
-    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+    fn fold_ty(&mut self, t: Ty<I>) -> Ty<I> {
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1

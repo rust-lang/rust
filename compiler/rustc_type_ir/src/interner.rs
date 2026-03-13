@@ -1,8 +1,9 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::Deref;
+use std::ops::{Deref, Range};
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast_ir::Movability;
 use rustc_index::bit_set::DenseBitSet;
 
@@ -13,7 +14,9 @@ use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
-use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
+use crate::{
+    self as ty, CanonicalParamEnvCacheEntry, Ty, TyKind, WithCachedTypeInfo, search_graph,
+};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
@@ -52,6 +55,8 @@ pub trait Interner:
     type CoroutineClosureId: SpecificDefId<Self>;
     type CoroutineId: SpecificDefId<Self>;
     type AdtId: SpecificDefId<Self>;
+    type AdtDef: AdtDef<Self>;
+    type VariantDef: VariantDef<Self>;
     type ImplId: SpecificDefId<Self>;
     type UnevaluatedConstId: SpecificDefId<Self>;
     type Span: Span<Self>;
@@ -73,10 +78,10 @@ pub trait Interner:
         + Hash
         + Eq
         + TypeFoldable<Self>
-        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Self::Ty)>;
+        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Ty<Self>)>;
     fn mk_predefined_opaques_in_body(
         self,
-        data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
+        data: &[(ty::OpaqueTypeKey<Self>, Ty<Self>)],
     ) -> Self::PredefinedOpaques;
 
     type LocalDefIds: Copy
@@ -120,14 +125,13 @@ pub trait Interner:
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, Self::DepNodeIndex);
 
     // Kinds of tys
-    type Ty: Ty<Self>;
     type Tys: Tys<Self>;
-    type FnInputTys: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Ty> + TypeVisitable<Self>;
+    type FnInputTys: Copy + Debug + Hash + Eq + SliceLike<Item = Ty<Self>> + TypeVisitable<Self>;
     type ParamTy: ParamLike;
     type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Copy + Debug + Hash + Eq;
+    type ErrorGuaranteed: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy
@@ -175,6 +179,25 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
 
+    // type Interned<'a, T: Copy + Clone + Debug + Hash + Eq + PartialEq + 'a>: Copy
+    //     + Clone
+    //     + Debug
+    //     + Hash
+    //     + Eq
+    //     + PartialEq
+    //     + Deref<Target = T>;
+    type InternedTyKindWithCachedInfo: Copy
+        + Clone
+        + Debug
+        + Hash
+        + Eq
+        + PartialEq
+        + Deref<Target = WithCachedTypeInfo<TyKind<Self>>>;
+    type VariantIdx;
+    type Discr: Debug + Copy + Clone;
+    type ObligationCause: Debug + Clone;
+    type LangItem: Debug + Copy + Clone;
+
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
     fn canonical_param_env_cache_get_or_insert<R>(
@@ -202,13 +225,12 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> Option<Self::VariancesOf>;
 
-    fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Ty<Self>>;
     fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
-    -> ty::EarlyBinder<Self, Self::Ty>;
+    -> ty::EarlyBinder<Self, Ty<Self>>;
     fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
-    type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
@@ -232,6 +254,12 @@ pub trait Interner:
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
+    fn debug_assert_adt_def_compatible(self, adt: Self::AdtDef);
+
+    fn debug_assert_new_dynamic_compatible(self, obj: Self::BoundExistentialPredicates);
+
+    fn typeck_root_def_id(self, def_id: Self::DefId) -> Self::DefId;
+
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`.
     fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
@@ -239,7 +267,17 @@ pub trait Interner:
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<Self::Ty, Self::Tys>;
+        T: CollectAndApply<Ty<Self>, Self::Tys>;
+
+    fn mk_ty_from_kind(self, kind: ty::TyKind<Self>) -> Ty<Self>;
+
+    fn mk_coroutine_witness_for_coroutine(
+        self,
+        def_id: Self::CoroutineId,
+        args: Self::GenericArgs,
+    ) -> Ty<Self>;
+
+    fn ty_discriminant_ty(self, ty: Ty<Self>) -> Ty<Self>;
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
 
@@ -330,6 +368,8 @@ pub trait Interner:
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool;
 
+    fn is_c_void(self, def_id: Self::AdtDef) -> bool;
+
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
 
     fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool;
@@ -352,7 +392,7 @@ pub trait Interner:
     fn for_each_relevant_impl(
         self,
         trait_def_id: Self::TraitId,
-        self_ty: Self::Ty,
+        self_ty: Ty<Self>,
         f: impl FnMut(Self::ImplId),
     );
     fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
@@ -413,6 +453,96 @@ pub trait Interner:
     ) -> (QueryResult<Self>, Self::Probe);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
+
+    fn i8_type(self) -> Ty<Self>;
+
+    fn i16_type(self) -> Ty<Self>;
+
+    fn i32_type(self) -> Ty<Self>;
+
+    fn u8_type(self) -> Ty<Self>;
+
+    fn usize_type(self) -> Ty<Self>;
+
+    fn unit_type(self) -> Ty<Self>;
+
+    fn is_async_drop_in_place_coroutine(self, def_id: Self::DefId) -> bool;
+
+    fn coroutine_variant_range(
+        self,
+        def_id: Self::DefId,
+        coroutine_args: ty::CoroutineArgs<Self>,
+    ) -> Range<Self::VariantIdx>;
+
+    fn struct_tail_raw(
+        self,
+        ty: Ty<Self>,
+        cause: &Self::ObligationCause,
+        normalize: impl FnMut(Ty<Self>) -> Ty<Self>,
+        f: impl FnMut() -> (),
+    ) -> Ty<Self>;
+
+    fn get_ty_var(self, id: usize) -> Option<Ty<Self>>;
+
+    fn get_fresh_ty(self, id: usize) -> Option<Ty<Self>>;
+
+    fn get_fresh_ty_int(self, id: usize) -> Option<Ty<Self>>;
+
+    fn get_fresh_ty_float(self, id: usize) -> Option<Ty<Self>>;
+
+    fn get_anon_bound_ty(self, id: usize) -> Option<Vec<Ty<Self>>>;
+
+    fn get_anon_canonical_bound_ty(self, id: usize) -> Option<Ty<Self>>;
+
+    fn get_generic_args_for_item(
+        self,
+        def_id: Self::DefId,
+        coroutine_args: Self::GenericArgs,
+    ) -> Self::GenericArgs;
+
+    fn new_static_str(self) -> Ty<Self>;
+
+    fn get_generic_adt_args(
+        self,
+        wrapper_def_id: Self::DefId,
+        ty_param: Ty<Self>,
+    ) -> Self::GenericArgs;
+
+    fn get_lang_item(self, item: Self::LangItem) -> Option<Self::DefId>;
+
+    fn get_diagnostic_item(self, name: Self::Symbol) -> Option<Self::DefId>;
+
+    fn require_lang_item_owned_box(self) -> Self::DefId;
+
+    fn require_lang_item_option(self) -> Self::DefId;
+
+    fn require_lang_item_maybe_uninit(self) -> Self::DefId;
+
+    fn require_lang_item_pin(self) -> Self::DefId;
+
+    fn require_lang_item_context(self) -> Self::DefId;
+
+    fn new_field_representing_type(
+        self,
+        base: Ty<Self>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> Ty<Self>;
+
+    fn get_re_erased_region(self) -> Self::Region;
+
+    fn new_generic_adt(self, wrapper_def_id: Self::DefId, ty_param: Ty<Self>) -> Ty<Self>;
+
+    fn new_pinned_ref(self, r: Self::Region, ty: Ty<Self>, mutbl: ty::Mutability) -> Ty<Self>;
+
+    /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
+    fn new_task_context(self) -> Ty<Self>;
+
+    fn new_fn_def(
+        self,
+        def_id: Self::FunctionId,
+        args: impl IntoIterator<Item: Into<Self::GenericArg>>,
+    ) -> Ty<Self>;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

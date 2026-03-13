@@ -2131,7 +2131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.typeck_results
                         .borrow()
                         .expr_ty_adjusted_opt(rcvr_expr)
-                        .unwrap_or(Ty::new_misc_error(self.tcx)),
+                        .unwrap_or(self.new_misc_error()),
                 );
 
                 let Ok(candidates) = self.probe_for_name_many(

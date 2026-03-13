@@ -4189,9 +4189,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();
-                let ty = typeck_results
-                    .expr_ty_adjusted_opt(inner_expr)
-                    .unwrap_or(Ty::new_misc_error(tcx));
+                let ty =
+                    typeck_results.expr_ty_adjusted_opt(inner_expr).unwrap_or(tcx.new_misc_error());
                 let span = inner_expr.span;
                 if Some(span) != err.span.primary_span()
                     && !span.in_external_macro(tcx.sess.source_map())
@@ -4588,7 +4587,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut assocs = vec![];
         let mut expr = expr;
         let mut prev_ty = self.resolve_vars_if_possible(
-            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
+            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.new_misc_error()),
         );
         while let hir::ExprKind::MethodCall(path_segment, rcvr_expr, args, span) = expr.kind {
             // Point at every method call in the chain with the resulting type.
@@ -4598,7 +4597,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let assocs_in_this_method =
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
             prev_ty = self.resolve_vars_if_possible(
-                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.new_misc_error()),
             );
             self.look_for_iterator_item_mistakes(
                 &assocs_in_this_method,
@@ -4627,9 +4626,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let hir::Node::Param(param) = parent {
                     // ...and it is an fn argument.
                     let prev_ty = self.resolve_vars_if_possible(
-                        typeck_results
-                            .node_type_opt(param.hir_id)
-                            .unwrap_or(Ty::new_misc_error(tcx)),
+                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.new_misc_error()),
                     );
                     let assocs_in_this_method = self.probe_assoc_types_at_expr(
                         &type_diffs,

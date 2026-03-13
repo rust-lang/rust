@@ -1067,9 +1067,32 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
     }
 }
 
-impl<'tcx> Ty<'tcx> {
+pub trait TyUtil<'tcx> {
+    fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size;
+    fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool);
+    fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)>;
+    fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>>;
+    fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>>;
+    fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_freeze(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_trivially_freeze(self) -> bool;
+    fn is_unsafe_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_trivially_unpin(self) -> bool;
+    fn has_unsafe_fields(self) -> bool;
+    fn is_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_trivially_not_async_drop(self) -> bool;
+    fn needs_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn needs_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+    fn is_structural_eq_shallow(self, tcx: TyCtxt<'tcx>) -> bool;
+    fn peel_refs(self) -> Ty<'tcx>;
+    fn outer_exclusive_binder(self) -> ty::DebruijnIndex;
+}
+
+impl<'tcx> TyUtil<'tcx> for Ty<'tcx> {
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
-    pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
+    fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
         match *self.kind() {
             ty::Bool => Size::from_bytes(1),
             ty::Char => Size::from_bytes(4),
@@ -1080,7 +1103,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
+    fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
         match *self.kind() {
             ty::Int(ity) => (Integer::from_int_ty(&tcx, ity).size(), true),
             ty::Uint(uty) => (Integer::from_uint_ty(&tcx, uty).size(), false),
@@ -1090,7 +1113,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the minimum and maximum values for the given numeric type (including `char`s) or
     /// returns `None` if the type is not numeric.
-    pub fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
+    fn numeric_min_and_max_as_bits(self, tcx: TyCtxt<'tcx>) -> Option<(u128, u128)> {
         use rustc_apfloat::ieee::{Double, Half, Quad, Single};
         Some(match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
@@ -1115,7 +1138,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
+    fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
         let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
             .map(|(_, max)| mir::Const::from_bits(tcx, max, typing_env, self))
@@ -1123,7 +1146,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
+    fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<mir::Const<'tcx>> {
         let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
             .map(|(min, _)| mir::Const::from_bits(tcx, min, typing_env, self))
@@ -1135,7 +1158,7 @@ impl<'tcx> Ty<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn is_sized(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         self.has_trivial_sizedness(tcx, SizedTraitKind::Sized)
             || tcx.is_sized_raw(typing_env.as_query_input(self))
     }
@@ -1147,7 +1170,7 @@ impl<'tcx> Ty<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn is_freeze(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         self.is_trivially_freeze() || tcx.is_freeze_raw(typing_env.as_query_input(self))
     }
 
@@ -1155,7 +1178,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Returning true means the type is known to be `Freeze`. Returning
     /// `false` means nothing -- could be `Freeze`, might not be.
-    pub fn is_trivially_freeze(self) -> bool {
+    fn is_trivially_freeze(self) -> bool {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1188,7 +1211,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Checks whether values of this type `T` implement the `UnsafeUnpin` trait.
-    pub fn is_unsafe_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn is_unsafe_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         self.is_trivially_unpin() || tcx.is_unsafe_unpin_raw(typing_env.as_query_input(self))
     }
 
@@ -1197,7 +1220,7 @@ impl<'tcx> Ty<'tcx> {
     /// Note that this is a safe trait, so it cannot be very semantically meaningful.
     /// However, as a hack to mitigate <https://github.com/rust-lang/rust/issues/63818> until a
     /// proper solution is implemented, we do give special semantics to the `Unpin` trait.
-    pub fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         self.is_trivially_unpin() || tcx.is_unpin_raw(typing_env.as_query_input(self))
     }
 
@@ -1238,7 +1261,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Checks whether this type is an ADT that has unsafe fields.
-    pub fn has_unsafe_fields(self) -> bool {
+    fn has_unsafe_fields(self) -> bool {
         if let ty::Adt(adt_def, ..) = self.kind() {
             adt_def.all_fields().any(|x| x.safety.is_unsafe())
         } else {
@@ -1247,7 +1270,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Checks whether values of this type `T` implement the `AsyncDrop` trait.
-    pub fn is_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn is_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         !self.is_trivially_not_async_drop()
             && tcx.is_async_drop_raw(typing_env.as_query_input(self))
     }
@@ -1300,7 +1323,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that this method is used to check eligible types in unions.
     #[inline]
-    pub fn needs_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn needs_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1336,7 +1359,7 @@ impl<'tcx> Ty<'tcx> {
     // FIXME(zetanumbers): Note that this method is used to check eligible types
     // in unions.
     #[inline]
-    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn needs_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1371,7 +1394,7 @@ impl<'tcx> Ty<'tcx> {
     /// Note that this method is used to check for change in drop order for
     /// 2229 drop reorder migration analysis.
     #[inline]
-    pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+    fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1419,7 +1442,7 @@ impl<'tcx> Ty<'tcx> {
     /// want to know whether a given call to `PartialEq::eq` will proceed structurally all the way
     /// down, you will need to use a type visitor.
     #[inline]
-    pub fn is_structural_eq_shallow(self, tcx: TyCtxt<'tcx>) -> bool {
+    fn is_structural_eq_shallow(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             // Look for an impl of `StructuralPartialEq`.
             ty::Adt(..) => tcx.has_structural_eq_impl(self),
@@ -1470,7 +1493,7 @@ impl<'tcx> Ty<'tcx> {
     /// - `&'a mut u8` -> `u8`
     /// - `&'a &'b u8` -> `u8`
     /// - `&'a *const &'b u8 -> *const &'b u8`
-    pub fn peel_refs(self) -> Ty<'tcx> {
+    fn peel_refs(self) -> Ty<'tcx> {
         let mut ty = self;
         while let ty::Ref(_, inner_ty, _) = ty.kind() {
             ty = *inner_ty;
@@ -1480,7 +1503,7 @@ impl<'tcx> Ty<'tcx> {
 
     // FIXME(compiler-errors): Think about removing this.
     #[inline]
-    pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
+    fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }
 }

@@ -18,6 +18,9 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
+#[cfg(feature = "nightly")]
+pub mod codec;
+#[cfg(feature = "nightly")]
 pub mod data_structures;
 pub mod elaborate;
 pub mod error;
@@ -31,6 +34,7 @@ pub mod outlives;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod sty;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -63,6 +67,8 @@ pub use TyKind::*;
 pub use Variance::*;
 pub use binder::{Placeholder, *};
 pub use canonical::*;
+#[cfg(feature = "nightly")]
+pub use codec::*;
 pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;
@@ -78,6 +84,7 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
+pub use sty::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -443,8 +450,8 @@ impl fmt::Display for ClosureKind {
 }
 
 pub struct FieldInfo<I: Interner> {
-    pub base: I::Ty,
-    pub ty: I::Ty,
+    pub base: Ty<I>,
+    pub ty: Ty<I>,
     pub variant: Option<I::Symbol>,
     pub variant_idx: VariantIdx,
     pub name: I::Symbol,

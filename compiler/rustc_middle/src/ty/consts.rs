@@ -6,6 +6,7 @@ use rustc_macros::HashStable;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
+use crate::mir::ConstValue;
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 
@@ -148,7 +149,7 @@ impl<'tcx> Const<'tcx> {
         )
     }
 
-    /// Like [Ty::new_error_with_message] but for constants.
+    /// Like [Interner.new_error_with_message] but for constants.
     #[track_caller]
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
@@ -213,6 +214,16 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
         Const::new_error(interner, guar)
     }
+
+    fn try_to_target_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_target_usize(tcx)
+    }
+
+    #[inline]
+    /// Creates an interned usize constant.
+    fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
+        Self::from_bits(tcx, n as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.usize)
+    }
 }
 
 impl<'tcx> Const<'tcx> {
@@ -245,12 +256,6 @@ impl<'tcx> Const<'tcx> {
     /// Creates an interned bool constant.
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
         Self::from_bits(tcx, v as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.bool)
-    }
-
-    #[inline]
-    /// Creates an interned usize constant.
-    pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
-        Self::from_bits(tcx, n as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.usize)
     }
 
     /// Panics if `self.kind != ty::ConstKind::Value`.

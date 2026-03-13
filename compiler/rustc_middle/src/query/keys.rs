@@ -267,9 +267,9 @@ impl<'tcx> QueryKey for Ty<'tcx> {
     }
 
     fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
-        match *self.kind() {
+        match self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
-            ty::Coroutine(def_id, ..) => Some(def_id),
+            ty::Coroutine(def_id, ..) => Some(*def_id),
             _ => None,
         }
     }

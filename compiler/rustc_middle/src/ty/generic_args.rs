@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;
 
+use rustc_abi::VariantIdx;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
@@ -15,6 +16,8 @@ use rustc_type_ir::walk::TypeWalker;
 use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::sty::CoroutineArgsExt;
+use crate::ty::util::Discr;
 use crate::ty::{
     self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,
     Lift, List, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, VisitorResult,
@@ -121,6 +124,19 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
             }
             _ => bug!("coroutine args missing synthetics"),
         }
+    }
+
+    fn coroutine_discriminant_for_variant(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Discr<'tcx> {
+        self.as_coroutine().discriminant_for_variant(def_id, tcx, variant_index)
+    }
+
+    fn as_coroutine_discr_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.as_coroutine().discr_ty(tcx)
     }
 }
 
@@ -229,7 +245,7 @@ impl<'tcx> GenericArg<'tcx> {
                 REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
                     ptr.cast::<ty::RegionKind<'tcx>>().as_ref(),
                 ))),
-                TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
+                TYPE_TAG => GenericArgKind::Type(Ty::from_interned(Interned::new_unchecked(
                     ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(

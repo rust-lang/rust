@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     AliasTerm, AliasTy, Binder, ClosureKind, CoercePredicate, ExistentialProjection,
     ExistentialTraitRef, FnSig, HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate,
-    PatternKind, Placeholder, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    PatternKind, Placeholder, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef, Ty,
     UnevaluatedConst,
 };
 
@@ -53,6 +53,15 @@ define_display_via_print!(
 );
 
 define_debug_via_print!(TraitRef, ExistentialTraitRef, PatternKind);
+
+impl<I: Interner> fmt::Display for Ty<I>
+where
+    I: IrPrint<Ty<I>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Ty<I>>>::print(self, fmt)
+    }
+}
 
 impl<I: Interner, T> fmt::Display for OutlivesPredicate<I, T>
 where
@@ -114,6 +123,15 @@ mod into_diag_arg_impls {
     impl<I: Interner, T: IntoDiagArg> IntoDiagArg for Binder<I, T> {
         fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
             self.skip_binder().into_diag_arg(path)
+        }
+    }
+
+    impl<I: Interner> IntoDiagArg for Ty<I>
+    where
+        I: IrPrint<Ty<I>>,
+    {
+        fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+            self.to_string().into_diag_arg(path)
         }
     }
 

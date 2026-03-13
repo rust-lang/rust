@@ -97,9 +97,20 @@ impl<'tcx> VariantDef {
     }
 }
 
-impl<'tcx> Ty<'tcx> {
+trait TyInhabitedHelpers<'tcx> {
+    fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx>;
+    fn is_inhabited_from(
+        self,
+        tcx: TyCtxt<'tcx>,
+        module: DefId,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> bool;
+    fn is_privately_uninhabited(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool;
+}
+
+impl<'tcx> TyInhabitedHelpers<'tcx> for Ty<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
+    fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
         debug_assert!(!self.has_infer());
         match self.kind() {
             // For now, unions are always considered inhabited
@@ -171,7 +182,7 @@ impl<'tcx> Ty<'tcx> {
     /// ```
     /// This code should only compile in modules where the uninhabitedness of Foo is
     /// visible.
-    pub fn is_inhabited_from(
+    fn is_inhabited_from(
         self,
         tcx: TyCtxt<'tcx>,
         module: DefId,
@@ -181,11 +192,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns true if the type is uninhabited without regard to visibility
-    pub fn is_privately_uninhabited(
-        self,
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> bool {
+    fn is_privately_uninhabited(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         !self.inhabited_predicate(tcx).apply_ignore_module(tcx, typing_env)
     }
 }
