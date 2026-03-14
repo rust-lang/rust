@@ -2104,6 +2104,8 @@ options! {
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`"),
+    instrument_mcount: bool = (false, parse_bool, [TRACKED],
+        "insert function instrument code for mcount-based tracing (default: no)"),
     jump_tables: bool = (true, parse_bool, [TRACKED],
         "allow jump table and lookup table generation from switch case lowering (default: yes)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
@@ -2400,8 +2402,6 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
-    instrument_mcount: bool = (false, parse_bool, [TRACKED],
-        "insert function instrument code for mcount-based tracing (default: no)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)
          Optional extra settings:
