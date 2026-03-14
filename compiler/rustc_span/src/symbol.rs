@@ -366,6 +366,7 @@ symbols! {
         add_with_overflow,
         address,
         adt_const_params,
+        adt_const_params_restricted_privacy,
         advanced_slice_patterns,
         adx_target_feature,
         aes,

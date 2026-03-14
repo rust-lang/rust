@@ -209,6 +209,8 @@ declare_features! (
 
     /// Allows using the `unadjusted` ABI; perma-unstable.
     (internal, abi_unadjusted, "1.16.0", None),
+    /// Restrict adt_const_params fields to share same privacy.
+    (internal, adt_const_params_restricted_privacy, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (internal, allocator_internals, "1.20.0", None),
     /// Allows using `#[allow_internal_unsafe]`. This is an
@@ -804,4 +806,5 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
 pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
     (sym::opaque_generic_const_args, &[sym::min_generic_const_args]),
     (sym::unsized_const_params, &[sym::adt_const_params]),
+    (sym::adt_const_params_restricted_privacy, &[sym::adt_const_params]),
 ];

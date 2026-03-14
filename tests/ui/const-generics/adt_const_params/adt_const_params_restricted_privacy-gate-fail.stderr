@@ -1,0 +1,14 @@
+error: the trait `ConstParamTy` may not be implemented for this struct
+  --> $DIR/adt_const_params_restricted_privacy-gate-fail.rs:28:24
+   |
+LL | impl ConstParamTy_ for Meowl {}
+   |                        ^^^^^ struct fields do not share struct's visibility
+
+error: the trait `ConstParamTy` may not be implemented for this struct
+  --> $DIR/adt_const_params_restricted_privacy-gate-fail.rs:31:24
+   |
+LL | impl ConstParamTy_ for Meowl3 {}
+   |                        ^^^^^^ struct fields do not share struct's visibility
+
+error: aborting due to 2 previous errors
+
