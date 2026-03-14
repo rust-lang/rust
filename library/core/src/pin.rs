@@ -1829,9 +1829,10 @@ where
 ///
 /// # Safety
 ///
-/// If this type implements `Deref`, then the concrete type returned by `deref`
-/// and `deref_mut` must not change without a modification. The following
-/// operations are not considered modifications:
+/// Given a pointer of this type, the concrete type returned by its
+/// `deref` method and (if it implements `DerefMut`) its `deref_mut` method
+/// must be the same type and must not change without a modification.
+/// The following operations are not considered modifications:
 ///
 /// * Moving the pointer.
 /// * Performing unsizing coercions on the pointer.
@@ -1842,7 +1843,7 @@ where
 /// to. The concrete type of a slice is an array of the same element type and
 /// the length specified in the metadata. The concrete type of a sized type
 /// is the type itself.
-pub unsafe trait PinCoerceUnsized {}
+pub unsafe trait PinCoerceUnsized: Deref {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
@@ -1852,12 +1853,6 @@ unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
-
-#[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
-
-#[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
