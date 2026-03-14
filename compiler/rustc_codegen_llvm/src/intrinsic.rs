@@ -488,10 +488,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     return Ok(());
                 };
                 let llty = self.type_float_from_ty(*f);
-                let llvm_name = match name {
-                    sym::fabs => "llvm.fabs",
-                    _ => bug!(),
-                };
+                let llvm_name = "llvm.fabs";
                 self.call_intrinsic(
                     llvm_name,
                     &[llty],
