@@ -173,6 +173,7 @@ mod visit;
 #[derive(Debug, HashStable)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
+    pub impl_restrictions: FxIndexMap<LocalDefId, Restriction>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
@@ -321,6 +322,14 @@ impl Visibility {
             ty::Visibility::Public => "pub".to_string(),
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
+pub enum Restriction {
+    /// The restriction does not affect the item.
+    Unrestricted(Span),
+    /// The restriction applies outside of this path.
+    Restricted(DefId, Span),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]

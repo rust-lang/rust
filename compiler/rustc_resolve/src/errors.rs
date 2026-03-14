@@ -7,8 +7,8 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
-use crate::Res;
 use crate::late::PatternSource;
+use crate::{Res, RestrictionTarget};
 
 #[derive(Diagnostic)]
 #[diag("can't use {$is_self ->
@@ -559,6 +559,48 @@ pub(crate) struct ExpectedModuleFound {
 #[derive(Diagnostic)]
 #[diag("cannot determine resolution for the visibility", code = E0578)]
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
+#[diag(
+    "relative paths are not supported in `{$restriction_target}` restrictions in 2018 edition or later"
+)]
+pub(crate) struct RestrictionRelative2018 {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[suggestion("try", code = "crate::{path_str}", applicability = "maybe-incorrect")]
+    pub(crate) path_span: Span,
+    pub(crate) path_str: String,
+    pub(crate) restriction_target: RestrictionTarget,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{ $restriction_target ->
+        [impl] trait implementation
+        *[mut] field mutation
+} can only be restricted to ancestor modules"
+)]
+pub(crate) struct RestrictionAncestorOnly {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) restriction_target: RestrictionTarget,
+}
+
+#[derive(Diagnostic)]
+#[diag("cannot determine resolution for the `{$restriction_target}` restriction")]
+pub(crate) struct RestrictionIndeterminate {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) restriction_target: RestrictionTarget,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$restriction_target}` restriction must resolve to a module")]
+pub(crate) struct RestrictionModuleOnly {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) restriction_target: RestrictionTarget,
+}
 
 #[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]

@@ -51,8 +51,8 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey, LateDecl, MacroRulesScope,
     Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
-    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
-    errors as errs, path_names_to_string,
+    ResolutionError, Resolver, RestrictionResolutionError, RestrictionTarget, Scope, ScopeSet,
+    Segment, UseError, Used, VisResolutionError, errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -1129,6 +1129,54 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.dcx().create_err(errs::Indeterminate(span))
             }
             VisResolutionError::ModuleOnly(span) => self.dcx().create_err(errs::ModuleOnly(span)),
+        }
+        .emit()
+    }
+
+    pub(crate) fn report_restriction_error(
+        &mut self,
+        restriction_resolution_error: RestrictionResolutionError<'_>,
+        restriction_target: RestrictionTarget,
+    ) -> ErrorGuaranteed {
+        match restriction_resolution_error {
+            RestrictionResolutionError::Relative2018(span, path) => {
+                self.dcx().create_err(errs::RestrictionRelative2018 {
+                    span,
+                    path_span: path.span,
+                    // intentionally converting to String, as the text would also be used as
+                    // in suggestion context
+                    path_str: pprust::path_to_string(path),
+                    restriction_target,
+                })
+            }
+            RestrictionResolutionError::AncestorOnly(span) => {
+                self.dcx().create_err(errs::RestrictionAncestorOnly { span, restriction_target })
+            }
+            RestrictionResolutionError::FailedToResolve(
+                span,
+                segment,
+                label,
+                suggestion,
+                message,
+            ) => self.into_struct_error(
+                span,
+                ResolutionError::FailedToResolve {
+                    segment,
+                    label,
+                    suggestion,
+                    module: None,
+                    message,
+                },
+            ),
+            RestrictionResolutionError::ExpectedFound(span, path_str, res) => {
+                self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
+            }
+            RestrictionResolutionError::Indeterminate(span) => {
+                self.dcx().create_err(errs::RestrictionIndeterminate { span, restriction_target })
+            }
+            RestrictionResolutionError::ModuleOnly(span) => {
+                self.dcx().create_err(errs::RestrictionModuleOnly { span, restriction_target })
+            }
         }
         .emit()
     }

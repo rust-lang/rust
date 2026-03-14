@@ -47,7 +47,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
+use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, IntoDiagArg, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::StrippedCfgItem;
@@ -344,6 +344,31 @@ enum VisResolutionError<'a> {
     ExpectedFound(Span, String, Res),
     Indeterminate(Span),
     ModuleOnly(Span),
+}
+
+enum RestrictionResolutionError<'a> {
+    Relative2018(Span, &'a ast::Path),
+    AncestorOnly(Span),
+    FailedToResolve(Span, Symbol, String, Option<Suggestion>, String),
+    ExpectedFound(Span, String, Res),
+    Indeterminate(Span),
+    ModuleOnly(Span),
+}
+
+/// Identifies what specific action is being restricted.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum RestrictionTarget {
+    /// `impl` restriction (e.g. `impl(crate) trait Foo`)
+    Impl,
+    // FIXME: Add `mut` restriction
+}
+
+impl IntoDiagArg for RestrictionTarget {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        rustc_errors::DiagArgValue::Str(std::borrow::Cow::Borrowed(match self {
+            RestrictionTarget::Impl => "impl",
+        }))
+    }
 }
 
 /// A minimal representation of a path segment. We use this in resolve because we synthesize 'path
@@ -1241,6 +1266,7 @@ pub struct Resolver<'ra, 'tcx> {
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     glob_error: Option<ErrorGuaranteed> = None,
     visibilities_for_hashing: Vec<(LocalDefId, Visibility)> = Vec::new(),
+    impl_restrictions: FxIndexMap<LocalDefId, ty::Restriction>,
     used_imports: FxHashSet<NodeId> = default::fx_hash_set(),
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1681,6 +1707,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extern_module_map: Default::default(),
 
             glob_map: Default::default(),
+            impl_restrictions: Default::default(),
             maybe_unused_trait_imports: Default::default(),
 
             arenas,
@@ -1826,6 +1853,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
+            impl_restrictions: self.impl_restrictions,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,

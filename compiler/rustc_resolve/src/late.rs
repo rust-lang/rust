@@ -31,7 +31,7 @@ use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{
     AssocTag, DELEGATION_INHERIT_ATTRS_START, DelegationAttrs, DelegationFnSig,
-    DelegationFnSigAttrs, DelegationInfo, Visibility,
+    DelegationFnSigAttrs, DelegationInfo, Restriction, Visibility,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -44,8 +44,9 @@ use tracing::{debug, instrument, trace};
 
 use crate::{
     BindingError, BindingKey, Decl, Finalize, IdentKey, LateDecl, Module, ModuleOrUniformRoot,
-    ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage, TyCtxt, UseError, Used,
-    errors, path_names_to_string, rustdoc,
+    ParentScope, PathResult, ResolutionError, Resolver, RestrictionResolutionError,
+    RestrictionTarget, Segment, Stage, TyCtxt, UseError, Used, errors, path_names_to_string,
+    rustdoc,
 };
 
 mod diagnostics;
@@ -1538,6 +1539,24 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         )
     }
 
+    fn resolve_module_path(
+        &mut self,
+        path: &[Segment],
+        finalize: Option<Finalize>,
+    ) -> PathResult<'ra> {
+        self.r.cm().resolve_path_with_ribs(
+            path,
+            None, // module path
+            &self.parent_scope,
+            None, // no special path source for module paths
+            finalize.map(|finalize| Finalize { stage: Stage::Late, ..finalize }),
+            Some(&self.ribs),
+            None,
+            None,
+            Some(&self.diag_metadata),
+        )
+    }
+
     // AST resolution
     //
     // We maintain a list of value ribs and type ribs.
@@ -2800,7 +2819,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
-            ItemKind::Trait(box Trait { generics, bounds, items, .. }) => {
+            ItemKind::Trait(box Trait { generics, bounds, items, impl_restriction, .. }) => {
+                // resolve paths for `impl` restrictions
+                let impl_restriction = self.resolve_impl_restriction_path(impl_restriction);
+                let local_def_id = self.r.local_def_id(item.id);
+                self.r.impl_restrictions.insert(local_def_id, impl_restriction);
+
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -4386,6 +4410,101 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 "unexpected resolution for an identifier in pattern: {:?}",
                 res,
             ),
+        }
+    }
+
+    fn resolve_impl_restriction_path(
+        &mut self,
+        restriction: &'ast ast::ImplRestriction,
+    ) -> Restriction {
+        self.try_resolve_restriction_path(&restriction.kind, restriction.span, true).unwrap_or_else(
+            |err| {
+                self.r.report_restriction_error(err, RestrictionTarget::Impl);
+                Restriction::Unrestricted(restriction.span)
+            },
+        )
+    }
+
+    /// Try to resolve module paths in restrictions
+    fn try_resolve_restriction_path(
+        &mut self,
+        restriction_kind: &'ast ast::RestrictionKind,
+        span: Span,
+        finalize: bool,
+    ) -> Result<Restriction, RestrictionResolutionError<'ast>> {
+        match restriction_kind {
+            ast::RestrictionKind::Unrestricted => Ok(Restriction::Unrestricted(span)),
+            ast::RestrictionKind::Restricted { path, id, shorthand: _ } => {
+                // For restrictions we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                // On 2015 edition restrictions are resolved as crate-relative by default,
+                // so we are prepending a root segment if necessary.
+                let ident = path.segments.get(0).expect("empty path in restriction").ident;
+                let crate_root = if ident.is_path_segment_keyword() {
+                    None
+                } else if ident.span.is_rust_2015() {
+                    Some(Segment::from_ident(Ident::new(
+                        kw::PathRoot,
+                        path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
+                    )))
+                } else {
+                    return Err(RestrictionResolutionError::Relative2018(ident.span, path));
+                };
+                let segments = crate_root
+                    .into_iter()
+                    .chain(path.segments.iter().map(|seg| seg.into()))
+                    .collect::<Vec<_>>();
+                let expected_found_error = |res| {
+                    Err(RestrictionResolutionError::ExpectedFound(
+                        path.span,
+                        Segment::names_to_string(&segments),
+                        res,
+                    ))
+                };
+                match self
+                    .resolve_module_path(&segments, finalize.then(|| Finalize::new(*id, path.span)))
+                {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                        let res = module.res().expect("visibility resolved to unnamed block");
+                        if finalize {
+                            self.r.record_partial_res(*id, PartialRes::new(res));
+                        }
+                        if module.is_normal() {
+                            match res {
+                                Res::Err => Ok(Restriction::Unrestricted(span)),
+                                _ => {
+                                    let vis = Visibility::Restricted(res.def_id());
+                                    if self.r.is_accessible_from(vis, self.parent_scope.module) {
+                                        Ok(Restriction::Restricted(res.def_id(), span))
+                                    } else {
+                                        Err(RestrictionResolutionError::AncestorOnly(path.span))
+                                    }
+                                }
+                            }
+                        } else {
+                            expected_found_error(res)
+                        }
+                    }
+                    PathResult::Module(..) => {
+                        Err(RestrictionResolutionError::ModuleOnly(path.span))
+                    }
+                    PathResult::NonModule(partial_res) => {
+                        expected_found_error(partial_res.expect_full_res())
+                    }
+                    PathResult::Failed {
+                        span, label, suggestion, message, segment_name, ..
+                    } => Err(RestrictionResolutionError::FailedToResolve(
+                        span,
+                        segment_name,
+                        label,
+                        suggestion,
+                        message,
+                    )),
+                    PathResult::Indeterminate => {
+                        Err(RestrictionResolutionError::Indeterminate(path.span))
+                    }
+                }
+            }
         }
     }
 

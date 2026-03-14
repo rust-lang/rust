@@ -1,0 +1,23 @@
+error: relative paths are not supported in `impl` restrictions in 2018 edition or later
+  --> $DIR/restriction_resolution_2018.rs:9:21
+   |
+LL |         pub impl(in a::b) trait T1 {}
+   |                     ^---
+   |                     |
+   |                     help: try: `crate::a::b`
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_2018.rs:11:21
+   |
+LL |         pub impl(in ::core) trait T2 {}
+   |                     ^^^^^^
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/restriction_resolution_2018.rs:25:10
+   |
+LL | pub impl(super) trait T10 {}
+   |          ^^^^^ there are too many leading `super` keywords
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.
