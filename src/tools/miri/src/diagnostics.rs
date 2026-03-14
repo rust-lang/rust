@@ -700,7 +700,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
             }
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
-            SocketListenUnsupportedBacklog { provided, supported, .. } => format!("called `listen` on socket with backlog value of {provided} but only {supported} is supported")
+            SocketListenUnsupportedBacklog { provided, supported, .. } => format!("called `listen` on socket with backlog value of {provided} but only {supported} is supported"),
         };
 
         let notes = match &e {
