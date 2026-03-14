@@ -308,6 +308,21 @@ pub struct InferCtxt<'tcx> {
 
     next_trait_solver: bool,
 
+    /// Normally, we shallow-resolve unresolved type variables to their root
+    /// variables. This is mainly done for performance reasons, and in most
+    /// cases resolving to the root variable (instead of the variable itself)
+    /// does not affect type inference.
+    ///
+    /// However, there is an exceptional case: *fudging*. Fudging is intended
+    /// to guide inference rather than impose hard requirements. Because of
+    /// that, different type variables should not be implicitly unified through
+    /// a shared root variable unless they are fully resolved within the fudge
+    /// scope.
+    ///
+    /// To prevent such unintended unification, we set this flag to `false` in
+    /// those cases.
+    shallow_resolve_ty_var_to_root_var: Cell<bool>,
+
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 }
 
@@ -599,6 +614,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             next_trait_solver,
+            shallow_resolve_ty_var_to_root_var: Cell::new(true),
             obligation_inspector: Cell::new(None),
         }
     }
@@ -1099,12 +1115,17 @@ impl<'tcx> InferCtxt<'tcx> {
                     //
                     // Note: if these two lines are combined into one we get
                     // dynamic borrow errors on `self.inner`.
-                    let (root_vid, value) =
-                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
-                    value.known().map_or_else(
-                        || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
-                        |t| self.shallow_resolve(t),
-                    )
+                    if self.shallow_resolve_ty_var_to_root_var.get() {
+                        let (root_vid, value) =
+                            self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
+                        value.known().map_or_else(
+                            || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
+                            |t| self.shallow_resolve(t),
+                        )
+                    } else {
+                        let known = self.inner.borrow_mut().type_variables().probe(v).known();
+                        known.map_or(ty, |t| self.shallow_resolve(t))
+                    }
                 }
 
                 ty::IntVar(v) => {
@@ -1114,7 +1135,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
                         ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
                         ty::IntVarValue::Unknown => {
-                            if root == v {
+                            if root == v || !self.shallow_resolve_ty_var_to_root_var.get() {
                                 ty
                             } else {
                                 Ty::new_int_var(self.tcx, root)
@@ -1132,7 +1153,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     match value {
                         ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
                         ty::FloatVarValue::Unknown => {
-                            if root == v {
+                            if root == v || !self.shallow_resolve_ty_var_to_root_var.get() {
                                 ty
                             } else {
                                 Ty::new_float_var(self.tcx, root)
@@ -1158,7 +1179,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         .const_unification_table()
                         .inlined_probe_key_value(vid);
                     value.known().unwrap_or_else(|| {
-                        if root.vid == vid { ct } else { ty::Const::new_var(self.tcx, root.vid) }
+                        if root.vid == vid || !self.shallow_resolve_ty_var_to_root_var.get() {
+                            ct
+                        } else {
+                            ty::Const::new_var(self.tcx, root.vid)
+                        }
                     })
                 }
                 InferConst::Fresh(_) => ct,

@@ -82,6 +82,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
             next_trait_solver: self.next_trait_solver,
+            shallow_resolve_ty_var_to_root_var: self.shallow_resolve_ty_var_to_root_var.clone(),
             obligation_inspector: self.obligation_inspector.clone(),
         }
     }
@@ -107,6 +108,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
             next_trait_solver: self.next_trait_solver,
+            shallow_resolve_ty_var_to_root_var: self.shallow_resolve_ty_var_to_root_var.clone(),
             obligation_inspector: self.obligation_inspector.clone(),
         };
         forked.inner.borrow_mut().projection_cache().clear();

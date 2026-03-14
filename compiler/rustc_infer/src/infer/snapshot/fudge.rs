@@ -93,7 +93,8 @@ impl<'tcx> InferCtxt<'tcx> {
         E: Debug,
     {
         let variable_lengths = self.variable_lengths();
-        let (snapshot_vars, value) = self.probe(|_| {
+        let shallow_resolve_mode = self.shallow_resolve_ty_var_to_root_var.replace(false);
+        let r = self.probe(|_| {
             let value = f()?;
             // At this point, `value` could in principle refer
             // to inference variables that have been created during
@@ -102,7 +103,9 @@ impl<'tcx> InferCtxt<'tcx> {
             // eliminate any references to them.
             let snapshot_vars = SnapshotVarData::new(self, variable_lengths);
             Ok((snapshot_vars, self.resolve_vars_if_possible(value)))
-        })?;
+        });
+        self.shallow_resolve_ty_var_to_root_var.set(shallow_resolve_mode);
+        let (snapshot_vars, value) = r?;
 
         // At this point, we need to replace any of the now-popped
         // type/region variables that appear in `value` with a fresh
