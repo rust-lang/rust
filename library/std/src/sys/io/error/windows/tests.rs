@@ -1,5 +1,5 @@
 use crate::io::Error;
-use crate::sys::c;
+use crate::sys::pal::c;
 
 // tests `error_string` above
 #[test]
