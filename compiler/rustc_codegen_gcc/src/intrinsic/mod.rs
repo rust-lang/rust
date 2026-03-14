@@ -496,7 +496,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 }
             }
             sym::fabs => 'fabs: {
-                let func = match args[0].layout.ty.kind() {
+                let func = match *args[0].layout.ty.kind() {
                     ty::Float(ty::FloatTy::F16) => break 'fabs f16_builtin(self, name, args),
                     ty::Float(ty::FloatTy::F32) => self.context.get_builtin_function("fabsf"),
                     ty::Float(ty::FloatTy::F64) => self.context.get_builtin_function("fabs"),
