@@ -1,4 +1,4 @@
-use crate::num::TryFromIntError;
+use crate::num::{IntErrorKind, TryFromIntError};
 
 mod private {
     /// This trait being unreachable from outside the crate
@@ -274,7 +274,7 @@ macro_rules! impl_try_from_lower_bounded {
                 if u >= 0 {
                     Ok(u as Self)
                 } else {
-                    Err(TryFromIntError(()))
+                    Err(TryFromIntError(IntErrorKind::NegOverflow))
                 }
             }
         }
@@ -295,7 +295,7 @@ macro_rules! impl_try_from_upper_bounded {
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u > (Self::MAX as $source) {
-                    Err(TryFromIntError(()))
+                    Err(TryFromIntError(IntErrorKind::PosOverflow))
                 } else {
                     Ok(u as Self)
                 }
@@ -319,8 +319,10 @@ macro_rules! impl_try_from_both_bounded {
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 let min = Self::MIN as $source;
                 let max = Self::MAX as $source;
-                if u < min || u > max {
-                    Err(TryFromIntError(()))
+                if u < min {
+                    Err(TryFromIntError(IntErrorKind::NegOverflow))
+                } else if u > max {
+                    Err(TryFromIntError(IntErrorKind::PosOverflow))
                 } else {
                     Ok(u as Self)
                 }
@@ -331,7 +333,7 @@ macro_rules! impl_try_from_both_bounded {
 
 /// Implement `TryFrom<integer>` for `bool`
 macro_rules! impl_try_from_integer_for_bool {
-    ($($int:ty)+) => {$(
+    ($signedness:ident $($int:ty)+) => {$(
         #[stable(feature = "try_from", since = "1.34.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$int> for bool {
@@ -351,10 +353,23 @@ macro_rules! impl_try_from_integer_for_bool {
             /// ```
             #[inline]
             fn try_from(i: $int) -> Result<Self, Self::Error> {
-                match i {
-                    0 => Ok(false),
-                    1 => Ok(true),
-                    _ => Err(TryFromIntError(())),
+                sign_dependent_expr!{
+                    $signedness ?
+                    if signed {
+                        match i {
+                            0 => Ok(false),
+                            1 => Ok(true),
+                            ..0 => Err(TryFromIntError(IntErrorKind::NegOverflow)),
+                            2.. => Err(TryFromIntError(IntErrorKind::PosOverflow)),
+                        }
+                    }
+                    if unsigned {
+                        match i {
+                            0 => Ok(false),
+                            1 => Ok(true),
+                            2.. => Err(TryFromIntError(IntErrorKind::PosOverflow)),
+                        }
+                    }
                 }
             }
         }
@@ -368,8 +383,8 @@ macro_rules! rev {
 }
 
 // integer -> bool
-impl_try_from_integer_for_bool!(u128 u64 u32 u16 u8);
-impl_try_from_integer_for_bool!(i128 i64 i32 i16 i8);
+impl_try_from_integer_for_bool!(unsigned u128 u64 u32 u16 u8);
+impl_try_from_integer_for_bool!(signed i128 i64 i32 i16 i8);
 
 // unsigned integer -> unsigned integer
 impl_try_from_upper_bounded!(u16 => u8);
@@ -407,7 +422,7 @@ impl_try_from_lower_bounded!(isize => usize);
 
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8);
     impl_try_from_unbounded!(usize => u16, u32, u64, u128);
@@ -429,7 +444,7 @@ mod ptr_try_from_impls {
 
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8, u16);
     impl_try_from_unbounded!(usize => u32, u64, u128);
@@ -454,7 +469,7 @@ mod ptr_try_from_impls {
 
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8, u16, u32);
     impl_try_from_unbounded!(usize => u64, u128);
@@ -552,7 +567,7 @@ macro_rules! impl_nonzero_int_try_from_int {
             #[doc = concat!("to <code>[NonZero]\\<[", stringify!($Int), "]></code>.")]
             #[inline]
             fn try_from(value: $Int) -> Result<Self, Self::Error> {
-                Self::new(value).ok_or(TryFromIntError(()))
+                Self::new(value).ok_or(TryFromIntError(IntErrorKind::Zero))
             }
         }
     };
