@@ -493,7 +493,6 @@ macro_rules! define_callbacks {
                     let erased_value = $name::provided_to_erased(self.tcx, value);
                     $crate::query::inner::query_feed(
                         self.tcx,
-                        dep_graph::DepKind::$name,
                         &self.tcx.query_system.query_vtables.$name,
                         key,
                         erased_value,
