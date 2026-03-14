@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt;
 use std::rc::Rc;
 
 use rustc_data_structures::frozen::Frozen;
@@ -182,7 +183,7 @@ pub(crate) enum Cause {
 /// For more information about this translation, see
 /// `InferCtxt::process_registered_region_obligations` and
 /// `InferCtxt::type_must_outlive` in `rustc_infer::infer::InferCtxt`.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.
     pub generic_kind: GenericKind<'tcx>,
@@ -196,6 +197,47 @@ pub(crate) struct TypeTest<'tcx> {
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
     pub verify_bound: VerifyBound<'tcx>,
+}
+
+impl fmt::Debug for TypeTest<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt_bound(
+            f: &mut fmt::Formatter<'_>,
+            generic_kind: GenericKind<'_>,
+            lower: RegionVid,
+            bound: &VerifyBound<'_>,
+        ) -> fmt::Result {
+            let fmt_bounds =
+                |f: &mut fmt::Formatter<'_>, bounds: &[VerifyBound<'_>]| -> fmt::Result {
+                    let mut it = bounds.iter().peekable();
+                    while let Some(bound) = it.next() {
+                        fmt_bound(f, generic_kind, lower, bound)?;
+                        if it.peek().is_some() {
+                            write!(f, ", ")?
+                        }
+                    }
+                    Ok(())
+                };
+            match bound {
+                VerifyBound::IfEq(binder) => write!(f, "{:?} == {:?}", generic_kind, binder),
+                VerifyBound::OutlivedBy(region) => write!(f, "{region:?}: {lower:?}"),
+                VerifyBound::AnyBound(verify_bounds) => {
+                    write!(f, "Any[")?;
+                    fmt_bounds(f, verify_bounds)?;
+                    write!(f, "]")
+                }
+                VerifyBound::AllBounds(verify_bounds) => {
+                    write!(f, "All[")?;
+                    fmt_bounds(f, verify_bounds)?;
+                    write!(f, "]")
+                }
+                VerifyBound::IsEmpty => write!(f, "Empty({lower:?})"),
+            }
+        }
+        write!(f, "TypeTest from {:?}[", self.span)?;
+        fmt_bound(f, self.generic_kind, self.lower_bound, &self.verify_bound)?;
+        write!(f, " ⊢ {:?}: {:?}", self.generic_kind, self.lower_bound)
+    }
 }
 
 /// When we have an unmet lifetime constraint, we try to propagate it outward (e.g. to a closure
