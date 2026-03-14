@@ -3,6 +3,7 @@
 //@[opt] compile-flags: -O
 //@[noopt] compile-flags: -Zmir-opt-level=0
 // ignore-tidy-linelength
+#![feature(f16)]
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
@@ -50,6 +51,12 @@ macro_rules! assert_test {
 
 macro_rules! suite {
     ( $tyname:ident => $( $tt:tt )* ) => {
+        fn f16() {
+            #[allow(unused)]
+            type $tyname = f16;
+            suite_inner!(f16 => $($tt)*);
+        }
+
         fn f32() {
             #[allow(unused)]
             type $tyname = f32;
@@ -121,7 +128,8 @@ suite! { T => // type alias for the type we are testing
 }
 
 fn main() {
+    f16();
     f32();
     f64();
-    // FIXME(f16_f128): also test f16 and f128
+    // FIXME(f128): also test f128
 }
