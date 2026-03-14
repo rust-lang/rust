@@ -655,7 +655,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
         AttributeParser::parse_limited(
             sess,
             &krate.attrs,
-            sym::feature,
+            &[sym::feature],
             DUMMY_SP,
             krate.id,
             Some(&features),

@@ -23,6 +23,7 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_unimplemented;
+pub(crate) mod on_unknown_item;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -32,6 +33,8 @@ pub(crate) enum Mode {
     DiagnosticOnUnimplemented,
     /// `#[diagnostic::on_const]`
     DiagnosticOnConst,
+    /// `#[diagnostic::on_unknown_item]`
+    DiagnosticOnUnknownItem,
 }
 
 fn merge_directives<S: Stage>(
@@ -113,6 +116,13 @@ fn parse_directive_items<'p, S: Stage>(
                         span,
                     );
                 }
+                Mode::DiagnosticOnUnknownItem => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnUnknownItemdAttr { span },
+                        span,
+                    );
+                }
             }
             continue;
         }}
@@ -132,7 +142,7 @@ fn parse_directive_items<'p, S: Stage>(
                 Mode::RustcOnUnimplemented => {
                     cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
                 }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst => {
+                Mode::DiagnosticOnUnimplemented | Mode::DiagnosticOnConst | Mode::DiagnosticOnUnknownItem => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {
@@ -163,7 +173,8 @@ fn parse_directive_items<'p, S: Stage>(
                 Ok((f, warnings)) => {
                     for warning in warnings {
                         let (FormatWarning::InvalidSpecifier { span, .. }
-                        | FormatWarning::PositionalArgument { span, .. }) = warning;
+                        | FormatWarning::PositionalArgument { span, .. }
+                        | FormatWarning::DisallowedPlaceholder { span }) = warning;
                         cx.emit_lint(
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             AttributeLintKind::MalformedDiagnosticFormat { warning },
@@ -304,6 +315,9 @@ pub(crate) fn parse_format_string(
         .map(|piece| match piece {
             RpfPiece::Lit(lit) => Piece::Lit(Symbol::intern(lit)),
             RpfPiece::NextArgument(arg) => {
+                if matches!(mode, Mode::DiagnosticOnUnknownItem) {
+                    warnings.push(FormatWarning::DisallowedPlaceholder { span });
+                }
                 warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
                 let arg = parse_arg(&arg, mode, &mut warnings, span, parser.is_source_literal);
                 Piece::Arg(arg)

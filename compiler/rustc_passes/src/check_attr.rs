@@ -74,6 +74,13 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     item_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unknown_item]` can only be applied to `use` statements")]
+struct DiagnosticOnUnknownItemOnlyForImports {
+    #[label("not an import")]
+    item_span: Span,
+}
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -232,6 +239,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnUnknownItem { span, .. }) => { self.check_diagnostic_on_unknown_item(*span, hir_id, target) },
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(
                     // tidy-alphabetical-start
@@ -682,6 +690,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         // We don't check the validity of generic args here...whose generics would that be, anyway?
         // The traits' or the impls'?
+    }
+
+    /// Checks if `#[diagnostic::on_unknown_item]` is applied to a trait impl
+    fn check_diagnostic_on_unknown_item(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        if !matches!(target, Target::Use) {
+            let item_span = self.tcx.hir_span(hir_id);
+            self.tcx.emit_node_span_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnUnknownItemOnlyForImports { item_span },
+            );
+        }
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.
