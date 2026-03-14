@@ -1,5 +1,5 @@
 error[E0565]: malformed `macro_use` attribute input
-  --> $DIR/macro-use-bad-args-1.rs:3:1
+  --> $DIR/macro-use-bad-args-1.rs:4:1
    |
 LL | #[macro_use(foo(bar))]
    | ^^^^^^^^^^^^^^^-----^^
