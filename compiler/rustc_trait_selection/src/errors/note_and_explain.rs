@@ -22,15 +22,15 @@ impl<'a> DescriptionCtx<'a> {
     ) -> Option<Self> {
         let (span, kind, arg) = match region.kind() {
             ty::ReEarlyParam(br) => {
-                let scope = tcx
-                    .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
-                    .expect_local();
-                let span = if let Some(param) =
-                    tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
+                let scope_def_id =
+                    tcx.parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id);
+                let span = if let Some(scope) = scope_def_id.as_local()
+                    && let Some(param) =
+                        tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
                 {
                     param.span
                 } else {
-                    tcx.def_span(scope)
+                    tcx.def_span(scope_def_id)
                 };
                 if br.is_named() {
                     (Some(span), "as_defined", br.name.to_string())
@@ -44,17 +44,17 @@ impl<'a> DescriptionCtx<'a> {
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {
-                    let scope = fr.scope.expect_local();
                     match fr.kind {
                         ty::LateParamRegionKind::Named(def_id) => {
                             let name = tcx.item_name(def_id);
-                            let span = if let Some(param) = tcx
-                                .hir_get_generics(scope)
-                                .and_then(|generics| generics.get_named(name))
+                            let span = if let Some(scope) = fr.scope.as_local()
+                                && let Some(param) = tcx
+                                    .hir_get_generics(scope)
+                                    .and_then(|generics| generics.get_named(name))
                             {
                                 param.span
                             } else {
-                                tcx.def_span(scope)
+                                tcx.def_span(fr.scope)
                             };
                             if name == kw::UnderscoreLifetime {
                                 (Some(span), "as_defined_anon", String::new())
@@ -63,10 +63,10 @@ impl<'a> DescriptionCtx<'a> {
                             }
                         }
                         ty::LateParamRegionKind::Anon(_) => {
-                            let span = Some(tcx.def_span(scope));
+                            let span = Some(tcx.def_span(fr.scope));
                             (span, "defined_here", String::new())
                         }
-                        _ => (Some(tcx.def_span(scope)), "defined_here_reg", region.to_string()),
+                        _ => (Some(tcx.def_span(fr.scope)), "defined_here_reg", region.to_string()),
                     }
                 }
             }
