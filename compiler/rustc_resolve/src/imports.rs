@@ -1051,6 +1051,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if !self.issue_145575_hack_applied {
                         assert!(import.imported_module.get().is_none());
                     }
+                    if import.is_nested() {
+                        let module = if let Some(ModuleOrUniformRoot::Module(m)) = module {
+                            m.opt_def_id()
+                        } else {
+                            None
+                        };
+                        return Some(UnresolvedImportError {
+                            span,
+                            label: Some(label),
+                            note: None,
+                            suggestion,
+                            candidates: None,
+                            segment: Some(segment_name),
+                            module,
+                        });
+                    }
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
