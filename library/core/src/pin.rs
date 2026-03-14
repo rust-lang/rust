@@ -2031,9 +2031,19 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 // `super` gets removed by rustfmt
 #[rustfmt::skip]
 pub macro pin($value:expr $(,)?) {
-    {
+    'p: {
         super let mut pinned = $value;
         // SAFETY: The value is pinned: it is the local above which cannot be named outside this macro.
-        unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) }
+        break 'p unsafe { $crate::pin::Pin::new_unchecked(&mut pinned) };
+
+        // HACK: We need to ensure that, given `$value: T`, `pin!($value)` has type `Pin<&mut T>`.
+        // Otherwise, it's possible for a type annotation on the result of `pin!` to unsoundly add
+        // deref coercions. E.g. for `$value: &mut T`, we can get `pin!($value): Pin<&mut T>`,
+        // violating the pinning invariant; see <https://github.com/rust-lang/rust/issues/153438>.
+        fn unreachable_type_constraint<'a, T>(_: T) -> $crate::pin::Pin<&'a mut T> {
+            unreachable!()
+        }
+        #[expect(unreachable_code)]
+        unreachable_type_constraint(pinned)
     }
 }
