@@ -1619,6 +1619,10 @@ rustc_queries! {
     query is_dyn_compatible(trait_id: DefId) -> bool {
         desc { "checking if trait `{}` is dyn-compatible", tcx.def_path_str(trait_id) }
     }
+    query is_dyn_incompatible_final_assoc_fn_query(def_id: DefId) -> bool {
+        desc { "checking if final assoc fn `{}` is dyn-incompatible", tcx.def_path_str(def_id) }
+        feedable
+    }
 
     /// Gets the ParameterEnvironment for a given item; this environment
     /// will be in "user-facing" mode, meaning that it is suitable for
