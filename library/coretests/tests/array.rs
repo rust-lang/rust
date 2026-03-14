@@ -741,3 +741,22 @@ fn const_array_ops() {
     struct Zst;
     assert_eq!([(); 10].try_map(|()| Some(Zst)), Some([const { Zst }; 10]));
 }
+
+#[test]
+fn extra_const_array_ops() {
+    const {
+        let x: [u8; 4] =
+            { std::array::from_fn(const |i| i + 4).map(const |x| x * 2).map(const |x| x as _) };
+        let y = 4;
+        struct Z(u16);
+        impl const Drop for Z {
+            fn drop(&mut self) {}
+        }
+        let w = Z(2);
+        let _x: [u8; 4] = {
+            std::array::from_fn(const |_| x[0] + y)
+                .map(const |x| x * (w.0 as u8))
+                .map(const |x| x as _)
+        };
+    }
+}
