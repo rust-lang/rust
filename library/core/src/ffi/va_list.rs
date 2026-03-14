@@ -265,6 +265,16 @@ impl<'f> const Drop for VaList<'f> {
 mod sealed {
     pub trait Sealed {}
 
+    crate::cfg_select! {
+        any(target_arch = "avr", target_arch = "msp430") => {
+            impl Sealed for i16 {}
+            impl Sealed for u16 {}
+
+            impl Sealed for f32 {}
+        }
+        _ => {}
+    }
+
     impl Sealed for i32 {}
     impl Sealed for i64 {}
     impl Sealed for isize {}
@@ -296,19 +306,37 @@ mod sealed {
 // We may unseal this trait in the future, but currently our `va_arg` implementations don't support
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
+#[lang = "va_arg_safe"]
 pub unsafe trait VaArgSafe: sealed::Sealed {}
 
-// i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+crate::cfg_select! {
+    any(target_arch = "avr", target_arch = "msp430") => {
+        // c_int/c_uint are i16/u16, c_double is f32 on this target.
+        //
+        // - i8 is implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+        // - u8 is implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
+        unsafe impl VaArgSafe for i16 {}
+        unsafe impl VaArgSafe for u16 {}
+
+        unsafe impl VaArgSafe for f32 {}
+    }
+    _ => {
+        // c_int/c_uint are i32/u32, c_double is f64 on this target.
+        //
+        // - i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+        // - u8 and u16 are implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
+        // - f32 is implicitly promoted to c_double in C, and cannot implement `VaArgSafe`.
+    }
+}
+
 unsafe impl VaArgSafe for i32 {}
 unsafe impl VaArgSafe for i64 {}
 unsafe impl VaArgSafe for isize {}
 
-// u8 and u16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
 unsafe impl VaArgSafe for u32 {}
 unsafe impl VaArgSafe for u64 {}
 unsafe impl VaArgSafe for usize {}
 
-// f32 is implicitly promoted to c_double in C, and cannot implement `VaArgSafe`.
 unsafe impl VaArgSafe for f64 {}
 
 unsafe impl<T> VaArgSafe for *mut T {}
