@@ -24,6 +24,7 @@ use std::{assert_matches, slice};
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level,
@@ -1201,6 +1202,69 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )
     }
 
+    /// When there are multiple traits which contain an identically named
+    /// associated item, this function eliminates any traits which are a
+    /// supertrait of another candidate trait.
+    ///
+    /// This implements RFC #3624.
+    fn collapse_candidates_to_subtrait_pick(
+        &self,
+        matching_candidates: &[ty::PolyTraitRef<'tcx>],
+    ) -> Option<ty::PolyTraitRef<'tcx>> {
+        if !self.tcx().features().supertrait_item_shadowing() {
+            return None;
+        }
+
+        let mut child_trait = matching_candidates[0];
+        let mut supertraits: SsoHashSet<_> =
+            traits::supertrait_def_ids(self.tcx(), child_trait.def_id()).collect();
+
+        let mut remaining_candidates: Vec<_> = matching_candidates[1..].iter().copied().collect();
+        while !remaining_candidates.is_empty() {
+            let mut made_progress = false;
+            let mut next_round = vec![];
+
+            for remaining_trait in remaining_candidates {
+                if supertraits.contains(&remaining_trait.def_id()) {
+                    made_progress = true;
+                    continue;
+                }
+
+                // This pick is not a supertrait of the `child_pick`.
+                // Check if it's a subtrait of the `child_pick`, instead.
+                // If it is, then it must have been a subtrait of every
+                // other pick we've eliminated at this point. It will
+                // take over at this point.
+                let remaining_trait_supertraits: SsoHashSet<_> =
+                    traits::supertrait_def_ids(self.tcx(), remaining_trait.def_id()).collect();
+                if remaining_trait_supertraits.contains(&child_trait.def_id()) {
+                    child_trait = remaining_trait;
+                    supertraits = remaining_trait_supertraits;
+                    made_progress = true;
+                    continue;
+                }
+
+                // `child_pick` is not a supertrait of this pick.
+                // Don't bail here, since we may be comparing two supertraits
+                // of a common subtrait. These two supertraits won't be related
+                // at all, but we will pick them up next round when we find their
+                // child as we continue iterating in this round.
+                next_round.push(remaining_trait);
+            }
+
+            if made_progress {
+                // If we've made progress, iterate again.
+                remaining_candidates = next_round;
+            } else {
+                // Otherwise, we must have at least two candidates which
+                // are not related to each other at all.;
+                return None;
+            }
+        }
+
+        Some(child_trait)
+    }
+
     /// Search for a single trait bound whose trait defines the associated item given by
     /// `assoc_ident`.
     ///
@@ -1240,6 +1304,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let Some(bound2) = matching_candidates.next() {
             debug!(?bound2);
 
+            // If the other matching candidates are all from supertraits of one
+            // trait, pick the subtrait.
+            let matching_candidates: Vec<_> =
+                [bound, bound2].into_iter().chain(matching_candidates).collect();
+            if let Some(bound) = self.collapse_candidates_to_subtrait_pick(&matching_candidates) {
+                return Ok(bound);
+            }
+
             let assoc_kind_str = errors::assoc_tag_str(assoc_tag);
             let qself_str = qself.to_string(tcx);
             let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
@@ -1263,7 +1335,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // predicates!).
             // FIXME: Turn this into a structured, translatable & more actionable suggestion.
             let mut where_bounds = vec![];
-            for bound in [bound, bound2].into_iter().chain(matching_candidates) {
+            for bound in matching_candidates {
                 let bound_id = bound.def_id();
                 let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
                     tcx,
