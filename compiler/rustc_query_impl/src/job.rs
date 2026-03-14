@@ -303,29 +303,17 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
     }
 }
 
-/// Looks for a query cycle using the last query in `jobs`.
-/// If a cycle is found, all queries in the cycle is removed from `jobs` and
-/// the function return true.
-/// If a cycle was not found, the starting query is removed from `jobs` and
-/// the function returns false.
-fn remove_cycle<'tcx>(
+/// Looks for a query cycle starting at `query`.
+/// Returns a waiter to resume if a cycle is found.
+fn find_and_process_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
-    jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Arc<QueryWaiter<'tcx>>>,
-) -> bool {
+    query: QueryJobId,
+) -> Option<Arc<QueryWaiter<'tcx>>> {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
-    // Look for a cycle starting with the last query in `jobs`
     if let ControlFlow::Break(resumable) =
-        find_cycle(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+        find_cycle(job_map, query, DUMMY_SP, &mut stack, &mut visited)
     {
-        // Remove the queries in our cycle from the list of jobs to look at
-        for r in &stack {
-            if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
-                jobs.remove(pos);
-            }
-        }
-
         // Create the cycle error
         let error = process_cycle(job_map, stack);
 
@@ -340,62 +328,31 @@ fn remove_cycle<'tcx>(
         *waiter.cycle.lock() = Some(error);
 
         // Put the waiter on the list of things to resume
-        wakelist.push(waiter);
-
-        true
+        Some(waiter)
     } else {
-        false
+        None
     }
 }
 
 /// Detects query cycles by using depth first search over all active query jobs.
 /// If a query cycle is found it will break the cycle by finding an edge which
 /// uses a query latch and then resuming that waiter.
-/// There may be multiple cycles involved in a deadlock, so this searches
-/// all active queries for cycles before finally resuming all the waiters at once.
-pub fn break_query_cycles<'tcx>(
-    job_map: QueryJobMap<'tcx>,
-    registry: &rustc_thread_pool::Registry,
-) {
-    let mut wakelist = Vec::new();
-    // It is OK per the comments:
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
-    #[allow(rustc::potential_query_instability)]
-    let mut jobs: Vec<QueryJobId> = job_map.map.keys().copied().collect();
+///
+/// There may be multiple cycles involved in a deadlock, but this only breaks one at a time so
+/// there will be multiple rounds through the deadlock handler if multiple cycles are present.
+#[allow(rustc::potential_query_instability)]
+pub fn break_query_cycle<'tcx>(job_map: QueryJobMap<'tcx>, registry: &rustc_thread_pool::Registry) {
+    // Look for a cycle starting at each query job
+    let waiter = job_map
+        .map
+        .keys()
+        .find_map(|query| find_and_process_cycle(&job_map, *query))
+        .expect("unable to find a query cycle");
 
-    let mut found_cycle = false;
+    // Mark the thread we're about to wake up as unblocked.
+    rustc_thread_pool::mark_unblocked(registry);
 
-    while jobs.len() > 0 {
-        if remove_cycle(&job_map, &mut jobs, &mut wakelist) {
-            found_cycle = true;
-        }
-    }
-
-    // Check that a cycle was found. It is possible for a deadlock to occur without
-    // a query cycle if a query which can be waited on uses Rayon to do multithreading
-    // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
-    // wait using Rayon on B. Rayon may then switch to executing another query (Y)
-    // which in turn will wait on X causing a deadlock. We have a false dependency from
-    // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
-    // only considers the true dependency and won't detect a cycle.
-    if !found_cycle {
-        panic!(
-            "deadlock detected as we're unable to find a query cycle to break\n\
-            current query map:\n{job_map:#?}",
-        );
-    }
-
-    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
-    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
-    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
-    for _ in 0..wakelist.len() {
-        rustc_thread_pool::mark_unblocked(registry);
-    }
-
-    for waiter in wakelist.into_iter() {
-        waiter.condvar.notify_one();
-    }
+    assert!(waiter.condvar.notify_one(), "unable to wake the waiter");
 }
 
 pub fn print_query_stack<'tcx>(
