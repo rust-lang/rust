@@ -436,9 +436,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let lhs_expr = &this.thir[lhs];
                 let mut place_builder =
                     unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
-                if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
+
+                if let ty::Adt(adt_def, args) = lhs_expr.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
+                    }
+
+                    // MCP#838: SIMD types are atomic. Do not allow a standalone field projection.
+                    if adt_def.repr().simd() {
+                        // However, we MUST allow Field 0 to be mapped if it is the internal array,
+                        // otherwise references like `&simd.0` will have a mismatched struct type.
+                        if name.as_u32() == 0 {
+                            let field_ty =
+                                adt_def.non_enum_variant().fields.raw[0].ty(this.tcx, args);
+                            return block.and(place_builder.field(name, field_ty));
+                        }
+                        return block.and(place_builder);
                     }
                 }
                 block.and(place_builder.field(name, expr.ty))
@@ -712,6 +725,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
 
                 Operand::Move(len)
+            }
+            ty::Adt(def, args) if def.repr().simd() => {
+                // Reach into the ADT definition to find the internal array type
+                let field_ty = def.non_enum_variant().fields.raw[0].ty(self.tcx, args);
+                if let ty::Array(_, len_const) = field_ty.kind() {
+                    let const_ = Const::Ty(self.tcx.types.usize, *len_const);
+                    return Operand::Constant(Box::new(ConstOperand {
+                        span,
+                        user_ty: None,
+                        const_,
+                    }));
+                }
+                span_bug!(span, "SIMD type without internal array: {place_ty:?}");
             }
             _ => {
                 span_bug!(span, "len called on place of type {place_ty:?}")

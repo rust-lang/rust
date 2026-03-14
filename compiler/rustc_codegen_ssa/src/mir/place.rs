@@ -276,9 +276,15 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         llindex: V,
     ) -> Self {
+        // MCP#838: If we are indexing a SIMD type, we need to reach past the
+        // struct wrapper to the internal array so we can index the lanes.
+        let mut base_layout = self.layout;
+        if base_layout.ty.is_simd() {
+            base_layout = base_layout.field(bx, 0);
+        }
         // Statically compute the offset if we can, otherwise just use the element size,
         // as this will yield the lowest alignment.
-        let layout = self.layout.field(bx, 0);
+        let layout = base_layout.field(bx, 0);
         let offset = if let Some(llindex) = bx.const_to_opt_uint(llindex) {
             layout.size.checked_mul(llindex, bx).unwrap_or(layout.size)
         } else {
