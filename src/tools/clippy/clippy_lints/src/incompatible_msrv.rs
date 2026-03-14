@@ -269,5 +269,5 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
 fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx
         .hir_parent_id_iter(hir_id)
-        .any(|id| find_attr!(cx.tcx.hir_attrs(id), CfgTrace(..) | CfgAttrTrace))
+        .any(|id| find_attr!(cx.tcx, id, CfgTrace(..) | CfgAttrTrace))
 }
