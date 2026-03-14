@@ -310,16 +310,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This should only be used for determining the context of a body, a return
     /// value of `Some` does not always suggest that the owner of the body is `const`,
     /// just that it has to be checked as if it were.
-    pub fn hir_body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
-        let def_id = def_id.into();
+    pub fn hir_body_const_context(self, local_def_id: LocalDefId) -> Option<ConstContext> {
+        let def_id = local_def_id.into();
         let ccx = match self.hir_body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                ConstContext::ConstFn
+            // Const closures use their parent's const context
+            BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
+                return self.hir_body_const_context(self.local_parent(local_def_id));
             }
+            BodyOwnerKind::Fn if self.is_const_fn(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
