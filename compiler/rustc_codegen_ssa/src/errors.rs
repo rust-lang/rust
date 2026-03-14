@@ -546,6 +546,12 @@ pub(crate) struct InsufficientVSCodeProduct;
 pub(crate) struct CpuRequired;
 
 #[derive(Diagnostic)]
+#[diag("target cpu `{$target_cpu}` is known but unsupported")]
+pub(crate) struct CpuUnsupported {
+    pub target_cpu: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("processing debug info with `dsymutil` failed: {$status}")]
 #[note("{$output}")]
 pub(crate) struct ProcessingDymutilFailed {

@@ -394,6 +394,16 @@ pub fn target_spec_to_backend_features<'a>(
         },
     );
 
+    // This is needed to ensure that we don't use PTX ISA versions that we do not support
+    if sess.target.arch == Arch::Nvptx64
+        && matches!(
+            sess.opts.cg.target_cpu.as_deref(),
+            None | Some("sm_70") | Some("sm_72") | Some("sm_75")
+        )
+    {
+        rust_features.push((true, "ptx70"));
+    }
+
     // Add this to the backend features.
     for (enable, feature) in rust_features {
         extend_backend_features(feature, enable);

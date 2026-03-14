@@ -1,0 +1,4 @@
+error: target cpu `sm_60` is known but unsupported
+
+error: aborting due to 1 previous error
+
