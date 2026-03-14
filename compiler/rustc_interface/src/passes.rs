@@ -495,7 +495,7 @@ fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> 
     // NOTE: This only works for passes run before `write_dep_info`. See that
     // for extension points for configuring environment variables to be
     // properly change-tracked.
-    tcx.sess.psess.env_depinfo.borrow_mut().insert((
+    tcx.sess.env_depinfo.borrow_mut().insert((
         Symbol::intern(&key.to_string_lossy()),
         value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(value)),
     ));
@@ -607,7 +607,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
-        let file_depinfo = sess.psess.file_depinfo.borrow();
+        let file_depinfo = sess.file_depinfo.borrow();
 
         let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
@@ -719,7 +719,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
 
             // Emit special comments with information about accessed environment variables.
-            let env_depinfo = sess.psess.env_depinfo.borrow();
+            let env_depinfo = sess.env_depinfo.borrow();
             if !env_depinfo.is_empty() {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
