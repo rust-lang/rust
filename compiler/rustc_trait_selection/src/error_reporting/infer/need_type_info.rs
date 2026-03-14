@@ -508,7 +508,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 false
             };
             let mut err = self.bad_inference_failure_err(failure_span, arg_data, error_code);
-            if silence {
+            if silence || *self.tcx.encountered_mod_parse_error.read() {
                 err.downgrade_to_delayed_bug();
             }
             return err;
@@ -676,7 +676,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }),
         };
         *err.long_ty_path() = long_ty_path;
-        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
+        if matches!(kind, InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. })
+            || *self.tcx.encountered_mod_parse_error.read()
+        {
             // We will have already emitted an error about this pattern.
             err.downgrade_to_delayed_bug();
         }
