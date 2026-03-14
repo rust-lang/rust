@@ -1279,6 +1279,11 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
             return;
         }
+        // Do not warn for macro_rules definitions which are pub and unreachable by default,
+        // only check their associated use re-exports.
+        if let hir::ItemKind::Macro(_, ast::MacroDef { macro_rules: true, .. }, _) = &item.kind {
+            return;
+        }
         self.perform_lint(cx, "item", item.owner_id.def_id, item.vis_span, true);
     }
 

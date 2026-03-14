@@ -1,0 +1,17 @@
+error: unreachable `pub` item
+  --> $DIR/implicit-pub-unreachable-lint.rs:11:13
+   |
+LL |     pub use not_reexported;
+   |     ---     ^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+note: the lint level is defined here
+  --> $DIR/implicit-pub-unreachable-lint.rs:4:9
+   |
+LL | #![deny(unreachable_pub)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
