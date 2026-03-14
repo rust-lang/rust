@@ -1180,6 +1180,15 @@ pub(crate) struct AttributesStartingWithRustcAreReserved {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler"
+)]
+pub(crate) struct AttributesContainingRustcAreReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot use {$article} {$descr} through an import")]
 pub(crate) struct CannotUseThroughAnImport {
     #[primary_span]
