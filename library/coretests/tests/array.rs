@@ -313,26 +313,34 @@ fn array_map() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn array_map_drop_safety() {
-    static DROPPED: AtomicUsize = AtomicUsize::new(0);
-    struct DropCounter;
-    impl Drop for DropCounter {
+    static OLD_DROPPED: AtomicUsize = AtomicUsize::new(0);
+    static NEW_DROPPED: AtomicUsize = AtomicUsize::new(0);
+    struct OldDropCounter;
+    struct NewDropCounter;
+    impl Drop for OldDropCounter {
         fn drop(&mut self) {
-            DROPPED.fetch_add(1, Ordering::SeqCst);
+            OLD_DROPPED.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    impl Drop for NewDropCounter {
+        fn drop(&mut self) {
+            NEW_DROPPED.fetch_add(1, Ordering::SeqCst);
         }
     }
 
     let num_to_create = 5;
     let success = std::panic::catch_unwind(|| {
-        let items = [0; 10];
+        let items = [const { OldDropCounter }; 8];
         let mut nth = 0;
         let _ = items.map(|_| {
             assert!(nth < num_to_create);
             nth += 1;
-            DropCounter
+            NewDropCounter
         });
     });
     assert!(success.is_err());
-    assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
+    assert_eq!(OLD_DROPPED.load(Ordering::SeqCst), 8);
+    assert_eq!(NEW_DROPPED.load(Ordering::SeqCst), num_to_create);
 }
 
 #[test]
