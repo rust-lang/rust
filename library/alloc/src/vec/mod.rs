@@ -898,9 +898,17 @@ impl<T> Vec<T> {
     where
         T: Freeze,
     {
-        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
-        let me = ManuallyDrop::new(self);
-        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        // `const_make_global` requires the pointer to point to the beginning of a heap allocation,
+        // which is not the case when `self.capacity()` is 0, or if `T::IS_ZST`,
+        // which is why we instead return a new slice in this case.
+        if self.capacity() == 0 || T::IS_ZST {
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(NonNull::<T>::dangling().as_ptr(), me.len) }
+        } else {
+            unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        }
     }
 }
 
