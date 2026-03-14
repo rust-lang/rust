@@ -4,7 +4,7 @@
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
-use crate::dep_graph::{DepKind, DepNodeKey};
+use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::plumbing::QueryVTable;
 use crate::query::{EnsureMode, QueryCache, QueryMode};
@@ -98,26 +98,26 @@ where
     }
 }
 
-/// Common implementation of query feeding, used by `define_feedable!`.
+/// "Feeds" a feedable query by adding a given key/value pair to its in-memory cache.
+/// Called by macro-generated methods of [`rustc_middle::ty::TyCtxtFeed`].
 pub(crate) fn query_feed<'tcx, C>(
     tcx: TyCtxt<'tcx>,
-    dep_kind: DepKind,
-    query_vtable: &QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     value: C::Value,
 ) where
     C: QueryCache,
     C::Key: DepNodeKey<'tcx>,
 {
-    let format_value = query_vtable.format_value;
+    let format_value = query.format_value;
 
     // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query_vtable.cache, key) {
+    match try_get_cached(tcx, &query.cache, key) {
         Some(old) => {
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
-            if let Some(hash_value_fn) = query_vtable.hash_value_fn {
+            if let Some(hash_value_fn) = query.hash_value_fn {
                 let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
                     (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
                 });
@@ -126,7 +126,7 @@ pub(crate) fn query_feed<'tcx, C>(
                     // results is tainted by errors. In this case, delay a bug to
                     // ensure compilation is doomed, and keep the `old` value.
                     tcx.dcx().delayed_bug(format!(
-                        "Trying to feed an already recorded value for query {dep_kind:?} key={key:?}:\n\
+                        "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                         old value: {old}\nnew value: {value}",
                         old = format_value(&old),
                         value = format_value(&value),
@@ -137,7 +137,7 @@ pub(crate) fn query_feed<'tcx, C>(
                 // If feeding the same value multiple times needs to be supported,
                 // the query should not be marked `no_hash`.
                 bug!(
-                    "Trying to feed an already recorded value for query {dep_kind:?} key={key:?}:\n\
+                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                     old value: {old}\nnew value: {value}",
                     old = format_value(&old),
                     value = format_value(&value),
@@ -147,15 +147,15 @@ pub(crate) fn query_feed<'tcx, C>(
         None => {
             // There is no cached value for this key, so feed the query by
             // adding the provided value to the cache.
-            let dep_node = dep_graph::DepNode::construct(tcx, dep_kind, &key);
+            let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
             let dep_node_index = tcx.dep_graph.with_feed_task(
                 dep_node,
                 tcx,
                 &value,
-                query_vtable.hash_value_fn,
-                query_vtable.format_value,
+                query.hash_value_fn,
+                query.format_value,
             );
-            query_vtable.cache.complete(key, value, dep_node_index);
+            query.cache.complete(key, value, dep_node_index);
         }
     }
 }

@@ -1000,12 +1000,6 @@ Tests on lifetimes on objects, such as a lifetime bound not being able to be ded
 
 **FIXME**: Just a more specific subset of `ui/lifetimes`.
 
-## `tests/ui/obsolete-in-place/`
-
-Contains a single test. Check that we reject the ancient Rust syntax `x <- y` and `in(BINDING) {}` construct.
-
-**FIXME**: Definitely should be rehomed, maybe to `tests/ui/deprecation/`.
-
 ## `tests/ui/offload`
 
 Exercises the offload feature.
@@ -1022,10 +1016,6 @@ Exercises the [`std::mem::offset_of` macro](https://doc.rust-lang.org/beta/std/m
 ## `tests/ui/on-unimplemented/`
 
 Exercises the `#[rustc_on_unimplemented]`.
-
-## `tests/ui/operator-recovery/`
-
-**FIXME**: Probably move under `tests/ui/binop/` or `tests/ui/parser/`.
 
 ## `tests/ui/or-patterns/`
 

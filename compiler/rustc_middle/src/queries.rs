@@ -120,7 +120,7 @@ use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
     SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
-use crate::{dep_graph, mir, thir};
+use crate::{mir, thir};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
