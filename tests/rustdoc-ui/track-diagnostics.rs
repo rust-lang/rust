@@ -11,3 +11,4 @@ pub const S: A = B;
 //~^ ERROR mismatched types
 //~| NOTE created at
 //~| NOTE expected `A`, found `B`
+//~| NOTE expected because of the type of the const
