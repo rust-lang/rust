@@ -91,13 +91,11 @@ where
     QueryVTable<'tcx, C>: DynSync,
 {
     let def_id: Option<DefId> = key.key_as_def_id();
-    let def_id_for_ty_in_cycle: Option<DefId> = key.def_id_for_ty_in_cycle();
 
     QueryStackFrame {
         tagged_key: (vtable.create_tagged_key)(key),
         dep_kind: vtable.dep_kind,
         def_id,
-        def_id_for_ty_in_cycle,
     }
 }
 
