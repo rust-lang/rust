@@ -981,7 +981,9 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 no_crate_inject,
             } = &**d;
 
-            let mut ret = Vec::new();
+            let mut ret = Vec::with_capacity(
+                aliases.len() + cfg.len() + auto_cfg.len() + auto_cfg_change.len(),
+            );
 
             for (alias, _) in aliases {
                 // We use `as_str` and debug display to have characters escaped and `"` characters
