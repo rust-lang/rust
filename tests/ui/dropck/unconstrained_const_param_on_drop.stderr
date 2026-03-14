@@ -22,7 +22,10 @@ error[E0207]: the const parameter `UNUSED` is not constrained by the impl trait,
   --> $DIR/unconstrained_const_param_on_drop.rs:3:6
    |
 LL | impl<const UNUSED: usize> Drop for Foo {}
-   |      ^^^^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |     -^^^^^^^^^^^^^^^^^^^-
+   |     ||
+   |     |unconstrained const parameter
+   |     help: remove the unused type parameter `UNUSED`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

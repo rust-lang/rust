@@ -46,7 +46,10 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
   --> $DIR/unsized-anon-const-err-2.rs:14:6
    |
 LL | impl<const N: i32> Copy for S<A> {}
-   |      ^^^^^^^^^^^^ unconstrained const parameter
+   |     -^^^^^^^^^^^^-
+   |     ||
+   |     |unconstrained const parameter
+   |     help: remove the unused type parameter `N`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
@@ -55,7 +58,10 @@ error[E0207]: the const parameter `M` is not constrained by the impl trait, self
   --> $DIR/unsized-anon-const-err-2.rs:17:6
    |
 LL | impl<const M: usize> Copy for S<A> {}
-   |      ^^^^^^^^^^^^^^ unconstrained const parameter
+   |     -^^^^^^^^^^^^^^-
+   |     ||
+   |     |unconstrained const parameter
+   |     help: remove the unused type parameter `M`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

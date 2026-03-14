@@ -2,7 +2,10 @@ error[E0207]: the type parameter `X` is not constrained by the impl trait, self 
   --> $DIR/inherent-assoc-ty-mismatch-issue-153539.rs:9:6
    |
 LL | impl<X> S<'_> {
-   |      ^ unconstrained type parameter
+   |     -^-
+   |     ||
+   |     |unconstrained type parameter
+   |     help: remove the unused type parameter `X`
 
 error[E0308]: mismatched types
   --> $DIR/inherent-assoc-ty-mismatch-issue-153539.rs:17:5
