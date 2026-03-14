@@ -1,0 +1,67 @@
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug.rs:9:9
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |         x: Error,
+   |         ^^^^^^^^ the trait `Debug` is not implemented for `Error`
+   |
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug.rs:16:9
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |         Error,
+   |         ^^^^^ the trait `Debug` is not implemented for `Error`
+   |
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug.rs:21:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct Struct {
+LL |     x: Error,
+   |     ^^^^^^^^ the trait `Debug` is not implemented for `Error`
+   |
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug.rs:26:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct TupleStruct(
+LL |     Error,
+   |     ^^^^^ the trait `Debug` is not implemented for `Error`
+   |
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
