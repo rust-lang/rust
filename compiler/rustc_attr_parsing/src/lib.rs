@@ -99,6 +99,7 @@ mod interface;
 pub mod parser;
 
 mod early_parsed;
+pub mod late_validation;
 mod safety;
 mod session_diagnostics;
 mod target_checking;
