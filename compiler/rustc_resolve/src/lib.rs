@@ -40,7 +40,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    NodeId, Path, attr,
+    Generics, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
@@ -1316,6 +1316,10 @@ pub struct Resolver<'ra, 'tcx> {
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)> = Default::default(),
+
+    /// for all the struct
+    /// it's not used during normal resolution, only for better error reporting.
+    struct_generics: LocalDefIdMap<Generics> = Default::default(),
 
     lint_buffer: LintBuffer,
 
