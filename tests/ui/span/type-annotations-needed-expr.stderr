@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
    |                                       ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |     let _ = (vec![1,2,3]).into_iter().sum::<S>() as f64;

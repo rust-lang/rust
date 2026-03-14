@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     Foo.foo();
    |         ^^^ cannot infer the value of the const parameter `A` declared on the method `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/uninferred-consts.rs:6:5
+   |
+LL |     fn foo<const A: usize, const B: usize>(self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `Foo::foo`
   --> $DIR/uninferred-consts.rs:6:12
    |
@@ -20,6 +25,11 @@ error[E0284]: type annotations needed
 LL |     Foo.foo();
    |         ^^^ cannot infer the value of the const parameter `B` declared on the method `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/uninferred-consts.rs:6:5
+   |
+LL |     fn foo<const A: usize, const B: usize>(self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `Foo::foo`
   --> $DIR/uninferred-consts.rs:6:28
    |

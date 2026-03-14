@@ -42,6 +42,7 @@ pub fn error2(lines: &[&str]) -> Result<Vec<Version>> {
     //~^ ERROR: type annotations needed
     //~| NOTE: cannot infer type of the type parameter `B`
     //~| NOTE: the type must implement `FromIterator<std::result::Result<Version, Error>>`
+    //~| NOTE: type must be known for type parameter in this
     //~| NOTE: required by a bound in `collect`
     //~| HELP: consider specifying the generic argument
     tags.sort();

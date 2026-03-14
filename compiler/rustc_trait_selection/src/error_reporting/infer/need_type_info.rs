@@ -68,6 +68,7 @@ pub struct InferenceDiagnosticsData {
 pub struct InferenceDiagnosticsParentData {
     prefix: &'static str,
     name: String,
+    span: Span,
 }
 
 #[derive(Clone)]
@@ -124,10 +125,12 @@ impl InferenceDiagnosticsParentData {
     ) -> Option<InferenceDiagnosticsParentData> {
         let parent_name =
             tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
+        let span = tcx.def_span(parent_def_id);
 
         Some(InferenceDiagnosticsParentData {
             prefix: tcx.def_descr(parent_def_id),
             name: parent_name,
+            span,
         })
     }
 
@@ -423,16 +426,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
     ) -> Diag<'a> {
         let source_kind = "other";
-        let source_name = "";
+        let bad_error = arg_data.make_bad_error(span);
+        let source_name = &bad_error.name.clone();
         let failure_span = None;
         let infer_subdiags = Vec::new();
         let multi_suggestions = Vec::new();
-        let bad_label = Some(arg_data.make_bad_error(span));
+        let bad_label = Some(bad_error);
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,
@@ -442,6 +447,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 source_kind,
                 source_name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,
@@ -451,6 +457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 source_kind,
                 source_name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,
@@ -677,6 +684,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 source_kind,
                 source_name: &name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,
@@ -686,6 +694,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 source_kind,
                 source_name: &name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,
@@ -695,6 +704,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 source_kind,
                 source_name: &name,
+                source_span: arg_data.parent.as_ref().map(|p| p.span),
                 failure_span,
                 infer_subdiags,
                 multi_suggestions,

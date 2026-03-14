@@ -6,6 +6,11 @@ LL |     impls(rigid);
    |     |
    |     cannot infer type of the type parameter `U` declared on the function `impls`
    |
+note: type must be known for type parameter in this
+  --> $DIR/dedup-normalized-2-higher-ranked.rs:25:1
+   |
+LL | fn impls<T: for<'b> Bound<'b, U>, U>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `for<'b> <P as Trait>::Rigid: Bound<'b, _>`
 note: required by a bound in `impls`
   --> $DIR/dedup-normalized-2-higher-ranked.rs:25:13

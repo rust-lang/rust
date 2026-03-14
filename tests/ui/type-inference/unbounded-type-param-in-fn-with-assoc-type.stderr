@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |     foo();
    |     ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
+note: type must be known for type parameter in this
+  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:3:1
+   |
+LL | fn foo<T, U = u64>() -> (T, U) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic arguments
    |
 LL |     foo::<T, U>();

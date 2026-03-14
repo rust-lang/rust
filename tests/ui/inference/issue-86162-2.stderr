@@ -6,6 +6,11 @@ LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
    |     |
    |     required by a bound introduced by this call
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-86162-2.rs:8:5
+   |
+LL |     fn bar(x: impl Clone) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
    = note: the type must implement `Clone`
 note: required by a bound in `Foo::bar`
   --> $DIR/issue-86162-2.rs:8:20

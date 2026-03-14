@@ -4,6 +4,8 @@ error[E0282]: type annotations needed for `Result<_, (((..., ..., ..., ...), ...
 LL |     let y = Err(x);
    |         ^   ------ type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/really-long-type-in-let-binding-without-sufficient-type-info.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 help: consider giving `y` an explicit type, where the type for type parameter `T` is specified

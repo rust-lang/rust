@@ -20,6 +20,8 @@ error[E0283]: type annotations needed
 LL |     let bar = foo_impl.into() * 1u32;
    |                        ^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 note: multiple `impl`s satisfying `Impl: Into<_>` found
   --> $DIR/E0283.rs:17:1
    |

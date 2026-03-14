@@ -19,6 +19,11 @@ error[E0282]: type annotations needed
 LL |     let _ = Checked::<generic>;
    |                       ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `generic`
    |
+note: type must be known for type parameter in this
+  --> $DIR/fn-const-param-infer.rs:22:1
+   |
+LL | fn generic<T>(val: usize) -> bool {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     let _ = Checked::<generic::<T>>;

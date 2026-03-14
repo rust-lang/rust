@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |         needs_infer();
    |         ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `needs_infer`
    |
+note: type must be known for type parameter in this
+  --> $DIR/expr-struct-type-relative-enum.rs:7:1
+   |
+LL | fn needs_infer<T>() {}
+   | ^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |         needs_infer::<T>();

@@ -51,6 +51,12 @@ error[E0282]: type annotations needed
    |
 LL |         reuse Trait::foo { &self.0 }
    |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/impl-to-trait-method.rs:30:5
+   |
+LL |     trait Trait<T> {
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

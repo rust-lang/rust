@@ -4,6 +4,11 @@ error[E0282]: type annotations needed for `&[Foo<_>; _]`
 LL |     let x = &[Foo::<_>; _];
    |         ^     -------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/no-conservative-copy-impl-requirement.rs:10:1
+   |
+LL | fn unify<const N: usize>(_: &[Foo<N>; N]) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving `x` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let x: &[Foo<N>; N] = &[Foo::<_>; _];

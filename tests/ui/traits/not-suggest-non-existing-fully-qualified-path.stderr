@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     a.method();
    |       ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:8:1
+   |
+LL | trait V<U> {
+   | ^^^^^^^^^^
 note: multiple `impl`s satisfying `B: I<_>` found
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1
    |

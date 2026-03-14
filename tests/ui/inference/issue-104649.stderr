@@ -4,6 +4,11 @@ error[E0282]: type annotations needed for `A<std::result::Result<std::result::Re
 LL |     let a = A(Result::Ok(Result::Ok(())));
    |         ^                -------------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-104649.rs:1:1
+   |
+LL | type Result<T, E = Error> = ::std::result::Result<T, E>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider giving `a` an explicit type, where the type for type parameter `E` is specified
    |
 LL |     let a: A<std::result::Result<std::result::Result<_, E>, _>> = A(Result::Ok(Result::Ok(())));

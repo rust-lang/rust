@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |         self.input_stream(&mut stream);
    |              ^^^^^^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-12028.rs:20:1
+   |
+LL | trait StreamHash<H: StreamHasher>: Hash<H> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
 help: try using a fully qualified path to specify the expected types
    |
