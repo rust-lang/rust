@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CfgAbi, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions,
-    base,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, LlvmAbi, StackProbeType, Target, TargetMetadata,
+    TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
     base.cfg_abi = CfgAbi::ElfV2;
-    base.llvm_abiname = "elfv2".into();
+    base.llvm_abiname = LlvmAbi::ElfV2;
 
     Target {
         llvm_target: "powerpc64le-unknown-linux-musl".into(),

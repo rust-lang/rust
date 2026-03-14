@@ -509,14 +509,13 @@ pub(crate) unsafe fn create_module<'ll>(
     // to workaround lld as the LTO plugin not
     // correctly setting target-abi for the LTO object
     // FIXME: https://github.com/llvm/llvm-project/issues/50591
-    // If llvm_abiname is empty, emit nothing.
     let llvm_abiname = &sess.target.options.llvm_abiname;
-    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) && !llvm_abiname.is_empty() {
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
         llvm::add_module_flag_str(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
             "target-abi",
-            llvm_abiname,
+            llvm_abiname.desc(),
         );
     }
 

@@ -12,7 +12,7 @@ use super::{
     TargetKind, TargetOptions, TargetWarnings, TlsModel,
 };
 use crate::json::{Json, ToJson};
-use crate::spec::AbiMap;
+use crate::spec::{AbiMap, LlvmAbi};
 
 impl Target {
     /// Loads a target descriptor from a JSON object.
@@ -611,7 +611,7 @@ struct TargetSpecJson {
     #[serde(rename = "target-mcount")]
     mcount: Option<StaticCow<str>>,
     llvm_mcount_intrinsic: Option<StaticCow<str>>,
-    llvm_abiname: Option<StaticCow<str>>,
+    llvm_abiname: Option<LlvmAbi>,
     llvm_floatabi: Option<FloatAbi>,
     rustc_abi: Option<RustcAbi>,
     relax_elf_relocations: Option<bool>,

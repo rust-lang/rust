@@ -3,7 +3,8 @@
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -23,7 +24,7 @@ pub(crate) fn target() -> Target {
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips32r2".into(),
             features: "+mips32r2,+soft-float,+noabicalls".into(),
-            llvm_abiname: "o32".into(),
+            llvm_abiname: LlvmAbi::O32,
             max_atomic_width: Some(32),
             linker: Some("rust-lld".into()),
             panic_strategy: PanicStrategy::Abort,
