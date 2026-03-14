@@ -2832,6 +2832,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
     ) -> (PredicateObligation<'tcx>, ty::PolyTraitPredicate<'tcx>) {
+        if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
+            return (obligation.clone(), trait_predicate);
+        }
+
         let ocx = ObligationCtxt::new(self);
         let normalized_predicate = self.tcx.erase_and_anonymize_regions(
             self.tcx.instantiate_bound_regions_with_erased(trait_predicate),
