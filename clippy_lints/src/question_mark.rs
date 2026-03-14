@@ -501,7 +501,8 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
 
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-        let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
+        let parent = cx.tcx.parent_hir_node(expr.hir_id);
+        let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
         let method_call_str = match by_ref {
             ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
             ByRef::Yes(_, Mutability::Not) => ".as_ref()",
@@ -512,7 +513,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             "{receiver_str}{method_call_str}?{}",
             if requires_semi { ";" } else { "" }
         );
-        if is_else_clause(cx.tcx, expr) {
+        if is_else_clause(cx.tcx, expr) || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_))) {
             sugg = format!("{{ {sugg} }}");
         }
 

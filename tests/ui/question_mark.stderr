@@ -362,5 +362,24 @@ LL | |         return None;
 LL | |     };
    | |_____^ help: replace it with: `{ a? }`
 
-error: aborting due to 38 previous errors
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:658:9
+   |
+LL | /         if let Err(err) = result {
+LL | |
+LL | |             return Err(err);
+LL | |         }
+   | |_________^ help: replace it with: `result?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:664:10
+   |
+LL |       _ = [if let Err(err) = result {
+   |  __________^
+LL | |
+LL | |         return Err(err);
+LL | |     }];
+   | |_____^ help: replace it with: `{ result?; }`
+
+error: aborting due to 40 previous errors
 
