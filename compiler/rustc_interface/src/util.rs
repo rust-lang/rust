@@ -14,7 +14,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, collect};
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
@@ -216,7 +216,10 @@ pub(crate) fn run_in_thread_pool_with_globals<
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(move || proxy_.acquire_thread())
-        .release_thread_handler(move || proxy__.release_thread())
+        .release_thread_handler(move || {
+            collect::release();
+            proxy__.release_thread()
+        })
         .num_threads(threads)
         .deadlock_handler(move || {
             // On deadlock, creates a new thread and forwards information in thread

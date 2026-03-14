@@ -10,6 +10,7 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "1.11.0"
 ena = "0.14.4"
+horde = { version = "0.1.2", features = ["nightly"] }
 indexmap = "2.12.1"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
@@ -33,7 +34,7 @@ tracing = "0.1"
 [dependencies.hashbrown]
 version = "0.16.1"
 default-features = false
-features = ["nightly"] # for may_dangle
+features = ["nightly"]   # for may_dangle
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.61.0"
