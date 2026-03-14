@@ -98,17 +98,11 @@ use crate::fmt;
 ///    run on the thread that causes the process to exit. This is because the
 ///    other threads may be forcibly terminated.
 ///
-/// ## Synchronization in thread-local destructors
+///    If a thread is [converted into a fiber], destructors will not be run unless
+///    the fiber is [converted back into a thread] before the underlying thread exits.
 ///
-/// On Windows, synchronization operations (such as [`JoinHandle::join`]) in
-/// thread local destructors are prone to deadlocks and so should be avoided.
-/// This is because the [loader lock] is held while a destructor is run. The
-/// lock is acquired whenever a thread starts or exits or when a DLL is loaded
-/// or unloaded. Therefore these events are blocked for as long as a thread
-/// local destructor is running.
-///
-/// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
-/// [`JoinHandle::join`]: crate::thread::JoinHandle::join
+/// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
+/// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
 /// [`with`]: LocalKey::with
 #[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
