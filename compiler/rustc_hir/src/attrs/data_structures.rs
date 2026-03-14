@@ -251,6 +251,15 @@ impl Deprecation {
     }
 }
 
+/// Pre-parsed value of `#[export_visibility = ...]` attribute.
+///
+/// In a future RFC we may consider adding support for `Hidden`, `Protected`, and/or
+/// `Interposable`.
+#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum ExportVisibilityAttrValue {
+    TargetDefault,
+}
+
 /// There are three valid forms of the attribute:
 /// `#[used]`, which is equivalent to `#[used(linker)]` on targets that support it, but `#[used(compiler)]` if not.
 /// `#[used(compiler)]`
@@ -1044,6 +1053,12 @@ pub enum AttributeKind {
 
     /// Represents `#[export_stable]`.
     ExportStable,
+
+    /// Represents [`#[export_visibility = ...]`](https://github.com/rust-lang/rust/issues/151425)
+    ExportVisibility {
+        visibility: ExportVisibilityAttrValue,
+        span: Span,
+    },
 
     /// Represents `#[feature(...)]`
     Feature(ThinVec<Ident>, Span),
