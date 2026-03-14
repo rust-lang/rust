@@ -1186,9 +1186,10 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             // Clang uses the LLVM implementation for these architectures.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }
-        Arch::Other(_) => {
-            // For custom targets, use the LLVM va_arg instruction as a fallback.
-            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
+        Arch::Other(ref arch) => {
+            // Just to be safe we error out explicitly here, instead of crossing our fingers that
+            // the default LLVM implementation has the correct behavior for this target.
+            bug!("c-variadic functions are not currently implemented for custom target {arch}")
         }
     }
 }
