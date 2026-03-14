@@ -1254,6 +1254,20 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
     }
 }
 
+pub(crate) fn cover_edit_range(
+    source: &impl AstNode,
+    range: TextRange,
+) -> std::ops::RangeInclusive<syntax::SyntaxElement> {
+    let node = match source.syntax().covering_element(range) {
+        NodeOrToken::Node(node) => node,
+        NodeOrToken::Token(t) => t.parent().unwrap(),
+    };
+    let mut iter = node.children_with_tokens().filter(|it| range.contains_range(it.text_range()));
+    let first = iter.next().unwrap_or(node.into());
+    let last = iter.last().unwrap_or_else(|| first.clone());
+    first..=last
+}
+
 pub(crate) fn is_selected(
     it: &impl AstNode,
     selection: syntax::TextRange,

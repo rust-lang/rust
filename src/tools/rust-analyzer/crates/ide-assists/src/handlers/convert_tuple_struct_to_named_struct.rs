@@ -1,17 +1,21 @@
 use either::Either;
-use hir::FileRangeWrapper;
-use ide_db::defs::{Definition, NameRefClass};
-use std::ops::RangeInclusive;
+use ide_db::{
+    defs::{Definition, NameRefClass},
+    search::FileReference,
+};
 use syntax::{
-    SyntaxElement, SyntaxKind, SyntaxNode, T, TextSize,
+    SyntaxKind, T,
     ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasVisibility, syntax_factory::SyntaxFactory,
+        self, AstNode, HasArgList, HasAttrs, HasGenericParams, HasVisibility,
+        syntax_factory::SyntaxFactory,
     },
     match_ast,
     syntax_editor::{Element, Position, SyntaxEditor},
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::cover_edit_range,
+};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -147,93 +151,121 @@ fn edit_struct_references(
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
-    let edit_node = |node: SyntaxNode| -> Option<SyntaxNode> {
-        let make = SyntaxFactory::without_mappings();
-        match_ast! {
-            match node {
-                ast::TupleStructPat(tuple_struct_pat) => {
-                    Some(make.record_pat_with_fields(
-                        tuple_struct_pat.path()?,
-                        generate_record_pat_list(&tuple_struct_pat, names),
-                    ).syntax().clone())
-                },
-                // for tuple struct creations like Foo(42)
-                ast::CallExpr(call_expr) => {
-                    let path = call_expr.syntax().descendants().find_map(ast::PathExpr::cast).and_then(|expr| expr.path())?;
-
-                    // this also includes method calls like Foo::new(42), we should skip them
-                    if let Some(name_ref) = path.segment().and_then(|s| s.name_ref()) {
-                        match NameRefClass::classify(&ctx.sema, &name_ref) {
-                            Some(NameRefClass::Definition(Definition::SelfType(_), _)) => {},
-                            Some(NameRefClass::Definition(def, _)) if def == strukt_def => {},
-                            _ => return None,
-                        };
-                    }
-
-                    let arg_list = call_expr.syntax().descendants().find_map(ast::ArgList::cast)?;
-                    Some(
-                        make.record_expr(
-                            path,
-                            ast::make::record_expr_field_list(arg_list.args().zip(names).map(
-                                |(expr, name)| {
-                                    ast::make::record_expr_field(
-                                        ast::make::name_ref(&name.to_string()),
-                                        Some(expr),
-                                    )
-                                },
-                            )),
-                        ).syntax().clone()
-                    )
-                },
-                _ => None,
-            }
-        }
-    };
-
     for (file_id, refs) in usages {
         let source = ctx.sema.parse(file_id);
-        let source = source.syntax();
+        let mut editor = edit.make_editor(source.syntax());
 
-        let mut editor = edit.make_editor(source);
-        for r in refs.iter().rev() {
-            if let Some((old_node, new_node)) = r
-                .name
-                .syntax()
-                .ancestors()
-                .find_map(|node| Some((node.clone(), edit_node(node.clone())?)))
-            {
-                if let Some(old_node) = ctx.sema.original_syntax_node_rooted(&old_node) {
-                    editor.replace(old_node, new_node);
-                } else {
-                    let FileRangeWrapper { file_id: _, range } = ctx.sema.original_range(&old_node);
-                    let parent = source.covering_element(range);
-                    match parent {
-                        SyntaxElement::Token(token) => {
-                            editor.replace(token, new_node.syntax_element());
-                        }
-                        SyntaxElement::Node(parent_node) => {
-                            // replace the part of macro
-                            // ```
-                            // foo!(a, Test::A(0));
-                            //     ^^^^^^^^^^^^^^^ // parent_node
-                            //         ^^^^^^^^^^  // replace_range
-                            // ```
-                            let start = parent_node
-                                .children_with_tokens()
-                                .find(|t| t.text_range().contains(range.start()));
-                            let end = parent_node
-                                .children_with_tokens()
-                                .find(|t| t.text_range().contains(range.end() - TextSize::new(1)));
-                            if let (Some(start), Some(end)) = (start, end) {
-                                let replace_range = RangeInclusive::new(start, end);
-                                editor.replace_all(replace_range, vec![new_node.into()]);
-                            }
-                        }
+        for r in refs {
+            process_struct_name_reference(ctx, r, &mut editor, &source, &strukt_def, names);
+        }
+
+        edit.add_file_edits(file_id.file_id(ctx.db()), editor);
+    }
+}
+
+fn process_struct_name_reference(
+    ctx: &AssistContext<'_>,
+    r: FileReference,
+    editor: &mut SyntaxEditor,
+    source: &ast::SourceFile,
+    strukt_def: &Definition,
+    names: &[ast::Name],
+) -> Option<()> {
+    let make = SyntaxFactory::without_mappings();
+    let name_ref = r.name.as_name_ref()?;
+    let path_segment = name_ref.syntax().parent().and_then(ast::PathSegment::cast)?;
+    let full_path = path_segment.syntax().parent().and_then(ast::Path::cast)?.top_path();
+
+    if full_path.segment()?.name_ref()? != *name_ref {
+        // `name_ref` isn't the last segment of the path, so `full_path` doesn't point to the
+        // struct we want to edit.
+        return None;
+    }
+
+    let parent = full_path.syntax().parent()?;
+    match_ast! {
+        match parent {
+            ast::TupleStructPat(tuple_struct_pat) => {
+                let range = ctx.sema.original_range_opt(tuple_struct_pat.syntax())?.range;
+                let new = make.record_pat_with_fields(
+                    full_path,
+                    generate_record_pat_list(&tuple_struct_pat, names),
+                );
+                editor.replace_all(cover_edit_range(source, range), vec![new.syntax().clone().into()]);
+            },
+            ast::PathExpr(path_expr) => {
+                let call_expr = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
+
+                // this also includes method calls like Foo::new(42), we should skip them
+                match NameRefClass::classify(&ctx.sema, name_ref) {
+                    Some(NameRefClass::Definition(Definition::SelfType(_), _)) => {},
+                    Some(NameRefClass::Definition(def, _)) if def == *strukt_def => {},
+                    _ => return None,
+                }
+
+                let arg_list = call_expr.arg_list()?;
+                let mut first_insert = vec![];
+                for (expr, name) in arg_list.args().zip(names) {
+                    let range = ctx.sema.original_range_opt(expr.syntax())?.range;
+                    let place = cover_edit_range(source, range);
+                    let elements = vec![
+                        make.name_ref(&name.text()).syntax().clone().into(),
+                        make.token(T![:]).into(),
+                        make.whitespace(" ").into(),
+                    ];
+                    if first_insert.is_empty() {
+                        // XXX: SyntaxEditor cannot insert after deleted element
+                        first_insert = elements;
+                    } else {
+                        editor.insert_all(Position::before(place.start()), elements);
                     }
                 }
-            }
+                process_delimiter(ctx, source, editor, &arg_list, first_insert);
+            },
+            _ => {}
         }
-        edit.add_file_edits(file_id.file_id(ctx.db()), editor);
+    }
+    Some(())
+}
+
+fn process_delimiter(
+    ctx: &AssistContext<'_>,
+    source: &ast::SourceFile,
+    editor: &mut SyntaxEditor,
+    list: &impl AstNode,
+    first_insert: Vec<syntax::SyntaxElement>,
+) {
+    let Some(range) = ctx.sema.original_range_opt(list.syntax()) else { return };
+    let place = cover_edit_range(source, range.range);
+
+    let l_paren = match place.start() {
+        syntax::NodeOrToken::Node(node) => node.first_token(),
+        syntax::NodeOrToken::Token(t) => Some(t.clone()),
+    };
+    let r_paren = match place.end() {
+        syntax::NodeOrToken::Node(node) => node.last_token(),
+        syntax::NodeOrToken::Token(t) => Some(t.clone()),
+    };
+
+    let make = SyntaxFactory::without_mappings();
+    if let Some(l_paren) = l_paren
+        && l_paren.kind() == T!['(']
+    {
+        let mut open_delim = vec![
+            make.whitespace(" ").into(),
+            make.token(T!['{']).into(),
+            make.whitespace(" ").into(),
+        ];
+        open_delim.extend(first_insert);
+        editor.replace_with_many(l_paren, open_delim);
+    }
+    if let Some(r_paren) = r_paren
+        && r_paren.kind() == T![')']
+    {
+        editor.replace_with_many(
+            r_paren,
+            vec![make.whitespace(" ").into(), make.token(T!['}']).into()],
+        );
     }
 }
 
@@ -741,6 +773,64 @@ where
 "#,
         );
     }
+
+    #[test]
+    fn convert_expr_uses_self() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+struct T$0(u8);
+fn test(t: T) {
+    T(t.0);
+    id!(T(t.0));
+}"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+struct T { field1: u8 }
+fn test(t: T) {
+    T { field1: t.field1 };
+    id!(T { field1: t.field1 });
+}"#,
+        );
+    }
+
+    #[test]
+    #[ignore = "FIXME overlap edits in nested uses self"]
+    fn convert_pat_uses_self() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+enum T {
+    $0Value(&'static T),
+    Nil,
+}
+fn test(t: T) {
+    if let T::Value(T::Value(t)) = t {}
+    if let id!(T::Value(T::Value(t))) = t {}
+}"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+enum T {
+    Value { field1: &'static T },
+    Nil,
+}
+fn test(t: T) {
+    if let T::Value { field1: T::Value { field1: t } } = t {}
+    if let id!(T::Value { field1: T::Value { field1: t } }) = t {}
+}"#,
+        );
+    }
+
     #[test]
     fn not_applicable_other_than_tuple_variant() {
         check_assist_not_applicable(

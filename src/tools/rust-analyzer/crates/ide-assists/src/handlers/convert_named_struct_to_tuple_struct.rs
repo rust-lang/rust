@@ -1,9 +1,7 @@
-use std::ops::RangeInclusive;
-
 use either::Either;
 use ide_db::{defs::Definition, search::FileReference};
 use syntax::{
-    NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T, TextRange,
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::next_non_trivia_token,
     ast::{
         self, AstNode, HasAttrs, HasGenericParams, HasVisibility, syntax_factory::SyntaxFactory,
@@ -12,7 +10,9 @@ use syntax::{
     syntax_editor::{Element, Position, SyntaxEditor},
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::cover_edit_range,
+};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -242,7 +242,7 @@ where
 {
     let make = SyntaxFactory::without_mappings();
     let orig = ctx.sema.original_range_opt(field_list.syntax())?;
-    let list_range = cover_range(source, orig.range);
+    let list_range = cover_edit_range(source, orig.range);
 
     let l_curly = match list_range.start() {
         NodeOrToken::Node(node) => node.first_token()?,
@@ -265,7 +265,7 @@ where
 
     for name_ref in fields(&field_list) {
         let Some(orig) = ctx.sema.original_range_opt(name_ref.syntax()) else { continue };
-        let name_range = cover_range(source, orig.range);
+        let name_range = cover_edit_range(source, orig.range);
 
         if let Some(colon) = next_non_trivia_token(name_range.end().clone())
             && colon.kind() == T![:]
@@ -306,7 +306,7 @@ fn edit_field_references(
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
                         edit.replace_all(
-                            cover_range(&source, r.range),
+                            cover_edit_range(&source, r.range),
                             vec![make.name_ref(&index.to_string()).syntax().clone().into()],
                         );
                     }
@@ -316,17 +316,6 @@ fn edit_field_references(
             builder.add_file_edits(file_id.file_id(ctx.db()), edit);
         }
     }
-}
-
-fn cover_range(source: &ast::SourceFile, range: TextRange) -> RangeInclusive<SyntaxElement> {
-    let node = match source.syntax().covering_element(range) {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(t) => t.parent().unwrap(),
-    };
-    let mut iter = node.children_with_tokens().filter(|it| range.contains_range(it.text_range()));
-    let first = iter.next().unwrap_or(node.into());
-    let last = iter.last().unwrap_or_else(|| first.clone());
-    first..=last
 }
 
 fn delete_whitespace(edit: &mut SyntaxEditor, whitespace: Option<impl Element>) {
