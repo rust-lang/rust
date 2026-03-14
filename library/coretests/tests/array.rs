@@ -1,6 +1,8 @@
+use core::cell::Cell;
 use core::num::NonZero;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::{array, assert_eq};
+use std::sync::ReentrantLock;
 
 #[test]
 fn array_from_ref() {
@@ -716,6 +718,31 @@ fn array_map_drops_unmapped_elements_on_panic() {
         assert!(success.is_err());
         assert_eq!(counter.load(Ordering::SeqCst), MAX);
     }
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_map_drops_unmapped_zst_elements_on_panic() {
+    static DROPPED: ReentrantLock<Cell<usize>> = ReentrantLock::new(Cell::new(0));
+
+    struct ZstDrop;
+    impl Drop for ZstDrop {
+        fn drop(&mut self) {
+            DROPPED.lock().update(|x| x + 1);
+        }
+    }
+
+    let dropped = DROPPED.lock();
+    dropped.set(0);
+    let array = [const { ZstDrop }; 5];
+    let success = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = array.map(|x| {
+            drop(x);
+            assert_eq!(dropped.get(), 1);
+        });
+    }));
+    assert!(success.is_err());
+    assert_eq!(dropped.get(), 5);
 }
 
 // This covers the `PartialEq::<[T]>::eq` impl for `[T; N]` when it returns false.
