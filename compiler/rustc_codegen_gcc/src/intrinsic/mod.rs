@@ -231,13 +231,6 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::maxnumf16 => "__builtin_fmaxf",
         sym::minnumf16 => "__builtin_fminf",
         sym::powf16 => "__builtin_powf",
-        sym::powif16 => {
-            let func = cx.context.get_builtin_function("__builtin_powif");
-            let arg0 = cx.context.new_cast(None, args[0].immediate(), f32_type);
-            let args = [arg0, args[1].immediate()];
-            let result = cx.context.new_call(None, func, &args);
-            return cx.context.new_cast(None, result, cx.type_f16());
-        }
         sym::roundf16 => "__builtin_roundf",
         sym::round_ties_even_f16 => "__builtin_rintf",
         sym::sqrtf16 => "__builtin_sqrtf",
@@ -298,7 +291,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::maxnumf16
             | sym::minnumf16
             | sym::powf16
-            | sym::powif16
             | sym::roundf16
             | sym::round_ties_even_f16
             | sym::sqrtf16
@@ -322,6 +314,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     func,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
+            }
+            sym::powif16 => {
+                let func = self.cx.context.get_builtin_function("__builtin_powif");
+                let arg0 = self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
+                let args = [arg0, args[1].immediate()];
+                let result = self.cx.context.new_call(None, func, &args);
+                self.cx.context.new_cast(None, result, self.cx.type_f16())
             }
             sym::powif128 => {
                 let f128_type = self.cx.type_f128();
