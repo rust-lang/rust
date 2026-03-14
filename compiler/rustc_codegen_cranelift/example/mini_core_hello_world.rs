@@ -6,6 +6,7 @@
     extern_types,
     thread_local,
     repr_simd,
+    pattern_types,
     rustc_private
 )]
 #![no_core]
@@ -161,7 +162,10 @@ extern "C" fn bool_struct_in_11(_arg0: bool_11) {}
 
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
-    take_unique(Unique { pointer: unsafe { NonNull(1 as *mut ()) }, _marker: PhantomData });
+    take_unique(Unique {
+        pointer: unsafe { NonNull(intrinsics::transmute(1 as *mut ())) },
+        _marker: PhantomData,
+    });
     take_f32(0.1);
 
     call_return_u128_pair();
@@ -227,7 +231,12 @@ fn main() {
         let noisy_unsized_drop = const { intrinsics::needs_drop::<NoisyDropUnsized>() };
         assert!(noisy_unsized_drop);
 
-        Unique { pointer: NonNull(1 as *mut &str), _marker: PhantomData } as Unique<dyn SomeTrait>;
+        Unique {
+            pointer: NonNull(intrinsics::transmute::<_, pattern_type!(*const &str is !null)>(
+                1 as *mut &str,
+            )),
+            _marker: PhantomData,
+        } as Unique<dyn SomeTrait>;
 
         struct MyDst<T: ?Sized>(T);
 
