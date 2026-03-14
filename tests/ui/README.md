@@ -966,6 +966,10 @@ See [RFC 3550 New Range](https://github.com/rust-lang/rfcs/blob/master/text/3550
 
 Tests for Non-lexical lifetimes. See [RFC 2094 NLL](https://rust-lang.github.io/rfcs/2094-nll.html).
 
+## `tests/ui/no_debuginfo`: without_debuginfo test ported from backtrace-rs
+
+Tests for behavior when debug information is not available, ported from `backtrace-rs`'s `without_debuginfo` crate's test.
+
 ## `tests/ui/no_std/`
 
 Tests for where the standard library is disabled through `#![no_std]`.
