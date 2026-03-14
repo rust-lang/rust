@@ -3,18 +3,36 @@ error[E0282]: type annotations needed
    |
 LL |     DirectAlias::new()
    |     ^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `DirectAlias`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/type-alias.rs:10:1
+   |
+LL | type DirectAlias<T> = Ty<T>;
+   | ^^^^^^^^^^^^^^^^^^^
 
 error[E0282]: type annotations needed
   --> $DIR/type-alias.rs:18:5
    |
 LL |     IndirectAlias::new();
    |     ^^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `IndirectAlias`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/type-alias.rs:16:1
+   |
+LL | type IndirectAlias<T> = Ty<Box<T>>;
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0282]: type annotations needed
   --> $DIR/type-alias.rs:32:5
    |
 LL |     DirectButWithDefaultAlias::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the type alias `DirectButWithDefaultAlias`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/type-alias.rs:30:1
+   |
+LL | type DirectButWithDefaultAlias<T> = TyDefault<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

@@ -4,6 +4,8 @@ error[E0283]: type annotations needed
 LL |     l.iter().map(f).collect()?
    |                     ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    = note: cannot satisfy `_: FromIterator<Result<i32, ()>>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL

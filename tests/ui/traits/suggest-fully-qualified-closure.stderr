@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     q.lol(||());
    |       ^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-closure.rs:6:1
+   |
+LL | trait MyTrait<T> {
+   | ^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Qqq: MyTrait<_>` found
   --> $DIR/suggest-fully-qualified-closure.rs:12:1
    |

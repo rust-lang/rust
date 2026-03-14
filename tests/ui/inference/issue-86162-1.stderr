@@ -6,6 +6,11 @@ LL |     foo(gen()); //<- Do not suggest `foo::<impl Clone>()`!
    |     |
    |     required by a bound introduced by this call
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-86162-1.rs:3:1
+   |
+LL | fn foo(x: impl Clone) {}
+   | ^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `_: Clone`
 note: required by a bound in `foo`
   --> $DIR/issue-86162-1.rs:3:16

@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     ref_thing.method();
    |               ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -24,6 +29,11 @@ error[E0283]: type annotations needed
 LL |     ref_thing.by_self();
    |               ^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:20:1
+   |
+LL | trait MethodRef<T> {
+   | ^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
    |
@@ -44,6 +54,11 @@ error[E0283]: type annotations needed
 LL |     mut_thing.method();
    |               ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -64,6 +79,11 @@ error[E0283]: type annotations needed
 LL |     mut_thing.mut_method();
    |               ^^^^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -84,6 +104,11 @@ error[E0283]: type annotations needed
 LL |     mut_thing.by_self();
    |               ^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:20:1
+   |
+LL | trait MethodRef<T> {
+   | ^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
    |
@@ -104,6 +129,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.method();
    |              ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -124,6 +154,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.mut_method();
    |              ^^^^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -144,6 +179,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.by_self();
    |              ^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:20:1
+   |
+LL | trait MethodRef<T> {
+   | ^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
    |
@@ -164,6 +204,11 @@ error[E0283]: type annotations needed
 LL |     deref_deref_to.method();
    |                    ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -184,6 +229,11 @@ error[E0283]: type annotations needed
 LL |     deref_deref_to.mut_method();
    |                    ^^^^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:5:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
    |
@@ -204,6 +254,11 @@ error[E0283]: type annotations needed
 LL |     deref_deref_to.by_self();
    |                    ^^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:20:1
+   |
+LL | trait MethodRef<T> {
+   | ^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
    |

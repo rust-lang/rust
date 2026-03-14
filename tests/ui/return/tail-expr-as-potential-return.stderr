@@ -53,6 +53,11 @@ error[E0282]: type annotations needed
 LL |         Receiver.generic();
    |                  ^^^^^^^ cannot infer type of the type parameter `T` declared on the method `generic`
    |
+note: type must be known for type parameter in this
+  --> $DIR/tail-expr-as-potential-return.rs:54:5
+   |
+LL |     fn generic<T>(self) -> Option<T> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |         Receiver.generic::<T>();

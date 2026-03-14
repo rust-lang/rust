@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/iter/sources/empty.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |     iter::empty::<T>()
@@ -15,6 +17,8 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/iter/sources/empty.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |     iter::empty::<T>()
@@ -26,6 +30,8 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/iter/sources/empty.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |     iter::empty::<T>()

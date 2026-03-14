@@ -4,6 +4,11 @@ error[E0283]: type annotations needed for `Foo<i32, &str, _, _>`
 LL |     let foo = foo(1, "");
    |         ^^^   ---------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/erase-type-params-in-label.rs:25:1
+   |
+LL | fn foo<T, K, W: Default, Z: Default>(t: T, k: K) -> Foo<T, K, W, Z> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `_: Default`
 note: required by a bound in `foo`
   --> $DIR/erase-type-params-in-label.rs:25:17
@@ -21,6 +26,11 @@ error[E0283]: type annotations needed for `Bar<i32, &str, _>`
 LL |     let bar = bar(1, "");
    |         ^^^   ---------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/erase-type-params-in-label.rs:14:1
+   |
+LL | fn bar<T, K, Z: Default>(t: T, k: K) -> Bar<T, K, Z> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `_: Default`
 note: required by a bound in `bar`
   --> $DIR/erase-type-params-in-label.rs:14:17

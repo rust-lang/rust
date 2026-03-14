@@ -4,6 +4,11 @@ error[E0282]: type annotations needed
 LL |     let _ = f;
    |             ^ cannot infer type of the type parameter `A` declared on the function `f`
    |
+note: type must be known for type parameter in this
+  --> $DIR/fn-needing-specified-return-type-param.rs:1:1
+   |
+LL | fn f<A>() -> A { unimplemented!() }
+   | ^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |     let _ = f::<A>;

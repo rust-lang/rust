@@ -6,6 +6,8 @@ LL |     opts.get(opt.as_ref());
    |          |
    |          cannot infer type of the type parameter `Q` declared on the method `get`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
    = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
@@ -25,6 +27,8 @@ LL |     opts.get(opt.as_ref());
    |          |
    |          cannot infer type of the type parameter `Q` declared on the method `get`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
            - impl AsRef<OsStr> for String;
            - impl AsRef<Path> for String;
@@ -43,6 +47,8 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
    |                                            |
    |                                            type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
            - impl From<Ipv4Addr> for u32;
            - impl From<bool> for u32;
@@ -62,6 +68,11 @@ error[E0283]: type annotations needed for `Box<_>`
 LL |     let _ = ().foo();
    |         ^      --- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-77982.rs:20:1
+   |
+LL | trait Foo<'a, T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `(): Foo<'_, _>` found
   --> $DIR/issue-77982.rs:32:1
    |
@@ -80,6 +91,11 @@ error[E0283]: type annotations needed for `Box<_>`
 LL |     let _ = (&()).bar();
    |         ^         --- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-77982.rs:26:1
+   |
+LL | trait Bar<'a, T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
   --> $DIR/issue-77982.rs:35:1
    |

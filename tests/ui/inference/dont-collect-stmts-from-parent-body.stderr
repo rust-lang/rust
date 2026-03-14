@@ -13,6 +13,11 @@ error[E0282]: type annotations needed
 LL |                 Type
    |                 ^^^^ cannot infer type of the type parameter `T` declared on the struct `Type`
    |
+note: type must be known for type parameter in this
+  --> $DIR/dont-collect-stmts-from-parent-body.rs:3:1
+   |
+LL | struct Type<T>;
+   | ^^^^^^^^^^^^^^
 help: consider specifying the generic argument
    |
 LL |                 Type::<T>

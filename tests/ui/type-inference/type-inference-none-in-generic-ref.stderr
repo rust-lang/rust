@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |     S { o: &None };
    |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `S`
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider specifying the generic argument
    |
 LL |     S::<T> { o: &None };

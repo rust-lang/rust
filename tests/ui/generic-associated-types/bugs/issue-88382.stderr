@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     do_something(SomeImplementation(), test);
    |                                        ^^^^ cannot infer type of the type parameter `I` declared on the function `test`
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-88382.rs:29:1
+   |
+LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `_: Iterable`
 help: the trait `Iterable` is implemented for `SomeImplementation`
   --> $DIR/issue-88382.rs:13:1
