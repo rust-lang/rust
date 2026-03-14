@@ -2853,19 +2853,53 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            // FIXME: handle attributes and derives that aren't proc macros, and macros with
-            // multiple kinds
-            ItemKind::Macro(_, macro_def, MacroKinds::BANG) => MacroItem(Macro {
-                source: display_macro_source(cx, name, macro_def),
-                macro_rules: macro_def.macro_rules,
-            }),
-            ItemKind::Macro(_, _, MacroKinds::ATTR) => {
-                clean_proc_macro(item, &mut name, MacroKind::Attr, cx)
-            }
-            ItemKind::Macro(_, _, MacroKinds::DERIVE) => {
-                clean_proc_macro(item, &mut name, MacroKind::Derive, cx)
-            }
-            ItemKind::Macro(_, _, _) => todo!("Handle macros with multiple kinds"),
+            ItemKind::Macro(_, macro_def, kinds) => match kinds {
+                MacroKinds::BANG => MacroItem(
+                    Macro {
+                        source: display_macro_source(cx, name, macro_def),
+                        macro_rules: macro_def.macro_rules,
+                    },
+                    MacroKinds::BANG,
+                ),
+                MacroKinds::ATTR => clean_proc_macro(item, &mut name, MacroKind::Attr, cx),
+                MacroKinds::DERIVE => clean_proc_macro(item, &mut name, MacroKind::Derive, cx),
+                _ => {
+                    let kind = MacroItem(
+                        Macro {
+                            source: display_macro_source(cx, name, macro_def),
+                            macro_rules: macro_def.macro_rules,
+                        },
+                        kinds,
+                    );
+                    let mac = generate_item_with_correct_attrs(
+                        cx,
+                        kind,
+                        item.owner_id.def_id.to_def_id(),
+                        name,
+                        import_ids,
+                        renamed,
+                    );
+
+                    let mut ret = Vec::with_capacity(3);
+                    for kind in kinds.iter().filter(|kind| *kind != MacroKinds::BANG) {
+                        match kind {
+                            MacroKinds::ATTR => {
+                                let mut attr = mac.clone();
+                                attr.inner.kind = AttrMacroItem;
+                                ret.push(attr);
+                            }
+                            MacroKinds::DERIVE => {
+                                let mut derive = mac.clone();
+                                derive.inner.kind = DeriveMacroItem;
+                                ret.push(derive);
+                            }
+                            _ => panic!("unsupported macro kind {kind:?}"),
+                        }
+                    }
+                    ret.push(mac);
+                    return ret;
+                }
+            },
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
