@@ -84,6 +84,8 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
+pub mod mitigation_coverage;
+
 mod target_modifier_consistency_check {
     use super::*;
     pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
@@ -197,15 +199,15 @@ macro_rules! gather_tmods {
         tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [SUBSTRUCT], []) => {
+        [SUBSTRUCT], [$(MITIGATION)?]) => {
         $opt_expr.gather_target_modifiers($mods, $tmod_vals);
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [UNTRACKED], []) => {{}};
+        [UNTRACKED], [$(MITIGATION)?]) => {{}};
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED], []) => {{}};
+        [TRACKED], [$(MITIGATION)?]) => {{}};
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
-        [TRACKED_NO_CRATE_HASH], []) => {{}};
+        [TRACKED_NO_CRATE_HASH], [$(MITIGATION)?]) => {{}};
 }
 
 macro_rules! gather_tmods_top_level {
@@ -215,7 +217,7 @@ macro_rules! gather_tmods_top_level {
     ($opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [$non_substruct:ident TARGET_MODIFIER]) => {
         compile_error!("Top level option can't be target modifier");
     };
-    ($opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [$non_substruct:ident]) => {};
+    ($opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr, [$non_substruct:ident $(MITIGATION)?]) => {};
 }
 
 /// Macro for generating OptionsTargetsModifiers top-level enum with impl.
@@ -320,6 +322,7 @@ macro_rules! top_level_options {
                 pub $opt: $t
             ),*,
             pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
+            pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
         }
 
         impl Options {
@@ -503,11 +506,20 @@ top_level_options!(
     }
 );
 
+macro_rules! mitigation_enum_opt {
+    ($opt:ident, MITIGATION) => {
+        Some(mitigation_coverage::DeniedPartialMitigationKind::$opt)
+    };
+    ($opt:ident, $(TARGET_MODIFIER)?) => {
+        None
+    };
+}
+
 macro_rules! tmod_enum_opt {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, $v:ident) => {
+    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, TARGET_MODIFIER) => {
         Some(OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt))
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, ) => {
+    ($struct_name:ident, $tmod_enum_name:ident, $opt:ident, $(MITIGATION)?) => {
         None
     };
 }
@@ -579,7 +591,7 @@ macro_rules! tmod_enum {
     (
         $tmod_enum_name:ident, $prefix:expr,
         @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
-            $opt:ident, $parse:ident, $t:ty, [] |
+            $opt:ident, $parse:ident, $t:ty, [$(MITIGATION)?] |
         $($tail:tt)*
     ) => {
         tmod_enum! {
@@ -592,6 +604,47 @@ macro_rules! tmod_enum {
                 $($pout)*
             };
             $($tail)*
+        }
+    };
+}
+
+#[derive(Default)]
+pub struct CollectedOptions {
+    pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
+    pub mitigations: mitigation_coverage::MitigationCoverageMap,
+}
+
+macro_rules! setter_for {
+    // the allow/deny-mitigations options use collected/index instead of the cg, since they
+    // work across option groups
+    (allow_partial_mitigations, $struct_name:ident, $parse:ident) => {
+        pub(super) fn allow_partial_mitigations(
+            _cg: &mut super::$struct_name,
+            collected: &mut super::CollectedOptions,
+            v: Option<&str>,
+            index: usize,
+        ) -> bool {
+            collected.mitigations.handle_allowdeny_mitigation_option(v, index, true)
+        }
+    };
+    (deny_partial_mitigations, $struct_name:ident, $parse:ident) => {
+        pub(super) fn deny_partial_mitigations(
+            _cg: &mut super::$struct_name,
+            collected: &mut super::CollectedOptions,
+            v: Option<&str>,
+            index: usize,
+        ) -> bool {
+            collected.mitigations.handle_allowdeny_mitigation_option(v, index, false)
+        }
+    };
+    ($opt:ident, $struct_name:ident, $parse:ident) => {
+        pub(super) fn $opt(
+            cg: &mut super::$struct_name,
+            _collected: &mut super::CollectedOptions,
+            v: Option<&str>,
+            _index: usize,
+        ) -> bool {
+            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
         }
     };
 }
@@ -609,7 +662,7 @@ macro_rules! options {
      $($( #[$attr:meta] )* $opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
-        [$dep_tracking_marker:ident $( $tmod:ident )?],
+        [$dep_tracking_marker:ident $( $modifier_kind:ident )?],
         $desc:expr
         $(, is_deprecated_and_do_nothing: $dnn:literal )?)
      ),* ,) =>
@@ -618,7 +671,7 @@ macro_rules! options {
     #[rustc_lint_opt_ty]
     pub struct $struct_name { $( $( #[$attr] )* pub $opt: $t),* }
 
-    tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($tmod),*])|*} );
+    tmod_enum!( $tmod_enum_name, $prefix, {$($opt, $parse, $t, [$($modifier_kind),*])|*} );
 
     impl Default for $struct_name {
         fn default() -> $struct_name {
@@ -630,7 +683,7 @@ macro_rules! options {
         pub fn build(
             early_dcx: &EarlyDiagCtxt,
             matches: &getopts::Matches,
-            target_modifiers: &mut BTreeMap<OptionsTargetModifiers, String>,
+            target_modifiers: &mut CollectedOptions,
         ) -> $struct_name {
             build_options(early_dcx, matches, target_modifiers, $stat, $prefix, $outputname)
         }
@@ -660,7 +713,7 @@ macro_rules! options {
         ) {
             $({
                 gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
-                    [$dep_tracking_marker], [$($tmod),*]);
+                    [$dep_tracking_marker], [$($modifier_kind),*]);
             })*
         }
     }
@@ -668,13 +721,13 @@ macro_rules! options {
     pub const $stat: OptionDescrs<$struct_name> =
         &[ $( OptionDesc{ name: stringify!($opt), setter: $optmod::$opt,
             type_desc: desc::$parse, desc: $desc, is_deprecated_and_do_nothing: false $( || $dnn )?,
-            tmod: tmod_enum_opt!($struct_name, $tmod_enum_name, $opt, $($tmod),*) } ),* ];
+            tmod: tmod_enum_opt!($struct_name, $tmod_enum_name, $opt, $($modifier_kind),*),
+            mitigation: mitigation_enum_opt!($opt, $($modifier_kind),*),
+        } ),* ];
 
     mod $optmod {
     $(
-        pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> bool {
-            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
-        }
+        setter_for!($opt, $struct_name, $parse);
     )*
     }
 
@@ -702,7 +755,7 @@ macro_rules! redirect_field {
     };
 }
 
-type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
+type OptionSetter<O> = fn(&mut O, &mut CollectedOptions, v: Option<&str>, pos: usize) -> bool;
 type OptionDescrs<O> = &'static [OptionDesc<O>];
 
 pub struct OptionDesc<O> {
@@ -714,6 +767,7 @@ pub struct OptionDesc<O> {
     desc: &'static str,
     is_deprecated_and_do_nothing: bool,
     tmod: Option<OptionsTargetModifiers>,
+    mitigation: Option<mitigation_coverage::DeniedPartialMitigationKind>,
 }
 
 impl<O> OptionDesc<O> {
@@ -729,13 +783,13 @@ impl<O> OptionDesc<O> {
 fn build_options<O: Default>(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-    target_modifiers: &mut BTreeMap<OptionsTargetModifiers, String>,
+    collected_options: &mut CollectedOptions,
     descrs: OptionDescrs<O>,
     prefix: &str,
     outputname: &str,
 ) -> O {
     let mut op = O::default();
-    for option in matches.opt_strs(prefix) {
+    for (index, option) in matches.opt_strs_pos(prefix) {
         let (key, value) = match option.split_once('=') {
             None => (option, None),
             Some((k, v)) => (k.to_string(), Some(v)),
@@ -750,13 +804,14 @@ fn build_options<O: Default>(
                 desc,
                 is_deprecated_and_do_nothing,
                 tmod,
+                mitigation,
             }) => {
                 if *is_deprecated_and_do_nothing {
                     // deprecation works for prefixed options only
                     assert!(!prefix.is_empty());
                     early_dcx.early_warn(format!("`-{prefix} {key}`: {desc}"));
                 }
-                if !setter(&mut op, value) {
+                if !setter(&mut op, collected_options, value, index) {
                     match value {
                         None => early_dcx.early_fatal(
                             format!(
@@ -772,7 +827,10 @@ fn build_options<O: Default>(
                 }
                 if let Some(tmod) = *tmod {
                     let v = value.map_or(String::new(), ToOwned::to_owned);
-                    target_modifiers.insert(tmod, v);
+                    collected_options.target_modifiers.insert(tmod, v);
+                }
+                if let Some(mitigation) = mitigation {
+                    collected_options.mitigations.reset_mitigation(*mitigation, index);
                 }
             }
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
@@ -881,6 +939,10 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_allow_partial_mitigations: &str =
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
+    pub(crate) const parse_deny_partial_mitigations: &str =
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
 }
 
 pub mod parse {
@@ -2068,7 +2130,7 @@ options! {
     collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
         parse_collapse_macro_debuginfo, [TRACKED],
         "set option to collapse debuginfo for macros"),
-    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED MITIGATION],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
@@ -2207,6 +2269,10 @@ options! {
     // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
+    // the real parser is at the `setter_for` macro, to allow `-Z` and `-C` options to
+    // work together.
+    allow_partial_mitigations: () = ((), parse_allow_partial_mitigations, [UNTRACKED],
+        "Allow mitigations not enabled for all dependency crates (comma separated list)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
     annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
@@ -2274,6 +2340,8 @@ options! {
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
         "overrides the `default_visibility` setting of the target"),
+    deny_partial_mitigations: () = ((), parse_deny_partial_mitigations, [UNTRACKED],
+        "Deny mitigations not enabled for all dependency crates (comma separated list)"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
@@ -2661,7 +2729,7 @@ written to standard error output)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
-    stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
+    stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED MITIGATION],
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
