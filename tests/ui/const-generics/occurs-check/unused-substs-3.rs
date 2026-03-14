@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 // The goal is to get an unevaluated const `ct` with a `Ty::Infer(TyVar(?1t)` subst.
 //

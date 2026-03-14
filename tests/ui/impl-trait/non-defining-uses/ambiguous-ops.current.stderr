@@ -1,5 +1,5 @@
 error[E0369]: cannot add `{integer}` to `impl Sized`
-  --> $DIR/ambiguous-ops.rs:17:15
+  --> $DIR/ambiguous-ops.rs:18:15
    |
 LL |         add() + 1
    |         ----- ^ - {integer}
@@ -7,7 +7,7 @@ LL |         add() + 1
    |         impl Sized
 
 error[E0368]: binary assignment operation `*=` cannot be applied to type `impl Sized`
-  --> $DIR/ambiguous-ops.rs:31:9
+  --> $DIR/ambiguous-ops.rs:32:9
    |
 LL |         temp *= 2;
    |         ----^^^^^
@@ -15,26 +15,26 @@ LL |         temp *= 2;
    |         cannot use `*=` on type `impl Sized`
 
 error[E0614]: type `DerefWrapper<impl Sized>` cannot be dereferenced
-  --> $DIR/ambiguous-ops.rs:57:22
+  --> $DIR/ambiguous-ops.rs:58:22
    |
 LL |         let _rarw = &*explicit_deref();
    |                      ^^^^^^^^^^^^^^^^^ can't be dereferenced
 
 error[E0614]: type `DerefWrapper<impl Sized>` cannot be dereferenced
-  --> $DIR/ambiguous-ops.rs:69:9
+  --> $DIR/ambiguous-ops.rs:70:9
    |
 LL |         *explicit_deref_mut() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^ can't be dereferenced
 
 error[E0277]: the type `impl Sized` cannot be indexed by `_`
-  --> $DIR/ambiguous-ops.rs:94:18
+  --> $DIR/ambiguous-ops.rs:95:18
    |
 LL |         let _y = explicit_index()[0];
    |                  ^^^^^^^^^^^^^^^^ `impl Sized` cannot be indexed by `_`
    |
    = help: the trait `Index<_>` is not implemented for `impl Sized`
 note: required for `IndexWrapper<impl Sized>` to implement `Index<_>`
-  --> $DIR/ambiguous-ops.rs:81:22
+  --> $DIR/ambiguous-ops.rs:82:22
    |
 LL | impl<T: Index<U>, U> Index<U> for IndexWrapper<T> {
    |         --------     ^^^^^^^^     ^^^^^^^^^^^^^^^
@@ -42,14 +42,14 @@ LL | impl<T: Index<U>, U> Index<U> for IndexWrapper<T> {
    |         unsatisfied trait bound introduced here
 
 error[E0277]: the type `impl Sized` cannot be indexed by `_`
-  --> $DIR/ambiguous-ops.rs:106:9
+  --> $DIR/ambiguous-ops.rs:107:9
    |
 LL |         explicit_index_mut()[0] = 1;
    |         ^^^^^^^^^^^^^^^^^^^^ `impl Sized` cannot be indexed by `_`
    |
    = help: the trait `Index<_>` is not implemented for `impl Sized`
 note: required for `IndexWrapper<impl Sized>` to implement `Index<_>`
-  --> $DIR/ambiguous-ops.rs:81:22
+  --> $DIR/ambiguous-ops.rs:82:22
    |
 LL | impl<T: Index<U>, U> Index<U> for IndexWrapper<T> {
    |         --------     ^^^^^^^^     ^^^^^^^^^^^^^^^

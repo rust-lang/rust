@@ -3,6 +3,7 @@
 // variable liveness analysis was "smarter" than the reachability analysis
 // in this regard, which led to confusing "unused variable" warnings
 // without an accompanying explanatory "unreachable expression" warning.
+#![allow(todo_macro_uses)]
 
 //@ check-pass
 

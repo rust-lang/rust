@@ -1,6 +1,7 @@
 //@ reference: attributes.diagnostic.on_unimplemented.intro
 //@ reference: attributes.diagnostic.on_unimplemented.keys
 //@ dont-require-annotations: NOTE
+#![allow(todo_macro_uses)]
 
 #[diagnostic::on_unimplemented(message = "my message", label = "my label", note = "my note")]
 pub trait ProviderLt {}

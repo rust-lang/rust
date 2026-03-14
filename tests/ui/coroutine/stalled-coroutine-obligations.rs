@@ -1,4 +1,5 @@
 //@ edition: 2021
+#![allow(todo_macro_uses)]
 
 // Regression tests for #137916 and #138274
 // We now check stalled coroutine obligations eagerly at the start of `mir_borrowck`.

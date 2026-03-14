@@ -1,7 +1,7 @@
 //! Test for the crash in #133426, caused by an empty symbol being used for a
 //! type name.
 
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 #![feature(never_patterns)]
 
 fn a(

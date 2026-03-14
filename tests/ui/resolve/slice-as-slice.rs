@@ -2,6 +2,7 @@
 // This is a regression test for github.com/rust-lang/rust/issues/152961
 // This broke when a method `as_slice` was added on slices
 // This pattern is used in the `rgb` crate
+#![allow(todo_macro_uses)]
 
 struct Meow;
 

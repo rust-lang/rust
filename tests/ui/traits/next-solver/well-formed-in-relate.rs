@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 fn main() {
     let x;
     //~^ ERROR type annotations needed for `Map<_, _>`

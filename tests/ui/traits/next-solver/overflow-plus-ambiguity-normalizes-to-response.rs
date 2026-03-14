@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // Regression test for <https://github.com/rust-lang/trait-system-refactor-initiative/issues/201>.
 // See comment below on `fn main`.

@@ -1,7 +1,7 @@
 //@ revisions: compat no-compat
 //@[no-compat] compile-flags: -Zno-implied-bounds-compat
 
-#![allow(unreachable_code, unused)]
+#![allow(unreachable_code, unused, todo_macro_uses)]
 
 use std::marker::PhantomData;
 

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ compile-flags: -Zvalidate-mir
+#![allow(todo_macro_uses)]
 
 use std::fmt::Display;
 use std::rc::Rc;

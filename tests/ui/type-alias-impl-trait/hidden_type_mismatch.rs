@@ -4,7 +4,7 @@
 //! satisfies its opaque type's bounds.
 
 #![feature(trivial_bounds, type_alias_impl_trait)]
-#![allow(trivial_bounds)]
+#![allow(trivial_bounds, todo_macro_uses)]
 
 mod sus {
     use super::*;

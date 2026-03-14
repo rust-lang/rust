@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-89275.rs:28:29
+  --> $DIR/issue-89275.rs:29:29
    |
 LL |     let other: &mut Other = downcast();
    |                ----------   ^^^^^^^^^^ types differ in mutability

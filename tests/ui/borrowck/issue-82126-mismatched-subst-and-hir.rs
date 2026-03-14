@@ -1,5 +1,6 @@
 // Regression test for #82126. Checks that mismatched lifetimes and types are
 // properly handled.
+#![allow(todo_macro_uses)]
 
 //@ edition:2018
 

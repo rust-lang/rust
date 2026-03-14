@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 fn problematic_function<Space>(material_surface_element: ())
 where
     DefaultAllocator: FiniteElementAllocator<(), Space>,

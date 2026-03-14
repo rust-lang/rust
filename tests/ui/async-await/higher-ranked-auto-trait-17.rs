@@ -4,6 +4,7 @@
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions] check-pass
 //@[no_assumptions] known-bug: #110338
+#![allow(todo_macro_uses)]
 
 // Using `impl Future` instead of `async to ensure that the Future is Send.
 //

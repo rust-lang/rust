@@ -1,5 +1,6 @@
 // Annnotations may contain projection types with inference variables as input.
 // Make sure we don't get ambiguities when normalizing them.
+#![allow(todo_macro_uses)]
 
 //@ check-fail
 

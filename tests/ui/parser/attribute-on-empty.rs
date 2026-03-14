@@ -1,5 +1,6 @@
 //! Regression test for: <https://github.com/rust-lang/rust/issues/144132>
 //!                      <https://github.com/rust-lang/rust/issues/135017>
+#![allow(todo_macro_uses)]
 
 struct Baz<const N: usize>(i32);
 

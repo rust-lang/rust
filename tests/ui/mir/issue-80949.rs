@@ -1,4 +1,5 @@
 //@ build-pass
+#![allow(todo_macro_uses)]
 
 trait Trait { type Item; }
 

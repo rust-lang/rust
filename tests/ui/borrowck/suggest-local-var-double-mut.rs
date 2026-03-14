@@ -1,4 +1,5 @@
 // See issue #77834.
+#![allow(todo_macro_uses)]
 
 #![crate_type = "lib"]
 

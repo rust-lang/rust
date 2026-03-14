@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 struct Foo<'c, 'd>(&'c (), &'d ());
 
 impl<'c, 'd> Foo<'c, 'd> {

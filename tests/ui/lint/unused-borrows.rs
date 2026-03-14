@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #![deny(unused_must_use)]
 
 fn foo(_: i32) -> bool { todo!() }

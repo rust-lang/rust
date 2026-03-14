@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 // This test verifies that negative trait predicate cannot be satisfied from a
 // positive param-env candidate.

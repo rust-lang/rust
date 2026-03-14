@@ -1,5 +1,6 @@
 //@ edition:2024
 //@ check-fail
+#![allow(todo_macro_uses)]
 
 mod m {
     enum Void {}

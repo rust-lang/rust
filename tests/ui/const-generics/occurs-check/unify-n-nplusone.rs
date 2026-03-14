@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 // This test would tries to unify `N` with `N + 1` which must fail the occurs check.
 

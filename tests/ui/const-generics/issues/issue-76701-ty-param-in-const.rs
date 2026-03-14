@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
     //~^ ERROR generic parameters may not be used in const operations
     todo!()

@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 // Verify that we can assemble inherent impl candidates on a possibly
 // unnormalized self type.

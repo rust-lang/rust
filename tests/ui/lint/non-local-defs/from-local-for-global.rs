@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition:2021
+#![allow(todo_macro_uses)]
 
 struct Cat;
 struct Wrap<T>(T);

@@ -2,7 +2,7 @@
 //@ check-pass
 #![feature(coroutines, stmt_expr_attributes)]
 #![warn(unused)]
-#![allow(unreachable_code)]
+#![allow(unreachable_code, todo_macro_uses)]
 
 pub fn unintentional_copy_one() {
     let mut last = None;

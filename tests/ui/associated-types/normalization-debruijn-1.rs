@@ -1,5 +1,6 @@
 //@ build-pass
 //@ edition:2018
+#![allow(todo_macro_uses)]
 
 // Regression test to ensure we handle debruijn indices correctly in projection
 // normalization under binders. Found in crater run for #85499

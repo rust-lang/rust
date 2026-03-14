@@ -1,5 +1,6 @@
 //! This is a regression test for an ICE.
 //@ edition: 2021
+#![allow(todo_macro_uses)]
 
 trait Foo {
     async fn foo(self: &dyn Foo) {

@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]

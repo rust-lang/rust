@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 pub struct Foo<const N: usize, const M: usize = { N + 1 }>;
 pub fn needs_evaluatable_bound<const N1: usize>() -> Foo<N1> {

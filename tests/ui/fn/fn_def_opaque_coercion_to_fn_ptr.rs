@@ -1,5 +1,6 @@
 //! Test that coercing between function items of different functions works,
 //! as long as their signatures match. The resulting value is a function pointer.
+#![allow(todo_macro_uses)]
 
 #![feature(type_alias_impl_trait)]
 

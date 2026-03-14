@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:5
+  --> $DIR/ice-106874.rs:9:5
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -8,7 +8,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: ...but it actually implements `FnOnce<(&'1 mut V,)>`, for some specific lifetime `'1`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:5
+  --> $DIR/ice-106874.rs:9:5
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -18,13 +18,13 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:5
+  --> $DIR/ice-106874.rs:9:5
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:5
+  --> $DIR/ice-106874.rs:9:5
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -41,7 +41,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough
@@ -50,7 +50,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -60,7 +60,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough
@@ -70,7 +70,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
@@ -80,7 +80,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/ice-106874.rs:8:7
+  --> $DIR/ice-106874.rs:9:7
    |
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Fn` is not general enough

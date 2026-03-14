@@ -2,6 +2,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ reference: attributes.diagnostic.do_not_recommend.intro
+#![allow(todo_macro_uses)]
 
 pub trait Expression {
     type SqlType;

@@ -1,4 +1,5 @@
 //@ run-rustfix
+#![allow(todo_macro_uses)]
 
 // Regression test for issue #143330.
 // Ensure we suggest to replace only the intended coma with a bar, not all commas in the pattern.

@@ -4,6 +4,7 @@
 // This is probably unimportant as we only report one error for such case in HIR typeck.
 
 #![feature(type_alias_impl_trait)]
+#![allow(todo_macro_uses)]
 
 struct Invar<'a>(*mut &'a ());
 

@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 pub struct Bytes;
 
 impl Bytes {

@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
-#![allow(unconditional_recursion)]
+#![allow(unconditional_recursion, todo_macro_uses)]
 
 // Test for trait-system-refactor-initiative#182 making sure
 // that we don't incorrectly normalize to rigid aliases if the

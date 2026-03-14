@@ -1,11 +1,11 @@
 error[E0282]: type annotations needed
-  --> $DIR/useless-turbofish-suggestion.rs:19:7
+  --> $DIR/useless-turbofish-suggestion.rs:20:7
    |
 LL |     S.f::<u32, _>(42);
    |       ^ cannot infer type of the type parameter `B` declared on the method `f`
 
 error[E0282]: type annotations needed
-  --> $DIR/useless-turbofish-suggestion.rs:24:7
+  --> $DIR/useless-turbofish-suggestion.rs:25:7
    |
 LL |     S.f(42);
    |       ^ cannot infer type of the type parameter `B` declared on the method `f`
