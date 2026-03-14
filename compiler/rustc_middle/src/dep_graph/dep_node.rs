@@ -408,9 +408,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(DepKind, 2);
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     static_assert_size!(DepNode, 18);
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    static_assert_size!(DepNode, 24);
     // tidy-alphabetical-end
 }
