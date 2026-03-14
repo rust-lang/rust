@@ -574,7 +574,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             }
         }
 
-        if let LookupResult::Exact(path) = self.data.rev_lookup.find(place) {
+        if let LookupResult::Exact(mut path) = self.data.rev_lookup.find(place) {
             let init = self.data.inits.push(Init {
                 location: InitLocation::Statement(self.loc),
                 path,
@@ -588,6 +588,20 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 
             self.data.init_path_map[path].push(init);
             self.data.init_loc_map[self.loc].push(init);
+
+            // NOTE(partial_init_locals):
+            // Note that we can walk the partial init'ed paths and attach the init indices,
+            // so that they could be considered, albeit partially, ever-initialised.
+            if self.tcx.features().partial_init_locals() {
+                while let Some(parent) = self.data.move_paths[path].parent {
+                    path = parent;
+                    let place = self.data.move_paths[path].place;
+                    if !self.tcx.ty_can_partial_init_locals(place.ty(self.body, self.tcx).ty) {
+                        break;
+                    }
+                    self.data.init_path_map[path].push(init);
+                }
+            }
         }
     }
 }

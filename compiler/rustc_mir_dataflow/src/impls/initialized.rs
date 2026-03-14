@@ -343,13 +343,55 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     fn update_bits(
+        &self,
         state: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         dfstate: DropFlagState,
     ) {
+        let partial_init_locals = self.tcx.features().partial_init_locals();
         match dfstate {
             DropFlagState::Absent => state.gen_(path),
-            DropFlagState::Present => state.kill(path),
+            DropFlagState::Present => {
+                if partial_init_locals {
+                    self.kill_partial_init_ancestors(state, path);
+                } else {
+                    state.kill(path);
+                }
+            }
+        }
+    }
+
+    /// Kill ancestors on the move path, which has no destructor and all children are definitely
+    /// initialised.
+    ///
+    /// Call this function only when the language feature is enabled.
+    #[instrument(level = "debug", skip_all)]
+    fn kill_partial_init_ancestors(
+        &self,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
+        mut path: MovePathIndex,
+    ) {
+        loop {
+            state.kill(path);
+            debug!(?path, "kill");
+            path = if let Some(parent) = self.move_data.move_paths[path].parent {
+                parent
+            } else {
+                break;
+            };
+            if !self.tcx.ty_can_partial_init_locals(
+                self.move_data.move_paths[path].place.ty(self.body, self.tcx).ty,
+            ) {
+                break;
+            }
+            let mut child = self.move_data.move_paths[path].first_child;
+            while let Some(child_mpi) = child {
+                if state.contains(child_mpi) {
+                    debug!(?child_mpi, "found uninit, bail");
+                    return;
+                }
+                child = self.move_data.move_paths[child_mpi].next_sibling;
+            }
         }
     }
 }
@@ -521,7 +563,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
+            self.update_bits(state, path, s)
         });
 
         // Unlike in `MaybeInitializedPlaces` above, we don't need to change the state when a
@@ -535,7 +577,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
+            self.update_bits(state, path, s)
         });
         if self.skip_unreachable_unwind.contains(location.block) {
             let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
@@ -552,6 +594,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
+        let partial_init_locals = self.tcx.features().partial_init_locals();
         return_places.for_each(|place| {
             // when a call returns successfully, that means we need to set
             // the bits for that dest_place to 0 (initialized).
@@ -559,7 +602,11 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
-                    state.kill(mpi);
+                    if partial_init_locals {
+                        self.kill_partial_init_ancestors(state, mpi);
+                    } else {
+                        state.kill(mpi);
+                    }
                 },
             );
         });
