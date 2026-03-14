@@ -4471,6 +4471,13 @@ pub(crate) struct MisspelledKw {
     pub is_incorrect_case: bool,
 }
 
+#[derive(Diagnostic)]
+#[diag("bounds cannot be used in this context")]
+pub(crate) struct ForbiddenBound {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TokenDescription {
     ReservedIdentifier,

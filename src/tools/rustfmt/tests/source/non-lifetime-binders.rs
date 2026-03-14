@@ -1,4 +1,4 @@
-fn main() where for<'a, T: Sized + 'a, const C: usize> [&'a T; C]: Sized { 
+fn main() where for<'a, T, const C: usize> [&'a T; C]: Sized { 
     let x = for<T> 
     || {};
 

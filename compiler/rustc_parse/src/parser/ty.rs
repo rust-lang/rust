@@ -1480,6 +1480,24 @@ impl<'a> Parser<'a> {
             self.expect_lt()?;
             let params = self.parse_generic_params()?;
             self.expect_gt()?;
+
+            // Issue 149695
+            // Deny and remove bounds for type parameters in higher-ranked binders,
+            // otherwise nested items may have parents not in hir.
+            let params = params
+                .into_iter()
+                .map(|mut param| {
+                    if matches!(param.kind, ast::GenericParamKind::Type { .. })
+                        && !param.bounds.is_empty()
+                    {
+                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                        self.dcx().emit_err(errors::ForbiddenBound { spans });
+                        param.bounds.clear();
+                    }
+                    param
+                })
+                .collect::<ThinVec<_>>();
+
             // We rely on AST validation to rule out invalid cases: There must not be
             // type or const parameters, and parameters must not have bounds.
             Ok((params, Some(lo.to(self.prev_token.span))))

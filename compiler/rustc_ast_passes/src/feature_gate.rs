@@ -147,7 +147,8 @@ impl<'a> PostExpansionVisitor<'a> {
         }
 
         for param in params {
-            if !param.bounds.is_empty() {
+            if !matches!(param.kind, ast::GenericParamKind::Type { .. }) && !param.bounds.is_empty()
+            {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
                 self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
             }
