@@ -183,7 +183,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
                             Ty::new_error(self.ctx.interner, ErrorGuaranteed),
-                            false,
+                            infer_args,
                         );
                         tracing::debug!(?trait_ref);
                         self.skip_resolved_segment();
@@ -201,7 +201,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 // this point (`trait_ref.substitution`).
                                 let substitution = self.substs_from_path_segment(
                                     associated_ty.into(),
-                                    false,
+                                    infer_args,
                                     None,
                                     true,
                                 );
