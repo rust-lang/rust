@@ -61,6 +61,7 @@ use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
+use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
@@ -73,7 +74,7 @@ use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 type Res = def::Res<NodeId>;
 
@@ -445,6 +446,11 @@ enum ModuleOrUniformRoot<'ra> {
     /// Used only for resolving single-segment imports. The reason it exists is that import paths
     /// are always split into two parts, the first of which should be some kind of module.
     CurrentScope,
+
+    /// Virtual module for the resolution of base names of namespaced crates,
+    /// where the base name doesn't correspond to a module in the extern prelude.
+    /// E.g. `my_api::utils` is in the prelude, but `my_api` is not.
+    OpenModule(Symbol),
 }
 
 #[derive(Debug)]
@@ -1105,13 +1111,20 @@ impl<'ra> DeclData<'ra> {
     }
 }
 
+#[derive(Debug)]
 struct ExternPreludeEntry<'ra> {
     /// Name declaration from an `extern crate` item.
     /// The boolean flag is true is `item_decl` is non-redundant, happens either when
     /// `flag_decl` is `None`, or when `extern crate` introducing `item_decl` used renaming.
     item_decl: Option<(Decl<'ra>, Span, /* introduced by item */ bool)>,
     /// Name declaration from an `--extern` flag, lazily populated on first use.
-    flag_decl: Option<CacheCell<(PendingDecl<'ra>, /* finalized */ bool)>>,
+    flag_decl: Option<
+        CacheCell<(
+            PendingDecl<'ra>,
+            /* finalized */ bool,
+            /* virtual flag (namespaced crate) */ bool,
+        )>,
+    >,
 }
 
 impl ExternPreludeEntry<'_> {
@@ -1122,7 +1135,14 @@ impl ExternPreludeEntry<'_> {
     fn flag() -> Self {
         ExternPreludeEntry {
             item_decl: None,
-            flag_decl: Some(CacheCell::new((PendingDecl::Pending, false))),
+            flag_decl: Some(CacheCell::new((PendingDecl::Pending, false, false))),
+        }
+    }
+
+    fn virtual_flag() -> Self {
+        ExternPreludeEntry {
+            item_decl: None,
+            flag_decl: Some(CacheCell::new((PendingDecl::Pending, false, true))),
         }
     }
 
@@ -1634,35 +1654,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxIndexMap<_, _> = tcx
-            .sess
-            .opts
-            .externs
-            .iter()
-            .filter_map(|(name, entry)| {
-                // Make sure `self`, `super`, `_` etc do not get into extern prelude.
-                // FIXME: reject `--extern self` and similar in option parsing instead.
-                if entry.add_prelude
-                    && let name = Symbol::intern(name)
-                    && name.can_be_raw()
-                {
-                    let ident = IdentKey::with_root_ctxt(name);
-                    Some((ident, ExternPreludeEntry::flag()))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if !attr::contains_name(attrs, sym::no_core) {
-            let ident = IdentKey::with_root_ctxt(sym::core);
-            extern_prelude.insert(ident, ExternPreludeEntry::flag());
-            if !attr::contains_name(attrs, sym::no_std) {
-                let ident = IdentKey::with_root_ctxt(sym::std);
-                extern_prelude.insert(ident, ExternPreludeEntry::flag());
-            }
-        }
-
+        let extern_prelude = build_extern_prelude(tcx, attrs);
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
 
@@ -2310,6 +2302,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn extern_prelude_get_flag(
         &self,
         ident: IdentKey,
@@ -2318,10 +2311,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
-            let (pending_decl, finalized) = flag_decl.get();
+            let (pending_decl, finalized, is_virtual) = flag_decl.get();
+            debug!(?pending_decl, ?is_virtual);
             let decl = match pending_decl {
                 PendingDecl::Ready(decl) => {
-                    if finalize && !finalized {
+                    if finalize && !finalized && !is_virtual {
                         self.cstore_mut().process_path_extern(
                             self.tcx,
                             ident.name,
@@ -2332,18 +2326,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 PendingDecl::Pending => {
                     debug_assert!(!finalized);
-                    let crate_id = if finalize {
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, orig_ident_span)
+                    if is_virtual {
+                        let res = Res::OpenMod(ident.name);
+                        Some(self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT))
                     } else {
-                        self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
-                    };
-                    crate_id.map(|crate_id| {
-                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                        self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
-                    })
+                        let crate_id = if finalize {
+                            self.cstore_mut().process_path_extern(
+                                self.tcx,
+                                ident.name,
+                                orig_ident_span,
+                            )
+                        } else {
+                            self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
+                        };
+                        crate_id.map(|crate_id| {
+                            let def_id = crate_id.as_def_id();
+                            let res = Res::Def(DefKind::Mod, def_id);
+                            self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
+                        })
+                    }
                 }
             };
-            flag_decl.set((PendingDecl::Ready(decl), finalize || finalized));
+            flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_virtual));
             decl.or_else(|| finalize.then_some(self.dummy_decl))
         })
     }
@@ -2377,7 +2381,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect();
         let Ok(segments) = segments else { return None };
 
-        match self.cm().maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
+        let path_result = self.cm().maybe_resolve_path(&segments, Some(ns), &parent_scope, None);
+        match path_result {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => {
                 path_res.full_res().filter(|res| !matches!(res, Res::Def(DefKind::Ctor(..), _)))
@@ -2385,7 +2390,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
                 None
             }
-            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
+            PathResult::Module(..) | PathResult::Indeterminate => {
+                bug!("got invalid path_result: {path_result:?}")
+            }
         }
     }
 
@@ -2501,6 +2508,62 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
+}
+
+fn build_extern_prelude<'tcx, 'ra>(
+    tcx: TyCtxt<'tcx>,
+    attrs: &[ast::Attribute],
+) -> FxIndexMap<IdentKey, ExternPreludeEntry<'ra>> {
+    let mut extern_prelude: FxIndexMap<IdentKey, ExternPreludeEntry<'ra>> = tcx
+        .sess
+        .opts
+        .externs
+        .iter()
+        .filter_map(|(name, entry)| {
+            // Make sure `self`, `super`, `_` etc do not get into extern prelude.
+            // FIXME: reject `--extern self` and similar in option parsing instead.
+            if entry.add_prelude
+                && let sym = Symbol::intern(name)
+                && sym.can_be_raw()
+            {
+                Some((IdentKey::with_root_ctxt(sym), ExternPreludeEntry::flag()))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Add virtual base entries for namespaced crates whose base segment
+    // is missing from the prelude (e.g. `foo::bar` without `foo`).
+    // These are necessary in order to resolve the open modules, whereas
+    // the namespaced names are necessary in `extern_prelude` for actually
+    // resolving the namespaced crates.
+    let missing_virtual_bases: Vec<IdentKey> = extern_prelude
+        .keys()
+        .filter_map(|ident| {
+            let (base, _) = ident.name.as_str().split_once("::")?;
+            let base_sym = Symbol::intern(base);
+            base_sym.can_be_raw().then(|| IdentKey::with_root_ctxt(base_sym))
+        })
+        .filter(|base_ident| !extern_prelude.contains_key(base_ident))
+        .collect();
+
+    extern_prelude.extend(
+        missing_virtual_bases.into_iter().map(|ident| (ident, ExternPreludeEntry::virtual_flag())),
+    );
+
+    debug!(?extern_prelude);
+
+    // Inject `core` / `std` unless suppressed by attributes.
+    if !attr::contains_name(attrs, sym::no_core) {
+        extern_prelude.insert(IdentKey::with_root_ctxt(sym::core), ExternPreludeEntry::flag());
+
+        if !attr::contains_name(attrs, sym::no_std) {
+            extern_prelude.insert(IdentKey::with_root_ctxt(sym::std), ExternPreludeEntry::flag());
+        }
+    }
+
+    extern_prelude
 }
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {

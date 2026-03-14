@@ -1740,8 +1740,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Res::Def(DefKind::Macro(kinds), _) => {
                     format!("{} {}", kinds.article(), kinds.descr())
                 }
-                Res::ToolMod => {
-                    // Don't confuse the user with tool modules.
+                Res::ToolMod | Res::OpenMod(..) => {
+                    // Don't confuse the user with tool modules or virtual modules.
                     continue;
                 }
                 Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
@@ -1972,13 +1972,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         true
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
             let (built_in, from) = match scope {
                 Scope::StdLibPrelude | Scope::MacroUsePrelude => ("", " from prelude"),
                 Scope::ExternPreludeFlags
-                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some() =>
+                    if self.tcx.sess.opts.externs.get(ident.as_str()).is_some()
+                        || matches!(res, Res::OpenMod(..)) =>
                 {
                     ("", " passed with `--extern`")
                 }
