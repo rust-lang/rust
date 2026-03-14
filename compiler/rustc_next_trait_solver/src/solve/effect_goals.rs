@@ -353,17 +353,29 @@ where
     }
 
     fn consider_builtin_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
+        ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Iterator is not yet const")
+        let certainty = ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)?;
+
+        Ok(Candidate {
+            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            result: certainty,
+            head_usages: Default::default(),
+        })
     }
 
     fn consider_builtin_fused_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
+        ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("FusedIterator is not const")
+        let certainty = ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)?;
+
+        Ok(Candidate {
+            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            result: certainty,
+            head_usages: Default::default(),
+        })
     }
 
     fn consider_builtin_async_iterator_candidate(
