@@ -13,6 +13,4 @@ pub struct QueryStackFrame<'tcx> {
     pub tagged_key: TaggedQueryKey<'tcx>,
     pub dep_kind: DepKind,
     pub def_id: Option<DefId>,
-    /// A def-id that is extracted from a `Ty` in a query key
-    pub def_id_for_ty_in_cycle: Option<DefId>,
 }

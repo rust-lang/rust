@@ -9,7 +9,7 @@ use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::dep_graph::DepKind;
-use rustc_middle::queries::QueryVTables;
+use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
 use rustc_middle::query::CycleError;
 use rustc_middle::query::erase::erase_val;
 use rustc_middle::ty::layout::LayoutError;
@@ -91,9 +91,9 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
         }
     }
     for info in &cycle_error.cycle {
-        if info.frame.dep_kind == DepKind::check_representability_adt_ty
-            && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
-            && let Some(def_id) = def_id.as_local()
+        if let TaggedQueryKey::check_representability_adt_ty(key) = info.frame.tagged_key
+            && let Some(adt) = key.ty_adt_def()
+            && let Some(def_id) = adt.did().as_local()
             && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
         {
             representable_ids.insert(def_id);
@@ -154,8 +154,8 @@ fn layout_of<'tcx>(
     let diag = search_for_cycle_permutation(
         &cycle_error.cycle,
         |cycle| {
-            if cycle[0].frame.dep_kind == DepKind::layout_of
-                && let Some(def_id) = cycle[0].frame.def_id_for_ty_in_cycle
+            if let TaggedQueryKey::layout_of(key) = cycle[0].frame.tagged_key
+                && let ty::Coroutine(def_id, _) = key.value.kind()
                 && let Some(def_id) = def_id.as_local()
                 && let def_kind = tcx.def_kind(def_id)
                 && matches!(def_kind, DefKind::Closure)
@@ -179,10 +179,10 @@ fn layout_of<'tcx>(
                     tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                 );
                 for (i, info) in cycle.iter().enumerate() {
-                    if info.frame.dep_kind != DepKind::layout_of {
+                    let TaggedQueryKey::layout_of(frame_key) = info.frame.tagged_key else {
                         continue;
-                    }
-                    let Some(frame_def_id) = info.frame.def_id_for_ty_in_cycle else {
+                    };
+                    let &ty::Coroutine(frame_def_id, _) = frame_key.value.kind() else {
                         continue;
                     };
                     let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
