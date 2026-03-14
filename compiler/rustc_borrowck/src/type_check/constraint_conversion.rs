@@ -6,10 +6,10 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument};
@@ -240,6 +240,11 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
+        if let VerifyBound::AnyBound(bs) = &verify_bound
+            && bs.is_empty()
+        {
+            span_bug!(self.span, "No empty any bound should make it to borrow check!");
+        }
         TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
     }
 
