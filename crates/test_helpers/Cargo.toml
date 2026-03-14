@@ -5,5 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
-proptest = { version = "0.10", default-features = false, features = ["alloc"] }
+proptest = { version = "1.0", default-features = false, features = ["alloc", "std"] }
 float-cmp = "0.10"
