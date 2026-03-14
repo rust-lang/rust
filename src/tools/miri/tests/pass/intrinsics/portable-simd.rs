@@ -17,6 +17,7 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+// The `portable_simd` crate currently does not support f16 or f128 vectors, so we define our own.
 #[repr(simd, packed)]
 #[derive(Copy)]
 struct PackedSimd<T, const N: usize>([T; N]);
@@ -112,6 +113,9 @@ fn simd_ops_f16() {
             simd_relaxed_fma(f16x4::splat(-3.2), b, f16x4::splat(f16::NEG_INFINITY)),
             f16x4::splat(f16::NEG_INFINITY)
         );
+
+        assert_eq!(simd_fsqrt(simd_mul(a, a)), a);
+        assert_eq!(simd_fsqrt(simd_mul(b, b)), simd_fabs(b));
 
         assert_eq!(simd_eq(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
         assert_eq!(simd_ne(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
@@ -323,6 +327,9 @@ fn simd_ops_f128() {
             simd_relaxed_fma(f128x4::splat(-3.2), b, f128x4::splat(f128::NEG_INFINITY)),
             f128x4::splat(f128::NEG_INFINITY)
         );
+
+        assert_eq!(simd_fsqrt(simd_mul(a, a)), a);
+        assert_eq!(simd_fsqrt(simd_mul(b, b)), simd_fabs(b));
 
         assert_eq!(simd_eq(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
         assert_eq!(simd_ne(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
@@ -969,6 +976,11 @@ fn simd_float_intrinsics() {
         simd_flog(a);
         simd_flog2(a);
         simd_flog10(a);
+    }
+
+    unsafe {
+        let a = f128x2::splat(10.0);
+        simd_fsqrt(a);
     }
 }
 

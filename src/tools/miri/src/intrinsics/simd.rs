@@ -1,4 +1,4 @@
-use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, SingleS};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use rustc_middle::ty;
 use rustc_middle::ty::FloatTy;
 
@@ -36,7 +36,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F16 => math::sqrt_op::<IeeeFloat<HalfS>>(this, &op, &dest)?,
                         FloatTy::F32 => math::sqrt_op::<IeeeFloat<SingleS>>(this, &op, &dest)?,
                         FloatTy::F64 => math::sqrt_op::<IeeeFloat<DoubleS>>(this, &op, &dest)?,
-                        FloatTy::F128 => unimplemented!("f128"),
+                        FloatTy::F128 => math::sqrt_op::<IeeeFloat<QuadS>>(this, &op, &dest)?,
                     };
                 }
             }
@@ -72,7 +72,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F16 => host_unary_float_op::<HalfS>(this, &op, host_op, &dest)?,
                         FloatTy::F32 => host_unary_float_op::<SingleS>(this, &op, host_op, &dest)?,
                         FloatTy::F64 => host_unary_float_op::<DoubleS>(this, &op, host_op, &dest)?,
-                        FloatTy::F128 => unimplemented!("f128"),
+                        FloatTy::F128 => unimplemented!("f128"), // FIXME(f128)
                     }
                 }
             }
