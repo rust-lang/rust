@@ -7,10 +7,9 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
-use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
     ActiveKeyStatus, CycleError, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey,
-    QueryLatch, QueryMode, QueryState,
+    QueryLatch, QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
