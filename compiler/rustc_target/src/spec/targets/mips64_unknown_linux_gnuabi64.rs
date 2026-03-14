@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, CfgAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
-            llvm_abiname: "n64".into(),
+            llvm_abiname: LlvmAbi::N64,
 
             ..base::linux_gnu::opts()
         },
