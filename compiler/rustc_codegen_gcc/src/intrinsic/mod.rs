@@ -119,16 +119,6 @@ fn get_simple_function<'gcc, 'tcx>(
             ];
             (cx.double_type, parameters, "fminimum")
         }
-        sym::minimumf128 => {
-            let f128_type = cx.type_f128();
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fminimumf128.html
-            let parameters = [
-                cx.context.new_parameter(None, f128_type, "a"),
-                cx.context.new_parameter(None, f128_type, "b"),
-            ];
-            (f128_type, parameters, "fminimumf128")
-        }
         sym::maximumf32 => {
             let parameters = [
                 cx.context.new_parameter(None, cx.float_type, "a"),
@@ -142,16 +132,6 @@ fn get_simple_function<'gcc, 'tcx>(
                 cx.context.new_parameter(None, cx.double_type, "b"),
             ];
             (cx.double_type, parameters, "fmaximum")
-        }
-        sym::maximumf128 => {
-            let f128_type = cx.type_f128();
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fmaximumf128.html
-            let parameters = [
-                cx.context.new_parameter(None, f128_type, "a"),
-                cx.context.new_parameter(None, f128_type, "b"),
-            ];
-            (f128_type, parameters, "fmaximumf128")
         }
         _ => return None,
     };
@@ -197,6 +177,11 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
 ) -> Option<Function<'gcc>> {
     let func_name = match name {
         _ if !cx.supports_f128_type => return None,
+        // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
+        // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fmaximumf128.html
+        // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fminimumf128.html
+        sym::maximumf128 => "fmaximumf128",
+        sym::minimumf128 => "fminimumf128",
         sym::maxnumf128 => "fmaxf128",
         sym::minnumf128 => "fminf128",
         sym::copysignf128 => "copysignf128",
