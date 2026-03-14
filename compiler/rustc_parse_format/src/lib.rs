@@ -310,24 +310,46 @@ impl<'input> Parser<'input> {
 
         let (is_source_literal, end_of_snippet, pre_input_vec) = if let Some(snippet) = snippet {
             if let Some(nr_hashes) = style {
-                // snippet is a raw string, which starts with 'r', a number of hashes, and a quote
-                // and ends with a quote and the same number of hashes
-                (true, snippet.len() - nr_hashes - 1, vec![])
+                // snippet is a raw string
+
+                // validate snippet because a proc macro may have
+                // respanned it to something completely different (fixes #114865)
+                let prefix_len = nr_hashes + 2; // r + hashes + opening "
+                let suffix_len = nr_hashes + 1; // closing " + hashes
+                let snippet_bytes = snippet.as_bytes();
+                if snippet.len() >= prefix_len + suffix_len // is sufficiently long
+                    && snippet_bytes[0] == b'r'
+                    && snippet_bytes[1..1 + nr_hashes].iter().all(|&c| c == b'#')
+                    && snippet_bytes[1 + nr_hashes] == b'"'
+                {
+                    let snippet_without_quotes = &snippet[prefix_len..snippet.len() - suffix_len];
+                    let input_without_newline =
+                        if appended_newline { &input[..input.len() - 1] } else { input };
+                    if snippet_without_quotes == input_without_newline {
+                        (true, snippet.len() - suffix_len, vec![])
+                    } else {
+                        (false, snippet.len(), vec![])
+                    }
+                } else {
+                    (false, snippet.len(), vec![])
+                }
             } else {
                 // snippet is not a raw string
                 if snippet.starts_with('"') {
                     // snippet looks like an ordinary string literal
                     // check whether it is the escaped version of input
-                    let without_quotes = &snippet[1..snippet.len() - 1];
+                    let snippet_without_quotes = &snippet[1..snippet.len() - 1];
                     let (mut ok, mut vec) = (true, vec![]);
                     let mut chars = input.chars();
-                    rustc_literal_escaper::unescape_str(without_quotes, |range, res| match res {
-                        Ok(ch) if ok && chars.next().is_some_and(|c| ch == c) => {
-                            vec.push((range, ch));
-                        }
-                        _ => {
-                            ok = false;
-                            vec = vec![];
+                    rustc_literal_escaper::unescape_str(snippet_without_quotes, |range, res| {
+                        match res {
+                            Ok(ch) if ok && chars.next().is_some_and(|c| ch == c) => {
+                                vec.push((range, ch));
+                            }
+                            _ => {
+                                ok = false;
+                                vec = vec![];
+                            }
                         }
                     });
                     let end = vec.last().map(|(r, _)| r.end).unwrap_or(0);
