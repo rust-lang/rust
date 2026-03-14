@@ -495,6 +495,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
+        closure_non_late_bound_implied_bounds: Option<
+            Frozen<Vec<ClosureOutlivesRequirement<'tcx>>>,
+        >,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints();
@@ -530,7 +533,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?errors_buffer);
 
-        let outlives_requirements = outlives_requirements.unwrap_or_default();
+        let mut outlives_requirements = outlives_requirements.unwrap_or_default();
+        outlives_requirements
+            .extend(closure_non_late_bound_implied_bounds.iter().flat_map(|bounds| bounds.iter()));
 
         if outlives_requirements.is_empty() {
             (None, errors_buffer)

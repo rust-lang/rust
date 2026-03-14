@@ -31,8 +31,8 @@ use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 use crate::{
-    BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements,
-    polonius, renumber,
+    BorrowCheckRootCtxt, BorrowckInferCtxt, ClosureOutlivesRequirement, ClosureOutlivesSubject,
+    ClosureRegionRequirements, polonius, renumber,
 };
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
@@ -103,7 +103,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         location_map,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None, None);
     closure_region_requirements
 }
 
@@ -122,6 +122,7 @@ pub(crate) fn compute_regions<'tcx>(
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
     mut polonius_context: Option<PoloniusContext>,
+    closure_non_late_bound_implied_bounds: Frozen<Vec<ClosureOutlivesRequirement<'tcx>>>,
 ) -> NllOutput<'tcx> {
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
@@ -179,8 +180,12 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+    let (closure_region_requirements, nll_errors) = regioncx.solve(
+        infcx,
+        body,
+        polonius_output.clone(),
+        Some(closure_non_late_bound_implied_bounds),
+    );
 
     NllOutput {
         regioncx,

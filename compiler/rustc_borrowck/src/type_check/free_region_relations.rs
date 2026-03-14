@@ -14,9 +14,11 @@ use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
-use crate::BorrowckInferCtxt;
 use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
+use crate::{
+    BorrowckInferCtxt, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureOutlivesSubjectTy,
+};
 
 #[derive(Debug)]
 #[derive(Clone)] // FIXME(#146079)
@@ -46,6 +48,7 @@ pub(crate) struct CreateResult<'tcx> {
     pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
     pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
+    pub(crate) closure_non_late_bound_implied_bounds: Frozen<Vec<ClosureOutlivesRequirement<'tcx>>>,
 }
 
 pub(crate) fn create<'tcx>(
@@ -60,6 +63,7 @@ pub(crate) fn create<'tcx>(
         region_bound_pairs: Default::default(),
         outlives: Default::default(),
         inverse_outlives: Default::default(),
+        closure_non_late_bound_implied_bounds: Default::default(),
     }
     .create()
 }
@@ -167,6 +171,7 @@ struct UniversalRegionRelationsBuilder<'a, 'tcx> {
     outlives: TransitiveRelationBuilder<RegionVid>,
     inverse_outlives: TransitiveRelationBuilder<RegionVid>,
     region_bound_pairs: RegionBoundPairs<'tcx>,
+    closure_non_late_bound_implied_bounds: Vec<ClosureOutlivesRequirement<'tcx>>,
 }
 
 impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
@@ -338,6 +343,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             known_type_outlives_obligations: Frozen::freeze(known_type_outlives_obligations),
             region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
+            closure_non_late_bound_implied_bounds: Frozen::freeze(
+                self.closure_non_late_bound_implied_bounds,
+            ),
         }
     }
 
@@ -389,7 +397,47 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         debug!(?bounds, ?constraints);
         // Because of #109628, we may have unexpected placeholders. Ignore them!
         // FIXME(#109628): panic in this case once the issue is fixed.
-        let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
+        let bounds: Vec<_> = bounds
+            .into_iter()
+            .filter(|bound| {
+                if bound.has_placeholders() {
+                    return false;
+                }
+                if !self.universal_regions.bound_has_late_bound_region(*bound) {
+                    let tcx = self.infcx.tcx;
+                    let (outlived, subject) = match *bound {
+                        OutlivesBound::RegionSubRegion(r1, r2) => (
+                            r1,
+                            ClosureOutlivesSubject::Region(
+                                self.universal_regions.to_region_vid(r2),
+                            ),
+                        ),
+                        OutlivesBound::RegionSubParam(r_a, param_b) => (
+                            r_a,
+                            ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(
+                                tcx,
+                                Ty::new_param(tcx, param_b.index, param_b.name),
+                            )),
+                        ),
+                        OutlivesBound::RegionSubAlias(r_a, alias_b) => (
+                            r_a,
+                            ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(
+                                tcx,
+                                Ty::new_alias(tcx, alias_b.kind(tcx), alias_b),
+                            )),
+                        ),
+                    };
+
+                    self.closure_non_late_bound_implied_bounds.push(ClosureOutlivesRequirement {
+                        subject,
+                        outlived_free_region: self.universal_regions.to_region_vid(outlived),
+                        blame_span: span,
+                        category: ConstraintCategory::Boring,
+                    });
+                }
+                true
+            })
+            .collect();
         self.add_outlives_bounds(bounds);
         constraints
     }

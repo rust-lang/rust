@@ -68,6 +68,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where T: '?3
    = note: where '?2: '?3
+   = note: where '?1: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:51:1
@@ -123,6 +124,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 4
    = note: where <T as Anything<'?2>>::AssocType: '?3
+   = note: where <T as Anything<'?2>>::AssocType: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:62:1
@@ -149,6 +151,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where T: '?3
    = note: where '?2: '?3
+   = note: where T: '?1
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:74:1

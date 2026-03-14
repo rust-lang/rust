@@ -302,6 +302,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
     polonius_facts: Option<AllFacts<RustcFacts>>,
     polonius_context: Option<PoloniusContext>,
+    closure_non_late_bound_implied_bounds: Frozen<Vec<ClosureOutlivesRequirement<'tcx>>>,
 }
 
 /// Start borrow checking by collecting the region constraints for
@@ -352,6 +353,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         known_type_outlives_obligations,
         deferred_closure_requirements,
         polonius_context,
+        closure_non_late_bound_implied_bounds,
     } = type_check::type_check(
         root_cx,
         &infcx,
@@ -381,6 +383,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         deferred_opaque_type_errors: Default::default(),
         polonius_facts,
         polonius_context,
+        closure_non_late_bound_implied_bounds,
     }
 }
 
@@ -405,6 +408,7 @@ fn borrowck_check_region_constraints<'tcx>(
         deferred_opaque_type_errors,
         polonius_facts,
         polonius_context,
+        closure_non_late_bound_implied_bounds,
     }: CollectRegionConstraintsResult<'tcx>,
 ) -> PropagatedBorrowCheckResults<'tcx> {
     assert!(!infcx.has_opaque_types_in_storage());
@@ -434,6 +438,7 @@ fn borrowck_check_region_constraints<'tcx>(
         constraints,
         polonius_facts,
         polonius_context,
+        closure_non_late_bound_implied_bounds,
     );
 
     // Dump MIR results into a file, if that is enabled. This lets us

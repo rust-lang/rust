@@ -22,6 +22,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::traits::query::OutlivesBound;
 use rustc_macros::extension;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -441,6 +442,39 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     pub(crate) fn encountered_re_error(&self) -> Option<ErrorGuaranteed> {
         self.indices.encountered_re_error.get()
+    }
+
+    /// Whether the bound can be added as an implied bound to this function. If the defining type
+    /// cannot have external regions, i.e. non of {closures, coroutines, inline consts}, every
+    /// bounds returned from `type_op::ImpliedOutlivesBounds` are allowed.
+    /// But if the defining type can have them, the bound should contain at least one local region.
+    pub(crate) fn bound_has_late_bound_region(&self, bound: OutlivesBound<'tcx>) -> bool {
+        if !matches!(
+            self.defining_ty,
+            DefiningTy::Closure(..)
+                | DefiningTy::Coroutine(..)
+                | DefiningTy::CoroutineClosure(..)
+                | DefiningTy::InlineConst(..)
+        ) {
+            return true;
+        }
+
+        match bound {
+            OutlivesBound::RegionSubRegion(r1, r2) => {
+                self.is_local_free_region(self.to_region_vid(r1))
+                    || self.is_local_free_region(self.to_region_vid(r2))
+            }
+            OutlivesBound::RegionSubParam(r_a, _) => {
+                self.is_local_free_region(self.to_region_vid(r_a))
+            }
+            OutlivesBound::RegionSubAlias(r_a, alias_b) => {
+                self.is_local_free_region(self.to_region_vid(r_a))
+                    || alias_b.args.iter().flat_map(|arg| arg.walk()).any(|arg| {
+                        arg.as_region()
+                            .is_some_and(|r| self.is_local_free_region(self.to_region_vid(r)))
+                    })
+            }
+        }
     }
 }
 

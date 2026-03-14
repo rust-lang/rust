@@ -48,6 +48,7 @@ LL |     with_signature(a, b, |x, y| {
            ]
    = note: number of external vids: 3
    = note: where T: '?2
+   = note: where T: '?1
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:38:1
@@ -73,6 +74,7 @@ LL |     with_signature(a, b, |x, y| {
    = note: late-bound region is '?3
    = note: number of external vids: 4
    = note: where T: '?2
+   = note: where T: '?1
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:59:1
@@ -111,6 +113,8 @@ LL |     with_signature(a, b, |x, y| {
            ]
    = note: number of external vids: 4
    = note: where T: '?3
+   = note: where T: '?2
+   = note: where '?2: '?1
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:71:1
