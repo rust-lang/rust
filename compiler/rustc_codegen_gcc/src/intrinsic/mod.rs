@@ -242,20 +242,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let name_str = name.as_str();
         let fn_args = instance.args;
 
-        let simple = get_simple_intrinsic(self, name);
-        let simple_func = get_simple_function(self, name);
+        let simple = get_simple_intrinsic(self, name).or_else(|| get_simple_function(self, name));
 
         let value = match name {
             _ if simple.is_some() => {
                 let func = simple.expect("simple intrinsic function");
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            _ if simple_func.is_some() => {
-                let func = simple_func.expect("simple function");
                 self.cx.context.new_call(
                     self.location,
                     func,
