@@ -12,6 +12,4 @@
 // ignore-tidy-leading-newlines
 // ignore-tidy-tab
 
-#![feature(frontmatter)]
-
 fn main() {}

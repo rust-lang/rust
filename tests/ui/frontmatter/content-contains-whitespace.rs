@@ -17,6 +17,4 @@ package.description = """
 
 // Ensure the frontmatter can contain any whitespace
 
-#![feature(frontmatter)]
-
 fn main() {}

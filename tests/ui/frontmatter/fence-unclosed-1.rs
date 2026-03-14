@@ -5,6 +5,5 @@
 // close. There should not be a "missing `main` function" error as the rest
 // are properly parsed.
 
-#![feature(frontmatter)]
-
+//~v ERROR: `main` function not found in crate `fence_unclosed_1`
 fn main() {}
