@@ -1,12 +1,71 @@
 use std::ops::Neg;
 
 use rand::Rng as _;
-use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
-use self::helpers::{ToHost, ToSoft};
 use crate::*;
+
+/// Convert a softfloat type to its corresponding hostfloat type.
+pub trait ToHost {
+    type HostFloat;
+    fn to_host(self) -> Self::HostFloat;
+}
+
+/// Convert a hostfloat type to its corresponding softfloat type.
+pub trait ToSoft {
+    type SoftFloat;
+    fn to_soft(self) -> Self::SoftFloat;
+}
+
+impl ToHost for rustc_apfloat::ieee::Double {
+    type HostFloat = f64;
+
+    fn to_host(self) -> Self::HostFloat {
+        f64::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f64 {
+    type SoftFloat = rustc_apfloat::ieee::Double;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Single {
+    type HostFloat = f32;
+
+    fn to_host(self) -> Self::HostFloat {
+        f32::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f32 {
+    type SoftFloat = rustc_apfloat::ieee::Single;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Half {
+    type HostFloat = f16;
+
+    fn to_host(self) -> Self::HostFloat {
+        f16::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f16 {
+    type SoftFloat = rustc_apfloat::ieee::Half;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
@@ -400,49 +459,60 @@ pub(crate) fn sqrt<F: Float>(x: F) -> F {
     }
 }
 
+pub fn sqrt_op<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
+    this: &mut MiriInterpCx<'tcx>,
+    f: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let f: F = this.read_scalar(f)?.to_float()?;
+    // Sqrt is specified to be fully precise.
+    let res = math::sqrt(f);
+    let res = this.adjust_nan(res, &[f]);
+    this.write_scalar(res, dest)
+}
+
 pub trait HostFloatOperation {
-    fn host_sin(x: Self) -> Self;
-    fn host_cos(x: Self) -> Self;
-    fn host_exp(x: Self) -> Self;
-    fn host_exp2(x: Self) -> Self;
-    fn host_log(x: Self) -> Self;
-    fn host_log10(x: Self) -> Self;
-    fn host_log2(x: Self) -> Self;
-    // fn host_powf(x: Self, y: Self) -> Self;
-    // fn host_powi(x: Self, y: i32) -> Self;
+    fn host_sin(self) -> Self;
+    fn host_cos(self) -> Self;
+    fn host_exp(self) -> Self;
+    fn host_exp2(self) -> Self;
+    fn host_log(self) -> Self;
+    fn host_log10(self) -> Self;
+    fn host_log2(self) -> Self;
+    fn host_powf(self, y: Self) -> Self;
+    fn host_powi(self, y: i32) -> Self;
 }
 
 macro_rules! impl_float_host_operations {
     ($ty:ty) => {
         impl HostFloatOperation for $ty {
-            fn host_sin(x: Self) -> Self {
-                x.to_host().sin().to_soft()
+            fn host_sin(self) -> Self {
+                self.to_host().sin().to_soft()
             }
-            fn host_cos(x: Self) -> Self {
-                x.to_host().cos().to_soft()
+            fn host_cos(self) -> Self {
+                self.to_host().cos().to_soft()
             }
-            fn host_exp(x: Self) -> Self {
-                x.to_host().exp().to_soft()
+            fn host_exp(self) -> Self {
+                self.to_host().exp().to_soft()
             }
-            fn host_exp2(x: Self) -> Self {
-                x.to_host().exp2().to_soft()
+            fn host_exp2(self) -> Self {
+                self.to_host().exp2().to_soft()
             }
-            fn host_log(x: Self) -> Self {
-                x.to_host().ln().to_soft()
+            fn host_log(self) -> Self {
+                self.to_host().ln().to_soft()
             }
-            fn host_log10(x: Self) -> Self {
-                x.to_host().log10().to_soft()
+            fn host_log10(self) -> Self {
+                self.to_host().log10().to_soft()
             }
-            fn host_log2(x: Self) -> Self {
-                x.to_host().log2().to_soft()
+            fn host_log2(self) -> Self {
+                self.to_host().log2().to_soft()
             }
-
-            // fn host_powf(x: Self, y: Self) -> Self {
-            //     x.to_host().powf(y.to_host()).to_soft()
-            // }
-            // fn host_powi(x: Self, y: i32) -> Self {
-            //     x.to_host().powi(y).to_soft()
-            // }
+            fn host_powf(self, y: Self) -> Self {
+                self.to_host().powf(y.to_host()).to_soft()
+            }
+            fn host_powi(self, y: i32) -> Self {
+                self.to_host().powi(y).to_soft()
+            }
         }
     };
 }
@@ -450,6 +520,67 @@ macro_rules! impl_float_host_operations {
 impl_float_host_operations!(IeeeFloat<HalfS>);
 impl_float_host_operations!(IeeeFloat<SingleS>);
 impl_float_host_operations!(IeeeFloat<DoubleS>);
+
+#[derive(Debug, Clone, Copy)]
+pub enum HostUnaryFloatOp {
+    Sin,
+    Cos,
+    Exp,
+    Exp2,
+    Log,
+    Log10,
+    Log2,
+}
+
+pub fn host_unary_float_op<'tcx, S: Semantics>(
+    this: &mut MiriInterpCx<'tcx>,
+    f: &OpTy<'tcx>,
+    op: HostUnaryFloatOp,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx>
+where
+    IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
+{
+    use HostFloatOperation;
+
+    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
+
+    // The fixed-value and clamping functions need the name as a string.
+    let name = match op {
+        HostUnaryFloatOp::Sin => "sin",
+        HostUnaryFloatOp::Cos => "cos",
+        HostUnaryFloatOp::Exp => "exp",
+        HostUnaryFloatOp::Exp2 => "exp2",
+        HostUnaryFloatOp::Log => "log",
+        HostUnaryFloatOp::Log10 => "log10",
+        HostUnaryFloatOp::Log2 => "log2",
+    };
+    let res = math::fixed_float_value(this, name, &[f]).unwrap_or_else(|| {
+        // Using host floats (but it's fine, these operations do not have
+        // guaranteed precision).
+        let res = match op {
+            HostUnaryFloatOp::Sin => f.host_sin(),
+            HostUnaryFloatOp::Cos => f.host_cos(),
+            HostUnaryFloatOp::Exp => f.host_exp(),
+            HostUnaryFloatOp::Exp2 => f.host_exp2(),
+            HostUnaryFloatOp::Log => f.host_log(),
+            HostUnaryFloatOp::Log10 => f.host_log10(),
+            HostUnaryFloatOp::Log2 => f.host_log2(),
+        };
+
+        // Apply a relative error of 4ULP to introduce some non-determinism
+        // simulating imprecise implementations and optimizations.
+        let res = math::apply_random_float_error_ulp(this, res, 4);
+
+        // Clamp the result to the guaranteed range of this function according to the C standard,
+        // if any.
+        math::clamp_float_value(name, res)
+    });
+
+    let res = this.adjust_nan(res, &[f]);
+    this.write_scalar(res, dest)?;
+    interp_ok(())
+}
 
 /// Extend functionality of `rustc_apfloat` softfloats for IEEE float types.
 pub trait IeeeExt: rustc_apfloat::Float {
