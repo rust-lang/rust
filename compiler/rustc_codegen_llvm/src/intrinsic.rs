@@ -1945,7 +1945,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let ty::Float(f) = in_elem.kind() else {
-            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
 
