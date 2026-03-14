@@ -51,7 +51,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
     /// other usecases (i.e. setting the value of a type var).
     #[instrument(level = "debug", skip(self, relation))]
-    pub fn instantiate_ty_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
+    pub fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -61,29 +61,56 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
 
-        // Generalize `source_ty` depending on the current variance. As an example, assume
-        // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
-        // variable.
-        //
-        // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
-        // region/type inference variables.
-        //
-        // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
-        // `?1 <: ?3`.
-        let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
-            relation.span(),
-            relation.structurally_relate_aliases(),
-            target_vid,
-            instantiation_variance,
-            source_ty,
-        )?;
+        let generalized_ty = if self.next_trait_solver()
+            && matches!(relation.structurally_relate_aliases(), StructurallyRelateAliases::No)
+            && let ty::Alias(_, alias) = source_ty.kind()
+        {
+            let normalized_alias = relation.try_eagerly_normalize_alias(*alias);
 
-        // Constrain `b_vid` to the generalized type `generalized_ty`.
-        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
-            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
+            if normalized_alias.is_ty_var() {
+                normalized_alias
+            } else {
+                let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+                    relation.span(),
+                    GeneralizerState::ShallowStructurallyRelateAliases,
+                    target_vid,
+                    instantiation_variance,
+                    normalized_alias,
+                    &mut |alias| relation.try_eagerly_normalize_alias(alias),
+                )?;
+
+                // The only way to get a tyvar back is if the outermost type is an alias.
+                // However, here, though we know it *is* an alias, we initialize the generalizer
+                // with `ShallowStructurallyRelateAliases` so we treat the outermost alias as rigid,
+                // ensuring this is never a tyvar.
+                assert!(!generalized_ty.is_ty_var());
+
+                generalized_ty
+            }
         } else {
-            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
-        }
+            // Generalize `source_ty` depending on the current variance. As an example, assume
+            // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
+            // variable.
+            //
+            // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
+            // region/type inference variables.
+            //
+            // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
+            // `?1 <: ?3`.
+            let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+                relation.span(),
+                match relation.structurally_relate_aliases() {
+                    StructurallyRelateAliases::No => GeneralizerState::Default,
+                    StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+                },
+                target_vid,
+                instantiation_variance,
+                source_ty,
+                &mut |alias| relation.try_eagerly_normalize_alias(alias),
+            )?;
+
+            generalized_ty
+        };
 
         // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
         //
@@ -91,7 +118,10 @@ impl<'tcx> InferCtxt<'tcx> {
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
-        if generalized_ty.is_ty_var() {
+        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
+            // Constrain `b_vid` to the generalized type variable.
+            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
+
             // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
             // We can't instantiate `?0` here as that would result in a
             // cyclic type. We instead delay the unification in case
@@ -132,6 +162,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         } else {
+            // Constrain `b_vid` to the generalized type `generalized_ty`.
+            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
+
             // NOTE: The `instantiation_variance` is not the same variance as
             // used by the relation. When instantiating `b`, `target_is_expected`
             // is flipped and the `instantiation_variance` is also flipped. To
@@ -206,10 +239,14 @@ impl<'tcx> InferCtxt<'tcx> {
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct } = self.generalize(
             relation.span(),
-            relation.structurally_relate_aliases(),
+            match relation.structurally_relate_aliases() {
+                StructurallyRelateAliases::No => GeneralizerState::Default,
+                StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+            },
             target_vid,
             ty::Invariant,
             source_ct,
+            &mut |alias| relation.try_eagerly_normalize_alias(alias),
         )?;
 
         debug_assert!(!generalized_ct.is_ct_infer());
@@ -245,10 +282,11 @@ impl<'tcx> InferCtxt<'tcx> {
     fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
         &self,
         span: Span,
-        structurally_relate_aliases: StructurallyRelateAliases,
+        initial_state: GeneralizerState,
         target_vid: impl Into<TermVid>,
         ambient_variance: ty::Variance,
         source_term: T,
+        normalize: &mut dyn FnMut(ty::AliasTy<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Generalization<T>> {
         assert!(!source_term.has_escaping_bound_vars());
         let (for_universe, root_vid) = match target_vid.into() {
@@ -264,13 +302,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut generalizer = Generalizer {
             infcx: self,
             span,
-            structurally_relate_aliases,
             root_vid,
             for_universe,
             root_term: source_term.into(),
             ambient_variance,
-            in_alias: false,
+            state: initial_state,
             cache: Default::default(),
+            normalize,
         };
 
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
@@ -317,6 +355,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum GeneralizerState {
+    /// Treat aliases as potentially normalizable.
+    Default,
+    IncompletelyRelateHigherRankedAlias,
+    /// Only one layer
+    ShallowStructurallyRelateAliases,
+    StructurallyRelateAliases,
+}
+
 /// The "generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
@@ -334,10 +382,6 @@ struct Generalizer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
 
     span: Span,
-
-    /// Whether aliases should be related structurally. If not, we have to
-    /// be careful when generalizing aliases.
-    structurally_relate_aliases: StructurallyRelateAliases,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
@@ -361,9 +405,13 @@ struct Generalizer<'me, 'tcx> {
     /// This is necessary to correctly handle
     /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
     /// hold by either normalizing the outer or the inner associated type.
-    in_alias: bool,
+    state: GeneralizerState,
 
-    cache: SsoHashMap<(Ty<'tcx>, ty::Variance, bool), Ty<'tcx>>,
+    cache: SsoHashMap<(Ty<'tcx>, ty::Variance, GeneralizerState), Ty<'tcx>>,
+
+    /// Normalize an alias in the trait solver.
+    /// If normalization fails, a fresh infer var is returned.
+    normalize: &'me mut dyn FnMut(ty::AliasTy<'tcx>) -> Ty<'tcx>,
 }
 
 impl<'tcx> Generalizer<'_, 'tcx> {
@@ -399,27 +447,51 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     ///   continue generalizing the alias. This ends up pulling down the universe of the
     ///   inference variable and is incomplete in case the alias would normalize to a type
     ///   which does not mention that inference variable.
-    fn generalize_alias_ty(
+    fn handle_alias_ty(
         &mut self,
+        alias_ty: Ty<'tcx>,
         alias: ty::AliasTy<'tcx>,
     ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
-        // We do not eagerly replace aliases with inference variables if they have
-        // escaping bound vars, see the method comment for details. However, when we
-        // are inside of an alias with escaping bound vars replacing nested aliases
-        // with inference variables can cause incorrect ambiguity.
-        //
-        // cc trait-system-refactor-initiative#110
-        if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
-            return Ok(self.next_ty_var_for_alias());
+        match self.state {
+            GeneralizerState::ShallowStructurallyRelateAliases => {
+                // We can switch back to default, we've treated one layer as rigid by doing this operation.
+                self.state = GeneralizerState::Default;
+                let res = relate::structurally_relate_tys(self, alias_ty, alias_ty);
+                self.state = GeneralizerState::ShallowStructurallyRelateAliases;
+                return res;
+            }
+            GeneralizerState::StructurallyRelateAliases => {
+                return relate::structurally_relate_tys(self, alias_ty, alias_ty);
+            }
+            GeneralizerState::Default
+                if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() =>
+            {
+                // We do not eagerly replace aliases with inference variables if they have
+                // escaping bound vars, see the method comment for details. However, when we
+                // are inside of an alias with escaping bound vars replacing nested aliases
+                // with inference variables can cause incorrect ambiguity.
+                //
+                // cc trait-system-refactor-initiative#110
+                let normalized_alias = (self.normalize)(alias);
+
+                self.state = GeneralizerState::ShallowStructurallyRelateAliases;
+                // recursively generalize, treat the outer alias as rigid to avoid infinite recursion
+                let res = self.relate(normalized_alias, normalized_alias);
+
+                // only one way to get here
+                self.state = GeneralizerState::Default;
+
+                return res;
+            }
+            GeneralizerState::Default | GeneralizerState::IncompletelyRelateHigherRankedAlias => {}
         }
 
-        let is_nested_alias = mem::replace(&mut self.in_alias, true);
+        let previous_state =
+            mem::replace(&mut self.state, GeneralizerState::IncompletelyRelateHigherRankedAlias);
         let result = match self.relate(alias, alias) {
             Ok(alias) => Ok(alias.to_ty(self.cx())),
-            Err(e) => {
-                if is_nested_alias {
-                    return Err(e);
-                } else {
+            Err(e) => match previous_state {
+                GeneralizerState::Default => {
                     let mut visitor = MaxUniverse::new();
                     alias.visit_with(&mut visitor);
                     let infer_replacement_is_complete =
@@ -432,9 +504,14 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     debug!("generalization failure in alias");
                     Ok(self.next_ty_var_for_alias())
                 }
-            }
+                GeneralizerState::IncompletelyRelateHigherRankedAlias => return Err(e),
+
+                // Early return.
+                GeneralizerState::ShallowStructurallyRelateAliases
+                | GeneralizerState::StructurallyRelateAliases => unreachable!(),
+            },
         };
-        self.in_alias = is_nested_alias;
+        self.state = previous_state;
         result
     }
 }
@@ -488,7 +565,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
-        if let Some(&result) = self.cache.get(&(t, self.ambient_variance, self.in_alias)) {
+        if let Some(&result) = self.cache.get(&(t, self.ambient_variance, self.state)) {
             return Ok(result);
         }
 
@@ -536,26 +613,36 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // of each other. This is currently only used for diagnostics.
                             // To see why, see the docs in the `type_variables` module.
                             inner.type_variables().sub_unify(vid, new_var_id);
-                            // If we're in the new solver and create a new inference
-                            // variable inside of an alias we eagerly constrain that
-                            // inference variable to prevent unexpected ambiguity errors.
-                            //
-                            // This is incomplete as it pulls down the universe of the
-                            // original inference variable, even though the alias could
-                            // normalize to a type which does not refer to that type at
-                            // all. I don't expect this to cause unexpected errors in
-                            // practice.
-                            //
-                            // We only need to do so for type and const variables, as
-                            // region variables do not impact normalization, and will get
-                            // correctly constrained by `AliasRelate` later on.
-                            //
-                            // cc trait-system-refactor-initiative#108
-                            if self.infcx.next_trait_solver()
-                                && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
-                                && self.in_alias
-                            {
-                                inner.type_variables().equate(vid, new_var_id);
+
+                            match self.state {
+                                GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+                                    if self.infcx.next_trait_solver()
+                                        && !matches!(
+                                            self.infcx.typing_mode(),
+                                            TypingMode::Coherence
+                                        )
+                                    {
+                                        // If we're in the new solver and create a new inference
+                                        // variable inside of an alias we eagerly constrain that
+                                        // inference variable to prevent unexpected ambiguity errors.
+                                        //
+                                        // This is incomplete as it pulls down the universe of the
+                                        // original inference variable, even though the alias could
+                                        // normalize to a type which does not refer to that type at
+                                        // all. I don't expect this to cause unexpected errors in
+                                        // practice.
+                                        //
+                                        // We only need to do so for type and const variables, as
+                                        // region variables do not impact normalization, and will get
+                                        // correctly constrained by `AliasRelate` later on.
+                                        //
+                                        // cc trait-system-refactor-initiative#108
+                                        inner.type_variables().equate(vid, new_var_id);
+                                    }
+                                }
+                                GeneralizerState::Default
+                                | GeneralizerState::ShallowStructurallyRelateAliases
+                                | GeneralizerState::StructurallyRelateAliases => {}
                             }
 
                             debug!("replacing original vid={:?} with new={:?}", vid, new_var_id);
@@ -584,15 +671,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(_, data) => match self.structurally_relate_aliases {
-                StructurallyRelateAliases::No => self.generalize_alias_ty(data),
-                StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
-            },
+            ty::Alias(_, data) => self.handle_alias_ty(t, data),
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
 
-        self.cache.insert((t, self.ambient_variance, self.in_alias), g);
+        self.cache.insert((t, self.ambient_variance, self.state), g);
         Ok(g)
     }
 
@@ -679,13 +763,22 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 })
                                 .vid;
 
-                            // See the comment for type inference variables
-                            // for more details.
-                            if self.infcx.next_trait_solver()
-                                && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
-                                && self.in_alias
-                            {
-                                variable_table.union(vid, new_var_id);
+                            match self.state {
+                                GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+                                    // See the comment for type inference variables
+                                    // for more details.
+                                    if self.infcx.next_trait_solver()
+                                        && !matches!(
+                                            self.infcx.typing_mode(),
+                                            TypingMode::Coherence
+                                        )
+                                    {
+                                        variable_table.union(vid, new_var_id);
+                                    }
+                                }
+                                GeneralizerState::Default
+                                | GeneralizerState::ShallowStructurallyRelateAliases
+                                | GeneralizerState::StructurallyRelateAliases => {}
                             }
                             Ok(ty::Const::new_var(self.cx(), new_var_id))
                         }
