@@ -944,6 +944,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     visit_subpat(self, subpattern, user_tys, f);
                 }
             }
+            PatKind::Guard { ref subpattern, .. } => {
+                visit_subpat(self, subpattern, user_tys, f);
+            }
         }
     }
 }
