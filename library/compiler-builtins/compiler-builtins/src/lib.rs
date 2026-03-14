@@ -70,9 +70,6 @@ pub mod avr;
 #[cfg(target_arch = "hexagon")]
 pub mod hexagon;
 
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-pub mod riscv;
-
 #[cfg(target_arch = "x86")]
 pub mod x86;
 
