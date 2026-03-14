@@ -192,10 +192,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::maximum_number_nsz_f16
             | sym::maximum_number_nsz_f32
             | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128
-                // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
-                if crate::llvm_util::get_version() >= (22, 0, 0) =>
-            {
+            | sym::maximum_number_nsz_f128 => {
                 let intrinsic_name = if name.as_str().starts_with("min") {
                     "llvm.minimumnum"
                 } else {
