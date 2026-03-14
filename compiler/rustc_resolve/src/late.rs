@@ -4893,6 +4893,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 segment_name,
                 error_implied_by_parse_error: _,
                 message,
+                note: _,
             } => {
                 return Err(respan(
                     span,
