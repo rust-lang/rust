@@ -1,8 +1,8 @@
 error[E0432]: unresolved import `foo::f`
-  --> $DIR/issue-38293.rs:7:14
+  --> $DIR/issue-38293.rs:7:10
    |
 LL | use foo::f::{self};
-   |              ^^^^ no `f` in `foo`
+   |          ^ expected type, found function `f` in `foo`
 
 error[E0423]: expected function, found module `baz`
   --> $DIR/issue-38293.rs:16:5
