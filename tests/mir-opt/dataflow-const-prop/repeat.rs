@@ -12,8 +12,6 @@ fn main() {
     // CHECK-NOT: {{_.*}} = PtrMetadata(
     // CHECK-NOT: {{_.*}} = Lt(
     // CHECK: {{_.*}} = const 2_usize;
-    // CHECK: {{_.*}} = const true;
-    // CHECK: assert(const true
 
     // CHECK-NOT: [[t:_.*]] = {{copy|move}} [[array_lit]][_
     // CHECK: [[t:_.*]] = copy [[array_lit]][2 of 3];

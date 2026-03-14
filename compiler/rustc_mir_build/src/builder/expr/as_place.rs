@@ -3,12 +3,13 @@
 use std::{assert_matches, iter};
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_ast::{IntTy, LitKind, UintTy};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
@@ -639,18 +640,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let index_lifetime = self.region_scope_tree.temporary_scope(self.thir[index].temp_scope_id);
         let idx = unpack!(block = self.as_temp(block, index_lifetime, index, Mutability::Not));
 
-        block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
+        let slice = base_place.to_place(self);
+
+        if self.should_skip_bounds_check(slice, index) {
+            self.cfg.push_fake_read(block, source_info, FakeReadCause::ForIndex, slice);
+        } else {
+            block = self.bounds_check(block, slice, idx, expr_span, source_info);
+        }
 
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            self.add_fake_borrows_of_base(
-                base_place.to_place(self),
-                block,
-                fake_borrow_temps,
-                expr_span,
-                source_info,
-            );
+            self.add_fake_borrows_of_base(slice, block, fake_borrow_temps, expr_span, source_info);
         }
 
         block.and(base_place.index(idx))
@@ -722,13 +723,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bounds_check(
         &mut self,
         block: BasicBlock,
-        slice: &PlaceBuilder<'tcx>,
+        slice: Place<'tcx>,
         index: Local,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BasicBlock {
-        let slice = slice.to_place(self);
-
         // len = len(slice)
         let len = self.len_of_slice_or_array(block, slice, expr_span, source_info);
 
@@ -748,6 +747,52 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // assert!(lt, "...")
         self.assert(block, Operand::Move(lt), true, msg, expr_span)
+    }
+
+    fn should_skip_bounds_check(&self, slice: Place<'tcx>, index: ExprId) -> bool {
+        let slice_ty = slice.ty(&self.local_decls, self.tcx);
+        fn check_kind<'tcx>(
+            thir: &Thir<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            source: ExprId,
+            array_len: u128,
+            array_ty: Ty<'tcx>,
+        ) -> bool {
+            match thir[source].kind {
+                ExprKind::Cast { source } => match thir[source].ty.kind() {
+                    ty::Int(int_ty) => match int_ty {
+                        IntTy::I8 => (i8::MAX as u128) < array_len,
+                        IntTy::I16 => (i16::MAX as u128) < array_len,
+                        IntTy::I32 => (i32::MAX as u128) < array_len,
+                        IntTy::I64 => (i64::MAX as u128) < array_len,
+                        IntTy::Isize => (isize::MAX as u128) < array_len,
+                        IntTy::I128 => false,
+                    },
+                    ty::Uint(uint_ty) => match uint_ty {
+                        UintTy::U8 => (u8::MAX as u128) < array_len,
+                        UintTy::U16 => (u16::MAX as u128) < array_len,
+                        UintTy::U32 => (u32::MAX as u128) < array_len,
+                        UintTy::U64 => (u64::MAX as u128) < array_len,
+                        UintTy::Usize => (usize::MAX as u128) < array_len,
+                        UintTy::U128 => false,
+                    },
+                    _ => false,
+                },
+                ExprKind::Scope { value, .. } => check_kind(thir, tcx, value, array_len, array_ty),
+                ExprKind::Literal { lit, .. } if let LitKind::Int(num, _) = lit.node => {
+                    num.get() < array_len as u128
+                }
+                _ => false,
+            }
+        }
+
+        let ty::Array(_, const_array_len) = slice_ty.ty.kind() else { return false };
+
+        let Some(array_len) = const_array_len.try_to_target_usize(self.tcx) else {
+            return false;
+        };
+
+        check_kind(&self.thir, self.tcx, index, array_len as u128, slice_ty.ty)
     }
 
     fn add_fake_borrows_of_base(

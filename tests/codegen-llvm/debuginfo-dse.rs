@@ -135,9 +135,9 @@ fn direct(
     let ref_scalar = &scalar;
     // CHECK-NEXT: #dbg_value(ptr poison, [[ref_scalar_ref:![0-9]+]], !DIExpression()
     let ref_scalar_ref = &scalar_ref;
-    // CHECK-NEXT: #dbg_value(ptr %array_ref, [[ref_0_array_ref:![0-9]+]], !DIExpression()
+    // CHECK-NEXT: #dbg_value(ptr poison, [[ref_0_array_ref:![0-9]+]], !DIExpression()
     let ref_0_array_ref = &array_ref[0];
-    // CHECK-NEXT: #dbg_value(ptr %array_ref, [[ref_1_array_ref:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 4, DW_OP_stack_value)
+    // CHECK-NEXT: #dbg_value(ptr poison, [[ref_1_array_ref:![0-9]+]], !DIExpression()
     let ref_1_array_ref = &array_ref[1];
     // CHECK-NEXT: #dbg_value(ptr %aggregate_4xi8_ref, [[ref_1_aggregate_4xi8_ref:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)
     let ref_1_aggregate_4xi8_ref = &aggregate_4xi8_ref.1;
@@ -179,7 +179,7 @@ fn indirect(
     let ref_tuple_sliceref_scalar = &tuple_sliceref_scalar;
     // CHECK-NEXT: #dbg_value(ptr %tuple_sliceref_scalar, [[ref_1_tuple_sliceref_scalar:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 16, DW_OP_stack_value)
     let ref_1_tuple_sliceref_scalar = &tuple_sliceref_scalar.1;
-    // CHECK-NEXT: #dbg_value(ptr %array, [[ref_1_array:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 4, DW_OP_stack_value)
+    // CHECK-NEXT: #dbg_value(ptr poison, [[ref_1_array:![0-9]+]], !DIExpression()
     let ref_1_array = &array[1];
     // CHECK-NEXT: #dbg_value(ptr %typle_i32_i64_i8, [[ref_1_typle_i32_i64_i8:![0-9]+]], !DIExpression()
     let ref_1_typle_i32_i64_i8 = &typle_i32_i64_i8.1;
