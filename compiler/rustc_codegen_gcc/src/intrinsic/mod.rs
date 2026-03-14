@@ -169,12 +169,8 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
 ) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
-    let f128_type = cx.type_f128();
     let func_name = match name {
+        _ if !cx.supports_f128_type => return None,
         sym::ceilf128 => "ceilf128",
         sym::fabsf128 => "fabsf128",
         sym::floorf128 => "floorf128",
@@ -184,6 +180,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
         sym::sqrtf128 => "sqrtf128",
         _ => return None,
     };
+    let f128_type = cx.type_f128();
     Some(cx.context.new_function(
         None,
         FunctionType::Extern,
@@ -198,17 +195,14 @@ fn get_simple_function_f128_2args<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
 ) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
-    let f128_type = cx.type_f128();
     let func_name = match name {
+        _ if !cx.supports_f128_type => return None,
         sym::maxnumf128 => "fmaxf128",
         sym::minnumf128 => "fminf128",
         sym::copysignf128 => "copysignf128",
         _ => return None,
     };
+    let f128_type = cx.type_f128();
     Some(cx.context.new_function(
         None,
         FunctionType::Extern,
