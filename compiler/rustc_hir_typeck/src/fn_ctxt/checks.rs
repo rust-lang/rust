@@ -823,7 +823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // already caused an error message and probably a suggestion
                     // elsewhere. Refrain from emitting more unhelpful errors here
                     // (issue #88844).
-                    guar
+                    guar.0
                 }
                 _ => struct_span_code_err!(
                     self.dcx(),

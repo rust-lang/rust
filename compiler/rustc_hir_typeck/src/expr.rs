@@ -1595,7 +1595,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::HigherRankedType,
                         binder.into(),
                     ),
-                    ty::Error(e) => Ty::new_error(self.tcx, e),
+                    ty::Error(e) => Ty::new_error(self.tcx, e.0),
                     _ => {
                         let guar = self
                             .dcx()
@@ -1632,7 +1632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::HigherRankedType,
                         binder.into(),
                     ),
-                    ty::Error(e) => Ty::new_error(self.tcx, e),
+                    ty::Error(e) => Ty::new_error(self.tcx, e.0),
                     _ => {
                         let guar = self
                             .dcx()
