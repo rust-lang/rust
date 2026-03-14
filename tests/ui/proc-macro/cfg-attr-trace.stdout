@@ -1,5 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): #[test_macros::print_attr] struct S;
-PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[test_macros :: print_attr] struct S;
+PRINT-ATTR INPUT (DISPLAY): #[test_macros :: print_attr] struct S;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
