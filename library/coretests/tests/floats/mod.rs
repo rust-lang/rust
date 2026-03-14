@@ -792,13 +792,13 @@ float_test! {
         assert_biteq!((-Float::MAX).midpoint(Float::MIN_POSITIVE), -Float::MAX / 2.);
         assert_biteq!(Float::MAX.midpoint(-Float::MIN_POSITIVE), Float::MAX / 2.);
         assert_biteq!((-Float::MAX).midpoint(-Float::MIN_POSITIVE), -Float::MAX / 2.);
-        assert_biteq!((Float::MIN_POSITIVE).midpoint(Float::MAX), Float::MAX / 2.);
-        assert_biteq!((Float::MIN_POSITIVE).midpoint(-Float::MAX), -Float::MAX / 2.);
+        assert_biteq!(Float::MIN_POSITIVE.midpoint(Float::MAX), Float::MAX / 2.);
+        assert_biteq!(Float::MIN_POSITIVE.midpoint(-Float::MAX), -Float::MAX / 2.);
         assert_biteq!((-Float::MIN_POSITIVE).midpoint(Float::MAX), Float::MAX / 2.);
         assert_biteq!((-Float::MIN_POSITIVE).midpoint(-Float::MAX), -Float::MAX / 2.);
         assert_biteq!(Float::MAX.midpoint(Float::MAX), Float::MAX);
         assert_biteq!(
-            (Float::MIN_POSITIVE).midpoint(Float::MIN_POSITIVE),
+            Float::MIN_POSITIVE.midpoint(Float::MIN_POSITIVE),
             Float::MIN_POSITIVE
         );
         assert_biteq!(
@@ -1197,7 +1197,7 @@ float_test! {
         assert_biteq!((-Float::MAX_SUBNORMAL).next_down(), -Float::MIN_POSITIVE_NORMAL);
         assert_biteq!((-Float::TINY).next_down(), -Float::TINY_UP);
         assert_biteq!((-Float::ZERO).next_down(), -Float::TINY);
-        assert_biteq!((Float::ZERO).next_down(), -Float::TINY);
+        assert_biteq!(Float::ZERO.next_down(), -Float::TINY);
         assert_biteq!(Float::TINY.next_down(), Float::ZERO);
         assert_biteq!(Float::TINY_UP.next_down(), Float::TINY);
         assert_biteq!(Float::MIN_POSITIVE_NORMAL.next_down(), Float::MAX_SUBNORMAL);
