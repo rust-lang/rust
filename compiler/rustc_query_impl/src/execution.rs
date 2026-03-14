@@ -18,9 +18,9 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
-use crate::for_each_query_vtable;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
+use crate::query_impl::for_each_query_vtable;
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
