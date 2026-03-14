@@ -10,6 +10,11 @@ error[E0282]: type annotations needed
 LL |     S.f(42);
    |       ^ cannot infer type of the type parameter `B` declared on the method `f`
    |
+note: type must be known for type parameter in this
+  --> $DIR/useless-turbofish-suggestion.rs:13:5
+   |
+LL |     fn f<A, B>(self, _a: A) -> B {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider specifying the generic arguments
    |
 LL |     S.f::<i32, B>(42);

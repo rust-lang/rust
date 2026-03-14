@@ -4,6 +4,8 @@ error[E0282]: type annotations needed for `Vec<_>`
 LL |     let mut x = Vec::new();
    |         ^^^^^   ---------- type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let mut x: Vec<T> = Vec::new();

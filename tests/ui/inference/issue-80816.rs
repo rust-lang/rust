@@ -22,7 +22,7 @@ impl<T> Deref for DirectDeref<Arc<T>> {
     }
 }
 
-pub trait Access<T> {
+pub trait Access<T> { //~ NOTE: type must be known for type parameter in this
     type Guard: Deref<Target = T>;
     fn load(&self) -> Self::Guard {
         unimplemented!()
@@ -30,7 +30,7 @@ pub trait Access<T> {
 }
 impl<T, A: Access<T>, P: Deref<Target = A>> Access<T> for P {
     //~^ NOTE: required for `Arc<ArcSwapAny<Arc<usize>>>` to implement `Access<_>`
-    //~| NOTE unsatisfied trait bound introduced here
+    //~| NOTE: unsatisfied trait bound introduced here
     type Guard = A::Guard;
 }
 impl<T> Access<T> for ArcSwapAny<T> {

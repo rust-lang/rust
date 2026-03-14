@@ -3,6 +3,12 @@ error[E0282]: type annotations needed
    |
 LL |     ().foo(|| ())
    |        ^^^ cannot infer type for type parameter `T` declared on the trait `Foo`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/fully-qualified-path-impl-trait.rs:1:1
+   |
+LL | trait Foo<T> {
+   | ^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

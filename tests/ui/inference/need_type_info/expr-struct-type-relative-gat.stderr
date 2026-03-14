@@ -3,6 +3,12 @@ error[E0282]: type annotations needed
    |
 LL |         Self::Output::Simple {};
    |         ^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the associated type `Output`
+   |
+note: type must be known for type parameter in this
+  --> $DIR/expr-struct-type-relative-gat.rs:2:5
+   |
+LL |     type Output<T>;
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

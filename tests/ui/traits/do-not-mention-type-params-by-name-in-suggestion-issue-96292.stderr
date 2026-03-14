@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     thing.method(42);
    |           ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:3:1
+   |
+LL | trait Method<T> {
+   | ^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `Thing<bool>: Method<_>` found
   --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:7:1
    |

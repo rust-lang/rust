@@ -6,6 +6,11 @@ LL |     if false { is_trait(foo()) } else { Default::default() }
    |                |
    |                cannot infer type of the type parameter `U` declared on the function `is_trait`
    |
+note: type must be known for type parameter in this
+  --> $DIR/auto-trait-selection-freeze.rs:11:1
+   |
+LL | fn is_trait<T: Trait<U>, U: Default>(_: T) -> U {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: multiple `impl`s satisfying `impl Sized: Trait<_>` found
   --> $DIR/auto-trait-selection-freeze.rs:16:1
    |

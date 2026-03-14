@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     Foo.bar().bar().bar().bar().baz();
    |                                 ^^^ cannot infer the value of the const parameter `N` declared on the method `baz`
    |
+note: type must be known for type parameter in this
+  --> $DIR/method-chain.rs:8:5
+   |
+LL |     fn baz<const N: usize>(self) -> Foo {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a const generic parameter in `Foo::baz`
   --> $DIR/method-chain.rs:8:12
    |

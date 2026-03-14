@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     0u16.foo(b);
    |          ^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/type-inference-for-associated-types-69683.rs:14:1
+   |
+LL | trait Foo<I>
+   | ^^^^^^^^^^^^
    = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
 help: try using a fully qualified path to specify the expected types
    |
@@ -17,6 +22,11 @@ error[E0283]: type annotations needed
 LL |     0u16.foo(b);
    |          ^^^
    |
+note: type must be known for type parameter in this
+  --> $DIR/type-inference-for-associated-types-69683.rs:14:1
+   |
+LL | trait Foo<I>
+   | ^^^^^^^^^^^^
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/type-inference-for-associated-types-69683.rs:6:1
    |

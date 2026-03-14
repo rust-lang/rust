@@ -6,6 +6,11 @@ LL |     let _ = foo([0; 1]);
    |             |
    |             required by a bound introduced by this call
    |
+note: type must be known for type parameter in this
+  --> $DIR/issue-83249.rs:12:1
+   |
+LL | fn foo<T: Foo>(_: [u8; T::N]) -> T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: cannot satisfy `_: Foo`
 help: the trait `Foo` is implemented for `u8`
   --> $DIR/issue-83249.rs:8:1

@@ -6,6 +6,12 @@ LL |     test(22, std::default::Default::default());
    |     |
    |     cannot infer type of the type parameter `U` declared on the function `test`
    |
+note: type must be known for type parameter in this
+  --> $DIR/multidispatch-convert-ambig-dest.rs:20:1
+   |
+LL | / fn test<T,U>(_: T, _: U)
+LL | | where T : Convert<U>
+   | |____________________^
 note: multiple `impl`s satisfying `i32: Convert<_>` found
   --> $DIR/multidispatch-convert-ambig-dest.rs:8:1
    |

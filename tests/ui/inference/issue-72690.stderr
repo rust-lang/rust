@@ -14,6 +14,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -42,6 +44,8 @@ error[E0283]: type annotations needed
 LL |     |x| String::from("x".as_ref());
    |                          ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -60,6 +64,8 @@ error[E0283]: type annotations needed for `&_`
 LL |     let _ = "x".as_ref();
    |         ^       ------ type must be known at this point
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -87,6 +93,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -115,6 +123,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -143,6 +153,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -171,6 +183,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -199,6 +213,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
@@ -227,6 +243,8 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+note: type must be known for type parameter in this
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
