@@ -138,7 +138,7 @@ impl OsString {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
-    pub const fn new() -> OsString {
+    pub const fn new() -> Self {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
@@ -309,7 +309,7 @@ impl OsString {
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     #[must_use]
     #[inline]
-    pub fn with_capacity(capacity: usize) -> OsString {
+    pub fn with_capacity(capacity: usize) -> Self {
         OsString { inner: Buf::with_capacity(capacity) }
     }
 

@@ -137,7 +137,7 @@ impl<T> OnceLock<T> {
     #[must_use]
     #[stable(feature = "once_cell", since = "1.70.0")]
     #[rustc_const_stable(feature = "once_cell", since = "1.70.0")]
-    pub const fn new() -> OnceLock<T> {
+    pub const fn new() -> Self {
         OnceLock {
             once: Once::new(),
             value: UnsafeCell::new(MaybeUninit::uninit()),

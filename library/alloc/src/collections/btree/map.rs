@@ -648,7 +648,7 @@ impl<K, V> BTreeMap<K, V> {
     #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[inline]
     #[must_use]
-    pub const fn new() -> BTreeMap<K, V> {
+    pub const fn new() -> Self {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
     }
 }
@@ -694,7 +694,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     #[must_use]
-    pub const fn new_in(alloc: A) -> BTreeMap<K, V, A> {
+    pub const fn new_in(alloc: A) -> Self {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }

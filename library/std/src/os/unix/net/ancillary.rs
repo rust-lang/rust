@@ -227,7 +227,7 @@ impl SocketCred {
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     #[must_use]
-    pub fn new() -> SocketCred {
+    pub fn new() -> Self {
         SocketCred(libc::ucred { pid: 0, uid: 0, gid: 0 })
     }
 
@@ -278,7 +278,7 @@ impl SocketCred {
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     #[must_use]
-    pub fn new() -> SocketCred {
+    pub fn new() -> Self {
         SocketCred(libc::sockcred2 {
             sc_version: 0,
             sc_pid: 0,

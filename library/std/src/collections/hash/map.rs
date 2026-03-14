@@ -268,7 +268,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> HashMap<K, V, RandomState> {
+    pub fn new() -> Self {
         Default::default()
     }
 
@@ -287,7 +287,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: usize) -> HashMap<K, V, RandomState> {
+    pub fn with_capacity(capacity: usize) -> Self {
         HashMap::with_capacity_and_hasher(capacity, Default::default())
     }
 }
@@ -360,7 +360,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
-    pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+    pub const fn with_hasher(hash_builder: S) -> Self {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
 
@@ -392,7 +392,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashMap<K, V, S> {
+    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 }

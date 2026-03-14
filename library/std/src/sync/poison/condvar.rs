@@ -61,7 +61,7 @@ impl Condvar {
     #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     #[must_use]
     #[inline]
-    pub const fn new() -> Condvar {
+    pub const fn new() -> Self {
         Condvar { inner: sys::Condvar::new() }
     }
 

@@ -81,7 +81,7 @@ impl Barrier {
     #[rustc_const_stable(feature = "const_barrier", since = "1.78.0")]
     #[must_use]
     #[inline]
-    pub const fn new(n: usize) -> Barrier {
+    pub const fn new(n: usize) -> Self {
         Barrier {
             lock: Mutex::new(BarrierState { count: 0, generation_id: 0 }),
             cvar: Condvar::new(),

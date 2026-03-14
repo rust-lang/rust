@@ -434,7 +434,7 @@ impl String {
     #[rustc_diagnostic_item = "string_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> String {
+    pub const fn new() -> Self {
         String { vec: Vec::new() }
     }
 
@@ -481,7 +481,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> String {
+    pub fn with_capacity(capacity: usize) -> Self {
         String { vec: Vec::with_capacity(capacity) }
     }
 
@@ -681,7 +681,7 @@ impl String {
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
-    pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
+    pub fn from_utf8_lossy_owned(v: Vec<u8>) -> Self {
         if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
             string
         } else {
@@ -752,7 +752,7 @@ impl String {
     #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf16_lossy(v: &[u16]) -> String {
+    pub fn from_utf16_lossy(v: &[u16]) -> Self {
         char::decode_utf16(v.iter().cloned())
             .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
             .collect()
@@ -1010,7 +1010,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> Self {
         String { vec: bytes }
     }
 

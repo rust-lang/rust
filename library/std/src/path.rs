@@ -1229,7 +1229,7 @@ impl PathBuf {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
-    pub const fn new() -> PathBuf {
+    pub const fn new() -> Self {
         PathBuf { inner: OsString::new() }
     }
 
@@ -1254,7 +1254,7 @@ impl PathBuf {
     #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     #[must_use]
     #[inline]
-    pub fn with_capacity(capacity: usize) -> PathBuf {
+    pub fn with_capacity(capacity: usize) -> Self {
         PathBuf { inner: OsString::with_capacity(capacity) }
     }
 

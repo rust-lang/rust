@@ -652,7 +652,7 @@ impl Error {
     #[doc(alias = "errno")]
     #[must_use]
     #[inline]
-    pub fn last_os_error() -> Error {
+    pub fn last_os_error() -> Self {
         Error::from_raw_os_error(sys::io::errno())
     }
 
@@ -684,7 +684,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn from_raw_os_error(code: RawOsError) -> Error {
+    pub fn from_raw_os_error(code: RawOsError) -> Self {
         Error { repr: Repr::new_os(code) }
     }
 

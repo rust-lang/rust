@@ -3214,7 +3214,7 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
-    pub const fn new() -> Weak<T> {
+    pub const fn new() -> Self {
         Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }
     }
 }

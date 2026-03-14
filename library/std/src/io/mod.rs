@@ -1538,7 +1538,7 @@ impl<'a> IoSlice<'a> {
     #[stable(feature = "iovec", since = "1.36.0")]
     #[must_use]
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+    pub fn new(buf: &'a [u8]) -> Self {
         IoSlice(sys::io::IoSlice::new(buf))
     }
 

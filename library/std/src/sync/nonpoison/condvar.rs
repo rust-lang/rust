@@ -64,7 +64,7 @@ impl Condvar {
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     #[must_use]
     #[inline]
-    pub const fn new() -> Condvar {
+    pub const fn new() -> Self {
         Condvar { inner: sys::Condvar::new() }
     }
 
