@@ -1045,6 +1045,9 @@ impl Step for OmpOffload {
                 let inc_dir = base.display();
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
+            cflags.push_all(
+                " -ULIBC_NAMESPACE -DLIBC_NAMESPACE=__llvm_libc_22_1_0_rust1_95_0nightly",
+            );
 
             configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
 
@@ -1068,6 +1071,10 @@ impl Step for OmpOffload {
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
                 .define("LLVM_DIR", llvm_cmake_dir.clone())
+                // FIXME(offload): re-evaluate with LLVM23 if we can drop these three lines
+                //.define("LLVM_ENABLE_PER_TARGET_RUNTIME_DIR", "ON")
+                .define("CMAKE_CXX_COMPILER_WORKS", "TRUE")
+                .define("CMAKE_C_COMPILER_WORKS", "TRUE")
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
@@ -1081,7 +1088,10 @@ impl Step for OmpOffload {
             } else {
                 // OpenMP provides some device libraries, so we also compile it for all gpu targets.
                 cfg.define("LLVM_USE_LINKER", "lld");
-                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
+                cfg.define("LIBC_INCLUDE_BENCHMARKS", "OFF");
+                cfg.define("LIBC_TARGET_TRIPLE", omp_target);
+                cfg.define("LLVM_LIBC_FULL_BUILD", "ON");
+                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;libc");
                 cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
                 cfg.define("CMAKE_CXX_COMPILER_TARGET", omp_target);
             }
