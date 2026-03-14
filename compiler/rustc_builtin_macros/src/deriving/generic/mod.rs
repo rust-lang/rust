@@ -362,10 +362,6 @@ struct TypeParameter {
 pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<Box<Expr>>);
 
 impl BlockOrExpr {
-    pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
-        BlockOrExpr(stmts, None)
-    }
-
     pub(crate) fn new_expr(expr: Box<Expr>) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
