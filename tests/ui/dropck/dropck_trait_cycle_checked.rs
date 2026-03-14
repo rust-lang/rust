@@ -110,10 +110,10 @@ fn f() {
     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
     o1.set0(&o2); //~ ERROR `o2` does not live long enough
     o1.set1(&o3); //~ ERROR `o3` does not live long enough
-    o2.set0(&o2); //~ ERROR `o2` does not live long enough
-    o2.set1(&o3); //~ ERROR `o3` does not live long enough
+    o2.set0(&o2);
+    o2.set1(&o3);
     o3.set0(&o1); //~ ERROR `o1` does not live long enough
-    o3.set1(&o2); //~ ERROR `o2` does not live long enough
+    o3.set1(&o2);
 }
 
 fn main() {

@@ -6,6 +6,10 @@
 //!   - [`FakeRead`]
 //!   - [`Assign`] statements with a [`Fake`] borrow
 //!   - [`Coverage`] statements of kind [`BlockMarker`] or [`SpanMarker`]
+//!   - [`StorageDead`] statements in cleanup blocks (unwind paths) - these are only needed
+//!     for borrow-checking and are removed from cleanup blocks after borrowck completes.
+//!     StorageDead on normal paths may be needed by later passes (e.g., coroutine transforms)
+//!     and will be conditionally removed by RemoveStorageMarkers during optimization if enabled.
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Assign`]: rustc_middle::mir::StatementKind::Assign
@@ -15,6 +19,7 @@
 //! [`Coverage`]: rustc_middle::mir::StatementKind::Coverage
 //! [`BlockMarker`]: rustc_middle::mir::coverage::CoverageKind::BlockMarker
 //! [`SpanMarker`]: rustc_middle::mir::coverage::CoverageKind::SpanMarker
+//! [`StorageDead`]: rustc_middle::mir::StatementKind::StorageDead
 
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
@@ -28,6 +33,11 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
         // Manually invalidate CFG caches if we actually change a terminator's edges.
         let mut invalidate_cfg = false;
         for basic_block in body.basic_blocks.as_mut_preserves_cfg().iter_mut() {
+            // Only remove StorageDead from cleanup blocks (unwind paths).
+            // StorageDead on normal paths may be needed by later passes (e.g., coroutine
+            // transforms) and may be used by codegen backends. RemoveStorageMarkers will
+            // conditionally remove them during optimization if enabled (when mir_opt_level > 0
+            // and lifetime markers are not being emitted).
             for statement in basic_block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
@@ -39,6 +49,11 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                     )
                     | StatementKind::FakeRead(..)
                     | StatementKind::BackwardIncompatibleDropHint { .. } => {
+                        statement.make_nop(true)
+                    }
+                    StatementKind::StorageDead(..)
+                        if basic_block.is_cleanup && body.coroutine.is_none() =>
+                    {
                         statement.make_nop(true)
                     }
                     StatementKind::Assign(box (
