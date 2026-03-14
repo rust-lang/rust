@@ -330,17 +330,47 @@ impl Duration {
     #[must_use]
     #[inline]
     #[track_caller]
-    #[rustc_allow_const_fn_unstable(const_trait_impl, const_convert)] // for `u64::try_from`
     pub const fn from_nanos_u128(nanos: u128) -> Duration {
-        const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
-        let Ok(secs) = u64::try_from(nanos / NANOS_PER_SEC) else {
-            panic!("overflow in `Duration::from_nanos_u128`");
-        };
-        let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
-        // SAFETY: x % 1_000_000_000 < 1_000_000_000 also, subsec_nanos >= 0 since u128 >=0 and u32 >=0
-        let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
+        match Duration::try_from_nanos_u128(nanos) {
+            Ok(duration) => duration,
+            Err(_) => panic!("overflow in `Duration::from_nanos_u128`"),
+        }
+    }
 
-        Duration { secs: secs as u64, nanos: subsec_nanos }
+    /// The checked version of [`from_nanos_u128`].
+    ///
+    /// [`from_nanos_u128`]: Duration::from_nanos_u128
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_panicking_duration_conversion)]
+    /// use std::time::Duration;
+    ///
+    /// let result = Duration::try_from_nanos_u128(10_u128.pow(24) + 321);
+    /// assert_eq!(result, Ok(Duration::new(10_u64.pow(15), 321)));
+    /// let result = Duration::try_from_nanos_u128(18_446_744_073_709_551_615_999_999_999u128);
+    /// assert_eq!(result, Ok(Duration::new(18_446_744_073_709_551_615, 999_999_999)));
+    /// let result = Duration::try_from_nanos_u128(18_446_744_073_709_551_616_000_000_000u128);
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_stable_indirect]
+    #[inline]
+    pub const fn try_from_nanos_u128(nanos: u128) -> Result<Duration, DurationConversionError> {
+        const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
+
+        let seconds = nanos / NANOS_PER_SEC;
+        if seconds > u64::MAX as u128 {
+            Err(DurationConversionError { kind: DurationConversionErrorKind::NanosecondsOverflow })
+        } else {
+            let subsec_nanos = (nanos % NANOS_PER_SEC) as u32;
+            // SAFETY: x % 1_000_000_000 < 1_000_000_000 also, subsec_nanos >= 0 since u128 >=0 and u32 >=0
+            let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
+
+            Ok(Duration { secs: seconds as u64, nanos: subsec_nanos })
+        }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
@@ -364,11 +394,41 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn from_weeks(weeks: u64) -> Duration {
-        if weeks > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK) {
-            panic!("overflow in Duration::from_weeks");
+        match Duration::try_from_weeks(weeks) {
+            Ok(duration) => duration,
+            Err(_) => panic!("overflow in `Duration::from_weeks`"),
         }
+    }
 
-        Duration::from_secs(weeks * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY * DAYS_PER_WEEK)
+    /// The checked version of [`from_weeks`].
+    ///
+    /// [`from_weeks`]: Duration::from_weeks
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_panicking_duration_conversion)]
+    /// use std::time::Duration;
+    ///
+    /// let result = Duration::try_from_weeks(4);
+    /// assert_eq!(result, Ok(Duration::new(4 * 7 * 24 * 60 * 60, 0)));
+    /// let result = Duration::try_from_weeks(30_500_568_904_943);
+    /// assert_eq!(result, Ok(Duration::new(30_500_568_904_943 * 7 * 24 * 60 * 60, 0)));
+    /// let result = Duration::try_from_weeks(30_500_568_904_944);
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_stable_indirect]
+    #[inline]
+    pub const fn try_from_weeks(weeks: u64) -> Result<Duration, DurationConversionError> {
+        const SECS_PER_WEEK: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK;
+
+        if weeks > u64::MAX / SECS_PER_WEEK {
+            Err(DurationConversionError { kind: DurationConversionErrorKind::WeeksOverflow })
+        } else {
+            Ok(Duration::from_secs(weeks * SECS_PER_WEEK))
+        }
     }
 
     /// Creates a new `Duration` from the specified number of days.
@@ -392,11 +452,41 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn from_days(days: u64) -> Duration {
-        if days > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY) {
-            panic!("overflow in Duration::from_days");
+        match Duration::try_from_days(days) {
+            Ok(duration) => duration,
+            Err(_) => panic!("overflow in `Duration::from_days`"),
         }
+    }
 
-        Duration::from_secs(days * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY)
+    /// The checked version of [`from_days`].
+    ///
+    /// [`from_days`]: Duration::from_days
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_panicking_duration_conversion)]
+    /// use std::time::Duration;
+    ///
+    /// let result = Duration::try_from_days(7);
+    /// assert_eq!(result, Ok(Duration::new(7 * 24 * 60 * 60, 0)));
+    /// let result = Duration::try_from_days(213_503_982_334_601);
+    /// assert_eq!(result, Ok(Duration::new(213_503_982_334_601 * 24 * 60 * 60, 0)));
+    /// let result = Duration::try_from_days(213_503_982_334_602);
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_stable_indirect]
+    #[inline]
+    pub const fn try_from_days(days: u64) -> Result<Duration, DurationConversionError> {
+        const SECS_PER_DAY: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY;
+
+        if days > u64::MAX / SECS_PER_DAY {
+            Err(DurationConversionError { kind: DurationConversionErrorKind::DaysOverflow })
+        } else {
+            Ok(Duration::from_secs(days * SECS_PER_DAY))
+        }
     }
 
     /// Creates a new `Duration` from the specified number of hours.
@@ -420,11 +510,41 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn from_hours(hours: u64) -> Duration {
-        if hours > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR) {
-            panic!("overflow in Duration::from_hours");
+        match Duration::try_from_hours(hours) {
+            Ok(duration) => duration,
+            Err(_) => panic!("overflow in `Duration::from_hours`"),
         }
+    }
 
-        Duration::from_secs(hours * MINS_PER_HOUR * SECS_PER_MINUTE)
+    /// The checked version of [`from_hours`].
+    ///
+    /// [`from_hours`]: Duration::from_hours
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_panicking_duration_conversion)]
+    /// use std::time::Duration;
+    ///
+    /// let result = Duration::try_from_hours(6);
+    /// assert_eq!(result, Ok(Duration::new(6 * 60 * 60, 0)));
+    /// let result = Duration::try_from_hours(5_124_095_576_030_431);
+    /// assert_eq!(result, Ok(Duration::new(5_124_095_576_030_431 * 60 * 60, 0)));
+    /// let result = Duration::try_from_hours(5_124_095_576_030_432);
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_stable_indirect]
+    #[inline]
+    pub const fn try_from_hours(hours: u64) -> Result<Duration, DurationConversionError> {
+        const SECS_PER_HOUR: u64 = SECS_PER_MINUTE * MINS_PER_HOUR;
+
+        if hours > u64::MAX / SECS_PER_HOUR {
+            Err(DurationConversionError { kind: DurationConversionErrorKind::HoursOverflow })
+        } else {
+            Ok(Duration::from_secs(hours * SECS_PER_HOUR))
+        }
     }
 
     /// Creates a new `Duration` from the specified number of minutes.
@@ -448,11 +568,39 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn from_mins(mins: u64) -> Duration {
-        if mins > u64::MAX / SECS_PER_MINUTE {
-            panic!("overflow in Duration::from_mins");
+        match Duration::try_from_mins(mins) {
+            Ok(duration) => duration,
+            Err(_) => panic!("overflow in `Duration::from_mins`"),
         }
+    }
 
-        Duration::from_secs(mins * SECS_PER_MINUTE)
+    /// The checked version of [`from_mins`].
+    ///
+    /// [`from_mins`]: Duration::from_mins
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_panicking_duration_conversion)]
+    /// use std::time::Duration;
+    ///
+    /// let result = Duration::try_from_mins(10);
+    /// assert_eq!(result, Ok(Duration::new(10 * 60, 0)));
+    /// let result = Duration::try_from_mins(307_445_734_561_825_860);
+    /// assert_eq!(result, Ok(Duration::new(307_445_734_561_825_860 * 60, 0)));
+    /// let result = Duration::try_from_mins(307_445_734_561_825_861);
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+    #[rustc_const_stable_indirect]
+    #[inline]
+    pub const fn try_from_mins(mins: u64) -> Result<Duration, DurationConversionError> {
+        if mins > u64::MAX / SECS_PER_MINUTE {
+            Err(DurationConversionError { kind: DurationConversionErrorKind::MinutesOverflow })
+        } else {
+            Ok(Duration::from_secs(mins * SECS_PER_MINUTE))
+        }
     }
 
     /// Returns true if this `Duration` spans no time.
@@ -1511,35 +1659,46 @@ impl fmt::Debug for Duration {
     }
 }
 
-/// An error which can be returned when converting a floating-point value of seconds
-/// into a [`Duration`].
+/// An error which can be returned when converting a number of [`minutes`], [`hours`], [`days`], [`nanoseconds`] (in u128), or an [`f32`]/[`f64`] number of seconds into a [`Duration`].
 ///
-/// This error is used as the error type for [`Duration::try_from_secs_f32`] and
-/// [`Duration::try_from_secs_f64`].
+/// See the linked methods for examples.
 ///
-/// # Example
-///
-/// ```
-/// use std::time::Duration;
-///
-/// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
-///     println!("Failed conversion to Duration: {e}");
-/// }
-/// ```
+/// [`minutes`]: Duration::try_from_mins
+/// [`hours`]: Duration::try_from_hours
+/// [`days`]: Duration::try_from_days
+/// [`nanoseconds`]: Duration::try_from_nanos_u128
+/// [`f32`]: Duration::try_from_secs_f32
+/// [`f64`]: Duration::try_from_secs_f64
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[stable(feature = "duration_checked_float", since = "1.66.0")]
-pub struct TryFromFloatSecsError {
-    kind: TryFromFloatSecsErrorKind,
+#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+#[repr(transparent)]
+pub struct DurationConversionError {
+    kind: DurationConversionErrorKind,
 }
 
-#[stable(feature = "duration_checked_float", since = "1.66.0")]
-impl fmt::Display for TryFromFloatSecsError {
+#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+impl fmt::Display for DurationConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
-            TryFromFloatSecsErrorKind::Negative => {
+            DurationConversionErrorKind::NanosecondsOverflow => {
+                "cannot convert nanoseconds to Duration: value is too big"
+            }
+            DurationConversionErrorKind::WeeksOverflow => {
+                "cannot convert weeks to Duration: value is too big"
+            }
+            DurationConversionErrorKind::DaysOverflow => {
+                "cannot convert days to Duration: value is too big"
+            }
+            DurationConversionErrorKind::HoursOverflow => {
+                "cannot convert hours to Duration: value is too big"
+            }
+            DurationConversionErrorKind::MinutesOverflow => {
+                "cannot convert minutes to Duration: value is too big"
+            }
+            DurationConversionErrorKind::NegativeFloat => {
                 "cannot convert float seconds to Duration: value is negative"
             }
-            TryFromFloatSecsErrorKind::OverflowOrNan => {
+            DurationConversionErrorKind::FloatOverflowOrNan => {
                 "cannot convert float seconds to Duration: value is either too big or NaN"
             }
         }
@@ -1548,12 +1707,35 @@ impl fmt::Display for TryFromFloatSecsError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum TryFromFloatSecsErrorKind {
+enum DurationConversionErrorKind {
+    // The number of nanoseconds would overflow Duration::MAX
+    NanosecondsOverflow,
+    // The number of weeks would overflow Duration::MAX
+    WeeksOverflow,
+    // The number of days would overflow Duration::MAX
+    DaysOverflow,
+    // The number of hours would overflow Duration::MAX
+    HoursOverflow,
+    // The number of minutes would overflow Duration::MAX
+    MinutesOverflow,
     // Value is negative.
-    Negative,
+    NegativeFloat,
     // Value is either too big to be represented as `Duration` or `NaN`.
-    OverflowOrNan,
+    FloatOverflowOrNan,
 }
+
+/// An error which can be returned when converting a number of [`minutes`], [`hours`], [`days`], [`nanoseconds`] (in u128), or an [`f32`]/[`f64`] number of seconds into a [`Duration`].
+///
+/// See the linked methods for examples.
+///
+/// [`minutes`]: Duration::try_from_mins
+/// [`hours`]: Duration::try_from_hours
+/// [`days`]: Duration::try_from_days
+/// [`nanoseconds`]: Duration::try_from_nanos_u128
+/// [`f32`]: Duration::try_from_secs_f32
+/// [`f64`]: Duration::try_from_secs_f64
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+pub type TryFromFloatSecsError = DurationConversionError;
 
 macro_rules! try_from_secs {
     (
@@ -1569,7 +1751,9 @@ macro_rules! try_from_secs {
         const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
 
         if $secs < 0.0 {
-            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::NegativeFloat,
+            });
         }
 
         let bits = $secs.to_bits();
@@ -1628,7 +1812,9 @@ macro_rules! try_from_secs {
             let secs = u64::from(mant) << (exp - $mant_bits);
             (secs, 0)
         } else {
-            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::FloatOverflowOrNan,
+            });
         };
 
         Ok(Duration::new(secs, nanos))
@@ -1693,7 +1879,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[inline]
-    pub fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
+    pub fn try_from_secs_f32(secs: f32) -> Result<Duration, DurationConversionError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 23,
@@ -1769,7 +1955,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[inline]
-    pub fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
+    pub fn try_from_secs_f64(secs: f64) -> Result<Duration, DurationConversionError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 52,
