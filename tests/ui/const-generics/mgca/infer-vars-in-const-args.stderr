@@ -1,0 +1,21 @@
+error[E0741]: `T` can't be used as a const parameter type
+  --> $DIR/infer-vars-in-const-args.rs:11:23
+   |
+LL | struct PC<T, const N: T> {
+   |                       ^
+
+error: inference variables are not supported in constants
+  --> $DIR/infer-vars-in-const-args.rs:5:16
+   |
+LL |     foo::<_, { 2 }>();
+   |                ^
+
+error: inference variables are not supported in constants
+  --> $DIR/infer-vars-in-const-args.rs:7:20
+   |
+LL |     let _: PC<_, { 42 }> = PC { a: 1, b: 1 };
+   |                    ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0741`.
