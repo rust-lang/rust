@@ -261,10 +261,62 @@ pub fn current_exe() -> io::Result<PathBuf> {
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_error!(
-            io::ErrorKind::Uncategorized,
-            "no /proc/self/exe available. Is /proc mounted?",
-        )),
+        Ok(path) => Ok(path),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+            // /proc is not available (e.g., masked in containers, chroot, or unmounted).
+            // Fall back to parsing argv[0] and searching PATH.
+            #[cfg(test)]
+            use realstd::env;
+
+            #[cfg(not(test))]
+            use crate::env;
+
+            let exe_path = env::args_os().next().ok_or_else(|| {
+                io::const_error!(
+                    io::ErrorKind::Uncategorized,
+                    "no /proc/self/exe available and no argv[0] provided",
+                )
+            })?;
+
+            // In test mode, convert from realstd::OsString to local PathBuf via bytes.
+            let path = PathBuf::from(OsStr::from_bytes(exe_path.as_encoded_bytes()));
+
+            // If argv[0] is an absolute path, canonicalize it.
+            if path.is_absolute() {
+                return path.canonicalize();
+            }
+
+            // If argv[0] contains a path separator, it's a relative path.
+            // Join it with the current working directory and canonicalize.
+            if path.as_os_str().as_bytes().contains(&b'/') {
+                return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
+            }
+
+            // argv[0] is just a command name. Search PATH to find the executable.
+            if let Some(path_var) = env::var_os("PATH") {
+                // In test mode, convert from realstd::OsString to local OsStr via bytes.
+                let path_bytes = path_var.as_encoded_bytes();
+                let path_osstr = OsStr::from_bytes(path_bytes);
+                for search_path in split_paths(path_osstr) {
+                    let candidate = search_path.join(&path);
+                    if candidate.is_file() {
+                        if let Ok(metadata) = crate::fs::metadata(&candidate) {
+                            if metadata.permissions().mode() & 0o111 != 0 {
+                                // Canonicalize to resolve symlinks, ensure absolute path,
+                                // and clean up path components (matching AIX behavior).
+                                return candidate.canonicalize();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Could not find the executable in PATH.
+            Err(io::const_error!(
+                io::ErrorKind::NotFound,
+                "no /proc/self/exe available and could not find executable in PATH",
+            ))
+        }
         other => other,
     }
 }
