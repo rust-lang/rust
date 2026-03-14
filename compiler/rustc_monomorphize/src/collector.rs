@@ -441,7 +441,12 @@ fn collect_items_rec<'tcx>(
 
                 if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
                     for &prov in alloc.inner().provenance().ptrs().values() {
-                        collect_alloc(tcx, prov.alloc_id(), &mut used_items);
+                        collect_alloc(
+                            tcx,
+                            prov.alloc_id(),
+                            CollectionMode::UsedItems,
+                            &mut used_items,
+                        );
                     }
                 }
 
@@ -811,7 +816,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, _location: Location) {
         // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
         let Some(val) = self.eval_constant(constant) else { return };
-        collect_const_value(self.tcx, val, self.used_items);
+        collect_const_value(self.tcx, val, CollectionMode::UsedItems, self.used_items);
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
@@ -1256,7 +1261,12 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 }
 
 /// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
-fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
+fn collect_alloc<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alloc_id: AllocId,
+    mode: CollectionMode,
+    output: &mut MonoItems<'tcx>,
+) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
@@ -1273,7 +1283,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             if !ptrs.is_empty() {
                 rustc_data_structures::stack::ensure_sufficient_stack(move || {
                     for &prov in ptrs.values() {
-                        collect_alloc(tcx, prov.alloc_id(), output);
+                        collect_alloc(tcx, prov.alloc_id(), mode, output);
                     }
                 });
             }
@@ -1285,13 +1295,19 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             }
         }
         GlobalAlloc::VTable(ty, dyn_ty) => {
-            let alloc_id = tcx.vtable_allocation((
-                ty,
-                dyn_ty
-                    .principal()
-                    .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
-            ));
-            collect_alloc(tcx, alloc_id, output)
+            // In "mentioned items" mode, skip walking vtable allocations to avoid infinite
+            // recursion when a vtable method's body contains a const that embeds another
+            // vtable (see #141911). Vtable methods are only needed for codegen, not for
+            // error checking. In "used items" mode, we must collect them.
+            if mode == CollectionMode::UsedItems {
+                let alloc_id = tcx.vtable_allocation((
+                    ty,
+                    dyn_ty
+                        .principal()
+                        .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
+                ));
+                collect_alloc(tcx, alloc_id, mode, output)
+            }
         }
         GlobalAlloc::TypeId { .. } => {}
     }
@@ -1350,7 +1366,7 @@ fn collect_items_of_instance<'tcx>(
     // them errors.
     for const_op in body.required_consts() {
         if let Some(val) = collector.eval_constant(const_op) {
-            collect_const_value(tcx, val, &mut mentioned_items);
+            collect_const_value(tcx, val, mode, &mut mentioned_items);
         }
     }
 
@@ -1437,14 +1453,17 @@ fn visit_mentioned_item<'tcx>(
 fn collect_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     value: mir::ConstValue,
+    mode: CollectionMode,
     output: &mut MonoItems<'tcx>,
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
+            collect_alloc(tcx, ptr.provenance.alloc_id(), mode, output)
         }
         mir::ConstValue::Indirect { alloc_id, .. }
-        | mir::ConstValue::Slice { alloc_id, meta: _ } => collect_alloc(tcx, alloc_id, output),
+        | mir::ConstValue::Slice { alloc_id, meta: _ } => {
+            collect_alloc(tcx, alloc_id, mode, output)
+        }
         _ => {}
     }
 }
@@ -1575,7 +1594,7 @@ impl<'v> RootCollector<'_, 'v> {
                     let Ok(val) = self.tcx.const_eval_poly(def_id) else {
                         return;
                     };
-                    collect_const_value(self.tcx, val, self.output);
+                    collect_const_value(self.tcx, val, CollectionMode::UsedItems, self.output);
                 }
             }
             DefKind::Impl { of_trait: true } => {
