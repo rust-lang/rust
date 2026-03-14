@@ -41,6 +41,7 @@ impl<T: Debug + Copy, const N: usize> Debug for PackedSimd<T, N> {
 
 type f16x2 = PackedSimd<f16, 2>;
 type f16x4 = PackedSimd<f16, 4>;
+type f16x8 = PackedSimd<f16, 8>;
 
 type f128x2 = PackedSimd<f128, 2>;
 type f128x4 = PackedSimd<f128, 4>;
@@ -935,7 +936,31 @@ fn simd_float_intrinsics() {
 
     // These are just smoke tests to ensure the intrinsics can be called.
     unsafe {
+        let a = f16x8::splat(10.0);
+        simd_fsqrt(a);
+        simd_fsin(a);
+        simd_fcos(a);
+        simd_fexp(a);
+        simd_fexp2(a);
+        simd_flog(a);
+        simd_flog2(a);
+        simd_flog10(a);
+    }
+
+    unsafe {
         let a = f32x4::splat(10.0);
+        simd_fsqrt(a);
+        simd_fsin(a);
+        simd_fcos(a);
+        simd_fexp(a);
+        simd_fexp2(a);
+        simd_flog(a);
+        simd_flog2(a);
+        simd_flog10(a);
+    }
+
+    unsafe {
+        let a = f64x2::splat(10.0);
         simd_fsqrt(a);
         simd_fsin(a);
         simd_fcos(a);
