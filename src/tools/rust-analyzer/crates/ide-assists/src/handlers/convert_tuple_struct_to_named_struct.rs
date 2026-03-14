@@ -252,13 +252,15 @@ fn edit_field_references(
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
             let source = ctx.sema.parse(file_id);
-            let source = source.syntax();
-            let mut editor = edit.make_editor(source);
+            let mut editor = edit.make_editor(source.syntax());
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref()
-                    && let Some(original) = ctx.sema.original_ast_node(name_ref.clone())
+                    && let Some(original) = ctx.sema.original_range_opt(name_ref.syntax())
                 {
-                    editor.replace(original.syntax(), name.syntax());
+                    editor.replace_all(
+                        cover_edit_range(&source, original.range),
+                        vec![name.syntax().clone().into()],
+                    );
                 }
             }
             edit.add_file_edits(file_id.file_id(ctx.db()), editor);
