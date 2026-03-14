@@ -45,6 +45,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
@@ -609,9 +610,9 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
     tcx.ensure_done().early_lint_checks(());
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
     tcx.ensure_done().get_lang_items(());
-    let (ast_resolver, krate) = &mut *tcx.resolver_for_lowering().risky_hack_borrow_mut();
+    let (mut ast_resolver, krate) = tcx.resolver_for_lowering().steal();
 
-    let ast_index = index_crate(ast_resolver, krate);
+    let ast_index = index_crate(&ast_resolver, &krate);
 
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
@@ -620,7 +621,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
 
     let mut lowerer = item::ItemLowerer {
         tcx,
-        resolver: ast_resolver,
+        resolver: &mut ast_resolver,
         ast_index: &ast_index,
         owners: Owners::IndexVec(&mut owners),
     };
@@ -649,7 +650,8 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> rustc_middle::hir::Crate<'_> {
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
 
-    rustc_middle::hir::Crate::new(owners, delayed_ids, opt_hir_hash)
+    let delayed_resolver = Steal::new((ast_resolver, krate));
+    rustc_middle::hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
 }
 
 pub fn force_delayed_hir_lowering(tcx: TyCtxt<'_>, _: ()) {
@@ -658,7 +660,7 @@ pub fn force_delayed_hir_lowering(tcx: TyCtxt<'_>, _: ()) {
         let _ = tcx.lower_to_hir_delayed(id);
     }
 
-    let (_, krate) = tcx.resolver_for_lowering().steal();
+    let (_, krate) = krate.delayed_resolver.steal();
     let prof = tcx.sess.prof.clone();
 
     // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
@@ -669,9 +671,9 @@ pub fn force_delayed_hir_lowering(tcx: TyCtxt<'_>, _: ()) {
 }
 
 pub fn lower_to_hir_delayed<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
-    tcx.ensure_done().hir_crate(());
+    let krate = tcx.hir_crate(());
 
-    let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
+    let (resolver, krate) = &*krate.delayed_resolver.borrow();
     let ast_index = index_crate(resolver, krate);
 
     let mut resolver = CombinedResolverAstLowering {

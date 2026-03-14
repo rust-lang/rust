@@ -6,10 +6,14 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
+use std::sync::Arc;
+
+use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -20,7 +24,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
-use crate::ty::TyCtxt;
+use crate::ty::{ResolverAstLowering, TyCtxt};
 
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
@@ -32,6 +36,7 @@ use crate::ty::TyCtxt;
 pub struct Crate<'hir> {
     owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     pub delayed_ids: FxIndexSet<LocalDefId>,
+    pub delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }
@@ -40,9 +45,10 @@ impl<'hir> Crate<'hir> {
     pub fn new(
         owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
         delayed_ids: FxIndexSet<LocalDefId>,
+        delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
         opt_hir_hash: Option<Fingerprint>,
     ) -> Crate<'hir> {
-        Self { owners, delayed_ids, opt_hir_hash }
+        Self { owners, delayed_ids, delayed_resolver, opt_hir_hash }
     }
 
     pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
