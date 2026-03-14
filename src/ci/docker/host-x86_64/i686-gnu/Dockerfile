@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
+ENV RUST_CONFIGURE_ARGS="--build=i686-unknown-linux-gnu"
 COPY scripts/stage_2_test_set1.sh /scripts/
 COPY scripts/stage_2_test_set2.sh /scripts/
-ENV SCRIPT "Must specify DOCKER_SCRIPT for this image"
+ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"
