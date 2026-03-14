@@ -33,8 +33,8 @@
 #![no_builtins]
 #![no_builtins] //~ ERROR unused attribute
 
-#[no_link]
-#[no_link] //~ ERROR unused attribute
+#[macro_use]
+#[macro_use] //~ ERROR unused attribute
 extern crate lint_unused_extern_crate;
 
 #[macro_use]
