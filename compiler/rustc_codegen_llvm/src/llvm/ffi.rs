@@ -1669,6 +1669,8 @@ mod Offload {
             TM: &'a TargetMachine,
             host_out: *const c_char,
         ) -> bool;
+        pub(crate) unsafe fn LLVMRustUnbundleImages(_host_out: *const c_char, _len: usize) -> bool;
+        pub(crate) unsafe fn LLVMRustWrapImages<'ll>(M: &'ll Module);
         pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
             _M: &'a Module,
             _host_out: *const c_char,
@@ -1697,6 +1699,8 @@ mod Offload_fallback {
     ) -> bool {
         unimplemented!("This rustc version was not built with LLVM Offload support!");
     }
+    pub(crate) unsafe fn LLVMRustWrapImages<'ll>(M: &'ll Module);
+    pub(crate) unsafe fn LLVMRustUnbundleImages(_host_out: *const c_char, _len: usize) -> bool;
     pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
         _M: &'a Module,
         _host_out: *const c_char,
