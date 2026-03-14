@@ -2315,7 +2315,10 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                                 .get(ProvidedIdx::from_usize(arg_idx.index() - 1))
                         {
                             // Include previous comma
-                            span = prev.shrink_to_hi().to(span);
+                            let prev_comma = prev.shrink_to_hi();
+                            if prev_comma.eq_ctxt(span) {
+                                span = prev_comma.to(span);
+                            }
                         }
 
                         // Is last argument for deletion in a row starting from the 0-th argument?
@@ -2347,24 +2350,32 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                         };
 
                         if trim_next_comma {
-                            let next = self
-                                .provided_arg_tys
-                                .get(*arg_idx + 1)
-                                .map(|&(_, sp)| sp)
-                                .unwrap_or_else(|| {
-                                    // Try to move before `)`. Note that `)` here is not necessarily
-                                    // the latin right paren, it could be a Unicode-confusable that
-                                    // looks like a `)`, so we must not use `- BytePos(1)`
-                                    // manipulations here.
-                                    self.arg_matching_ctxt
-                                        .tcx()
-                                        .sess
-                                        .source_map()
-                                        .end_point(self.call_expr.span)
-                                });
+                            let next =
+                                self.provided_arg_tys.get(*arg_idx + 1).map(|&(_, sp)| sp).or_else(
+                                    || {
+                                        // Try to move before `)`. Note that `)` here is not necessarily
+                                        // the latin right paren, it could be a Unicode-confusable that
+                                        // looks like a `)`, so we must not use `- BytePos(1)`
+                                        // manipulations here.
+                                        self.call_expr.span.find_ancestor_in_same_ctxt(span).map(
+                                            |call_span| {
+                                                self.arg_matching_ctxt
+                                                    .tcx()
+                                                    .sess
+                                                    .source_map()
+                                                    .end_point(call_span)
+                                            },
+                                        )
+                                    },
+                                );
 
-                            // Include next comma
-                            span = span.until(next);
+                            if let Some(next) = next
+                                // Avoid `Span::until` context fallback producing unrelated spans.
+                                && span.eq_ctxt(next)
+                            {
+                                // Include next comma
+                                span = span.until(next);
+                            }
                         }
 
                         suggestions.push((span, String::new()));
