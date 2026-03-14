@@ -537,6 +537,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "Comma separated list of types of output for rustdoc to emit",
             "[html-static-files,html-non-static-files,dep-info]",
         ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "print",
+            "Rustdoc information to print on stdout (or to a file)",
+            "<INFO>[=<FILE>]",
+        ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
             Unstable,
@@ -877,6 +885,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
         if sess.opts.describe_lints {
             rustc_driver::describe_lints(sess, registered_lints);
+            return;
+        }
+
+        if rustc_driver::print_crate_info(&*compiler.codegen_backend, sess, true)
+            == rustc_driver::Compilation::Stop
+        {
             return;
         }
 

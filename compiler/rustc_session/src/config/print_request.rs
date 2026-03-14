@@ -21,30 +21,78 @@ pub struct PrintRequest {
 #[derive(AllVariants)]
 pub enum PrintKind {
     // tidy-alphabetical-start
+    /// All target specs.
     AllTargetSpecsJson,
+
+    /// Does the backend supports Zstd compression? (perma-unstable)
     BackendHasZstd,
+
+    /// List of supported calling conventions.
     CallingConventions,
+
+    /// List of cfg values (1st flavour).
     Cfg,
+
+    /// List of cfg values (2nd flavour).
     CheckCfg,
+
+    /// List of available code models for the current backend.
     CodeModels,
+
+    /// Name of the crate being compiled.
     CrateName,
+
     CrateRootLintLevels,
+
+    /// The current selected deployment target (Apple platforms).
     DeploymentTarget,
+
+    /// THe names of the files created by the `link` `--emit` kind.
     FileNames,
+
+    /// Target-tuple of the host compiler.
     HostTuple,
+
+    /// Linker invocations.
     LinkArgs,
+
+    /// When compiling a `staticlib` crate, print the linker flags used.
     NativeStaticLibs,
+
+    /// List of available relocation models for the current backend.
     RelocationModels,
+
+    /// List of available split debuginfos for the current target.
     SplitDebuginfo,
+
+    /// List of available stack protector strategies for the current backend.
     StackProtectorStrategies,
+
+    /// List of available crate types for the current target.
     SupportedCrateTypes,
+
+    /// Path to the sysroot.
     Sysroot,
+
+    /// List of available CPU values for the current target.
     TargetCPUs,
+
+    /// List of available target features for the current target.
     TargetFeatures,
+
+    /// Path to the target libdir.
     TargetLibdir,
+
+    /// List of supported targets.
     TargetList,
+
+    /// Current target spec.
     TargetSpecJson,
+
+    /// Target spec schema.
     TargetSpecJsonSchema,
+
+    /// List of available TLS models for the current backend.
     TlsModels,
     // tidy-alphabetical-end
 }
@@ -142,7 +190,7 @@ pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     )
 });
 
-pub(crate) fn collect_print_requests(
+pub fn collect_print_requests(
     early_dcx: &EarlyDiagCtxt,
     cg: &mut CodegenOptions,
     unstable_opts: &UnstableOptions,
