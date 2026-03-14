@@ -229,6 +229,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         if s == SanitizerSet::KERNELADDRESS {
             s = SanitizerSet::ADDRESS;
         }
+        // KHWASAN is still HWASAN under the hood, so it uses the same attribute.
+        if s == SanitizerSet::KERNELHWADDRESS {
+            s = SanitizerSet::HWADDRESS;
+        }
         ins_str!(sym::sanitize, &s.to_string());
     }
 
