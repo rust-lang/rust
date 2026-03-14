@@ -1,12 +1,13 @@
-//@ known-bug: #109481
+//@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //
-// While the `T: Copy` is always applicable when checking
-// that the impl `impl<T: Copy> F for T {}` is well formed,
-// the old trait solver can only approximate this by checking
-// that there are no inference variables in the obligation and
-// no region constraints in the evaluation result.
+// Regression test for #109481 and #84917.
 //
-// Because of this we end up with ambiguity here.
+// Overlapping marker trait impls where one has a `T: 'static` bound
+// should be accepted.  A bug previously made marker trait winnowing
+// order-dependent, producing a spurious E0310 here.
 #![feature(marker_trait_attr)]
 
 #[marker]
