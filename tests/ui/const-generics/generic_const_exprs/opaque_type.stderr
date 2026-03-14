@@ -9,6 +9,7 @@ LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
    |
    = note:     expected type `usize`
            found opaque type `Foo`
+   = note: array length can only be `usize`
 
 error[E0605]: non-primitive cast: `usize` as `Foo`
   --> $DIR/opaque_type.rs:11:17

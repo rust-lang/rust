@@ -20,6 +20,7 @@ LL |     type_ascribe!(2, n([u8; || 1]))
    |
    = note: expected type `usize`
            found closure `{closure@$DIR/issue-90871.rs:4:29: 4:31}`
+   = note: array length can only be `usize`
 help: use parentheses to call this closure
    |
 LL |     type_ascribe!(2, n([u8; (|| 1)()]))

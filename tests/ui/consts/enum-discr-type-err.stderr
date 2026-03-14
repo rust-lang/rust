@@ -10,6 +10,7 @@ LL | |     B = T,
 LL | | }
    | |_- in this macro invocation
    |
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -24,6 +25,7 @@ LL | |     B = T,
 LL | | }
    | |_- in this macro invocation
    |
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
