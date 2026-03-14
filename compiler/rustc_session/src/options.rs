@@ -2240,7 +2240,7 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
-    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED TARGET_MODIFIER],
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
