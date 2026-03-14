@@ -739,14 +739,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
     },
 
-    #[diag("invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type", code = E0511)]
-    FloatingPointType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-    },
-
     #[diag("invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`", code = E0511)]
     UnrecognizedIntrinsic {
         #[primary_span]
