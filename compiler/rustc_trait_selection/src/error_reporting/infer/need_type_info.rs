@@ -158,6 +158,7 @@ impl UnderspecifiedArgKind {
 
 struct ClosureEraser<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
+    depth: usize,
 }
 
 impl<'a, 'tcx> ClosureEraser<'a, 'tcx> {
@@ -172,7 +173,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.kind() {
+        self.depth += 1;
+        let ty = match ty.kind() {
             ty::Closure(_, args) => {
                 // For a closure type, we turn it into a function pointer so that it gets rendered
                 // as `fn(args) -> Ret`.
@@ -233,9 +235,15 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                 // its type parameters.
                 ty.super_fold_with(self)
             }
-            // We don't have an unknown type parameter anywhere, replace with `_`.
+            // We are in the top-level type, not one of its type parameters. Name it with its
+            // parameters replaced.
+            _ if self.depth == 1 => ty.super_fold_with(self),
+            // We don't have an unknown type parameter anywhere, and we are in a type parameter.
+            // Replace with `_`.
             _ => self.new_infer(),
-        }
+        };
+        self.depth -= 1;
+        ty
     }
 
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -287,7 +295,7 @@ fn ty_to_string<'tcx>(
     let ty = infcx.resolve_vars_if_possible(ty);
     // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
     // anything. We also remove all type parameters that are fully known to the type system.
-    let ty = ty.fold_with(&mut ClosureEraser { infcx });
+    let ty = ty.fold_with(&mut ClosureEraser { infcx, depth: 0 });
 
     match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
@@ -468,6 +476,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
     ) -> Diag<'a> {
+        self.emit_inference_failure_err_with_type_hint(
+            body_def_id,
+            failure_span,
+            term,
+            error_code,
+            should_label_span,
+            None,
+        )
+    }
+
+    pub fn emit_inference_failure_err_with_type_hint(
+        &self,
+        body_def_id: LocalDefId,
+        failure_span: Span,
+        term: Term<'tcx>,
+        error_code: TypeAnnotationNeeded,
+        should_label_span: bool,
+        ty: Option<Ty<'tcx>>,
+    ) -> Diag<'a> {
         let term = self.resolve_vars_if_possible(term);
         let arg_data = self
             .extract_inference_diagnostics_data(term, ty::print::RegionHighlightMode::default());
@@ -479,7 +506,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term);
+        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term, ty);
         if let Some(body) = self.tcx.hir_maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
@@ -752,10 +779,20 @@ impl<'tcx> InferSourceKind<'tcx> {
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
                     ("closure", closure_as_fn_str(infcx, ty), long_ty_path)
-                } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", infcx.tcx.short_string(ty, &mut long_ty_path), long_ty_path)
-                } else {
+                } else if ty.is_ty_or_numeric_infer()
+                    || ty.is_primitive()
+                    || matches!(
+                        ty.kind(),
+                        ty::Adt(_, args)
+                        if args.types().count() == 0 && args.consts().count() == 0
+                    )
+                {
+                    // `ty` is either `_`, a primitive type like `u32` or a type with no type or
+                    // const parameters. We will not mention the type in the main inference error
+                    // message.
                     ("other", String::new(), long_ty_path)
+                } else {
+                    ("normal", infcx.tcx.short_string(ty, &mut long_ty_path), long_ty_path)
                 }
             }
             // FIXME: We should be able to add some additional info here.
@@ -788,6 +825,7 @@ struct FindInferSourceVisitor<'a, 'tcx> {
     typeck_results: &'a TypeckResults<'tcx>,
 
     target: Term<'tcx>,
+    ty: Option<Ty<'tcx>>,
 
     attempt: usize,
     infer_source_cost: usize,
@@ -799,12 +837,14 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         tecx: &'a TypeErrCtxt<'a, 'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
         target: Term<'tcx>,
+        ty: Option<Ty<'tcx>>,
     ) -> Self {
         FindInferSourceVisitor {
             tecx,
             typeck_results,
 
             target,
+            ty,
 
             attempt: 0,
             infer_source_cost: usize::MAX,
@@ -1186,8 +1226,13 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx LetStmt<'tcx>) {
         intravisit::walk_local(self, local);
 
-        if let Some(ty) = self.opt_node_type(local.hir_id) {
+        if let Some(mut ty) = self.opt_node_type(local.hir_id) {
             if self.generic_arg_contains_target(ty.into()) {
+                if let Some(t) = self.ty
+                    && ty.has_infer()
+                {
+                    ty = t;
+                }
                 match local.source {
                     LocalSource::Normal if local.ty.is_none() => {
                         self.update_infer_source(InferSource {
