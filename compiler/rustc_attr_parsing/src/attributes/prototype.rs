@@ -9,6 +9,9 @@ use super::{AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::session_diagnostics::{
+    CustomMirIncompatibleDialectAndPhase, CustomMirPhaseRequiresDialect,
+};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
 
@@ -62,7 +65,41 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
             return None;
         }
 
-        Some(AttributeKind::CustomMir(dialect, phase, cx.attr_span))
+        // Validate dialect/phase compatibility (moved from check_attr.rs).
+        let Some((dialect, dialect_span)) = dialect else {
+            if let Some((_, phase_span)) = phase {
+                cx.emit_err(CustomMirPhaseRequiresDialect { attr_span: cx.attr_span, phase_span });
+            }
+            return None;
+        };
+
+        match dialect {
+            MirDialect::Analysis => {
+                if let Some((MirPhase::Optimized, phase_span)) = phase {
+                    cx.emit_err(CustomMirIncompatibleDialectAndPhase {
+                        dialect,
+                        phase: MirPhase::Optimized,
+                        attr_span: cx.attr_span,
+                        dialect_span,
+                        phase_span,
+                    });
+                }
+            }
+            MirDialect::Built => {
+                if let Some((phase_val, phase_span)) = phase {
+                    cx.emit_err(CustomMirIncompatibleDialectAndPhase {
+                        dialect,
+                        phase: phase_val,
+                        attr_span: cx.attr_span,
+                        dialect_span,
+                        phase_span,
+                    });
+                }
+            }
+            MirDialect::Runtime => {}
+        }
+
+        Some(AttributeKind::CustomMir(Some((dialect, dialect_span)), phase, cx.attr_span))
     }
 }
 

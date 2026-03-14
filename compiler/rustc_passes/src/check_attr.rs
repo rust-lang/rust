@@ -11,7 +11,7 @@ use std::slice;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemKind, ast};
-use rustc_attr_parsing::{AttributeParser, Late};
+use rustc_attr_parsing::{AttributeParser, Late, late_validation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
@@ -23,7 +23,7 @@ use rustc_feature::{
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    MirDialect, MirPhase, ReprAttr, SanitizerSet,
+    ReprAttr, SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -140,6 +140,69 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) {
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir_attrs(hir_id);
+
+        let late_ctx = late_validation::LateValidationContext {
+            target,
+            parent_is_trait_impl: self.tcx.opt_local_parent(hir_id.owner.def_id).is_some_and(
+                |parent| self.tcx.def_kind(parent) == (DefKind::Impl { of_trait: true }),
+            ),
+            expr_context: if matches!(target, Target::Expression) {
+                let expr = self.tcx.hir_expect_expr(hir_id);
+                Some(late_validation::ExprContext {
+                    node_span: self.tcx.hir_span(hir_id),
+                    is_loop: matches!(expr.kind, hir::ExprKind::Loop(..)),
+                    is_break: matches!(expr.kind, hir::ExprKind::Break(..)),
+                })
+            } else {
+                None
+            },
+            impl_is_const: if target == (Target::Impl { of_trait: true }) {
+                item.and_then(|i| match i {
+                    ItemLike::Item(it) => match it.kind {
+                        ItemKind::Impl(impl_) => Some(impl_.constness == Constness::Const),
+                        _ => None,
+                    },
+                    ItemLike::ForeignItem => None,
+                })
+            } else {
+                None
+            },
+            impl_of_trait: if matches!(target, Target::Impl { .. }) {
+                item.map(|i| match i {
+                    ItemLike::Item(it) => match it.kind {
+                        ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
+                        _ => false,
+                    },
+                    ItemLike::ForeignItem => false,
+                })
+            } else {
+                None
+            },
+            foreign_mod_abi_is_rust: if target == Target::ForeignMod {
+                item.and_then(|i| match i {
+                    ItemLike::Item(it) => match it.kind {
+                        ItemKind::ForeignMod { abi, .. } => Some(matches!(abi, ExternAbi::Rust)),
+                        _ => None,
+                    },
+                    ItemLike::ForeignItem => None,
+                })
+            } else {
+                None
+            },
+            macro_export_is_decl_macro: if target == Target::MacroDef {
+                let node = self.tcx.hir_node(hir_id);
+                if let Node::Item(it) = node
+                    && let ItemKind::Macro(_, macro_def, _) = it.kind
+                {
+                    Some(!macro_def.macro_rules)
+                } else {
+                    None
+                }
+            } else {
+                None
+            },
+        };
+
         for attr in attrs {
             let mut style = None;
             match attr {
@@ -167,10 +230,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_inline(hir_id, *attr_span, kind, target)
                 }
                 Attribute::Parsed(AttributeKind::LoopMatch(attr_span)) => {
-                    self.check_loop_match(hir_id, *attr_span, target)
+                    if let Some(v) = late_validation::validate_loop_match(&late_ctx, *attr_span) {
+                        self.dcx().emit_err(errors::LoopMatchAttr {
+                            attr_span: v.attr_span,
+                            node_span: v.node_span,
+                        });
+                    }
                 }
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
-                    self.check_const_continue(hir_id, *attr_span, target)
+                    if let Some(v) =
+                        late_validation::validate_const_continue(&late_ctx, *attr_span)
+                    {
+                        self.dcx().emit_err(errors::ConstContinueAttr {
+                            attr_span: v.attr_span,
+                            node_span: v.node_span,
+                        });
+                    }
                 }
                 Attribute::Parsed(AttributeKind::AllowInternalUnsafe(attr_span) | AttributeKind::AllowInternalUnstable(.., attr_span)) => {
                     self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -179,7 +254,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
                 }
                 Attribute::Parsed(AttributeKind::Deprecated { span: attr_span, .. }) => {
-                    self.check_deprecated(hir_id, *attr_span, target)
+                    if let Some(v) = late_validation::validate_deprecated(&late_ctx, *attr_span) {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            v.attr_span,
+                            errors::DeprecatedAnnotationHasNoEffect { span: v.attr_span },
+                        );
+                    }
                 }
                 Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
@@ -208,18 +290,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
-                &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
-                    self.check_custom_mir(dialect, phase, attr_span)
+                &Attribute::Parsed(AttributeKind::CustomMir(..)) => {
+                    // Validation (dialect/phase compatibility) is done in the attribute parser.
                 }
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
                 Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
-                    self.check_link(hir_id, *attr_span, span, target)
-                },
+                    if let Some(v) =
+                        late_validation::validate_link(&late_ctx, *attr_span, span)
+                    {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            v.attr_span,
+                            errors::Link { span: v.wrong_target_span },
+                        );
+                    }
+                }
                 Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
-                    self.check_macro_export(hir_id, *span, target)
-                },
+                    if let Some(v) =
+                        late_validation::validate_macro_export(&late_ctx, *span)
+                    {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            v.attr_span,
+                            errors::MacroExport::OnDeclMacro,
+                        );
+                    }
+                }
                 Attribute::Parsed(AttributeKind::RustcLegacyConstGenerics{attr_span, fn_indexes}) => {
                     self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
                 },
@@ -230,9 +330,56 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
-                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
-                Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
+                Attribute::Parsed(AttributeKind::DoNotRecommend { attr_span }) => {
+                    if let Some(v) =
+                        late_validation::validate_do_not_recommend(&late_ctx, *attr_span)
+                    {
+                        self.tcx.emit_node_span_lint(
+                            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            v.attr_span,
+                            errors::IncorrectDoNotRecommendLocation,
+                        );
+                    }
+                }
+                Attribute::Parsed(AttributeKind::OnUnimplemented { span, directive }) => {
+                    if let Some(v) =
+                        late_validation::validate_diagnostic_on_unimplemented(&late_ctx, *span)
+                    {
+                        self.tcx.emit_node_span_lint(
+                            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            v.attr_span,
+                            DiagnosticOnUnimplementedOnlyForTraits,
+                        );
+                    }
+                    self.check_diagnostic_on_unimplemented_directive(hir_id, *span, directive.as_deref());
+                }
+                Attribute::Parsed(AttributeKind::OnConst { span, .. }) => {
+                    let item_span = self.tcx.hir_span(hir_id);
+                    if let Some(v) =
+                        late_validation::validate_diagnostic_on_const(&late_ctx, *span, item_span)
+                    {
+                        match v {
+                            late_validation::OnConstValidation::WrongTarget { item_span } => {
+                                self.tcx.emit_node_span_lint(
+                                    MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                                    hir_id,
+                                    *span,
+                                    DiagnosticOnConstOnlyForTraitImpls { item_span },
+                                );
+                            }
+                            late_validation::OnConstValidation::ConstImpl { item_span } => {
+                                self.tcx.emit_node_span_lint(
+                                    MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                                    hir_id,
+                                    *span,
+                                    DiagnosticOnConstOnlyForNonConstTraitImpls { item_span },
+                                );
+                            }
+                        }
+                    }
+                }
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -571,47 +718,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
-    fn check_do_not_recommend(
+    /// Checks format parameters in `#[diagnostic::on_unimplemented]` directive (target check is in late_validation).
+    fn check_diagnostic_on_unimplemented_directive(
         &self,
-        attr_span: Span,
         hir_id: HirId,
-        target: Target,
-        item: Option<ItemLike<'_>>,
-    ) {
-        if !matches!(target, Target::Impl { .. })
-            || matches!(
-                item,
-                Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
-                    if _impl.of_trait.is_none()
-            )
-        {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::IncorrectDoNotRecommendLocation,
-            );
-        }
-    }
-
-    /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
-    fn check_diagnostic_on_unimplemented(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
+        _attr_span: Span,
         directive: Option<&Directive>,
     ) {
-        if !matches!(target, Target::Trait) {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnUnimplementedOnlyForTraits,
-            );
-        }
-
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind: ItemKind::Trait(_, _, _, trait_name, generics, _, _),
@@ -644,44 +757,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 })
             }
         }
-    }
-
-    /// Checks if `#[diagnostic::on_const]` is applied to a trait impl
-    fn check_diagnostic_on_const(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        item: Option<ItemLike<'_>>,
-    ) {
-        if target == (Target::Impl { of_trait: true }) {
-            match item.unwrap() {
-                ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {
-                        let item_span = self.tcx.hir_span(hir_id);
-                        self.tcx.emit_node_span_lint(
-                            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                            hir_id,
-                            attr_span,
-                            DiagnosticOnConstOnlyForNonConstTraitImpls { item_span },
-                        );
-                        return;
-                    }
-                    Constness::NotConst => return,
-                },
-                ItemLike::ForeignItem => {}
-            }
-        }
-        let item_span = self.tcx.hir_span(hir_id);
-        self.tcx.emit_node_span_lint(
-            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            DiagnosticOnConstOnlyForTraitImpls { item_span },
-        );
-
-        // We don't check the validity of generic args here...whose generics would that be, anyway?
-        // The traits' or the impls'?
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.
@@ -1219,24 +1294,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.dcx().emit_err(errors::InvalidMayDangle { attr_span });
     }
 
-    /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
-        if target == Target::ForeignMod
-            && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
-            && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, ExternAbi::Rust)
-        {
-            return;
-        }
-
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
-        );
-    }
-
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
     fn check_rustc_legacy_const_generics(
         &self,
@@ -1533,42 +1590,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        match target {
-            Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
-                    == DefKind::Impl { of_trait: true } =>
-            {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr_span,
-                    errors::DeprecatedAnnotationHasNoEffect { span: attr_span },
-                );
-            }
-            _ => {}
-        }
-    }
-
-    fn check_macro_export(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        if target != Target::MacroDef {
-            return;
-        }
-
-        // special case when `#[macro_export]` is applied to a macro 2.0
-        let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
-        let is_decl_macro = !macro_definition.macro_rules;
-
-        if is_decl_macro {
-            self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::MacroExport::OnDeclMacro,
-            );
-        }
-    }
-
     fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute, style: Option<AttrStyle>) {
         // Warn on useless empty attributes.
         // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
@@ -1830,72 +1851,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     export_name_attr,
                 },
             );
-        }
-    }
-
-    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
-            self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
-        };
-    }
-
-    fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
-            self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
-        };
-    }
-
-    fn check_custom_mir(
-        &self,
-        dialect: Option<(MirDialect, Span)>,
-        phase: Option<(MirPhase, Span)>,
-        attr_span: Span,
-    ) {
-        let Some((dialect, dialect_span)) = dialect else {
-            if let Some((_, phase_span)) = phase {
-                self.dcx()
-                    .emit_err(errors::CustomMirPhaseRequiresDialect { attr_span, phase_span });
-            }
-            return;
-        };
-
-        match dialect {
-            MirDialect::Analysis => {
-                if let Some((MirPhase::Optimized, phase_span)) = phase {
-                    self.dcx().emit_err(errors::CustomMirIncompatibleDialectAndPhase {
-                        dialect,
-                        phase: MirPhase::Optimized,
-                        attr_span,
-                        dialect_span,
-                        phase_span,
-                    });
-                }
-            }
-
-            MirDialect::Built => {
-                if let Some((phase, phase_span)) = phase {
-                    self.dcx().emit_err(errors::CustomMirIncompatibleDialectAndPhase {
-                        dialect,
-                        phase,
-                        attr_span,
-                        dialect_span,
-                        phase_span,
-                    });
-                }
-            }
-            MirDialect::Runtime => {}
         }
     }
 }
