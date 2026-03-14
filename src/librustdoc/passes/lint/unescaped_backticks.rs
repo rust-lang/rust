@@ -20,7 +20,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         link_names
             .iter()
             .find(|link| *link.original_text == *broken_link.reference)
-            .map(|link| ((*link.href).into(), (*link.new_text).into()))
+            .map(|link| (link.href.as_deref().unwrap_or("").into(), link.tooltip.as_str().into()))
     };
     let parser = Parser::new_with_broken_link_callback(dox, main_body_opts(), Some(&mut replacer))
         .into_offset_iter();
