@@ -1,0 +1,19 @@
+error: missing fragment specifier
+  --> $DIR/macro-semicolon-for-colon.rs:5:6
+   |
+LL |     ($x;tt) => {};
+   |      ^^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($x:spec;tt) => {};
+   |        +++++
+help: use `:` instead of `;`
+   |
+LL -     ($x;tt) => {};
+LL +     ($x:tt) => {};
+   |
+
+error: aborting due to 1 previous error

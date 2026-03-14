@@ -94,6 +94,7 @@ fn parse(
                 span,
                 add_span: span.shrink_to_hi(),
                 valid: VALID_FRAGMENT_NAMES_MSG,
+                semi_span: None,
             });
 
             // Fall back to a `TokenTree` since that will match anything if we continue expanding.
@@ -144,9 +145,35 @@ fn parse(
             });
             result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
         } else {
-            // Whether it's none or some other tree, it doesn't belong to
-            // the current meta variable, returning the original span.
-            missing_fragment_specifier(start_sp);
+            // Check for typo: `;` instead of `:` before a valid fragment specifier.
+            let semi_span = {
+                let mut clone = iter.clone();
+                if let Some(tokenstream::TokenTree::Token(semi_token, _)) = clone.next()
+                    && semi_token.kind == token::Semi
+                    && let Some(tokenstream::TokenTree::Token(frag_token, _)) = clone.next()
+                    && let Some((fragment, _)) = frag_token.ident()
+                    && NonterminalKind::from_symbol(fragment.name, || edition).is_some()
+                {
+                    Some(semi_token.span)
+                } else {
+                    None
+                }
+            };
+            if semi_span.is_some() {
+                sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                    span: start_sp,
+                    add_span: start_sp.shrink_to_hi(),
+                    valid: VALID_FRAGMENT_NAMES_MSG,
+                    semi_span,
+                });
+                result.push(TokenTree::MetaVarDecl {
+                    span: start_sp,
+                    name: ident,
+                    kind: NonterminalKind::TT,
+                });
+            } else {
+                missing_fragment_specifier(start_sp);
+            }
         }
     }
     result
