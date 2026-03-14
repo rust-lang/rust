@@ -132,7 +132,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_item_id_use_tree(nested, vec);
                 }
             }
-            UseTreeKind::Simple(..) | UseTreeKind::Glob => {}
+            UseTreeKind::Simple(..) | UseTreeKind::Glob(_) => {}
         }
     }
 
@@ -266,7 +266,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Use(use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path { segments: ThinVec::new(), span: use_tree.span, tokens: None };
+                let prefix = Path {
+                    segments: ThinVec::new(),
+                    span: use_tree.prefix.span.shrink_to_lo(),
+                    tokens: None,
+                };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
             }
@@ -638,7 +642,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ident = self.lower_ident(ident);
                 hir::ItemKind::Use(path, hir::UseKind::Single(ident))
             }
-            UseTreeKind::Glob => {
+            UseTreeKind::Glob(_) => {
                 let res = self.expect_full_res(id);
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
@@ -710,7 +714,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             owner_id,
                             kind,
                             vis_span,
-                            span: this.lower_span(use_tree.span),
+                            span: this.lower_span(use_tree.span()),
                             has_delayed_lints: !this.delayed_lints.is_empty(),
                             eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
                         };
