@@ -293,6 +293,8 @@ symbols! {
         ResumeTy,
         Reverse,
         Rust,
+        // Temporary name for the rust_embed hack introduced in #145108
+        RustEmbed,
         RustaceansAreAwesome,
         RwLock,
         RwLockReadGuard,

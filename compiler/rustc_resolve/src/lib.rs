@@ -2652,15 +2652,9 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn get_mut(&mut self) -> &mut T {
             match self.mutable {
-                false => panic!("Can't mutably borrow speculative resolver"),
+                false => panic!("can't mutably borrow speculative resolver"),
                 true => self.p,
             }
-        }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
         }
     }
 
@@ -2685,12 +2679,12 @@ mod ref_mut {
             self.0.get()
         }
 
-        pub(crate) fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+        pub(crate) fn update<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>, f: impl FnOnce(T) -> T)
         where
             T: Copy,
         {
             let old = self.get();
-            self.set_unchecked(f(old));
+            self.set(f(old), r);
         }
     }
 
@@ -2699,7 +2693,10 @@ mod ref_mut {
             CmCell(Cell::new(value))
         }
 
-        pub(crate) fn set_unchecked(&self, val: T) {
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!("not allowed to mutate a `CmCell` during speculative resolution")
+            }
             self.0.set(val);
         }
 
@@ -2725,13 +2722,23 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
             if r.assert_speculative {
-                panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.borrow_mut_unchecked()
+            self.0.borrow_mut()
+        }
+
+        pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+            self.0.try_borrow_mut()
         }
 
         #[track_caller]
-        pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+        pub(crate) fn try_borrow_mut<'ra, 'tcx>(
+            &self,
+            r: &Resolver<'ra, 'tcx>,
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+            if r.assert_speculative {
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
+            }
             self.0.try_borrow_mut()
         }
 
@@ -2744,7 +2751,7 @@ mod ref_mut {
     impl<T: Default> CmRefCell<T> {
         pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
             if r.assert_speculative {
-                panic!("Not allowed to mutate a CmRefCell during speculative resolution");
+                panic!("not allowed to mutate a CmRefCell during speculative resolution");
             }
             self.0.take()
         }
