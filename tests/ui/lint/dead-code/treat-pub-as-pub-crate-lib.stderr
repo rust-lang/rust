@@ -1,0 +1,14 @@
+error: function `unused_priv_fn` is never used
+  --> $DIR/treat-pub-as-pub-crate-lib.rs:8:4
+   |
+LL | fn unused_priv_fn() {}
+   |    ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/treat-pub-as-pub-crate-lib.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
