@@ -1,0 +1,63 @@
+error[E0277]: `u8` cannot be safely transmuted into `NonZeroU8`
+  --> $DIR/nonzero.rs:32:49
+   |
+LL |     assert::is_transmutable_assume_safety::<u8, NonZeroU8>();
+   |                                                 ^^^^^^^^^ at least one value of `u8` isn't a bit-valid value of `NonZeroU8`
+   |
+note: required by a bound in `is_transmutable_assume_safety`
+  --> $DIR/nonzero.rs:16:14
+   |
+LL |     pub fn is_transmutable_assume_safety<Src, Dst>()
+   |            ----------------------------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable_assume_safety`
+
+error[E0277]: `NonZeroU8` cannot be safely transmuted into `NonZeroU8`
+  --> $DIR/nonzero.rs:35:57
+   |
+LL |     assert::is_transmutable_assume_nothing::<NonZeroU8, NonZeroU8>();
+   |                                                         ^^^^^^^^^ `NonZeroU8` may carry safety invariants
+   |
+note: required by a bound in `is_transmutable_assume_nothing`
+  --> $DIR/nonzero.rs:10:14
+   |
+LL |     pub fn is_transmutable_assume_nothing<Src, Dst>()
+   |            ------------------------------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable_assume_nothing`
+
+error[E0277]: `u16` cannot be safely transmuted into `NonZeroU16`
+  --> $DIR/nonzero.rs:38:50
+   |
+LL |     assert::is_transmutable_assume_safety::<u16, NonZeroU16>();
+   |                                                  ^^^^^^^^^^ at least one value of `u16` isn't a bit-valid value of `NonZeroU16`
+   |
+note: required by a bound in `is_transmutable_assume_safety`
+  --> $DIR/nonzero.rs:16:14
+   |
+LL |     pub fn is_transmutable_assume_safety<Src, Dst>()
+   |            ----------------------------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable_assume_safety`
+
+error[E0277]: `NonZeroU16` cannot be safely transmuted into `NonZeroU16`
+  --> $DIR/nonzero.rs:41:58
+   |
+LL |     assert::is_transmutable_assume_nothing::<NonZeroU16, NonZeroU16>();
+   |                                                          ^^^^^^^^^^ `NonZeroU16` may carry safety invariants
+   |
+note: required by a bound in `is_transmutable_assume_nothing`
+  --> $DIR/nonzero.rs:10:14
+   |
+LL |     pub fn is_transmutable_assume_nothing<Src, Dst>()
+   |            ------------------------------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable_assume_nothing`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
