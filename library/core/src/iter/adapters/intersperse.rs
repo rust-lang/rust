@@ -1,5 +1,4 @@
 use crate::fmt;
-use crate::iter::{Fuse, FusedIterator};
 
 /// An iterator adapter that places a separator between all elements.
 ///
@@ -14,15 +13,7 @@ where
     started: bool,
     separator: I::Item,
     next_item: Option<I::Item>,
-    iter: Fuse<I>,
-}
-
-#[unstable(feature = "iter_intersperse", issue = "79524")]
-impl<I> FusedIterator for Intersperse<I>
-where
-    I: FusedIterator,
-    I::Item: Clone,
-{
+    iter: I,
 }
 
 impl<I: Iterator> Intersperse<I>
@@ -30,7 +21,7 @@ where
     I::Item: Clone,
 {
     pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
-        Self { started: false, separator, next_item: None, iter: iter.fuse() }
+        Self { started: false, separator, next_item: None, iter }
     }
 }
 
@@ -96,15 +87,7 @@ where
     started: bool,
     separator: G,
     next_item: Option<I::Item>,
-    iter: Fuse<I>,
-}
-
-#[unstable(feature = "iter_intersperse", issue = "79524")]
-impl<I, G> FusedIterator for IntersperseWith<I, G>
-where
-    I: FusedIterator,
-    G: FnMut() -> I::Item,
-{
+    iter: I,
 }
 
 #[unstable(feature = "iter_intersperse", issue = "79524")]
@@ -147,7 +130,7 @@ where
     G: FnMut() -> I::Item,
 {
     pub(in crate::iter) fn new(iter: I, separator: G) -> Self {
-        Self { started: false, separator, next_item: None, iter: iter.fuse() }
+        Self { started: false, separator, next_item: None, iter }
     }
 }
 
