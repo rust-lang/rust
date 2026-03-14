@@ -205,7 +205,7 @@ fn typeck_with_inspect<'tcx>(
         }
 
         fcx.check_expr_coercible_to_type_or_error(body.value, expected_type, None, |err, _| {
-            extend_err_with_const_context(err, tcx, node);
+            extend_err_with_const_context(err, tcx, node, expected_type);
         });
 
         fcx.write_ty(id, expected_type);
@@ -276,7 +276,12 @@ fn typeck_with_inspect<'tcx>(
     typeck_results
 }
 
-fn extend_err_with_const_context(err: &mut Diag<'_>, tcx: TyCtxt<'_>, node: hir::Node<'_>) {
+fn extend_err_with_const_context(
+    err: &mut Diag<'_>,
+    tcx: TyCtxt<'_>,
+    node: hir::Node<'_>,
+    expected_ty: Ty<'_>,
+) {
     match node {
         hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
         | hir::Node::TraitItem(hir::TraitItem {
@@ -377,6 +382,15 @@ fn extend_err_with_const_context(err: &mut Diag<'_>, tcx: TyCtxt<'_>, node: hir:
         {
             // Point at `char` in `pattern_type!(char is 1..=1)`.
             err.span_label(ty.span, "the pattern must match the type");
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::Field(_) = tcx.parent_hir_node(anon.hir_id)
+                && let ty::Param(_) = expected_ty.kind() =>
+        {
+            err.note(
+                "the type of default fields referencing type parameters can't be assumed inside \
+                 the struct defining them",
+            );
         }
         _ => {}
     }
