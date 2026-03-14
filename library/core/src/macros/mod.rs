@@ -1913,4 +1913,17 @@ pub(crate) mod builtin {
     pub macro eii_declaration($item:item) {
         /* compiler built-in */
     }
+
+    /// Macro that "splats" tuple function arguments into an argument list.
+    /// This stub creates a function trampoline with splatted arguments, for initial tests.
+    // FIXME(splat): implement the `#[splat]` attribute macro to support overloads/variadics.
+    #[unstable(
+        feature = "splat",
+        issue = "153629",
+        reason = "`splat` is incomplete and is subject to change"
+    )]
+    #[rustc_builtin_macro]
+    pub macro splat($item:item) {
+        /* compiler built-in */
+    }
 }

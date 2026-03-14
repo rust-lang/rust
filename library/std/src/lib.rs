@@ -737,6 +737,22 @@ pub mod from {
     pub use core::from::From;
 }
 
+// Re-export unstable splat macro defined through core.
+#[unstable(
+    feature = "splat",
+    issue = "153629",
+    reason = "`splat` is incomplete and is subject to change"
+)]
+/// Unstable module containing the unstable `splat` function macro.
+pub mod splat {
+    #[unstable(
+        feature = "splat",
+        issue = "153629",
+        reason = "`splat` is incomplete and is subject to change"
+    )]
+    pub use core::splat::splat;
+}
+
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.

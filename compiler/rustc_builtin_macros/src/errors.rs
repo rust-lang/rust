@@ -1141,3 +1141,17 @@ pub(crate) struct EiiMacroExpectedMaxOneArgument {
     pub span: Span,
     pub name: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[splat]` attribute is only allowed on function items")]
+pub(crate) struct SplatNonItem {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[splat]` attribute is only allowed on functions")]
+pub(crate) struct SplatNonFunction {
+    #[primary_span]
+    pub(crate) span: Span,
+}

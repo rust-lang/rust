@@ -590,6 +590,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(const_block_items, "const block items are experimental");
     gate_all!(final_associated_functions, "`final` on trait functions is experimental");
     gate_all!(impl_restriction, "`impl` restrictions are experimental");
+    gate_all!(splat, "`#[splat] fn` is incomplete", "call as func((a, ...)) instead");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
