@@ -456,6 +456,9 @@ pub struct SplitPaths<'a> {
 /// On most Unix platforms, the separator is `:` and on Windows it is `;`. This
 /// also performs unquoting on Windows.
 ///
+/// On Unix systems an empty path corresponds to the current working directory
+/// and on Windows systems an empty path is disregarded.
+///
 /// [`join_paths`] can be used to recombine elements.
 ///
 /// # Panics

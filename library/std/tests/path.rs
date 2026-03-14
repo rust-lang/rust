@@ -2597,3 +2597,48 @@ fn test_trim_trailing_sep() {
         assert_eq!(Path::new("c:..\\\\").trim_trailing_sep().as_os_str(), OsStr::new("c:.."));
     }
 }
+
+// Test: Empty PATH paths
+// This test checks how `split_paths` handles empty segments.
+// On Unix it should be an empty `Path` and on Windows it should disregard the segment.
+#[test]
+fn test_only_separators() {
+    use std::env::split_paths;
+    #[cfg(unix)]
+    {
+        assert_eq!(split_paths("").collect::<Vec<_>>(), vec![PathBuf::new(); 1]);
+        assert_eq!(split_paths(":").collect::<Vec<_>>(), vec![PathBuf::new(); 2]);
+        assert_eq!(split_paths("::").collect::<Vec<_>>(), vec![PathBuf::new(); 3]);
+
+        assert_eq!(
+            split_paths("a::").collect::<Vec<_>>(),
+            vec![PathBuf::from("a"), PathBuf::from(""), PathBuf::from("")]
+        );
+        assert_eq!(
+            split_paths("a::b").collect::<Vec<_>>(),
+            vec![PathBuf::from("a"), PathBuf::from(""), PathBuf::from("b")]
+        );
+        assert_eq!(
+            split_paths("::b").collect::<Vec<_>>(),
+            vec![PathBuf::from(""), PathBuf::from(""), PathBuf::from("b")]
+        );
+        assert_eq!(
+            split_paths(":a:").collect::<Vec<_>>(),
+            vec![PathBuf::from(""), PathBuf::from("a"), PathBuf::from("")]
+        );
+    }
+    #[cfg(windows)]
+    {
+        assert_eq!(split_paths("").collect::<Vec<PathBuf>>(), vec![]);
+        assert_eq!(split_paths(";").collect::<Vec<PathBuf>>(), vec![]);
+        assert_eq!(split_paths(";;").collect::<Vec<PathBuf>>(), vec![]);
+
+        assert_eq!(split_paths("a;;").collect::<Vec<_>>(), vec![PathBuf::from("a")]);
+        assert_eq!(
+            split_paths("a;;b").collect::<Vec<_>>(),
+            vec![PathBuf::from("a"), PathBuf::from("b")]
+        );
+        assert_eq!(split_paths(";;b").collect::<Vec<_>>(), vec![PathBuf::from("b")]);
+        assert_eq!(split_paths(";a;").collect::<Vec<_>>(), vec![PathBuf::from("a")]);
+    }
+}
