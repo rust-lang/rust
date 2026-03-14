@@ -659,7 +659,10 @@ fn project<'cx, 'tcx>(
         )));
     }
 
-    if let Err(guar) = obligation.predicate.error_reported() {
+    // We're able to compute a projection type with region errors.
+    if obligation.predicate.has_non_region_error()
+        && let Err(guar) = obligation.predicate.error_reported()
+    {
         return Ok(Projected::Progress(Progress::error_for_term(
             selcx.tcx(),
             obligation.predicate,
