@@ -7,7 +7,7 @@ trait Foo<const N: Bar<2>> {
     //~| ERROR `(dyn Bar<2> + 'static)` is forbidden as the type of a const generic parameter
     fn func() {}
 }
-
+//@ ignore-parallel-frontend query cycle
 trait Bar<const M: Foo<2>> {}
 //~^ WARN trait objects without an explicit `dyn` are deprecated
 //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!

@@ -1,6 +1,6 @@
 // Test that when a trait impl changes, fns whose body uses that trait
 // must also be recompiled.
-
+//@ ignore-parallel-frontend dep graph
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 

@@ -1,6 +1,6 @@
 // Test cases where a changing struct appears in the signature of fns
 // and methods.
-
+//@ ignore-parallel-frontend dep graph
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 

@@ -1,5 +1,5 @@
 #![allow(warnings)]
-
+//@ ignore-parallel-frontend query cycle
 trait Trait<T> {
     fn foo(_: T) {}
 }
