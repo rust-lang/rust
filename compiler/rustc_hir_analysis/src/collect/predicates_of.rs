@@ -974,6 +974,32 @@ impl<'tcx> ItemCtxt<'tcx> {
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Vec::new();
 
+        if let PredicateFilter::All = filter {
+            for param in hir_generics.params {
+                match param.kind {
+                    hir::GenericParamKind::Type { .. } => {
+                        let param_ty = self.lowerer().lower_ty_param(param.hir_id);
+                        self.lowerer().add_implicit_sizedness_bounds(
+                            &mut bounds,
+                            param_ty,
+                            &[],
+                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            param.span,
+                        );
+                        self.lowerer().add_default_traits(
+                            &mut bounds,
+                            param_ty,
+                            &[],
+                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            param.span,
+                        );
+                    }
+                    hir::GenericParamKind::Lifetime { .. }
+                    | hir::GenericParamKind::Const { .. } => {}
+                }
+            }
+        }
+
         for predicate in hir_generics.predicates {
             let hir_id = predicate.hir_id;
             let hir::WherePredicateKind::BoundPredicate(predicate) = predicate.kind else {
