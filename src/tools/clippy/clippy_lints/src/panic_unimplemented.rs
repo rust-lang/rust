@@ -6,6 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
+use rustc_span::sym as rsym;
 
 pub struct PanicUnimplemented {
     allow_panic_in_tests: bool,
@@ -113,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                 return;
             }
             match cx.tcx.get_diagnostic_name(macro_call.def_id) {
-                Some(sym::todo_macro) => {
+                Some(rsym::todo_macro) => {
                     span_lint(
                         cx,
                         TODO,

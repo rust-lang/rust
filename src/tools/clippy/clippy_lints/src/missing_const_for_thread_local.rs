@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
+use rustc_span::sym as rsym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -81,7 +82,7 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ) && !cx.tcx.hir_is_inside_const_context(expr.hir_id))
             || matches!(
                 diag_name,
-                sym::unimplemented_macro | sym::todo_macro | sym::unreachable_macro | sym::unreachable_2015_macro
+                sym::unimplemented_macro | rsym::todo_macro | sym::unreachable_macro | sym::unreachable_2015_macro
             );
     }
     false

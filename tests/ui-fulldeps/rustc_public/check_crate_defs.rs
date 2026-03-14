@@ -101,7 +101,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
-        #![allow(dead_code, unused_variables)]
+        #![allow(dead_code, unused_variables, todo_macro_uses)]
         static PRIVATE_STATIC: u8 = 0;
         fn top_level() -> &'static str {{
             "hello"
