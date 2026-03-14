@@ -6,4 +6,4 @@
 export LIBM_SEED=benchesbenchesbenchesbencheswoo!
 cargo bench --package libm-test \
     --no-default-features \
-    --features short-benchmarks,build-musl,libm/force-soft-floats
+    --features walltime,short-benchmarks,build-musl,libm/force-soft-floats

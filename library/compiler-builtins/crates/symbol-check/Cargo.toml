@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+getopts.workspace = true
 object.workspace = true
 regex.workspace = true
 serde_json.workspace = true
