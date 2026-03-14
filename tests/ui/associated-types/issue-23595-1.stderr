@@ -1,4 +1,18 @@
-error[E0191]: the value of the associated types `Value`, `ChildKey` and `Children` in `Hierarchy` must be specified
+error[E0391]: cycle detected when computing type of `Hierarchy::Children`
+  --> $DIR/issue-23595-1.rs:8:5
+   |
+LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy>;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing type of `Hierarchy::Children` again
+note: cycle used when checking that `Hierarchy` is well-formed
+  --> $DIR/issue-23595-1.rs:5:1
+   |
+LL | trait Hierarchy {
+   | ^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0191]: the value of the associated types `Value` and `ChildKey` in `Hierarchy` must be specified
   --> $DIR/issue-23595-1.rs:8:60
    |
 LL |     type Value;
@@ -6,13 +20,14 @@ LL |     type Value;
 LL |     type ChildKey;
    |     ------------- `ChildKey` defined here
 LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy>;
-   |     ------------- `Children` defined here                  ^^^^^^^^^
+   |                                                            ^^^^^^^^^
    |
 help: specify the associated types
    |
-LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy<Value = /* Type */, ChildKey = /* Type */, Children = /* Type */>>;
-   |                                                                     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy<Value = /* Type */, ChildKey = /* Type */>>;
+   |                                                                     +++++++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0191`.
+Some errors have detailed explanations: E0191, E0391.
+For more information about an error, try `rustc --explain E0191`.
