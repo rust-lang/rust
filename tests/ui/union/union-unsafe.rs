@@ -1,3 +1,6 @@
+//@ reference: items.union.fields.read-safety
+//@ reference: safety.unsafe-union-access
+//@ reference: type.union.safety
 use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 use std::ops::Deref;
