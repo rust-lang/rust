@@ -498,6 +498,18 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MissingOptionsForOnConst => {
                 lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
             }
+            &AttributeLintKind::MalformedOnMoveAttr { span } => {
+                lints::MalformedOnMoveAttrLint { span }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
+                lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
+                lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
+            }
+            &AttributeLintKind::MissingOptionsForOnMove => {
+                lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
+            }
         }
     }
 }

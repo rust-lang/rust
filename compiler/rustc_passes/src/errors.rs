@@ -1432,3 +1432,10 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
     pub help: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
