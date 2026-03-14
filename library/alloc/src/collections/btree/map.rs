@@ -1230,15 +1230,82 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
             return;
         }
 
-        let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
-        let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
-        let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
-        root.append_from_sorted_iters(
-            self_iter,
-            other_iter,
-            &mut self.length,
-            (*self.alloc).clone(),
-        )
+        // Because `other` takes a &mut Self, in order for us to own
+        // the K,V pairs, we need to use mem::replace
+        let mut other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
+        let (first_other_key, first_other_val) = other_iter.next().unwrap();
+
+        // find the first gap that has the smallest key greater than or equal to
+        // the first key from other
+        let mut self_cursor = self.lower_bound_mut(Bound::Included(&first_other_key));
+
+        if let Some((self_key, _)) = self_cursor.peek_next() {
+            match K::cmp(self_key, &first_other_key) {
+                Ordering::Equal => {
+                    if let Some((_, v)) = self_cursor.next() {
+                        *v = first_other_val;
+                    }
+                }
+                Ordering::Greater =>
+                // SAFETY: we know our other_key's ordering is less than self_key,
+                // so inserting before will guarantee sorted order
+                unsafe {
+                    self_cursor.insert_before_unchecked(first_other_key, first_other_val);
+                },
+                Ordering::Less => {
+                    unreachable!("Cursor's peek_next should return None.");
+                }
+            }
+        } else {
+            // SAFETY: reaching here means our cursor is at the end
+            // self BTreeMap so we just insert other_key here
+            unsafe {
+                self_cursor.insert_before_unchecked(first_other_key, first_other_val);
+            }
+        }
+
+        for (other_key, other_val) in other_iter {
+            loop {
+                if let Some((self_key, _)) = self_cursor.peek_next() {
+                    match K::cmp(self_key, &other_key) {
+                        Ordering::Equal => {
+                            if let Some((_, v)) = self_cursor.next() {
+                                *v = other_val;
+                            }
+                            break;
+                        }
+                        Ordering::Greater => {
+                            // SAFETY: we know our self_key's ordering is greater than other_key,
+                            // so inserting before will guarantee sorted order
+                            unsafe {
+                                self_cursor.insert_before_unchecked(other_key, other_val);
+                            }
+                            break;
+                        }
+                        Ordering::Less => {
+                            // FIXME: instead of doing a linear search here,
+                            // this can be optimized to search the tree by starting
+                            // from self_cursor and going towards the root and then
+                            // back down to the proper node -- that should probably
+                            // be a new method on Cursor*.
+                            self_cursor.next();
+                        }
+                    }
+                } else {
+                    // FIXME: If we get here, that means all of other's keys are greater than
+                    // self's keys. For performance, this should really do a bulk insertion of items
+                    // from other_iter into the end of self `BTreeMap`. Maybe this should be
+                    // a method for Cursor*?
+
+                    // SAFETY: reaching here means our cursor is at the end
+                    // self BTreeMap so we just insert other_key here
+                    unsafe {
+                        self_cursor.insert_before_unchecked(other_key, other_val);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
