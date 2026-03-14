@@ -173,6 +173,7 @@ attribute_parsers!(
         Combine<RustcThenThisWouldNeedParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
+        Combine<UnstableRemovedParser>,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
@@ -586,6 +587,10 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     /// a nicer error message talking about the specific name that was found lacking a value.
     pub(crate) fn expected_name_value(&self, span: Span, name: Option<Symbol>) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
+    }
+
+    pub(crate) fn missing_name_value(&self, span: Span, name: Symbol) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::MissingNameValue(name))
     }
 
     /// emit an error that a `name = value` pair was found where that name was already seen.

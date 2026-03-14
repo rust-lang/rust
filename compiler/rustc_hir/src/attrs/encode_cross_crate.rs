@@ -196,6 +196,7 @@ impl AttributeKind {
             TrackCaller(..) => Yes,
             TypeLengthLimit { .. } => No,
             UnstableFeatureBound(..) => No,
+            UnstableRemoved(..) => Yes,
             Used { .. } => No,
             WindowsSubsystem(..) => No,
             // tidy-alphabetical-end

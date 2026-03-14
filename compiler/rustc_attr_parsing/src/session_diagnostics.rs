@@ -571,6 +571,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedNonEmptyStringLiteral,
     UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
+    MissingNameValue(Symbol),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument {
         possibilities: &'a [Symbol],
@@ -693,6 +694,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                     self.span,
                     format!("expected this to be of the form `{name} = \"...\"`"),
                 );
+            }
+            AttributeParseErrorReason::MissingNameValue(name) => {
+                diag.span_label(self.span, format!("missing argument `{name} = \"...\"`"));
             }
             AttributeParseErrorReason::ExpectedSpecificArgument {
                 possibilities,
