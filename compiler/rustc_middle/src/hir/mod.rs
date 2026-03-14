@@ -6,19 +6,72 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
+use std::sync::Arc;
+
+use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
+use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
-use crate::ty::TyCtxt;
+use crate::ty::{ResolverAstLowering, TyCtxt};
+
+/// The top-level data structure that stores the entire contents of
+/// the crate currently being compiled.
+///
+/// For more details, see the [rustc dev guide].
+///
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
+#[derive(Debug)]
+pub struct Crate<'hir> {
+    owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
+    pub delayed_ids: FxIndexSet<LocalDefId>,
+    pub delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
+    // Only present when incr. comp. is enabled.
+    pub opt_hir_hash: Option<Fingerprint>,
+}
+
+impl<'hir> Crate<'hir> {
+    pub fn new(
+        owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
+        delayed_ids: FxIndexSet<LocalDefId>,
+        delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
+        opt_hir_hash: Option<Fingerprint>,
+    ) -> Crate<'hir> {
+        Self { owners, delayed_ids, delayed_resolver, opt_hir_hash }
+    }
+
+    pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
+        if let Some(owner) = self.owners.get(def_id)
+            && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
+        {
+            return *owner;
+        }
+
+        if self.delayed_ids.contains(&def_id) {
+            tcx.lower_to_hir_delayed(def_id)
+        } else {
+            tcx.get_delayed_child_owner(def_id)
+        }
+    }
+}
+
+impl<HirCtx: HashStableContext> HashStable<HirCtx> for Crate<'_> {
+    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+        let Crate { opt_hir_hash, .. } = self;
+        opt_hir_hash.unwrap().hash_stable(hcx, hasher)
+    }
+}
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -372,7 +425,9 @@ impl<'tcx> TyCtxt<'tcx> {
             let parent_owner_id = self.local_def_id_to_hir_id(parent_def_id).owner;
             HirId {
                 owner: parent_owner_id,
-                local_id: self.hir_crate(()).owners[parent_owner_id.def_id]
+                local_id: self
+                    .hir_crate(())
+                    .owner(self, parent_owner_id.def_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -406,19 +461,20 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owners[def_id] {
+    providers.get_delayed_child_owner = |_, _| MaybeOwner::Phantom;
+    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
         MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
     };
     providers.opt_hir_owner_nodes =
-        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
+        |tcx, id| tcx.hir_crate(()).owner(tcx, id).as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.hir_attr_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
+        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
     providers.opt_ast_lowering_delayed_lints =
-        |tcx, id| tcx.hir_crate(()).owners[id.def_id].as_owner().map(|o| &o.delayed_lints);
+        |tcx, id| tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|o| &o.delayed_lints);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -459,6 +515,6 @@ pub fn provide(providers: &mut Providers) {
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
     providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
+        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|owner_info| &owner_info.trait_map)
     };
 }
