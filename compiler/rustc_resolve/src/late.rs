@@ -4054,7 +4054,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn resolve_arm(&mut self, arm: &'ast Arm) {
         self.with_rib(ValueNS, RibKind::Normal, |this| {
             this.resolve_pattern_top(&arm.pat, PatternSource::Match);
-            visit_opt!(this, visit_expr, &arm.guard);
+            visit_opt!(this, visit_expr, arm.guard.as_ref().map(|g| &g.cond));
             visit_opt!(this, visit_expr, &arm.body);
         });
     }
@@ -4196,7 +4196,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let subpat_bindings = bindings.pop().unwrap().1;
                     self.with_rib(ValueNS, RibKind::Normal, |this| {
                         *this.innermost_rib_bindings(ValueNS) = subpat_bindings.clone();
-                        this.resolve_expr(guard, None);
+                        this.resolve_expr(&guard.cond, None);
                     });
                     // Propagate the subpattern's bindings upwards.
                     // FIXME(guard_patterns): For `if let` guards, we'll also need to get the
