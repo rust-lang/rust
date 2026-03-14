@@ -8,7 +8,7 @@ use std::{env, io};
 use rand::{RngCore, rng};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
@@ -107,9 +107,6 @@ pub struct Session {
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     pub lint_store: Option<Arc<dyn DynLintStore>>,
-
-    /// Cap lint level specified by a driver specifically.
-    pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
@@ -979,7 +976,6 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
@@ -1087,7 +1083,6 @@ pub fn build_session(
         timings,
         code_stats: Default::default(),
         lint_store: None,
-        driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,

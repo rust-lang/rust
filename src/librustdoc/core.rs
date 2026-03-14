@@ -240,7 +240,7 @@ pub(crate) fn create_config(
     ];
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
-    let (lint_opts, lint_caps) = crate::lint::init_lints(lints_to_show, lint_opts, |lint| {
+    let lint_opts = crate::lint::init_lints(lints_to_show, lint_opts, |lint| {
         Some((lint.name_lower(), lint::Allow))
     });
 
@@ -294,7 +294,6 @@ pub(crate) fn create_config(
             Some(render_options.output.clone())
         },
         file_loader: None,
-        lint_caps,
         psess_created: None,
         hash_untracked_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
