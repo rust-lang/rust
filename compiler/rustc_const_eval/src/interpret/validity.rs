@@ -920,7 +920,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // Nothing to check.
                 interp_ok(true)
             }
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)
@@ -931,6 +930,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Pat(..)
+            | ty::UnsafeBinder(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..) => interp_ok(false),
             // Some types only occur during typechecking, they have no layout.
