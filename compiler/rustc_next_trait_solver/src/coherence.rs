@@ -425,7 +425,7 @@ where
                 }
             }
             ty::Dynamic(tt, ..) => {
-                let principal = tt.principal().map(|p| p.def_id());
+                let principal = tt.principal_def_id();
                 if principal.is_some_and(|p| self.def_id_is_local(p)) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
