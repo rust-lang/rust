@@ -580,58 +580,48 @@ impl DepGraph {
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
         format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
-        if let Some(data) = self.data.as_ref() {
-            // The caller query has more dependencies than the node we are creating. We may
-            // encounter a case where this created node is marked as green, but the caller query is
-            // subsequently marked as red or recomputed. In this case, we will end up feeding a
-            // value to an existing node.
-            //
-            // For sanity, we still check that the loaded stable hash and the new one match.
-            if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
-                let dep_node_index = data.colors.current(prev_index);
-                if let Some(dep_node_index) = dep_node_index {
-                    incremental_verify_ich(
-                        tcx,
-                        data,
-                        result,
-                        prev_index,
-                        hash_result,
-                        format_value_fn,
-                    );
-
-                    #[cfg(debug_assertions)]
-                    if hash_result.is_some() {
-                        data.current.record_edge(
-                            dep_node_index,
-                            node,
-                            data.prev_value_fingerprint_of(prev_index),
-                        );
-                    }
-
-                    return dep_node_index;
-                }
-            }
-
-            let mut edges = EdgesVec::new();
-            read_deps(|task_deps| match task_deps {
-                TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
-                TaskDepsRef::EvalAlways => {
-                    edges.push(DepNodeIndex::FOREVER_RED_NODE);
-                }
-                TaskDepsRef::Ignore => {}
-                TaskDepsRef::Forbid => {
-                    panic!("Cannot summarize when dependencies are not recorded.")
-                }
-            });
-
-            data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
-        } else {
+        let Some(data) = self.data() else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
             // identifies the task so that we have a cheap way of referring to
             // the query for self-profiling.
-            self.next_virtual_depnode_index()
+            return self.next_virtual_depnode_index();
+        };
+
+        // The caller query has more dependencies than the node we are creating. We may
+        // encounter a case where this created node is marked as green, but the caller query is
+        // subsequently marked as red or recomputed. In this case, we will end up feeding a
+        // value to an existing node.
+        //
+        // For sanity, we still check that the loaded stable hash and the new one match.
+        if let Some(prev_index) = data.previous.node_to_index_opt(&node)
+            && let Some(dep_node_index) = data.colors.current(prev_index)
+        {
+            incremental_verify_ich(tcx, data, result, prev_index, hash_result, format_value_fn);
+
+            #[cfg(debug_assertions)]
+            if hash_result.is_some() {
+                data.current.record_edge(
+                    dep_node_index,
+                    node,
+                    data.prev_value_fingerprint_of(prev_index),
+                );
+            }
+
+            return dep_node_index;
         }
+
+        // Incr-comp is enabled, and there isn't a pre-existing node, so create one.
+        // Its dependencies are a clone of the enclosing query job's dependencies so far.
+        let mut edges = EdgesVec::new();
+        read_deps(|task_deps| match task_deps {
+            TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
+            TaskDepsRef::EvalAlways => edges.push(DepNodeIndex::FOREVER_RED_NODE),
+            TaskDepsRef::Ignore => {}
+            TaskDepsRef::Forbid => panic!("Tried to feed while dependencies are forbidden"),
+        });
+
+        data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
     }
 }
 
