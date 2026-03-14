@@ -1,18 +1,22 @@
 use tracing::debug;
 
-use crate::query::Providers;
 use crate::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
-pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_and_anonymize_regions_ty, ..*providers };
-}
-
+/// Erases regions from `ty` to yield a new type.
 fn erase_and_anonymize_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    if let Some(erased_ty) = tcx.erase_and_anonymize_regions_ty_cache.get(&ty) {
+        return erased_ty;
+    }
+
     // N.B., use `super_fold_with` here. If we used `fold_with`, it
-    // could invoke the `erase_and_anonymize_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserAndAnonymizerVisitor { tcx })
+    // could invoke `erase_and_anonymize_regions_ty` recursively.
+    let erased_ty = ty.super_fold_with(&mut RegionEraserAndAnonymizerVisitor { tcx });
+    let old_ty = tcx.erase_and_anonymize_regions_ty_cache.insert(ty, erased_ty);
+    // If two threads raced to erase the same type, they should agree.
+    try { debug_assert_eq!(old_ty?, erased_ty) };
+    erased_ty
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -49,7 +53,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserAndAnonymizerVisitor<'tcx> {
         } else if ty.has_infer() {
             ty.super_fold_with(self)
         } else {
-            self.tcx.erase_and_anonymize_regions_ty(ty)
+            erase_and_anonymize_regions_ty(self.tcx, ty)
         }
     }
 

@@ -823,6 +823,9 @@ pub struct GlobalCtxt<'tcx> {
     pub clauses_cache:
         Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
 
+    /// Internal cache of erased types, used by [`TyCtxt::erase_and_anonymize_regions`].
+    pub(crate) erase_and_anonymize_regions_ty_cache: ShardedHashMap<Ty<'tcx>, Ty<'tcx>>,
+
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
@@ -1058,6 +1061,7 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             highest_var_in_clauses_cache: Default::default(),
             clauses_cache: Default::default(),
+            erase_and_anonymize_regions_ty_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,

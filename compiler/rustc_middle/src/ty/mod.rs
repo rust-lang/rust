@@ -2202,7 +2202,6 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
-    erase_regions::provide(providers);
     inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
