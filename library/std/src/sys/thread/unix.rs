@@ -314,6 +314,15 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
         }
+        all(target_os = "wasi", target_feature = "atomics") => {
+            // wasi-libc provides sysconf and _SC_NPROCESSORS_ONLN but the
+            // libc crate does not yet export the constant for WASI targets.
+            const _SC_NPROCESSORS_ONLN: libc::c_int = 84;
+            match unsafe { libc::sysconf(_SC_NPROCESSORS_ONLN) } {
+                -1 => Err(io::Error::last_os_error()),
+                cpus => NonZero::new(cpus as usize).ok_or(io::Error::UNKNOWN_THREAD_COUNT),
+            }
+        }
         _ => {
             // FIXME: implement on Redox, l4re
             Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
