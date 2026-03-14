@@ -2858,6 +2858,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap before the smallest key in the map.
     ///
+    /// Represents the gap at the beginning of a range with the given bound as it's lower bound.
+    ///
     /// # Examples
     ///
     /// ```
@@ -2910,6 +2912,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap before the smallest key in the map.
+    ///
+    /// Represents the gap at the beginning of a range with the given bound as it's lower bound.
     ///
     /// # Examples
     ///
@@ -2981,6 +2985,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap after the greatest key in the map.
     ///
+    /// Represents the gap at the end of a range with the given bound as it's upper bound.
+    ///
     /// # Examples
     ///
     /// ```
@@ -3033,6 +3039,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap after the greatest key in the map.
+    ///
+    /// Represents the gap at the end of a range with the given bound as it's upper bound.
     ///
     /// # Examples
     ///
