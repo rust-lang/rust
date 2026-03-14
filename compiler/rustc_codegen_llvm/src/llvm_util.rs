@@ -252,7 +252,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "fp16" => Some(LLVMFeature::new("fullfp16")),
             s => Some(LLVMFeature::new(s)),
         },
-
+        Arch::Bpf => match s {
+            "allows-misaligned-mem-access" if major < 22 => None,
+            s => Some(LLVMFeature::new(s)),
+        },
         // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
             "power8-crypto" => Some(LLVMFeature::new("crypto")),

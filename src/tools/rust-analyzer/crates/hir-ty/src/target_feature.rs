@@ -217,6 +217,7 @@ const TARGET_FEATURE_IMPLICATIONS_RAW: &[(&str, &[&str])] = &[
     ("relaxed-simd", &["simd128"]),
     // BPF
     ("alu32", &[]),
+    ("allows-misaligned-mem-access", &[]),
     // CSKY
     ("10e60", &["7e10"]),
     ("2e3", &["e2"]),
