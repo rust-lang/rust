@@ -1,5 +1,6 @@
-#[cfg(test)]
-mod tests;
+use core::{error, fmt, result};
+
+use crate::boxed::Box;
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
@@ -8,17 +9,72 @@ mod tests;
 // This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
 // Therefore, the packed representation is explicitly disabled for UEFI
 // targets, and the unpacked representation must be used instead.
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-mod repr_bitpacked;
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-use repr_bitpacked::Repr;
 
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-mod repr_unpacked;
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-use repr_unpacked::Repr;
+cfg_select! {
+    all(target_pointer_width = "64", not(target_os = "uefi")) => {
+        use repr_bitpacked::Repr;
+        mod repr_bitpacked;
+    }
+    _ => {
+        mod repr_unpacked;
+        use repr_unpacked::Repr;
+    }
+}
 
-use crate::{error, fmt, result, sys};
+pub(super) mod os {
+    //! OS-dependent functions
+    //!
+    //! `Error` needs OS functionalities to work interpret raw OS errors, but
+    //! we can't link to anythink here in `alloc`. Therefore, we restrict
+    //! creation of `Error` from raw OS errors in `std`, and require providing
+    //! a vtable of operations when creating one.
+
+    // FIXME: replace this with externally implementable items once they are more stable
+
+    use core::sync::atomic;
+
+    use crate::io::{ErrorKind, RawOsError};
+    use crate::string::String;
+
+    #[doc(hidden)]
+    #[derive(Debug)]
+    pub struct OsFunctions {
+        pub error_string: fn(_: RawOsError) -> String,
+        pub decode_error_kind: fn(_: RawOsError) -> ErrorKind,
+        pub is_interrupted: fn(_: RawOsError) -> bool,
+    }
+
+    const DEFAULT_FUNCTIONS: &'static OsFunctions = &OsFunctions {
+        error_string: |_| String::from("success"),
+        decode_error_kind: |_| ErrorKind::Uncategorized,
+        is_interrupted: |_| false,
+    };
+    static OS_FUNCTIONS: atomic::AtomicPtr<OsFunctions> =
+        atomic::AtomicPtr::new(DEFAULT_FUNCTIONS as *const _ as *mut _);
+
+    #[inline]
+    pub(super) fn set_functions(f: &'static OsFunctions) {
+        OS_FUNCTIONS.store(f as *const _ as *mut _, atomic::Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub(super) fn error_string(errno: RawOsError) -> String {
+        let f = unsafe { &*OS_FUNCTIONS.load(atomic::Ordering::Relaxed) };
+        (f.error_string)(errno)
+    }
+
+    #[inline]
+    pub(super) fn decode_error_kind(errno: RawOsError) -> ErrorKind {
+        let f = unsafe { &*OS_FUNCTIONS.load(atomic::Ordering::Relaxed) };
+        (f.decode_error_kind)(errno)
+    }
+
+    #[inline]
+    pub(super) fn is_interrupted(errno: RawOsError) -> bool {
+        let f = unsafe { &*OS_FUNCTIONS.load(atomic::Ordering::Relaxed) };
+        (f.is_interrupted)(errno)
+    }
+}
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -31,13 +87,12 @@ use crate::{error, fmt, result, sys};
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
 /// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
-/// will generally use `io::Result` instead of shadowing the [prelude]'s import
+/// will generally use `io::Result` instead of shadowing the prelude's import
 /// of [`std::result::Result`][`Result`].
 ///
 /// [`std::io`]: crate::io
 /// [`io::Error`]: Error
-/// [`Result`]: crate::result::Result
-/// [prelude]: crate::prelude
+/// [`Result`]: core::result::Result
 ///
 /// # Examples
 ///
@@ -58,17 +113,13 @@ use crate::{error, fmt, result, sys};
 #[doc(search_unbox)]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
-/// associated traits.
+/// The error type for I/O operations.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
-///
-/// [`Read`]: crate::io::Read
-/// [`Write`]: crate::io::Write
-/// [`Seek`]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 pub struct Error {
     repr: Repr,
 }
@@ -81,47 +132,48 @@ impl fmt::Debug for Error {
 }
 
 /// Common errors constants for use in std
-#[allow(dead_code)]
+#[doc(hidden)]
+#[unstable(feature = "io_error_internals", issue = "none")]
 impl Error {
-    pub(crate) const INVALID_UTF8: Self =
+    pub const INVALID_UTF8: Self =
         const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
-    pub(crate) const READ_EXACT_EOF: Self =
+    pub const READ_EXACT_EOF: Self =
         const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
+    pub const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "the number of hardware threads is not known for the target platform",
     );
 
-    pub(crate) const UNSUPPORTED_PLATFORM: Self =
+    pub const UNSUPPORTED_PLATFORM: Self =
         const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
-    pub(crate) const WRITE_ALL_EOF: Self =
+    pub const WRITE_ALL_EOF: Self =
         const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
-    pub(crate) const ZERO_TIMEOUT: Self =
+    pub const ZERO_TIMEOUT: Self =
         const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 
-    pub(crate) const NO_ADDRESSES: Self =
+    pub const NO_ADDRESSES: Self =
         const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl From<alloc::ffi::NulError> for Error {
-    /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
-    fn from(_: alloc::ffi::NulError) -> Error {
+impl From<crate::ffi::NulError> for Error {
+    /// Converts a [`crate::ffi::NulError`] into a [`Error`].
+    fn from(_: crate::ffi::NulError) -> Error {
         const_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
 #[stable(feature = "io_error_from_try_reserve", since = "1.78.0")]
-impl From<alloc::collections::TryReserveError> for Error {
+impl From<crate::collections::TryReserveError> for Error {
     /// Converts `TryReserveError` to an error with [`ErrorKind::OutOfMemory`].
     ///
     /// `TryReserveError` won't be available as the error `source()`,
     /// but this may change in the future.
-    fn from(_: alloc::collections::TryReserveError) -> Error {
+    fn from(_: crate::collections::TryReserveError) -> Error {
         // ErrorData::Custom allocates, which isn't great for handling OOM errors.
         ErrorKind::OutOfMemory.into()
     }
@@ -137,7 +189,7 @@ enum ErrorData<C> {
     Custom(C),
 }
 
-/// The type of raw OS error codes returned by [`Error::raw_os_error`].
+/// The type of raw OS error codes.
 ///
 /// This is an [`i32`] on all currently supported platforms, but platforms
 /// added in the future (such as UEFI) may use a different primitive type like
@@ -145,8 +197,10 @@ enum ErrorData<C> {
 /// portability.
 ///
 /// [`into`]: Into::into
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = sys::io::RawOsError;
+pub type RawOsError = cfg_select! {
+    target_os = "uefi" => usize,
+    _ => i32,
+};
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -189,9 +243,9 @@ pub struct SimpleMessage {
 /// ```
 #[rustc_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
-#[allow_internal_unstable(hint_must_use, io_const_error_internals)]
+#[allow_internal_unstable(alloc_io, hint_must_use, io_const_error_internals, liballoc_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {
-    $crate::hint::must_use($crate::io::Error::from_static_message(
+    $crate::__export::must_use($crate::io::Error::from_static_message(
         const { &$crate::io::SimpleMessage { kind: $kind, message: $message } },
     ))
 }
@@ -328,14 +382,14 @@ pub enum ErrorKind {
     /// The I/O operation's timeout expired, causing it to be canceled.
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
+    // FIXME: restore links to `write` when trait is moved to `alloc`
     /// An error returned when an operation could not be completed because a
-    /// call to [`write`] returned [`Ok(0)`].
+    /// call to `write` returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write`]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
@@ -628,99 +682,20 @@ impl Error {
         Self { repr: Repr::new_simple_message(msg) }
     }
 
-    /// Returns an error representing the last OS error which occurred.
-    ///
-    /// This function reads the value of `errno` for the target platform (e.g.
-    /// `GetLastError` on Windows) and will return a corresponding instance of
-    /// [`Error`] for the error code.
-    ///
-    /// This should be called immediately after a call to a platform function,
-    /// otherwise the state of the error value is indeterminate. In particular,
-    /// other standard library functions may call platform functions that may
-    /// (or may not) reset the error value even if they succeed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::io::Error;
-    ///
-    /// let os_error = Error::last_os_error();
-    /// println!("last OS error: {os_error:?}");
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[doc(alias = "GetLastError")]
-    #[doc(alias = "errno")]
-    #[must_use]
+    #[unstable(feature = "io_error_internals", issue = "none")]
     #[inline]
-    pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::io::errno())
-    }
-
-    /// Creates a new instance of an [`Error`] from a particular OS error code.
-    ///
-    /// # Examples
-    ///
-    /// On Linux:
-    ///
-    /// ```
-    /// # if cfg!(target_os = "linux") {
-    /// use std::io;
-    ///
-    /// let error = io::Error::from_raw_os_error(22);
-    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
-    /// # }
-    /// ```
-    ///
-    /// On Windows:
-    ///
-    /// ```
-    /// # if cfg!(windows) {
-    /// use std::io;
-    ///
-    /// let error = io::Error::from_raw_os_error(10022);
-    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
-    /// # }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[inline]
-    pub fn from_raw_os_error(code: RawOsError) -> Error {
+    #[doc(hidden)]
+    pub fn _from_raw_os_error(code: RawOsError, os: &'static os::OsFunctions) -> Error {
+        os::set_functions(os);
         Error { repr: Repr::new_os(code) }
     }
 
-    /// Returns the OS error that this error represents (if any).
-    ///
-    /// If this [`Error`] was constructed via [`last_os_error`] or
-    /// [`from_raw_os_error`], then this function will return [`Some`], otherwise
-    /// it will return [`None`].
-    ///
-    /// [`last_os_error`]: Error::last_os_error
-    /// [`from_raw_os_error`]: Error::from_raw_os_error
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::io::{Error, ErrorKind};
-    ///
-    /// fn print_os_error(err: &Error) {
-    ///     if let Some(raw_os_err) = err.raw_os_error() {
-    ///         println!("raw OS error: {raw_os_err:?}");
-    ///     } else {
-    ///         println!("Not an OS error");
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     // Will print "raw OS error: ...".
-    ///     print_os_error(&Error::last_os_error());
-    ///     // Will print "Not an OS error".
-    ///     print_os_error(&Error::new(ErrorKind::Other, "oh no!"));
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "io_error_internals", issue = "none")]
     #[must_use]
     #[inline]
-    pub fn raw_os_error(&self) -> Option<RawOsError> {
+    #[doc(hidden)]
+    pub fn _raw_os_error(&self) -> Option<RawOsError> {
         match self.repr.data() {
             ErrorData::Os(i) => Some(i),
             ErrorData::Custom(..) => None,
@@ -966,7 +941,7 @@ impl Error {
                 Ok(*err)
             } else {
                 // Safety: We have just checked that the condition is true
-                unsafe { crate::hint::unreachable_unchecked() }
+                unsafe { core::hint::unreachable_unchecked() }
             }
         } else {
             Err(self)
@@ -978,9 +953,6 @@ impl Error {
     /// This may be a value set by Rust code constructing custom `io::Error`s,
     /// or if this `io::Error` was sourced from the operating system,
     /// it will be a value inferred from the system's error encoding.
-    /// See [`last_os_error`] for more details.
-    ///
-    /// [`last_os_error`]: Error::last_os_error
     ///
     /// # Examples
     ///
@@ -1004,17 +976,19 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::decode_error_kind(code),
+            ErrorData::Os(code) => os::decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
         }
     }
 
+    #[unstable(feature = "io_error_internals", issue = "none")]
+    #[doc(hidden)]
     #[inline]
-    pub(crate) fn is_interrupted(&self) -> bool {
+    pub fn is_interrupted(&self) -> bool {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::is_interrupted(code),
+            ErrorData::Os(code) => os::is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
             ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
             ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
@@ -1028,8 +1002,8 @@ impl fmt::Debug for Repr {
             ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::io::decode_error_kind(code))
-                .field("message", &sys::io::error_string(code))
+                .field("kind", &os::decode_error_kind(code))
+                .field("message", &os::error_string(code))
                 .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -1047,7 +1021,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                let detail = sys::io::error_string(code);
+                let detail = os::error_string(code);
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),
