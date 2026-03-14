@@ -94,9 +94,24 @@ pub type TypeSource = InFile<TypePtr>;
 pub type LifetimePtr = AstPtr<ast::Lifetime>;
 pub type LifetimeSource = InFile<LifetimePtr>;
 
+/// Describes where a const expression originated from.
+///
+/// Used by signature/body inference to determine the expected type for each
+/// const expression root.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConstExprOrigin {
+    /// Array length expression: `[T; <expr>]` — expected type is `usize`.
+    ArrayLength,
+    /// Const parameter default value: `const N: usize = <expr>`.
+    ConstParam(crate::hir::generics::LocalTypeOrConstParamId),
+    /// Const generic argument in a path: `SomeType::<{ <expr> }>` or `some_fn::<{ <expr> }>()`.
+    /// Determining the expected type requires path resolution, so it is deferred.
+    GenericArgsPath,
+}
+
 // We split the store into types-only and expressions, because most stores (e.g. generics)
 // don't store any expressions and this saves memory. Same thing for the source map.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ExpressionOnlyStore {
     exprs: Arena<Expr>,
     pats: Arena<Pat>,
@@ -113,9 +128,15 @@ struct ExpressionOnlyStore {
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+
+    /// Maps const expression roots to their origin.
+    ///
+    /// Populated during lowering. Used by signature inference to determine expected types,
+    /// and by `signature_const_expr_roots()` to enumerate roots for scope computation.
+    const_expr_origins: ThinVec<(ExprId, ConstExprOrigin)>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpressionStore {
     expr_only: Option<Box<ExpressionOnlyStore>>,
     pub types: Arena<TypeRef>,
@@ -226,6 +247,7 @@ pub struct ExpressionStoreBuilder {
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    pub const_expr_origins: Option<ThinVec<(ExprId, ConstExprOrigin)>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
@@ -297,6 +319,7 @@ impl ExpressionStoreBuilder {
             mut bindings,
             mut binding_owners,
             mut ident_hygiene,
+            const_expr_origins,
             mut types,
             mut lifetimes,
 
@@ -364,6 +387,7 @@ impl ExpressionStoreBuilder {
                     binding_owners,
                     block_scopes: block_scopes.into_boxed_slice(),
                     ident_hygiene,
+                    const_expr_origins: const_expr_origins.unwrap_or_default(),
                 }))
             } else {
                 None
@@ -411,6 +435,29 @@ impl ExpressionStore {
                 (Arc::new(store), Arc::new(source_map))
             });
         EMPTY.clone()
+    }
+
+    /// Returns all const expression root `ExprId`s found in this store.
+    ///
+    /// Used to compute expression scopes for signature stores.
+    pub fn signature_const_expr_roots(&self) -> impl Iterator<Item = ExprId> {
+        self.const_expr_origins().iter().map(|&(id, _)| id)
+    }
+
+    /// Like [`Self::signature_const_expr_roots`], but also returns the origin
+    /// of each const expression.
+    ///
+    /// This is used by signature inference to determine the expected type for
+    /// each root expression.
+    pub fn signature_const_expr_roots_with_origins(
+        &self,
+    ) -> impl Iterator<Item = (ExprId, ConstExprOrigin)> {
+        self.const_expr_origins().iter().map(|&(id, origin)| (id, origin))
+    }
+
+    /// Returns the map of const expression roots to their origins.
+    pub fn const_expr_origins(&self) -> &[(ExprId, ConstExprOrigin)] {
+        self.expr_only.as_ref().map_or(&[], |it| &it.const_expr_origins)
     }
 
     /// Returns an iterator over all block expressions in this store that define inner items.

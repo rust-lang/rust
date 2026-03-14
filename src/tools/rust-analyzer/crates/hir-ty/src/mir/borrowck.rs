@@ -8,7 +8,7 @@ use std::iter;
 use hir_def::{DefWithBodyId, HasModule};
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::GenericArgs as _;
+use rustc_type_ir::inherent::{GenericArgs as _, Ty as _};
 use stdx::never;
 use triomphe::Arc;
 
@@ -18,7 +18,7 @@ use crate::{
     display::DisplayTarget,
     mir::OperandKind,
     next_solver::{
-        DbInterner, GenericArgs, ParamEnv, StoredTy, Ty, TypingMode,
+        DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, StoredTy, Ty, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -121,11 +121,14 @@ fn make_fetch_closure_field<'db>(
     db: &'db dyn HirDatabase,
 ) -> impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db> + use<'db> {
     |c: InternedClosureId, subst: GenericArgs<'db>, f: usize| {
-        let InternedClosure(def, _) = db.lookup_intern_closure(c);
+        let InternedClosure(owner, _) = db.lookup_intern_closure(c);
+        let interner = DbInterner::new_no_crate(db);
+        let Some(def) = owner.as_def_with_body() else {
+            return Ty::new_error(interner, ErrorGuaranteed);
+        };
         let infer = InferenceResult::for_body(db, def);
         let (captures, _) = infer.closure_info(c);
         let parent_subst = subst.as_closure().parent_args();
-        let interner = DbInterner::new_no_crate(db);
         captures.get(f).expect("broken closure field").ty.get().instantiate(interner, parent_subst)
     }
 }

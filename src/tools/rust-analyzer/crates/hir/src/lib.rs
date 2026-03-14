@@ -1737,7 +1737,7 @@ impl Variant {
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
-        self.source(db)?.value.expr()
+        self.source(db)?.value.const_arg()?.expr()
     }
 
     pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
@@ -2891,11 +2891,12 @@ impl<'db> Param<'db> {
             }
             Callee::Closure(closure, _) => {
                 let c = db.lookup_intern_closure(closure);
-                let body = db.body(c.0);
+                let body_owner = c.0.as_def_with_body()?;
+                let body = db.body(body_owner);
                 if let Expr::Closure { args, .. } = &body[c.1]
                     && let Pat::Bind { id, .. } = &body[args[self.idx]]
                 {
-                    return Some(Local { parent: c.0, binding_id: *id });
+                    return Some(Local { parent: body_owner, binding_id: *id });
                 }
                 None
             }
@@ -5012,13 +5013,16 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = InferenceResult::for_body(db, owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return Vec::new();
+        };
+        let infer = InferenceResult::for_body(db, body_owner);
         let info = infer.closure_info(id);
         info.0
             .iter()
             .cloned()
             .map(|capture| ClosureCapture {
-                owner,
+                owner: body_owner,
                 closure: id,
                 capture,
                 _marker: PhantomCovariantLifetime::new(),
@@ -5032,9 +5036,12 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = InferenceResult::for_body(db, owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return Vec::new();
+        };
+        let infer = InferenceResult::for_body(db, body_owner);
         let (captures, _) = infer.closure_info(id);
-        let env = body_param_env_from_has_crate(db, owner);
+        let env = body_param_env_from_has_crate(db, body_owner);
         captures.iter().map(|capture| Type { env, ty: capture.ty(db, self.subst) }).collect()
     }
 
@@ -5042,7 +5049,10 @@ impl<'db> Closure<'db> {
         match self.id {
             AnyClosureId::ClosureId(id) => {
                 let owner = db.lookup_intern_closure(id).0;
-                let infer = InferenceResult::for_body(db, owner);
+                let Some(body_owner) = owner.as_def_with_body() else {
+                    return FnTrait::FnOnce;
+                };
+                let infer = InferenceResult::for_body(db, body_owner);
                 let info = infer.closure_info(id);
                 info.1.into()
             }

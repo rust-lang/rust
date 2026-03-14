@@ -235,6 +235,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_usize(db, ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().memory, false))),
         ConstKind::Error(_) => None,
@@ -258,6 +259,7 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_isize(db, &ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(i128::from_le_bytes(pad16(&val.value.inner().memory, true))),
         ConstKind::Error(_) => None,
@@ -333,7 +335,8 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
             return c;
         }
     }
-    if let Ok(mir_body) = lower_body_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+    if let Some(body_owner) = ctx.owner.as_def_with_body()
+        && let Ok(mir_body) = lower_body_to_mir(ctx.db, body_owner, ctx.body, &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
         return result;

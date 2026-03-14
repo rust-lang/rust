@@ -3,7 +3,7 @@
 use std::{cmp, iter};
 
 use hir_def::{
-    HasModule,
+    HasModule as _,
     expr_store::{Body, path::Path},
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
 };

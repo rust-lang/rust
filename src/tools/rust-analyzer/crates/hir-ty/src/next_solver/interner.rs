@@ -10,8 +10,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, StructId,
-    UnionId, VariantId,
+    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, ExpressionStoreOwner, HasModule,
+    ItemContainerId, StructId, UnionId, VariantId,
     attrs::AttrFlags,
     lang_item::LangItems,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
@@ -1193,7 +1193,8 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::ImplId(_)
             | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
-            | SolverDefId::InternedCoroutineId(_) => {
+            | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::AnonConstId(_) => {
                 return VariancesOf::empty(self);
             }
         };
@@ -1260,7 +1261,9 @@ impl<'db> Interner for DbInterner<'db> {
             },
             // rustc creates an `AnonConst` for consts, and evaluates them with CTFE (normalizing projections
             // via selection, similar to ours `find_matching_impl()`, and not with the trait solver), so mimic it.
-            SolverDefId::ConstId(_) => AliasTermKind::UnevaluatedConst,
+            SolverDefId::ConstId(_) | SolverDefId::AnonConstId(_) => {
+                AliasTermKind::UnevaluatedConst
+            }
             _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
         }
     }
@@ -1308,22 +1311,10 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::TypeAliasId(it) => it.lookup(self.db()).container,
             SolverDefId::ConstId(it) => it.lookup(self.db()).container,
             SolverDefId::InternedClosureId(it) => {
-                return self
-                    .db()
-                    .lookup_intern_closure(it)
-                    .0
-                    .as_generic_def_id(self.db())
-                    .unwrap()
-                    .into();
+                return self.db().lookup_intern_closure(it).0.generic_def(self.db()).into();
             }
             SolverDefId::InternedCoroutineId(it) => {
-                return self
-                    .db()
-                    .lookup_intern_coroutine(it)
-                    .0
-                    .as_generic_def_id(self.db())
-                    .unwrap()
-                    .into();
+                return self.db().lookup_intern_coroutine(it).0.generic_def(self.db()).into();
             }
             SolverDefId::StaticId(_)
             | SolverDefId::AdtId(_)
@@ -1332,7 +1323,8 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::EnumVariantId(..)
             | SolverDefId::Ctor(..)
-            | SolverDefId::InternedOpaqueTyId(..) => panic!(),
+            | SolverDefId::InternedOpaqueTyId(..)
+            | SolverDefId::AnonConstId(_) => panic!(),
         };
 
         match container {
@@ -1361,7 +1353,10 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let body = self.db.body(owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return rustc_ast_ir::Movability::Static;
+        };
+        let body = self.db.body(body_owner);
         let expr = &body[expr_id];
         match *expr {
             hir_def::hir::Expr::Closure { closure_kind, .. } => match closure_kind {
@@ -1795,6 +1790,7 @@ impl<'db> Interner for DbInterner<'db> {
                     | SolverDefId::InternedCoroutineId(_)
                     | SolverDefId::InternedOpaqueTyId(_)
                     | SolverDefId::EnumVariantId(_)
+                    | SolverDefId::AnonConstId(_)
                     | SolverDefId::Ctor(_) => return None,
                 };
                 module.block(self.db)
@@ -2006,7 +2002,10 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let body = self.db.body(owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return false;
+        };
+        let body = self.db.body(body_owner);
         matches!(
             body[expr_id],
             hir_def::hir::Expr::Closure {
@@ -2020,7 +2019,10 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let body = self.db.body(owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return false;
+        };
+        let body = self.db.body(body_owner);
         matches!(
             body[expr_id],
             hir_def::hir::Expr::Closure { closure_kind: hir_def::hir::ClosureKind::Async, .. }
@@ -2154,8 +2156,10 @@ impl<'db> Interner for DbInterner<'db> {
                         ..
                     }
             ) {
-                let coroutine =
-                    InternedCoroutineId::new(self.db, InternedCoroutine(def_id, expr_id));
+                let coroutine = InternedCoroutineId::new(
+                    self.db,
+                    InternedCoroutine(ExpressionStoreOwner::Body(def_id), expr_id),
+                );
                 result.push(coroutine.into());
             }
         });

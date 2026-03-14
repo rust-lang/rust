@@ -18,7 +18,7 @@ use crate::next_solver::{
 };
 
 use super::{
-    DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
+    Const, DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
     infer::{DbInternerInferExt, InferCtxt, canonical::instantiate::CanonicalExt},
 };
 
@@ -256,6 +256,11 @@ impl<'db> SolverDelegate for SolverContext<'db> {
                 let ec = self.cx().db.const_eval_static(c).ok()?;
                 Some(ec)
             }
+            // TODO: Wire up const_eval_anon query in Phase 5.
+            // For now, return an error const so normalization resolves the
+            // unevaluated const to Error (matching the old behavior where
+            // complex expressions produced ConstKind::Error directly).
+            GeneralConstId::AnonConstId(_) => Some(Const::error(self.cx())),
         }
     }
 

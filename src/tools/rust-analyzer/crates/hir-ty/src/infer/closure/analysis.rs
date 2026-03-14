@@ -866,7 +866,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     &self.table.infer_ctxt,
                     self.table.param_env,
                     ty,
-                    self.owner.module(self.db).krate(self.db),
+                    self.owner.krate(self.db),
                 );
                 if ty.is_raw_ptr() || ty.is_union() {
                     capture.kind = CaptureKind::ByRef(BorrowKind::Shared);

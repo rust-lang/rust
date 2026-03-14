@@ -32,7 +32,7 @@ use crate::{
     hir::{ExprId, PatId, generics::GenericParams},
     item_tree::{FieldsShape, RawVisibility, visibility_from_ast},
     src::HasSource,
-    type_ref::{TraitRef, TypeBound, TypeRefId},
+    type_ref::{ConstRef, TraitRef, TypeBound, TypeRefId},
 };
 
 #[inline]
@@ -754,7 +754,7 @@ pub struct FieldData {
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub is_unsafe: bool,
-    pub default_value: Option<ExprId>,
+    pub default_value: Option<ConstRef>,
 }
 
 pub type LocalFieldId = Idx<FieldData>;
@@ -873,7 +873,7 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     override_visibility: Option<Option<ast::Visibility>>,
 ) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
     let cfg_options = module.krate(db).cfg_options(db);
-    let mut col = ExprCollector::new(db, module, fields.file_id);
+    let mut col = ExprCollector::signature(db, module, fields.file_id);
     let override_visibility = override_visibility.map(|vis| {
         LazyCell::new(|| {
             let span_map = db.span_map(fields.file_id);
@@ -907,9 +907,9 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
 
                 // Check if field has default value (only for record fields)
                 let default_value = ast::RecordField::cast(field.syntax().clone())
-                    .and_then(|rf| rf.eq_token().is_some().then_some(rf.expr()))
+                    .and_then(|rf| rf.eq_token().is_some().then_some(rf.default_val()))
                     .flatten()
-                    .map(|expr| col.collect_expr_opt(Some(expr)));
+                    .map(|expr| col.lower_const_arg(expr));
 
                 arena.alloc(FieldData { name, type_ref, visibility, is_unsafe, default_value });
                 idx += 1;

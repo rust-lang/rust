@@ -1503,8 +1503,10 @@ impl SyntaxFactory {
             }
 
             if let Some(discriminant) = discriminant {
-                builder
-                    .map_node(discriminant.syntax().clone(), ast.expr().unwrap().syntax().clone());
+                builder.map_node(
+                    discriminant.syntax().clone(),
+                    ast.const_arg().unwrap().syntax().clone(),
+                );
             }
 
             builder.finish(&mut mapping);

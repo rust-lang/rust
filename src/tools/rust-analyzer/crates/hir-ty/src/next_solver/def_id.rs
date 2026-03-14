@@ -1,9 +1,9 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId, StaticId, StructId, TraitId,
-    TypeAliasId, UnionId,
+    AdtId, AnonConstId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId,
+    EnumId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId, StaticId, StructId,
+    TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -26,6 +26,7 @@ pub enum SolverDefId {
     ImplId(ImplId),
     BuiltinDeriveImplId(BuiltinDeriveImplId),
     StaticId(StaticId),
+    AnonConstId(AnonConstId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
     InternedClosureId(InternedClosureId),
@@ -88,6 +89,7 @@ impl std::fmt::Debug for SolverDefId {
                     ))
                     .finish()
             }
+            SolverDefId::AnonConstId(id) => f.debug_tuple("AnonConstId").field(&id).finish(),
             SolverDefId::Ctor(Ctor::Struct(id)) => {
                 f.debug_tuple("Ctor").field(&db.struct_signature(id).name.as_str()).finish()
             }
@@ -112,6 +114,7 @@ impl_from!(
     ImplId,
     BuiltinDeriveImplId,
     StaticId,
+    AnonConstId,
     TraitId,
     TypeAliasId,
     InternedClosureId,
@@ -142,6 +145,7 @@ impl From<GeneralConstId> for SolverDefId {
         match value {
             GeneralConstId::ConstId(const_id) => SolverDefId::ConstId(const_id),
             GeneralConstId::StaticId(static_id) => SolverDefId::StaticId(static_id),
+            GeneralConstId::AnonConstId(anon_const_id) => SolverDefId::AnonConstId(anon_const_id),
         }
     }
 }
@@ -176,7 +180,8 @@ impl TryFrom<SolverDefId> for AttrDefId {
             SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
-            | SolverDefId::InternedOpaqueTyId(_) => Err(()),
+            | SolverDefId::InternedOpaqueTyId(_)
+            | SolverDefId::AnonConstId(_) => Err(()),
         }
     }
 }
@@ -199,6 +204,7 @@ impl TryFrom<SolverDefId> for DefWithBodyId {
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
             | SolverDefId::Ctor(Ctor::Struct(_))
+            | SolverDefId::AnonConstId(_)
             | SolverDefId::AdtId(_) => return Err(()),
         };
         Ok(id)
@@ -222,6 +228,7 @@ impl TryFrom<SolverDefId> for GenericDefId {
             | SolverDefId::InternedOpaqueTyId(_)
             | SolverDefId::EnumVariantId(_)
             | SolverDefId::BuiltinDeriveImplId(_)
+            | SolverDefId::AnonConstId(_)
             | SolverDefId::Ctor(_) => return Err(()),
         })
     }
@@ -343,6 +350,7 @@ impl From<GeneralConstIdWrapper> for SolverDefId {
         match value.0 {
             GeneralConstId::ConstId(id) => SolverDefId::ConstId(id),
             GeneralConstId::StaticId(id) => SolverDefId::StaticId(id),
+            GeneralConstId::AnonConstId(id) => SolverDefId::AnonConstId(id),
         }
     }
 }
@@ -353,6 +361,7 @@ impl TryFrom<SolverDefId> for GeneralConstIdWrapper {
         match value {
             SolverDefId::ConstId(it) => Ok(Self(it.into())),
             SolverDefId::StaticId(it) => Ok(Self(it.into())),
+            SolverDefId::AnonConstId(it) => Ok(Self(it.into())),
             _ => Err(()),
         }
     }

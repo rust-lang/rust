@@ -99,7 +99,7 @@ impl Body {
                 DefWithBodyId::VariantId(v) => {
                     let s = v.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.expr())
+                    src.map(|it| it.const_arg()?.expr())
                 }
             }
         };

@@ -123,7 +123,7 @@ impl<'db> SourceAnalyzer<'db> {
         infer: Option<&'db InferenceResult>,
     ) -> SourceAnalyzer<'db> {
         let (body, source_map) = db.body_with_source_map(def);
-        let scopes = db.expr_scopes(def);
+        let scopes = db.expr_scopes(def.into());
         let scope = match offset {
             None => scope_for(db, &scopes, &source_map, node),
             Some(offset) => {
@@ -1045,7 +1045,7 @@ impl<'db> SourceAnalyzer<'db> {
         }
 
         // FIXME: collectiong here shouldnt be necessary?
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector = ExprCollector::body(db, self.resolver.module(), self.file_id);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let parent_hir_path = path
@@ -1253,7 +1253,7 @@ impl<'db> SourceAnalyzer<'db> {
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolutionPerNs> {
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector = ExprCollector::body(db, self.resolver.module(), self.file_id);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let (store, _) = collector.store.finish();

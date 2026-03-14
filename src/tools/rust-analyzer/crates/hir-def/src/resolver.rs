@@ -16,11 +16,11 @@ use syntax::ast::HasName;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
-    ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, LifetimeParamId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId,
-    ModuleId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
-    TypeParamId, UseId, VariantId,
+    AdtId, AstIdLoc, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
+    ExpressionStoreOwner, ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId,
+    GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, Lookup, Macro2Id, MacroId,
+    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::{
@@ -66,7 +66,7 @@ impl fmt::Debug for ModuleItemMap<'_> {
 
 #[derive(Clone)]
 struct ExprScope {
-    owner: DefWithBodyId,
+    owner: ExpressionStoreOwner,
     expr_scopes: Arc<ExprScopes>,
     scope_id: ScopeId,
 }
@@ -738,7 +738,10 @@ impl<'db> Resolver<'db> {
 
     pub fn body_owner(&self) -> Option<DefWithBodyId> {
         self.scopes().find_map(|scope| match scope {
-            Scope::ExprScope(it) => Some(it.owner),
+            Scope::ExprScope(it) => match it.owner {
+                ExpressionStoreOwner::Body(def) => Some(def),
+                ExpressionStoreOwner::Signature(_) => None,
+            },
             _ => None,
         })
     }
@@ -854,14 +857,15 @@ impl<'db> Resolver<'db> {
     pub fn update_to_inner_scope(
         &mut self,
         db: &'db dyn DefDatabase,
-        owner: DefWithBodyId,
+        owner: impl Into<ExpressionStoreOwner>,
         expr_id: ExprId,
     ) -> UpdateGuard {
+        let owner = owner.into();
         #[inline(always)]
         fn append_expr_scope<'db>(
             db: &'db dyn DefDatabase,
             resolver: &mut Resolver<'db>,
-            owner: DefWithBodyId,
+            owner: ExpressionStoreOwner,
             expr_scopes: &Arc<ExprScopes>,
             scope_id: ScopeId,
         ) {
@@ -1060,12 +1064,13 @@ impl<'db> Scope<'db> {
 
 pub fn resolver_for_scope(
     db: &dyn DefDatabase,
-    owner: DefWithBodyId,
+    owner: impl Into<ExpressionStoreOwner> + HasResolver,
     scope_id: Option<ScopeId>,
 ) -> Resolver<'_> {
-    let r = owner.resolver(db);
-    let scopes = db.expr_scopes(owner);
-    resolver_for_scope_(db, scopes, scope_id, r, owner)
+    let store_owner = owner.into();
+    let r = store_owner.resolver(db);
+    let scopes = db.expr_scopes(store_owner);
+    resolver_for_scope_(db, scopes, scope_id, r, store_owner)
 }
 
 fn resolver_for_scope_<'db>(
@@ -1073,7 +1078,7 @@ fn resolver_for_scope_<'db>(
     scopes: Arc<ExprScopes>,
     scope_id: Option<ScopeId>,
     mut r: Resolver<'db>,
-    owner: DefWithBodyId,
+    owner: ExpressionStoreOwner,
 ) -> Resolver<'db> {
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     r.scopes.reserve(scope_chain.len());
@@ -1124,7 +1129,7 @@ impl<'db> Resolver<'db> {
 
     fn push_expr_scope(
         self,
-        owner: DefWithBodyId,
+        owner: ExpressionStoreOwner,
         expr_scopes: Arc<ExprScopes>,
         scope_id: ScopeId,
     ) -> Resolver<'db> {
@@ -1405,6 +1410,15 @@ impl HasResolver for GenericDefId {
             GenericDefId::ImplId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
             GenericDefId::StaticId(inner) => inner.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for ExpressionStoreOwner {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+        match self {
+            ExpressionStoreOwner::Signature(def) => def.resolver(db),
+            ExpressionStoreOwner::Body(def) => def.resolver(db),
         }
     }
 }

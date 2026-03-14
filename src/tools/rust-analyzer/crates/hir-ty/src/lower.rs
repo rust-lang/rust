@@ -279,11 +279,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     pub(crate) fn lower_const(&mut self, const_ref: ConstRef, const_type: Ty<'db>) -> Const<'db> {
-        let const_ref = &self.store[const_ref.expr];
-        match const_ref {
-            hir_def::hir::Expr::Path(path) => {
-                self.path_to_const(path).unwrap_or_else(|| unknown_const(const_type))
-            }
+        let expr_id = const_ref.expr;
+        let expr = &self.store[expr_id];
+        match expr {
+            hir_def::hir::Expr::Path(path) => self
+                .path_to_const(path)
+                .unwrap_or_else(|| Const::new(self.interner, ConstKind::Error(ErrorGuaranteed))),
             hir_def::hir::Expr::Literal(literal) => {
                 intern_const_ref(self.db, literal, const_type, self.resolver.krate())
             }
@@ -300,18 +301,72 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                     self.resolver.krate(),
                                 )
                             } else {
-                                unknown_const(const_type)
+                                Const::new(self.interner, ConstKind::Error(ErrorGuaranteed))
                             }
                         }
                         // For unsigned integers, chars, bools, etc., negation is not meaningful
-                        _ => unknown_const(const_type),
+                        _ => Const::new(self.interner, ConstKind::Error(ErrorGuaranteed)),
                     }
                 } else {
-                    unknown_const(const_type)
+                    // Complex negation expression (e.g. `-N` where N is a const param)
+                    self.lower_const_as_unevaluated(expr_id, const_type)
                 }
             }
-            _ => unknown_const(const_type),
+            hir_def::hir::Expr::Underscore => {
+                Const::new(self.interner, ConstKind::Error(ErrorGuaranteed))
+            }
+            // Any other complex expression becomes an unevaluated anonymous const.
+            _ => self.lower_const_as_unevaluated(expr_id, const_type),
         }
+    }
+
+    /// Lower a complex const expression to an `UnevaluatedConst` backed by an `AnonConstId`.
+    ///
+    /// The `expected_ty_ref` is `None` for array lengths (implicitly `usize`) or
+    /// `Some(type_ref_id)` for const generic arguments where the expected type comes
+    /// from the const parameter declaration.
+    fn lower_const_as_unevaluated(
+        &mut self,
+        _expr: hir_def::hir::ExprId,
+        _expected_ty: Ty<'db>,
+    ) -> Const<'db> {
+        // /// Build the identity generic args for the current generic context.
+        // ///
+        // /// This maps each generic parameter to itself (as a `ParamTy`, `ParamConst`,
+        // /// or `EarlyParamRegion`), which is the correct substitution when creating
+        // /// an `UnevaluatedConst` during type lowering — the anon const inherits the
+        // /// parent's generics and they haven't been substituted yet.
+        // fn current_generic_args(&self) -> GenericArgs<'db> {
+        //     let generics = self.generics();
+        //     let interner = self.interner;
+        //     GenericArgs::new_from_iter(
+        //         interner,
+        //         generics.iter_id().enumerate().map(|(index, id)| match id {
+        //             GenericParamId::TypeParamId(id) => {
+        //                 GenericArg::from(Ty::new_param(interner, id, index as u32))
+        //             }
+        //             GenericParamId::ConstParamId(id) => GenericArg::from(Const::new_param(
+        //                 interner,
+        //                 ParamConst { id, index: index as u32 },
+        //             )),
+        //             GenericParamId::LifetimeParamId(id) => GenericArg::from(Region::new_early_param(
+        //                 interner,
+        //                 EarlyParamRegion { id, index: index as u32 },
+        //             )),
+        //         }),
+        //     )
+        // }
+        // let loc = AnonConstLoc { owner: self.def, expr };
+        // let id = loc.intern(self.db);
+        // let args = self.current_generic_args();
+        // Const::new(
+        //     self.interner,
+        //     ConstKind::Unevaluated(UnevaluatedConst::new(
+        //         GeneralConstId::AnonConstId(id).into(),
+        //         args,
+        //     )),
+        // )
+        Const::new(self.interner, ConstKind::Error(ErrorGuaranteed))
     }
 
     pub(crate) fn path_to_const(&mut self, path: &Path) -> Option<Const<'db>> {

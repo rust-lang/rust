@@ -285,7 +285,7 @@ impl TestDB {
         let (def_with_body, file_id) = fn_def?;
         let def_with_body = def_with_body.into();
         let source_map = self.body_with_source_map(def_with_body).1;
-        let scopes = self.expr_scopes(def_with_body);
+        let scopes = self.expr_scopes(def_with_body.into());
 
         let root_syntax_node = self.parse(file_id).syntax_node();
         let scope_iter =

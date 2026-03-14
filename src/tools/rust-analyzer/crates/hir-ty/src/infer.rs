@@ -33,9 +33,10 @@ use std::{cell::OnceCell, convert::identity, iter};
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
-    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
+    AdtId, AnonConstId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwner,
+    FieldId, FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup,
+    TraitId, TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
+    expr_store::{Body, ConstExprOrigin, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
@@ -105,7 +106,7 @@ pub fn infer_query_with_inspect<'db>(
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
     let body = db.body(def);
-    let mut ctx = InferenceContext::new(db, def, &body, resolver);
+    let mut ctx = InferenceContext::new(db, ExpressionStoreOwner::Body(def), &body, resolver);
 
     if let Some(inspect) = inspect {
         ctx.table.infer_ctxt.attach_obligation_inspector(inspect);
@@ -173,6 +174,68 @@ pub fn infer_query_with_inspect<'db>(
 }
 
 fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> InferenceResult {
+    InferenceResult {
+        has_errors: true,
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
+}
+
+/// Infer types for all const expressions in an item's signature.
+///
+/// This handles const expressions that appear in type positions within a generic
+/// item's signature, such as array lengths (`[T; N]`) and const generic arguments
+/// (`Foo<{ expr }>`). Each root expression is inferred independently within
+/// a shared `InferenceContext`, accumulating results into a single `InferenceResult`.
+fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
+    let _p = tracing::info_span!("infer_signature_query").entered();
+    let (_, store) = db.generic_params_and_store(def);
+    let mut roots = store.signature_const_expr_roots_with_origins().peekable();
+    let Some(&(first, _)) = roots.peek() else {
+        return InferenceResult::new(crate::next_solver::default_types(db).types.error);
+    };
+
+    let resolver = def.resolver(db);
+    let owner = ExpressionStoreOwner::Signature(def);
+
+    // Construct a synthetic `Body` to satisfy `InferenceContext`.
+    // The `body_expr` is set to the first root as a placeholder; we infer
+    // each root expression individually below rather than calling `infer_body`.
+    let body = Body {
+        // FIXME: Get rid of this clone
+        store: (*store).clone(),
+        params: Box::new([]),
+        self_param: None,
+        body_expr: first,
+    };
+
+    let mut ctx = InferenceContext::new(db, owner, &body, resolver);
+
+    for (root_expr, origin) in roots {
+        let expected = match origin {
+            // Array lengths are always `usize`.
+            ConstExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
+            // Const parameter default: look up the param's declared type.
+            ConstExprOrigin::ConstParam(local_id) => Expectation::has_type(db.const_param_ty_ns(
+                ConstParamId::from_unchecked(TypeOrConstParamId { parent: def, local_id }),
+            )),
+            // Path const generic args: determining the expected type requires
+            // path resolution.
+            // FIXME
+            ConstExprOrigin::GenericArgsPath => Expectation::None,
+        };
+        ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
+    }
+
+    ctx.type_inference_fallback();
+    ctx.table.select_obligations_where_possible();
+    ctx.resolve_all()
+}
+
+fn infer_signature_cycle_result(
+    db: &dyn HirDatabase,
+    _: salsa::Id,
+    _: GenericDefId,
+) -> InferenceResult {
     InferenceResult {
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
@@ -555,9 +618,37 @@ impl InferenceResult {
     pub fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
         infer_query(db, def)
     }
+
+    /// Infer types for all const expressions in an item's signature.
+    ///
+    /// Returns an `InferenceResult` containing type information for array lengths,
+    /// const generic arguments, and other const expressions appearing in type
+    /// positions within the item's signature.
+    #[salsa::tracked(returns(ref), cycle_result = infer_signature_cycle_result)]
+    pub fn for_signature(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
+        infer_signature_query(db, def)
+    }
 }
 
 impl InferenceResult {
+    /// Look up inference results for a specific anonymous const in a signature.
+    ///
+    /// This delegates to [`Self::for_signature`] on the anon const's owner.
+    /// The returned `InferenceResult` contains types for *all* expressions in
+    /// the owner's signature store, not just this anon const's sub-tree.
+    /// Callers should index into it with `loc.expr` to get the root expression's
+    /// type.
+    // FIXME: This function doesn't make sense in that we can't return a full inference result here
+    // as the anon const is just part of an inference result.
+    pub fn for_anon_const(db: &dyn HirDatabase, id: AnonConstId) -> &InferenceResult {
+        match id.lookup(db).owner {
+            ExpressionStoreOwner::Signature(generic_def_id) => {
+                Self::for_signature(db, generic_def_id)
+            }
+            ExpressionStoreOwner::Body(def_with_body_id) => Self::for_body(db, def_with_body_id),
+        }
+    }
+
     fn new(error_ty: Ty<'_>) -> Self {
         Self {
             method_resolutions: Default::default(),
@@ -754,7 +845,7 @@ impl InferenceResult {
 #[derive(Clone, Debug)]
 pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) owner: DefWithBodyId,
+    pub(crate) owner: ExpressionStoreOwner,
     pub(crate) body: &'body Body,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
@@ -855,12 +946,18 @@ fn find_continuable<'a, 'db>(
 impl<'body, 'db> InferenceContext<'body, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        owner: DefWithBodyId,
+        owner: ExpressionStoreOwner,
         body: &'body Body,
         resolver: Resolver<'db>,
     ) -> Self {
-        let trait_env = db.trait_environment_for_body(owner);
-        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));
+        let trait_env = match owner {
+            ExpressionStoreOwner::Signature(generic_def_id) => db.trait_environment(generic_def_id),
+            ExpressionStoreOwner::Body(def_with_body_id) => {
+                db.trait_environment_for_body(def_with_body_id)
+            }
+        };
+        let table =
+            unify::InferenceTable::new(db, trait_env, resolver.krate(), owner.as_def_with_body());
         let types = crate::next_solver::default_types(db);
         InferenceContext {
             result: InferenceResult::new(types.types.error),
@@ -878,12 +975,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             return_coercion: None,
             db,
             owner,
-            generic_def: match owner {
-                DefWithBodyId::FunctionId(it) => it.into(),
-                DefWithBodyId::StaticId(it) => it.into(),
-                DefWithBodyId::ConstId(it) => it.into(),
-                DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
-            },
+            generic_def: owner.generic_def(db),
             body,
             traits_in_scope: resolver.traits_in_scope(db),
             resolver,
@@ -908,7 +1000,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
         let (target_features, target_feature_is_safe) = self.target_features.get_or_init(|| {
             let target_features = match self.owner {
-                DefWithBodyId::FunctionId(id) => TargetFeatures::from_fn(self.db, id),
+                ExpressionStoreOwner::Body(DefWithBodyId::FunctionId(id)) => {
+                    TargetFeatures::from_fn(self.db, id)
+                }
                 _ => TargetFeatures::default(),
             };
             let target_feature_is_safe = match &self.krate().workspace_data(self.db).target {

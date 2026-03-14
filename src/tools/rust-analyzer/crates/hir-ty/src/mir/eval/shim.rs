@@ -152,7 +152,10 @@ impl<'db> Evaluator<'db> {
                     not_supported!("wrong arg count for clone");
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
-                let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure(id.0);
+                let InternedClosure(owner, _) = self.db.lookup_intern_closure(id.0);
+                let Some(closure_owner) = owner.as_def_with_body() else {
+                    not_supported!("closure in non-body context");
+                };
                 let infer = InferenceResult::for_body(self.db, closure_owner);
                 let (captures, _) = infer.closure_info(id.0);
                 let layout = self.layout(self_ty)?;

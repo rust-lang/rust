@@ -1336,7 +1336,11 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
                 let sig = interner.signature_unclosure(substs.as_closure().sig(), Safety::Safe);
                 let sig = sig.skip_binder();
-                let InternedClosure(def, _) = db.lookup_intern_closure(id);
+                let InternedClosure(owner, _) = db.lookup_intern_closure(id);
+                let Some(def) = owner.as_def_with_body() else {
+                    write!(f, "{{closure}}")?;
+                    return Ok(());
+                };
                 let infer = InferenceResult::for_body(db, def);
                 let (_, kind) = infer.closure_info(id);
                 match f.closure_style {
@@ -1526,7 +1530,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 let InternedCoroutine(owner, expr_id) = coroutine_id.0.loc(db);
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
-                let body = db.body(owner);
+                let Some(body_owner) = owner.as_def_with_body() else {
+                    write!(f, "impl Future<Output = ")?;
+                    return_ty.hir_fmt(f)?;
+                    write!(f, ">")?;
+                    return Ok(());
+                };
+                let body = db.body(body_owner);
                 let expr = &body[expr_id];
                 match expr {
                     hir_def::hir::Expr::Closure {

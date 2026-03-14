@@ -40,7 +40,8 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
             captures_info.extend(infer.closure_info.iter().flat_map(
                 |(closure_id, (captures, _))| {
                     let closure = db.lookup_intern_closure(*closure_id);
-                    let source_map = db.body_with_source_map(closure.0).1;
+                    let body_owner = closure.0.as_def_with_body().unwrap();
+                    let source_map = db.body_with_source_map(body_owner).1;
                     let closure_text_range = source_map
                         .expr_syntax(closure.1)
                         .expect("failed to map closure to SyntaxNode")
@@ -56,7 +57,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         }
 
                         // FIXME: Deduplicate this with hir::Local::sources().
-                        let (body, source_map) = db.body_with_source_map(closure.0);
+                        let (body, source_map) = db.body_with_source_map(body_owner);
                         let local_text_range =
                             match body.self_param.zip(source_map.self_param_syntax()) {
                                 Some((param, source)) if param == capture.local() => {
@@ -71,7 +72,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                                     .map(|it| format!("{it:?}"))
                                     .join(", "),
                             };
-                        let place = capture.display_place(closure.0, db);
+                        let place = capture.display_place(body_owner, db);
                         let capture_ty = capture
                             .ty
                             .get()

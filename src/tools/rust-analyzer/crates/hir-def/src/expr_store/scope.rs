@@ -4,7 +4,7 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
-    BlockId, DefWithBodyId,
+    BlockId, DefWithBodyId, ExpressionStoreOwner, GenericDefId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
     hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
@@ -51,9 +51,33 @@ pub struct ScopeData {
 }
 
 impl ExprScopes {
-    pub(crate) fn expr_scopes_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
+    pub(crate) fn expr_scopes_query(
+        db: &dyn DefDatabase,
+        def: ExpressionStoreOwner,
+    ) -> Arc<ExprScopes> {
+        match def {
+            ExpressionStoreOwner::Body(def) => db.body_expr_scopes(def),
+            ExpressionStoreOwner::Signature(def) => db.sig_expr_scopes(def),
+        }
+    }
+
+    pub(crate) fn body_expr_scopes_query(
+        db: &dyn DefDatabase,
+        def: DefWithBodyId,
+    ) -> Arc<ExprScopes> {
         let body = db.body(def);
         let mut scopes = ExprScopes::new_body(&body);
+        scopes.shrink_to_fit();
+        Arc::new(scopes)
+    }
+
+    pub(crate) fn sig_expr_scopes_query(
+        db: &dyn DefDatabase,
+        def: GenericDefId,
+    ) -> Arc<ExprScopes> {
+        let (_, store) = db.generic_params_and_store(def);
+        let roots = store.signature_const_expr_roots();
+        let mut scopes = ExprScopes::new_store(&store, roots);
         scopes.shrink_to_fit();
         Arc::new(scopes)
     }
@@ -116,6 +140,22 @@ impl ExprScopes {
         }
         scopes.add_params_bindings(body, root, &body.params);
         compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
+        scopes
+    }
+
+    fn new_store(store: &ExpressionStore, roots: impl IntoIterator<Item = ExprId>) -> ExprScopes {
+        let mut scopes = ExprScopes {
+            scopes: Arena::default(),
+            scope_entries: Arena::default(),
+            scope_by_expr: ArenaMap::with_capacity(
+                store.expr_only.as_ref().map_or(0, |it| it.exprs.len()),
+            ),
+        };
+        let root = scopes.root_scope();
+        for root_expr in roots {
+            let mut scope = scopes.new_scope(root);
+            compute_expr_scopes(root_expr, store, &mut scopes, &mut scope);
+        }
         scopes
     }
 
@@ -327,7 +367,8 @@ mod tests {
     use test_utils::{assert_eq_text, extract_offset};
 
     use crate::{
-        FunctionId, ModuleDefId, db::DefDatabase, nameres::crate_def_map, test_db::TestDB,
+        DefWithBodyId, FunctionId, ModuleDefId, db::DefDatabase, nameres::crate_def_map,
+        test_db::TestDB,
     };
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
@@ -363,7 +404,7 @@ mod tests {
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(function.into());
+        let scopes = db.expr_scopes(DefWithBodyId::from(function).into());
         let (_body, source_map) = db.body_with_source_map(function.into());
 
         let expr_id = source_map
@@ -522,7 +563,7 @@ fn foo() {
 
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(function.into());
+        let scopes = db.expr_scopes(DefWithBodyId::from(function).into());
         let (_, source_map) = db.body_with_source_map(function.into());
 
         let expr_scope = {
