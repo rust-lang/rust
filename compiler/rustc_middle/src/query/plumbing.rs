@@ -630,6 +630,10 @@ macro_rules! define_callbacks {
     };
 }
 
+// Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
+pub(crate) use define_callbacks;
+pub(crate) use query_helper_param_ty;
+
 mod sealed {
     use rustc_hir::def_id::{LocalModDefId, ModDefId};
 

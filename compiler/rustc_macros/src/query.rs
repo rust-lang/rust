@@ -510,6 +510,9 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        // Re-export the macro as a normal item, so that other modules in `rustc_middle`
+        // can import it normally, without `#[macro_use]`.
+        pub(crate) use rustc_with_all_queries;
 
         // Add hints for rust-analyzer
         mod _analyzer_hints {
