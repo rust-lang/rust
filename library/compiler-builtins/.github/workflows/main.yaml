@@ -216,6 +216,19 @@ jobs:
       run: ./ci/update-musl.sh
     - run: cargo clippy --workspace --all-targets
 
+  zizmor:
+    name: Zizmor (Static analysis for GitHub Actions)
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+
   build-custom:
     name: Build custom target
     runs-on: ubuntu-24.04
@@ -390,6 +403,7 @@ jobs:
       - msrv
       - rustfmt
       - test
+      - zizmor
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
