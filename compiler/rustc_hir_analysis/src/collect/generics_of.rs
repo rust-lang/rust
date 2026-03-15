@@ -163,9 +163,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
                 ty::AnonConstKind::GCE => Some(parent_did),
 
-                // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
                 ty::AnonConstKind::NonTypeSystem
-                    if matches!(tcx.parent_hir_node(hir_id), Node::TyPat(_) | Node::Field(_)) =>
+                    if matches!(
+                        tcx.parent_hir_node(hir_id),
+                        Node::TyPat(_) | Node::Field(_) | Node::Variant(_)
+                    ) =>
                 {
                     Some(parent_did)
                 }

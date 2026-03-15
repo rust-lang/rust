@@ -1107,11 +1107,27 @@ fn check_type_defn<'tcx>(
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
             if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
-                match tcx.const_eval_poly(discr_def_id) {
-                    Ok(_) => {}
-                    Err(ErrorHandled::Reported(..)) => {}
-                    Err(ErrorHandled::TooGeneric(sp)) => {
-                        span_bug!(sp, "enum variant discr was too generic to eval")
+                // Reject discriminants that use `Self` when the enum has
+                // type or const generic parameters, since `Self` resolves
+                // to the enum type including those parameters.
+                if let Some(local_id) = discr_def_id.as_local()
+                    && enum_has_type_or_const_generics(tcx, item.owner_id.def_id)
+                    && discr_body_references_self(tcx, local_id)
+                {
+                    tcx.dcx().span_err(
+                        tcx.def_span(discr_def_id),
+                        "generic parameters may not be used in enum discriminant values",
+                    );
+                } else {
+                    match tcx.const_eval_poly(discr_def_id) {
+                        Ok(_) => {}
+                        Err(ErrorHandled::Reported(..)) => {}
+                        Err(ErrorHandled::TooGeneric(_)) => {
+                            tcx.dcx().span_err(
+                                tcx.def_span(discr_def_id),
+                                "enum discriminant value depends on generic parameters",
+                            );
+                        }
                     }
                 }
             }
@@ -1120,6 +1136,31 @@ fn check_type_defn<'tcx>(
         check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
+}
+
+fn enum_has_type_or_const_generics(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    tcx.generics_of(def_id).own_params.iter().any(|p| {
+        matches!(
+            p.kind,
+            ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. }
+        )
+    })
+}
+
+fn discr_body_references_self(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    struct SelfRefVisitor(bool);
+    impl<'hir> intravisit::Visitor<'hir> for SelfRefVisitor {
+        fn visit_path(&mut self, path: &hir::Path<'hir>, _: hir::HirId) {
+            if matches!(path.res, Res::SelfTyAlias { .. }) {
+                self.0 = true;
+            }
+            intravisit::walk_path(self, path);
+        }
+    }
+    let body = tcx.hir_body_owned_by(def_id);
+    let mut visitor = SelfRefVisitor(false);
+    intravisit::walk_body(&mut visitor, body);
+    visitor.0
 }
 
 #[instrument(skip(tcx, item))]
