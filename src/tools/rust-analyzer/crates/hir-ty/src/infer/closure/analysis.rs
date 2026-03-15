@@ -346,7 +346,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if path.type_anchor().is_some() {
             return None;
         }
-        let hygiene = self.body.expr_or_pat_path_hygiene(id);
+        let hygiene = self.store.expr_or_pat_path_hygiene(id);
         self.resolver.resolve_path_in_value_ns_fully(self.db, path, hygiene).and_then(|result| {
             match result {
                 ValueNs::LocalBinding(binding) => {
@@ -365,7 +365,7 @@ impl<'db> InferenceContext<'_, 'db> {
     /// Changes `current_capture_span_stack` to contain the stack of spans for this expr.
     fn place_of_expr_without_adjust(&mut self, tgt_expr: ExprId) -> Option<HirPlace> {
         self.current_capture_span_stack.clear();
-        match &self.body[tgt_expr] {
+        match &self.store[tgt_expr] {
             Expr::Path(p) => {
                 let resolver_guard =
                     self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
@@ -416,7 +416,7 @@ impl<'db> InferenceContext<'_, 'db> {
             let mut actual_truncate_to = 0;
             for &span in &*span_stack {
                 actual_truncate_to += 1;
-                if !span.is_ref_span(self.body) {
+                if !span.is_ref_span(self.store) {
                     remained -= 1;
                     if remained == 0 {
                         break;
@@ -424,7 +424,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
             if actual_truncate_to < span_stack.len()
-                && span_stack[actual_truncate_to].is_ref_span(self.body)
+                && span_stack[actual_truncate_to].is_ref_span(self.store)
             {
                 // Include the ref operator if there is one, we will fix it later (in `strip_captures_ref_span()`) if it's incorrect.
                 actual_truncate_to += 1;
@@ -533,7 +533,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn walk_expr_without_adjust(&mut self, tgt_expr: ExprId) {
-        match &self.body[tgt_expr] {
+        match &self.store[tgt_expr] {
             Expr::OffsetOf(_) => (),
             Expr::InlineAsm(e) => e.operands.iter().for_each(|(_, op)| match op {
                 AsmOperand::In { expr, .. }
@@ -733,7 +733,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         self.consume_with_pat(rhs_place, target);
                         self.inside_assignment = false;
                     }
-                    None => self.body.walk_pats(target, &mut |pat| match &self.body[pat] {
+                    None => self.store.walk_pats(target, &mut |pat| match &self.store[pat] {
                         Pat::Path(path) => self.mutate_path_pat(path, pat),
                         &Pat::Expr(expr) => {
                             let place = self.place_of_expr(expr);
@@ -775,7 +775,7 @@ impl<'db> InferenceContext<'_, 'db> {
         update_result: &mut impl FnMut(CaptureKind),
         mut for_mut: BorrowKind,
     ) {
-        match &self.body[p] {
+        match &self.store[p] {
             Pat::Ref { .. }
             | Pat::Box { .. }
             | Pat::Missing
@@ -819,13 +819,13 @@ impl<'db> InferenceContext<'_, 'db> {
         if self.result.pat_adjustments.get(&p).is_some_and(|it| !it.is_empty()) {
             for_mut = BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture };
         }
-        self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));
+        self.store.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));
     }
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
         if let Some(c) = self.current_closure {
             let InternedClosure(_, root) = self.db.lookup_intern_closure(c);
-            return self.body.is_binding_upvar(place.local, root);
+            return self.store.is_binding_upvar(place.local, root);
         }
         false
     }
@@ -938,7 +938,7 @@ impl<'db> InferenceContext<'_, 'db> {
         self.current_capture_span_stack
             .extend((0..adjustments_count).map(|_| MirSpan::PatId(tgt_pat)));
         'reset_span_stack: {
-            match &self.body[tgt_pat] {
+            match &self.store[tgt_pat] {
                 Pat::Missing | Pat::Wild => (),
                 Pat::Tuple { args, ellipsis } => {
                     let (al, ar) = args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
@@ -1089,7 +1089,7 @@ impl<'db> InferenceContext<'_, 'db> {
     fn analyze_closure(&mut self, closure: InternedClosureId) -> FnTrait {
         let InternedClosure(_, root) = self.db.lookup_intern_closure(closure);
         self.current_closure = Some(closure);
-        let Expr::Closure { body, capture_by, .. } = &self.body[root] else {
+        let Expr::Closure { body, capture_by, .. } = &self.store[root] else {
             unreachable!("Closure expression id is always closure");
         };
         self.consume_expr(*body);
@@ -1133,7 +1133,7 @@ impl<'db> InferenceContext<'_, 'db> {
         for capture in &mut captures {
             if matches!(capture.kind, CaptureKind::ByValue) {
                 for span_stack in &mut capture.span_stacks {
-                    if span_stack[span_stack.len() - 1].is_ref_span(self.body) {
+                    if span_stack[span_stack.len() - 1].is_ref_span(self.store) {
                         span_stack.truncate(span_stack.len() - 1);
                     }
                 }
@@ -1149,7 +1149,7 @@ impl<'db> InferenceContext<'_, 'db> {
             let kind = self.analyze_closure(closure);
 
             for (derefed_callee, callee_ty, params, expr) in exprs {
-                if let &Expr::Call { callee, .. } = &self.body[expr] {
+                if let &Expr::Call { callee, .. } = &self.store[expr] {
                     let mut adjustments =
                         self.result.expr_adjustments.remove(&callee).unwrap_or_default().into_vec();
                     self.write_fn_trait_method_resolution(

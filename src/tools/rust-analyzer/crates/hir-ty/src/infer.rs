@@ -36,7 +36,7 @@ use hir_def::{
     AdtId, AnonConstId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwner,
     FieldId, FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup,
     TraitId, TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
-    expr_store::{Body, ConstExprOrigin, ExpressionStore, HygieneId, path::Path},
+    expr_store::{ConstExprOrigin, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
@@ -106,16 +106,14 @@ pub fn infer_query_with_inspect<'db>(
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
     let body = db.body(def);
-    let mut ctx = InferenceContext::new(db, ExpressionStoreOwner::Body(def), &body, resolver);
+    let mut ctx = InferenceContext::new(db, ExpressionStoreOwner::Body(def), &body.store, resolver);
 
     if let Some(inspect) = inspect {
         ctx.table.infer_ctxt.attach_obligation_inspector(inspect);
     }
 
     match def {
-        DefWithBodyId::FunctionId(f) => {
-            ctx.collect_fn(f);
-        }
+        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f, body.self_param, &body.params),
         DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
         DefWithBodyId::VariantId(v) => {
@@ -144,9 +142,9 @@ pub fn infer_query_with_inspect<'db>(
         }
     }
 
-    ctx.infer_body();
+    ctx.infer_body(body.body_expr);
 
-    ctx.infer_mut_body();
+    ctx.infer_mut_body(body.body_expr);
 
     ctx.handle_opaque_type_uses();
 
@@ -190,25 +188,14 @@ fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceRe
     let _p = tracing::info_span!("infer_signature_query").entered();
     let (_, store) = db.generic_params_and_store(def);
     let mut roots = store.signature_const_expr_roots_with_origins().peekable();
-    let Some(&(first, _)) = roots.peek() else {
+    let Some(_) = roots.peek() else {
         return InferenceResult::new(crate::next_solver::default_types(db).types.error);
     };
 
     let resolver = def.resolver(db);
     let owner = ExpressionStoreOwner::Signature(def);
 
-    // Construct a synthetic `Body` to satisfy `InferenceContext`.
-    // The `body_expr` is set to the first root as a placeholder; we infer
-    // each root expression individually below rather than calling `infer_body`.
-    let body = Body {
-        // FIXME: Get rid of this clone
-        store: (*store).clone(),
-        params: Box::new([]),
-        self_param: None,
-        body_expr: first,
-    };
-
-    let mut ctx = InferenceContext::new(db, owner, &body, resolver);
+    let mut ctx = InferenceContext::new(db, owner, &store, resolver);
 
     for (root_expr, origin) in roots {
         let expected = match origin {
@@ -846,7 +833,7 @@ impl InferenceResult {
 pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) db: &'db dyn HirDatabase,
     pub(crate) owner: ExpressionStoreOwner,
-    pub(crate) body: &'body Body,
+    pub(crate) store: &'body ExpressionStore,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
@@ -947,7 +934,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
         owner: ExpressionStoreOwner,
-        body: &'body Body,
+        store: &'body ExpressionStore,
         resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = match owner {
@@ -976,7 +963,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             db,
             owner,
             generic_def: owner.generic_def(db),
-            body,
+            store,
             traits_in_scope: resolver.traits_in_scope(db),
             resolver,
             diverges: Diverges::Maybe,
@@ -1196,7 +1183,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.return_ty = return_ty;
     }
 
-    fn collect_fn(&mut self, func: FunctionId) {
+    fn collect_fn(&mut self, func: FunctionId, self_param: Option<BindingId>, params: &[PatId]) {
         let data = self.db.function_signature(func);
         let mut param_tys = self.with_ty_lowering(
             &data.store,
@@ -1224,13 +1211,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             param_tys.push(va_list_ty);
         }
         let mut param_tys = param_tys.into_iter().chain(iter::repeat(self.table.next_ty_var()));
-        if let Some(self_param) = self.body.self_param
+        if let Some(self_param) = self_param
             && let Some(ty) = param_tys.next()
         {
             let ty = self.process_user_written_ty(ty);
             self.write_binding_ty(self_param, ty);
         }
-        for (ty, pat) in param_tys.zip(&*self.body.params) {
+        for (ty, pat) in param_tys.zip(params) {
             let ty = self.process_user_written_ty(ty);
 
             self.infer_top_pat(*pat, ty, None);
@@ -1264,12 +1251,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         &self.table.infer_ctxt
     }
 
-    fn infer_body(&mut self) {
+    fn infer_body(&mut self, body_expr: ExprId) {
         match self.return_coercion {
-            Some(_) => self.infer_return(self.body.body_expr),
+            Some(_) => self.infer_return(body_expr),
             None => {
                 _ = self.infer_expr_coerce(
-                    self.body.body_expr,
+                    body_expr,
                     &Expectation::has_type(self.return_ty),
                     ExprIsRead::Yes,
                 )
@@ -1376,7 +1363,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> R,
     ) -> R {
         self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             f,
@@ -1418,7 +1405,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     pub(crate) fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
         self.make_ty(
             type_ref,
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
         )
@@ -1426,7 +1413,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_body_const(&mut self, const_ref: ConstRef, ty: Ty<'db>) -> Const<'db> {
         let const_ = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_const(const_ref, ty),
@@ -1436,7 +1423,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_path_as_body_const(&mut self, path: &Path, ty: Ty<'db>) -> Const<'db> {
         let const_ = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_path_as_const(path, ty),
@@ -1450,7 +1437,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_body_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Region<'db> {
         let lt = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_lifetime(lifetime_ref),
@@ -1665,7 +1652,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            &self.body.store,
+            self.store,
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
             self.generic_def,

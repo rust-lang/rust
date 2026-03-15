@@ -293,9 +293,7 @@ impl HasSource for Param<'_> {
             }
             Callee::Closure(closure, _) => {
                 let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure);
-                let Some(body_owner) = owner.as_def_with_body() else {
-                    return None;
-                };
+                let body_owner = owner.as_def_with_body()?;
                 let (_, source_map) = db.body_with_source_map(body_owner);
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
                 let root = db.parse_or_expand(file_id);
