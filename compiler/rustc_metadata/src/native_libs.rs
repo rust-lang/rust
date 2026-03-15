@@ -57,6 +57,9 @@ pub fn walk_native_lib_search_dirs<R>(
         f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
     }
 
+    let has_shared_llvm_apple_darwin =
+        sess.target.is_like_darwin && sess.target_tlib_path.dir.join("libLLVM.dylib").exists();
+
     // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
     // library directory instead of the self-contained directories.
     // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
@@ -72,7 +75,8 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == Os::Linux
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
+        || sess.target.is_like_darwin
+            && (!sess.sanitizers().is_empty() || has_shared_llvm_apple_darwin)
         || sess.target.os == Os::Windows
             && sess.target.env == Env::Gnu
             && sess.target.abi == Abi::Llvm
