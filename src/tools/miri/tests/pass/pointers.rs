@@ -137,6 +137,8 @@ fn main() {
     let addr = &13 as *const i32;
     let addr2 = (addr as usize).wrapping_add(usize::MAX).wrapping_add(1);
     assert_eq!(addr.guaranteed_eq(addr2 as *const _), Some(true));
+    // Technically, this assertion could fail as the promoted may truly end up at address 0x100;
+    // here we rely on knowing how Miri assigns memory addresses.
     assert_eq!(addr.guaranteed_ne(0x100 as *const _), Some(true));
 
     wide_ptr_ops();
