@@ -272,4 +272,4 @@ macro_rules! define_queries {
     }
 }
 
-rustc_middle::rustc_with_all_queries! { define_queries! }
+rustc_middle::queries::rustc_with_all_queries! { define_queries! }
