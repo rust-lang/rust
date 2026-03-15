@@ -712,6 +712,13 @@ extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
   }
 }
 
+// Enable the NSZ flag on the given instruction.
+extern "C" void LLVMRustSetNoSignedZeros(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasNoSignedZeros(true);
+  }
+}
+
 extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
   return unwrap(Ty)->getArrayNumElements();
 }
