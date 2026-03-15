@@ -14,6 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::spec::PanicStrategy;
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -175,7 +176,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         if let Some(instance) = instance
             && is_call_from_compiler_builtins_to_upstream_monomorphization(tcx, instance)
         {
-            if destination.is_some() {
+            if instance.def.is_panic_entrypoint(tcx) {
+                info!(
+                    "compiler_builtins call to panic entrypoint {:?} replaced with abort",
+                    instance.def_id()
+                );
+                bx.abort();
+                bx.unreachable();
+                return MergingSucc::False;
+            } else {
                 let caller_def = fx.instance.def_id();
                 let e = CompilerBuiltinsCannotCall {
                     span: tcx.def_span(caller_def),
@@ -183,14 +192,6 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     callee: with_no_trimmed_paths!(tcx.def_path_str(instance.def_id())),
                 };
                 tcx.dcx().emit_err(e);
-            } else {
-                info!(
-                    "compiler_builtins call to diverging function {:?} replaced with abort",
-                    instance.def_id()
-                );
-                bx.abort();
-                bx.unreachable();
-                return MergingSucc::False;
             }
         }
 
@@ -734,6 +735,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // After this point, bx is the block for the call to panic.
         bx.switch_to_block(panic_block);
         self.set_debug_loc(bx, terminator.source_info);
+
+        if bx.tcx().sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+            bx.abort();
+            bx.unreachable();
+            return MergingSucc::False;
+        }
 
         // Get the location information.
         let location = self.get_caller_location(bx, terminator.source_info).immediate();

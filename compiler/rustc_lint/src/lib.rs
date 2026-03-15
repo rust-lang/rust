@@ -667,6 +667,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
     store.register_lints(&BadUseOfFindAttr::lint_vec());
     store.register_early_pass(|| Box::new(BadUseOfFindAttr));
+    store.register_lints(&MissingPanicEntrypoint::lint_vec());
+    store.register_late_mod_pass(|_| Box::new(MissingPanicEntrypoint));
     store.register_group(
         false,
         "rustc::internal",

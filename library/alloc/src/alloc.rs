@@ -537,9 +537,9 @@ unsafe extern "Rust" {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
 #[cfg(not(no_global_oom_handling))]
-#[cold]
-#[optimize(size)]
+#[rustc_panic_entrypoint]
 pub const fn handle_alloc_error(layout: Layout) -> ! {
+    #[inline]
     const fn ct_error(_: Layout) -> ! {
         panic!("allocation failed");
     }
@@ -551,13 +551,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
         }
     }
 
-    #[cfg(not(panic = "immediate-abort"))]
-    {
-        core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
-    }
-
-    #[cfg(panic = "immediate-abort")]
-    ct_error(layout)
+    core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -568,6 +562,7 @@ pub mod __alloc_error_handler {
     // called via generated `__rust_alloc_error_handler` if there is no
     // `#[alloc_error_handler]`.
     #[rustc_std_internal_symbol]
+    #[allow(rustc::missing_panic_entrypoint)]
     pub unsafe fn __rdl_alloc_error_handler(size: usize, _align: usize) -> ! {
         core::panicking::panic_nounwind_fmt(
             format_args!("memory allocation of {size} bytes failed"),
