@@ -49,6 +49,11 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some((pat, arg)) = extract_for_loop(expr) else { return };
 
+        // Do not put suggestions for external macros.
+        if pat.span.from_expansion() {
+            return;
+        }
+
         let arg_span = arg.span.source_callsite();
 
         let ty = cx.typeck_results().expr_ty(arg);
