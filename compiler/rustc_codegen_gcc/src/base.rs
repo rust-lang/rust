@@ -50,7 +50,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
         Linkage::WeakAny => unimplemented!(),
         Linkage::WeakODR => unimplemented!(),
         Linkage::Internal => GlobalKind::Internal,
-        Linkage::ExternalWeak => GlobalKind::Imported, // TODO(antoyo): should be weak linkage.
+        Linkage::ExternalWeak => GlobalKind::Imported, // FIXME(antoyo): should be weak linkage.
         Linkage::Common => unimplemented!(),
     }
 }
@@ -58,7 +58,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
 pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     match linkage {
         Linkage::External => FunctionType::Exported,
-        // TODO(antoyo): set the attribute externally_visible.
+        // FIXME(antoyo): set the attribute externally_visible.
         Linkage::AvailableExternally => FunctionType::Extern,
         Linkage::LinkOnceAny => unimplemented!(),
         Linkage::LinkOnceODR => unimplemented!(),
@@ -198,7 +198,7 @@ pub fn compile_codegen_unit(
         context.set_allow_unreachable_blocks(true);
 
         {
-            // TODO: to make it less error-prone (calling get_target_info() will add the flag
+            // FIXME: to make it less error-prone (calling get_target_info() will add the flag
             // -fsyntax-only), forbid the compilation when get_target_info() is called on a
             // context.
             let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
@@ -206,7 +206,7 @@ pub fn compile_codegen_unit(
             let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
             let u128_type_supported = target_info.supports_target_dependent_type(CType::UInt128t);
-            // TODO: improve this to avoid passing that many arguments.
+            // FIXME: improve this to avoid passing that many arguments.
             let mut cx = CodegenCx::new(
                 &context,
                 cgu,
