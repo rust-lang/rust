@@ -319,6 +319,7 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![feature(alloc_io)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
@@ -326,7 +327,10 @@
 #![feature(clone_to_uninit)]
 #![feature(const_convert)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
+#![feature(core_io_error)]
+#![feature(core_io_error_internals)]
 #![feature(cstr_display)]
 #![feature(drop_guard)]
 #![feature(duration_constants)]
@@ -345,6 +349,10 @@
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
 #![feature(int_from_ascii)]
+#![feature(io_const_error_internals)]
+#![feature(io_error_inprogress)]
+#![feature(io_error_more)]
+#![feature(io_error_uncategorized)]
 #![feature(ip)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(panic_can_unwind)]
@@ -355,6 +363,7 @@
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
 #![feature(random)]
+#![feature(raw_os_error_ty)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]

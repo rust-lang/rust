@@ -94,6 +94,7 @@ pub fn set_errno(e: i32) {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(errno: i32) -> bool {
     errno == libc::EINTR
 }

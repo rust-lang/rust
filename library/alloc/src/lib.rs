@@ -109,6 +109,8 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_error_internals)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
@@ -125,6 +127,7 @@
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
@@ -169,6 +172,7 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
+#![feature(cfg_target_has_atomic)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(coroutine_trait)]
@@ -224,6 +228,7 @@ pub mod collections;
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

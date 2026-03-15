@@ -6,6 +6,7 @@ pub fn errno() -> i32 {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(code: i32) -> bool {
     crate::sys::net::is_interrupted(code)
 }
