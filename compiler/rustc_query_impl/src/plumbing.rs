@@ -1,8 +1,6 @@
 use std::num::NonZero;
 
-use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
@@ -13,9 +11,7 @@ use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
-use rustc_middle::query::{
-    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, QueryVTable, erase,
-};
+use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -81,23 +77,6 @@ pub(crate) fn start_query<R>(
         // Use the `ImplicitCtxt` while we execute the query.
         tls::enter_context(&icx, compute)
     })
-}
-
-pub(crate) fn create_query_stack_frame<'tcx, C>(
-    vtable: &'tcx QueryVTable<'tcx, C>,
-    key: C::Key,
-) -> QueryStackFrame<'tcx>
-where
-    C: QueryCache<Key: QueryKey + DynSend + DynSync>,
-    QueryVTable<'tcx, C>: DynSync,
-{
-    let def_id: Option<DefId> = key.key_as_def_id();
-
-    QueryStackFrame {
-        tagged_key: (vtable.create_tagged_key)(key),
-        dep_kind: vtable.dep_kind,
-        def_id,
-    }
 }
 
 pub(crate) fn encode_query_values<'tcx>(
