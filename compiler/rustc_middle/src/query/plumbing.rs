@@ -511,6 +511,18 @@ macro_rules! define_callbacks {
         }
 
         impl<'tcx> TaggedQueryKey<'tcx> {
+            /// Returns the name of the query this key is tagged with.
+            ///
+            /// This is useful for error/debug output, but don't use it to check for
+            /// specific query names. Instead, match on the `TaggedQueryKey` variant.
+            pub fn query_name(&self) -> &'static str {
+                match self {
+                    $(
+                        TaggedQueryKey::$name(_) => stringify!($name),
+                    )*
+                }
+            }
+
             /// Formats a human-readable description of this query and its key, as
             /// specified by the `desc` query modifier.
             ///

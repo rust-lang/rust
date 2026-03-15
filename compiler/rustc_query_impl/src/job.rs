@@ -1,7 +1,7 @@
 use std::io::Write;
-use std::iter;
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Diag, DiagCtxtHandle};
@@ -88,8 +88,8 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
     panic!("did not find a cycle")
 }
 
-/// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id` and returns
-/// information about it.
+/// Finds the query job closest to the root that is for the same query method as `id`
+/// (but not necessarily the same query key), and returns information about it.
 #[cold]
 #[inline(never)]
 pub(crate) fn find_dep_kind_root<'tcx>(
@@ -99,12 +99,14 @@ pub(crate) fn find_dep_kind_root<'tcx>(
 ) -> (Span, String, usize) {
     let mut depth = 1;
     let mut info = &job_map.map[&id];
-    let dep_kind = info.frame.dep_kind;
+    // Two query stack frames are for the same query method if they have the same
+    // `TaggedQueryKey` discriminant.
+    let expected_query = mem::discriminant(&info.frame.tagged_key);
     let mut last_info = info;
 
     while let Some(id) = info.job.parent {
         info = &job_map.map[&id];
-        if info.frame.dep_kind == dep_kind {
+        if mem::discriminant(&info.frame.tagged_key) == expected_query {
             depth += 1;
             last_info = info;
         }
@@ -420,8 +422,8 @@ pub fn print_query_stack<'tcx>(
         if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             dcx.struct_failure_note(format!(
-                "#{} [{:?}] {}",
-                count_printed, query_info.frame.dep_kind, description
+                "#{count_printed} [{query_name}] {description}",
+                query_name = query_info.frame.tagged_key.query_name(),
             ))
             .with_span(query_info.job.span)
             .emit();
@@ -431,8 +433,8 @@ pub fn print_query_stack<'tcx>(
         if let Some(ref mut file) = file {
             let _ = writeln!(
                 file,
-                "#{} [{:?}] {}",
-                count_total, query_info.frame.dep_kind, description
+                "#{count_total} [{query_name}] {description}",
+                query_name = query_info.frame.tagged_key.query_name(),
             );
         }
 
