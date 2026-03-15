@@ -87,7 +87,7 @@ impl error::Error for E {}
 fn test_std_io_error_downcast() {
     // Case 1: custom error, downcast succeeds
     let io_error = Error::new(ErrorKind::Other, Bojji(true));
-    let e: Box<Bojji> = io_error.downcast().unwrap();
+    let e = io_error.downcast::<Bojji>().unwrap();
     assert!(e.0);
 
     // Case 2: custom error, downcast fails
@@ -96,7 +96,7 @@ fn test_std_io_error_downcast() {
 
     //   ensures that the custom error is intact
     assert_eq!(ErrorKind::Other, io_error.kind());
-    let e: Box<Bojji> = io_error.downcast().unwrap();
+    let e = io_error.downcast::<Bojji>().unwrap();
     assert!(e.0);
 
     // Case 3: os error

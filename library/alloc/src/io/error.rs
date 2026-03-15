@@ -1,25 +1,20 @@
-use core::alloc::Allocator;
-use core::io::error_internals::{AllocVTable, Custom, ErrorBox, ErrorString};
+use core::alloc::{Allocator, Layout};
+use core::io::error_internals::{Custom, ErrorBox, ErrorString};
 use core::io::{Error, ErrorKind, const_error};
-use core::{error, ptr, result};
+use core::ptr::{self, NonNull};
+use core::{error, result};
 
 use crate::alloc::Global;
 use crate::boxed::Box;
 use crate::string::String;
 
-unsafe fn set_alloc_vtable() {
-    static ALLOC_VTABLE: AllocVTable =
-        AllocVTable { deallocate: |ptr, layout| unsafe { Global.deallocate(ptr, layout) } };
-    unsafe {
-        ALLOC_VTABLE.install();
-    }
+#[rustc_std_internal_symbol]
+unsafe fn __rust_io_error_deallocate(ptr: NonNull<u8>, layout: Layout) {
+    unsafe { Global.deallocate(ptr, layout) }
 }
 
 fn into_error_box<T: ?Sized>(value: Box<T>) -> ErrorBox<T> {
-    unsafe {
-        set_alloc_vtable();
-        ErrorBox::from_raw(Box::into_raw(value))
-    }
+    unsafe { ErrorBox::from_raw(Box::into_raw(value)) }
 }
 
 fn into_box<T: ?Sized>(v: ErrorBox<T>) -> Box<T> {
@@ -29,7 +24,6 @@ fn into_box<T: ?Sized>(v: ErrorBox<T>) -> Box<T> {
 impl From<String> for ErrorString {
     fn from(value: String) -> Self {
         unsafe {
-            set_alloc_vtable();
             let (buf, length, capacity) = value.into_raw_parts();
             ErrorString::from_raw_parts(
                 ErrorBox::from_raw(ptr::slice_from_raw_parts_mut(buf.cast(), capacity)).into(),
@@ -233,10 +227,17 @@ impl Error {
     /// ```
     #[stable(feature = "io_error_downcast", since = "1.79.0")]
     #[rustc_allow_incoherent_impl]
-    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
+    pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,
     {
-        self.downcast_impl::<E>().map(|p| unsafe { Box::from_raw(p) })
+        self.downcast_impl::<E>().map(|p| {
+            // Safety: Guaranteed by downcast_impl::<E>()
+            let Ok(err) = unsafe { Box::from_raw(p) }.downcast() else {
+                // Safety: downcast_impl::<E>() guarantees that the pointer can be downcast to E
+                unsafe { core::hint::unreachable_unchecked() }
+            };
+            *err
+        })
     }
 }

@@ -17,7 +17,6 @@ use crate::alloc::Layout;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::{self, NonNull, Unique};
-use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::{error, fmt, mem, result, str};
 
 /// implementation detail of [`Error`]
@@ -58,8 +57,7 @@ impl fmt::Display for ErrorString {
 
 /// implementation detail of [`Error`]
 ///
-/// Safety: `self.0` must point to allocated memory and
-/// [`AllocVTable::install`] must have been run
+/// Safety: `self.0` must point to allocated memory
 #[unstable(feature = "core_io_error_internals", issue = "none")]
 pub struct ErrorBox<T: ?Sized>(Unique<T>);
 
@@ -94,8 +92,7 @@ impl<T: ?Sized> DerefMut for ErrorBox<T> {
 impl<T: ?Sized> ErrorBox<T> {
     /// implementation detail of [`Error`]
     ///
-    /// Safety: `v` must point to allocated memory and
-    /// [`AllocVTable::install`] must have been run
+    /// Safety: `v` must point to allocated memory
     pub unsafe fn from_raw(v: *mut T) -> Self {
         // SAFETY: guaranteed by caller
         unsafe { Self(Unique::new_unchecked(v)) }
@@ -137,7 +134,7 @@ impl ErrorBoxMem {
 impl Drop for ErrorBoxMem {
     fn drop(&mut self) {
         // SAFETY: guaranteed safe by `ErrorBoxMem::new`
-        unsafe { (AllocVTable::get().deallocate)(self.ptr, self.layout) }
+        unsafe { _alloc::__rust_io_error_deallocate(self.ptr, self.layout) }
     }
 }
 
@@ -151,75 +148,38 @@ impl<T: ?Sized> Drop for ErrorBox<T> {
     }
 }
 
-/// implementation detail of [`Error`]
-#[derive(Debug)]
+/// implementation detail of [`Error`] in alloc
 #[unstable(feature = "core_io_error_internals", issue = "none")]
-pub struct AllocVTable {
-    /// implementation detail of [`Error`]
-    ///
-    /// Safety: same as [`Allocator::deallocate`]
-    ///
-    /// [`Allocator::deallocate`]: core::alloc::Allocator::deallocate
-    pub deallocate: unsafe fn(ptr: NonNull<u8>, layout: Layout),
-}
+pub mod _alloc {
+    use core::alloc::Layout;
+    use core::ptr::NonNull;
 
-static ALLOC_VTABLE: AtomicPtr<AllocVTable> = AtomicPtr::new(ptr::null_mut());
-
-impl AllocVTable {
-    /// implementation detail of [`Error`]
-    ///
-    /// Safety: `self` must be in a `static` variable that has never been
-    /// written. All members must be valid.
-    pub unsafe fn install(&'static self) {
-        // see `get` for why `Relaxed` is sufficient.
-        if ALLOC_VTABLE.load(Ordering::Relaxed).is_null() {
-            ALLOC_VTABLE.store(<*const _>::from(self).cast_mut(), Ordering::Relaxed);
-        }
-    }
-    /// implementation detail of [`Error`]
-    ///
-    /// Safety: `install` must have been called
-    pub unsafe fn get() -> &'static Self {
-        // SAFETY: `install` has been called and it set `ALLOC_VTABLE` to point
-        // to a `static` variable that has never been written, so no writes can
-        // possibly need to be communicated through other memory so `Relaxed`
-        // here and in `install` are sufficient.
-        unsafe { &*ALLOC_VTABLE.load(Ordering::Relaxed) }
+    unsafe extern "Rust" {
+        /// implementation detail of `Error`
+        ///
+        /// Safety: same as [`Allocator::deallocate`]
+        ///
+        /// [`Allocator::deallocate`]: core::alloc::Allocator::deallocate
+        // #[lang = "io_error_deallocate"]
+        #[rustc_std_internal_symbol]
+        pub unsafe fn __rust_io_error_deallocate(ptr: NonNull<u8>, layout: Layout);
     }
 }
 
-/// implementation detail of [`Error`]
-#[derive(Debug)]
+/// implementation detail of [`Error`] in std
 #[unstable(feature = "core_io_error_internals", issue = "none")]
-pub struct StdVTable {
-    /// implementation detail of [`Error`]
-    pub decode_error_kind: fn(RawOsError) -> ErrorKind,
-    /// implementation detail of [`Error`]
-    pub error_string: fn(RawOsError) -> ErrorString,
-}
+pub mod _std {
+    use super::{ErrorKind, ErrorString, RawOsError};
 
-static STD_VTABLE: AtomicPtr<StdVTable> = AtomicPtr::new(ptr::null_mut());
-
-impl StdVTable {
-    /// implementation detail of [`Error`]
-    ///
-    /// Safety: `self` must be in a `static` variable that has never been
-    /// written. All members must be valid.
-    pub unsafe fn install(&'static self) {
-        // see `get` for why `Relaxed` is sufficient.
-        if STD_VTABLE.load(Ordering::Relaxed).is_null() {
-            STD_VTABLE.store(<*const _>::from(self).cast_mut(), Ordering::Relaxed);
-        }
-    }
-    /// implementation detail of [`Error`]
-    ///
-    /// Safety: `install` must have been called
-    pub unsafe fn get() -> &'static Self {
-        // SAFETY: `install` has been called and it set `STD_VTABLE` to point
-        // to a `static` variable that has never been written, so no writes can
-        // possibly need to be communicated through other memory so `Relaxed`
-        // here and in `install` are sufficient.
-        unsafe { &*STD_VTABLE.load(Ordering::Relaxed) }
+    unsafe extern "Rust" {
+        /// implementation detail of `Error`
+        // #[lang = "io_error_decode_error_kind"]
+        #[rustc_std_internal_symbol]
+        pub safe fn __rust_io_error_decode_error_kind(error: RawOsError) -> ErrorKind;
+        /// implementation detail of `Error`
+        // #[lang = "io_error_error_string"]
+        #[rustc_std_internal_symbol]
+        pub safe fn __rust_io_error_error_string(error: RawOsError) -> ErrorString;
     }
 }
 
@@ -271,10 +231,6 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
 /// [`Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
 /// [`Seek`]: https://doc.rust-lang.org/std/io/trait.Seek.html
-// Safety: [`StdVTable::install`] must have been run before any `Error`
-// instances containing OS errors are created.
-// [`AllocVTable::install`] must have been run before any instances containing
-// `AllocBox` are created.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_has_incoherent_inherent_impls]
 pub struct Error {
@@ -930,16 +886,26 @@ impl Error {
 
     /// implementation detail of [`Error::downcast`]
     ///
+    /// Returns an owned pointer to a valid allocation that can be downcast to `E`.
+    ///
     /// [`Error::downcast`]: https://doc.rust-lang.org/std/io/struct.Error.html#method.downcast
     #[doc(hidden)]
     #[unstable(feature = "core_io_error_internals", issue = "none")]
-    pub fn downcast_impl<E>(self) -> result::Result<*mut E, Self>
+    pub fn downcast_impl<E>(self) -> result::Result<*mut (dyn error::Error + Send + Sync), Self>
     where
         E: error::Error + Send + Sync + 'static,
     {
-        match self.repr.into_data() {
-            ErrorData::Custom(b) if b.error.is::<E>() => Ok(b.into_inner().error.into_raw().cast()),
-            repr_data => Err(Self { repr: Repr::new(repr_data) }),
+        if let ErrorData::Custom(c) = self.repr.data()
+            && c.error.is::<E>()
+        {
+            if let ErrorData::Custom(b) = self.repr.into_data() {
+                Ok(b.into_inner().error.into_raw())
+            } else {
+                // Safety: We have just checked that the condition is true
+                unsafe { crate::hint::unreachable_unchecked() }
+            }
+        } else {
+            Err(self)
         }
     }
 
@@ -974,9 +940,7 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            // SAFETY: `Error`'s safety invariant guarantees
-            // `StdVTable::install` has been run
-            ErrorData::Os(code) => unsafe { (StdVTable::get().decode_error_kind)(code) },
+            ErrorData::Os(code) => _std::__rust_io_error_decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
@@ -987,16 +951,12 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.data() {
-            ErrorData::Os(code) => {
-                // SAFETY: `Error`'s safety invariant guarantees
-                // `StdVTable::install` has been run
-                let std_vtable = unsafe { StdVTable::get() };
-                fmt.debug_struct("Os")
-                    .field("code", &code)
-                    .field("kind", &(std_vtable.decode_error_kind)(code))
-                    .field("message", &(std_vtable.error_string)(code))
-                    .finish()
-            }
+            ErrorData::Os(code) => fmt
+                .debug_struct("Os")
+                .field("code", &code)
+                .field("kind", &_std::__rust_io_error_decode_error_kind(code))
+                .field("message", &_std::__rust_io_error_error_string(code))
+                .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
             ErrorData::SimpleMessage(msg) => fmt
@@ -1013,9 +973,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                // SAFETY: `Error`'s safety invariant guarantees
-                // `StdVTable::install` has been run
-                let detail = unsafe { (StdVTable::get().error_string)(code) };
+                let detail = _std::__rust_io_error_error_string(code);
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),

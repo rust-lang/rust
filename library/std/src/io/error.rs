@@ -18,8 +18,8 @@ use repr_bitpacked::Repr;
 #[cfg(bootstrap)]
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 mod repr_unpacked;
-#[cfg(not(any(bootstrap, test)))]
-use core::io::error_internals::{ErrorString, StdVTable};
+#[cfg(not(bootstrap))]
+use core::io::error_internals::ErrorString;
 #[cfg(bootstrap)]
 use core::io::{ErrorKind, RawOsError};
 
@@ -27,11 +27,10 @@ use core::io::{ErrorKind, RawOsError};
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
-#[cfg(not(any(bootstrap, test)))]
+#[cfg(not(bootstrap))]
 use super::RawOsError;
 #[cfg(not(bootstrap))]
 use super::{Error, ErrorKind};
-#[cfg(any(bootstrap, not(test)))]
 use crate::sys;
 #[cfg(bootstrap)]
 use crate::{error, fmt, result};
@@ -760,15 +759,16 @@ fn _assert_error_is_sync_send() {
     _is_sync_send::<Error>();
 }
 
-#[cfg(not(any(bootstrap, test)))]
-unsafe fn set_std_vtable() {
-    static STD_VTABLE: StdVTable = StdVTable {
-        decode_error_kind: sys::io::decode_error_kind,
-        error_string: |code| ErrorString::from(sys::io::error_string(code)),
-    };
-    unsafe {
-        STD_VTABLE.install();
-    }
+#[cfg(not(bootstrap))]
+#[rustc_std_internal_symbol]
+fn __rust_io_error_decode_error_kind(error: RawOsError) -> ErrorKind {
+    sys::io::decode_error_kind(error)
+}
+
+#[cfg(not(bootstrap))]
+#[rustc_std_internal_symbol]
+fn __rust_io_error_error_string(error: RawOsError) -> ErrorString {
+    ErrorString::from(sys::io::error_string(error))
 }
 
 #[cfg(not(any(bootstrap, test)))]
@@ -832,10 +832,7 @@ impl Error {
     #[inline]
     #[rustc_allow_incoherent_impl]
     pub fn from_raw_os_error(code: RawOsError) -> Error {
-        unsafe {
-            set_std_vtable();
-            Self::from_raw_os_error_impl(code)
-        }
+        unsafe { Self::from_raw_os_error_impl(code) }
     }
 
     /// implementation detail of [`Error`]

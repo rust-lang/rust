@@ -4,5 +4,4 @@
 
 pub use core::io::*;
 
-#[cfg(target_has_atomic_load_store = "ptr")]
 mod error;

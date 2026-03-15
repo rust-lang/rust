@@ -68,7 +68,6 @@
 #![feature(int_roundings)]
 #![feature(io_const_error)]
 #![feature(io_const_error_internals)]
-#![feature(io_error_downcast)]
 #![feature(io_error_uncategorized)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
