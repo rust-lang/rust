@@ -107,11 +107,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
-        sym::fabsf16 => ("llvm.fabs", &[bx.type_f16()]),
-        sym::fabsf32 => ("llvm.fabs", &[bx.type_f32()]),
-        sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
-        sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
-
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
         //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
@@ -500,6 +495,21 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     _ => bug!(),
                 }
+            }
+
+            sym::fabs => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicFloatType { span, name, ty });
+                    return Ok(());
+                };
+                let llty = self.type_float_from_ty(*f);
+                let llvm_name = "llvm.fabs";
+                self.call_intrinsic(
+                    llvm_name,
+                    &[llty],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
             }
 
             sym::raw_eq => {
