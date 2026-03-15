@@ -141,6 +141,7 @@ pub enum TokenKind {
     /// A lifetime, e.g. `'a`.
     Lifetime {
         starts_with_number: bool,
+        has_emoji: bool,
     },
 
     /// `;`
@@ -975,6 +976,7 @@ impl<'a> Cursor<'a> {
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
 
+        let mut has_emoji = false;
         let can_be_a_lifetime = if self.second() == '\'' {
             // It's surely not a lifetime.
             false
@@ -982,7 +984,12 @@ impl<'a> Cursor<'a> {
             // If the first symbol is valid for identifier, it can be a lifetime.
             // Also check if it's a number for a better error reporting (so '0 will
             // be reported as invalid lifetime and not as unterminated char literal).
-            is_id_start(self.first()) || self.first().is_ascii_digit()
+            let c = self.first();
+            let is_emoji = !c.is_ascii() && c.is_emoji_char();
+            if is_emoji {
+                has_emoji = true;
+            }
+            is_id_start(c) || c.is_ascii_digit() || is_emoji
         };
 
         if !can_be_a_lifetime {
@@ -1012,7 +1019,13 @@ impl<'a> Cursor<'a> {
         // First symbol can be a number (which isn't a valid identifier start),
         // so skip it without any checks.
         self.bump();
-        self.eat_while(is_id_continue);
+        self.eat_while(|c| {
+            let is_emoji = !c.is_ascii() && c.is_emoji_char();
+            if is_emoji {
+                has_emoji = true;
+            }
+            is_id_continue(c) || is_emoji
+        });
 
         match self.first() {
             // Check if after skipping literal contents we've met a closing
@@ -1024,7 +1037,7 @@ impl<'a> Cursor<'a> {
                 Literal { kind, suffix_start: self.pos_within_token() }
             }
             '#' if !starts_with_number => UnknownPrefixLifetime,
-            _ => Lifetime { starts_with_number },
+            _ => Lifetime { starts_with_number, has_emoji },
         }
     }
 
