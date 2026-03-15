@@ -50,8 +50,8 @@ impl WildcardAccessRelatedness {
     }
 }
 
-/// Caches information about where in the tree exposed nodes with permission to do reads/ rites are
-/// located. [`ExposedCache`] stores this information a single location (or rather, a range of
+/// Caches information about where in the tree exposed nodes with permission to do reads/writes are
+/// located. [`ExposedCache`] stores this information for a single location (or rather, a range of
 /// homogeneous locations) for all nodes in an allocation.
 ///
 /// Nodes not in this map have a default [`ExposedCacheNode`], i.e. they have no exposed children.
