@@ -27,17 +27,21 @@ fn test_boolean_property(ranges: &[RangeInclusive<char>], lookup: fn(char) -> bo
 }
 
 #[track_caller]
-fn test_case_mapping(ranges: &[(char, [char; 3])], lookup: fn(char) -> [char; 3]) {
+fn test_case_mapping(
+    ranges: &[(char, [char; 3])],
+    lookup: fn(char) -> [char; 3],
+    fallback: fn(char) -> [char; 3],
+) {
     let mut start = '\u{80}';
     for &(key, val) in ranges {
         for c in start..key {
-            assert_eq!(lookup(c), [c, '\0', '\0'], "{c:?}");
+            assert_eq!(lookup(c), fallback(c), "{c:?}");
         }
         assert_eq!(lookup(key), val, "{key:?}");
         start = char::from_u32(key as u32 + 1).unwrap();
     }
     for c in start..=char::MAX {
-        assert_eq!(lookup(c), [c, '\0', '\0'], "{c:?}");
+        assert_eq!(lookup(c), fallback(c), "{c:?}");
     }
 }
 
@@ -92,11 +96,25 @@ fn white_space() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_lowercase() {
-    test_case_mapping(test_data::TO_LOWER, unicode_data::conversions::to_lower);
+    test_case_mapping(test_data::TO_LOWER, unicode_data::conversions::to_lower, |c| {
+        [c, '\0', '\0']
+    });
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_uppercase() {
-    test_case_mapping(test_data::TO_UPPER, unicode_data::conversions::to_upper);
+    test_case_mapping(test_data::TO_UPPER, unicode_data::conversions::to_upper, |c| {
+        [c, '\0', '\0']
+    });
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn to_titlecase() {
+    test_case_mapping(
+        test_data::TO_TITLE,
+        unicode_data::conversions::to_title,
+        unicode_data::conversions::to_upper,
+    );
 }

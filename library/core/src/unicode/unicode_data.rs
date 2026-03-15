@@ -9,7 +9,8 @@
 // White_Space     :   256 bytes,     19 codepoints in   8 ranges (U+000085 - U+003001) using cascading
 // to_lower        :  1112 bytes,   1462 codepoints in 185 ranges (U+0000C0 - U+01E921) using 2-level LUT
 // to_upper        :  1998 bytes,   1554 codepoints in 299 ranges (U+0000B5 - U+01E943) using 2-level LUT
-// Total           :  9657 bytes
+// to_title        :   340 bytes,    135 codepoints in  49 ranges (U+0000DF - U+00FB17) using 2-level LUT
+// Total           :  9997 bytes
 
 #[inline(always)]
 const fn bitset_search<
@@ -823,14 +824,10 @@ pub mod conversions {
         unsafe { char::from_u32_unchecked(((plane as u32) << 16) | (low as u32)) }
     }
 
-    fn lookup(input: char, ascii: char, l1_lut: &L1Lut) -> [char; 3] {
-        if input.is_ascii() {
-            return [ascii, '\0', '\0'];
-        }
-
+    fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
         let (input_high, input_low) = deconstruct(input);
         let Some(l2_lut) = l1_lut.l2_luts.get(input_high as usize) else {
-            return [input, '\0', '\0'];
+            return None;
         };
 
         let idx = l2_lut.singles.binary_search_by(|(range, _)| {
@@ -844,6 +841,7 @@ pub mod conversions {
                 Ordering::Equal
             }
         });
+
         if let Ok(idx) = idx {
             // SAFETY: binary search guarantees that the index is in bounds.
             let &(range, output_delta) = unsafe { l2_lut.singles.get_unchecked(idx) };
@@ -852,7 +850,7 @@ pub mod conversions {
                 let output_low = input_low.wrapping_add_signed(output_delta);
                 // SAFETY: Table data are guaranteed to be valid Unicode.
                 let output = unsafe { reconstruct(input_high, output_low) };
-                return [output, '\0', '\0'];
+                return Some([output, '\0', '\0']);
             }
         };
 
@@ -861,18 +859,34 @@ pub mod conversions {
             let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
             // SAFETY: Table data are guaranteed to be valid Unicode.
             let output = output_lows.map(|output_low| unsafe { reconstruct(input_high, output_low) });
-            return output;
+            return Some(output);
         };
 
-        [input, '\0', '\0']
+        None
     }
 
     pub fn to_lower(c: char) -> [char; 3] {
-        lookup(c, c.to_ascii_lowercase(), &LOWERCASE_LUT)
+        if c.is_ascii() {
+            return [c.to_ascii_lowercase(), '\0', '\0'];
+        }
+
+        lookup(c, &LOWERCASE_LUT).unwrap_or([c, '\0', '\0'])
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
-        lookup(c, c.to_ascii_uppercase(), &UPPERCASE_LUT)
+        if c.is_ascii() {
+            return [c.to_ascii_uppercase(), '\0', '\0'];
+        }
+
+        lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0'])
+    }
+
+    pub fn to_title(c: char) -> [char; 3] {
+        if c.is_ascii() {
+            return [c.to_ascii_uppercase(), '\0', '\0'];
+        }
+
+        lookup(c, &TITLECASE_LUT).or_else(|| lookup(c, &UPPERCASE_LUT)).unwrap_or([c, '\0', '\0'])
     }
 
     static LOWERCASE_LUT: L1Lut = L1Lut {
@@ -1144,6 +1158,47 @@ pub mod conversions {
                     (Range::step_by_1(0x0cc0..=0x0cf2), -64), (Range::step_by_1(0x0d70..=0x0d85), -32),
                     (Range::step_by_1(0x18c0..=0x18df), -32), (Range::step_by_1(0x6e60..=0x6e7f), -32),
                     (Range::step_by_1(0x6ebb..=0x6ed3), -27), (Range::step_by_1(0xe922..=0xe943), -34),
+                ],
+                multis: &[ // 0 entries, 0 bytes
+                ],
+            },
+        ],
+    };
+
+    static TITLECASE_LUT: L1Lut = L1Lut {
+        l2_luts: [
+            L2Lut {
+                singles: &[ // 26 entries, 156 bytes
+                    (Range::singleton(0x01c4), 1), (Range::singleton(0x01c5), 0),
+                    (Range::singleton(0x01c6), -1), (Range::singleton(0x01c7), 1),
+                    (Range::singleton(0x01c8), 0), (Range::singleton(0x01c9), -1),
+                    (Range::singleton(0x01ca), 1), (Range::singleton(0x01cb), 0),
+                    (Range::singleton(0x01cc), -1), (Range::singleton(0x01f1), 1),
+                    (Range::singleton(0x01f2), 0), (Range::singleton(0x01f3), -1),
+                    (Range::step_by_1(0x10d0..=0x10fa), 0), (Range::step_by_1(0x10fd..=0x10ff), 0),
+                    (Range::step_by_1(0x1f80..=0x1f87), 8), (Range::step_by_1(0x1f88..=0x1f8f), 0),
+                    (Range::step_by_1(0x1f90..=0x1f97), 8), (Range::step_by_1(0x1f98..=0x1f9f), 0),
+                    (Range::step_by_1(0x1fa0..=0x1fa7), 8), (Range::step_by_1(0x1fa8..=0x1faf), 0),
+                    (Range::singleton(0x1fb3), 9), (Range::singleton(0x1fbc), 0), (Range::singleton(0x1fc3), 9),
+                    (Range::singleton(0x1fcc), 0), (Range::singleton(0x1ff3), 9), (Range::singleton(0x1ffc), 0),
+                ],
+                multis: &[ // 23 entries, 184 bytes
+                    (0x00df, [0x0053, 0x0073, 0x0000]), (0x0587, [0x0535, 0x0582, 0x0000]),
+                    (0x1fb2, [0x1fba, 0x0345, 0x0000]), (0x1fb4, [0x0386, 0x0345, 0x0000]),
+                    (0x1fb7, [0x0391, 0x0342, 0x0345]), (0x1fc2, [0x1fca, 0x0345, 0x0000]),
+                    (0x1fc4, [0x0389, 0x0345, 0x0000]), (0x1fc7, [0x0397, 0x0342, 0x0345]),
+                    (0x1ff2, [0x1ffa, 0x0345, 0x0000]), (0x1ff4, [0x038f, 0x0345, 0x0000]),
+                    (0x1ff7, [0x03a9, 0x0342, 0x0345]), (0xfb00, [0x0046, 0x0066, 0x0000]),
+                    (0xfb01, [0x0046, 0x0069, 0x0000]), (0xfb02, [0x0046, 0x006c, 0x0000]),
+                    (0xfb03, [0x0046, 0x0066, 0x0069]), (0xfb04, [0x0046, 0x0066, 0x006c]),
+                    (0xfb05, [0x0053, 0x0074, 0x0000]), (0xfb06, [0x0053, 0x0074, 0x0000]),
+                    (0xfb13, [0x0544, 0x0576, 0x0000]), (0xfb14, [0x0544, 0x0565, 0x0000]),
+                    (0xfb15, [0x0544, 0x056b, 0x0000]), (0xfb16, [0x054e, 0x0576, 0x0000]),
+                    (0xfb17, [0x0544, 0x056d, 0x0000]),
+                ],
+            },
+            L2Lut {
+                singles: &[ // 0 entries, 0 bytes
                 ],
                 multis: &[ // 0 entries, 0 bytes
                 ],
