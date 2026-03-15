@@ -24,7 +24,8 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use tracing::{debug, instrument};
 
 use super::reverse_sccs::ReverseSccGraph;
-use crate::consumers::RegionInferenceContext;
+use crate::handle_placeholders::RegionDefinitions;
+use crate::region_infer::InferredRegions;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::type_check::canonical::fully_perform_op_raw;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -673,7 +674,61 @@ pub(crate) fn detect_opaque_types_added_while_handling_opaque_types<'tcx>(
     let _ = infcx.take_opaque_types();
 }
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl<'tcx> InferredRegions<'tcx> {
+    /// Like `universal_upper_bound`, but returns an approximation more suitable
+    /// for diagnostics. If `r` contains multiple disjoint universal regions
+    /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
+    /// This corresponds to picking named regions over unnamed regions
+    /// (e.g. picking early-bound regions over a closure late-bound region).
+    ///
+    /// This means that the returned value may not be a true upper bound, since
+    /// only 'static is known to outlive disjoint universal regions.
+    /// Therefore, this method should only be used in diagnostic code,
+    /// where displaying *some* named universal region is better than
+    /// falling back to 'static.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn approx_universal_upper_bound(
+        &self,
+        r: RegionVid,
+        definitions: &RegionDefinitions<'tcx>,
+    ) -> RegionVid {
+        debug!("{}", self.region_value_str(r));
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions().fr_fn_body;
+        let static_r = self.universal_regions().fr_static;
+        for ur in self.universal_regions_outlived_by(r) {
+            let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
+            debug!(?ur, ?lub, ?new_lub);
+            // The upper bound of two non-static regions is static: this
+            // means we know nothing about the relationship between these
+            // two regions. Pick a 'better' one to use when constructing
+            // a diagnostic
+            if ur != static_r && lub != static_r && new_lub == static_r {
+                // Prefer the region with an `external_name` - this
+                // indicates that the region is early-bound, so working with
+                // it can produce a nicer error.
+                if definitions[ur].external_name.is_some() {
+                    lub = ur;
+                } else if definitions[lub].external_name.is_some() {
+                    // Leave lub unchanged
+                } else {
+                    // If we get here, we don't have any reason to prefer
+                    // one region over the other. Just pick the
+                    // one with the lower index for now.
+                    lub = std::cmp::min(ur, lub);
+                }
+            } else {
+                lub = new_lub;
+            }
+        }
+
+        debug!(?r, ?lub);
+
+        lub
+    }
+
     /// Map the regions in the type to named regions. This is similar to what
     /// `infer_opaque_types` does, but can infer any universal region, not only
     /// ones from the args for the opaque type. It also doesn't double check
@@ -686,17 +741,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that universal region. This is useful for member region constraints since
     /// we want to suggest a universal region name to capture even if it's technically
     /// not equal to the error region.
-    pub(crate) fn name_regions_for_member_constraint<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    pub(crate) fn name_regions_for_member_constraint<T>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        definitions: &RegionDefinitions<'tcx>,
+        ty: T,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fold_regions(tcx, ty, |region, _| match region.kind() {
             ty::ReVar(vid) => {
-                let scc = self.constraint_sccs.scc(vid);
-
                 // Special handling of higher-ranked regions.
-                if !self.max_nameable_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
+                if !self.max_nameable_universe(vid).is_root() {
+                    match self.placeholders_contained_in(vid).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
                             return ty::Region::new_placeholder(tcx, placeholder);
@@ -708,8 +766,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 // Find something that we can name
-                let upper_bound = self.approx_universal_upper_bound(vid);
-                if let Some(universal_region) = self.definitions[upper_bound].external_name {
+                let upper_bound = self.approx_universal_upper_bound(vid, definitions);
+                if let Some(universal_region) = definitions[upper_bound].external_name {
                     return universal_region;
                 }
 
@@ -717,12 +775,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // If there's >1 universal region, then we probably are dealing w/ an intersection
                 // region which cannot be mapped back to a universal.
                 // FIXME: We could probably compute the LUB if there is one.
-                let scc = self.constraint_sccs.scc(vid);
-                let rev_scc_graph =
-                    ReverseSccGraph::compute(&self.constraint_sccs, self.universal_regions());
+                let rev_scc_graph = ReverseSccGraph::compute(&self.sccs, self.universal_regions());
                 let upper_bounds: Vec<_> = rev_scc_graph
-                    .upper_bounds(scc)
-                    .filter_map(|vid| self.definitions[vid].external_name)
+                    .upper_bounds(self.scc(vid))
+                    .filter_map(|vid| definitions[vid].external_name)
                     .filter(|r| !r.is_static())
                     .collect();
                 match &upper_bounds[..] {

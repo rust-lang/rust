@@ -19,6 +19,7 @@ use std::ops::{ControlFlow, Deref};
 use std::rc::Rc;
 
 use borrow_set::LocalsStateAtExit;
+use either::Either;
 use polonius_engine::AllFacts;
 use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
@@ -52,10 +53,13 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
+use crate::constraints::OutlivesConstraintSet;
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
 use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
+    UniverseInfo,
 };
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
@@ -65,12 +69,14 @@ use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
 use crate::prefixes::PrefixSet;
-use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
+use crate::region_infer::values::LivenessValues;
+use crate::region_infer::{InferredRegions, RegionDefinition};
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints, MirTypeckResults};
+use crate::universal_regions::UniversalRegions;
 
 mod borrow_set;
 mod borrowck_errors;
@@ -294,7 +300,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     borrow_set: BorrowSet<'tcx>,
     location_table: PoloniusLocationTable,
     location_map: Rc<DenseLocationMap>,
-    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    universal_region_relations: Rc<Frozen<UniversalRegionRelations<'tcx>>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
     known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
@@ -373,7 +379,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         borrow_set,
         location_table,
         location_map,
-        universal_region_relations,
+        universal_region_relations: Rc::new(universal_region_relations),
         region_bound_pairs,
         known_type_outlives_obligations,
         constraints,
@@ -413,15 +419,22 @@ fn borrowck_check_region_constraints<'tcx>(
     let body = &body_owned;
     let def = body.source.def_id().expect_local();
 
+    let universal_region_relations = Rc::new(universal_region_relations);
+
     // Compute non-lexical lifetimes using the constraints computed
     // by typechecking the MIR body.
     let nll::NllOutput {
-        regioncx,
+        scc_values,
         polonius_input,
         polonius_output,
         opt_closure_req,
         nll_errors,
         polonius_context,
+        definitions,
+        liveness_constraints,
+        outlives_constraints,
+        universe_causes,
+        live_loans,
     } = nll::compute_regions(
         root_cx,
         &infcx,
@@ -429,8 +442,8 @@ fn borrowck_check_region_constraints<'tcx>(
         &location_table,
         &move_data,
         &borrow_set,
-        location_map,
-        universal_region_relations,
+        Rc::clone(&location_map),
+        Rc::clone(&universal_region_relations),
         constraints,
         polonius_facts,
         polonius_context,
@@ -438,19 +451,38 @@ fn borrowck_check_region_constraints<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
+    nll::dump_nll_mir(
+        &infcx,
+        body,
+        &scc_values,
+        &opt_closure_req,
+        &borrow_set,
+        &definitions,
+        &universal_region_relations,
+        &outlives_constraints,
+        &liveness_constraints,
+    );
     polonius::dump_polonius_mir(
         &infcx,
         body,
-        &regioncx,
+        &scc_values,
         &opt_closure_req,
         &borrow_set,
+        &definitions,
+        &liveness_constraints,
+        &outlives_constraints,
+        &universal_region_relations,
         polonius_context.as_ref(),
     );
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req);
+    nll::dump_annotation(
+        &infcx,
+        body,
+        &opt_closure_req,
+        &universal_region_relations.universal_regions,
+    );
 
     let movable_coroutine = body.coroutine.is_some()
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
@@ -476,7 +508,7 @@ fn borrowck_check_region_constraints<'tcx>(
             access_place_error_reported: Default::default(),
             reservation_error_reported: Default::default(),
             uninitialized_error_reported: Default::default(),
-            regioncx: &regioncx,
+            scc_values: &scc_values,
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
@@ -488,6 +520,12 @@ fn borrowck_check_region_constraints<'tcx>(
             move_errors: Vec::new(),
             diags_buffer,
             polonius_context: polonius_context.as_ref(),
+            definitions: &definitions,
+            universal_region_relations: &universal_region_relations,
+            outlives_constraints: &outlives_constraints,
+            constraint_graph: outlives_constraints.graph(definitions.len()),
+            liveness_constraints: &liveness_constraints,
+            universe_causes: &universe_causes,
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -515,7 +553,7 @@ fn borrowck_check_region_constraints<'tcx>(
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
         uninitialized_error_reported: Default::default(),
-        regioncx: &regioncx,
+        scc_values: &scc_values,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
@@ -527,6 +565,12 @@ fn borrowck_check_region_constraints<'tcx>(
         diags_buffer,
         polonius_output: polonius_output.as_deref(),
         polonius_context: polonius_context.as_ref(),
+        definitions: &definitions,
+        universal_region_relations: &universal_region_relations,
+        outlives_constraints: &outlives_constraints,
+        constraint_graph: outlives_constraints.graph(definitions.len()),
+        liveness_constraints: &liveness_constraints,
+        universe_causes: &universe_causes,
     };
 
     // Compute and report region errors, if any.
@@ -536,7 +580,18 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(
+        tcx,
+        body,
+        &move_data,
+        &borrow_set,
+        if let Some(live_loans) = live_loans.as_ref() {
+            either::Right(live_loans)
+        } else {
+            either::Left(&scc_values)
+        },
+        &location_map,
+    );
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
@@ -582,10 +637,10 @@ fn borrowck_check_region_constraints<'tcx>(
                 body: body_owned,
                 promoted,
                 borrow_set,
-                region_inference_context: regioncx,
                 location_table: polonius_input.as_ref().map(|_| location_table),
                 input_facts: polonius_input,
                 output_facts: polonius_output,
+                inferred_regions: scc_values,
             },
         );
     }
@@ -600,15 +655,13 @@ fn get_flow_results<'a, 'tcx>(
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    inference_results: Either<&'a InferredRegions<'tcx>, &'a polonius::LiveLoans>,
+    location_map: &'a DenseLocationMap,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
-    let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
+    let borrows = Borrows::new(tcx, body, inference_results, location_map, borrow_set)
+        .iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
@@ -750,9 +803,10 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
-    /// Region inference context. This contains the results from region inference and lets us e.g.
+
+    /// This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    scc_values: &'a InferredRegions<'tcx>,
 
     /// The set of borrows extracted from the MIR
     borrow_set: &'a BorrowSet<'tcx>,
@@ -777,6 +831,17 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     polonius_output: Option<&'a PoloniusOutput>,
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
     polonius_context: Option<&'a PoloniusContext>,
+
+    /// Region variable definitions. Where they come from, etc.
+    definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+
+    universal_region_relations: &'a Frozen<UniversalRegionRelations<'tcx>>,
+    constraint_graph: NormalConstraintGraph,
+    outlives_constraints: &'a OutlivesConstraintSet<'tcx>,
+    liveness_constraints: &'a LivenessValues,
+
+    /// Map universe indexes to information on why we created it.
+    universe_causes: &'a FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 }
 
 // Check that:
@@ -2699,6 +2764,28 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
         }
+    }
+
+    pub(crate) fn universal_regions(&self) -> &UniversalRegions<'tcx> {
+        &self.universal_region_relations.universal_regions
+    }
+
+    fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+        // Query canonicalization can create local superuniverses (for example in
+        // `InferCtx::query_response_instantiation_guess`), but they don't have an associated
+        // `UniverseInfo` explaining why they were created.
+        // This can cause ICEs if these causes are accessed in diagnostics, for example in issue
+        // #114907 where this happens via liveness and dropck outlives results.
+        // Therefore, we return a default value in case that happens, which should at worst emit a
+        // suboptimal error, instead of the ICE.
+        self.universe_causes.get(&universe).cloned().unwrap_or_else(UniverseInfo::other)
+    }
+
+    fn name_regions_for_member_constraint<T>(&self, ty: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.scc_values.name_regions_for_member_constraint(self.infcx.tcx, self.definitions, ty)
     }
 }
 
