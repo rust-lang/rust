@@ -1366,7 +1366,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &single_import.parent_scope,
                 None,
                 ignore_decl,
-                ignore_import,
+                None,
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
