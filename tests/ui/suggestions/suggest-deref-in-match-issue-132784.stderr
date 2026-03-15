@@ -21,7 +21,14 @@ LL |     match x {
    |           - this expression has type `Arc<Option<{integer}>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
@@ -29,9 +36,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *x {
    |           +
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:16:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:17:9
    |
 LL |     match &x {
    |           -- this expression has type `&Arc<Option<{integer}>>`
@@ -47,13 +59,20 @@ LL |     match &*x {
    |            +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:18:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:19:9
    |
 LL |     match &x {
    |           -- this expression has type `&Arc<Option<{integer}>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
@@ -61,9 +80,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &*x {
    |            +
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:26:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:28:9
    |
 LL |     match y {
    |           - this expression has type `Box<Option<{integer}>>`
@@ -79,13 +103,20 @@ LL |     match *y {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:28:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:30:9
    |
 LL |     match y {
    |           - this expression has type `Box<Option<{integer}>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Box<Option<{integer}>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Box<Option<{integer}>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Box<Option<{integer}>>`
                 found enum `Option<_>`
@@ -93,9 +124,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *y {
    |           +
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:36:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:39:9
    |
 LL |     match z as Arc<Option<i32>> {
    |           --------------------- this expression has type `Arc<Option<i32>>`
@@ -112,13 +148,20 @@ LL +     match *(z as Arc<Option<i32>>) {
    |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:38:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:41:9
    |
 LL |     match z as Arc<Option<i32>> {
    |           --------------------- this expression has type `Arc<Option<i32>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<i32>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
@@ -127,9 +170,14 @@ help: consider dereferencing to access the inner value using the Deref trait
 LL -     match z as Arc<Option<i32>> {
 LL +     match *(z as Arc<Option<i32>>) {
    |
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:46:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:50:9
    |
 LL |     match z_const {
    |           ------- this expression has type `&Arc<Option<i32>>`
@@ -145,13 +193,20 @@ LL |     match &**z_const {
    |           +++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:48:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:52:9
    |
 LL |     match z_const {
    |           ------- this expression has type `&Arc<Option<i32>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<i32>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
@@ -159,9 +214,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_const {
    |           +++
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:57:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:62:9
    |
 LL |     match z_mut {
    |           ----- this expression has type `&mut Arc<Option<i32>>`
@@ -177,13 +237,20 @@ LL |     match &**z_mut {
    |           +++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:59:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:64:9
    |
 LL |     match z_mut {
    |           ----- this expression has type `&mut Arc<Option<i32>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<i32>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<i32>>`
                 found enum `Option<_>`
@@ -191,9 +258,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_mut {
    |           +++
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:68:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:74:9
    |
 LL |     match y_mut {
    |           ----- this expression has type `&mut Box<Option<i32>>`
@@ -209,13 +281,20 @@ LL |     match &**y_mut {
    |           +++
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:70:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:76:9
    |
 LL |     match y_mut {
    |           ----- this expression has type `&mut Box<Option<i32>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Box<Option<i32>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Box<Option<i32>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Box<Option<i32>>`
                 found enum `Option<_>`
@@ -223,9 +302,14 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**y_mut {
    |           +++
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
+   |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:79:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:86:9
    |
 LL |     match (& (&difficult)  ) {
    |           ------------------ this expression has type `&&Arc<Option<{integer}>>`
@@ -242,13 +326,20 @@ LL +     match &*difficult {
    |
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-deref-in-match-issue-132784.rs:81:9
+  --> $DIR/suggest-deref-in-match-issue-132784.rs:88:9
    |
 LL |     match (& (&difficult)  ) {
    |           ------------------ this expression has type `&&Arc<Option<{integer}>>`
 ...
 LL |         None => {}
-   |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         ^^^^
+   |         |
+   |         expected `Arc<Option<{integer}>>`, found `Option<_>`
+   |         `None` is interpreted as a unit variant, not a new binding
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: unit variant defined here
    |
    = note: expected struct `Arc<Option<{integer}>>`
                 found enum `Option<_>`
@@ -256,6 +347,11 @@ help: consider dereferencing to access the inner value using the Deref trait
    |
 LL -     match (& (&difficult)  ) {
 LL +     match &*difficult {
+   |
+help: introduce a new binding instead
+   |
+LL -         None => {}
+LL +         other_none => {}
    |
 
 error: aborting due to 16 previous errors

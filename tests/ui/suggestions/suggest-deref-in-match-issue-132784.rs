@@ -8,6 +8,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     match &x {
@@ -17,6 +18,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     let mut y = Box::new(Some(1));
@@ -27,6 +29,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     let mut z = Arc::new(Some(1));
@@ -37,6 +40,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     let z_const: &Arc<Option<i32>> = &z;
@@ -47,6 +51,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     // Normal reference because Arc doesn't implement DerefMut.
@@ -58,6 +63,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     // Mutable reference because Box does implement DerefMut.
@@ -69,6 +75,7 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 
     // Difficult expression.
@@ -80,5 +87,6 @@ fn main() {
         //~^ ERROR mismatched types
         None => {}
         //~^ ERROR mismatched types
+        //~| HELP introduce a new binding instead
     }
 }
