@@ -826,8 +826,6 @@ fn valid_ui_error_pattern_test(file: &str) -> bool {
         "type-alias-impl-trait/auxiliary/cross_crate_ice.rs",
         "type-alias-impl-trait/auxiliary/cross_crate_ice2.rs",
         "macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs",
-        "imports/ambiguous-1.rs",
-        "imports/ambiguous-4-extern.rs",
         "entry-point/auxiliary/bad_main_functions.rs",
     ]
     .iter()
