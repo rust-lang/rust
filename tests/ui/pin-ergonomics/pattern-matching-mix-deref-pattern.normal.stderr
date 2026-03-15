@@ -8,7 +8,7 @@ LL |     let Foo { x, y } = foo.as_mut();
    |
    = note: expected struct `Pin<&mut Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo.as_mut();
    |                        +
@@ -23,7 +23,7 @@ LL |         Foo { x, y } => {}
    |
    = note: expected struct `Pin<&mut Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo.as_mut() {
    |           +
@@ -38,7 +38,7 @@ LL |         Foo { x, y } => {}
    |
    = note: expected struct `Pin<&mut Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *foo.as_mut() {
    |                      +
@@ -53,7 +53,7 @@ LL |     let Foo { x, y } = foo;
    |
    = note: expected struct `Pin<&Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo;
    |                        +
@@ -68,7 +68,7 @@ LL |         Foo { x, y } => {}
    |
    = note: expected struct `Pin<&Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo {
    |           +
@@ -83,7 +83,7 @@ LL |         Foo { x, y } => {}
    |
    = note: expected struct `Pin<&Foo<T, U>>`
               found struct `Foo<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *foo {
    |                      +
@@ -98,7 +98,7 @@ LL |     let Bar(x, y) = bar.as_mut();
    |
    = note: expected struct `Pin<&mut Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Bar(x, y) = *bar.as_mut();
    |                     +
@@ -113,7 +113,7 @@ LL |         Bar(x, y) => {}
    |
    = note: expected struct `Pin<&mut Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar.as_mut() {
    |           +
@@ -128,7 +128,7 @@ LL |         Bar(x, y) => {}
    |
    = note: expected struct `Pin<&mut Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *bar.as_mut() {
    |                      +
@@ -143,7 +143,7 @@ LL |     let Bar(x, y) = bar;
    |
    = note: expected struct `Pin<&Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Bar(x, y) = *bar;
    |                     +
@@ -158,7 +158,7 @@ LL |         Bar(x, y) => {}
    |
    = note: expected struct `Pin<&Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar {
    |           +
@@ -173,7 +173,7 @@ LL |         Bar(x, y) => {}
    |
    = note: expected struct `Pin<&Bar<T, U>>`
               found struct `Bar<_, _>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *bar {
    |                      +
@@ -188,7 +188,7 @@ LL |     let NonPinProject { x } = foo;
    |
    = note: expected struct `Pin<&mut NonPinProject<T>>`
               found struct `NonPinProject<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let NonPinProject { x } = *foo;
    |                               +
@@ -203,7 +203,7 @@ LL |     let NonPinProject { x } = bar;
    |
    = note: expected struct `Pin<&NonPinProject<U>>`
               found struct `NonPinProject<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let NonPinProject { x } = *bar;
    |                               +
@@ -218,7 +218,7 @@ LL |         NonPinProject { x } => {}
    |
    = note: expected struct `Pin<&mut NonPinProject<T>>`
               found struct `NonPinProject<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo {
    |           +
@@ -233,7 +233,7 @@ LL |         NonPinProject { x } => {}
    |
    = note: expected struct `Pin<&NonPinProject<U>>`
               found struct `NonPinProject<_>`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar {
    |           +
