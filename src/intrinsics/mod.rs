@@ -355,10 +355,10 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
         sym::fmaf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128),
         // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
-        sym::fmuladdf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f16
-        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f32
-        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f64
-        sym::fmuladdf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f128
+        sym::fmuladdf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f16
+        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f32
+        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f64
+        sym::fmuladdf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f128
         sym::copysignf16 => ("copysignf16", 2, fx.tcx.types.f16, types::F16),
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
