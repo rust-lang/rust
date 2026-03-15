@@ -4,9 +4,9 @@ use rustc_hir::Target;
 use rustc_span::sym;
 use smallvec::SmallVec;
 
-use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
+use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext, ResolverAstLoweringExt};
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(super) fn lower_block(
         &mut self,
         b: &Block,
