@@ -12,8 +12,7 @@ jobs:
     name: Release-plz
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install Rust (rustup)
