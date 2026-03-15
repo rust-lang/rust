@@ -1260,11 +1260,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 have_turbofish,
             } = args;
             let generics = tcx.generics_of(generics_def_id);
-            if let Some((argument_index, _)) = generics
+            if let Some(argument_index) = generics
                 .own_args(args)
                 .iter()
-                .enumerate()
-                .find(|&(_, &arg)| self.generic_arg_contains_target(arg))
+                .position(|&arg| self.generic_arg_contains_target(arg))
             {
                 let args = self.tecx.resolve_vars_if_possible(args);
                 let generic_args =
