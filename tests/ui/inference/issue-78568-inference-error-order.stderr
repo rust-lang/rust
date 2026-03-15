@@ -1,0 +1,15 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-78568-inference-error-order.rs:10:37
+   |
+LL |     let guess = match guess.trim().parse() {
+   |                                     ^^^^^
+   |
+   = note: cannot infer type of the type parameter `F` declared on the method `parse`
+help: consider specifying the generic argument
+   |
+LL |     let guess = match guess.trim().parse::<F>() {
+   |                                          +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
