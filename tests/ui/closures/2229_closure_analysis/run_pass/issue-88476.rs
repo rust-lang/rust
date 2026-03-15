@@ -1,6 +1,8 @@
 //@ check-pass
 //@ edition:2021
 
+#![allow(self_lifetime_elision_not_applicable)]
+
 use std::rc::Rc;
 
 // Test that we restrict precision when moving not-`Copy` types, if any of the parent paths

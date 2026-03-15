@@ -2,6 +2,7 @@
 //@ check-pass
 
 #![allow(non_snake_case)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 use std::pin::Pin;
 

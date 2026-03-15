@@ -3973,3 +3973,11 @@ pub(crate) struct MalformedOnConstAttrLint {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("`self` parameter type does not contain `Self`")]
+#[help("use `&self`, `&mut self`, or `self: &Self` for correct lifetime elision")]
+pub(crate) struct SelfLifetimeElisionNotApplicable {
+    #[primary_span]
+    pub span: Span,
+}

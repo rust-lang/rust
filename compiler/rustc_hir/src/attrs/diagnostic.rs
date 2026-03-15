@@ -254,7 +254,7 @@ pub struct OnUnimplementedCondition {
     pub pred: Predicate,
 }
 impl OnUnimplementedCondition {
-    pub fn matches_predicate(self: &OnUnimplementedCondition, options: &ConditionOptions) -> bool {
+    pub fn matches_predicate(&self, options: &ConditionOptions) -> bool {
         self.pred.eval(&mut |p| match p {
             FlagOrNv::Flag(b) => options.has_flag(*b),
             FlagOrNv::NameValue(NameValue { name, value }) => {
