@@ -263,8 +263,13 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
+                    // Don't suggest constraining a projection to something
+                    // containing itself, e.g. `Item = &<I as Iterator>::Item`.
                     (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty))
-                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id) =>
+                        if !tcx.is_impl_trait_in_trait(proj_ty.def_id)
+                            && !tcx
+                                .erase_and_anonymize_regions(values.expected)
+                                .contains(tcx.erase_and_anonymize_regions(values.found)) =>
                     {
                         let msg = || {
                             format!(
