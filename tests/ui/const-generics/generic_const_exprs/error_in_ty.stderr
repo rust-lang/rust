@@ -29,12 +29,24 @@ error[E0308]: mismatched types
    |
 LL | impl A<2> {
    |        ^ expected `[usize; x]`, found integer
+   |
+note: expected because of the type of the const parameter
+  --> $DIR/error_in_ty.rs:6:14
+   |
+LL | pub struct A<const z: [usize; x]> {}
+   |              ^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/error_in_ty.rs:16:8
    |
 LL | impl A<2> {
    |        ^ expected `[usize; x]`, found integer
+   |
+note: expected because of the type of the const parameter
+  --> $DIR/error_in_ty.rs:6:14
+   |
+LL | pub struct A<const z: [usize; x]> {}
+   |              ^^^^^^^^^^^^^^^^^^^
 
 error[E0592]: duplicate definitions with name `B`
   --> $DIR/error_in_ty.rs:12:5

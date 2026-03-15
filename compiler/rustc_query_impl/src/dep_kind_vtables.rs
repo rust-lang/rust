@@ -179,7 +179,7 @@ macro_rules! define_dep_kind_vtables {
 // Create an array of vtables, one for each dep kind (non-query and query).
 pub fn make_dep_kind_vtables<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindVTable<'tcx>] {
     let (nq_vtables, q_vtables) =
-        rustc_middle::rustc_with_all_queries! { define_dep_kind_vtables! };
+        rustc_middle::queries::rustc_with_all_queries! { define_dep_kind_vtables! };
 
     // Non-query vtables must come before query vtables, to match the order of `DepKind`.
     arena.alloc_from_iter(nq_vtables.into_iter().chain(q_vtables.into_iter()))
