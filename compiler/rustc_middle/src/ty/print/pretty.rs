@@ -3313,7 +3313,8 @@ define_print_and_forward_display! {
     TraitRefPrintSugared<'tcx> {
         if !with_reduced_queries()
             && p.tcx().trait_def(self.0.def_id).paren_sugar
-            && let ty::Tuple(args) = self.0.args.type_at(1).kind()
+            && let Some(ty) = self.0.args.get(1).and_then(|arg| arg.as_type())
+            && let ty::Tuple(args) = ty.kind()
         {
             write!(p, "{}(", p.tcx().item_name(self.0.def_id))?;
             for (i, arg) in args.iter().enumerate() {
