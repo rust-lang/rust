@@ -13,7 +13,8 @@
     clippy::uninlined_format_args,
     clippy::useless_vec,
     clippy::unnecessary_map_on_constructor,
-    clippy::needless_lifetimes
+    clippy::needless_lifetimes,
+    clippy::unnecessary_option_map_or_else
 )]
 
 use std::path::{Path, PathBuf};

@@ -1840,11 +1840,36 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|[x, y]| [x, y]`
 /// * `|Foo(bar, baz)| Foo(bar, baz)`
 /// * `|Foo { bar, baz }| Foo { bar, baz }`
+/// * `|x| { let y = x; ...; let z = y; z }`
+/// * `|x| { let y = x; ...; let z = y; return z }`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
-fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
+fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> bool {
     let [param] = func.params else {
         return false;
+    };
+
+    let mut param_pat = param.pat;
+
+    // Given a sequence of `Stmt`s of the form `let p = e` where `e` is an expr identical to the
+    // current `param_pat`, advance the current `param_pat` to `p`.
+    //
+    // Note: This is similar to `clippy_utils::get_last_chain_binding_hir_id`, but it works
+    // directly over a `Pattern` rather than a `HirId`. And it checks for compatibility via
+    // `is_expr_identity_of_pat` rather than `HirId` equality
+    let mut advance_param_pat_over_stmts = |stmts: &[Stmt<'hir>]| {
+        for stmt in stmts {
+            if let StmtKind::Let(local) = stmt.kind
+                && let Some(init) = local.init
+                && is_expr_identity_of_pat(cx, param_pat, init, true)
+            {
+                param_pat = local.pat;
+            } else {
+                return false;
+            }
+        }
+
+        true
     };
 
     let mut expr = func.value;
@@ -1875,7 +1900,30 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                     return false;
                 }
             },
-            _ => return is_expr_identity_of_pat(cx, param.pat, expr, true),
+            ExprKind::Block(
+                &Block {
+                    stmts, expr: Some(e), ..
+                },
+                _,
+            ) => {
+                if !advance_param_pat_over_stmts(stmts) {
+                    return false;
+                }
+
+                expr = e;
+            },
+            ExprKind::Block(&Block { stmts, expr: None, .. }, _) => {
+                if let Some((last_stmt, stmts)) = stmts.split_last()
+                    && advance_param_pat_over_stmts(stmts)
+                    && let StmtKind::Semi(e) | StmtKind::Expr(e) = last_stmt.kind
+                    && let ExprKind::Ret(Some(ret_val)) = e.kind
+                {
+                    expr = ret_val;
+                } else {
+                    return false;
+                }
+            },
+            _ => return is_expr_identity_of_pat(cx, param_pat, expr, true),
         }
     }
 }

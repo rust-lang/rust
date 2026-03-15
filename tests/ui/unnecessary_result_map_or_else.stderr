@@ -1,26 +1,31 @@
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:6:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:11:5
    |
 LL |     x.map_or_else(|err| err, |n| n);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-result-map-or-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_result_map_or_else)]`
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(|err| err, |n| n);
+LL +     x.unwrap_or_else(|err| err);
+   |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:11:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:16:5
    |
 LL |     x.map_or_else(|err: ()| err, |n: ()| n);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err: ()| err)`
-
-error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:17:19
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     let y: &str = x.map_or_else(|err| err, |n| n);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(|err: ()| err, |n: ()| n);
+LL +     x.unwrap_or_else(|err: ()| err);
+   |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:22:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:27:5
    |
 LL | /     x.map_or_else(
 LL | |
@@ -29,7 +34,111 @@ LL | |         |n| {
 ...  |
 LL | |         },
 LL | |     );
-   | |_____^ help: consider using `unwrap_or_else`: `x.unwrap_or_else(|err| err)`
+   | |_____^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(
+LL -
+LL -         |err| err,
+LL -         |n| {
+LL -             let tmp = n;
+LL -             let tmp2 = tmp;
+LL -             tmp2
+LL -         },
+LL -     );
+LL +     x.unwrap_or_else(|err| err);
+   |
 
-error: aborting due to 4 previous errors
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:39:5
+   |
+LL | /     x.map_or_else(
+LL | |
+LL | |         |err| err,
+LL | |         |n| {
+...  |
+LL | |         },
+LL | |     );
+   | |_____^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(
+LL -
+LL -         |err| err,
+LL -         |n| {
+LL -             let tmp = n;
+LL -             let (a, b) = tmp;
+LL -             (a, b)
+LL -         },
+LL -     );
+LL +     x.unwrap_or_else(|err| err);
+   |
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:91:5
+   |
+LL |     x.map_or_else(|err| err, |(a, b)| (a, b));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(|err| err, |(a, b)| (a, b));
+LL +     x.unwrap_or_else(|err| err);
+   |
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:96:5
+   |
+LL | /     x.map_or_else(
+LL | |
+LL | |         |err| err,
+LL | |         |n| {
+...  |
+LL | |         },
+LL | |     );
+   | |_____^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(
+LL -
+LL -         |err| err,
+LL -         |n| {
+LL -             let tmp = n;
+LL -             let tmp2 = tmp;
+LL -             return tmp2;
+LL -         },
+LL -     );
+LL +     x.unwrap_or_else(|err| err);
+   |
+
+error: unused "map closure" when calling `Result::map_or_else` value
+  --> tests/ui/unnecessary_result_map_or_else.rs:108:5
+   |
+LL | /     x.map_or_else(
+LL | |
+LL | |         |err| err,
+LL | |         |n| {
+...  |
+LL | |         },
+LL | |     );
+   | |_____^
+   |
+help: consider using `unwrap_or_else`
+   |
+LL -     x.map_or_else(
+LL -
+LL -         |err| err,
+LL -         |n| {
+LL -             let tmp = n;
+LL -             let (a, b) = tmp;
+LL -             return (a, b);
+LL -         },
+LL -     );
+LL +     x.unwrap_or_else(|err| err);
+   |
+
+error: aborting due to 7 previous errors
 
