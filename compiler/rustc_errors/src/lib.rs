@@ -138,6 +138,14 @@ impl Suggestions {
             Suggestions::Disabled => Vec::new(),
         }
     }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Suggestions::Enabled(suggestions) => suggestions.len(),
+            Suggestions::Sealed(suggestions) => suggestions.len(),
+            Suggestions::Disabled => 0,
+        }
+    }
 }
 
 impl Default for Suggestions {
