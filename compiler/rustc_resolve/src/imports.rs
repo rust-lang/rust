@@ -217,6 +217,15 @@ impl<'ra> ImportData<'ra> {
         }
     }
 
+    /// Returns the first meaningful path segment of this import,
+    /// skipping synthetic segments like `{{root}}` and `$crate`.
+    pub(crate) fn first_non_root_segment(&self) -> Option<Symbol> {
+        self.module_path
+            .iter()
+            .find(|seg| seg.ident.name != kw::PathRoot && seg.ident.name != kw::DollarCrate)
+            .map(|seg| seg.ident.name)
+    }
+
     pub(crate) fn id(&self) -> Option<NodeId> {
         match self.kind {
             ImportKind::Single { id, .. }
@@ -652,6 +661,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let Some(err) = unresolved_import_error else { continue };
 
             glob_error |= import.is_glob();
+
+            if let Some(name) = import.first_non_root_segment() {
+                self.failed_import_prefixes.insert(name);
+            }
 
             if let ImportKind::Single { source, ref decls, .. } = import.kind
                 && source.name == kw::SelfLower

@@ -1028,17 +1028,6 @@ LL |         macro_dollar_crate!();
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: `$crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:20:27
-   |
-LL |         type A3 = foobar::$crate;
-   |                           ^^^^^^ can only be used in path start position
-...
-LL |         macro_dollar_crate!();
-   |         --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:26:26
    |
 LL |         type A4 = crate::$crate;
@@ -1122,12 +1111,6 @@ LL |         type B2 = ::crate;
    |                     ^^^^^ cannot start with this
 
 error[E0433]: `crate` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:106:27
-   |
-LL |         type B3 = foobar::crate;
-   |                           ^^^^^ can only be used in path start position
-
-error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:112:26
    |
 LL |         type B4 = crate::crate;
@@ -1152,12 +1135,6 @@ LL |         type C2 = ::super;
    |                     ^^^^^ cannot start with this
 
 error[E0433]: `super` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:144:27
-   |
-LL |         type C3 = foobar::super;
-   |                           ^^^^^ can only be used in path start position
-
-error[E0433]: `super` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:150:26
    |
 LL |         type C4 = crate::super;
@@ -1168,12 +1145,6 @@ error[E0433]: global paths cannot start with `self`
    |
 LL |         type D2 = ::self;
    |                     ^^^^ cannot start with this
-
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:186:27
-   |
-LL |         type D3 = foobar::self;
-   |                           ^^^^ can only be used in path start position
 
 error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:194:26
@@ -1193,7 +1164,7 @@ error[E0433]: `self` in paths can only be used in start position
 LL |         type D6 = self::self;
    |                         ^^^^ can only be used in path start position
 
-error: aborting due to 129 previous errors
+error: aborting due to 125 previous errors
 
 Some errors have detailed explanations: E0429, E0432, E0433, E0573.
 For more information about an error, try `rustc --explain E0429`.

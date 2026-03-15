@@ -1,4 +1,4 @@
-error[E0433]: cannot find module or crate `Iuse` in the crate root
+error[E0432]: unresolved import `Iuse`
   --> $DIR/nested-import-root-symbol-150103.rs:6:9
    |
 LL |     use Iuse::{ ::Fish };
@@ -9,7 +9,7 @@ help: you might be missing a crate named `Iuse`, add it to your project and impo
 LL + extern crate Iuse;
    |
 
-error[E0433]: the crate root in paths can only be used in start position
+error[E0432]: unresolved import `A::Fish`
   --> $DIR/nested-import-root-symbol-150103.rs:10:13
    |
 LL |     use A::{::Fish};
@@ -17,4 +17,4 @@ LL |     use A::{::Fish};
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0433`.
+For more information about this error, try `rustc --explain E0432`.
