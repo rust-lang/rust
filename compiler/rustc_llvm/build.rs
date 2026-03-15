@@ -402,6 +402,14 @@ fn main() {
             continue;
         }
 
+        let name =
+            if target.contains("apple-darwin") && llvm_kind == "dylib" && name.starts_with("LLVM-")
+            {
+                "LLVM"
+            } else {
+                name
+            };
+
         let kind = if name.starts_with("LLVM") {
             llvm_kind
         } else if is_static {
