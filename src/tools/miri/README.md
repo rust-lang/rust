@@ -154,6 +154,18 @@ platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
+### Controlling target features
+
+Controlling target features works similar to regular rustc invocations:
+`RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
+only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. If target
+features are also relevant for doctests, you have to also set `RUSTDOCFLAGS`.
+
+Unlike regular rustc, this flag has *two* effects: it builds the code with that target feature
+available (which affects `cfg(target_feature)`), and it tells Miri to consider the "virtual CPU"
+that the interpreted program runs on as having the feature available (meaning the code is allowed to
+invoke the corresponding intrinsics).
+
 ### Testing multiple different executions
 
 Certain parts of the execution are picked randomly by Miri, such as the exact base address
@@ -421,10 +433,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   are experimental). Later flags take precedence: borrow tracking can be reactivated
   by `-Zmiri-tree-borrows`.
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
-  enforced by default.  This is mostly useful to focus on other failures (such
-  as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
-  in your program.  However, this can also help to make Miri run faster.  Using
-  this flag is **unsound**.
+  enforced by default. This only disables these checks for typed copies; using
+  invalid values in any other operation will still cause an error. This is mostly useful 
+  to focus on other failures (such as out-of-bounds accesses) first. Setting this 
+  flag means Miri can miss bugs in your program. However, this can also help to 
+  make Miri run faster. Using this flag is **unsound**.
 * `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
   memory effects.
 * `-Zmiri-fixed-schedule` disables preemption (like `-Zmiri-preemption-rate=0.0`) and furthermore
