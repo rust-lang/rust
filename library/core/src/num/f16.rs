@@ -1393,7 +1393,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        intrinsics::fabsf16(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.

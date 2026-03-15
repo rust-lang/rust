@@ -70,8 +70,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
         sym::fmuladdf32 => "fmaf", // TODO: use gcc intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
-        sym::fabsf32 => "fabsf",
-        sym::fabsf64 => "fabs",
         sym::minnumf32 => "fminf",
         sym::minnumf64 => "fmin",
         sym::minimumf32 => "fminimumf",
@@ -208,7 +206,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let f128_type = cx.type_f128();
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
-        sym::fabsf128 => "fabsf128",
+        sym::fabs => "fabsf128",
         sym::floorf128 => "floorf128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
@@ -263,7 +261,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::fabsf16 => "fabsf",
+        sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::maxnumf16 => "__builtin_fmaxf",
@@ -330,7 +328,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
-            | sym::fabsf16
             | sym::floorf16
             | sym::fmaf16
             | sym::maxnumf16
@@ -497,6 +494,32 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         return Ok(());
                     }
                 }
+            }
+            sym::fabs => 'fabs: {
+                let func = match *args[0].layout.ty.kind() {
+                    ty::Float(ty::FloatTy::F16) => break 'fabs f16_builtin(self, name, args),
+                    ty::Float(ty::FloatTy::F32) => self.context.get_builtin_function("fabsf"),
+                    ty::Float(ty::FloatTy::F64) => self.context.get_builtin_function("fabs"),
+                    ty::Float(ty::FloatTy::F128) => match get_simple_function_f128(self, name) {
+                        Some(func) => func,
+                        None => {
+                            return Err(Instance::new_raw(instance.def_id(), instance.args));
+                        }
+                    },
+                    _ => {
+                        tcx.dcx().emit_err(InvalidMonomorphization::BasicFloatType {
+                            span,
+                            name,
+                            ty: args[0].layout.ty,
+                        });
+                        return Ok(());
+                    }
+                };
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
             }
 
             sym::raw_eq => {

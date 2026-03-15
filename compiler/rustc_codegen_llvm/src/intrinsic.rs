@@ -107,11 +107,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
-        sym::fabsf16 => ("llvm.fabs", &[bx.type_f16()]),
-        sym::fabsf32 => ("llvm.fabs", &[bx.type_f32()]),
-        sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
-        sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
-
         sym::minnumf16 => ("llvm.minnum", &[bx.type_f16()]),
         sym::minnumf32 => ("llvm.minnum", &[bx.type_f32()]),
         sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
@@ -484,6 +479,21 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     _ => bug!(),
                 }
+            }
+
+            sym::fabs => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicFloatType { span, name, ty });
+                    return Ok(());
+                };
+                let llty = self.type_float_from_ty(*f);
+                let llvm_name = "llvm.fabs";
+                self.call_intrinsic(
+                    llvm_name,
+                    &[llty],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
             }
 
             sym::raw_eq => {
@@ -1920,7 +1930,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let ty::Float(f) = in_elem.kind() else {
-            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
 
