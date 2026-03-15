@@ -363,10 +363,15 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     // No need to const-check a non-const `fn`.
     match ccx.const_kind {
         Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
-        None => span_bug!(
-            tcx.def_span(def),
-            "`mir_const_qualif` should only be called on const fns and const items"
-        ),
+        None => {
+            // This can happen when there are prior errors (e.g., const fn in trait).
+            // Use a delayed bug instead of panicking to allow compilation to continue.
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(def),
+                "`mir_const_qualif` should only be called on const fns and const items",
+            );
+            return Default::default();
+        }
     }
 
     if body.return_ty().references_error() {
