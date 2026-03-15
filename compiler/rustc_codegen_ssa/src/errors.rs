@@ -112,13 +112,6 @@ pub(crate) struct NoSavedObjectFile<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[track_caller]` requires Rust ABI", code = E0737)]
-pub(crate) struct RequiresRustAbi {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("unable to copy {$source_file} to {$output_path}: {$error}")]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
