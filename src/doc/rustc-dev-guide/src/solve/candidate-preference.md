@@ -454,6 +454,30 @@ where
 }
 ```
 
+#### Trait definition cannot use associated types from always applicable impls
+
+The `T: Trait` assumption in the trait definition prevents it from normalizing
+`<Self as Trait>::Assoc` to `T` by using the blanket impl. This feels like a somewhat
+desirable constraint, if not incredibly so.
+
+```rust
+trait Eq<T> {}
+impl<T> Eq<T> for T {}
+struct IsEqual<T: Eq<U>, U>(T, U);
+
+trait Trait: Sized {
+    type Assoc;
+    fn foo() -> IsEqual<Self, Self::Assoc> {
+        //~^ ERROR the trait bound `Self: Eq<<Self as Trait>::Assoc>` is not satisfied
+        todo!()
+    }
+}
+
+impl<T> Trait for T {
+    type Assoc = T;
+}
+```
+
 [`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/struct.Candidate.html
 [`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/enum.CandidateSource.html
 [`fn merge_trait_candidates`]: https://github.com/rust-lang/rust/blob/e3ee7f7aea5b45af3b42b5e4713da43876a65ac9/compiler/rustc_next_trait_solver/src/solve/trait_goals.rs#L1342-L1424
