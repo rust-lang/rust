@@ -1260,21 +1260,33 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 have_turbofish,
             } = args;
             let generics = tcx.generics_of(generics_def_id);
-            if let Some(mut argument_index) = generics
+            if let Some((argument_index, _)) = generics
                 .own_args(args)
                 .iter()
-                .position(|&arg| self.generic_arg_contains_target(arg))
+                .enumerate()
+                .find(|&(_, &arg)| self.generic_arg_contains_target(arg))
             {
-                if generics.has_own_self() {
-                    argument_index += 1;
-                }
                 let args = self.tecx.resolve_vars_if_possible(args);
                 let generic_args =
                     &generics.own_args_no_defaults(tcx, args)[generics.own_counts().lifetimes..];
                 let span = match expr.kind {
-                    ExprKind::MethodCall(path, ..) => path.ident.span,
+                    ExprKind::MethodCall(segment, ..)
+                        if have_turbofish
+                            && let Some(hir_args) = segment.args
+                            && let Some(idx) =
+                                argument_index.checked_sub(generics.own_counts().lifetimes)
+                            && let Some(arg) =
+                                hir_args.args.get(hir_args.num_lifetime_params() + idx) =>
+                    {
+                        arg.span()
+                    }
+                    ExprKind::MethodCall(segment, ..) => segment.ident.span,
                     _ => expr.span,
                 };
+                let mut argument_index = argument_index;
+                if generics.has_own_self() {
+                    argument_index += 1;
+                }
 
                 self.update_infer_source(InferSource {
                     span,
