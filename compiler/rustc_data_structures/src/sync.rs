@@ -34,7 +34,7 @@ pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
-pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+pub use self::mode::{DynThreadSafe, FromDyn, is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
     try_par_for_each_in,
@@ -64,13 +64,26 @@ mod atomic {
 mod mode {
     use std::sync::atomic::{AtomicU8, Ordering};
 
+    use crate::sync::{DynSend, DynSync};
+
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
     const DYN_THREAD_SAFE: u8 = 2;
 
     static DYN_THREAD_SAFE_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
 
-    // Whether thread safety is enabled (due to running under multiple threads).
+    /// Type representing a proposition that `is_dyn_thread_safe()` is true
+    #[derive(Clone, Copy)]
+    pub struct DynThreadSafe(());
+
+    impl DynThreadSafe {
+        /// If `is_dyn_thread_safe()` is true then return a proof value
+        #[inline(always)]
+        pub fn check() -> Option<Self> {
+            is_dyn_thread_safe().then_some(DynThreadSafe(()))
+        }
+    }
+
     #[inline]
     pub fn is_dyn_thread_safe() -> bool {
         match DYN_THREAD_SAFE_MODE.load(Ordering::Relaxed) {
@@ -98,6 +111,46 @@ mod mode {
 
         // Check that the mode was either uninitialized or was already set to the requested mode.
         assert!(previous.is_ok() || previous == Err(set));
+    }
+
+    #[derive(Copy, Clone)]
+    pub struct FromDyn<T>(pub T, pub DynThreadSafe);
+
+    impl DynThreadSafe {
+        #[inline(always)]
+        pub fn with<T>(self, val: T) -> FromDyn<T> {
+            FromDyn(val, self)
+        }
+    }
+
+    impl<T> FromDyn<T> {
+        /// Method for unwrapping values within a closure to avoid disjoint capture
+        #[inline(always)]
+        pub fn into_inner(self) -> T {
+            self.0
+        }
+    }
+
+    // `FromDyn` is `Send` if `T` is `DynSend`, since it requires proof of `DynThreadSafe`.
+    unsafe impl<T: DynSend> Send for FromDyn<T> {}
+
+    // `FromDyn` is `Sync` if `T` is `DynSync`, since it requires proof of `DynThreadSafe`.
+    unsafe impl<T: DynSync> Sync for FromDyn<T> {}
+
+    impl<T> std::ops::Deref for FromDyn<T> {
+        type Target = T;
+
+        #[inline(always)]
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<T> std::ops::DerefMut for FromDyn<T> {
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
     }
 }
 
