@@ -1,7 +1,7 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
+    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
     TargetOptions, cvs,
 };
 
@@ -34,7 +34,7 @@ pub(crate) fn target() -> Target {
             c_int_width: 32,
             env: Env::Newlib,
             vendor: "sony".into(),
-            abi: Abi::EabiHf,
+            cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             no_default_libraries: false,
