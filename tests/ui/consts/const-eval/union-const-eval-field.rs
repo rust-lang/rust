@@ -1,7 +1,7 @@
 //@ dont-require-annotations: NOTE
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([[:xdigit:]]{2}\s){4}(__\s){4}\s+│\s+([?|\.]){4}\W{4}" -> "HEX_DUMP"
-
+//@ ignore-parallel-frontend different alloc ids
 type Field1 = i32;
 type Field2 = f32;
 type Field3 = i64;

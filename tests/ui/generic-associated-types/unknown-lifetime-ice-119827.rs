@@ -4,7 +4,7 @@ trait Foo {
     where
         Self: 'c;
 }
-
+//@ ignore-parallel-frontend query cycle
 impl Foo for Box<dyn Foo> {}
 
 fn main() {}

@@ -2,7 +2,7 @@
 //@ compile-flags: --force-warn unused_variables
 //@ compile-flags: --force-warn unused_mut
 //@ check-pass
-
+//@ ignore-parallel-frontend the message `requested on the ...` appears in different lines
 fn expect_early_pass_lint() {
     #[expect(while_true)]
     while true {
