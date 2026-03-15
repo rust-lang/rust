@@ -462,8 +462,13 @@ impl Options {
             return None;
         }
 
+        let should_test = matches.opt_present("test");
+
         let mut emit = FxIndexMap::<_, EmitType>::default();
         for list in matches.opt_strs("emit") {
+            if should_test {
+                dcx.fatal("the `--test` flag and the `--emit` flag are not supported together");
+            }
             for kind in list.split(',') {
                 match kind.parse() {
                     Ok(kind) => {
@@ -634,7 +639,6 @@ impl Options {
         let test_args: Vec<String> =
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
-        let should_test = matches.opt_present("test");
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
