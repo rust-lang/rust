@@ -85,6 +85,23 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPtrParser {
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
 }
+
+pub(crate) struct RustcPanicsWhenNIsZeroParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPanicsWhenNIsZeroParser {
+    const PATH: &[Symbol] = &[sym::rustc_panics_when_n_is_zero];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenNIsZero;
+}
+
 pub(crate) struct RustcNoImplicitAutorefsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitAutorefsParser {
