@@ -19,7 +19,7 @@ LL |     if let "..." = &Box::new(x) {}
    |
    = note: expected reference `&Box<_>`
               found reference `&'static str`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     if let "..." = &*Box::new(x) {}
    |                     +
@@ -34,7 +34,7 @@ LL |     if let b"..." = Box::new(&x) {}
    |
    = note: expected struct `Box<&_>`
            found reference `&'static [u8; 3]`
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     if let b"..." = *Box::new(&x) {}
    |                     +
