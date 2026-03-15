@@ -152,11 +152,11 @@ fn abstracted_waiters_of(job_map: &QueryJobMap<'_>, query: QueryJobId) -> Vec<Ab
     result
 }
 
-/// Look for query cycles by doing a depth first search starting at `query`.
+/// Looks for a query cycle by doing a depth first search starting at `query`.
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
-/// the cycle.
-fn cycle_check<'tcx>(
+/// the cycle. `stack` will contain just the cycle on return if detected.
+fn find_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
     query: QueryJobId,
     span: Span,
@@ -187,7 +187,7 @@ fn cycle_check<'tcx>(
             continue;
         };
         if let ControlFlow::Break(maybe_resumable) =
-            cycle_check(job_map, parent, abstracted_waiter.span, stack, visited)
+            find_cycle(job_map, parent, abstracted_waiter.span, stack, visited)
         {
             // Return the resumable waiter in `waiter.resumable` if present
             return ControlFlow::Break(abstracted_waiter.resumable.or(maybe_resumable));
@@ -229,7 +229,7 @@ fn connected_to_root<'tcx>(
     false
 }
 
-/// Looks for query cycles starting from the last query in `jobs`.
+/// Looks for a query cycle using the last query in `jobs`.
 /// If a cycle is found, all queries in the cycle is removed from `jobs` and
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
@@ -243,7 +243,7 @@ fn remove_cycle<'tcx>(
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
     if let ControlFlow::Break(resumable) =
-        cycle_check(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+        find_cycle(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
     {
         // The stack is a vector of pairs of spans and queries; reverse it so that
         // the earlier entries require later entries
