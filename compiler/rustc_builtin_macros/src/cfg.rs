@@ -44,6 +44,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
     let meta = MetaItemOrLitParser::parse_single(
         &mut parser,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+        true,
     )
     .map_err(|diag| diag.emit())?;
     let cfg = AttributeParser::parse_single_args(

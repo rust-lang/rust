@@ -94,6 +94,7 @@ pub fn parse_cfg_select(
             let meta = MetaItemOrLitParser::parse_single(
                 p,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                true,
             )
             .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();

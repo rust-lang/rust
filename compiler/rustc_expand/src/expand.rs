@@ -2224,6 +2224,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,
             &CFG_TEMPLATE,
+            true,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;

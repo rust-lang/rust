@@ -402,6 +402,7 @@ impl<'a> StripUnconfigured<'a> {
             emit_errors,
             parse_cfg,
             &CFG_TEMPLATE,
+            true,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;

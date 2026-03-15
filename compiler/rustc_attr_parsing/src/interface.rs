@@ -139,6 +139,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
+        allow_expr_metavar: bool,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
@@ -152,6 +153,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             &parts,
             &sess.psess,
             emit_errors,
+            allow_expr_metavar,
         )?;
         Self::parse_single_args(
             sess,
@@ -333,6 +335,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
+                            false,
                         ) else {
                             continue;
                         };

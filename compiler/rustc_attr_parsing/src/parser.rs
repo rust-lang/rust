@@ -109,6 +109,7 @@ impl ArgParser {
         parts: &[Symbol],
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
+        allow_expr_metavar: bool,
     ) -> Option<Self> {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
@@ -122,6 +123,7 @@ impl ArgParser {
                         args.dspan.entire(),
                         psess,
                         ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
+                        allow_expr_metavar,
                     ) {
                         Ok(p) => return Some(ArgParser::List(p)),
                         Err(e) => {
@@ -147,9 +149,15 @@ impl ArgParser {
                 }
 
                 Self::List(
-                    MetaItemListParser::new(&args.tokens, args.dspan.entire(), psess, should_emit)
-                        .map_err(|e| should_emit.emit_err(e))
-                        .ok()?,
+                    MetaItemListParser::new(
+                        &args.tokens,
+                        args.dspan.entire(),
+                        psess,
+                        should_emit,
+                        allow_expr_metavar,
+                    )
+                    .map_err(|e| should_emit.emit_err(e))
+                    .ok()?,
                 )
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
@@ -217,8 +225,9 @@ impl MetaItemOrLitParser {
     pub fn parse_single<'sess>(
         parser: &mut Parser<'sess>,
         should_emit: ShouldEmit,
+        allow_expr_metavar: bool,
     ) -> PResult<'sess, MetaItemOrLitParser> {
-        let mut this = MetaItemListParserContext { parser, should_emit };
+        let mut this = MetaItemListParserContext { parser, should_emit, allow_expr_metavar };
         this.parse_meta_item_inner()
     }
 
@@ -407,6 +416,7 @@ fn expr_to_lit<'sess>(
 struct MetaItemListParserContext<'a, 'sess> {
     parser: &'a mut Parser<'sess>,
     should_emit: ShouldEmit,
+    allow_expr_metavar: bool,
 }
 
 impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
@@ -448,19 +458,43 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn parse_attr_item(&mut self) -> PResult<'sess, MetaItemParser> {
-        if let Some(MetaVarKind::Meta { has_meta_form }) = self.parser.token.is_metavar_seq() {
-            return if has_meta_form {
-                let attr_item = self
-                    .parser
-                    .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
-                        MetaItemListParserContext { parser: this, should_emit: self.should_emit }
+        if let Some(metavar) = self.parser.token.is_metavar_seq() {
+            match metavar {
+                kind @ MetaVarKind::Expr { .. } if self.allow_expr_metavar => {
+                    return self
+                        .parser
+                        .eat_metavar_seq(kind, |this| {
+                            MetaItemListParserContext {
+                                parser: this,
+                                should_emit: self.should_emit,
+                                allow_expr_metavar: true,
+                            }
                             .parse_attr_item()
-                    })
-                    .unwrap();
-                Ok(attr_item)
-            } else {
-                self.parser.unexpected_any()
-            };
+                        })
+                        .ok_or_else(|| {
+                            self.parser.unexpected_any::<core::convert::Infallible>().unwrap_err()
+                        });
+                }
+                MetaVarKind::Meta { has_meta_form } => {
+                    return if has_meta_form {
+                        let attr_item = self
+                            .parser
+                            .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
+                                MetaItemListParserContext {
+                                    parser: this,
+                                    should_emit: self.should_emit,
+                                    allow_expr_metavar: self.allow_expr_metavar,
+                                }
+                                .parse_attr_item()
+                            })
+                            .unwrap();
+                        Ok(attr_item)
+                    } else {
+                        self.parser.unexpected_any()
+                    };
+                }
+                _ => {}
+            }
         }
 
         let path = self.parser.parse_path(PathStyle::Mod)?;
@@ -469,8 +503,12 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         let args = if self.parser.check(exp!(OpenParen)) {
             let start = self.parser.token.span;
             let (sub_parsers, _) = self.parser.parse_paren_comma_seq(|parser| {
-                MetaItemListParserContext { parser, should_emit: self.should_emit }
-                    .parse_meta_item_inner()
+                MetaItemListParserContext {
+                    parser,
+                    should_emit: self.should_emit,
+                    allow_expr_metavar: self.allow_expr_metavar,
+                }
+                .parse_meta_item_inner()
             })?;
             let end = self.parser.prev_token.span;
             ArgParser::List(MetaItemListParser { sub_parsers, span: start.with_hi(end.hi()) })
@@ -580,13 +618,15 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         psess: &'sess ParseSess,
         span: Span,
         should_emit: ShouldEmit,
+        allow_expr_metavar: bool,
     ) -> PResult<'sess, MetaItemListParser> {
         let mut parser = Parser::new(psess, tokens, None);
         if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
             parser = parser.recovery(recovery);
         }
 
-        let mut this = MetaItemListParserContext { parser: &mut parser, should_emit };
+        let mut this =
+            MetaItemListParserContext { parser: &mut parser, should_emit, allow_expr_metavar };
 
         // Presumably, the majority of the time there will only be one attr.
         let mut sub_parsers = ThinVec::with_capacity(1);
@@ -618,8 +658,15 @@ impl MetaItemListParser {
         span: Span,
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
+        allow_expr_metavar: bool,
     ) -> Result<Self, Diag<'sess>> {
-        MetaItemListParserContext::parse(tokens.clone(), psess, span, should_emit)
+        MetaItemListParserContext::parse(
+            tokens.clone(),
+            psess,
+            span,
+            should_emit,
+            allow_expr_metavar,
+        )
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
