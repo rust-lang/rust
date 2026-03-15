@@ -2527,6 +2527,8 @@ options! {
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
         "change rlib format to store native libraries as archives"),
+    packed_stack: bool = (false, parse_bool, [TRACKED],
+        "use packed stack frames (s390x only) (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
