@@ -1510,11 +1510,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         base_place: PlaceWithHirId<'tcx>,
     ) -> Result<PlaceWithHirId<'tcx>, Cx::Error> {
         let base_curr_ty = base_place.place.ty();
-        let Some(deref_ty) = self
+        let resolved_ty = self
             .cx
-            .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty)
-            .builtin_deref(true)
-        else {
+            .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty);
+        
+        // If the type is an error (e.g., from prior inference failure), return early
+        self.cx.error_reported_in_ty(resolved_ty)?;
+        
+        let Some(deref_ty) = resolved_ty.builtin_deref(true) else {
             debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
             return Err(self
                 .cx
