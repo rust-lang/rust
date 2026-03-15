@@ -6,7 +6,9 @@ use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
+use rustc_session::config::{
+    BranchProtection, FunctionReturn, InstrumentFunction, OptLevel, PAuthKey, PacRet,
+};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
@@ -173,7 +175,7 @@ pub(crate) fn frame_pointer_type_attr<'ll>(
     let opts = &sess.opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-    if opts.unstable_opts.instrument_mcount {
+    if opts.unstable_opts.instrument_function == InstrumentFunction::Mcount {
         fp.ratchet(FramePointer::Always);
     }
     fp.ratchet(opts.cg.force_frame_pointers);
@@ -199,52 +201,104 @@ fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll 
 fn instrument_function_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
+    instrument_fn: &Option<bool>,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    if sess.opts.unstable_opts.instrument_mcount {
-        // Similar to `clang -pg` behavior. Handled by the
-        // `post-inline-ee-instrument` LLVM pass.
+    match sess.opts.unstable_opts.instrument_function {
+        InstrumentFunction::Fentry => {
+            // Similar to `clang -pg -mfentry` behavior.
 
-        // The function name varies on platforms.
-        // See test/CodeGen/mcount.c in clang.
-        let mcount_name = match &sess.target.llvm_mcount_intrinsic {
-            Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
-            None => sess.target.mcount.as_ref(),
-        };
+            // #[instrument_fn], the default is on.
+            let instrument_entry = instrument_fn.unwrap_or_else(|| true);
 
-        attrs.push(llvm::CreateAttrStringValue(
-            cx.llcx,
-            "instrument-function-entry-inlined",
-            mcount_name,
-        ));
-    }
-    if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
-        // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
-        // Function prologue and epilogue are instrumented with NOP sleds,
-        // a runtime library later replaces them with detours into tracing code.
-        if options.always {
-            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-always"));
+            if instrument_entry {
+                attrs.push(llvm::CreateAttrStringValue(cx.llcx, "fentry-call", "true"));
+
+                if sess.opts.unstable_opts.instrument_fentry_opts.no_call {
+                    attrs.push(llvm::CreateAttrString(cx.llcx, "mnop-mcount"));
+                }
+                if sess.opts.unstable_opts.instrument_fentry_opts.record {
+                    attrs.push(llvm::CreateAttrString(cx.llcx, "mrecord-mcount"));
+                }
+            }
         }
-        if options.never {
-            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-never"));
+        InstrumentFunction::Mcount => {
+            // Similar to `clang -pg` behavior. Handled by the
+            // `post-inline-ee-instrument` LLVM pass.
+
+            // #[instrument_fn], the default is on.
+            let instrument_entry = instrument_fn.unwrap_or_else(|| true);
+
+            if instrument_entry {
+                // The function name varies on platforms.
+                // See test/CodeGen/mcount.c in clang.
+                let mcount_name = match &sess.target.llvm_mcount_intrinsic {
+                    Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
+                    None => sess.target.mcount.as_ref(),
+                };
+
+                attrs.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "instrument-function-entry-inlined",
+                    mcount_name,
+                ));
+            }
         }
-        if options.ignore_loops {
-            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-ignore-loops"));
+        InstrumentFunction::XRay => {
+            // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
+            // Function prologue and epilogue are instrumented with NOP sleds,
+            // a runtime library later replaces them with detours into tracing code.
+            let options = &sess.opts.unstable_opts.instrument_xray_opts;
+
+            let mut never = options.never;
+            let mut always = options.always;
+
+            // Apply optional #[instrument_fn] override.
+            match instrument_fn {
+                Some(true) => {
+                    always = true;
+                }
+                Some(false) => {
+                    never = true;
+                }
+                None => {}
+            }
+
+            if never {
+                attrs.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "function-instrument",
+                    "xray-never",
+                ));
+            }
+            if always {
+                attrs.push(llvm::CreateAttrStringValue(
+                    cx.llcx,
+                    "function-instrument",
+                    "xray-always",
+                ));
+            }
+
+            if options.ignore_loops {
+                attrs.push(llvm::CreateAttrString(cx.llcx, "xray-ignore-loops"));
+            }
+            // LLVM will not choose the default for us, but rather requires specific
+            // threshold in absence of "xray-always". Use the same default as Clang.
+            let threshold = options.instruction_threshold.unwrap_or(200);
+            attrs.push(llvm::CreateAttrStringValue(
+                cx.llcx,
+                "xray-instruction-threshold",
+                &threshold.to_string(),
+            ));
+
+            if options.skip_entry {
+                attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-entry"));
+            }
+            if options.skip_exit {
+                attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-exit"));
+            }
         }
-        // LLVM will not choose the default for us, but rather requires specific
-        // threshold in absence of "xray-always". Use the same default as Clang.
-        let threshold = options.instruction_threshold.unwrap_or(200);
-        attrs.push(llvm::CreateAttrStringValue(
-            cx.llcx,
-            "xray-instruction-threshold",
-            &threshold.to_string(),
-        ));
-        if options.skip_entry {
-            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-entry"));
-        }
-        if options.skip_exit {
-            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-exit"));
-        }
+        InstrumentFunction::No => {}
     }
     attrs
 }
@@ -397,7 +451,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     // FIXME: none of these functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx, sess));
     to_add.extend(function_return_attr(cx, sess));
-    to_add.extend(instrument_function_attr(cx, sess));
+    to_add.extend(instrument_function_attr(cx, sess, &codegen_fn_attrs.instrument_fn));
     to_add.extend(nojumptables_attr(cx, sess));
     to_add.extend(probestack_attr(cx, tcx));
     to_add.extend(stackprotector_attr(cx, sess));

@@ -825,7 +825,10 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
-    pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
+    pub(crate) const parse_instrument_function: &str = "`fentry` | `mcount` | `xray`";
+    pub(crate) const parse_instrument_mcount_opts: &str =
+        "a comma separated list of options: `call`,`no-call`,`record`,`no-record`.";
+    pub(crate) const parse_instrument_xray_opts: &str = "a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
@@ -1567,19 +1570,51 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_instrument_xray(
-        slot: &mut Option<InstrumentXRay>,
+    pub(crate) fn parse_instrument_function(
+        slot: &mut InstrumentFunction,
         v: Option<&str>,
     ) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
-                return true;
+        let Some(v) = v else { return false };
+        match v {
+            "fentry" => *slot = InstrumentFunction::Fentry,
+            "mcount" => *slot = InstrumentFunction::Mcount,
+            "xray" => *slot = InstrumentFunction::XRay,
+            "none" => *slot = InstrumentFunction::No,
+            _ => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_instrument_mcount_opts(
+        slot: &mut InstrumentMcountOpts,
+        v: Option<&str>,
+    ) -> bool {
+        for option in v.into_iter().flat_map(|v| v.split(',')) {
+            match option {
+                "no-call" => {
+                    slot.no_call = true;
+                }
+                "call" => {
+                    slot.no_call = false;
+                }
+                "no-record" => {
+                    slot.record = false;
+                }
+                "record" => {
+                    slot.record = true;
+                }
+                _ => {
+                    return false;
+                }
             }
         }
+        v.is_some()
+    }
 
-        let options = slot.get_or_insert_default();
+    pub(crate) fn parse_instrument_xray_opts(
+        slot: &mut InstrumentXRayOpts,
+        v: Option<&str>,
+    ) -> bool {
         let mut seen_always = false;
         let mut seen_never = false;
         let mut seen_ignore_loops = false;
@@ -1589,17 +1624,17 @@ pub mod parse {
         for option in v.into_iter().flat_map(|v| v.split(',')) {
             match option {
                 "always" if !seen_always && !seen_never => {
-                    options.always = true;
-                    options.never = false;
+                    slot.always = true;
+                    slot.never = false;
                     seen_always = true;
                 }
                 "never" if !seen_never && !seen_always => {
-                    options.never = true;
-                    options.always = false;
+                    slot.never = true;
+                    slot.always = false;
                     seen_never = true;
                 }
                 "ignore-loops" if !seen_ignore_loops => {
-                    options.ignore_loops = true;
+                    slot.ignore_loops = true;
                     seen_ignore_loops = true;
                 }
                 option
@@ -1610,17 +1645,17 @@ pub mod parse {
                         return false;
                     };
                     match n.parse() {
-                        Ok(n) => options.instruction_threshold = Some(n),
+                        Ok(n) => slot.instruction_threshold = Some(n),
                         Err(_) => return false,
                     }
                     seen_instruction_threshold = true;
                 }
                 "skip-entry" if !seen_skip_entry => {
-                    options.skip_entry = true;
+                    slot.skip_entry = true;
                     seen_skip_entry = true;
                 }
                 "skip-exit" if !seen_skip_exit => {
-                    options.skip_exit = true;
+                    slot.skip_exit = true;
                     seen_skip_exit = true;
                 }
                 _ => return false,
@@ -2400,10 +2435,16 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
-    instrument_mcount: bool = (false, parse_bool, [TRACKED],
-        "insert function instrument code for mcount-based tracing (default: no)"),
-    instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
-        "insert function instrument code for XRay-based tracing (default: no)
+    instrument_fentry_opts: InstrumentMcountOpts = (InstrumentMcountOpts::default(), parse_instrument_mcount_opts, [TRACKED],
+        "fentry instrumentation configuration options (default: `call,no-record`).
+         Optional extra settings:
+         `=call` or `=no-call`
+         `=no-record` or `=record`
+         Multiple options can be combined with commas."),
+    instrument_function: InstrumentFunction = (InstrumentFunction::No, parse_instrument_function, [TRACKED],
+        "insert function instrument code for mcount-based tracing (default: none)"),
+    instrument_xray_opts: InstrumentXRayOpts = (InstrumentXRayOpts::default(), parse_instrument_xray_opts, [TRACKED],
+        "configuration options for XRay-based tracing (default is ``).
          Optional extra settings:
          `=always`
          `=never`

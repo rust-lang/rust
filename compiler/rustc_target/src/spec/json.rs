@@ -221,6 +221,7 @@ impl Target {
         forward!(supports_stack_protector);
         forward!(small_data_threshold_support);
         forward!(entry_name);
+        forward!(supports_fentry);
         forward!(supports_xray);
 
         // we're going to run `update_from_cli`, but that won't change the target's AbiMap
@@ -405,6 +406,7 @@ impl ToJson for Target {
         target_option_val!(small_data_threshold_support);
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
+        target_option_val!(supports_fentry);
         target_option_val!(supports_xray);
 
         // Serializing `-Clink-self-contained` needs a dynamic key to support the
@@ -626,6 +628,7 @@ struct TargetSpecJson {
     supports_stack_protector: Option<bool>,
     small_data_threshold_support: Option<SmallDataThresholdSupport>,
     entry_name: Option<StaticCow<str>>,
+    supports_fentry: Option<bool>,
     supports_xray: Option<bool>,
     entry_abi: Option<ExternAbiWrapper>,
 }

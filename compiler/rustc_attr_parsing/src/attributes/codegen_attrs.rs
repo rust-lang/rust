@@ -574,6 +574,46 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
     }
 }
 
+pub(crate) struct InstrumentFnParser;
+
+impl<S: Stage> SingleAttributeParser<S> for InstrumentFnParser {
+    const PATH: &[Symbol] = &[sym::instrument_fn];
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "on|off");
+
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let mut instrument = None;
+        match args {
+            ArgParser::NameValue(nv) => {
+                if let Some(option) = nv.value_as_str()
+                    && (option == sym::off || option == sym::on)
+                {
+                    instrument = Some(option == sym::on);
+                } else {
+                    cx.expected_specific_argument(nv.value_span, &[sym::on, sym::off]);
+                }
+            }
+            ArgParser::List(_) => {
+                cx.expected_single_argument(cx.attr_span);
+            }
+            ArgParser::NoArgs => {
+                cx.expected_specific_argument(cx.attr_span, &[sym::on, sym::off]);
+            }
+        }
+        Some(AttributeKind::InstrumentFn(instrument))
+    }
+}
+
 pub(crate) struct SanitizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {

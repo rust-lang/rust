@@ -292,6 +292,9 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.patchable_function_entry =
                     Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
             }
+            AttributeKind::InstrumentFn(instrument_fn) => {
+                codegen_fn_attrs.instrument_fn = *instrument_fn;
+            }
             _ => {}
         }
     }
