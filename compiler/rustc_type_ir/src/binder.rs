@@ -666,6 +666,22 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
         self.value.fold_with(&mut folder)
     }
 
+    /// Tries to instantiate the early bound parameters with the given arguments.
+    /// Returns an error instead of panicking when parameter instantiation fails.
+    pub fn try_instantiate<A>(self, cx: I, args: A) -> Result<T, InstantiationError<I>>
+    where
+        A: SliceLike<Item = I::GenericArg>,
+    {
+        if args.is_empty() {
+            if self.value.has_param() {
+                return Err(InstantiationError::MissingArgs);
+            }
+            return Ok(self.value);
+        }
+        let mut folder = TryArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
+        self.value.try_fold_with(&mut folder)
+    }
+
     /// Makes the identity replacement `T0 => T0, ..., TN => TN`.
     /// Conceptually, this converts universally bound variables into placeholders
     /// when inside of a given item.
@@ -686,6 +702,238 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
 
 ///////////////////////////////////////////////////////////////////////////
 // The actual instantiation engine itself is a type folder.
+
+/// Error type for instantiation failures.
+pub enum InstantiationError<I: Interner> {
+    /// A type parameter was referenced that is not in the provided args.
+    TypeParamOutOfRange {
+        param: I::ParamTy,
+        param_index: usize,
+        args_len: usize,
+    },
+    /// A const parameter was referenced that is not in the provided args.
+    ConstParamOutOfRange {
+        param: I::ParamConst,
+        param_index: usize,
+        args_len: usize,
+    },
+    /// A region parameter was referenced that is not in the provided args.
+    RegionParamOutOfRange {
+        param_index: usize,
+        args_len: usize,
+    },
+    /// Expected a type but found a different kind.
+    TypeParamExpected {
+        param: I::ParamTy,
+        found: ty::GenericArgKind<I>,
+    },
+    /// Expected a const but found a different kind.
+    ConstParamExpected {
+        param: I::ParamConst,
+        found: ty::GenericArgKind<I>,
+    },
+    /// Expected a region but found a different kind.
+    RegionParamExpected {
+        param_index: usize,
+        found: ty::GenericArgKind<I>,
+    },
+    /// No args were provided but the value has parameters.
+    MissingArgs,
+}
+
+impl<I: Interner> std::fmt::Debug for InstantiationError<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InstantiationError::TypeParamOutOfRange { param, param_index, args_len } => f
+                .debug_struct("TypeParamOutOfRange")
+                .field("param", &format_args!("{:?}", param))
+                .field("param_index", param_index)
+                .field("args_len", args_len)
+                .finish(),
+            InstantiationError::ConstParamOutOfRange { param, param_index, args_len } => f
+                .debug_struct("ConstParamOutOfRange")
+                .field("param", &format_args!("{:?}", param))
+                .field("param_index", param_index)
+                .field("args_len", args_len)
+                .finish(),
+            InstantiationError::RegionParamOutOfRange { param_index, args_len } => f
+                .debug_struct("RegionParamOutOfRange")
+                .field("param_index", param_index)
+                .field("args_len", args_len)
+                .finish(),
+            InstantiationError::TypeParamExpected { param, found } => f
+                .debug_struct("TypeParamExpected")
+                .field("param", &format_args!("{:?}", param))
+                .field("found", &format_args!("{:?}", found))
+                .finish(),
+            InstantiationError::ConstParamExpected { param, found } => f
+                .debug_struct("ConstParamExpected")
+                .field("param", &format_args!("{:?}", param))
+                .field("found", &format_args!("{:?}", found))
+                .finish(),
+            InstantiationError::RegionParamExpected { param_index, found } => f
+                .debug_struct("RegionParamExpected")
+                .field("param_index", param_index)
+                .field("found", &format_args!("{:?}", found))
+                .finish(),
+            InstantiationError::MissingArgs => write!(f, "MissingArgs"),
+        }
+    }
+}
+
+struct TryArgFolder<'a, I: Interner> {
+    cx: I,
+    args: &'a [I::GenericArg],
+    binders_passed: u32,
+}
+
+impl<'a, I: Interner> FallibleTypeFolder<I> for TryArgFolder<'a, I> {
+    type Error = InstantiationError<I>;
+
+    #[inline]
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn try_fold_binder<T: TypeFoldable<I>>(
+        &mut self,
+        t: ty::Binder<I, T>,
+    ) -> Result<ty::Binder<I, T>, Self::Error> {
+        self.binders_passed += 1;
+        let result = t.try_super_fold_with(self);
+        self.binders_passed -= 1;
+        result
+    }
+
+    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
+        match r.kind() {
+            ty::ReEarlyParam(data) => {
+                let rk = self.args.get(data.index() as usize).map(|arg| arg.kind());
+                match rk {
+                    Some(ty::GenericArgKind::Lifetime(lt)) => {
+                        Ok(self.shift_region_through_binders(lt))
+                    }
+                    Some(other) => Err(InstantiationError::RegionParamExpected {
+                        param_index: data.index() as usize,
+                        found: other,
+                    }),
+                    None => Err(InstantiationError::RegionParamOutOfRange {
+                        param_index: data.index() as usize,
+                        args_len: self.args.len(),
+                    }),
+                }
+            }
+            ty::ReBound(..)
+            | ty::ReLateParam(_)
+            | ty::ReStatic
+            | ty::RePlaceholder(_)
+            | ty::ReErased
+            | ty::ReError(_) => Ok(r),
+            ty::ReVar(_) => panic!("unexpected region: {r:?}"),
+        }
+    }
+
+    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error> {
+        if !t.has_param() {
+            return Ok(t);
+        }
+
+        match t.kind() {
+            ty::Param(p) => self.ty_for_param(p, t),
+            _ => t.try_super_fold_with(self),
+        }
+    }
+
+    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
+        if let ty::ConstKind::Param(p) = c.kind() {
+            self.const_for_param(p, c)
+        } else {
+            c.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+        if p.has_param() {
+            p.try_super_fold_with(self)
+        } else {
+            Ok(p)
+        }
+    }
+
+    fn try_fold_clauses(&mut self, c: I::Clauses) -> Result<I::Clauses, Self::Error> {
+        if c.has_param() {
+            c.try_super_fold_with(self)
+        } else {
+            Ok(c)
+        }
+    }
+}
+
+impl<'a, I: Interner> TryArgFolder<'a, I> {
+    fn ty_for_param(&self, p: I::ParamTy, _source_ty: I::Ty) -> Result<I::Ty, InstantiationError<I>> {
+        let opt_ty = self.args.get(p.index() as usize).map(|arg| arg.kind());
+        let ty = match opt_ty {
+            Some(ty::GenericArgKind::Type(ty)) => ty,
+            Some(kind) => {
+                return Err(InstantiationError::TypeParamExpected {
+                    param: p,
+                    found: kind,
+                })
+            }
+            None => {
+                return Err(InstantiationError::TypeParamOutOfRange {
+                    param: p,
+                    param_index: p.index() as usize,
+                    args_len: self.args.len(),
+                })
+            }
+        };
+
+        Ok(self.shift_vars_through_binders(ty))
+    }
+
+    fn const_for_param(
+        &self,
+        p: I::ParamConst,
+        _source_ct: I::Const,
+    ) -> Result<I::Const, InstantiationError<I>> {
+        let opt_ct = self.args.get(p.index() as usize).map(|arg| arg.kind());
+        let ct = match opt_ct {
+            Some(ty::GenericArgKind::Const(ct)) => ct,
+            Some(kind) => {
+                return Err(InstantiationError::ConstParamExpected {
+                    param: p,
+                    found: kind,
+                })
+            }
+            None => {
+                return Err(InstantiationError::ConstParamOutOfRange {
+                    param: p,
+                    param_index: p.index() as usize,
+                    args_len: self.args.len(),
+                })
+            }
+        };
+
+        Ok(self.shift_vars_through_binders(ct))
+    }
+
+    fn shift_vars_through_binders<T: TypeFoldable<I>>(&self, val: T) -> T {
+        if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
+            val
+        } else {
+            ty::shift_vars(self.cx, val, self.binders_passed)
+        }
+    }
+
+    fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
+        if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
+            region
+        } else {
+            ty::shift_region(self.cx, region, self.binders_passed)
+        }
+    }
+}
 
 struct ArgFolder<'a, I: Interner> {
     cx: I,
