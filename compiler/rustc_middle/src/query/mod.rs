@@ -17,10 +17,9 @@ pub mod erase;
 pub(crate) mod inner;
 mod job;
 mod keys;
-pub mod on_disk_cache;
-#[macro_use]
-pub mod plumbing;
 pub(crate) mod modifiers;
+pub mod on_disk_cache;
+pub mod plumbing;
 mod stack;
 
 pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
