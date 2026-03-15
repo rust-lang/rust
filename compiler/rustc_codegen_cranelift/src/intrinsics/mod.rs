@@ -421,45 +421,19 @@ fn codegen_float_intrinsic_call<'tcx>(
     let layout = fx.layout_of(ty);
     // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
     // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
-    let res = match intrinsic {
-        sym::fmaf16 | sym::fmuladdf16 => {
-            CValue::by_val(codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]), layout)
-        }
+    let val = match intrinsic {
+        sym::fmaf16 | sym::fmuladdf16 => codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]),
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
-            CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
+            fx.bcx.ins().fma(args[0], args[1], args[2])
         }
-        sym::copysignf16 => {
-            CValue::by_val(codegen_f16_f128::copysign_f16(fx, args[0], args[1]), layout)
-        }
-        sym::copysignf128 => {
-            CValue::by_val(codegen_f16_f128::copysign_f128(fx, args[0], args[1]), layout)
-        }
-        sym::copysignf32 | sym::copysignf64 => {
-            CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
-        }
-        sym::floorf32
-        | sym::floorf64
-        | sym::ceilf32
-        | sym::ceilf64
-        | sym::truncf32
-        | sym::truncf64
-        | sym::round_ties_even_f32
-        | sym::round_ties_even_f64
-        | sym::sqrtf32
-        | sym::sqrtf64 => {
-            let val = match intrinsic {
-                sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
-                sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
-                sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-                sym::round_ties_even_f32 | sym::round_ties_even_f64 => {
-                    fx.bcx.ins().nearest(args[0])
-                }
-                sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
-                _ => unreachable!(),
-            };
-
-            CValue::by_val(val, layout)
-        }
+        sym::copysignf16 => codegen_f16_f128::copysign_f16(fx, args[0], args[1]),
+        sym::copysignf128 => codegen_f16_f128::copysign_f128(fx, args[0], args[1]),
+        sym::copysignf32 | sym::copysignf64 => fx.bcx.ins().fcopysign(args[0], args[1]),
+        sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
+        sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
+        sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
+        sym::round_ties_even_f32 | sym::round_ties_even_f64 => fx.bcx.ins().nearest(args[0]),
+        sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
@@ -474,12 +448,11 @@ fn codegen_float_intrinsic_call<'tcx>(
             let input_tys: Vec<_> =
                 vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
             let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            let ret_val = if intrinsic == sym::powif16 {
+            if intrinsic == sym::powif16 {
                 codegen_f16_f128::f32_to_f16(fx, ret_val)
             } else {
                 ret_val
-            };
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            }
         }
         sym::powf16 => {
             // FIXME(f16_f128): Rust `compiler-builtins` doesn't export `powf16` yet.
@@ -491,15 +464,15 @@ fn codegen_float_intrinsic_call<'tcx>(
                 vec![AbiParam::new(types::F32)],
                 &[x, y],
             )[0];
-            CValue::by_val(codegen_f16_f128::f32_to_f16(fx, ret_val), fx.layout_of(ty))
+            codegen_f16_f128::f32_to_f16(fx, ret_val)
         }
         _ => {
             let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0]
         }
     };
 
+    let res = CValue::by_val(val, layout);
     ret.write_cvalue(fx, res);
 
     true
