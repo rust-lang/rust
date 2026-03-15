@@ -797,7 +797,12 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => Ok(vec![]),
 
-        // Coroutines and closures could implement `[const] Drop`,
+        // Closures are [const] Destruct when all of their upvars (captures) are [const] Destruct.
+        ty::Closure(def, args) if cx.closure_is_const(def) => {
+            let closure_args = args.as_closure();
+            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [closure_args.tupled_upvars_ty()])])
+        }
+        // Coroutines could implement `[const] Drop`,
         // but they don't really need to right now.
         ty::Closure(_, _)
         | ty::CoroutineClosure(_, _)
