@@ -4,8 +4,8 @@ use rustc_ast::ast::NodeId;
 use rustc_ast::{HasNodeId, ItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::resolve_path;
-use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, DebugVisualizer};
+use rustc_hir::{Attribute, Target};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
@@ -17,6 +17,7 @@ use crate::errors::DebugVisualizerUnreadable;
 impl DebuggerVisualizerCollector<'_> {
     fn check_for_debugger_visualizer(
         &mut self,
+        target: Target,
         attrs: &[ast::Attribute],
         span: Span,
         node_id: NodeId,
@@ -26,6 +27,7 @@ impl DebuggerVisualizerCollector<'_> {
                 &self.sess,
                 attrs,
                 sym::debugger_visualizer,
+                target,
                 span,
                 node_id,
                 None,
@@ -69,12 +71,12 @@ struct DebuggerVisualizerCollector<'a> {
 impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
     fn visit_item(&mut self, item: &'ast rustc_ast::Item) -> Self::Result {
         if let ItemKind::Mod(..) = item.kind {
-            self.check_for_debugger_visualizer(&item.attrs, item.span, item.node_id());
+            self.check_for_debugger_visualizer(Target::Mod, &item.attrs, item.span, item.node_id());
         }
         rustc_ast::visit::walk_item(self, item);
     }
     fn visit_crate(&mut self, krate: &'ast ast::Crate) -> Self::Result {
-        self.check_for_debugger_visualizer(&krate.attrs, DUMMY_SP, krate.id);
+        self.check_for_debugger_visualizer(Target::Crate, &krate.attrs, DUMMY_SP, krate.id);
         rustc_ast::visit::walk_crate(self, krate);
     }
 }

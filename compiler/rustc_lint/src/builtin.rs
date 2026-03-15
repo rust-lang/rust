@@ -28,7 +28,9 @@ use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{
+    self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, Target, find_attr,
+};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
@@ -313,6 +315,7 @@ impl EarlyLintPass for UnsafeCode {
                         cx.builder.sess(),
                         &it.attrs,
                         sym::allow_internal_unsafe,
+                        Target::MacroDef,
                         it.span,
                         DUMMY_NODE_ID,
                         Some(cx.builder.features()),

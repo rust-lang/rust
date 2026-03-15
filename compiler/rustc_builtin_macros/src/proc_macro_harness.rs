@@ -8,6 +8,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
@@ -109,6 +110,7 @@ impl<'a> CollectProcMacros<'a> {
             self.session,
             slice::from_ref(attr),
             sym::proc_macro_derive,
+            Target::from_ast_item(item),
             item.span,
             item.node_id(),
             None,

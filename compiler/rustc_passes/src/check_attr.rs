@@ -15,7 +15,7 @@ use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey, msg};
+use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
@@ -49,7 +49,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -1924,27 +1924,6 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &'tcx hir::WherePredicate<'tcx>) {
-        // FIXME(where_clause_attrs): Currently, as the following check shows,
-        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
-        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
-        // in where clauses. After that, only `self.check_attributes` should be enough.
-        let spans = self
-            .tcx
-            .hir_attrs(where_predicate.hir_id)
-            .iter()
-            // FIXME: We shouldn't need to special-case `doc`!
-            .filter(|attr| {
-                matches!(
-                    attr,
-                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
-                        | Attribute::Unparsed(_)
-                )
-            })
-            .map(|attr| attr.span())
-            .collect::<Vec<_>>();
-        if !spans.is_empty() {
-            self.tcx.dcx().emit_err(errors::UnsupportedAttributesInWhere { span: spans.into() });
-        }
         self.check_attributes(
             where_predicate.hir_id,
             where_predicate.span,
@@ -2042,64 +2021,6 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
     }
 }
 
-// FIXME: Fix "Cannot determine resolution" error and remove built-in macros
-// from this check.
-fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
-    // Check for builtin attributes at the crate level
-    // which were unsuccessfully resolved due to cannot determine
-    // resolution for the attribute macro error.
-    const ATTRS_TO_CHECK: &[Symbol] =
-        &[sym::derive, sym::test, sym::test_case, sym::global_allocator, sym::bench];
-
-    for attr in attrs {
-        // FIXME(jdonszelmann): all attrs should be combined here cleaning this up some day.
-        let (span, name) = if let Some(a) =
-            ATTRS_TO_CHECK.iter().find(|attr_to_check| attr.has_name(**attr_to_check))
-        {
-            (attr.span(), *a)
-        } else if let Attribute::Parsed(AttributeKind::Repr {
-            reprs: _,
-            first_span: first_attr_span,
-        }) = attr
-        {
-            (*first_attr_span, sym::repr)
-        } else {
-            continue;
-        };
-
-        let item = tcx
-            .hir_free_items()
-            .map(|id| tcx.hir_item(id))
-            .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
-            .map(|item| errors::ItemFollowingInnerAttr {
-                span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
-                kind: tcx.def_descr(item.owner_id.to_def_id()),
-            });
-        let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
-            span,
-            sugg_span: tcx
-                .sess
-                .source_map()
-                .span_to_snippet(span)
-                .ok()
-                .filter(|src| src.starts_with("#!["))
-                .map(|_| span.with_lo(span.lo() + BytePos(1)).with_hi(span.lo() + BytePos(2))),
-            name,
-            item,
-        });
-
-        if let Attribute::Unparsed(p) = attr {
-            tcx.dcx().try_steal_replace_and_emit_err(
-                p.path.span,
-                StashKey::UndeterminedMacroResolution,
-                err,
-            );
-        } else {
-            err.emit();
-        }
-    }
-}
-
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
     let attrs = tcx.hir_attrs(item.hir_id());
 
@@ -2115,7 +2036,6 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir_visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.to_local_def_id().is_top_level_module() {
         check_attr_visitor.check_attributes(CRATE_HIR_ID, DUMMY_SP, Target::Mod, None);
-        check_invalid_crate_level_attr(tcx, tcx.hir_krate_attrs());
     }
     if check_attr_visitor.abort.get() {
         tcx.dcx().abort_if_errors()

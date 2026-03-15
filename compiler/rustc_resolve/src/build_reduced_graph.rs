@@ -16,10 +16,10 @@ use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
-use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_hir::{Attribute, Target};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::{ModChild, Reexport};
@@ -1118,6 +1118,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 self.r.tcx.sess,
                 &item.attrs,
                 sym::macro_use,
+                Target::from_ast_item(item),
                 item.span,
                 item.id,
                 None,
