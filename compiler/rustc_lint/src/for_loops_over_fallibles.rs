@@ -77,6 +77,8 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
         };
 
         let sub = if let Some(recv) = extract_iterator_next_call(cx, arg)
+            && recv.span.can_be_used_for_suggestions()
+            && recv.span.between(arg_span.shrink_to_hi()).can_be_used_for_suggestions()
             && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
         {
             ForLoopsOverFalliblesLoopSub::RemoveNext {
