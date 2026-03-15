@@ -1644,7 +1644,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
         };
-        if let [hir::PathSegment { ident, args: None, .. }] = segments {
+        if let [hir::PathSegment { ident, args: None, .. }] = segments
+            && e.suggestions.len() == 0
+        {
             e.span_label(span, format!("{} defined here", res.descr()));
             e.span_label(
                 pat_span,

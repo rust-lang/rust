@@ -20,14 +20,7 @@ LL |   match t {
    |         - this expression has type `Result<_, {integer}>`
 ...
 LL |     None => ()
-   |     ^^^^
-   |     |
-   |     expected `Result<_, {integer}>`, found `Option<_>`
-   |     `None` is interpreted as a unit variant, not a new binding
-   |
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: unit variant defined here
+   |     ^^^^ expected `Result<_, {integer}>`, found `Option<_>`
    |
    = note: expected enum `Result<_, {integer}>`
               found enum `Option<_>`
@@ -35,11 +28,6 @@ help: try wrapping the pattern in `Ok`
    |
 LL |     Ok(None) => ()
    |     +++    +
-help: introduce a new binding instead
-   |
-LL -     None => ()
-LL +     other_none => ()
-   |
 
 error: aborting due to 2 previous errors
 
