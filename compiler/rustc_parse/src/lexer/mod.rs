@@ -316,18 +316,21 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.lint_literal_unicode_text_flow(symbol, kind, self.mk_sp(start, self.pos), "literal");
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
-                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                rustc_lexer::TokenKind::Lifetime { starts_with_number, has_emoji } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let lifetime_name = nfc_normalize(self.str_from(start));
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+                    let span = self.mk_sp(start, self.pos);
                     if starts_with_number {
-                        let span = self.mk_sp(start, self.pos);
                         self.dcx()
                             .struct_err("lifetimes cannot start with a number")
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
+                    }
+                    if has_emoji {
+                        self.dcx().struct_span_err(span, "lifetimes cannot contain emoji").emit();
                     }
                     token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }
