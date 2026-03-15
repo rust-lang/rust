@@ -48,7 +48,7 @@ use std::ops::RangeInclusive;
 use crate::fmt_helpers::Hex;
 use crate::{UnicodeData, fmt_list};
 
-pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, usize); 2]) {
+pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, usize); 3]) {
     let mut file = String::new();
 
     file.push_str("\n\n");
@@ -59,7 +59,10 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, us
     file.push_str("\n\n");
     let (upper_tables, upper_desc, upper_size) = generate_tables("UPPER", &data.to_upper);
     file.push_str(&upper_tables);
-    (file, [(lower_desc, lower_size), (upper_desc, upper_size)])
+    file.push_str("\n\n");
+    let (title_tables, title_desc, title_size) = generate_tables("TITLE", &data.to_title);
+    file.push_str(&title_tables);
+    (file, [(lower_desc, lower_size), (upper_desc, upper_size), (title_desc, title_size)])
 }
 
 // So far, only planes 0 and 1 (Basic Multilingual Plane and Supplementary
@@ -336,14 +339,10 @@ unsafe fn reconstruct(plane: u16, low: u16) -> char {
     unsafe { char::from_u32_unchecked(((plane as u32) << 16) | (low as u32)) }
 }
 
-fn lookup(input: char, ascii: char, l1_lut: &L1Lut) -> [char; 3] {
-    if input.is_ascii() {
-        return [ascii, '\0', '\0'];
-    }
-
+fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
     let (input_high, input_low) = deconstruct(input);
     let Some(l2_lut) = l1_lut.l2_luts.get(input_high as usize) else {
-        return [input, '\0', '\0'];
+        return None;
     };
 
     let idx = l2_lut.singles.binary_search_by(|(range, _)| {
@@ -357,6 +356,7 @@ fn lookup(input: char, ascii: char, l1_lut: &L1Lut) -> [char; 3] {
             Ordering::Equal
         }
     });
+
     if let Ok(idx) = idx {
         // SAFETY: binary search guarantees that the index is in bounds.
         let &(range, output_delta) = unsafe { l2_lut.singles.get_unchecked(idx) };
@@ -365,7 +365,7 @@ fn lookup(input: char, ascii: char, l1_lut: &L1Lut) -> [char; 3] {
             let output_low = input_low.wrapping_add_signed(output_delta);
             // SAFETY: Table data are guaranteed to be valid Unicode.
             let output = unsafe { reconstruct(input_high, output_low) };
-            return [output, '\0', '\0'];
+            return Some([output, '\0', '\0']);
         }
     };
 
@@ -374,17 +374,33 @@ fn lookup(input: char, ascii: char, l1_lut: &L1Lut) -> [char; 3] {
         let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
         // SAFETY: Table data are guaranteed to be valid Unicode.
         let output = output_lows.map(|output_low| unsafe { reconstruct(input_high, output_low) });
-        return output;
+        return Some(output);
     };
 
-    [input, '\0', '\0']
+    None
 }
 
 pub fn to_lower(c: char) -> [char; 3] {
-    lookup(c, c.to_ascii_lowercase(), &LOWERCASE_LUT)
+    if c.is_ascii() {
+        return [c.to_ascii_lowercase(), '\0', '\0'];
+    }
+
+    lookup(c, &LOWERCASE_LUT).unwrap_or([c, '\0', '\0'])
 }
 
 pub fn to_upper(c: char) -> [char; 3] {
-    lookup(c, c.to_ascii_uppercase(), &UPPERCASE_LUT)
+    if c.is_ascii() {
+        return [c.to_ascii_uppercase(), '\0', '\0'];
+    }
+
+    lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0'])
+}
+
+pub fn to_title(c: char) -> [char; 3] {
+    if c.is_ascii() {
+        return [c.to_ascii_uppercase(), '\0', '\0'];
+    }
+
+    lookup(c, &TITLECASE_LUT).or_else(|| lookup(c, &UPPERCASE_LUT)).unwrap_or([c, '\0', '\0'])
 }
 ";
