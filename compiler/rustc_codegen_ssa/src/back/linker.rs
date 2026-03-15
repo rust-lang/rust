@@ -352,6 +352,7 @@ pub(crate) trait Linker {
     fn add_no_exec(&mut self) {}
     fn add_as_needed(&mut self) {}
     fn reset_per_library_state(&mut self) {}
+    fn enable_profiling(&mut self) {}
 }
 
 impl dyn Linker + '_ {
@@ -730,6 +731,19 @@ impl<'a> Linker for GccLinker<'a> {
         // Though it may be worth to try to revert those changes upstream, since
         // the overhead of the initialization should be minor.
         self.link_or_cc_args(&["-u", "__llvm_profile_runtime"]);
+    }
+
+    fn enable_profiling(&mut self) {
+        // This flag is also used when linking to choose target specific
+        // libraries needed to enable profiling.
+        self.cc_arg("-pg");
+        // On windows-gnu targets, libgmon also needs to be linked, and this
+        // requires readding libraries to satisfy its dependencies.
+        if self.sess.target.is_like_windows {
+            self.cc_arg("-lgmon");
+            self.cc_arg("-lkernel32");
+            self.cc_arg("-lmsvcrt");
+        }
     }
 
     fn control_flow_guard(&mut self) {}
