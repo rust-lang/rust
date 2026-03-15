@@ -2045,6 +2045,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetFastMath(Instr: &Value);
     pub(crate) fn LLVMRustSetAlgebraicMath(Instr: &Value);
     pub(crate) fn LLVMRustSetAllowReassoc(Instr: &Value);
+    pub(crate) fn LLVMRustSetNoSignedZeros(Instr: &Value);
 
     // Miscellaneous instructions
     pub(crate) fn LLVMRustBuildMemCpy<'a>(
