@@ -108,17 +108,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         }
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::floorf32 => "floorf",
-        sym::floorf64 => "floor",
-        sym::ceilf32 => "ceilf",
-        sym::ceilf64 => "ceil",
-        sym::truncf32 => "truncf",
-        sym::truncf64 => "trunc",
-        // We match the LLVM backend and lower this to `rint`.
-        sym::round_ties_even_f32 => "rintf",
-        sym::round_ties_even_f64 => "rint",
-        sym::roundf32 => "roundf",
-        sym::roundf64 => "round",
         sym::abort => "abort",
         _ => return None,
     };
@@ -198,12 +187,6 @@ fn get_simple_function_f128<'gcc, 'tcx>(
 ) -> Function<'gcc> {
     let f128_type = cx.type_f128();
     let func_name = match name {
-        sym::ceilf128 => "ceilf128",
-        sym::fabs => "fabsf128",
-        sym::floorf128 => "floorf128",
-        sym::truncf128 => "truncf128",
-        sym::roundf128 => "roundf128",
-        sym::round_ties_even_f128 => "roundevenf128",
         sym::sqrtf128 => "sqrtf128",
         _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
     };
@@ -224,10 +207,7 @@ fn f16_builtin<'gcc, 'tcx>(
 ) -> RValue<'gcc> {
     let f32_type = cx.type_f32();
     let builtin_name = match name {
-        sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::fabs => "fabsf",
-        sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::powf16 => "__builtin_powf",
         sym::powif16 => {
@@ -237,10 +217,7 @@ fn f16_builtin<'gcc, 'tcx>(
             let result = cx.context.new_call(None, func, &args);
             return cx.context.new_cast(None, result, cx.type_f16());
         }
-        sym::roundf16 => "__builtin_roundf",
-        sym::round_ties_even_f16 => "__builtin_rintf",
         sym::sqrtf16 => "__builtin_sqrtf",
-        sym::truncf16 => "__builtin_truncf",
         _ => unreachable!(),
     };
 
@@ -486,22 +463,92 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
                 }
             }
-            sym::fabs => 'fabs: {
+            // float unary intrinsics
+            sym::fabs
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round_ties_even
+            | sym::round => {
+                enum IntrinsicKind {
+                    Builtin(&'static str),
+                    Extern(&'static str),
+                    BuiltinF16Cast(&'static str),
+                    Fallback,
+                }
+                use IntrinsicKind::*;
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
                 };
-                let func = match float_ty {
-                    ty::FloatTy::F16 => break 'fabs f16_builtin(self, name, args),
-                    ty::FloatTy::F32 => self.context.get_builtin_function("fabsf"),
-                    ty::FloatTy::F64 => self.context.get_builtin_function("fabs"),
-                    ty::FloatTy::F128 => get_simple_function_f128(span, self, name),
+
+                use ty::FloatTy::*;
+                let func = match (name, float_ty) {
+                    (_, F128) if !self.cx.supports_f128_type => Fallback,
+                    (sym::fabs, F16) => BuiltinF16Cast("fabsf"),
+                    (sym::fabs, F32) => Builtin("fabsf"),
+                    (sym::fabs, F64) => Builtin("fabs"),
+                    (sym::fabs, F128) => Extern("fabsf128"),
+                    (sym::floor, F16) => BuiltinF16Cast("__builtin_floorf"),
+                    (sym::floor, F32) => Builtin("floorf"),
+                    (sym::floor, F64) => Builtin("floor"),
+                    (sym::floor, F128) => Extern("floorf128"),
+                    (sym::ceil, F16) => BuiltinF16Cast("__builtin_ceilf"),
+                    (sym::ceil, F32) => Builtin("ceilf"),
+                    (sym::ceil, F64) => Builtin("ceil"),
+                    (sym::ceil, F128) => Extern("ceilf128"),
+                    (sym::trunc, F16) => BuiltinF16Cast("__builtin_truncf"),
+                    (sym::trunc, F32) => Builtin("truncf"),
+                    (sym::trunc, F64) => Builtin("trunc"),
+                    (sym::trunc, F128) => Extern("truncf128"),
+                    // We match the LLVM backend and lower this to `rint`.
+                    (sym::round_ties_even, F16) => BuiltinF16Cast("__builtin_rintf"),
+                    (sym::round_ties_even, F32) => Builtin("rintf"),
+                    (sym::round_ties_even, F64) => Builtin("rint"),
+                    (sym::round_ties_even, F128) => Extern("roundevenf128"),
+                    (sym::round, F16) => BuiltinF16Cast("__builtin_roundf"),
+                    (sym::round, F32) => Builtin("roundf"),
+                    (sym::round, F64) => Builtin("round"),
+                    (sym::round, F128) => Extern("roundf128"),
+                    _ => Fallback,
                 };
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
+                match func {
+                    Builtin(name) => self.cx.context.new_call(
+                        self.location,
+                        self.context.get_builtin_function(name),
+                        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                    ),
+                    Extern(name) => {
+                        let ty = self.cx.type_float_from_ty(float_ty);
+                        let func = self.cx.context.new_function(
+                            None,
+                            FunctionType::Extern,
+                            ty,
+                            &[self.cx.context.new_parameter(None, ty, "a")],
+                            name,
+                            false,
+                        );
+                        self.cx.context.new_call(
+                            self.location,
+                            func,
+                            &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                        )
+                    }
+                    BuiltinF16Cast(name) => {
+                        let func = self.cx.context.get_builtin_function(name);
+                        let args: Vec<_> = args
+                            .iter()
+                            .map(|arg| {
+                                self.cx.context.new_cast(None, arg.immediate(), self.cx.type_f32())
+                            })
+                            .collect();
+                        let result = self.cx.context.new_call(None, func, &args);
+                        self.cx.context.new_cast(None, result, self.cx.type_f16())
+                    }
+                    Fallback => {
+                        return Err(Instance::new_raw(instance.def_id(), instance.args));
+                    }
+                }
             }
 
             sym::raw_eq => {
