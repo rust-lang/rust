@@ -353,6 +353,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
+        PlaceholderImplItem => unreachable!(),
     }
 }
 

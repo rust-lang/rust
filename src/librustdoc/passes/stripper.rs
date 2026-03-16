@@ -120,6 +120,9 @@ impl DocFolder for Stripper<'_, '_> {
 
             clean::ImplItem(..) => {}
 
+            // They have no use anymore, so always remove them.
+            clean::PlaceholderImplItem => return None,
+
             // tymethods etc. have no control over privacy
             clean::RequiredMethodItem(..)
             | clean::RequiredAssocConstItem(..)
