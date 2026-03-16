@@ -3029,6 +3029,65 @@ fn prepare_cargo_test(
 /// step for testing standard library crates, and an internal step used for both
 /// library crates and compiler crates.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Stdarch {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Stdarch {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch").path("library/stdarch/crates/core_arch")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let build_compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(Stdarch { build_compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let build_compiler = self.build_compiler;
+        let target = self.target;
+
+        builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
+
+        if !builder.config.is_host_target(target) {
+            builder.ensure(compile::Std::new(build_compiler, target).force_recompile(true));
+            builder.ensure(RemoteCopyLibs { build_compiler, target });
+        }
+
+        let mut cargo = builder::Cargo::new(
+            builder,
+            build_compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            builder.kind,
+        );
+
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join("library/stdarch/Cargo.toml"));
+
+        let crates = vec!["core_arch".to_owned()];
+        run_cargo_test(cargo, &[], &crates, "stdarch", target, builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("stdarch", self.target).built_by(self.build_compiler))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     /// The compiler that will *build* libstd or rustc in test mode.
     build_compiler: Compiler,

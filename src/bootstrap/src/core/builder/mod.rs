@@ -871,6 +871,7 @@ impl<'a> Builder<'a> {
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,
+                test::Stdarch,
                 test::RemoteTestClientTests,
                 test::Linkcheck,
                 test::TierCheck,

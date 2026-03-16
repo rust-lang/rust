@@ -39,6 +39,17 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
     builder.cache
 }
 
+fn configure_stdarch_test(paths: &[&str]) -> Config {
+    let ctx = TestCtx::new();
+    ctx.config("test")
+        .args(paths)
+        .args(&["--ci", "true"])
+        .hosts(&[TEST_TRIPLE_1])
+        .targets(&[TEST_TRIPLE_1])
+        .no_override_download_ci_llvm()
+        .create_config()
+}
+
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
@@ -138,6 +149,16 @@ fn validate_path_remap() {
         .for_each(|path| {
             assert!(path.exists(), "{} should exist.", path.display());
         });
+}
+
+#[test]
+fn test_stdarch_workspace_metadata_is_loaded() {
+    let build = Build::new(configure_stdarch_test(&[]));
+
+    assert_eq!(
+        build.crate_paths.get(&PathBuf::from("library/stdarch/crates/core_arch")),
+        Some(&"core_arch".to_owned())
+    );
 }
 
 #[test]
@@ -318,6 +339,14 @@ fn test_test_compiler() {
     let gcc = cache.contains::<test::CodegenGCC>();
 
     assert_eq!((compiler, cranelift, gcc), (true, false, false));
+}
+
+#[test]
+fn test_test_stdarch() {
+    let config = configure_stdarch_test(&["library/stdarch"]);
+    let cache = run_build(&config.paths.clone(), config);
+
+    assert!(cache.contains::<test::Stdarch>());
 }
 
 #[test]
