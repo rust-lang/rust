@@ -5,7 +5,7 @@ use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
         self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility, Param, RangeItem, make,
+        HasTypeBounds, HasVisibility, Lifetime, Param, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -1805,6 +1805,14 @@ impl SyntaxFactory {
         );
 
         self.ty_path(path)
+    }
+
+    pub fn expr_break(&self, label: Option<Lifetime>, expr: Option<ast::Expr>) -> ast::Expr {
+        make::expr_break(label, expr)
+    }
+
+    pub fn expr_continue(&self, label: Option<Lifetime>) -> ast::Expr {
+        make::expr_continue(label)
     }
 }
 

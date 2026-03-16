@@ -10,14 +10,14 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        syntax_factory::SyntaxFactory,
     },
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::{invert_boolean_expression_legacy, is_never_block},
+    utils::{invert_boolean_expression, is_never_block},
 };
 
 // Assist: convert_to_guarded_return
@@ -69,6 +69,7 @@ fn if_expr_to_guarded_return(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
+    let make = SyntaxFactory::without_mappings();
     let else_block = match if_expr.else_branch() {
         Some(ast::ElseBranch::Block(block_expr)) if is_never_block(&ctx.sema, &block_expr) => {
             Some(block_expr)
@@ -88,7 +89,7 @@ fn if_expr_to_guarded_return(
         return None;
     }
 
-    let let_chains = flat_let_chain(cond);
+    let let_chains = flat_let_chain(cond, &make);
 
     let then_branch = if_expr.then_branch()?;
     let then_block = then_branch.stmt_list()?;
@@ -110,7 +111,8 @@ fn if_expr_to_guarded_return(
 
     let early_expression = else_block
         .or_else(|| {
-            early_expression(parent_container, &ctx.sema).map(ast::make::tail_only_block_expr)
+            early_expression(parent_container, &ctx.sema, &make)
+                .map(ast::make::tail_only_block_expr)
         })?
         .reset_indent();
 
@@ -133,6 +135,7 @@ fn if_expr_to_guarded_return(
         "Convert to guarded return",
         target,
         |edit| {
+            let make = SyntaxFactory::without_mappings();
             let if_indent_level = IndentLevel::from_node(if_expr.syntax());
             let replacement = let_chains.into_iter().map(|expr| {
                 if let ast::Expr::LetExpr(let_expr) = &expr
@@ -140,15 +143,15 @@ fn if_expr_to_guarded_return(
                 {
                     // If-let.
                     let let_else_stmt =
-                        make::let_else_stmt(pat, None, expr, early_expression.clone());
+                        make.let_else_stmt(pat, None, expr, early_expression.clone());
                     let let_else_stmt = let_else_stmt.indent(if_indent_level);
                     let_else_stmt.syntax().clone()
                 } else {
                     // If.
                     let new_expr = {
-                        let then_branch = clean_stmt_block(&early_expression);
-                        let cond = invert_boolean_expression_legacy(expr);
-                        make::expr_if(cond, then_branch, None).indent(if_indent_level)
+                        let then_branch = clean_stmt_block(&early_expression, &make);
+                        let cond = invert_boolean_expression(&make, expr);
+                        make.expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
                     new_expr.syntax().clone()
                 }
@@ -159,7 +162,7 @@ fn if_expr_to_guarded_return(
                 .enumerate()
                 .flat_map(|(i, node)| {
                     (i != 0)
-                        .then(|| make::tokens::whitespace(newline).into())
+                        .then(|| make.whitespace(newline).into())
                         .into_iter()
                         .chain(node.children_with_tokens())
                 })
@@ -201,12 +204,13 @@ fn let_stmt_to_guarded_return(
     let happy_pattern = try_enum.happy_pattern(pat);
     let target = let_stmt.syntax().text_range();
 
+    let make = SyntaxFactory::without_mappings();
     let early_expression: ast::Expr = {
         let parent_block =
             let_stmt.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
         let parent_container = parent_block.syntax().parent()?;
 
-        early_expression(parent_container, &ctx.sema)?
+        early_expression(parent_container, &ctx.sema, &make)?
     };
 
     acc.add(
@@ -215,9 +219,10 @@ fn let_stmt_to_guarded_return(
         target,
         |edit| {
             let let_indent_level = IndentLevel::from_node(let_stmt.syntax());
+            let make = SyntaxFactory::without_mappings();
 
             let replacement = {
-                let let_else_stmt = make::let_else_stmt(
+                let let_else_stmt = make.let_else_stmt(
                     happy_pattern,
                     let_stmt.ty(),
                     expr.reset_indent(),
@@ -228,6 +233,7 @@ fn let_stmt_to_guarded_return(
             };
             let mut editor = edit.make_editor(let_stmt.syntax());
             editor.replace(let_stmt.syntax(), replacement);
+            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -236,38 +242,39 @@ fn let_stmt_to_guarded_return(
 fn early_expression(
     parent_container: SyntaxNode,
     sema: &Semantics<'_, RootDatabase>,
+    make: &SyntaxFactory,
 ) -> Option<ast::Expr> {
     let return_none_expr = || {
-        let none_expr = make::expr_path(make::ext::ident_path("None"));
-        make::expr_return(Some(none_expr))
+        let none_expr = make.expr_path(make.ident_path("None"));
+        make.expr_return(Some(none_expr))
     };
     if let Some(fn_) = ast::Fn::cast(parent_container.clone())
         && let Some(fn_def) = sema.to_def(&fn_)
         && let Some(TryEnum::Option) = TryEnum::from_ty(sema, &fn_def.ret_type(sema.db))
     {
-        return Some(return_none_expr());
+        return Some(return_none_expr().into());
     }
     if let Some(body) = ast::ClosureExpr::cast(parent_container.clone()).and_then(|it| it.body())
         && let Some(ret_ty) = sema.type_of_expr(&body).map(TypeInfo::original)
         && let Some(TryEnum::Option) = TryEnum::from_ty(sema, &ret_ty)
     {
-        return Some(return_none_expr());
+        return Some(return_none_expr().into());
     }
 
     Some(match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make::expr_continue(None),
-        FN | CLOSURE_EXPR => make::expr_return(None),
+        WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make.expr_continue(None),
+        FN | CLOSURE_EXPR => make.expr_return(None).into(),
         _ => return None,
     })
 }
 
-fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
+fn flat_let_chain(mut expr: ast::Expr, make: &SyntaxFactory) -> Vec<ast::Expr> {
     let mut chains = vec![];
     let mut reduce_cond = |rhs| {
         if !matches!(rhs, ast::Expr::LetExpr(_))
             && let Some(last) = chains.pop_if(|last| !matches!(last, ast::Expr::LetExpr(_)))
         {
-            chains.push(make::expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
+            chains.push(make.expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
         } else {
             chains.push(rhs);
         }
@@ -286,12 +293,12 @@ fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
     chains
 }
 
-fn clean_stmt_block(block: &ast::BlockExpr) -> ast::BlockExpr {
+fn clean_stmt_block(block: &ast::BlockExpr, make: &SyntaxFactory) -> ast::BlockExpr {
     if block.statements().next().is_none()
         && let Some(tail_expr) = block.tail_expr()
         && block.modifier().is_none()
     {
-        make::block_expr(once(make::expr_stmt(tail_expr).into()), None)
+        make.block_expr(once(make.expr_stmt(tail_expr).into()), None)
     } else {
         block.clone()
     }

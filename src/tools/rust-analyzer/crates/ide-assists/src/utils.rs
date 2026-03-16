@@ -275,11 +275,6 @@ pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -
     invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
 }
 
-// FIXME: Migrate usages of this function to the above function and remove this.
-pub(crate) fn invert_boolean_expression_legacy(expr: ast::Expr) -> ast::Expr {
-    invert_special_case_legacy(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
-}
-
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
@@ -336,58 +331,6 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             ast::LiteralKind::Bool(b) => match b {
                 true => Some(ast::Expr::Literal(make.expr_literal("false"))),
                 false => Some(ast::Expr::Literal(make.expr_literal("true"))),
-            },
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
-    match expr {
-        ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_subtree();
-            let op_token = bin.op_token()?;
-            let rev_token = match op_token.kind() {
-                T![==] => T![!=],
-                T![!=] => T![==],
-                T![<] => T![>=],
-                T![<=] => T![>],
-                T![>] => T![<=],
-                T![>=] => T![<],
-                // Parenthesize other expressions before prefixing `!`
-                _ => {
-                    return Some(
-                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
-                    );
-                }
-            };
-            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
-            bin_editor.replace(op_token, make::token(rev_token));
-            ast::Expr::cast(bin_editor.finish().new_root().clone())
-        }
-        ast::Expr::MethodCallExpr(mce) => {
-            let receiver = mce.receiver()?;
-            let method = mce.name_ref()?;
-            let arg_list = mce.arg_list()?;
-
-            let method = match method.text().as_str() {
-                "is_some" => "is_none",
-                "is_none" => "is_some",
-                "is_ok" => "is_err",
-                "is_err" => "is_ok",
-                _ => return None,
-            };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
-        }
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
-            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
-            _ => pe.expr(),
-        },
-        ast::Expr::Literal(lit) => match lit.kind() {
-            ast::LiteralKind::Bool(b) => match b {
-                true => Some(ast::Expr::Literal(make::expr_literal("false"))),
-                false => Some(ast::Expr::Literal(make::expr_literal("true"))),
             },
             _ => None,
         },
