@@ -3083,12 +3083,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .stripped_cfg_items
                 .iter()
                 .filter_map(|item| {
-                    let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
-                    Some(StrippedCfgItem {
-                        parent_module,
-                        ident: item.ident,
-                        cfg: item.cfg.clone(),
-                    })
+                    let parent_scope = self.opt_local_def_id(item.parent_scope)?.to_def_id();
+                    Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg.clone() })
                 })
                 .collect::<Vec<_>>();
             local_items.as_slice()
@@ -3096,7 +3092,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx.stripped_cfg_items(module.krate)
         };
 
-        for &StrippedCfgItem { parent_module, ident, ref cfg } in symbols {
+        for &StrippedCfgItem { parent_scope, ident, ref cfg } in symbols {
             if ident.name != *segment {
                 continue;
             }
