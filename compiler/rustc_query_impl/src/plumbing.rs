@@ -13,8 +13,9 @@ use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
-use rustc_middle::query::plumbing::QueryVTable;
-use rustc_middle::query::{QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, erase};
+use rustc_middle::query::{
+    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, QueryVTable, erase,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};

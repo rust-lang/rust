@@ -6,7 +6,7 @@ use std::sync::Arc;
 use parking_lot::{Condvar, Mutex};
 use rustc_span::Span;
 
-use crate::query::plumbing::CycleError;
+use crate::query::CycleError;
 use crate::ty::TyCtxt;
 
 /// A value uniquely identifying an active query job.
