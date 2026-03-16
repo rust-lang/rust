@@ -555,6 +555,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 def_id: _,
                 generic_args,
                 have_turbofish,
+                hir_id,
             } => {
                 let generics = self.tcx.generics_of(generics_def_id);
                 let is_type = term.as_type().is_some();
@@ -577,7 +578,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
                     == Some(generics_def_id)
                 {
-                    "Vec<_>".to_string()
+                    if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(hir_id)
+                        && let hir::ExprKind::Call(expr, _args) = expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                        && let Res::Def(DefKind::AssocFn, def_id) = path.res
+                        && let Some(try_trait) = self.tcx.lang_items().try_trait()
+                        && try_trait == self.tcx.parent(def_id)
+                        && let DefKind::Fn | DefKind::AssocFn =
+                            self.tcx.def_kind(body_def_id.to_def_id())
+                        && let ret = self
+                            .tcx
+                            .fn_sig(body_def_id.to_def_id())
+                            .instantiate_identity()
+                            .skip_binder()
+                            .output()
+                        && let ty::Adt(adt, _args) = ret.kind()
+                        && let Some(sym::Option | sym::Result) =
+                            self.tcx.get_diagnostic_name(adt.did())
+                    {
+                        if let Some(sym::Option) = self.tcx.get_diagnostic_name(adt.did()) {
+                            "Option<_>".to_string()
+                        } else {
+                            "Result<_, _>".to_string()
+                        }
+                    } else {
+                        "Vec<_>".to_string()
+                    }
                 } else {
                     let mut p = fmt_printer(self, Namespace::TypeNS);
                     p.comma_sep(generic_args.iter().copied().map(|arg| {
@@ -710,6 +736,7 @@ enum InferSourceKind<'tcx> {
         def_id: DefId,
         generic_args: &'tcx [GenericArg<'tcx>],
         have_turbofish: bool,
+        hir_id: HirId,
     },
     FullyQualifiedMethodCall {
         receiver: &'tcx Expr<'tcx>,
@@ -1188,19 +1215,45 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
         if let Some(ty) = self.opt_node_type(local.hir_id) {
             if self.generic_arg_contains_target(ty.into()) {
-                match local.source {
-                    LocalSource::Normal if local.ty.is_none() => {
-                        self.update_infer_source(InferSource {
-                            span: local.pat.span,
-                            kind: InferSourceKind::LetBinding {
-                                insert_span: local.pat.span.shrink_to_hi(),
-                                pattern_name: local.pat.simple_ident(),
-                                ty,
-                                def_id: None,
-                            },
-                        })
+                fn get_did(
+                    typeck_results: &TypeckResults<'_>,
+                    expr: &hir::Expr<'_>,
+                ) -> Option<DefId> {
+                    match expr.kind {
+                        hir::ExprKind::Match(expr, _, hir::MatchSource::TryDesugar(_))
+                            if let hir::ExprKind::Call(_, [expr]) = expr.kind =>
+                        {
+                            get_did(typeck_results, expr)
+                        }
+                        hir::ExprKind::Call(base, _args)
+                            if let hir::ExprKind::Path(path) = base.kind
+                                && let hir::QPath::Resolved(_, path) = path
+                                && let Res::Def(_, did) = path.res =>
+                        {
+                            Some(did)
+                        }
+                        hir::ExprKind::MethodCall(..)
+                            if let Some(did) =
+                                typeck_results.type_dependent_def_id(expr.hir_id) =>
+                        {
+                            Some(did)
+                        }
+                        _ => None,
                     }
-                    _ => {}
+                }
+
+                if let LocalSource::Normal = local.source
+                    && local.ty.is_none()
+                {
+                    self.update_infer_source(InferSource {
+                        span: local.pat.span,
+                        kind: InferSourceKind::LetBinding {
+                            insert_span: local.pat.span.shrink_to_hi(),
+                            pattern_name: local.pat.simple_ident(),
+                            ty,
+                            def_id: local.init.and_then(|expr| get_did(self.typeck_results, expr)),
+                        },
+                    });
                 }
             }
         }
@@ -1285,6 +1338,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                         def_id,
                         generic_args,
                         have_turbofish,
+                        hir_id: expr.hir_id,
                     },
                 });
             }
