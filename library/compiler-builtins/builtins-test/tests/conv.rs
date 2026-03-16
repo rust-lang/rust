@@ -1,8 +1,9 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
 // makes configuration easier
-#![allow(unused_macros)]
+#![allow(unused_features)]
 #![allow(unused_imports)]
+#![allow(unused_macros)]
 
 use builtins_test::*;
 use compiler_builtins::float::Float;

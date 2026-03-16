@@ -260,7 +260,7 @@ where
     Ok(())
 }
 
-impl_int!(u32, i32, u64, i64);
+impl_int!(u16, i16, u32, i32, u64, i64, u128, i128);
 
 /* trait implementations for floats */
 
@@ -455,4 +455,16 @@ impl_tuples!(
     (f64, i32);
     (f32, f32);
     (f64, f64);
+);
+
+#[cfg(f16_enabled)]
+impl_tuples!(
+    (f16, i32);
+    (f16, f16);
+);
+
+#[cfg(f128_enabled)]
+impl_tuples!(
+    (f128, i32);
+    (f128, f128);
 );

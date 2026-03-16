@@ -631,11 +631,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
-        && major >= 20
+        && major >= 21
     {
         return;
     }
-    panic!("\n\nbad LLVM version: {version}, need >=20\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
 }
 
 fn configure_cmake(

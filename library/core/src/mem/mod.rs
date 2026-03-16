@@ -1,7 +1,32 @@
-//! Basic functions for dealing with memory.
+//! Basic functions for dealing with memory, values, and types.
 //!
-//! This module contains functions for querying the size and alignment of
-//! types, initializing and manipulating memory.
+//! The contents of this module can be seen as belonging to a few families:
+//!
+//! * [`drop`], [`replace`], [`swap`], and [`take`]
+//!   are safe functions for moving values in particular ways.
+//!   They are useful in everyday Rust code.
+//!
+//! * [`size_of`], [`size_of_val`], [`align_of`], [`align_of_val`], and [`offset_of`]
+//!   give information about the representation of values in memory.
+//!
+//! * [`discriminant`]
+//!   allows comparing the variants of [`enum`] values while ignoring their fields.
+//!
+//! * [`forget`] and [`ManuallyDrop`]
+//!   prevent destructors from running, which is used in certain kinds of ownership transfer.
+//!   [`needs_drop`]
+//!   tells you whether a type’s destructor even does anything.
+//!
+//! * [`transmute`], [`transmute_copy`], and [`MaybeUninit`]
+//!   convert and construct values in [`unsafe`] ways.
+//!
+//! See also the [`alloc`] and [`ptr`] modules for more primitive operations on memory.
+//!
+// core::alloc exists but doesn’t contain all the items we want to discuss
+//! [`alloc`]: ../../std/alloc/index.html
+//! [`enum`]: ../../std/keyword.enum.html
+//! [`ptr`]: crate::ptr
+//! [`unsafe`]: ../../std/keyword.unsafe.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

@@ -331,7 +331,7 @@ macro_rules! define_dep_nodes {
 }
 
 // Create various data structures for each query, and also for a few things that aren't queries.
-rustc_with_all_queries! { define_dep_nodes! }
+crate::queries::rustc_with_all_queries! { define_dep_nodes! }
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!

@@ -112,11 +112,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
         sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
 
-        sym::minnumf16 => ("llvm.minnum", &[bx.type_f16()]),
-        sym::minnumf32 => ("llvm.minnum", &[bx.type_f32()]),
-        sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
-        sym::minnumf128 => ("llvm.minnum", &[bx.type_f128()]),
-
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
         //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
@@ -124,11 +119,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         //
-        sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
-        sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
-        sym::maxnumf64 => ("llvm.maxnum", &[bx.type_f64()]),
-        sym::maxnumf128 => ("llvm.maxnum", &[bx.type_f128()]),
-
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
         //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
@@ -195,6 +185,32 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
+            sym::minimum_number_nsz_f16
+            | sym::minimum_number_nsz_f32
+            | sym::minimum_number_nsz_f64
+            | sym::minimum_number_nsz_f128
+            | sym::maximum_number_nsz_f16
+            | sym::maximum_number_nsz_f32
+            | sym::maximum_number_nsz_f64
+            | sym::maximum_number_nsz_f128
+                // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
+                if crate::llvm_util::get_version() >= (22, 0, 0) =>
+            {
+                let intrinsic_name = if name.as_str().starts_with("min") {
+                    "llvm.minimumnum"
+                } else {
+                    "llvm.maximumnum"
+                };
+                let call = self.call_intrinsic(
+                    intrinsic_name,
+                    &[args[0].layout.immediate_llvm_type(self.cx)],
+                    &[args[0].immediate(), args[1].immediate()],
+                );
+                // `nsz` on minimumnum/maximumnum is special: its only effect is to make
+                // signed-zero ordering non-deterministic.
+                unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+                call
+            }
             sym::ptr_mask => {
                 let ptr = args[0].immediate();
                 self.call_intrinsic(

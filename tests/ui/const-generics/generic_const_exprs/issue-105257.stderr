@@ -14,7 +14,9 @@ error[E0308]: mismatched types
   --> $DIR/issue-105257.rs:5:29
    |
 LL |     fn fnc<const N: usize = "">(&self) {}
-   |                             ^^ expected `usize`, found `&str`
+   |                     -----   ^^ expected `usize`, found `&str`
+   |                     |
+   |                     expected because of the type of the const parameter
 
 error: aborting due to 3 previous errors
 
