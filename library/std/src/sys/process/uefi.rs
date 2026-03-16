@@ -243,7 +243,18 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        Some(self.0.as_usize() as i32)
+        let code = self.0.as_usize();
+
+        if self.0.is_error() {
+            // UEFI error status codes have the high bit set
+            // (e.g. DEVICE_ERROR is 0x8000000000000007 on 64-bit),
+            // stripping it to get the error number and negating to
+            // distinguish errors from success/warning codes.
+            let err_num = code & !(0x80usize << (usize::BITS - 8));
+            i32::try_from(err_num).ok().map(|n| -n)
+        } else {
+            i32::try_from(code).ok()
+        }
     }
 }
 
@@ -278,7 +289,16 @@ impl Into<ExitStatus> for ExitStatusError {
 
 impl ExitStatusError {
     pub fn code(self) -> Option<NonZero<i32>> {
-        NonZeroI32::new(self.0.as_usize() as i32)
+        let code = self.0.as_usize();
+
+        if self.0.is_error() {
+            // same as ExitStatus::code(), stripping the error high
+            // bit and negating the error number.
+            let err_num = code & !(0x80usize << (usize::BITS - 8));
+            NonZeroI32::new(-i32::try_from(err_num).ok()?)
+        } else {
+            NonZeroI32::new(i32::try_from(code).ok()?)
+        }
     }
 }
 
