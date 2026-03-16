@@ -1194,7 +1194,10 @@ pub(crate) fn replace_record_field_expr(
 
 /// Creates a token tree list from a syntax node, creating the needed delimited sub token trees.
 /// Assumes that the input syntax node is a valid syntax tree.
-pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
+pub(crate) fn tt_from_syntax(
+    node: SyntaxNode,
+    make: &SyntaxFactory,
+) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
     let mut tt_stack = vec![(None, vec![])];
 
     for element in node.descendants_with_tokens() {
@@ -1222,7 +1225,7 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
                     "mismatched opening and closing delimiters"
                 );
 
-                let sub_tt = make::token_tree(delimiter.expect("unbalanced delimiters"), tt);
+                let sub_tt = make.token_tree(delimiter.expect("unbalanced delimiters"), tt);
                 parent_tt.push(NodeOrToken::Node(sub_tt));
             }
             _ => {
