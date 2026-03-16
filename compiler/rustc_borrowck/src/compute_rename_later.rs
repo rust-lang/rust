@@ -43,7 +43,6 @@ fn compute_outlives_bounds_rename<'tcx>(
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
 
     // Get late bound params.
-    // TODO: ok we actually get a  relate param here, if we actually return it, it should be ok?
     for (idx, bound_var) in unnormalized_input_output_tys.bound_vars().iter().enumerate() {
         if let ty::BoundVariableKind::Region(kind) = bound_var {
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
@@ -53,8 +52,8 @@ fn compute_outlives_bounds_rename<'tcx>(
         }
     }
 
-    let unnormalized_input_output_tys =
-        infcx.enter_forall_and_leak_universe(unnormalized_input_output_tys);
+    let unnormalized_input_output_tys = tcx
+        .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
 
     let span = tcx.def_span(defining_ty_def_id);
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
