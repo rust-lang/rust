@@ -944,10 +944,10 @@ fn classify_name_ref<'db>(
     let field_expr_handle = |receiver, node| {
         let receiver = find_opt_node_in_file(original_file, receiver);
         let receiver_is_ambiguous_float_literal = match &receiver {
-            Some(ast::Expr::Literal(l)) => matches! {
-                l.kind(),
-                ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
-            },
+            Some(ast::Expr::Literal(l)) => {
+                matches!(l.kind(), ast::LiteralKind::FloatNumber { .. })
+                    && l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
+            }
             _ => false,
         };
 
