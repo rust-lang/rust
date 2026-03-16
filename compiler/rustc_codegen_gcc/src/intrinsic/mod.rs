@@ -45,8 +45,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::sqrtf32 => "sqrtf",
-        sym::sqrtf64 => "sqrt",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
         sym::sinf32 => "sinf",
@@ -180,26 +178,6 @@ fn get_simple_function<'gcc, 'tcx>(
     ))
 }
 
-fn get_simple_function_f128<'gcc, 'tcx>(
-    span: Span,
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Function<'gcc> {
-    let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::sqrtf128 => "sqrtf128",
-        _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
-    };
-    cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[cx.context.new_parameter(None, f128_type, "a")],
-        func_name,
-        false,
-    )
-}
-
 fn f16_builtin<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -217,7 +195,6 @@ fn f16_builtin<'gcc, 'tcx>(
             let result = cx.context.new_call(None, func, &args);
             return cx.context.new_cast(None, result, cx.type_f16());
         }
-        sym::sqrtf16 => "__builtin_sqrtf",
         _ => unreachable!(),
     };
 
@@ -262,30 +239,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::ceilf16
-            | sym::copysignf16
-            | sym::floorf16
-            | sym::fmaf16
-            | sym::powf16
-            | sym::powif16
-            | sym::roundf16
-            | sym::round_ties_even_f16
-            | sym::sqrtf16
-            | sym::truncf16 => f16_builtin(self, name, args),
-            sym::ceilf128
-            | sym::floorf128
-            | sym::truncf128
-            | sym::roundf128
-            | sym::round_ties_even_f128
-            | sym::sqrtf128
-                if self.cx.supports_f128_type =>
-            {
-                let func = get_simple_function_f128(span, self, name);
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
+            sym::copysignf16 | sym::fmaf16 | sym::powf16 | sym::powif16 => {
+                f16_builtin(self, name, args)
             }
             sym::copysignf128 if self.cx.supports_f128_type => {
                 let f128_type = self.cx.type_f128();
@@ -465,6 +420,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             // float unary intrinsics
             sym::fabs
+            | sym::sqrt
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -489,6 +445,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     (sym::fabs, F32) => Builtin("fabsf"),
                     (sym::fabs, F64) => Builtin("fabs"),
                     (sym::fabs, F128) => Extern("fabsf128"),
+                    (sym::sqrt, F16) => BuiltinF16Cast("__builtin_sqrtf"),
+                    (sym::sqrt, F32) => Builtin("sqrtf"),
+                    (sym::sqrt, F64) => Builtin("sqrt"),
+                    (sym::sqrt, F128) => Extern("sqrtf128"),
                     (sym::floor, F16) => BuiltinF16Cast("__builtin_floorf"),
                     (sym::floor, F32) => Builtin("floorf"),
                     (sym::floor, F64) => Builtin("floor"),

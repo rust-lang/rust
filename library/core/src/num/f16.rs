@@ -1911,7 +1911,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f16 {
-        intrinsics::sqrtf16(self)
+        intrinsics::sqrt(self)
     }
 
     /// Returns the cube root of a number.
