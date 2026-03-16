@@ -301,6 +301,7 @@ macro_rules! define_callbacks {
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
+                    desc: $desc:expr,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
                     no_force: $no_force:literal,
@@ -435,8 +436,7 @@ macro_rules! define_callbacks {
             pub fn description(&self, tcx: TyCtxt<'tcx>) -> String {
                 let (name, description) = ty::print::with_no_queries!(match self {
                     $(
-                        TaggedQueryKey::$name(key) =>
-                            (stringify!($name), _description_fns::$name(tcx, *key)),
+                        TaggedQueryKey::$name(key) => (stringify!($name), ($desc)(tcx, *key)),
                     )*
                 });
                 if tcx.sess.verbose_internals() {

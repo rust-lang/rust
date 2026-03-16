@@ -243,7 +243,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         arena_cache,
         cache_on_disk,
         depth_limit,
-        desc: _,
+        desc,
         eval_always,
         feedable,
         no_force,
@@ -256,7 +256,18 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk.is_some();
     let depth_limit = depth_limit.is_some();
-    // `desc` is not handled here
+    let desc = {
+        // Put a description closure in the `desc` modifier.
+        let key_pat = &query.key_pat;
+        let key_ty = &query.key_ty;
+        let desc_expr_list = &desc.expr_list;
+        quote! {
+            {
+                #[allow(unused_variables)]
+                |tcx: TyCtxt<'tcx>, #key_pat: #key_ty| format!(#desc_expr_list)
+            }
+        }
+    };
     let eval_always = eval_always.is_some();
     let feedable = feedable.is_some();
     let no_force = no_force.is_some();
@@ -276,7 +287,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
         depth_limit: #depth_limit,
-        // `desc` is not handled here
+        desc: #desc,
         eval_always: #eval_always,
         feedable: #feedable,
         no_force: #no_force,
@@ -312,37 +323,6 @@ fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attrib
     );
     let doc_string = format!("[query description - consider adding a doc-comment!] {doc_string}");
     Ok(parse_quote! { #[doc = #doc_string] })
-}
-
-/// Contains token streams that are used to accumulate per-query helper
-/// functions, to be used by the final output of `rustc_queries!`.
-///
-/// Helper items typically have the same name as the query they relate to,
-/// and expect to be interpolated into a dedicated module.
-#[derive(Default)]
-struct HelperTokenStreams {
-    description_fns_stream: proc_macro2::TokenStream,
-}
-
-fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
-    let Query { name, key_pat, key_ty, modifiers, .. } = &query;
-
-    // Replace span for `name` to make rust-analyzer ignore it.
-    let mut erased_name = name.clone();
-    erased_name.set_span(Span::call_site());
-
-    let Desc { expr_list, .. } = &modifiers.desc;
-
-    let desc = quote! {
-        #[allow(unused_variables)]
-        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, #key_pat: #key_ty) -> String {
-            format!(#expr_list)
-        }
-    };
-
-    streams.description_fns_stream.extend(quote! {
-        #desc
-    });
 }
 
 /// Add hints for rust-analyzer
@@ -419,7 +399,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut non_query_stream = quote! {};
-    let mut helpers = HelperTokenStreams::default();
     let mut analyzer_stream = quote! {};
     let mut errors = quote! {};
 
@@ -472,10 +451,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         }
 
         add_to_analyzer_stream(&query, &mut analyzer_stream);
-        make_helpers_for_query(&query, &mut helpers);
     }
-
-    let HelperTokenStreams { description_fns_stream } = helpers;
 
     TokenStream::from(quote! {
         /// Higher-order macro that invokes the specified macro with (a) a list of all query
@@ -498,17 +474,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         mod _analyzer_hints {
             use super::*;
             #analyzer_stream
-        }
-
-        /// Functions that format a human-readable description of each query
-        /// and its key, as specified by the `desc` query modifier.
-        ///
-        /// (The leading `_` avoids collisions with actual query names when
-        /// expanded in `rustc_middle::queries`, and makes this macro-generated
-        /// module easier to search for.)
-        pub mod _description_fns {
-            use super::*;
-            #description_fns_stream
         }
 
         #errors
