@@ -7,8 +7,7 @@ use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::errors;

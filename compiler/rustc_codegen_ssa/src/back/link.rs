@@ -30,7 +30,7 @@ use rustc_metadata::{
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
-use rustc_middle::lint::diag_lint_level;
+use rustc_middle::lint::emit_lint_base;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -784,7 +784,7 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
     }
 
     let lint_msg = |msg| {
-        diag_lint_level(
+        emit_lint_base(
             sess,
             LINKER_MESSAGES,
             levels.linker_messages,
@@ -793,7 +793,7 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
         );
     };
     let lint_info = |msg| {
-        diag_lint_level(sess, LINKER_INFO, levels.linker_info, None, LinkerOutput { inner: msg });
+        emit_lint_base(sess, LINKER_INFO, levels.linker_info, None, LinkerOutput { inner: msg });
     };
 
     if !escaped_stderr.is_empty() {

@@ -1,7 +1,3 @@
-//! The implementation of the query system itself. This defines the macros that
-//! generate the actual methods on tcx which find and execute the provider,
-//! manage the caches, and so forth.
-
 use std::num::NonZero;
 
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -18,14 +14,10 @@ use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
 use rustc_middle::query::plumbing::QueryVTable;
-use rustc_middle::query::{
-    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackDeferred, QueryStackFrame,
-    QueryStackFrameExtra, erase,
-};
+use rustc_middle::query::{QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, erase};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::codec::TyEncoder;
-use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -33,21 +25,21 @@ use rustc_span::def_id::LOCAL_CRATE;
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::find_dep_kind_root;
-use crate::{GetQueryVTable, collect_active_jobs_from_all_queries};
+use crate::query_impl::for_each_query_vtable;
+use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_jobs_from_all_queries};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
-    let job_map =
-        collect_active_jobs_from_all_queries(tcx, true).expect("failed to collect active queries");
-    let (info, depth) = find_dep_kind_root(job, job_map);
+    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::Full);
+    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
 
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
 
-    tcx.sess.dcx().emit_fatal(QueryOverflow {
-        span: info.job.span,
-        note: QueryOverflowNote { desc: info.frame.info.extract().description, depth },
+    tcx.dcx().emit_fatal(QueryOverflow {
+        span,
+        note: QueryOverflowNote { desc, depth },
         suggested_limit,
         crate_name: tcx.crate_name(LOCAL_CRATE),
     });
@@ -90,63 +82,34 @@ pub(crate) fn start_query<R>(
     })
 }
 
-/// The deferred part of a deferred query stack frame.
-fn mk_query_stack_frame_extra<'tcx, Cache>(
-    (tcx, vtable, key): (TyCtxt<'tcx>, &'tcx QueryVTable<'tcx, Cache>, Cache::Key),
-) -> QueryStackFrameExtra
-where
-    Cache: QueryCache,
-    Cache::Key: QueryKey,
-{
-    let def_id = key.key_as_def_id();
-
-    // If reduced queries are requested, we may be printing a query stack due
-    // to a panic. Avoid using `default_span` and `def_kind` in that case.
-    let reduce_queries = with_reduced_queries();
-
-    // Avoid calling queries while formatting the description
-    let description = ty::print::with_no_queries!((vtable.description_fn)(tcx, key));
-    let description = if tcx.sess.verbose_internals() {
-        format!("{description} [{name:?}]", name = vtable.name)
-    } else {
-        description
-    };
-    let span = if vtable.dep_kind == DepKind::def_span || reduce_queries {
-        // The `def_span` query is used to calculate `default_span`,
-        // so exit to avoid infinite recursion.
-        None
-    } else {
-        Some(key.default_span(tcx))
-    };
-
-    let def_kind = if vtable.dep_kind == DepKind::def_kind || reduce_queries {
-        // Try to avoid infinite recursion.
-        None
-    } else {
-        def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
-    };
-    QueryStackFrameExtra::new(description, span, def_kind)
-}
-
-pub(crate) fn create_deferred_query_stack_frame<'tcx, C>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn create_query_stack_frame<'tcx, C>(
     vtable: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
-) -> QueryStackFrame<QueryStackDeferred<'tcx>>
+) -> QueryStackFrame<'tcx>
 where
     C: QueryCache<Key: QueryKey + DynSend + DynSync>,
     QueryVTable<'tcx, C>: DynSync,
 {
-    let kind = vtable.dep_kind;
-
     let def_id: Option<DefId> = key.key_as_def_id();
-    let def_id_for_ty_in_cycle: Option<DefId> = key.def_id_for_ty_in_cycle();
 
-    let info = QueryStackDeferred::new((tcx, vtable, key), mk_query_stack_frame_extra);
-    QueryStackFrame::new(info, kind, def_id, def_id_for_ty_in_cycle)
+    QueryStackFrame {
+        tagged_key: (vtable.create_tagged_key)(key),
+        dep_kind: vtable.dep_kind,
+        def_id,
+    }
 }
 
-pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
+pub(crate) fn encode_all_query_results<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    encoder: &mut CacheEncoder<'_, 'tcx>,
+    query_result_index: &mut EncodedDepNodeIndex,
+) {
+    for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
+        encode_query_results(tcx, query, encoder, query_result_index)
+    });
+}
+
+fn encode_query_results<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
@@ -172,7 +135,17 @@ pub(crate) fn encode_query_results<'a, 'tcx, C, V>(
     });
 }
 
-pub(crate) fn query_key_hash_verify<'tcx, C: QueryCache>(
+pub(crate) fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
+    if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
+        tcx.sess.time("query_key_hash_verify_all", || {
+            for_each_query_vtable!(ALL, tcx, |query| {
+                query_key_hash_verify(query, tcx);
+            });
+        });
+    }
+}
+
+fn query_key_hash_verify<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
 ) {
@@ -300,307 +273,5 @@ pub(crate) fn force_from_dep_node_inner<'tcx, Q: GetQueryVTable<'tcx>>(
         true
     } else {
         false
-    }
-}
-
-macro_rules! define_queries {
-    (
-        // Note: `$K` and `$V` are unused but present so this can be called by
-        // `rustc_with_all_queries`.
-        queries {
-            $(
-                $(#[$attr:meta])*
-                fn $name:ident($K:ty) -> $V:ty
-                {
-                    // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
-                    arena_cache: $arena_cache:literal,
-                    cache_on_disk: $cache_on_disk:literal,
-                    cycle_error_handling: $cycle_error_handling:ident,
-                    depth_limit: $depth_limit:literal,
-                    eval_always: $eval_always:literal,
-                    feedable: $feedable:literal,
-                    no_hash: $no_hash:literal,
-                    returns_error_guaranteed: $returns_error_guaranteed:literal,
-                    separate_provide_extern: $separate_provide_extern:literal,
-                }
-            )*
-        }
-        // Non-queries are unused here.
-        non_queries { $($_:tt)* }
-    ) => {
-        pub(crate) mod query_impl { $(pub(crate) mod $name {
-            use super::super::*;
-            use ::rustc_middle::query::erase::{self, Erased};
-
-            // It seems to be important that every query has its own monomorphic
-            // copy of `execute_query_incr` and `execute_query_non_incr`.
-            // Trying to inline these wrapper functions into their generic
-            // "inner" helpers tends to break `tests/run-make/short-ice`.
-
-            pub(crate) mod execute_query_incr {
-                use super::*;
-
-                // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
-                // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
-                #[inline(never)]
-                pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    span: Span,
-                    key: queries::$name::Key<'tcx>,
-                    mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
-                    #[cfg(debug_assertions)]
-                    let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                    execution::execute_query_incr_inner(
-                        &tcx.query_system.query_vtables.$name,
-                        tcx,
-                        span,
-                        key,
-                        mode
-                    )
-                }
-            }
-
-            pub(crate) mod execute_query_non_incr {
-                use super::*;
-
-                #[inline(never)]
-                pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    span: Span,
-                    key: queries::$name::Key<'tcx>,
-                    __mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
-                    Some(execution::execute_query_non_incr_inner(
-                        &tcx.query_system.query_vtables.$name,
-                        tcx,
-                        span,
-                        key,
-                    ))
-                }
-            }
-
-            /// Defines an `invoke_provider` function that calls the query's provider,
-            /// to be used as a function pointer in the query's vtable.
-            ///
-            /// To mark a short-backtrace boundary, the function's actual name
-            /// (after demangling) must be `__rust_begin_short_backtrace`.
-            mod invoke_provider_fn {
-                use super::*;
-                use ::rustc_middle::queries::$name::{Key, Value, provided_to_erased};
-
-                #[inline(never)]
-                pub(crate) fn __rust_begin_short_backtrace<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    key: Key<'tcx>,
-                ) -> Erased<Value<'tcx>> {
-                    #[cfg(debug_assertions)]
-                    let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-
-                    // Call the actual provider function for this query.
-
-                    #[cfg($separate_provide_extern)]
-                    let provided_value = if let Some(local_key) = key.as_local_key() {
-                        (tcx.query_system.local_providers.$name)(tcx, local_key)
-                    } else {
-                        (tcx.query_system.extern_providers.$name)(tcx, key)
-                    };
-
-                    #[cfg(not($separate_provide_extern))]
-                    let provided_value = (tcx.query_system.local_providers.$name)(tcx, key);
-
-                    rustc_middle::ty::print::with_reduced_queries!({
-                        tracing::trace!(?provided_value);
-                    });
-
-                    // Erase the returned value, because `QueryVTable` uses erased values.
-                    // For queries with `arena_cache`, this also arena-allocates the value.
-                    provided_to_erased(tcx, provided_value)
-                }
-            }
-
-            pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
-                -> QueryVTable<'tcx, queries::$name::Cache<'tcx>>
-            {
-                QueryVTable {
-                    name: stringify!($name),
-                    anon: $anon,
-                    eval_always: $eval_always,
-                    depth_limit: $depth_limit,
-                    feedable: $feedable,
-                    dep_kind: dep_graph::DepKind::$name,
-                    cycle_error_handling:
-                        rustc_middle::query::CycleErrorHandling::$cycle_error_handling,
-                    state: Default::default(),
-                    cache: Default::default(),
-
-                    invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
-
-                    #[cfg($cache_on_disk)]
-                    will_cache_on_disk_for_key_fn:
-                        rustc_middle::queries::_cache_on_disk_if_fns::$name,
-                    #[cfg(not($cache_on_disk))]
-                    will_cache_on_disk_for_key_fn: |_, _| false,
-
-                    #[cfg($cache_on_disk)]
-                    try_load_from_disk_fn: |tcx, key, prev_index, index| {
-                        // Check the `cache_on_disk_if` condition for this key.
-                        if !rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) {
-                            return None;
-                        }
-
-                        let value: queries::$name::ProvidedValue<'tcx> =
-                            $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
-
-                        // Arena-alloc the value if appropriate, and erase it.
-                        Some(queries::$name::provided_to_erased(tcx, value))
-                    },
-                    #[cfg(not($cache_on_disk))]
-                    try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
-
-                    #[cfg($cache_on_disk)]
-                    is_loadable_from_disk_fn: |tcx, key, index| -> bool {
-                        rustc_middle::queries::_cache_on_disk_if_fns::$name(tcx, key) &&
-                            $crate::plumbing::loadable_from_disk(tcx, index)
-                    },
-                    #[cfg(not($cache_on_disk))]
-                    is_loadable_from_disk_fn: |_tcx, _key, _index| false,
-
-                    value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> =
-                            FromCycleError::from_cycle_error(tcx, cycle, guar);
-                        erase::erase_val(result)
-                    },
-
-                    #[cfg($no_hash)]
-                    hash_value_fn: None,
-                    #[cfg(not($no_hash))]
-                    hash_value_fn: Some(|hcx, erased_value: &erase::Erased<queries::$name::Value<'tcx>>| {
-                        let value = erase::restore_val(*erased_value);
-                        rustc_middle::dep_graph::hash_result(hcx, &value)
-                    }),
-
-                    format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
-                    description_fn: $crate::queries::_description_fns::$name,
-                    execute_query_fn: if incremental {
-                        query_impl::$name::execute_query_incr::__rust_end_short_backtrace
-                    } else {
-                        query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
-                    },
-                }
-            }
-
-            /// Marker type that implements [`GetQueryVTable`] for this query.
-            pub(crate) enum VTableGetter {}
-
-            impl<'tcx> GetQueryVTable<'tcx> for VTableGetter {
-                type Cache = rustc_middle::queries::$name::Cache<'tcx>;
-
-                #[inline(always)]
-                fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache> {
-                    &tcx.query_system.query_vtables.$name
-                }
-            }
-        })*}
-
-        pub fn make_query_vtables<'tcx>(incremental: bool) -> queries::QueryVTables<'tcx> {
-            queries::QueryVTables {
-                $(
-                    $name: query_impl::$name::make_query_vtable(incremental),
-                )*
-            }
-        }
-
-        /// Returns a map of currently active query jobs, collected from all queries.
-        ///
-        /// If `require_complete` is `true`, this function locks all shards of the
-        /// query results to produce a complete map, which always returns `Ok`.
-        /// Otherwise, it may return an incomplete map as an error if any shard
-        /// lock cannot be acquired.
-        ///
-        /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
-        /// especially when called from within a deadlock handler, unless a
-        /// complete map is needed and no deadlock is possible at this call site.
-        pub fn collect_active_jobs_from_all_queries<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            require_complete: bool,
-        ) -> Result<QueryJobMap<'tcx>, QueryJobMap<'tcx>> {
-            let mut job_map_out = QueryJobMap::default();
-            let mut complete = true;
-
-            $(
-                let res = crate::execution::gather_active_jobs(
-                    &tcx.query_system.query_vtables.$name,
-                    tcx,
-                    require_complete,
-                    &mut job_map_out,
-                );
-                if res.is_none() {
-                    complete = false;
-                }
-            )*
-
-            if complete { Ok(job_map_out) } else { Err(job_map_out) }
-        }
-
-        /// All self-profiling events generated by the query engine use
-        /// virtual `StringId`s for their `event_id`. This method makes all
-        /// those virtual `StringId`s point to actual strings.
-        ///
-        /// If we are recording only summary data, the ids will point to
-        /// just the query names. If we are recording query keys too, we
-        /// allocate the corresponding strings here.
-        pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
-            if !tcx.prof.enabled() {
-                return;
-            }
-
-            let _prof_timer = tcx.sess.prof.generic_activity("self_profile_alloc_query_strings");
-
-            let mut string_cache = QueryKeyStringCache::new();
-
-            $(
-                $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
-                    tcx,
-                    stringify!($name),
-                    &tcx.query_system.query_vtables.$name.cache,
-                    &mut string_cache,
-                );
-            )*
-
-            tcx.sess.prof.store_query_cache_hits();
-        }
-
-        fn encode_all_query_results<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            encoder: &mut CacheEncoder<'_, 'tcx>,
-            query_result_index: &mut EncodedDepNodeIndex,
-        ) {
-            $(
-                #[cfg($cache_on_disk)]
-                {
-                    $crate::plumbing::encode_query_results(
-                        tcx,
-                        &tcx.query_system.query_vtables.$name,
-                        encoder,
-                        query_result_index,
-                    )
-                }
-            )*
-        }
-
-        pub fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
-            if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
-                tcx.sess.time("query_key_hash_verify_all", || {
-                    $(
-                        $crate::plumbing::query_key_hash_verify(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx
-                        );
-                    )*
-                })
-            }
-        }
     }
 }

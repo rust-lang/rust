@@ -6,8 +6,7 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_span::Symbol;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Spanned, Symbol};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, HasTargetSpec, Target};
 

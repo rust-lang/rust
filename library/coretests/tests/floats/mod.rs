@@ -1,3 +1,4 @@
+use std::hint::black_box;
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
@@ -32,7 +33,7 @@ trait TestableFloat: Sized {
     const LNGAMMA_APPROX_LOOSE: Self = Self::APPROX;
     const ZERO: Self;
     const ONE: Self;
-
+    const SNAN: Self;
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
     /// Smallest number
@@ -82,6 +83,9 @@ impl TestableFloat for f16 {
     const LNGAMMA_APPROX_LOOSE: Self = 1e-1;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    // We rely on NAN having an all-0 payload, so the signaling bit is the least significant
+    // non-0 bit, and that gets toggled by the "-1".
+    const SNAN: Self = Self::from_bits(Self::NAN.to_bits() - 1);
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -125,6 +129,9 @@ impl TestableFloat for f32 {
     const LNGAMMA_APPROX_LOOSE: Self = if cfg!(miri) { 1e-2 } else { 1e-4 };
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    // We rely on NAN having an all-0 payload, so the signaling bit is the least significant
+    // non-0 bit, and that gets toggled by the "-1".
+    const SNAN: Self = Self::from_bits(Self::NAN.to_bits() - 1);
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -153,6 +160,9 @@ impl TestableFloat for f64 {
     const LNGAMMA_APPROX_LOOSE: Self = 1e-4;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    // We rely on NAN having an all-0 payload, so the signaling bit is the least significant
+    // non-0 bit, and that gets toggled by the "-1".
+    const SNAN: Self = Self::from_bits(Self::NAN.to_bits() - 1);
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -191,6 +201,9 @@ impl TestableFloat for f128 {
     const LNGAMMA_APPROX_LOOSE: Self = 1e-10;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    // We rely on NAN having an all-0 payload, so the signaling bit is the least significant
+    // non-0 bit, and that gets toggled by the "-1".
+    const SNAN: Self = Self::from_bits(Self::NAN.to_bits() - 1);
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -668,11 +681,22 @@ float_test! {
         assert_biteq!(flt(9.0).min(Float::NEG_INFINITY), Float::NEG_INFINITY);
         assert_biteq!(Float::NEG_INFINITY.min(-9.0), Float::NEG_INFINITY);
         assert_biteq!(flt(-9.0).min(Float::NEG_INFINITY), Float::NEG_INFINITY);
-        assert_biteq!(Float::NAN.min(9.0), 9.0);
-        assert_biteq!(Float::NAN.min(-9.0), -9.0);
-        assert_biteq!(flt(9.0).min(Float::NAN), 9.0);
-        assert_biteq!(flt(-9.0).min(Float::NAN), -9.0);
+        // We add black_box for the NAN tests as that used to be able to trigger miscompilations.
+        assert_biteq!(Float::NAN.min(black_box(9.0)), 9.0);
+        assert_biteq!(black_box(Float::NAN).min(-9.0), -9.0);
+        assert_biteq!(flt(9.0).min(black_box(Float::NAN)), 9.0);
+        assert_biteq!(black_box(flt(-9.0)).min(Float::NAN), -9.0);
         assert!(Float::NAN.min(Float::NAN).is_nan());
+        // FIXME(llvm21): LLVM miscompiles the fallback impl on aarch64 and likely other targets
+        // (https://github.com/llvm/llvm-project/issues/176624). When we require LLVM 22,
+        // remove the ui test `tests/ui/float/minmax.rs` and unconditionally enable the test here.
+        if cfg!(miri) {
+            assert_biteq!(Float::SNAN.min(black_box(9.0)), 9.0);
+            assert_biteq!(black_box(Float::SNAN).min(-9.0), -9.0);
+            assert_biteq!(flt(9.0).min(black_box(Float::SNAN)), 9.0);
+            assert_biteq!(black_box(flt(-9.0)).min(Float::SNAN), -9.0);
+        }
+        assert!(Float::SNAN.min(Float::SNAN).is_nan());
     }
 }
 
@@ -699,11 +723,22 @@ float_test! {
         assert_biteq!(flt(9.0).max(Float::NEG_INFINITY), 9.0);
         assert_biteq!(Float::NEG_INFINITY.max(-9.0), -9.0);
         assert_biteq!(flt(-9.0).max(Float::NEG_INFINITY), -9.0);
-        assert_biteq!(Float::NAN.max(9.0), 9.0);
-        assert_biteq!(Float::NAN.max(-9.0), -9.0);
-        assert_biteq!(flt(9.0).max(Float::NAN), 9.0);
-        assert_biteq!(flt(-9.0).max(Float::NAN), -9.0);
+        // We add black_box for the NAN tests as that used to be able to trigger miscompilations.
+        assert_biteq!(Float::NAN.max(black_box(9.0)), 9.0);
+        assert_biteq!(black_box(Float::NAN).max(-9.0), -9.0);
+        assert_biteq!(flt(9.0).max(black_box(Float::NAN)), 9.0);
+        assert_biteq!(black_box(flt(-9.0)).max(Float::NAN), -9.0);
         assert!(Float::NAN.max(Float::NAN).is_nan());
+        // FIXME(llvm21): LLVM miscompiles the fallback impl on aarch64 and likely other targets
+        // (https://github.com/llvm/llvm-project/issues/176624). When we require LLVM 22,
+        // remove the ui test `tests/ui/float/minmax.rs` and unconditionally enable the test here.
+        if cfg!(miri) {
+            assert_biteq!(Float::SNAN.max(black_box(9.0)), 9.0);
+            assert_biteq!(black_box(Float::SNAN).max(-9.0), -9.0);
+            assert_biteq!(flt(9.0).max(black_box(Float::SNAN)), 9.0);
+            assert_biteq!(black_box(flt(-9.0)).max(Float::SNAN), -9.0);
+        }
+        assert!(Float::SNAN.max(Float::SNAN).is_nan());
     }
 }
 

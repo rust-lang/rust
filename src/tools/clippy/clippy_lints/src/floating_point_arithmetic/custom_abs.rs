@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::SyntaxContext;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::SUBOPTIMAL_FLOPS;
 

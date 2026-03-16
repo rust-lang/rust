@@ -4,48 +4,54 @@
 //! modifier names in the query list, and to allow find-all-references to list
 //! all queries that use a particular modifier.
 #![allow(unused, non_camel_case_types)]
-// FIXME: Update and clarify documentation for these modifiers.
 
 // tidy-alphabetical-start
 //
 /// # `anon` query modifier
 ///
-/// Generate a dep node based on the dependencies of the query
+/// Generate a dep node based not on the query key, but on the query's dependencies.
 pub(crate) struct anon;
 
 /// # `arena_cache` query modifier
 ///
-/// Use this type for the in-memory cache.
+/// Query return values must impl `Copy` and be small, but some queries must return values that
+/// doesn't meet those criteria. Queries marked with this modifier have their values allocated in
+/// an arena and the query returns a reference to the value. There are two cases.
+/// - If the provider function returns `T` then the query will return `&'tcx T`.
+/// - If the provider function returns `Option<T>` then the query will return `Option<&'tcx T>`.
+///
+/// The query plumbing takes care of the arenas and the type manipulations.
 pub(crate) struct arena_cache;
 
-/// # `cache_on_disk_if` query modifier
+/// # `cache_on_disk_if { ... }` query modifier
 ///
-/// Cache the query to disk if the `Block` returns true.
+/// Cache the query result to disk if the provided block evaluates to true. The query key
+/// identifier is available for use within the block, as is `tcx`.
 pub(crate) struct cache_on_disk_if;
-
-/// # `cycle_delay_bug` query modifier
-///
-/// A cycle error results in a delay_bug call
-pub(crate) struct cycle_delay_bug;
-
-/// # `cycle_stash` query modifier
-///
-/// A cycle error results in a stashed cycle error that can be unstashed and canceled later
-pub(crate) struct cycle_stash;
 
 /// # `depth_limit` query modifier
 ///
-/// Whether the query has a call depth limit
+/// Impose a recursion call depth limit on the query to prevent stack overflow.
 pub(crate) struct depth_limit;
 
-/// # `desc` query modifier
+/// # `desc { ... }` query modifier
 ///
-/// The description of the query. This modifier is required on every query.
+/// The human-readable description of the query, for diagnostics and profiling. Required for every
+/// query. The block should contain a `format!`-style string literal followed by optional
+/// arguments. The query key identifier is available for use within the block, as is `tcx`.
 pub(crate) struct desc;
 
 /// # `eval_always` query modifier
 ///
-/// Always evaluate the query, ignoring its dependencies
+/// Queries with this modifier do not track their dependencies, and are treated as always having a
+/// red (dirty) dependency instead. This is necessary for queries that interact with state that
+/// isn't tracked by the query system.
+///
+/// It can also improve performance for queries that are so likely to be dirtied by any change that
+/// it's not worth tracking their actual dependencies at all.
+///
+/// As with all queries, the return value is still cached in memory for the rest of the compiler
+/// session.
 pub(crate) struct eval_always;
 
 /// # `feedable` query modifier
@@ -55,12 +61,13 @@ pub(crate) struct feedable;
 
 /// # `no_hash` query modifier
 ///
-/// Don't hash the result, instead just mark a query red if it runs
+/// Do not hash the query's return value for incremental compilation. If the value needs to be
+/// recomputed, always mark its node as red (dirty).
 pub(crate) struct no_hash;
 
 /// # `separate_provide_extern` query modifier
 ///
-/// Use a separate query provider for local and extern crates
+/// Use separate query provider functions for local and extern crates.
 pub(crate) struct separate_provide_extern;
 
 // tidy-alphabetical-end

@@ -1,5 +1,4 @@
 #![feature(deref_patterns)]
-#![allow(incomplete_features)]
 
 fn main() {
     // Make sure we don't try implicitly dereferncing any ADT.

@@ -63,7 +63,7 @@
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-    test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
+    test(no_crate_inject, attr(allow(unused_variables, duplicate_features), deny(warnings)))
 )]
 #![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
 #![doc(rust_logo)]

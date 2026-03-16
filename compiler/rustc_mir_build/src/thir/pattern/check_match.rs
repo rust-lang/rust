@@ -101,8 +101,7 @@ struct MatchVisitor<'p, 'tcx> {
     error: Result<(), ErrorGuaranteed>,
 }
 
-// Visitor for a thir body. This calls `check_match`, `check_let` and `check_let_chain` as
-// appropriate.
+// Visitor for a thir body. This calls `check_match` and `check_let` as appropriate.
 impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     fn thir(&self) -> &'p Thir<'tcx> {
         self.thir

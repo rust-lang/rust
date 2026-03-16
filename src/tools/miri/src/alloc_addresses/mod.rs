@@ -163,7 +163,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.get_alloc_bytes_unchecked_raw(alloc_id)?
                     }
                 }
-                #[cfg(all(unix, feature = "native-lib"))]
+                #[cfg(all(feature = "native-lib", unix))]
                 AllocKind::Function => {
                     if let Some(GlobalAlloc::Function { instance, .. }) =
                         this.tcx.try_get_global_alloc(alloc_id)
@@ -186,7 +186,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         dummy_alloc(params)
                     }
                 }
-                #[cfg(not(all(unix, feature = "native-lib")))]
+                #[cfg(not(all(feature = "native-lib", unix)))]
                 AllocKind::Function => dummy_alloc(params),
                 AllocKind::VTable | AllocKind::VaList => dummy_alloc(params),
                 AllocKind::TypeId | AllocKind::Dead => unreachable!(),

@@ -13,8 +13,7 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Spanned;
-use rustc_span::sym;
+use rustc_span::{Spanned, sym};
 
 use super::MANUAL_SLICE_FILL;
 

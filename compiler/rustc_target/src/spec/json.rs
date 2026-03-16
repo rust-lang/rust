@@ -42,11 +42,7 @@ impl Target {
         }
 
         let alignment_error = |field_name: &str, error: AlignFromBytesError| -> String {
-            let msg = match error {
-                AlignFromBytesError::NotPowerOfTwo(_) => "not a power of 2 number of bytes",
-                AlignFromBytesError::TooLarge(_) => "too large",
-            };
-            format!("`{}` bits is not a valid value for {field_name}: {msg}", error.align() * 8)
+            format!("invalid value for {field_name}: {error}")
         };
 
         macro_rules! forward {

@@ -1248,8 +1248,21 @@ pub(crate) struct FeatureNotValid<'a> {
     #[primary_span]
     #[label("`{$feature}` is not valid for this target")]
     pub span: Span,
-    #[help("consider removing the leading `+` in the feature name")]
-    pub plus_hint: bool,
+    #[subdiagnostic]
+    pub plus_hint: Option<RemovePlusFromFeatureName<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider removing the leading `+` in the feature name",
+    code = "enable = \"{stripped}\"",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub struct RemovePlusFromFeatureName<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub stripped: &'a str,
 }
 
 #[derive(Diagnostic)]

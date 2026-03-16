@@ -162,16 +162,16 @@ fn chunked_bitset() {
     assert!(!b100.contains(20) && b100.contains(30) && !b100.contains(99) && b100.contains(50));
     assert_eq!(
         b100.chunks(),
-        vec![Mixed(
-            97,
+        vec![Mixed {
+            ones_count: 97,
             #[rustfmt::skip]
-            Rc::new([
+            words: Rc::new([
                 0b11111111_11111111_11111110_11111111_11111111_11101111_11111111_11111111,
                 0b00000000_00000000_00000000_00000111_11111111_11111111_11111111_11111111,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0,
             ])
-        )],
+        }],
     );
     b100.assert_valid();
     let mut num_removed = 0;
@@ -228,14 +228,14 @@ fn chunked_bitset() {
         b4096.chunks(),
         #[rustfmt::skip]
         vec![
-            Mixed(1, Rc::new([
+            Mixed { ones_count: 1, words:Rc::new([
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ])),
-            Mixed(1, Rc::new([
+            ])},
+            Mixed { ones_count: 1, words: Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8000_0000_0000_0000
-            ])),
+            ])},
         ],
     );
     assert_eq!(b4096.count(), 2);
@@ -265,14 +265,14 @@ fn chunked_bitset() {
         #[rustfmt::skip]
         vec![
             Zeros,
-            Mixed(1, Rc::new([
+            Mixed { ones_count: 1, words: Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100_0000_0000_0000, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ])),
-            Mixed(1, Rc::new([
+            ])},
+            Mixed { ones_count: 1, words: Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ])),
+            ])},
             Zeros,
             Zeros,
         ],

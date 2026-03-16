@@ -6,20 +6,19 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
-use rustc_errors::msg;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, interp_ok, throw_ub,
-    throw_ub_custom,
+    throw_ub_format,
 };
 use crate::enter_trace_span;
 use crate::interpret::EnteredTraceSpan;
@@ -284,7 +283,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         'tcx: 'y,
     {
         assert_eq!(callee_ty, callee_abi.layout.ty);
-        if callee_abi.mode == PassMode::Ignore {
+        if callee_abi.is_ignore() {
             // This one is skipped. Still must be made live though!
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
@@ -293,7 +292,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
-            throw_ub_custom!(msg!("calling a function with fewer arguments than it requires"));
+            throw_ub_format!("calling a function with fewer arguments than it requires");
         };
         assert_eq!(caller_arg.layout().layout, caller_abi.layout.layout);
         // Sadly we cannot assert that `caller_arg.layout().ty` and `caller_abi.layout.ty` are
@@ -364,12 +363,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_tys)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
-            throw_ub_custom!(
-                rustc_errors::msg!(
-                    "calling a function with calling convention \"{$callee_conv}\" using calling convention \"{$caller_conv}\""
-                ),
-                callee_conv = format!("{}", callee_fn_abi.conv),
-                caller_conv = format!("{}", caller_fn_abi.conv),
+            throw_ub_format!(
+                "calling a function with calling convention \"{callee_conv}\" using calling convention \"{caller_conv}\"",
+                callee_conv = callee_fn_abi.conv,
+                caller_conv = caller_fn_abi.conv,
             )
         }
 
@@ -450,7 +447,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let mut caller_args = args
                 .iter()
                 .zip(caller_fn_abi.args.iter())
-                .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
+                .filter(|arg_and_abi| !arg_and_abi.1.is_ignore());
 
             // Now we have to spread them out across the callee's locals,
             // taking into account the `spread_arg`. If we could write
@@ -480,7 +477,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     // Consume the remaining arguments by putting them into the variable argument
                     // list.
-                    let varargs = self.allocate_varargs(&mut caller_args, &mut callee_args_abis)?;
+                    let varargs = self.allocate_varargs(
+                        &mut caller_args,
+                        // "Ignored" arguments aren't actually passed, so the callee should also
+                        // ignore them. (`pass_argument` does this for regular arguments.)
+                        (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
+                    )?;
                     // When the frame is dropped, these variable arguments are deallocated.
                     self.frame_mut().va_list = varargs.clone();
                     let key = self.va_list_ptr(varargs.into());
@@ -539,7 +541,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "mismatch between callee ABI and callee body arguments"
             );
             if caller_args.next().is_some() {
-                throw_ub_custom!(msg!("calling a function with more arguments than it expected"));
+                throw_ub_format!("calling a function with more arguments than it expected");
             }
             // Don't forget to check the return type!
             if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
@@ -739,9 +741,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let vtable_entries = self.vtable_entries(receiver_trait.principal(), dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
-                    throw_ub_custom!(msg!(
-                        "`dyn` call trying to call something that is not a method"
-                    ));
+                    throw_ub_format!("`dyn` call trying to call something that is not a method");
                 };
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
@@ -947,7 +947,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         );
         if unwinding && self.frame_idx() == 0 {
-            throw_ub_custom!(msg!("unwinding past the topmost frame of the stack"));
+            throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
         // Get out the return value. Must happen *before* the frame is popped as we have to get the

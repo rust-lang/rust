@@ -5,7 +5,6 @@
 //@ [riscv32gc] needs-llvm-components: riscv
 //@ [riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [riscv64gc] needs-llvm-components: riscv
-//@ min-llvm-version: 21
 
 #![feature(link_llvm_intrinsics)]
 #![feature(no_core, lang_items)]

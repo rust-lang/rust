@@ -36,8 +36,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagInner, DiagLocation, DiagStyledString, Diagnostic, EmissionGuarantee,
-    FatalAbort, StringPart, Subdiag, Subdiagnostic,
+    BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
+    EmissionGuarantee, FatalAbort, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -371,8 +371,6 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     AssociatedTypeSuggestion,
-    /// Query cycle detected, stashing in favor of a better error.
-    Cycle,
     UndeterminedMacroResolution,
     /// Used by `Parser::maybe_recover_trailing_expr`
     ExprInPat,

@@ -32,7 +32,7 @@ use rustc_span::edition::Edition;
 use rustc_span::{FileName, RemapPathScopeComponents, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
-use tracing::debug;
+use tracing::{debug, info};
 
 use self::rust::HirCollector;
 use crate::config::{MergeDoctests, Options as RustdocOptions, OutputFormat};
@@ -692,7 +692,7 @@ fn run_test(
         compiler.stderr(Stdio::piped());
     }
 
-    debug!("compiler invocation for doctest: {compiler:?}");
+    info!("compiler invocation for doctest: {compiler:?}");
 
     let mut child = match compiler.spawn() {
         Ok(child) => child,
@@ -759,7 +759,7 @@ fn run_test(
             runner_compiler.stderr(Stdio::inherit());
         }
         runner_compiler.arg("--error-format=short");
-        debug!("compiler invocation for doctest runner: {runner_compiler:?}");
+        info!("compiler invocation for doctest runner: {runner_compiler:?}");
 
         let status = if !status.success() {
             status
@@ -858,6 +858,8 @@ fn run_test(
     if let Some(run_directory) = &rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
     }
+
+    info!("running doctest executable: {cmd:?}");
 
     let result = if doctest.is_multiple_tests() || rustdoc_options.no_capture {
         cmd.status().map(|status| process::Output {

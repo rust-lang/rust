@@ -211,8 +211,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_le => Op::MirOp(BinOp::Le),
                     sym::simd_gt => Op::MirOp(BinOp::Gt),
                     sym::simd_ge => Op::MirOp(BinOp::Ge),
-                    sym::simd_fmax => Op::FMinMax(MinMax::MaximumNumber),
-                    sym::simd_fmin => Op::FMinMax(MinMax::MinimumNumber),
+                    sym::simd_fmax => Op::FMinMax(MinMax::MaximumNumberNsz),
+                    sym::simd_fmin => Op::FMinMax(MinMax::MinimumNumberNsz),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
                     sym::simd_arith_offset => Op::WrappingOffset,
@@ -304,8 +304,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_reduce_xor => Op::MirOp(BinOp::BitXor),
                     sym::simd_reduce_any => Op::MirOpBool(BinOp::BitOr),
                     sym::simd_reduce_all => Op::MirOpBool(BinOp::BitAnd),
-                    sym::simd_reduce_max => Op::MinMax(MinMax::MaximumNumber),
-                    sym::simd_reduce_min => Op::MinMax(MinMax::MinimumNumber),
+                    sym::simd_reduce_max => Op::MinMax(MinMax::MaximumNumberNsz),
+                    sym::simd_reduce_min => Op::MinMax(MinMax::MinimumNumberNsz),
                     _ => unreachable!(),
                 };
 
@@ -329,8 +329,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             } else {
                                 // Just boring integers, no NaNs to worry about.
                                 let mirop = match mmop {
-                                    MinMax::MinimumNumber | MinMax::Minimum => BinOp::Le,
-                                    MinMax::MaximumNumber | MinMax::Maximum => BinOp::Ge,
+                                    MinMax::MinimumNumberNsz | MinMax::Minimum => BinOp::Le,
+                                    MinMax::MaximumNumberNsz | MinMax::Maximum => BinOp::Ge,
                                 };
                                 if self.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res

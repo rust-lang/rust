@@ -52,7 +52,6 @@ mod effects {
     }
 
     reuse Trait::foo;
-    //~^ ERROR type annotations needed
 }
 
 fn main() {}

@@ -1,8 +1,5 @@
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 //@ compile-flags: -Cpanic=abort -Csymbol-mangling-version=v0
-//@ revisions: LLVM21 LLVM20
-//@ [LLVM21] min-llvm-version: 21
-//@ [LLVM20] max-llvm-major-version: 20
 #![feature(custom_mir, core_intrinsics, unboxed_closures)]
 #![crate_type = "lib"]
 extern crate core;
@@ -37,15 +34,13 @@ pub fn mutate(mut b: Big) {
     black_box(&b);
 }
 
-// LLVM21-LABEL: @deref_mut({{.*}}readonly {{.*}}captures(none) {{.*}}%c)
-// LLVM20-LABEL: @deref_mut({{.*}}readonly                      {{.*}}%c)
+// CHECK-LABEL: @deref_mut({{.*}}readonly {{.*}}captures(none) {{.*}}%c)
 #[unsafe(no_mangle)]
 pub fn deref_mut(c: (BigCell, &mut usize)) {
     *c.1 = 42;
 }
 
-// LLVM21-LABEL: @call_copy_arg(ptr {{.*}}readonly {{.*}}captures(none){{.*}})
-// LLVM20-LABEL: @call_copy_arg(ptr {{.*}}readonly                     {{.*}})
+// CHECK-LABEL: @call_copy_arg(ptr {{.*}}readonly {{.*}}captures(none){{.*}})
 #[unsafe(no_mangle)]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn call_copy_arg(a: Big) {
@@ -61,7 +56,7 @@ pub fn call_copy_arg(a: Big) {
 
 // CHECK-LABEL: @call_move_arg(
 // CHECK-NOT:   readonly
-// LLVM21-SAME: captures(address)
+// CHECK-SAME:  captures(address)
 // CHECK-SAME:  )
 #[unsafe(no_mangle)]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
@@ -84,8 +79,7 @@ fn shared_borrow<T>(a: T) {
 //
 // CHECK-LABEL: ; deduced_param_attrs::shared_borrow::<deduced_param_attrs::Big>
 // CHECK-NEXT:  ;
-// LLVM21-NEXT: (ptr {{.*}}readonly {{.*}}captures(address) {{.*}}%a)
-// LLVM20-NEXT: (ptr {{.*}}readonly                         {{.*}}%a)
+// CHECK-NEXT:  (ptr {{.*}}readonly {{.*}}captures(address) {{.*}}%a)
 pub static A0: fn(Big) = shared_borrow;
 
 // !Freeze parameter can be mutated through a shared borrow.
@@ -113,16 +107,14 @@ fn consume<T>(_: T) {}
 //
 // CHECK-LABEL: ; deduced_param_attrs::consume::<deduced_param_attrs::BigCell>
 // CHECK-NEXT:  ;
-// LLVM21-NEXT: (ptr {{.*}}readonly {{.*}}captures(none) {{.*}})
-// LLVM20-NEXT: (ptr {{.*}}readonly                      {{.*}})
+// CHECK-NEXT:  (ptr {{.*}}readonly {{.*}}captures(none) {{.*}})
 pub static B0: fn(BigCell) = consume;
 
 // The parameter needs to be dropped.
 //
 // CHECK-LABEL: ; deduced_param_attrs::consume::<deduced_param_attrs::BigDrop>
 // CHECK-NEXT:  ;
-// LLVM21-NEXT: (ptr {{.*}}captures(address) {{.*}})
-// LLVM20-NEXT: (ptr                         {{.*}})
+// CHECK-NEXT:  (ptr {{.*}}captures(address) {{.*}})
 pub static B1: fn(BigDrop) = consume;
 
 fn consume_parts<T>(t: (T, T)) {
@@ -160,13 +152,13 @@ pub fn never_returns() -> [u8; 80] {
     loop {}
 }
 
-// LLVM21-LABEL: @not_captured_return_place(ptr{{.*}} captures(none) {{.*}}%_0)
+// CHECK-LABEL: @not_captured_return_place(ptr{{.*}} captures(none) {{.*}}%_0)
 #[unsafe(no_mangle)]
 pub fn not_captured_return_place() -> [u8; 80] {
     [0u8; 80]
 }
 
-// LLVM21-LABEL: @captured_return_place(ptr{{.*}} captures(address) {{.*}}%_0)
+// CHECK-LABEL: @captured_return_place(ptr{{.*}} captures(address) {{.*}}%_0)
 #[unsafe(no_mangle)]
 pub fn captured_return_place() -> [u8; 80] {
     black_box([0u8; 80])

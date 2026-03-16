@@ -1,13 +1,14 @@
 // gate-test-const_closures
 
 fn main() {
-    (const || {})();
+    const { (const || {})() };
     //~^ ERROR: const closures are experimental
-    //~| ERROR: the trait bound `{closure@$DIR/gate.rs:4:6: 4:14}: [const] Fn()` is not satisfied
+    //~| ERROR: cannot call conditionally-const closure in constants
+    //~| ERROR:  `Fn` is not yet stable as a const trait
 }
 
 macro_rules! e {
-    ($e:expr) => {}
+    ($e:expr) => {};
 }
 
 e!((const || {}));

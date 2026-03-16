@@ -927,7 +927,6 @@ ui/dst/issue-90528-unsizing-suggestion-3.rs
 ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
-ui/empty/issue-37026.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs
 ui/enum-discriminant/issue-104519.rs
 ui/enum-discriminant/issue-41394-rpass.rs
@@ -1706,9 +1705,6 @@ ui/mismatched_types/issue-47706.rs
 ui/mismatched_types/issue-74918-missing-lifetime.rs
 ui/mismatched_types/issue-75361-mismatched-impl.rs
 ui/mismatched_types/issue-84976.rs
-ui/missing-trait-bounds/auxiliary/issue-69725.rs
-ui/missing-trait-bounds/issue-35677.rs
-ui/missing-trait-bounds/issue-69725.rs
 ui/modules/auxiliary/issue-13872-1.rs
 ui/modules/auxiliary/issue-13872-2.rs
 ui/modules/auxiliary/issue-13872-3.rs
@@ -2284,8 +2280,6 @@ ui/recursion/issue-38591-non-regular-dropck-recursion.rs
 ui/recursion/issue-83150.rs
 ui/recursion/issue-86784.rs
 ui/recursion/issue-95134.rs
-ui/recursion_limit/issue-105700.rs
-ui/recursion_limit/issue-40003.rs
 ui/regions/issue-101280.rs
 ui/regions/issue-102374.rs
 ui/regions/issue-102392.rs

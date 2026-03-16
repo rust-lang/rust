@@ -382,7 +382,7 @@ fn exit(exit_code: i32) -> ! {
     // Drop the tracing guard before exiting, so tracing calls are flushed correctly.
     deinit_loggers();
     // Make sure the supervisor knows about the exit code.
-    #[cfg(all(unix, feature = "native-lib"))]
+    #[cfg(all(feature = "native-lib", unix))]
     miri::native_lib::register_retcode_sv(exit_code);
     // Actually exit.
     std::process::exit(exit_code);
@@ -756,7 +756,7 @@ fn main() -> ExitCode {
     debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
-        #[cfg(all(unix, feature = "native-lib"))]
+        #[cfg(all(feature = "native-lib", unix))]
         if unsafe { miri::native_lib::init_sv() }.is_err() {
             eprintln!(
                 "warning: The native-lib tracer could not be started. Is this an x86 Linux system, and does Miri have permissions to ptrace?\n\

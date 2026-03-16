@@ -38,6 +38,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
+use rustc_macros::Diagnostic;
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -54,7 +55,7 @@ use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
-use crate::lint::{diag_lint_level, lint_level};
+use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
@@ -1685,6 +1686,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn report_unused_features(self) {
+        #[derive(Diagnostic)]
+        #[diag("feature `{$feature}` is declared but not used")]
+        struct UnusedFeature {
+            feature: Symbol,
+        }
+
         // Collect first to avoid holding the lock while linting.
         let used_features = self.sess.used_features.lock();
         let unused_features = self
@@ -1703,13 +1710,11 @@ impl<'tcx> TyCtxt<'tcx> {
             .collect::<Vec<_>>();
 
         for (feature, span) in unused_features {
-            self.node_span_lint(
+            self.emit_node_span_lint(
                 rustc_session::lint::builtin::UNUSED_FEATURES,
                 CRATE_HIR_ID,
                 span,
-                |lint| {
-                    lint.primary_message(format!("feature `{}` is declared but not used", feature));
-                },
+                UnusedFeature { feature },
             );
         }
     }
@@ -2534,22 +2539,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        diag_lint_level(self.sess, lint, level, Some(span.into()), decorator)
-    }
-
-    /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), decorate);
+        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2592,21 +2582,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, id);
-        diag_lint_level(self.sess, lint, level, None, decorator);
-    }
-
-    /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_lint(
-        self,
-        lint: &'static Lint,
-        id: HirId,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, None, decorate);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {

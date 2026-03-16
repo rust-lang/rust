@@ -1371,11 +1371,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Struct(ident, generics, vdata) => {
                 self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
                     // Scalable vectors can only be tuple structs
-                    let is_scalable_vector =
-                        item.attrs.iter().any(|attr| attr.has_name(sym::rustc_scalable_vector));
-                    if is_scalable_vector && !matches!(vdata, VariantData::Tuple(..)) {
-                        this.dcx()
-                            .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
+                    let scalable_vector_attr =
+                        item.attrs.iter().find(|attr| attr.has_name(sym::rustc_scalable_vector));
+                    if let Some(attr) = scalable_vector_attr {
+                        if !matches!(vdata, VariantData::Tuple(..)) {
+                            this.dcx()
+                                .emit_err(errors::ScalableVectorNotTupleStruct { span: item.span });
+                        }
+                        if !self.sess.target.arch.supports_scalable_vectors() {
+                            this.dcx().emit_err(errors::ScalableVectorBadArch { span: attr.span });
+                        }
                     }
 
                     match vdata {

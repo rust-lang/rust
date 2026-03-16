@@ -24,7 +24,6 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
@@ -216,7 +215,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // SIMD types with invalid layout (e.g., zero-length) should emit an error
         Err(e @ LayoutError::InvalidSimd { .. }) => {
             let ty_span = tcx.ty_span(def_id);
-            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
+            tcx.dcx().span_err(ty_span, e.to_string());
             return;
         }
         // Generic statics are rejected, but we still reach this case.
@@ -1489,8 +1488,17 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
-            let mut err =
-                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples must have at least one field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        ScalableElt::Container if fields.len() > 8 => {
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples can have at most eight fields");
             err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
             err.emit();
             return;

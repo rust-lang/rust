@@ -5,7 +5,6 @@ use std::{cmp, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
-use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
@@ -163,50 +162,6 @@ pub fn iter_exported_symbols<'tcx>(
         }
     }
     interp_ok(())
-}
-
-/// Convert a softfloat type to its corresponding hostfloat type.
-pub trait ToHost {
-    type HostFloat;
-    fn to_host(self) -> Self::HostFloat;
-}
-
-/// Convert a hostfloat type to its corresponding softfloat type.
-pub trait ToSoft {
-    type SoftFloat;
-    fn to_soft(self) -> Self::SoftFloat;
-}
-
-impl ToHost for rustc_apfloat::ieee::Double {
-    type HostFloat = f64;
-
-    fn to_host(self) -> Self::HostFloat {
-        f64::from_bits(self.to_bits().try_into().unwrap())
-    }
-}
-
-impl ToSoft for f64 {
-    type SoftFloat = rustc_apfloat::ieee::Double;
-
-    fn to_soft(self) -> Self::SoftFloat {
-        Float::from_bits(self.to_bits().into())
-    }
-}
-
-impl ToHost for rustc_apfloat::ieee::Single {
-    type HostFloat = f32;
-
-    fn to_host(self) -> Self::HostFloat {
-        f32::from_bits(self.to_bits().try_into().unwrap())
-    }
-}
-
-impl ToSoft for f32 {
-    type SoftFloat = rustc_apfloat::ieee::Single;
-
-    fn to_soft(self) -> Self::SoftFloat {
-        Float::from_bits(self.to_bits().into())
-    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -774,19 +729,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
-        interp_ok(
-            try {
-                // tv_sec must be non-negative.
-                let seconds: u64 = seconds.try_into().ok()?;
-                // tv_nsec must be non-negative.
-                let nanoseconds: u32 = nanoseconds.try_into().ok()?;
-                if nanoseconds >= 1_000_000_000 {
-                    // tv_nsec must not be greater than 999,999,999.
-                    None?
-                }
-                Duration::new(seconds, nanoseconds)
-            },
-        )
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = seconds.try_into().ok()?;
+            // tv_nsec must be non-negative.
+            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                None?
+            }
+            Duration::new(seconds, nanoseconds)
+        })
     }
 
     /// Read bytes from a byte slice.

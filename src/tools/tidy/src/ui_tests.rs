@@ -214,7 +214,6 @@ fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &
         "stdout", // expected stdout file, corresponds to a rs file
         "fixed",  // expected source file after applying fixes
         "md",     // test directory descriptions
-        "ftl",    // translation tests
     ];
 
     const EXTENSION_EXCEPTION_PATHS: &[&str] = &[

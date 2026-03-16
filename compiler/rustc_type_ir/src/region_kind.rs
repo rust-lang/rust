@@ -4,7 +4,7 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
@@ -16,7 +16,7 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "'?{}"]
     #[gate_rustc_only]
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     pub struct RegionVid {}
 }
 

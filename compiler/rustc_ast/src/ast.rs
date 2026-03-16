@@ -30,8 +30,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;

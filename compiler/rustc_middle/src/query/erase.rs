@@ -10,14 +10,11 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_ast::tokenstream::TokenStream;
-use rustc_span::ErrorGuaranteed;
-use rustc_span::source_map::Spanned;
+use rustc_span::{ErrorGuaranteed, Spanned};
 
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
-use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::solve;
-use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
 
@@ -162,10 +159,6 @@ impl Erasable for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed
         [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl Erasable for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
-    type Storage = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
-}
-
 impl Erasable
     for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, rustc_errors::ErrorGuaranteed>
 {
@@ -196,10 +189,6 @@ impl Erasable for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
         [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl Erasable for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
-    type Storage = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
-}
-
 impl Erasable for Option<(mir::ConstValue, Ty<'_>)> {
     type Storage = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
 }
@@ -211,10 +200,6 @@ impl Erasable for EvalToValTreeResult<'_> {
 impl Erasable for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
     type Storage =
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
-}
-
-impl Erasable for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
-    type Storage = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
 impl Erasable
@@ -343,6 +328,8 @@ impl_erasable_for_simple_types! {
     Result<(), rustc_errors::ErrorGuaranteed>,
     Result<(), rustc_middle::traits::query::NoSolution>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
+    Result<rustc_middle::ty::adjustment::CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>,
+    Result<mir::ConstValue, mir::interpret::ErrorHandled>,
     rustc_abi::ReprOptions,
     rustc_ast::expand::allocator::AllocatorKind,
     rustc_hir::DefaultBodyStability,
@@ -396,7 +383,6 @@ impl_erasable_for_simple_types! {
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,
-    rustc_middle::ty::Representability,
     rustc_middle::ty::UnusedGenericParams,
     rustc_middle::ty::util::AlwaysRequiresDrop,
     rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,

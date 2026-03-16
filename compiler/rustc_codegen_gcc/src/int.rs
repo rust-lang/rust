@@ -75,7 +75,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let b_native = self.is_native_int_type(b_type);
         if a_native && b_native {
             // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by a signed number.
-            // TODO(antoyo): cast to unsigned to do a logical shift if that does not work.
+            // FIXME(antoyo): cast to unsigned to do a logical shift if that does not work.
             if a_type.is_signed(self) != b_type.is_signed(self) {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a >> b
@@ -168,7 +168,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             if a_type != b_type {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
-                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                    // FIXME(antoyo): perhaps use __builtin_convertvector for vector casting.
                     b = self.context.new_bitcast(self.location, b, a_type);
                 } else {
                     b = self.context.new_cast(self.location, b, a_type);
@@ -228,7 +228,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             if !a_type.is_compatible_with(b_type) {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
-                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                    // FIXME(antoyo): perhaps use __builtin_convertvector for vector casting.
                     b = self.context.new_bitcast(self.location, b, a_type);
                 } else {
                     b = self.context.new_cast(self.location, b, a_type);
@@ -255,9 +255,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn gcc_sdiv(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): check if the types are signed?
+        // FIXME(antoyo): check if the types are signed?
         // 128-bit, signed: __divti3
-        // TODO(antoyo): convert the arguments to signed?
+        // FIXME(antoyo): convert the arguments to signed?
         self.multiplicative_operation(BinaryOp::Divide, "div", true, a, b)
     }
 
@@ -284,7 +284,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
-        // TODO(antoyo): remove duplication with intrinsic?
+        // FIXME(antoyo): remove duplication with intrinsic?
         let name = if self.is_native_int_type(lhs.get_type()) {
             match oop {
                 OverflowOp::Add => "__builtin_add_overflow",
@@ -306,7 +306,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 OverflowOp::Mul => match new_kind {
                     Int(I32) => ("__mulosi4", 32),
                     Int(I64) => ("__mulodi4", 64),
-                    Int(I128) => ("__rust_i128_mulo", 128), // TODO(antoyo): use __muloti4d instead?
+                    Int(I128) => ("__rust_i128_mulo", 128), // FIXME(antoyo): use __muloti4d instead?
                     Uint(U128) => ("__rust_u128_mulo", 128),
                     _ => unreachable!(),
                 },
@@ -317,7 +317,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let intrinsic = self.context.get_builtin_function(name);
         let res = self
             .current_func()
-            // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
+            // FIXME(antoyo): is it correct to use rhs type instead of the parameter typ?
             .new_local(self.location, rhs.get_type(), "binopResult")
             .get_address(self.location);
         let new_type = type_kind_to_gcc_type(new_kind);
@@ -462,7 +462,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     lhs_high = self.context.new_cast(self.location, lhs_high, unsigned_type);
                     rhs_high = self.context.new_cast(self.location, rhs_high, unsigned_type);
                 }
-                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // FIXME(antoyo): we probably need to handle signed comparison for unsigned
                 // integers.
                 _ => (),
             }
@@ -556,7 +556,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         self.context.new_rvalue_one(self.int_type),
                     );
                 }
-                // TODO(antoyo): cast to u128 for unsigned comparison. See below.
+                // FIXME(antoyo): cast to u128 for unsigned comparison. See below.
                 IntPredicate::IntUGT => (ComparisonOp::Equals, 2),
                 IntPredicate::IntUGE => (ComparisonOp::GreaterThanEquals, 1),
                 IntPredicate::IntULT => (ComparisonOp::Equals, 0),
@@ -602,7 +602,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         rhs = self.context.new_cast(self.location, rhs, unsigned_type);
                     }
                 }
-                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // FIXME(antoyo): we probably need to handle signed comparison for unsigned
                 // integers.
                 _ => (),
             }
@@ -693,7 +693,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             b0_block.end_with_jump(self.location, after_block);
 
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
-            // TODO(antoyo): adjust this ^ comment.
+            // FIXME(antoyo): adjust this ^ comment.
             let unsigned_type = native_int_type.to_unsigned(self.cx);
             let casted_low = self.context.new_cast(self.location, self.low(a), unsigned_type);
             let shift_value = self.context.new_cast(self.location, sixty_four - b, unsigned_type);
@@ -732,7 +732,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             return self.concat_low_high_rvalues(arg_type, swapped_msb, swapped_lsb);
         }
 
-        // TODO(antoyo): check if it's faster to use string literals and a
+        // FIXME(antoyo): check if it's faster to use string literals and a
         // match instead of format!.
         let bswap = self.cx.context.get_builtin_function(format!("__builtin_bswap{}", width));
         // FIXME(antoyo): this cast should not be necessary. Remove
@@ -862,12 +862,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.bitwise_operation(BinaryOp::BitwiseOr, a, b, loc)
     }
 
-    // TODO(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/master/src/int/mod.rs#L379 instead?
+    // FIXME(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/master/src/int/mod.rs#L379 instead?
     pub fn gcc_int_cast(&self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         let value_type = value.get_type();
         if self.is_native_int_type_or_bool(dest_typ) && self.is_native_int_type_or_bool(value_type)
         {
-            // TODO: use self.location.
+            // FIXME: use self.location.
             self.context.new_cast(None, value, dest_typ)
         } else if self.is_native_int_type_or_bool(dest_typ) {
             self.context.new_cast(None, self.low(value), dest_typ)
@@ -888,7 +888,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             // Since u128 and i128 are the only types that can be unsupported, we know the type of
             // value and the destination type have the same size, so a bitcast is fine.
 
-            // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+            // FIXME(antoyo): perhaps use __builtin_convertvector for vector casting.
             self.context.new_bitcast(None, value, dest_typ)
         }
     }
