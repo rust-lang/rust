@@ -86,14 +86,14 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
     None
 }
 
-pub(crate) fn wrap_block(expr: &ast::Expr) -> ast::BlockExpr {
+pub(crate) fn wrap_block(expr: &ast::Expr, make: &SyntaxFactory) -> ast::BlockExpr {
     if let ast::Expr::BlockExpr(block) = expr
         && let Some(first) = block.syntax().first_token()
         && first.kind() == T!['{']
     {
         block.reset_indent()
     } else {
-        make::block_expr(None, Some(expr.reset_indent().indent(1.into())))
+        make.block_expr(None, Some(expr.reset_indent().indent(1.into())))
     }
 }
 
@@ -275,11 +275,6 @@ pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -
     invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
 }
 
-// FIXME: Migrate usages of this function to the above function and remove this.
-pub(crate) fn invert_boolean_expression_legacy(expr: ast::Expr) -> ast::Expr {
-    invert_special_case_legacy(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
-}
-
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
@@ -343,62 +338,11 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
     }
 }
 
-fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
-    match expr {
-        ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_subtree();
-            let op_token = bin.op_token()?;
-            let rev_token = match op_token.kind() {
-                T![==] => T![!=],
-                T![!=] => T![==],
-                T![<] => T![>=],
-                T![<=] => T![>],
-                T![>] => T![<=],
-                T![>=] => T![<],
-                // Parenthesize other expressions before prefixing `!`
-                _ => {
-                    return Some(
-                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
-                    );
-                }
-            };
-            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
-            bin_editor.replace(op_token, make::token(rev_token));
-            ast::Expr::cast(bin_editor.finish().new_root().clone())
-        }
-        ast::Expr::MethodCallExpr(mce) => {
-            let receiver = mce.receiver()?;
-            let method = mce.name_ref()?;
-            let arg_list = mce.arg_list()?;
-
-            let method = match method.text().as_str() {
-                "is_some" => "is_none",
-                "is_none" => "is_some",
-                "is_ok" => "is_err",
-                "is_err" => "is_ok",
-                _ => return None,
-            };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
-        }
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
-            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
-            _ => pe.expr(),
-        },
-        ast::Expr::Literal(lit) => match lit.kind() {
-            ast::LiteralKind::Bool(b) => match b {
-                true => Some(ast::Expr::Literal(make::expr_literal("false"))),
-                false => Some(ast::Expr::Literal(make::expr_literal("true"))),
-            },
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
 pub(crate) fn insert_attributes(
     before: impl Element,
     edit: &mut SyntaxEditor,
     attrs: impl IntoIterator<Item = ast::Attr>,
+    make: &SyntaxFactory,
 ) {
     let mut attrs = attrs.into_iter().peekable();
     if attrs.peek().is_none() {
@@ -410,9 +354,7 @@ pub(crate) fn insert_attributes(
     edit.insert_all(
         syntax::syntax_editor::Position::before(elem),
         attrs
-            .flat_map(|attr| {
-                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
-            })
+            .flat_map(|attr| [attr.syntax().clone().into(), make.whitespace(&whitespace).into()])
             .collect(),
     );
 }
@@ -1095,18 +1037,21 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 
 /// Convert a list of function params to a list of arguments that can be passed
 /// into a function call.
-pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
+pub(crate) fn convert_param_list_to_arg_list(
+    list: ast::ParamList,
+    make: &SyntaxFactory,
+) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
         if let Some(ast::Pat::IdentPat(pat)) = param.pat()
             && let Some(name) = pat.name()
         {
             let name = name.to_string();
-            let expr = make::expr_path(make::ext::ident_path(&name));
+            let expr = make.expr_path(make.ident_path(&name));
             args.push(expr);
         }
     }
-    make::arg_list(args)
+    make.arg_list(args)
 }
 
 /// Calculate the number of hashes required for a raw string containing `s`
@@ -1191,7 +1136,10 @@ pub(crate) fn replace_record_field_expr(
 
 /// Creates a token tree list from a syntax node, creating the needed delimited sub token trees.
 /// Assumes that the input syntax node is a valid syntax tree.
-pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
+pub(crate) fn tt_from_syntax(
+    node: SyntaxNode,
+    make: &SyntaxFactory,
+) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
     let mut tt_stack = vec![(None, vec![])];
 
     for element in node.descendants_with_tokens() {
@@ -1219,7 +1167,7 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
                     "mismatched opening and closing delimiters"
                 );
 
-                let sub_tt = make::token_tree(delimiter.expect("unbalanced delimiters"), tt);
+                let sub_tt = make.token_tree(delimiter.expect("unbalanced delimiters"), tt);
                 parent_tt.push(NodeOrToken::Node(sub_tt));
             }
             _ => {

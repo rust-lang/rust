@@ -5,7 +5,7 @@ use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
         self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility, Param, RangeItem, make,
+        HasTypeBounds, HasVisibility, Lifetime, Param, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -1763,6 +1763,65 @@ impl SyntaxFactory {
             }
             builder.finish(&mut mapping);
         }
+        ast
+    }
+
+    pub fn field_from_idents<'a>(
+        &self,
+        parts: impl std::iter::IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Expr> {
+        make::ext::field_from_idents(parts)
+    }
+
+    pub fn expr_await(&self, expr: ast::Expr) -> ast::AwaitExpr {
+        let ast::Expr::AwaitExpr(ast) = make::expr_await(expr.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_break(&self, label: Option<Lifetime>, expr: Option<ast::Expr>) -> ast::BreakExpr {
+        let ast::Expr::BreakExpr(ast) =
+            make::expr_break(label.clone(), expr.clone()).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(label) = label {
+                builder.map_node(label.syntax().clone(), ast.lifetime().unwrap().syntax().clone());
+            }
+            if let Some(expr) = expr {
+                builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_continue(&self, label: Option<Lifetime>) -> ast::ContinueExpr {
+        let ast::Expr::ContinueExpr(ast) = make::expr_continue(label.clone()).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(label) = label {
+                builder.map_node(label.syntax().clone(), ast.lifetime().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
         ast
     }
 }
