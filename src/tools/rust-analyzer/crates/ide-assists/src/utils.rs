@@ -342,6 +342,7 @@ pub(crate) fn insert_attributes(
     before: impl Element,
     edit: &mut SyntaxEditor,
     attrs: impl IntoIterator<Item = ast::Attr>,
+    make: &SyntaxFactory,
 ) {
     let mut attrs = attrs.into_iter().peekable();
     if attrs.peek().is_none() {
@@ -353,9 +354,7 @@ pub(crate) fn insert_attributes(
     edit.insert_all(
         syntax::syntax_editor::Position::before(elem),
         attrs
-            .flat_map(|attr| {
-                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
-            })
+            .flat_map(|attr| [attr.syntax().clone().into(), make.whitespace(&whitespace).into()])
             .collect(),
     );
 }
