@@ -14,7 +14,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
-use crate::{DUMMY_SP, Edition, Span, with_session_globals};
+use crate::{DUMMY_SP, Edition, Span, are_session_globals_set, with_session_globals};
 
 #[cfg(test)]
 mod tests;
@@ -2545,6 +2545,10 @@ impl Symbol {
         })
     }
 
+    pub fn opt_as_str(&self) -> Option<&str> {
+        are_session_globals_set().then(|| self.as_str())
+    }
+
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
@@ -2586,13 +2590,21 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.as_str(), f)
+        if let Some(s) = self.opt_as_str() {
+            fmt::Debug::fmt(s, f)
+        } else {
+            fmt::Debug::fmt(&self.0, f)
+        }
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.as_str(), f)
+        if let Some(s) = self.opt_as_str() {
+            fmt::Display::fmt(s, f)
+        } else {
+            fmt::Debug::fmt(&self.0, f)
+        }
     }
 }
 

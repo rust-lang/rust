@@ -50,7 +50,7 @@ pub enum ActiveKeyStatus<'tcx> {
     Poisoned,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
     pub usage: Option<Spanned<QueryStackFrame<'tcx>>>,
@@ -505,7 +505,7 @@ macro_rules! define_callbacks {
 
         /// Identifies a query by kind and key. This is in contrast to `QueryJobId` which is just a number.
         #[allow(non_camel_case_types)]
-        #[derive(Clone, Debug)]
+        #[derive(Clone, Debug, PartialEq, Eq)]
         pub enum TaggedQueryKey<'tcx> {
             $(
                 $name($name::Key<'tcx>),

@@ -221,7 +221,8 @@ fn cycle_error<'tcx, C: QueryCache>(
     let job_map =
         collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::FullNoContention);
 
-    let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
+    let error = find_cycle_in_stack(try_execute, &job_map, current_query_job(), span)
+        .expect("did not find a cycle");
     (mk_cycle(query, tcx, key, error), None)
 }
 

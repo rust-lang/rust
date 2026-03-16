@@ -54,13 +54,12 @@ pub(crate) struct QueryJobInfo<'tcx> {
 
 pub(crate) fn find_cycle_in_stack<'tcx>(
     id: QueryJobId,
-    job_map: QueryJobMap<'tcx>,
-    current_job: &Option<QueryJobId>,
+    job_map: &QueryJobMap<'tcx>,
+    mut current_job: Option<QueryJobId>,
     span: Span,
-) -> CycleError<'tcx> {
+) -> Option<CycleError<'tcx>> {
     // Find the waitee amongst `current_job` parents
     let mut cycle = Vec::new();
-    let mut current_job = Option::clone(current_job);
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
@@ -79,13 +78,13 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
                 let parent = info.job.parent?;
                 respan(info.job.span, job_map.frame_of(parent).clone())
             };
-            return CycleError { usage, cycle };
+            return Some(CycleError { usage, cycle });
         }
 
         current_job = info.job.parent;
     }
 
-    panic!("did not find a cycle")
+    None
 }
 
 /// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id` and returns
@@ -324,6 +323,21 @@ fn remove_cycle<'tcx>(
                 .collect(),
         };
 
+        if cfg!(debug_assertions)
+            && let Some(query_waiting_on_cycle) = entry_point.query_waiting_on_cycle
+            && let Some(expected) = find_cycle_in_stack(
+                query_waiting_on_cycle.1,
+                job_map,
+                stack.last().map(|&(_, job)| job),
+                query_waiting_on_cycle.0,
+            )
+        {
+            if error != expected {
+                panic!(
+                    "CycleError coherency check failed:\n  expected: {expected:#?}\n  got: {error:#?}"
+                );
+            }
+        }
         // We unwrap `resumable` here since there must always be one
         // edge which is resumable / waited using a query latch
         let (waitee_query, waiter_idx) = resumable.unwrap();

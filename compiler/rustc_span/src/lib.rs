@@ -183,6 +183,11 @@ where
     SESSION_GLOBALS.with(f)
 }
 
+#[inline]
+pub fn are_session_globals_set() -> bool {
+    SESSION_GLOBALS.is_set()
+}
+
 /// Default edition, no source map.
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
     create_session_globals_then(edition::DEFAULT_EDITION, &[], None, f)
