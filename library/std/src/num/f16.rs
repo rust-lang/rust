@@ -83,7 +83,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f16 {
-        intrinsics::expf16(self)
+        intrinsics::exp(self)
     }
 
     /// Returns `2^(self)`.
@@ -113,7 +113,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f16 {
-        intrinsics::exp2f16(self)
+        intrinsics::exp2(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -158,7 +158,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f16 {
-        intrinsics::logf16(self)
+        intrinsics::log(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -248,7 +248,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f16 {
-        intrinsics::log2f16(self)
+        intrinsics::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -291,7 +291,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f16 {
-        intrinsics::log10f16(self)
+        intrinsics::log10(self)
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the

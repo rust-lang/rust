@@ -58,31 +58,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
         sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
 
-        sym::expf16 => ("llvm.exp", &[bx.type_f16()]),
-        sym::expf32 => ("llvm.exp", &[bx.type_f32()]),
-        sym::expf64 => ("llvm.exp", &[bx.type_f64()]),
-        sym::expf128 => ("llvm.exp", &[bx.type_f128()]),
-
-        sym::exp2f16 => ("llvm.exp2", &[bx.type_f16()]),
-        sym::exp2f32 => ("llvm.exp2", &[bx.type_f32()]),
-        sym::exp2f64 => ("llvm.exp2", &[bx.type_f64()]),
-        sym::exp2f128 => ("llvm.exp2", &[bx.type_f128()]),
-
-        sym::logf16 => ("llvm.log", &[bx.type_f16()]),
-        sym::logf32 => ("llvm.log", &[bx.type_f32()]),
-        sym::logf64 => ("llvm.log", &[bx.type_f64()]),
-        sym::logf128 => ("llvm.log", &[bx.type_f128()]),
-
-        sym::log10f16 => ("llvm.log10", &[bx.type_f16()]),
-        sym::log10f32 => ("llvm.log10", &[bx.type_f32()]),
-        sym::log10f64 => ("llvm.log10", &[bx.type_f64()]),
-        sym::log10f128 => ("llvm.log10", &[bx.type_f128()]),
-
-        sym::log2f16 => ("llvm.log2", &[bx.type_f16()]),
-        sym::log2f32 => ("llvm.log2", &[bx.type_f32()]),
-        sym::log2f64 => ("llvm.log2", &[bx.type_f64()]),
-        sym::log2f128 => ("llvm.log2", &[bx.type_f128()]),
-
         sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
         sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
         sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
@@ -458,6 +433,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::sqrt
             | sym::sin
             | sym::cos
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log2
+            | sym::log10
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -473,6 +453,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::sqrt => "llvm.sqrt",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+                    sym::exp => "llvm.exp",
+                    sym::exp2 => "llvm.exp2",
+                    sym::log => "llvm.log",
+                    sym::log2 => "llvm.log2",
+                    sym::log10 => "llvm.log10",
                     sym::floor => "llvm.floor",
                     sym::ceil => "llvm.ceil",
                     sym::trunc => "llvm.trunc",
