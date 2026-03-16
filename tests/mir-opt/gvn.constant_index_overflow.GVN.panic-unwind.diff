@@ -30,7 +30,8 @@
 +         nop;
 +         _2 = const usize::MAX;
           StorageLive(_3);
-          StorageLive(_4);
+-         StorageLive(_4);
++         nop;
           StorageLive(_5);
 -         _5 = copy _2;
 +         _5 = const usize::MAX;
@@ -43,8 +44,9 @@
       bb1: {
           StorageDead(_7);
 -         _4 = Lt(move _5, move _6);
-+         _4 = Lt(const usize::MAX, move _6);
-          switchInt(move _4) -> [0: bb4, otherwise: bb2];
+-         switchInt(move _4) -> [0: bb4, otherwise: bb2];
++         _4 = const false;
++         switchInt(const false) -> [0: bb4, otherwise: bb2];
       }
   
       bb2: {
@@ -56,8 +58,8 @@
           _9 = PtrMetadata(copy _1);
 -         _10 = Lt(copy _8, copy _9);
 -         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, copy _8) -> [success: bb3, unwind continue];
-+         _10 = Lt(const usize::MAX, copy _9);
-+         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, const usize::MAX) -> [success: bb3, unwind continue];
++         _10 = const false;
++         assert(const false, "index out of bounds: the length is {} but the index is {}", move _9, const usize::MAX) -> [success: bb3, unwind continue];
       }
   
       bb3: {
@@ -87,7 +89,8 @@
       }
   
       bb6: {
-          StorageDead(_4);
+-         StorageDead(_4);
++         nop;
           StorageLive(_14);
           _14 = copy _3;
           _0 = opaque::<T>(move _14) -> [return: bb7, unwind continue];

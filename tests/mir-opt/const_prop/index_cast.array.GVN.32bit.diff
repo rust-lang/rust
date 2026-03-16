@@ -1,0 +1,40 @@
+- // MIR for `array` before GVN
++ // MIR for `array` after GVN
+  
+  fn array(_1: [i32; 256], _2: u8) -> () {
+      debug input => _1;
+      debug lit => _2;
+      let mut _0: ();
+      let _3: i32;
+      let _4: usize;
+      let mut _5: u8;
+      let mut _6: bool;
+      scope 1 {
+          debug x => _3;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+-         StorageLive(_4);
++         nop;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _4 = move _5 as usize (IntToInt);
++         _4 = copy _2 as usize (IntToInt);
+          StorageDead(_5);
+-         _6 = Lt(copy _4, const 256_usize);
+-         assert(move _6, "index out of bounds: the length is {} but the index is {}", const 256_usize, copy _4) -> [success: bb1, unwind continue];
++         _6 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 256_usize, copy _4) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _3 = copy _1[_4];
+-         StorageDead(_4);
++         nop;
+          _0 = const ();
+          StorageDead(_3);
+          return;
+      }
+  }
+  
