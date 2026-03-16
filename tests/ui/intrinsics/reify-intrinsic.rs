@@ -15,7 +15,7 @@ fn b() {
 fn c() {
     let _: [unsafe fn(f32) -> f32; 2] = [
         std::intrinsics::floor, //~ ERROR cannot coerce
-        std::intrinsics::log2f32,
+        std::intrinsics::log2,
     ];
 }
 

@@ -1104,150 +1104,50 @@ pub fn powf64(a: f64, x: f64) -> f64;
 #[rustc_nounwind]
 pub fn powf128(a: f128, x: f128) -> f128;
 
-/// Returns the exponential of an `f16`.
+/// Returns the exponential of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp`](../../std/primitive.f16.html#method.exp)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `exp` method.
+/// For example, [`f32::exp`](../../std/primitive.f32.html#method.exp).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf16(x: f16) -> f16;
-/// Returns the exponential of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp`](../../std/primitive.f32.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf32(x: f32) -> f32;
-/// Returns the exponential of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp`](../../std/primitive.f64.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf64(x: f64) -> f64;
-/// Returns the exponential of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp`](../../std/primitive.f128.html#method.exp)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf128(x: f128) -> f128;
+pub fn exp<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns 2 raised to the power of an `f16`.
+/// Returns 2 raised to the power of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `exp2` method.
+/// For example, [`f32::exp2`](../../std/primitive.f32.html#method.exp2).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f16(x: f16) -> f16;
-/// Returns 2 raised to the power of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f32(x: f32) -> f32;
-/// Returns 2 raised to the power of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f64(x: f64) -> f64;
-/// Returns 2 raised to the power of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f128(x: f128) -> f128;
+pub fn exp2<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the natural logarithm of an `f16`.
+/// Returns the natural logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::ln`](../../std/primitive.f16.html#method.ln)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `ln` method.
+/// For example, [`f32::ln`](../../std/primitive.f32.html#method.ln).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf16(x: f16) -> f16;
-/// Returns the natural logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::ln`](../../std/primitive.f32.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf32(x: f32) -> f32;
-/// Returns the natural logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::ln`](../../std/primitive.f64.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf64(x: f64) -> f64;
-/// Returns the natural logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::ln`](../../std/primitive.f128.html#method.ln)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf128(x: f128) -> f128;
+pub fn log<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the base 10 logarithm of an `f16`.
+/// Returns the base 10 logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::log10`](../../std/primitive.f16.html#method.log10)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `log10` method.
+/// For example, [`f32::log10`](../../std/primitive.f32.html#method.log10).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f16(x: f16) -> f16;
-/// Returns the base 10 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log10`](../../std/primitive.f32.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f32(x: f32) -> f32;
-/// Returns the base 10 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log10`](../../std/primitive.f64.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f64(x: f64) -> f64;
-/// Returns the base 10 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log10`](../../std/primitive.f128.html#method.log10)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f128(x: f128) -> f128;
+pub fn log10<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the base 2 logarithm of an `f16`.
+/// Returns the base 2 logarithm of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::log2`](../../std/primitive.f16.html#method.log2)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `log2` method.
+/// For example, [`f32::log2`](../../std/primitive.f32.html#method.log2).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f16(x: f16) -> f16;
-/// Returns the base 2 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log2`](../../std/primitive.f32.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f32(x: f32) -> f32;
-/// Returns the base 2 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log2`](../../std/primitive.f64.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f64(x: f64) -> f64;
-/// Returns the base 2 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log2`](../../std/primitive.f128.html#method.log2)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f128(x: f128) -> f128;
+pub fn log2<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Returns `a * b + c` for `f16` values.
 ///

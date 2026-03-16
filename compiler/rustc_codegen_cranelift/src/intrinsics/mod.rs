@@ -314,14 +314,6 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::expf16 => ("expf16", 1, fx.tcx.types.f16, types::F16),
-        sym::expf32 => ("expf", 1, fx.tcx.types.f32, types::F32),
-        sym::expf64 => ("exp", 1, fx.tcx.types.f64, types::F64),
-        sym::expf128 => ("expf128", 1, fx.tcx.types.f128, types::F128),
-        sym::exp2f16 => ("exp2f16", 1, fx.tcx.types.f16, types::F16),
-        sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32, types::F32),
-        sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
-        sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
         sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
@@ -330,18 +322,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::powf32 => ("powf", 2, fx.tcx.types.f32, types::F32),
         sym::powf64 => ("pow", 2, fx.tcx.types.f64, types::F64),
         sym::powf128 => ("powf128", 2, fx.tcx.types.f128, types::F128),
-        sym::logf16 => ("logf16", 1, fx.tcx.types.f16, types::F16),
-        sym::logf32 => ("logf", 1, fx.tcx.types.f32, types::F32),
-        sym::logf64 => ("log", 1, fx.tcx.types.f64, types::F64),
-        sym::logf128 => ("logf128", 1, fx.tcx.types.f128, types::F128),
-        sym::log2f16 => ("log2f16", 1, fx.tcx.types.f16, types::F16),
-        sym::log2f32 => ("log2f", 1, fx.tcx.types.f32, types::F32),
-        sym::log2f64 => ("log2", 1, fx.tcx.types.f64, types::F64),
-        sym::log2f128 => ("log2f128", 1, fx.tcx.types.f128, types::F128),
-        sym::log10f16 => ("log10f16", 1, fx.tcx.types.f16, types::F16),
-        sym::log10f32 => ("log10f", 1, fx.tcx.types.f32, types::F32),
-        sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
-        sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
         sym::fmaf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
@@ -1111,6 +1091,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
         | sym::sqrt
         | sym::sin
         | sym::cos
+        | sym::exp
+        | sym::exp2
+        | sym::log
+        | sym::log2
+        | sym::log10
         | sym::floor
         | sym::ceil
         | sym::trunc
@@ -1146,6 +1131,26 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 (sym::cos, F32) => Err("cosf"),
                 (sym::cos, F64) => Err("cos"),
                 (sym::cos, F128) => Err("cosf128"),
+                (sym::exp, F16) => Err("expf16"),
+                (sym::exp, F32) => Err("expf"),
+                (sym::exp, F64) => Err("exp"),
+                (sym::exp, F128) => Err("expf128"),
+                (sym::exp2, F16) => Err("exp2f16"),
+                (sym::exp2, F32) => Err("exp2f"),
+                (sym::exp2, F64) => Err("exp2"),
+                (sym::exp2, F128) => Err("exp2f128"),
+                (sym::log, F16) => Err("logf16"),
+                (sym::log, F32) => Err("logf"),
+                (sym::log, F64) => Err("log"),
+                (sym::log, F128) => Err("logf128"),
+                (sym::log2, F16) => Err("log2f16"),
+                (sym::log2, F32) => Err("log2f"),
+                (sym::log2, F64) => Err("log2"),
+                (sym::log2, F128) => Err("log2f128"),
+                (sym::log10, F16) => Err("log10f16"),
+                (sym::log10, F32) => Err("log10f"),
+                (sym::log10, F64) => Err("log10"),
+                (sym::log10, F128) => Err("log10f128"),
                 (sym::floor, F32 | F64) => Ok(fx.bcx.ins().floor(x)),
                 (sym::floor, F16) => Err("floorf16"),
                 (sym::floor, F128) => Err("floorf128"),
