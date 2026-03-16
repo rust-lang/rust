@@ -1765,6 +1765,17 @@ impl SyntaxFactory {
         }
         ast
     }
+
+    pub fn field_from_idents<'a>(
+        &self,
+        parts: impl std::iter::IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Expr> {
+        make::ext::field_from_idents(parts)
+    }
+
+    pub fn expr_await(&self, expr: ast::Expr) -> ast::Expr {
+        make::expr_await(expr)
+    }
 }
 
 // `ext` constructors

@@ -1095,14 +1095,17 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 
 /// Convert a list of function params to a list of arguments that can be passed
 /// into a function call.
-pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
+pub(crate) fn convert_param_list_to_arg_list(
+    list: ast::ParamList,
+    make: &SyntaxFactory,
+) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
         if let Some(ast::Pat::IdentPat(pat)) = param.pat()
             && let Some(name) = pat.name()
         {
             let name = name.to_string();
-            let expr = make::expr_path(make::ext::ident_path(&name));
+            let expr = make.expr_path(make.ident_path(&name));
             args.push(expr);
         }
     }
