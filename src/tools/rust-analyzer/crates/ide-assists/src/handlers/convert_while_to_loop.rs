@@ -57,7 +57,10 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
             let break_block = make
-                .block_expr(iter::once(make.expr_stmt(make.expr_break(None, None)).into()), None)
+                .block_expr(
+                    iter::once(make.expr_stmt(make.expr_break(None, None).into()).into()),
+                    None,
+                )
                 .indent(IndentLevel(1));
 
             edit.replace_all(

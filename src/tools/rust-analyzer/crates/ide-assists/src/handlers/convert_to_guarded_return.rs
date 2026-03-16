@@ -262,7 +262,7 @@ fn early_expression(
     }
 
     Some(match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make.expr_continue(None),
+        WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make.expr_continue(None).into(),
         FN | CLOSURE_EXPR => make.expr_return(None).into(),
         _ => return None,
     })

@@ -150,7 +150,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
                 let tail_expr = make.expr_method_call(field, make.name_ref(&name), arg_list).into();
                 let tail_expr_finished =
-                    if is_async { make.expr_await(tail_expr) } else { tail_expr };
+                    if is_async { make.expr_await(tail_expr).into() } else { tail_expr };
                 let body = make.block_expr([], Some(tail_expr_finished));
 
                 let ret_type = method_source.ret_type();
