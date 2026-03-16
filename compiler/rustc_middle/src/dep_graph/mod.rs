@@ -82,7 +82,7 @@ where
 impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn dep_kind_vtable(self, dk: DepKind) -> &'tcx DepKindVTable<'tcx> {
-        &self.dep_kind_vtables[dk.as_usize()]
+        &self.query_system.dep_kind_vtables[dk.as_usize()]
     }
 
     fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
