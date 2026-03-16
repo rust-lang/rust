@@ -17,6 +17,9 @@ impl OnUnknownItemParser {
         args: &ArgParser,
         mode: Mode,
     ) {
+        if !cx.features().diagnostic_on_unknown_item() {
+            return;
+        }
         let span = cx.attr_span;
         self.span = Some(span);
 
@@ -54,7 +57,7 @@ impl<S: Stage> AttributeParser<S> for OnUnknownItemParser {
             this.parse(cx, args, Mode::DiagnosticOnUnknownItem);
         },
     )];
-    //FIXME attribute is not parsed for non-traits but diagnostics are issued in `check_attr.rs`
+    //FIXME attribute is not parsed for non-use statements but diagnostics are issued in `check_attr.rs`
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {

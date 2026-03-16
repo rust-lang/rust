@@ -855,9 +855,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect::<Vec<_>>();
         let default_message =
             format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
-        let mut diag = if self.tcx.features().diagnostic_on_unknown_item()
-            && let Some((_, message)) =
-                errors[0].1.on_unknown_item_attr.as_mut().and_then(|a| a.directive.message.take())
+        let mut diag = if let Some((_, message)) =
+            errors[0].1.on_unknown_item_attr.as_mut().and_then(|a| a.directive.message.take())
         {
             let message = message.format(None);
             let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{message}");
@@ -867,10 +866,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             struct_span_code_err!(self.dcx(), span, E0432, "{default_message}")
         };
 
-        if self.tcx.features().diagnostic_on_unknown_item()
-            && let Some(notes) =
-                errors[0].1.on_unknown_item_attr.as_ref().map(|a| &a.directive.notes)
-        {
+        if let Some(notes) = errors[0].1.on_unknown_item_attr.as_ref().map(|a| &a.directive.notes) {
             for note in notes {
                 diag.note(note.format(None));
             }
@@ -884,13 +880,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         const MAX_LABEL_COUNT: usize = 10;
 
         for (import, mut err) in errors.into_iter().take(MAX_LABEL_COUNT) {
-            if self.tcx.features().diagnostic_on_unknown_item()
-                && let Some(label) = err
-                    .on_unknown_item_attr
-                    .as_mut()
-                    .and_then(|a| a.directive.label.take())
-                    .map(|label| label.1.format(None))
-                    .or(err.label.clone())
+            if let Some(label) = err
+                .on_unknown_item_attr
+                .as_mut()
+                .and_then(|a| a.directive.label.take())
+                .map(|label| label.1.format(None))
+                .or(err.label.clone())
             {
                 diag.span_label(err.span, label);
             } else if let Some(label) = err.label {
