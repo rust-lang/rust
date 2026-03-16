@@ -92,7 +92,7 @@ fn parse(
         let mut missing_fragment_specifier = |span| {
             sess.dcx().emit_err(errors::MissingFragmentSpecifier {
                 span,
-                add_span: span.shrink_to_hi(),
+                add_span: Some(span.shrink_to_hi()),
                 valid: VALID_FRAGMENT_NAMES_MSG,
                 semi_span: None,
             });
@@ -146,31 +146,39 @@ fn parse(
             result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
         } else {
             // Check for typo: `;` instead of `:` before a valid fragment specifier.
-            let semi_span = {
+            let typo_recovery = {
                 let mut clone = iter.clone();
                 if let Some(tokenstream::TokenTree::Token(semi_token, _)) = clone.next()
                     && semi_token.kind == token::Semi
                     && let Some(tokenstream::TokenTree::Token(frag_token, _)) = clone.next()
                     && let Some((fragment, _)) = frag_token.ident()
-                    && NonterminalKind::from_symbol(fragment.name, || edition).is_some()
                 {
-                    Some(semi_token.span)
+                    let span = frag_token.span.with_lo(start_sp.lo());
+                    let edition = || {
+                        // FIXME(#85708) - once we properly decode a foreign
+                        // crate's `SyntaxContext::root`, then we can replace
+                        // this with just `span.edition()`. A
+                        // `SyntaxContext::root()` from the current crate will
+                        // have the edition of the current crate, and a
+                        // `SyntaxContext::root()` from a foreign crate will
+                        // have the edition of that crate (which we manually
+                        // retrieve via the `edition` parameter).
+                        if !span.from_expansion() { edition } else { span.edition() }
+                    };
+                    NonterminalKind::from_symbol(fragment.name, edition)
+                        .map(|kind| (semi_token.span, span, kind))
                 } else {
                     None
                 }
             };
-            if semi_span.is_some() {
+            if let Some((semi_span, span, kind)) = typo_recovery {
                 sess.dcx().emit_err(errors::MissingFragmentSpecifier {
                     span: start_sp,
-                    add_span: start_sp.shrink_to_hi(),
+                    add_span: None,
                     valid: VALID_FRAGMENT_NAMES_MSG,
-                    semi_span,
+                    semi_span: Some(semi_span),
                 });
-                result.push(TokenTree::MetaVarDecl {
-                    span: start_sp,
-                    name: ident,
-                    kind: NonterminalKind::TT,
-                });
+                result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
             } else {
                 missing_fragment_specifier(start_sp);
             }

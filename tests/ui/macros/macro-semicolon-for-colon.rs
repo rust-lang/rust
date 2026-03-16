@@ -2,8 +2,7 @@
 // produces a helpful suggestion.
 
 macro_rules! m {
-    ($x;tt) => {};
-    //~^ ERROR missing fragment specifier
+    ($x;ty) => {}; //~ ERROR missing fragment specifier
 }
 
 fn main() {}
