@@ -47,10 +47,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     let gcc_name = match name {
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::sinf32 => "sinf",
-        sym::sinf64 => "sin",
-        sym::cosf32 => "cosf",
-        sym::cosf64 => "cos",
         sym::powf32 => "powf",
         sym::powf64 => "pow",
         sym::expf32 => "expf",
@@ -421,6 +417,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             // float unary intrinsics
             sym::fabs
             | sym::sqrt
+            | sym::sin
+            | sym::cos
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -450,6 +448,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     (sym::sqrt, F32) => Builtin("sqrtf"),
                     (sym::sqrt, F64) => Builtin("sqrt"),
                     (sym::sqrt, F128) => Extern("sqrtf128"),
+                    (sym::sin, F32) => Builtin("sinf"),
+                    (sym::sin, F64) => Builtin("sin"),
+                    (sym::cos, F32) => Builtin("cosf"),
+                    (sym::cos, F64) => Builtin("cos"),
                     (sym::floor, F16) => BuiltinF16Cast("__builtin_floorf"),
                     (sym::floor, F32) => Builtin("floorf"),
                     (sym::floor, F64) => Builtin("floor"),

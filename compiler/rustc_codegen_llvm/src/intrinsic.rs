@@ -52,16 +52,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::sinf16 => ("llvm.sin", &[bx.type_f16()]),
-        sym::sinf32 => ("llvm.sin", &[bx.type_f32()]),
-        sym::sinf64 => ("llvm.sin", &[bx.type_f64()]),
-        sym::sinf128 => ("llvm.sin", &[bx.type_f128()]),
-
-        sym::cosf16 => ("llvm.cos", &[bx.type_f16()]),
-        sym::cosf32 => ("llvm.cos", &[bx.type_f32()]),
-        sym::cosf64 => ("llvm.cos", &[bx.type_f64()]),
-        sym::cosf128 => ("llvm.cos", &[bx.type_f128()]),
-
         sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
         sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
         sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
@@ -465,6 +455,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::fabs
             | sym::sqrt
+            | sym::sin
+            | sym::cos
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -479,6 +471,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llvm_name = match name {
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
+                    sym::sin => "llvm.sin",
+                    sym::cos => "llvm.cos",
                     sym::floor => "llvm.floor",
                     sym::ceil => "llvm.ceil",
                     sym::trunc => "llvm.trunc",

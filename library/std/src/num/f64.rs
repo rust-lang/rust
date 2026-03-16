@@ -697,7 +697,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f64 {
-        intrinsics::sinf64(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -721,7 +721,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f64 {
-        intrinsics::cosf64(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).

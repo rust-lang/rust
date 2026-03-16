@@ -355,14 +355,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
         sym::copysignf128 => ("copysignf128", 2, fx.tcx.types.f128, types::F128),
-        sym::sinf16 => ("sinf16", 1, fx.tcx.types.f16, types::F16),
-        sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
-        sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
-        sym::sinf128 => ("sinf128", 1, fx.tcx.types.f128, types::F128),
-        sym::cosf16 => ("cosf16", 1, fx.tcx.types.f16, types::F16),
-        sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
-        sym::cosf64 => ("cos", 1, fx.tcx.types.f64, types::F64),
-        sym::cosf128 => ("cosf128", 1, fx.tcx.types.f128, types::F128),
         _ => return false,
     };
 
@@ -1117,6 +1109,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
         // Float unop intrinsics
         sym::fabs
         | sym::sqrt
+        | sym::sin
+        | sym::cos
         | sym::floor
         | sym::ceil
         | sym::trunc
@@ -1143,6 +1137,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 (sym::sqrt, F32 | F64) => Ok(fx.bcx.ins().sqrt(x)),
                 (sym::sqrt, F16) => Err("sqrtf16"),
                 (sym::sqrt, F128) => Err("sqrtf128"),
+                (sym::sin, F16) => Err("sinf16"),
+                (sym::sin, F32) => Err("sinf"),
+                (sym::sin, F64) => Err("sin"),
+                (sym::sin, F128) => Err("sinf128"),
+                (sym::cos, F16) => Err("cosf16"),
+                (sym::cos, F32) => Err("cosf"),
+                (sym::cos, F64) => Err("cos"),
+                (sym::cos, F128) => Err("cosf128"),
                 (sym::floor, F32 | F64) => Ok(fx.bcx.ins().floor(x)),
                 (sym::floor, F16) => Err("floorf16"),
                 (sym::floor, F128) => Err("floorf128"),

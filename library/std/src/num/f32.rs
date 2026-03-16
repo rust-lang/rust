@@ -697,7 +697,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        intrinsics::sinf32(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -721,7 +721,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        intrinsics::cosf32(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).
