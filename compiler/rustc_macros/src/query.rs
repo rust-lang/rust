@@ -128,6 +128,7 @@ impl<T: Parse> Parse for List<T> {
 }
 
 struct Desc {
+    // This ident is always `desc` but we need it for its span, for `crate::query::modifiers`.
     modifier: Ident,
     expr_list: Punctuated<Expr, Token![,]>,
 }
