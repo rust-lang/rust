@@ -42,6 +42,7 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+    pub num_worker_threads: usize,
     pub proc_macro_processes: usize,
 }
 
@@ -197,7 +198,7 @@ pub fn load_workspace_into_db(
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(db, 1, &|_| ());
+        prime_caches::parallel_prime_caches(db, load_config.num_worker_threads, &|_| ());
     }
 
     Ok((vfs, proc_macro_server.and_then(Result::ok)))
@@ -750,6 +751,7 @@ mod tests {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =
