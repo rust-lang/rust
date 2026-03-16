@@ -1057,63 +1057,23 @@ pub fn powif64(a: f64, x: i32) -> f64;
 #[rustc_nounwind]
 pub fn powif128(a: f128, x: i32) -> f128;
 
-/// Returns the sine of an `f16`.
+/// Returns the sine of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::sin`](../../std/primitive.f16.html#method.sin)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `sin` method.
+/// For example, [`f32::sin`](../../std/primitive.f32.html#method.sin).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf16(x: f16) -> f16;
-/// Returns the sine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sin`](../../std/primitive.f32.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf32(x: f32) -> f32;
-/// Returns the sine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sin`](../../std/primitive.f64.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf64(x: f64) -> f64;
-/// Returns the sine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sin`](../../std/primitive.f128.html#method.sin)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf128(x: f128) -> f128;
+pub fn sin<T: bounds::FloatPrimitive>(x: T) -> T;
 
-/// Returns the cosine of an `f16`.
+/// Returns the cosine of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::cos`](../../std/primitive.f16.html#method.cos)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `cos` method.
+/// For example, [`f32::cos`](../../std/primitive.f32.html#method.cos).
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf16(x: f16) -> f16;
-/// Returns the cosine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::cos`](../../std/primitive.f32.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf32(x: f32) -> f32;
-/// Returns the cosine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::cos`](../../std/primitive.f64.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf64(x: f64) -> f64;
-/// Returns the cosine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::cos`](../../std/primitive.f128.html#method.cos)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf128(x: f128) -> f128;
+pub fn cos<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Raises an `f16` to an `f16` power.
 ///
