@@ -96,7 +96,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     /// Computes an [`ItemTree`] for the given file or macro expansion.
     #[salsa::invoke(file_item_tree_query)]
     #[salsa::transparent]
-    fn file_item_tree(&self, file_id: HirFileId) -> &ItemTree;
+    fn file_item_tree(&self, file_id: HirFileId, krate: Crate) -> &ItemTree;
 
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]

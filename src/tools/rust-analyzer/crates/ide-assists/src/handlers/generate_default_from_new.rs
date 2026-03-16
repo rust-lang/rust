@@ -2,7 +2,7 @@ use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
     AstNode,
-    ast::{self, HasGenericParams, HasName, HasTypeBounds, Impl, make},
+    ast::{self, HasGenericParams, HasName, HasTypeBounds, Impl, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
@@ -72,7 +72,9 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
             let default_code = "    fn default() -> Self {
         Self::new()
     }";
-            let code = generate_trait_impl_text_from_impl(&impl_, self_ty, "Default", default_code);
+            let make = SyntaxFactory::without_mappings();
+            let code =
+                generate_trait_impl_text_from_impl(&impl_, self_ty, "Default", default_code, &make);
             builder.insert(insert_location.end(), code);
         },
     )
@@ -84,6 +86,7 @@ fn generate_trait_impl_text_from_impl(
     self_ty: ast::Type,
     trait_text: &str,
     code: &str,
+    make: &SyntaxFactory,
 ) -> String {
     let generic_params = impl_.generic_param_list().map(|generic_params| {
         let lifetime_params =
@@ -92,18 +95,18 @@ fn generate_trait_impl_text_from_impl(
             // remove defaults since they can't be specified in impls
             let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = make::type_param(param.name()?, param.type_bound_list());
+                    let param = make.type_param(param.name()?, param.type_bound_list());
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = make::const_param(param.name()?, param.ty()?);
+                    let param = make.const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
             };
             Some(param)
         });
 
-        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+        make.generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
     });
 
     let mut buf = String::with_capacity(code.len());

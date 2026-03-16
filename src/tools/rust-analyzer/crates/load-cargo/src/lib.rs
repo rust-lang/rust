@@ -638,7 +638,7 @@ impl ProcMacroExpander for Expander {
                     current_span = Span {
                         range: resolved.range,
                         anchor: SpanAnchor {
-                            file_id: resolved.file_id.editioned_file_id(db),
+                            file_id: resolved.file_id.span_file_id(db),
                             ast_id: span::ROOT_ERASED_FILE_AST_ID,
                         },
                         ctx: current_ctx,
@@ -652,7 +652,7 @@ impl ProcMacroExpander for Expander {
                 let resolved = db.resolve_span(current_span);
 
                 Ok(SubResponse::SpanSourceResult {
-                    file_id: resolved.file_id.editioned_file_id(db).as_u32(),
+                    file_id: resolved.file_id.span_file_id(db).as_u32(),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
                     start: u32::from(resolved.range.start()),
                     end: u32::from(resolved.range.end()),
@@ -684,7 +684,7 @@ impl ProcMacroExpander for Expander {
                             .text_range();
 
                         let parent_span = Some(ParentSpan {
-                            file_id: editioned_file_id.editioned_file_id(db).as_u32(),
+                            file_id: editioned_file_id.span_file_id(db).as_u32(),
                             ast_id: span::ROOT_ERASED_FILE_AST_ID.into_raw(),
                             start: u32::from(range.start()),
                             end: u32::from(range.end()),

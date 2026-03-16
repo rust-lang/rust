@@ -2,7 +2,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(3800),
+                [salsa id]: Id(3400),
             },
         },
         [

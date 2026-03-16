@@ -1,9 +1,11 @@
 //! Wrappers over [`make`] constructors
+use either::Either;
+
 use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
         self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility, RangeItem, make,
+        HasTypeBounds, HasVisibility, Param, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -95,6 +97,52 @@ impl SyntaxFactory {
         field_list: ast::FieldList,
     ) -> ast::Struct {
         make::struct_(visibility, strukt_name, generic_param_list, field_list).clone_for_update()
+    }
+
+    pub fn enum_(
+        &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
+        visibility: Option<ast::Visibility>,
+        enum_name: ast::Name,
+        generic_param_list: Option<ast::GenericParamList>,
+        where_clause: Option<ast::WhereClause>,
+        variant_list: ast::VariantList,
+    ) -> ast::Enum {
+        make::enum_(attrs, visibility, enum_name, generic_param_list, where_clause, variant_list)
+            .clone_for_update()
+    }
+
+    pub fn unnamed_param(&self, ty: ast::Type) -> ast::Param {
+        make::unnamed_param(ty).clone_for_update()
+    }
+
+    pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
+        &self,
+        is_unsafe: bool,
+        abi: Option<ast::Abi>,
+        params: I,
+        ret_type: Option<ast::RetType>,
+    ) -> ast::FnPtrType {
+        make::ty_fn_ptr(is_unsafe, abi, params, ret_type).clone_for_update()
+    }
+
+    pub fn where_pred(
+        &self,
+        path: Either<ast::Lifetime, ast::Type>,
+        bounds: impl IntoIterator<Item = ast::TypeBound>,
+    ) -> ast::WherePred {
+        make::where_pred(path, bounds).clone_for_update()
+    }
+
+    pub fn where_clause(
+        &self,
+        predicates: impl IntoIterator<Item = ast::WherePred>,
+    ) -> ast::WhereClause {
+        make::where_clause(predicates).clone_for_update()
+    }
+
+    pub fn impl_trait_type(&self, bounds: ast::TypeBoundList) -> ast::ImplTraitType {
+        make::impl_trait_type(bounds).clone_for_update()
     }
 
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {
@@ -285,6 +333,26 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn generic_ty_path_segment(
+        &self,
+        name_ref: ast::NameRef,
+        generic_args: impl IntoIterator<Item = ast::GenericArg>,
+    ) -> ast::PathSegment {
+        make::generic_ty_path_segment(name_ref, generic_args).clone_for_update()
+    }
+
+    pub fn tail_only_block_expr(&self, tail_expr: ast::Expr) -> ast::BlockExpr {
+        make::tail_only_block_expr(tail_expr)
+    }
+
+    pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
+        make::expr_bin_op(lhs, op, rhs)
+    }
+
+    pub fn ty_placeholder(&self) -> ast::Type {
+        make::ty_placeholder().clone_for_update()
     }
 
     pub fn path_segment_generics(
