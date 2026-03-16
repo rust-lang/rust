@@ -527,8 +527,11 @@ impl Session {
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
+        //
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
+        //
+        // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
+        // scope bugs in the future.
         || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
     }
 
