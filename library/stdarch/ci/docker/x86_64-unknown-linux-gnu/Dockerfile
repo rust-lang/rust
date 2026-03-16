@@ -6,11 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   make \
   ca-certificates \
   wget \
-  xz-utils \
-  clang \
-  libstdc++-14-dev \
-  build-essential \
-  lld
+  xz-utils
 
 RUN wget http://ci-mirrors.rust-lang.org/sde-external-10.8.0-2026-03-15-lin.tar.xz -O sde.tar.xz
 RUN mkdir intel-sde

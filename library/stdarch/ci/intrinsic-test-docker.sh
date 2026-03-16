@@ -48,7 +48,7 @@ run() {
       --workdir /checkout \
       --privileged \
       stdarch \
-      sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/intrinsic-test.sh ${1}"
+      sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/intrinsic-test.sh"
 }
 
 if [ -z "$1" ]; then

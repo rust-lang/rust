@@ -1,11 +1,9 @@
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
-  g++ \
   ca-certificates \
   libc6-dev \
   gcc-arm-linux-gnueabihf \
-  g++-arm-linux-gnueabihf \
   libc6-dev-armhf-cross \
   qemu-user \
   make \
