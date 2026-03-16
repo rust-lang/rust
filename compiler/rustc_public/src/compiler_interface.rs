@@ -850,6 +850,9 @@ impl<'tcx> CompilerInterface<'tcx> {
             .collect()
     }
 
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
     pub(crate) fn vtable_entry(&self, trait_ref: &TraitRef, idx: usize) -> Option<VtblEntry> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();

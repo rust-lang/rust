@@ -1446,6 +1446,9 @@ impl TraitRef {
         with(|cx| cx.vtable_entries(self))
     }
 
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
     pub fn vtable_entry(&self, idx: usize) -> Option<VtblEntry> {
         with(|cx| cx.vtable_entry(self, idx))
     }

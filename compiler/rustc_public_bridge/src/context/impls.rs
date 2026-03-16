@@ -763,7 +763,10 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         self.tcx.vtable_entries(trait_ref).to_vec()
     }
 
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
     pub fn vtable_entry(&self, trait_ref: TraitRef<'tcx>, idx: usize) -> Option<VtblEntry<'tcx>> {
-        self.vtable_entries(trait_ref).get(idx).cloned()
+        self.vtable_entries(trait_ref).get(idx).copied()
     }
 }
