@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::comp
 
 use crate::hir::def::DefKind;
 use crate::ty::solve::NoSolution;
-use crate::ty::{CanonicalVarValues, GenericArg, GenericArgKind, GenericArgs, Region};
+use crate::ty::{CanonicalVarValues, GenericArg, GenericArgKind, GenericArgs, Region, RegionKind};
 use crate::universal_regions::{
     compute_inputs_and_output_non_nll, defining_ty_non_nll,
     for_each_late_bound_region_in_recursive_scope,
@@ -42,16 +42,6 @@ fn compute_outlives_bounds_rename<'tcx>(
     let unnormalized_input_output_tys =
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
 
-    // Get late bound params.
-    for (idx, bound_var) in unnormalized_input_output_tys.bound_vars().iter().enumerate() {
-        if let ty::BoundVariableKind::Region(kind) = bound_var {
-            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
-            let r = ty::Region::new_late_param(infcx.tcx, mir_def.to_def_id(), kind);
-            debug!("late bound region are {:?}", r);
-            late_bound_region.push(r);
-        }
-    }
-
     let unnormalized_input_output_tys = tcx
         .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
 
@@ -60,6 +50,8 @@ fn compute_outlives_bounds_rename<'tcx>(
     let mut norm_sig_tys: Vec<Ty<'_>> = vec![];
 
     for ty in unnormalized_input_output_tys {
+        debug!("the ty for input and output are {:?}", ty);
+        debug!("the kind of type is {:?}", ty.kind());
         // Replace erased regions with fresh region variables.
         let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
             ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
@@ -107,6 +99,13 @@ fn compute_outlives_bounds_rename<'tcx>(
                 compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false)
             {
                 outlives_bounds.extend(bounds);
+            }
+        }
+
+        // Collect late bound region
+        if let ty::Ref(region, _, _) = ty.kind() {
+            if let RegionKind::ReLateParam(..) = region.kind() {
+                late_bound_region.push(*region);
             }
         }
 
