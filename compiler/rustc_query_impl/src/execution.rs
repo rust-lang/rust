@@ -47,23 +47,14 @@ pub enum CollectActiveJobsKind {
 }
 
 /// Returns a map of currently active query jobs, collected from all queries.
-///
-/// If `require_complete` is `true`, this function locks all shards of the
-/// query results to produce a complete map, which always returns `Ok`.
-/// Otherwise, it may return an incomplete map as an error if any shard
-/// lock cannot be acquired.
-///
-/// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
-/// especially when called from within a deadlock handler, unless a
-/// complete map is needed and no deadlock is possible at this call site.
-pub fn collect_active_jobs_from_all_queries<'tcx>(
+pub fn collect_active_query_jobs<'tcx>(
     tcx: TyCtxt<'tcx>,
     collect_kind: CollectActiveJobsKind,
 ) -> QueryJobMap<'tcx> {
     let mut job_map = QueryJobMap::default();
 
     for_each_query_vtable!(ALL, tcx, |query| {
-        gather_active_jobs(query, collect_kind, &mut job_map);
+        collect_active_query_jobs_inner(query, collect_kind, &mut job_map);
     });
 
     job_map
@@ -71,14 +62,8 @@ pub fn collect_active_jobs_from_all_queries<'tcx>(
 
 /// Internal plumbing for collecting the set of active jobs for this query.
 ///
-/// Should only be called from `collect_active_jobs_from_all_queries`.
-///
-/// (We arbitrarily use the word "gather" when collecting the jobs for
-/// each individual query, so that we have distinct function names to
-/// grep for.)
-///
 /// Aborts if jobs can't be gathered as specified by `collect_kind`.
-fn gather_active_jobs<'tcx, C>(
+fn collect_active_query_jobs_inner<'tcx, C>(
     query: &'tcx QueryVTable<'tcx, C>,
     collect_kind: CollectActiveJobsKind,
     job_map: &mut QueryJobMap<'tcx>,
@@ -86,7 +71,7 @@ fn gather_active_jobs<'tcx, C>(
     C: QueryCache<Key: QueryKey + DynSend + DynSync>,
     QueryVTable<'tcx, C>: DynSync,
 {
-    let mut gather_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
+    let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
         for (key, status) in shard.iter() {
             if let ActiveKeyStatus::Started(job) = status {
                 // This function is safe to call with the shard locked because it is very simple.
@@ -99,13 +84,13 @@ fn gather_active_jobs<'tcx, C>(
     match collect_kind {
         CollectActiveJobsKind::Full => {
             for shard in query.state.active.lock_shards() {
-                gather_shard_jobs(&shard);
+                collect_shard_jobs(&shard);
             }
         }
         CollectActiveJobsKind::FullNoContention => {
             for shard in query.state.active.try_lock_shards() {
                 match shard {
-                    Some(shard) => gather_shard_jobs(&shard),
+                    Some(shard) => collect_shard_jobs(&shard),
                     None => panic!("Failed to collect active jobs for query `{}`!", query.name),
                 }
             }
@@ -113,7 +98,7 @@ fn gather_active_jobs<'tcx, C>(
         CollectActiveJobsKind::PartialAllowed => {
             for shard in query.state.active.try_lock_shards() {
                 match shard {
-                    Some(shard) => gather_shard_jobs(&shard),
+                    Some(shard) => collect_shard_jobs(&shard),
                     None => warn!("Failed to collect active jobs for query `{}`!", query.name),
                 }
             }
@@ -218,8 +203,7 @@ fn cycle_error<'tcx, C: QueryCache>(
 ) -> (C::Value, Option<DepNodeIndex>) {
     // Ensure there were no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let job_map =
-        collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::FullNoContention);
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
 
     let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
     (mk_cycle(query, tcx, key, error), None)

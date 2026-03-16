@@ -17,7 +17,7 @@ use rustc_middle::query::plumbing::{QuerySystem, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
-pub use crate::execution::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
+pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
 
 mod dep_kind_vtables;
@@ -64,6 +64,6 @@ pub fn query_system<'tcx>(
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings =
         profiling_support::alloc_self_profile_query_strings;
-    providers.hooks.query_key_hash_verify_all = plumbing::query_key_hash_verify_all;
-    providers.hooks.encode_all_query_results = plumbing::encode_all_query_results;
+    providers.hooks.verify_query_key_hashes = plumbing::verify_query_key_hashes;
+    providers.hooks.encode_query_values = plumbing::encode_query_values;
 }
