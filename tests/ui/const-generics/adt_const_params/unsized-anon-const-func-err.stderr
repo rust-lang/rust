@@ -21,7 +21,9 @@ error[E0308]: mismatched types
   --> $DIR/unsized-anon-const-func-err.rs:9:22
    |
 LL | const VALUE: [u32] = [0; 4];
-   |                      ^^^^^^ expected `[u32]`, found `[u32; 4]`
+   |              -----   ^^^^^^ expected `[u32]`, found `[u32; 4]`
+   |              |
+   |              expected because of the type of the constant
 
 error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
   --> $DIR/unsized-anon-const-func-err.rs:14:12

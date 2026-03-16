@@ -1,21 +1,34 @@
+/// Decompose a float into a normalized value within the range `[0.5, 1)`, and a power of 2.
+///
+/// That is, `x * 2^p` will represent the input value.
+// Placeholder so we can have `frexpf16` in the `Float` trait.
+#[cfg(f16_enabled)]
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
+pub fn frexpf16(x: f16) -> (f16, i32) {
+    super::generic::frexp(x)
+}
+
+/// Decompose a float into a normalized value within the range `[0.5, 1)`, and a power of 2.
+///
+/// That is, `x * 2^p` will represent the input value.
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
+pub fn frexpf(x: f32) -> (f32, i32) {
+    super::generic::frexp(x)
+}
+
+/// Decompose a float into a normalized value within the range `[0.5, 1)`, and a power of 2.
+///
+/// That is, `x * 2^p` will represent the input value.
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn frexp(x: f64) -> (f64, i32) {
-    let mut y = x.to_bits();
-    let ee = ((y >> 52) & 0x7ff) as i32;
+    super::generic::frexp(x)
+}
 
-    if ee == 0 {
-        if x != 0.0 {
-            let x1p64 = f64::from_bits(0x43f0000000000000);
-            let (x, e) = frexp(x * x1p64);
-            return (x, e - 64);
-        }
-        return (x, 0);
-    } else if ee == 0x7ff {
-        return (x, 0);
-    }
-
-    let e = ee - 0x3fe;
-    y &= 0x800fffffffffffff;
-    y |= 0x3fe0000000000000;
-    return (f64::from_bits(y), e);
+/// Decompose a float into a normalized value within the range `[0.5, 1)`, and a power of 2.
+///
+/// That is, `x * 2^p` will represent the input value.
+#[cfg(f128_enabled)]
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
+pub fn frexpf128(x: f128) -> (f128, i32) {
+    super::generic::frexp(x)
 }

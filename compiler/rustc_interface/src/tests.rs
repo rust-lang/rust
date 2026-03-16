@@ -822,6 +822,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(min_function_alignment, Some(Align::EIGHT));
+    tracked!(min_recursion_limit, Some(256));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));

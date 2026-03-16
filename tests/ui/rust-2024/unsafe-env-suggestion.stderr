@@ -13,7 +13,7 @@ LL | #![deny(deprecated_safe_2024)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: you can wrap the call in an `unsafe` block if you can guarantee that the environment access only happens in single-threaded code
    |
-LL +     // TODO: Audit that the environment access only happens in single-threaded code.
+LL +     // FIXME: Audit that the environment access only happens in single-threaded code.
 LL ~     unsafe { env::set_var("FOO", "BAR") };
    |
 
@@ -27,7 +27,7 @@ LL |     env::remove_var("FOO");
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/newly-unsafe-functions.html>
 help: you can wrap the call in an `unsafe` block if you can guarantee that the environment access only happens in single-threaded code
    |
-LL +     // TODO: Audit that the environment access only happens in single-threaded code.
+LL +     // FIXME: Audit that the environment access only happens in single-threaded code.
 LL ~     unsafe { env::remove_var("FOO") };
    |
 

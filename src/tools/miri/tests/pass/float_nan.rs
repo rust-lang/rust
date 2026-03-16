@@ -541,6 +541,12 @@ fn test_simd() {
 }
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        // Skip this test when we use the fallback bodies, as that one is deterministic.
+        // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
+        return;
+    }
+
     // Check our constants against std, just to be sure.
     // We add 1 since our numbers are the number of bits stored
     // to represent the value, and std has the precision of the value,

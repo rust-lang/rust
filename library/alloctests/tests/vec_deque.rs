@@ -2347,3 +2347,16 @@ fn test_splice_wrapping() {
 
     assert_eq!(Vec::from(vec), [7, 8, 9]);
 }
+
+#[test]
+fn test_splice_wrapping_and_resize() {
+    let mut vec = VecDeque::new();
+
+    for i in [1; 6] {
+        vec.push_front(i);
+    }
+
+    vec.splice(1..1, [2, 3, 4]);
+
+    assert_eq!(Vec::from(vec), [1, 2, 3, 4, 1, 1, 1, 1, 1])
+}

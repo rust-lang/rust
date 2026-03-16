@@ -328,7 +328,7 @@ const fn hex_digit(c: u8) -> Option<u8> {
 mod hex_fmt {
     use core::fmt;
 
-    use crate::support::Float;
+    use crate::support::{Float, Int};
 
     /// Format a floating point number as its IEEE hex (`%a`) representation.
     pub struct Hexf<F>(pub F);
@@ -340,8 +340,10 @@ mod hex_fmt {
             write!(f, "-")?;
         }
 
-        if x.is_nan() {
-            return write!(f, "NaN");
+        if x.is_snan() {
+            return write!(f, "sNaN");
+        } else if x.is_nan() {
+            return write!(f, "qNaN");
         } else if x.is_infinite() {
             return write!(f, "inf");
         } else if *x == F::ZERO {
@@ -419,7 +421,7 @@ mod hex_fmt {
                     let _ = f;
                     unimplemented!()
                 } else {
-                    fmt::LowerHex::fmt(&self.0, f)
+                    write!(f, "{:#010x}", self.0)
                 }
             }
         }
@@ -456,6 +458,53 @@ mod hex_fmt {
             }
         }
     }
+
+    pub struct Hexi<F>(pub F);
+
+    impl<I: Int> fmt::LowerHex for Hexi<I> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    write!(f, "{:#0width$x}", self.0, width = ((I::BITS / 4) + 2) as usize)
+                }
+            }
+        }
+    }
+
+    impl<T> fmt::Debug for Hexi<T>
+    where
+        Hexi<T>: fmt::LowerHex,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    fmt::LowerHex::fmt(self, f)
+                }
+            }
+        }
+    }
+
+    impl<T> fmt::Display for Hexi<T>
+    where
+        Hexi<T>: fmt::LowerHex,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            cfg_if! {
+                if #[cfg(feature = "compiler-builtins")] {
+                    let _ = f;
+                    unimplemented!()
+                } else {
+                    fmt::LowerHex::fmt(self, f)
+                }
+            }
+        }
+    }
 }
 
 #[cfg(any(test, feature = "unstable-public-internals"))]
@@ -464,6 +513,7 @@ pub use hex_fmt::*;
 #[cfg(test)]
 mod parse_tests {
     extern crate std;
+    use std::string::String;
     use std::{format, println};
 
     use super::*;
@@ -512,6 +562,16 @@ mod parse_tests {
         }
         Ok(())
     }
+
+    #[cfg_attr(not(f16_enabled), expect(unused))]
+    pub fn canonicalize_snan_str(s: String) -> String {
+        if s.contains("sNaN") || s.contains("qNaN") {
+            s.replace("sNaN", "NaN").replace("qNaN", "NaN")
+        } else {
+            s
+        }
+    }
+
     #[test]
     #[cfg(f16_enabled)]
     fn test_rounding() {
@@ -519,7 +579,11 @@ mod parse_tests {
         for i in -n..n {
             let u = i.rotate_right(11) as u32;
             let s = format!("{}", Hexf(f32::from_bits(u)));
-            assert!(rounding_properties(&s).is_ok());
+            let s = canonicalize_snan_str(s);
+            match rounding_properties(&s) {
+                Ok(()) => (),
+                Err(e) => panic!("failed rounding properties for `{s}`: {e:?}"),
+            }
         }
     }
 
@@ -846,8 +910,6 @@ mod parse_tests {
 }
 
 #[cfg(test)]
-// FIXME(ppc): something with `should_panic` tests cause a SIGILL with ppc64le
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 mod tests_panicking {
     extern crate std;
     use super::*;
@@ -1054,8 +1116,11 @@ mod print_tests {
         use std::format;
         // Exhaustively check that `f16` roundtrips.
         for x in 0..=u16::MAX {
+            use super::parse_tests::canonicalize_snan_str;
+
             let f = f16::from_bits(x);
             let s = format!("{}", Hexf(f));
+            let s = canonicalize_snan_str(s);
             let from_s = hf16(&s);
 
             if f.is_nan() && from_s.is_nan() {
@@ -1074,6 +1139,8 @@ mod print_tests {
     #[cfg(f16_enabled)]
     fn test_f16_to_f32() {
         use std::format;
+
+        use super::parse_tests::canonicalize_snan_str;
         // Exhaustively check that these are equivalent for all `f16`:
         //  - `f16 -> f32`
         //  - `f16 -> str -> f32`
@@ -1082,8 +1149,10 @@ mod print_tests {
         for x in 0..=u16::MAX {
             let f16 = f16::from_bits(x);
             let s16 = format!("{}", Hexf(f16));
+            let s16 = canonicalize_snan_str(s16);
             let f32 = f16 as f32;
             let s32 = format!("{}", Hexf(f32));
+            let s32 = canonicalize_snan_str(s32);
 
             let a = hf32(&s16);
             let b = hf32(&s32);
@@ -1124,8 +1193,17 @@ mod print_tests {
         assert_eq!(Hexf(f32::NEG_ZERO).to_string(), "-0x0p+0");
         assert_eq!(Hexf(f64::NEG_ZERO).to_string(), "-0x0p+0");
 
-        assert_eq!(Hexf(f32::NAN).to_string(), "NaN");
-        assert_eq!(Hexf(f64::NAN).to_string(), "NaN");
+        assert_eq!(Hexf(f32::NAN).to_string(), "qNaN");
+        assert_eq!(Hexf(f64::NAN).to_string(), "qNaN");
+        assert_eq!(Hexf(f32::NEG_NAN).to_string(), "-qNaN");
+        assert_eq!(Hexf(f64::NEG_NAN).to_string(), "-qNaN");
+        if !cfg!(x86_no_sse) {
+            // FIXME(rust-lang/rust#115567): calls quiet the sNaN
+            assert_eq!(Hexf(f32::SNAN).to_string(), "sNaN");
+            assert_eq!(Hexf(f64::SNAN).to_string(), "sNaN");
+            assert_eq!(Hexf(f32::NEG_SNAN).to_string(), "-sNaN");
+            assert_eq!(Hexf(f64::NEG_SNAN).to_string(), "-sNaN");
+        }
 
         assert_eq!(Hexf(f32::INFINITY).to_string(), "inf");
         assert_eq!(Hexf(f64::INFINITY).to_string(), "inf");
@@ -1139,7 +1217,9 @@ mod print_tests {
             assert_eq!(Hexf(f16::MIN).to_string(), "-0x1.ffcp+15");
             assert_eq!(Hexf(f16::ZERO).to_string(), "0x0p+0");
             assert_eq!(Hexf(f16::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hexf(f16::NAN).to_string(), "NaN");
+            assert_eq!(Hexf(f16::NAN).to_string(), "qNaN");
+            assert_eq!(Hexf(f16::SNAN).to_string(), "sNaN");
+            assert_eq!(Hexf(f16::NEG_NAN).to_string(), "-qNaN");
             assert_eq!(Hexf(f16::INFINITY).to_string(), "inf");
             assert_eq!(Hexf(f16::NEG_INFINITY).to_string(), "-inf");
         }
@@ -1156,7 +1236,9 @@ mod print_tests {
             );
             assert_eq!(Hexf(f128::ZERO).to_string(), "0x0p+0");
             assert_eq!(Hexf(f128::NEG_ZERO).to_string(), "-0x0p+0");
-            assert_eq!(Hexf(f128::NAN).to_string(), "NaN");
+            assert_eq!(Hexf(f128::NAN).to_string(), "qNaN");
+            assert_eq!(Hexf(f128::SNAN).to_string(), "sNaN");
+            assert_eq!(Hexf(f128::NEG_NAN).to_string(), "-qNaN");
             assert_eq!(Hexf(f128::INFINITY).to_string(), "inf");
             assert_eq!(Hexf(f128::NEG_INFINITY).to_string(), "-inf");
         }

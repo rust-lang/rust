@@ -6,7 +6,7 @@ LL |         V(x) = func_arg;
    |         |
    |         expected `&mut V`, found `V`
    |
-help: consider dereferencing to access the inner value using the Deref trait
+help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |         V(x) = &*func_arg;
    |                ++

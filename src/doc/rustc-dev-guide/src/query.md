@@ -90,7 +90,7 @@ dependencies of the local crate)
 Note that what determines the crate that a query is targeting is not the *kind* of query, but the *key*.
 For example, when you invoke `tcx.type_of(def_id)`, that could be a
 local query or an external query, depending on what crate the `def_id`
-is referring to (see the [`self::keys::Key`][Key] trait for more information on how that works).
+is referring to (see the [`self::keys::QueryKey`][QueryKey] trait for more information on how that works).
 
 Providers always have the same signature:
 
@@ -167,12 +167,6 @@ pub fn provide(providers: &mut rustc_middle::util::Providers) {
     // ... add more hooks here
 }
 ```
-
-Note that `util::Providers` implements `DerefMut` to `query::Providers` so callers of the `provide` functions can pass in a `util::Providers` and it will just work for provider functions that accept `query::Providers` too
-
-- This function takes a mutable reference to the `query::Providers` struct and sets the fields to point to the correct provider functions.
-- You can also assign queries individually, e.g. `providers.type_of = type_of;`.
-- You can assign fields individually for each provider type (local, external, and hooks).
 
 #### Adding a new provider
 
@@ -308,7 +302,7 @@ Let's go over these elements one by one:
   Also used as the name of a struct (`ty::queries::type_of`) that will be generated to represent
   this query.
 - **Query key type:** the type of the argument to this query.
-  This type must implement the [`ty::query::keys::Key`][Key] trait, which
+  This type must implement the [`ty::query::keys::QueryKey`][QueryKey] trait, which
   defines (for example) how to map it to a crate, and so forth.
 - **Result type of query:** the type produced by this query.
   This type should (a) not use `RefCell` or other interior mutability and (b) be
@@ -317,7 +311,7 @@ Let's go over these elements one by one:
 - **Query modifiers:** various flags and options that customize how the
   query is processed (mostly with respect to [incremental compilation][incrcomp]).
 
-[Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/keys/trait.Key.html
+[QueryKey]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/keys/trait.QueryKey.html
 [incrcomp]: queries/incremental-compilation-in-detail.html#query-modifiers
 
 So, to add a query:

@@ -2,7 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -14,7 +14,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
-fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
+fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     match tcx.def_kind(def_id) {
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             for variant in tcx.adt_def(def_id).variants() {
@@ -28,7 +28,6 @@ fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representabili
         }
         def_kind => bug!("unexpected {def_kind:?}"),
     }
-    Representability
 }
 
 fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
@@ -67,7 +66,7 @@ fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
 // Looking at the query cycle above, we know that `Bar` is representable
 // because `check_representability_adt_ty(Bar<..>)` is in the cycle and
 // `check_representability(Bar)` is *not* in the cycle.
-fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
     let ty::Adt(adt, args) = ty.kind() else { bug!("expected adt") };
     if let Some(def_id) = adt.did().as_local() {
         let _ = tcx.check_representability(def_id);
@@ -82,7 +81,6 @@ fn check_representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Repre
             }
         }
     }
-    Representability
 }
 
 fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {

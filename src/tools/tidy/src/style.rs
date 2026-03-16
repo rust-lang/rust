@@ -376,6 +376,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
     // In some cases, a style check would be triggered by its own implementation
     // or comments. A simple workaround is to just allowlist this file.
     let this_file = Path::new(file!());
+    let codegen_file = Path::new("src/tools/tidy/src/codegen.rs");
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
@@ -447,6 +448,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
         let is_test_for_this_file =
             is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
+        let is_codegen_tidy_file = file.ends_with(codegen_file);
         // scanning the whole file for multiple needles at once is more efficient than
         // executing lines times needles separate searches.
         let any_problematic_line =
@@ -514,7 +516,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             if line.contains('\r') {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
-            if !is_this_file {
+            if !is_this_file && !is_codegen_tidy_file {
                 let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
                 let possible_line_start =
                     directive_line_starts.into_iter().any(|s| line.starts_with(s));

@@ -39,7 +39,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
             match diagnostic {
                 DecorateDiagCompat::Builtin(b) => {
-                    self.context.opt_span_diag_lint(
+                    self.context.opt_span_lint(
                         lint_id.lint,
                         span,
                         DecorateBuiltinLint {
@@ -50,7 +50,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     );
                 }
                 DecorateDiagCompat::Dynamic(d) => {
-                    self.context.opt_span_diag_lint(lint_id.lint, span, d);
+                    self.context.opt_span_lint(lint_id.lint, span, d);
                 }
             }
         }

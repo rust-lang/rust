@@ -221,7 +221,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             let ty = match *self.ty.kind() {
                 // NOTE: we cannot remove this match like in the LLVM codegen because the call
                 // to fn_ptr_backend_type handle the on-stack attribute.
-                // TODO(antoyo): find a less hackish way to handle the on-stack attribute.
+                // FIXME(antoyo): find a less hackish way to handle the on-stack attribute.
                 ty::FnPtr(sig_tys, hdr) => cx
                     .fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig_tys.with(hdr), ty::List::empty())),
                 _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
@@ -320,7 +320,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // immediate, just like `bool` is typically `i8` in memory and only `i1`
         // when immediate.  We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
-        // TODO(antoyo): this bugs certainly don't happen in this case since the bool type is used instead of i1.
+        // FIXME(antoyo): this bugs certainly don't happen in this case since the bool type is used instead of i1.
         if scalar.is_bool() {
             return cx.type_i1();
         }

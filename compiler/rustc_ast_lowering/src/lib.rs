@@ -129,6 +129,7 @@ struct LoweringContext<'a, 'hir> {
     loop_scope: Option<HirId>,
     is_in_loop_condition: bool,
     is_in_dyn_type: bool,
+    is_in_const_context: bool,
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
@@ -190,6 +191,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             loop_scope: None,
             is_in_loop_condition: false,
             is_in_dyn_type: false,
+            is_in_const_context: false,
             coroutine_kind: None,
             task_context: None,
             current_item: None,

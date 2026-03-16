@@ -2,7 +2,6 @@
 // index doesn't generate another bounds check.
 
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 21
 
 #![crate_type = "lib"]
 

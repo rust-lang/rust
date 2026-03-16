@@ -36,6 +36,7 @@ pub(crate) fn target() -> Target {
 
             // PSP does not support trap-on-condition instructions.
             llvm_args: cvs!["-mno-check-zero-division"],
+            llvm_abiname: "o32".into(),
             pre_link_args,
             link_script: Some(LINKER_SCRIPT.into()),
             ..Default::default()

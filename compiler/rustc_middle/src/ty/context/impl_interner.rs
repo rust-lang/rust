@@ -402,6 +402,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_conditionally_const(def_id)
     }
 
+    fn closure_is_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Closure);
+        self.constness(def_id) == hir::Constness::Const
+    }
+
     fn alias_has_const_conditions(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::OpaqueTy);
         self.is_conditionally_const(def_id)

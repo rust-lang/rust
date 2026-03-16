@@ -1,4 +1,4 @@
-#![allow(unused_macros)]
+#![allow(unused_macros, unused_features)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
 #[cfg_attr(x86_no_sse, allow(unused))]

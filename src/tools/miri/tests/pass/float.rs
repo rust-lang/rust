@@ -9,8 +9,6 @@
 #![allow(unnecessary_transmutes)]
 #![deny(deprecated_in_future)]
 
-#[path = "../utils/mod.rs"]
-mod utils;
 use std::any::type_name;
 use std::cmp::min;
 use std::f16::consts as f16_consts;
@@ -20,6 +18,8 @@ use std::f128::consts as f128_consts;
 use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
 
+#[path = "../utils/mod.rs"]
+mod utils;
 use utils::check_nondet;
 
 /// Compare the two floats, allowing for $ulp many ULPs of error.
@@ -74,7 +74,6 @@ fn main() {
     test_fast();
     test_algebraic();
     test_fmuladd();
-    test_min_max_nondet();
     test_non_determinism();
 }
 
@@ -1518,19 +1517,13 @@ fn test_fmuladd() {
     test_operations_f64(1.1, 1.2, 1.3);
 }
 
-/// `min` and `max` on equal arguments are non-deterministic.
-fn test_min_max_nondet() {
-    check_nondet(|| f16::min(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f16::max(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f32::min(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f32::max(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f64::min(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f64::max(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f128::min(0.0, -0.0).is_sign_positive());
-    check_nondet(|| f128::max(0.0, -0.0).is_sign_positive());
-}
-
 fn test_non_determinism() {
+    if cfg!(force_intrinsic_fallback) {
+        // Skip this test when we use the fallback bodies, as that one is deterministic.
+        // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
+        return;
+    }
+
     use std::intrinsics::{
         fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
@@ -1666,6 +1659,16 @@ fn test_non_determinism() {
     test_operations_f32(12., 5.);
     test_operations_f64(19., 11.);
     test_operations_f128(25., 18.);
+
+    // min/max signed zero nondet
+    check_nondet(|| f16::min(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f16::max(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f32::min(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f32::max(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f64::min(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f64::max(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f128::min(0.0, -0.0).is_sign_positive());
+    check_nondet(|| f128::max(0.0, -0.0).is_sign_positive());
 
     // SNaN^0 = (1 | NaN)
     check_nondet(|| f32::powf(F32_SNAN, 0.0).is_nan());
