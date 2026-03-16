@@ -1,5 +1,5 @@
 error[E0769]: tuple variant `MyOption::MySome` written as struct variant
-  --> $DIR/issue-17800.rs:8:9
+  --> $DIR/tuple-variant-written-as-struct-pattern.rs:10:9
    |
 LL |         MyOption::MySome { x: 42 } => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^

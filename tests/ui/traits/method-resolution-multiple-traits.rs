@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/3702
+
 pub trait ToPrimitive {
     fn to_int(&self) -> isize { 0 }
 }

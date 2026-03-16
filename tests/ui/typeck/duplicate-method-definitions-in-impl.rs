@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/4265
+
 struct Foo {
       baz: usize
 }
