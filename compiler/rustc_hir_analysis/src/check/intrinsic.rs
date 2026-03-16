@@ -97,14 +97,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ctpop
         | sym::cttz
         | sym::discriminant_value
-        | sym::exp2f16
-        | sym::exp2f32
-        | sym::exp2f64
-        | sym::exp2f128
-        | sym::expf16
-        | sym::expf32
-        | sym::expf64
-        | sym::expf128
+        | sym::exp
+        | sym::exp2
         | sym::fabs
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
@@ -123,18 +117,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::frem_algebraic
         | sym::fsub_algebraic
         | sym::is_val_statically_known
-        | sym::log2f16
-        | sym::log2f32
-        | sym::log2f64
-        | sym::log2f128
-        | sym::log10f16
-        | sym::log10f32
-        | sym::log10f64
-        | sym::log10f128
-        | sym::logf16
-        | sym::logf32
-        | sym::logf64
-        | sym::logf128
+        | sym::log
+        | sym::log2
+        | sym::log10
         | sym::maximum_number_nsz_f16
         | sym::maximum_number_nsz_f32
         | sym::maximum_number_nsz_f64
@@ -386,30 +371,9 @@ pub(crate) fn check_intrinsic_type(
         sym::powf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
         sym::powf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
-        sym::expf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::expf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::expf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::expf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::exp2f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::exp2f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::exp2f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::exp2f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::logf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::logf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::logf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::logf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::log10f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::log10f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::log10f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::log10f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::log2f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::log2f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::log2f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::log2f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::exp | sym::exp2 | sym::log | sym::log10 | sym::log2 => {
+            (1, 0, vec![param(0)], param(0))
+        }
 
         sym::fmaf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::fmaf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),

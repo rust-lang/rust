@@ -49,16 +49,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::powif64 => "__builtin_powi",
         sym::powf32 => "powf",
         sym::powf64 => "pow",
-        sym::expf32 => "expf",
-        sym::expf64 => "exp",
-        sym::exp2f32 => "exp2f",
-        sym::exp2f64 => "exp2",
-        sym::logf32 => "logf",
-        sym::logf64 => "log",
-        sym::log10f32 => "log10f",
-        sym::log10f64 => "log10",
-        sym::log2f32 => "log2f",
-        sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
@@ -419,6 +409,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::sqrt
             | sym::sin
             | sym::cos
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log2
+            | sym::log10
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -452,6 +447,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     (sym::sin, F64) => Builtin("sin"),
                     (sym::cos, F32) => Builtin("cosf"),
                     (sym::cos, F64) => Builtin("cos"),
+                    (sym::exp, F32) => Builtin("expf"),
+                    (sym::exp, F64) => Builtin("exp"),
+                    (sym::exp2, F32) => Builtin("exp2f"),
+                    (sym::exp2, F64) => Builtin("exp2"),
+                    (sym::log, F32) => Builtin("logf"),
+                    (sym::log, F64) => Builtin("log"),
+                    (sym::log2, F32) => Builtin("log2f"),
+                    (sym::log2, F64) => Builtin("log2"),
+                    (sym::log10, F32) => Builtin("log10f"),
+                    (sym::log10, F64) => Builtin("log10"),
                     (sym::floor, F16) => BuiltinF16Cast("__builtin_floorf"),
                     (sym::floor, F32) => Builtin("floorf"),
                     (sym::floor, F64) => Builtin("floor"),
