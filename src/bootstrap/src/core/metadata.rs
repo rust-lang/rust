@@ -93,9 +93,11 @@ fn workspace_members(build: &Build) -> Vec<Package> {
         packages
     };
 
-    // Collects `metadata.packages` from the root and library workspaces.
+    // Collect `metadata.packages` from the workspaces that bootstrap may need
+    // to resolve from CLI paths.
     let mut packages = vec![];
     packages.extend(collect_metadata("Cargo.toml"));
     packages.extend(collect_metadata("library/Cargo.toml"));
+    packages.extend(collect_metadata("library/stdarch/Cargo.toml"));
     packages
 }

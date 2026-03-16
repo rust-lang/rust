@@ -623,10 +623,18 @@ impl Step for SharedAssets {
 
 /// Document the standard library using `build_compiler`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+enum StdWorkspace {
+    Std,
+    Stdarch,
+}
+
+/// Document the standard library using `build_compiler`.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     build_compiler: Compiler,
     target: TargetSelection,
     format: DocumentationFormat,
+    workspace: StdWorkspace,
     crates: Vec<String>,
 }
 
@@ -636,7 +644,7 @@ impl Std {
         target: TargetSelection,
         format: DocumentationFormat,
     ) -> Self {
-        Std { build_compiler, target, format, crates: vec![] }
+        Std { build_compiler, target, format, workspace: StdWorkspace::Std, crates: vec![] }
     }
 }
 
@@ -645,7 +653,11 @@ impl Step for Std {
     type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").path("library")
+        run.crate_or_deps("sysroot")
+            .path("library")
+            .path("library/stdarch")
+            .path("library/stdarch/crates/core_arch")
+            .path("library/stdarch/examples")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -653,21 +665,76 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = compile::std_crates_for_run_make(&run);
-        let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
-        if crates.is_empty() && target_is_no_std {
+        let builder = run.builder;
+        let build_compiler = builder.compiler_for_std(builder.top_stage);
+        let format = if builder.config.cmd.json() {
+            DocumentationFormat::Json
+        } else {
+            DocumentationFormat::Html
+        };
+
+        if run.paths.is_empty() {
+            let crates = compile::std_crates_for_run_make(&run);
+            let target_is_no_std = builder.no_std(run.target).unwrap_or(false);
+            if crates.is_empty() && target_is_no_std {
+                return;
+            }
+            builder.ensure(Std {
+                build_compiler,
+                target: run.target,
+                format,
+                workspace: StdWorkspace::Std,
+                crates,
+            });
             return;
         }
-        run.builder.ensure(Std {
-            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
-            target: run.target,
-            format: if run.builder.config.cmd.json() {
-                DocumentationFormat::Json
-            } else {
-                DocumentationFormat::Html
-            },
-            crates,
-        });
+
+        let mut std_crates = Vec::new();
+        let mut stdarch_crates = Vec::new();
+        let mut stdarch_requested = false;
+
+        for pathset in &run.paths {
+            let path = &pathset.assert_single_path().path;
+            if path.starts_with("library/stdarch") {
+                stdarch_requested = true;
+                if let Some(krate) = builder.crate_paths.get(path) {
+                    stdarch_crates.push(krate.clone());
+                }
+            } else if let Some(krate) = builder.crate_paths.get(path) {
+                std_crates.push(krate.clone());
+            }
+        }
+
+        std_crates.sort();
+        std_crates.dedup();
+        stdarch_crates.sort();
+        stdarch_crates.dedup();
+
+        if stdarch_requested && stdarch_crates.is_empty() {
+            stdarch_crates.push("core_arch".to_owned());
+            if !builder.no_std(run.target).unwrap_or(false) {
+                stdarch_crates.push("stdarch_examples".to_owned());
+            }
+        }
+
+        if !std_crates.is_empty() {
+            builder.ensure(Std {
+                build_compiler,
+                target: run.target,
+                format,
+                workspace: StdWorkspace::Std,
+                crates: std_crates,
+            });
+        }
+        if !stdarch_crates.is_empty() {
+            builder.ensure(Std {
+                build_compiler,
+                target: run.target,
+                format,
+                workspace: StdWorkspace::Stdarch,
+                crates: stdarch_crates,
+            });
+        }
     }
 
     /// Compile all standard library documentation.
@@ -676,14 +743,29 @@ impl Step for Std {
     /// dependencies. This is largely just a wrapper around `cargo doc`.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
-        let crates = if self.crates.is_empty() {
-            builder
-                .in_tree_crates("sysroot", Some(target))
-                .iter()
-                .map(|c| c.name.to_string())
-                .collect()
-        } else {
-            self.crates
+        let crates = match self.workspace {
+            StdWorkspace::Std => {
+                if self.crates.is_empty() {
+                    builder
+                        .in_tree_crates("sysroot", Some(target))
+                        .iter()
+                        .map(|c| c.name.to_string())
+                        .collect()
+                } else {
+                    self.crates
+                }
+            }
+            StdWorkspace::Stdarch => {
+                if self.crates.is_empty() {
+                    let mut crates = vec!["core_arch".to_owned()];
+                    if !builder.no_std(target).unwrap_or(false) {
+                        crates.push("stdarch_examples".to_owned());
+                    }
+                    crates
+                } else {
+                    self.crates
+                }
+            }
         };
 
         let out = match self.format {
@@ -693,44 +775,71 @@ impl Step for Std {
 
         t!(fs::create_dir_all(&out));
 
-        if self.format == DocumentationFormat::Html {
+        if self.format == DocumentationFormat::Html && self.workspace == StdWorkspace::Std {
             builder.ensure(SharedAssets { target: self.target });
         }
 
-        let index_page = builder
-            .src
-            .join("src/doc/index.md")
-            .into_os_string()
-            .into_string()
-            .expect("non-utf8 paths are unsupported");
-        let mut extra_args = match self.format {
-            DocumentationFormat::Html => {
-                vec!["--markdown-css", "rust.css", "--markdown-no-toc", "--index-page", &index_page]
+        match self.workspace {
+            StdWorkspace::Std => {
+                let index_page = builder
+                    .src
+                    .join("src/doc/index.md")
+                    .into_os_string()
+                    .into_string()
+                    .expect("non-utf8 paths are unsupported");
+                let mut extra_args = match self.format {
+                    DocumentationFormat::Html => vec![
+                        "--markdown-css",
+                        "rust.css",
+                        "--markdown-no-toc",
+                        "--index-page",
+                        &index_page,
+                    ],
+                    DocumentationFormat::Json => vec!["--output-format", "json"],
+                };
+
+                if !builder.config.docs_minification {
+                    extra_args.push("--disable-minification");
+                }
+                // For `--index-page` and `--output-format=json`.
+                extra_args.push("-Zunstable-options");
+
+                doc_std(
+                    builder,
+                    self.format,
+                    self.build_compiler,
+                    target,
+                    &out,
+                    &extra_args,
+                    &crates,
+                );
             }
-            DocumentationFormat::Json => vec!["--output-format", "json"],
-        };
-
-        if !builder.config.docs_minification {
-            extra_args.push("--disable-minification");
+            StdWorkspace::Stdarch => {
+                doc_stdarch(builder, self.format, self.build_compiler, target, &out, &crates);
+            }
         }
-        // For `--index-page` and `--output-format=json`.
-        extra_args.push("-Zunstable-options");
-
-        doc_std(builder, self.format, self.build_compiler, target, &out, &extra_args, &crates);
 
         // Open if the format is HTML
         if let DocumentationFormat::Html = self.format {
-            if builder.paths.iter().any(|path| path.ends_with("library")) {
-                // For `x.py doc library --open`, open `std` by default.
-                let index = out.join("std").join("index.html");
-                builder.maybe_open_in_browser::<Self>(index);
-            } else {
-                for requested_crate in crates {
-                    if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
-                        let index = out.join(requested_crate).join("index.html");
+            match self.workspace {
+                StdWorkspace::Std => {
+                    if builder.paths.iter().any(|path| path.ends_with("library")) {
+                        // For `x.py doc library --open`, open `std` by default.
+                        let index = out.join("std").join("index.html");
                         builder.maybe_open_in_browser::<Self>(index);
-                        break;
+                    } else {
+                        for requested_crate in crates {
+                            if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
+                                let index = out.join(requested_crate).join("index.html");
+                                builder.maybe_open_in_browser::<Self>(index);
+                                break;
+                            }
+                        }
                     }
+                }
+                StdWorkspace::Stdarch => {
+                    let index = out.join(&crates[0]).join("index.html");
+                    builder.maybe_open_in_browser::<Self>(index);
                 }
             }
         }
@@ -740,10 +849,30 @@ impl Step for Std {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::doc("std", self.target)
-                .built_by(self.build_compiler)
-                .with_metadata(format!("crates=[{}]", self.crates.join(","))),
+            StepMetadata::doc(
+                match self.workspace {
+                    StdWorkspace::Std => "std",
+                    StdWorkspace::Stdarch => "stdarch",
+                },
+                self.target,
+            )
+            .built_by(self.build_compiler)
+            .with_metadata(format!("crates=[{}]", self.crates.join(","))),
         )
+    }
+}
+
+#[cfg(test)]
+impl Std {
+    pub(crate) fn workspace_name(&self) -> &'static str {
+        match self.workspace {
+            StdWorkspace::Std => "std",
+            StdWorkspace::Stdarch => "stdarch",
+        }
+    }
+
+    pub(crate) fn crate_names(&self) -> &[String] {
+        &self.crates
     }
 }
 
@@ -823,6 +952,56 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
+    let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
+
+    cargo.into_cmd().run(builder);
+    builder.cp_link_r(&out_dir, out);
+}
+
+fn doc_stdarch(
+    builder: &Builder<'_>,
+    format: DocumentationFormat,
+    build_compiler: Compiler,
+    target: TargetSelection,
+    out: &Path,
+    requested_crates: &[String],
+) {
+    let target_doc_dir_name =
+        if format == DocumentationFormat::Json { "stdarch-json-doc" } else { "stdarch-doc" };
+    let target_dir =
+        builder.stage_out(build_compiler, Mode::Std).join(target).join(target_doc_dir_name);
+    let out_dir = target_dir.join(target).join("doc");
+
+    let mut cargo = builder::Cargo::new(
+        builder,
+        build_compiler,
+        Mode::Std,
+        SourceType::InTree,
+        target,
+        Kind::Doc,
+    );
+    cargo.arg("--manifest-path").arg(builder.src.join("library/stdarch/Cargo.toml"));
+    for krate in requested_crates {
+        cargo.arg("-p").arg(krate);
+    }
+    cargo
+        .arg("--no-deps")
+        .arg("--target-dir")
+        .arg(&*target_dir.to_string_lossy())
+        .arg("-Zskip-rustdoc-fingerprint")
+        .rustdocflag("--resource-suffix")
+        .rustdocflag(&builder.version);
+
+    if format == DocumentationFormat::Json {
+        cargo.arg("--output-format").arg("json").rustdocflag("-Zunstable-options");
+    }
+
+    if builder.config.library_docs_private_items {
+        cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
+    }
+
+    let description =
+        format!("stdarch{} in {} format", crate_description(requested_crates), format.as_str());
     let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
 
     cargo.into_cmd().run(builder);

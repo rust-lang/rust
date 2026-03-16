@@ -652,7 +652,11 @@ pub mod task {
     pub use core::task::*;
 }
 
-#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
+#[doc = concat!(
+    include_str!("../../stdarch/crates/core_arch/src/core_arch_docs_prefix.md"),
+    include_str!("../../stdarch/crates/core_arch/src/core_arch_docs_other_architectures_std.md"),
+    include_str!("../../stdarch/crates/core_arch/src/core_arch_docs_examples.md"),
+)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     #[stable(feature = "simd_arch", since = "1.27.0")]

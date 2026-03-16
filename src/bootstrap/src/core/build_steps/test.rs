@@ -2906,6 +2906,7 @@ impl Step for CrateLibrustc {
             build_compiler: self.build_compiler,
             target: self.target,
             mode: Mode::Rustc,
+            workspace: CrateWorkspace::Std,
             crates: self.crates,
         });
     }
@@ -3028,12 +3029,19 @@ fn prepare_cargo_test(
 /// FIXME(Zalathar): Try to split this into two separate steps: a user-visible
 /// step for testing standard library crates, and an internal step used for both
 /// library crates and compiler crates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum CrateWorkspace {
+    Std,
+    Stdarch,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     /// The compiler that will *build* libstd or rustc in test mode.
     build_compiler: Compiler,
     target: TargetSelection,
     mode: Mode,
+    workspace: CrateWorkspace,
     crates: Vec<String>,
 }
 
@@ -3041,7 +3049,12 @@ impl Step for Crate {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").crate_or_deps("coretests").crate_or_deps("alloctests")
+        run.crate_or_deps("sysroot")
+            .crate_or_deps("coretests")
+            .crate_or_deps("alloctests")
+            .path("library/stdarch")
+            .path("library/stdarch/crates/core_arch")
+            .path("library/stdarch/examples")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3052,13 +3065,53 @@ impl Step for Crate {
         let builder = run.builder;
         let host = run.build_triple();
         let build_compiler = builder.compiler(builder.top_stage, host);
-        let crates = run
-            .paths
-            .iter()
-            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
-            .collect();
+        let mut std_crates =
+            if run.paths.is_empty() { run.make_run_crates(Alias::Library) } else { Vec::new() };
+        let mut stdarch_crates = Vec::new();
+        let mut stdarch_requested = false;
 
-        builder.ensure(Crate { build_compiler, target: run.target, mode: Mode::Std, crates });
+        for pathset in &run.paths {
+            let path = &pathset.assert_single_path().path;
+            if path.starts_with("library/stdarch") {
+                stdarch_requested = true;
+                if let Some(krate) = builder.crate_paths.get(path) {
+                    stdarch_crates.push(krate.clone());
+                }
+            } else if let Some(krate) = builder.crate_paths.get(path) {
+                std_crates.push(krate.clone());
+            }
+        }
+
+        std_crates.sort();
+        std_crates.dedup();
+        stdarch_crates.sort();
+        stdarch_crates.dedup();
+
+        if stdarch_requested && stdarch_crates.is_empty() {
+            stdarch_crates.push("core_arch".to_owned());
+            if !builder.no_std(run.target).unwrap_or(false) {
+                stdarch_crates.push("stdarch_examples".to_owned());
+            }
+        }
+
+        if !std_crates.is_empty() {
+            builder.ensure(Crate {
+                build_compiler,
+                target: run.target,
+                mode: Mode::Std,
+                workspace: CrateWorkspace::Std,
+                crates: std_crates,
+            });
+        }
+        if !stdarch_crates.is_empty() {
+            builder.ensure(Crate {
+                build_compiler,
+                target: run.target,
+                mode: Mode::Std,
+                workspace: CrateWorkspace::Stdarch,
+                crates: stdarch_crates,
+            });
+        }
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -3142,17 +3195,26 @@ impl Step for Crate {
 
         match mode {
             Mode::Std => {
-                if builder.kind == Kind::Miri {
-                    // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
-                    // needs host tools for the given target. This is similar to what `compile::Std`
-                    // does when `is_for_mir_opt_tests` is true. There's probably a chance for
-                    // de-duplication here... `std_cargo` should support a mode that avoids needing
-                    // host tools.
-                    cargo
-                        .arg("--manifest-path")
-                        .arg(builder.src.join("library/sysroot/Cargo.toml"));
-                } else {
-                    compile::std_cargo(builder, target, &mut cargo, &[]);
+                match self.workspace {
+                    CrateWorkspace::Std => {
+                        if builder.kind == Kind::Miri {
+                            // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
+                            // needs host tools for the given target. This is similar to what `compile::Std`
+                            // does when `is_for_mir_opt_tests` is true. There's probably a chance for
+                            // de-duplication here... `std_cargo` should support a mode that avoids needing
+                            // host tools.
+                            cargo
+                                .arg("--manifest-path")
+                                .arg(builder.src.join("library/sysroot/Cargo.toml"));
+                        } else {
+                            compile::std_cargo(builder, target, &mut cargo, &[]);
+                        }
+                    }
+                    CrateWorkspace::Stdarch => {
+                        cargo
+                            .arg("--manifest-path")
+                            .arg(builder.src.join("library/stdarch/Cargo.toml"));
+                    }
                 }
             }
             Mode::Rustc => {
@@ -3174,6 +3236,20 @@ impl Step for Crate {
         }
 
         run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);
+    }
+}
+
+#[cfg(test)]
+impl Crate {
+    pub(crate) fn workspace_name(&self) -> &'static str {
+        match self.workspace {
+            CrateWorkspace::Std => "std",
+            CrateWorkspace::Stdarch => "stdarch",
+        }
+    }
+
+    pub(crate) fn crate_names(&self) -> &[String] {
+        &self.crates
     }
 }
 

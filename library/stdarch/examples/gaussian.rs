@@ -19,20 +19,26 @@
 //!
 //! To build (requires Hexagon toolchain):
 //!
-//!     RUSTFLAGS="-C target-feature=+hvxv62,+hvx-length128b \
-//!         -C linker=hexagon-unknown-linux-musl-clang" \
-//!         cargo +nightly build -p stdarch_examples --bin gaussian \
-//!         --target hexagon-unknown-linux-musl \
-//!         -Zbuild-std -Zbuild-std-features=llvm-libunwind
+//! ```text
+//! RUSTFLAGS="-C target-feature=+hvxv62,+hvx-length128b \
+//!     -C linker=hexagon-unknown-linux-musl-clang" \
+//!     cargo +nightly build -p stdarch_examples --bin gaussian \
+//!     --target hexagon-unknown-linux-musl \
+//!     -Zbuild-std -Zbuild-std-features=llvm-libunwind
+//! ```
 //!
 //! To run under QEMU:
 //!
-//!     qemu-hexagon -L <sysroot>/target/hexagon-unknown-linux-musl \
-//!         target/hexagon-unknown-linux-musl/debug/gaussian
+//! ```text
+//! qemu-hexagon -L <sysroot>/target/hexagon-unknown-linux-musl \
+//!     target/hexagon-unknown-linux-musl/debug/gaussian
+//! ```
 //!
 //! # Building and Running (Other targets)
 //!
-//!     cargo +nightly run -p stdarch_examples --bin gaussian
+//! ```text
+//! cargo +nightly run -p stdarch_examples --bin gaussian
+//! ```
 
 #![cfg_attr(target_arch = "hexagon", feature(stdarch_hexagon))]
 #![cfg_attr(target_arch = "hexagon", feature(hexagon_target_feature))]

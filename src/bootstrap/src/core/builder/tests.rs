@@ -39,6 +39,28 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
     builder.cache
 }
 
+fn configure_stdarch_test(paths: &[&str]) -> Config {
+    let ctx = TestCtx::new();
+    ctx.config("test")
+        .args(paths)
+        .args(&["--ci", "true"])
+        .hosts(&[TEST_TRIPLE_1])
+        .targets(&[TEST_TRIPLE_1])
+        .no_override_download_ci_llvm()
+        .create_config()
+}
+
+fn configure_stdarch_doc(paths: &[&str]) -> Config {
+    let ctx = TestCtx::new();
+    ctx.config("doc")
+        .args(paths)
+        .args(&["--ci", "true"])
+        .hosts(&[TEST_TRIPLE_1])
+        .targets(&[TEST_TRIPLE_1])
+        .no_override_download_ci_llvm()
+        .create_config()
+}
+
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
@@ -138,6 +160,28 @@ fn validate_path_remap() {
         .for_each(|path| {
             assert!(path.exists(), "{} should exist.", path.display());
         });
+}
+
+#[test]
+fn test_stdarch_workspace_metadata_is_loaded() {
+    let build = Build::new(configure_stdarch_test(&[]));
+
+    assert_eq!(
+        build.crate_paths.get(&PathBuf::from("library/stdarch/crates/core_arch")),
+        Some(&"core_arch".to_owned())
+    );
+}
+
+#[test]
+fn test_doc_stdarch() {
+    let config = configure_stdarch_doc(&["library/stdarch"]);
+    let cache = run_build(&config.paths.clone(), config);
+    assert_eq!(
+        cache.inspect_all_steps_of_type::<doc::Std, _>(|step, _| {
+            (step.workspace_name().to_owned(), step.crate_names().join(","))
+        }),
+        vec![("stdarch".to_owned(), "core_arch,stdarch_examples".to_owned())]
+    );
 }
 
 #[test]
@@ -318,6 +362,18 @@ fn test_test_compiler() {
     let gcc = cache.contains::<test::CodegenGCC>();
 
     assert_eq!((compiler, cranelift, gcc), (true, false, false));
+}
+
+#[test]
+fn test_test_stdarch() {
+    let config = configure_stdarch_test(&["library/stdarch"]);
+    let cache = run_build(&config.paths.clone(), config);
+    assert_eq!(
+        cache.inspect_all_steps_of_type::<test::Crate, _>(|step, ()| {
+            (step.workspace_name().to_owned(), step.crate_names().join(","))
+        }),
+        vec![("stdarch".to_owned(), "core_arch,stdarch_examples".to_owned())]
+    );
 }
 
 #[test]
@@ -1031,6 +1087,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         ");
     }
 
@@ -1097,6 +1154,8 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx
                 .config("dist")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1111,6 +1170,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
@@ -1148,6 +1208,8 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("dist")
                 .path("rustc-docs")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&["--set", "build.compiler-docs=true"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
@@ -1163,6 +1225,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [doc] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [doc] rustc 1 <host> -> Rustdoc 2 <host>
@@ -1199,6 +1262,8 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("dist")
+            .args(&["--ci", "true"])
+            .no_override_download_ci_llvm()
             .args(&[
                 "--set",
                 "build.extended=true",
@@ -1224,6 +1289,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
@@ -1283,6 +1349,8 @@ mod snapshot {
                 .config("dist")
                 .hosts(&[&host_target()])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1304,7 +1372,9 @@ mod snapshot {
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <target1> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
@@ -1359,6 +1429,8 @@ mod snapshot {
                 .config("dist")
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target()])
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1373,6 +1445,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
@@ -1422,6 +1495,8 @@ mod snapshot {
                 .config("dist")
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1443,7 +1518,9 @@ mod snapshot {
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <target1> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
@@ -1507,6 +1584,8 @@ mod snapshot {
                 .config("dist")
                 .hosts(&[])
                 .targets(&[TEST_TRIPLE_1])
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1522,6 +1601,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <target1> crates=[core_arch,stdarch_examples]
         [doc] nomicon (book) <target1>
         [doc] rustc 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <target1>
@@ -1549,6 +1629,8 @@ mod snapshot {
                 .config("dist")
                 .hosts(&[TEST_TRIPLE_1])
                 .targets(&[TEST_TRIPLE_1])
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&["--set", "rust.channel=nightly", "--set", "build.extended=true"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
@@ -1566,6 +1648,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <target1> crates=[core_arch,stdarch_examples]
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
@@ -1629,6 +1712,8 @@ mod snapshot {
             .config("dist")
             .hosts(&[TEST_TRIPLE_1])
             .targets(&[TEST_TRIPLE_1])
+            .args(&["--ci", "true"])
+            .no_override_download_ci_llvm()
             .args(&[
                 "--set",
                 "rust.channel=nightly",
@@ -1693,6 +1778,8 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx
                 .config("dist")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&["--set", "rust.codegen-backends=['llvm', 'cranelift']"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
@@ -1709,6 +1796,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
@@ -1777,6 +1865,8 @@ mod snapshot {
             ctx
                 .config("dist")
                 .path("rustc-docs")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -1791,6 +1881,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
@@ -2065,6 +2156,7 @@ mod snapshot {
         ctx.config("test")
             // Bootstrap only runs by default on CI, so we have to emulate that also locally.
             .args(&["--ci", "true"])
+            .no_override_download_ci_llvm()
             // These rustdoc tests requires nodejs to be present.
             // We can't easily opt out of it, so if it is present on the local PC, the test
             // would have different result on CI, where nodejs might be missing.
@@ -2120,6 +2212,7 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [doc] rustc 0 <host> -> standalone 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 0 <host> -> error-index 1 <host>
         [doc] rustc 0 <host> -> error-index 1 <host>
         [doc] nomicon (book) <host>
@@ -2301,6 +2394,7 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -2509,6 +2603,8 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("doc")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
@@ -2523,6 +2619,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         [build] rustc 0 <host> -> error-index 1 <host>
         [doc] rustc 0 <host> -> error-index 1 <host>
         [doc] nomicon (book) <host>
@@ -2547,11 +2644,14 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("doc")
                 .path("library")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         ");
     }
 
@@ -2618,11 +2718,14 @@ mod snapshot {
             ctx.config("doc")
                 .path("library")
                 .override_target_no_std(&host_target())
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,core]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <host> crates=[core_arch,stdarch_examples]
         ");
     }
 
@@ -2634,11 +2737,14 @@ mod snapshot {
                 .path("library")
                 .targets(&[TEST_TRIPLE_1])
                 .override_target_no_std(TEST_TRIPLE_1)
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
-        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,core]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> stdarch 2 <target1> crates=[core_arch,stdarch_examples]
         ");
     }
 
@@ -2860,6 +2966,8 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("install")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -2889,6 +2997,7 @@ mod snapshot {
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> stdarch 2 <x86_64-unknown-linux-gnu> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
@@ -2919,6 +3028,8 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("install")
                 .path("src")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -2948,6 +3059,7 @@ mod snapshot {
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> stdarch 2 <x86_64-unknown-linux-gnu> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>
@@ -2975,6 +3087,8 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("install")
                 .path("src")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -3005,6 +3119,8 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("install")
+                .args(&["--ci", "true"])
+                .no_override_download_ci_llvm()
                 .args(&[
                     // Using backslashes fails with `--set`
                     "--set", &format!("install.prefix={}", ctx.normalized_dir()),
@@ -3036,6 +3152,7 @@ mod snapshot {
         [build] rustdoc 1 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> standalone 2 <x86_64-unknown-linux-gnu>
         [doc] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <x86_64-unknown-linux-gnu> -> stdarch 2 <x86_64-unknown-linux-gnu> crates=[core_arch,stdarch_examples]
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> rustc 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> WasmComponentLd 2 <x86_64-unknown-linux-gnu>
         [build] rustc 1 <x86_64-unknown-linux-gnu> -> error-index 2 <x86_64-unknown-linux-gnu>

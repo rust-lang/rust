@@ -26,6 +26,7 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
         .args(args)
         .hosts(hosts)
         .targets(targets)
+        .no_override_download_ci_llvm()
         .create_config();
     let mut build = Build::new(config);
     // Some rustdoc test steps are only run by default if nodejs is

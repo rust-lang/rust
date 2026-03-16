@@ -18,3 +18,11 @@ incremental = true
 debug = 1
 opt-level = 3
 incremental = true
+
+# The "dist" profile is used by bootstrap when building stdarch docs as part
+# of the distribution pipeline. Keep it aligned with the library workspace so
+# `cargo doc --profile=dist` works when stdarch is built as its own workspace.
+[profile.dist]
+inherits = "release"
+codegen-units = 1
+debug = 1
