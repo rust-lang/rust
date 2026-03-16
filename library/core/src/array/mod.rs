@@ -10,6 +10,7 @@ use crate::cmp::Ordering;
 use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
+use crate::hint::assert_unchecked;
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
 use crate::marker::Destruct;
@@ -477,34 +478,54 @@ impl<T: TrivialClone> SpecArrayClone for T {
     }
 }
 
-// The Default impls cannot be done with const generics because `[T; 0]` doesn't
-// require Default to be implemented, and having different impl blocks for
-// different numbers isn't supported yet.
-//
-// Trying to improve the `[T; 0]` situation has proven to be difficult.
-// Please see these issues for more context on past attempts and crater runs:
-// - https://github.com/rust-lang/rust/issues/61415
-// - https://github.com/rust-lang/rust/pull/145457
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
-        }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
+trait ArrayDefault {
+    type Output;
+    fn default_array() -> Self::Output;
 }
 
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+struct ArrayDefaultPhantom<T, const N: usize, const EMPTY: bool>(std::marker::PhantomData<T>);
+
+impl<T, const N: usize> ArrayDefault for ArrayDefaultPhantom<T, N, true> {
+    type Output = [T; N];
+    fn default_array() -> Self::Output {
+        unsafe {
+            assert_unchecked(N == 0);
+            core::mem::zeroed()
+        }
+    }
+}
+
+impl<T: Default, const N: usize> ArrayDefault for ArrayDefaultPhantom<T, N, false> {
+    fn default_array() -> Self::Output {
+        // SAFETY: N is always zero
+        unsafe {
+            assert_unchecked(N == 0);
+            core::mem::zeroed()
+        }
+    }
+}
+
+impl<T: Default, const N: usize> ArrayDefault for ArrayDefaultPhantom<T, N, false> {
+    type Output = [T; N];
+    fn default_array() -> Self::Output {
+        from_fn(|i| T::default())
+    }
+}
+
+type const EMPTY<const N: usize>: bool = const { N == 0 };
+
+type ArrayDefaultImpl<T, const N: usize> = ArrayDefaultPhantom<T, N, { EMPTY::<N> }>;
+
+/// This implementation is unconditional for N = 0 and bounded on T: Default for all other N.
+#[stable(since = "1.4.0", feature = "array_default")]
+impl<T, const N: usize> Default for [T; N]
+where
+    ArrayDefaultImpl<T, N>: ArrayDefault<Output = Self>,
+{
+    fn default() -> Self {
+        ArrayDefaultImpl::<T, N>::default_array()
+    }
+}
 
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element
