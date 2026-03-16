@@ -47,15 +47,6 @@ pub enum CollectActiveJobsKind {
 }
 
 /// Returns a map of currently active query jobs, collected from all queries.
-///
-/// If `require_complete` is `true`, this function locks all shards of the
-/// query results to produce a complete map, which always returns `Ok`.
-/// Otherwise, it may return an incomplete map as an error if any shard
-/// lock cannot be acquired.
-///
-/// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
-/// especially when called from within a deadlock handler, unless a
-/// complete map is needed and no deadlock is possible at this call site.
 pub fn collect_active_query_jobs<'tcx>(
     tcx: TyCtxt<'tcx>,
     collect_kind: CollectActiveJobsKind,
