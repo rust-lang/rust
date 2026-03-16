@@ -199,7 +199,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
         }
 
         match i.kind {
-            clean::StrippedItem(..) => {
+            clean::StrippedItem(..) | clean::PlaceholderImplItem => {
                 // don't count items in stripped modules
                 return;
             }

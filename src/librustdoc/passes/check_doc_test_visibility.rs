@@ -80,6 +80,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ImplAssocConstItem(..)
                 | clean::RequiredAssocTypeItem(..)
                 | clean::ImplItem(_)
+                | clean::PlaceholderImplItem
         )
     {
         return false;
