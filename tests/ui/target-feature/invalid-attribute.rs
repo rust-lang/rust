@@ -119,7 +119,12 @@ fn main() {
 //~| NOTE `+sse2` is not valid for this target
 unsafe fn hey() {}
 
-#[target_feature(enable = "+sse5")]
-//~^ ERROR `+sse5` is not valid for this target
-//~| NOTE `+sse5` is not valid for this target
-unsafe fn typo() {}
+#[target_feature(enable = "sse5")]
+//~^ ERROR `sse5` is not valid for this target
+//~| NOTE `sse5` is not valid for this target
+unsafe fn typo_sse() {}
+
+#[target_feature(enable = "avx512")]
+//~^ ERROR `avx512` is not valid for this target
+//~| NOTE `avx512` is not valid for this target
+unsafe fn typo_avx512() {}

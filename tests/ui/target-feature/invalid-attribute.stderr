@@ -160,6 +160,8 @@ error: the feature named `foo` is not valid for this target
    |
 LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
+   |
+   = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and 74 more
 
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/invalid-attribute.rs:81:1
@@ -205,13 +207,23 @@ LL - #[target_feature(enable = "+sse2")]
 LL + #[target_feature(enable = "sse2")]
    |
 
-error: the feature named `+sse5` is not valid for this target
+error: the feature named `sse5` is not valid for this target
   --> $DIR/invalid-attribute.rs:122:18
    |
-LL | #[target_feature(enable = "+sse5")]
-   |                  ^^^^^^^^^^^^^^^^ `+sse5` is not valid for this target
+LL | #[target_feature(enable = "sse5")]
+   |                  ^^^^^^^^^^^^^^^ `sse5` is not valid for this target
+   |
+   = help: valid names are: `sse`, `sse2`, `sse3`, `sse4a`, and `ssse3` and 74 more
 
-error: aborting due to 25 previous errors
+error: the feature named `avx512` is not valid for this target
+  --> $DIR/invalid-attribute.rs:127:18
+   |
+LL | #[target_feature(enable = "avx512")]
+   |                  ^^^^^^^^^^^^^^^^^ `avx512` is not valid for this target
+   |
+   = help: valid names are: `avx512f`, `avx2`, `avx512bw`, `avx512cd`, and `avx512dq` and 74 more
+
+error: aborting due to 26 previous errors
 
 Some errors have detailed explanations: E0046, E0053, E0539, E0658.
 For more information about an error, try `rustc --explain E0046`.
