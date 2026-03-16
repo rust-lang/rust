@@ -1460,6 +1460,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "vec_reserve"]
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -3034,6 +3035,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(1);
     /// assert!(!v.is_empty());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "vec_is_empty"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
