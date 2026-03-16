@@ -2,10 +2,10 @@
 
 #![feature(core_intrinsics)]
 
-use std::intrinsics::sqrtf32;
+use std::intrinsics::sqrt;
 
 // CHECK: @llvm.sqrt.f32(float) #{{[0-9]*}}
 
 fn main() {
-    sqrtf32(0.0f32);
+    sqrt(0.0f32);
 }
