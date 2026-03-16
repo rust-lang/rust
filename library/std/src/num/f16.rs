@@ -357,7 +357,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f16 {
-        intrinsics::sinf16(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -386,7 +386,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f16 {
-        intrinsics::cosf16(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).

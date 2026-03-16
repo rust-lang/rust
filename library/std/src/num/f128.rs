@@ -392,7 +392,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f128 {
-        intrinsics::sinf128(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -421,7 +421,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f128 {
-        intrinsics::cosf128(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).

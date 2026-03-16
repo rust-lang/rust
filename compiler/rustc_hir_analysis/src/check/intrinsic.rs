@@ -92,10 +92,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::copysignf32
         | sym::copysignf64
         | sym::copysignf128
-        | sym::cosf16
-        | sym::cosf32
-        | sym::cosf64
-        | sym::cosf128
+        | sym::cos
         | sym::ctlz
         | sym::ctpop
         | sym::cttz
@@ -182,10 +179,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::saturating_add
         | sym::saturating_sub
         | sym::select_unpredictable
-        | sym::sinf16
-        | sym::sinf32
-        | sym::sinf64
-        | sym::sinf128
+        | sym::sin
         | sym::size_of
         | sym::sqrt
         | sym::sub_with_overflow
@@ -385,15 +379,7 @@ pub(crate) fn check_intrinsic_type(
         sym::powif64 => (0, 0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
         sym::powif128 => (0, 0, vec![tcx.types.f128, tcx.types.i32], tcx.types.f128),
 
-        sym::sinf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::sinf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::sinf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::sinf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-        sym::cosf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::cosf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::cosf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::cosf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::sin | sym::cos => (1, 0, vec![param(0)], param(0)),
 
         sym::powf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::powf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
