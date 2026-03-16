@@ -3097,6 +3097,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
+            let parent_module = self.get_nearest_non_block_module(parent_scope).def_id();
+
             fn comes_from_same_module_for_glob(
                 r: &Resolver<'_, '_>,
                 parent_module: DefId,
