@@ -61,8 +61,7 @@ use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::plumbing::QuerySystem;
-use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
+use crate::query::{IntoQueryParam, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
@@ -1678,7 +1677,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.alloc_self_profile_query_strings();
 
         self.save_dep_graph();
-        self.query_key_hash_verify_all();
+        self.verify_query_key_hashes();
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });

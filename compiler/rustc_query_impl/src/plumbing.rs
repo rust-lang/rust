@@ -13,8 +13,9 @@ use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
-use rustc_middle::query::plumbing::QueryVTable;
-use rustc_middle::query::{QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, erase};
+use rustc_middle::query::{
+    QueryCache, QueryJobId, QueryKey, QueryMode, QueryStackFrame, QueryVTable, erase,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -26,10 +27,10 @@ use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
 use crate::job::find_dep_kind_root;
 use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_jobs_from_all_queries};
+use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
-    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::Full);
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
     let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
 
     let suggested_limit = match tcx.recursion_limit() {
@@ -99,17 +100,17 @@ where
     }
 }
 
-pub(crate) fn encode_all_query_results<'tcx>(
+pub(crate) fn encode_query_values<'tcx>(
     tcx: TyCtxt<'tcx>,
     encoder: &mut CacheEncoder<'_, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) {
     for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
-        encode_query_results(tcx, query, encoder, query_result_index)
+        encode_query_values_inner(tcx, query, encoder, query_result_index)
     });
 }
 
-fn encode_query_results<'a, 'tcx, C, V>(
+fn encode_query_values_inner<'a, 'tcx, C, V>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
@@ -135,17 +136,17 @@ fn encode_query_results<'a, 'tcx, C, V>(
     });
 }
 
-pub(crate) fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
+pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
     if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
-        tcx.sess.time("query_key_hash_verify_all", || {
+        tcx.sess.time("verify_query_key_hashes", || {
             for_each_query_vtable!(ALL, tcx, |query| {
-                query_key_hash_verify(query, tcx);
+                verify_query_key_hashes_inner(query, tcx);
             });
         });
     }
 }
 
-fn query_key_hash_verify<'tcx, C: QueryCache>(
+fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
 ) {

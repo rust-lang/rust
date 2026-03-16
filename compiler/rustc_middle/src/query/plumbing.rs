@@ -569,7 +569,7 @@ macro_rules! define_callbacks {
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
             $(
-                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, $name::Cache<'tcx>>,
+                pub $name: crate::query::QueryVTable<'tcx, $name::Cache<'tcx>>,
             )*
         }
 
