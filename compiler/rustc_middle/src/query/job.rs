@@ -7,16 +7,7 @@ use parking_lot::{Condvar, Mutex};
 use rustc_span::Span;
 
 use crate::query::plumbing::CycleError;
-use crate::query::stack::QueryStackFrame;
 use crate::ty::TyCtxt;
-
-/// Represents a span and a query key.
-#[derive(Clone, Debug)]
-pub struct QueryInfo<'tcx> {
-    /// The span corresponding to the reason for which this query was required.
-    pub span: Span,
-    pub frame: QueryStackFrame<'tcx>,
-}
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
