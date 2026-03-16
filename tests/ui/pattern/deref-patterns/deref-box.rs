@@ -3,7 +3,6 @@
 //! and `DerefMut::deref_mut`. Test that they work as expected.
 
 #![feature(deref_patterns)]
-#![expect(incomplete_features)]
 
 fn unbox_1<T>(b: Box<T>) -> T {
     let deref!(x) = b;

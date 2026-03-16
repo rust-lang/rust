@@ -16,6 +16,7 @@ For Armv8-R CPUs running in AArch32 mode (such as the Arm Cortex-R52), see
 
 - [Rust Embedded Devices Working Group Arm Team]
 - [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+    - Use `@rustbot ping arm-maintainers` to ping us
 
 [Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml

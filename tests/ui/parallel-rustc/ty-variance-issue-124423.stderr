@@ -244,10 +244,10 @@ LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
    |                                    ^^^ not found in this scope
 
 error[E0224]: at least one trait is required for an object type
-  --> $DIR/ty-variance-issue-124423.rs:35:39
+  --> $DIR/ty-variance-issue-124423.rs:55:40
    |
-LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
-   |                                       ^^^^^^
+LL | impl<'a> LifetimeTrait<'a> for &'a Box<dyn 'a> {}
+   |                                        ^^^^^^
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/ty-variance-issue-124423.rs:41:40
@@ -256,10 +256,10 @@ LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
    |                                        ^^^^^^
 
 error[E0224]: at least one trait is required for an object type
-  --> $DIR/ty-variance-issue-124423.rs:55:40
+  --> $DIR/ty-variance-issue-124423.rs:35:39
    |
-LL | impl<'a> LifetimeTrait<'a> for &'a Box<dyn 'a> {}
-   |                                        ^^^^^^
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                                       ^^^^^^
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/ty-variance-issue-124423.rs:8:34
@@ -278,6 +278,7 @@ note: if you're trying to build a new `Box<_, _>` consider using one of the foll
       Box::<T>::new_uninit
       Box::<T>::new_zeroed
       Box::<T>::try_new
+      and 27 others
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error: aborting due to 30 previous errors

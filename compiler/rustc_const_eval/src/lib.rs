@@ -22,8 +22,6 @@ use std::sync::atomic::AtomicBool;
 use rustc_middle::ty;
 use rustc_middle::util::Providers;
 
-pub use self::errors::ReportErrorExt;
-
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(&mut providers.queries);
     providers.queries.tag_for_variant = const_eval::tag_for_variant_provider;

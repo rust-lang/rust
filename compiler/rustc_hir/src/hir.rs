@@ -23,9 +23,8 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, sym,
 };
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;

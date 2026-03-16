@@ -5,17 +5,17 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
+use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
-use rustc_macros::HashStable;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::Span;
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
-use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables};
+use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::stack::{QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra};
+use crate::query::stack::QueryStackFrame;
 use crate::query::{QueryCache, QueryInfo, QueryJob};
 use crate::ty::TyCtxt;
 
@@ -50,31 +50,11 @@ pub enum ActiveKeyStatus<'tcx> {
     Poisoned,
 }
 
-/// How a particular query deals with query cycle errors.
-///
-/// Inspected by the code that actually handles cycle errors, to decide what
-/// approach to use.
-#[derive(Copy, Clone)]
-pub enum CycleErrorHandling {
-    Error,
-    DelayBug,
-    Stash,
-}
-
 #[derive(Clone, Debug)]
-pub struct CycleError<I = QueryStackFrameExtra> {
+pub struct CycleError<'tcx> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame<I>)>,
-    pub cycle: Vec<QueryInfo<I>>,
-}
-
-impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
-    pub fn lift(&self) -> CycleError<QueryStackFrameExtra> {
-        CycleError {
-            usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift())),
-            cycle: self.cycle.iter().map(|info| info.lift()).collect(),
-        }
-    }
+    pub usage: Option<(Span, QueryStackFrame<'tcx>)>,
+    pub cycle: Vec<QueryInfo<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -109,8 +89,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub feedable: bool,
 
     pub dep_kind: DepKind,
-    /// How this query deals with query cycle errors.
-    pub cycle_error_handling: CycleErrorHandling,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
@@ -138,15 +116,19 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// For `no_hash` queries, this function pointer is None.
     pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
 
-    pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle_error: CycleError, guar: ErrorGuaranteed) -> C::Value,
+    /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
+    /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
+    /// error is created and emitted).
+    pub value_from_cycle_error: fn(
+        tcx: TyCtxt<'tcx>,
+        key: C::Key,
+        cycle_error: CycleError<'tcx>,
+        error: Diag<'_>,
+    ) -> C::Value,
+
     pub format_value: fn(&C::Value) -> String,
 
-    /// Formats a human-readable description of this query and its key, as
-    /// specified by the `desc` query modifier.
-    ///
-    /// Used when reporting query cycle errors and similar problems.
-    pub description_fn: fn(TyCtxt<'tcx>, C::Key) -> String,
+    pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
 
     /// Function pointer that is called by the query methods on [`TyCtxt`] and
     /// friends[^1], after they have checked the in-memory cache and found no
@@ -306,7 +288,6 @@ macro_rules! define_callbacks {
                     anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
-                    cycle_error_handling: $cycle_error_handling:ident,
                     depth_limit: $depth_limit:literal,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
@@ -320,7 +301,6 @@ macro_rules! define_callbacks {
         non_queries { $($_:tt)* }
     ) => {
         $(
-            #[allow(unused_lifetimes)]
             pub mod $name {
                 use super::*;
                 use $crate::query::erase::{self, Erased};
@@ -513,7 +493,6 @@ macro_rules! define_callbacks {
                     let erased_value = $name::provided_to_erased(self.tcx, value);
                     $crate::query::inner::query_feed(
                         self.tcx,
-                        dep_graph::DepKind::$name,
                         &self.tcx.query_system.query_vtables.$name,
                         key,
                         erased_value,
@@ -521,6 +500,69 @@ macro_rules! define_callbacks {
                 }
             }
         )*
+
+        /// Identifies a query by kind and key. This is in contrast to `QueryJobId` which is just a number.
+        #[allow(non_camel_case_types)]
+        #[derive(Clone, Debug)]
+        pub enum TaggedQueryKey<'tcx> {
+            $(
+                $name($name::Key<'tcx>),
+            )*
+        }
+
+        impl<'tcx> TaggedQueryKey<'tcx> {
+            /// Formats a human-readable description of this query and its key, as
+            /// specified by the `desc` query modifier.
+            ///
+            /// Used when reporting query cycle errors and similar problems.
+            pub fn description(&self, tcx: TyCtxt<'tcx>) -> String {
+                let (name, description) = ty::print::with_no_queries!(match self {
+                    $(
+                        TaggedQueryKey::$name(key) => (stringify!($name), _description_fns::$name(tcx, *key)),
+                    )*
+                });
+                if tcx.sess.verbose_internals() {
+                    format!("{description} [{name:?}]")
+                } else {
+                    description
+                }
+            }
+
+            /// Returns the default span for this query if `span` is a dummy span.
+            pub fn default_span(&self, tcx: TyCtxt<'tcx>, span: Span) -> Span {
+                if !span.is_dummy() {
+                    return span
+                }
+                if let TaggedQueryKey::def_span(..) = self {
+                    // The `def_span` query is used to calculate `default_span`,
+                    // so exit to avoid infinite recursion.
+                    return DUMMY_SP
+                }
+                match self {
+                    $(
+                        TaggedQueryKey::$name(key) => crate::query::QueryKey::default_span(key, tcx),
+                    )*
+                }
+            }
+
+            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
+                // This is used to reduce code generation as it
+                // can be reused for queries with the same key type.
+                fn inner<'tcx>(key: &impl crate::query::QueryKey, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
+                    key.key_as_def_id().and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
+                }
+
+                if let TaggedQueryKey::def_kind(..) = self {
+                    // Try to avoid infinite recursion.
+                    return None
+                }
+                match self {
+                    $(
+                        TaggedQueryKey::$name(key) => inner(key, tcx),
+                    )*
+                }
+            }
+        }
 
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
@@ -588,6 +630,10 @@ macro_rules! define_callbacks {
     };
 }
 
+// Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
+pub(crate) use define_callbacks;
+pub(crate) use query_helper_param_ty;
+
 mod sealed {
     use rustc_hir::def_id::{LocalModDefId, ModDefId};
 
@@ -650,9 +696,6 @@ mod sealed {
         }
     }
 }
-
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct CyclePlaceholder(pub ErrorGuaranteed);
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {

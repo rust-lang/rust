@@ -1365,6 +1365,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type, pinnedness, mutability, and the region of a reference (`&T` or `&mut T`)
+    /// or a pinned-reference type (`Pin<&T>` or `Pin<&mut T>`).
+    ///
+    /// Regarding the [`pin_ergonomics`] feature, one of the goals is to make pinned references
+    /// (`Pin<&T>` and `Pin<&mut T>`) behaves similar to normal references (`&T` and `&mut T`).
+    /// This function is useful when references and pinned references are processed similarly.
+    ///
+    /// [`pin_ergonomics`]: https://github.com/rust-lang/rust/issues/130494
     pub fn maybe_pinned_ref(
         self,
     ) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability, Region<'tcx>)> {
@@ -1592,13 +1600,23 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Iterates over tuple fields.
+    /// Returns a list of tuple type arguments.
+    ///
     /// Panics when called on anything but a tuple.
     #[inline]
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(args) => args,
             _ => bug!("tuple_fields called on non-tuple: {self:?}"),
+        }
+    }
+
+    /// Returns a list of tuple type arguments, or `None` if `self` isn't a tuple.
+    #[inline]
+    pub fn opt_tuple_fields(self) -> Option<&'tcx List<Ty<'tcx>>> {
+        match self.kind() {
+            Tuple(args) => Some(args),
+            _ => None,
         }
     }
 

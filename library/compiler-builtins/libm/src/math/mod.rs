@@ -58,24 +58,6 @@ macro_rules! i {
     };
 }
 
-// Temporary macro to avoid panic codegen for division (in debug mode too). At
-// the time of this writing this is only used in a few places, and once
-// rust-lang/rust#72751 is fixed then this macro will no longer be necessary and
-// the native `/` operator can be used and panics won't be codegen'd.
-#[cfg(any(debug_assertions, not(intrinsics_enabled)))]
-macro_rules! div {
-    ($a:expr, $b:expr) => {
-        $a / $b
-    };
-}
-
-#[cfg(all(not(debug_assertions), intrinsics_enabled))]
-macro_rules! div {
-    ($a:expr, $b:expr) => {
-        unsafe { core::intrinsics::unchecked_div($a, $b) }
-    };
-}
-
 // `support` may be public for testing
 #[macro_use]
 #[cfg(feature = "unstable-public-internals")]
@@ -166,11 +148,9 @@ mod fminimum_fmaximum;
 mod fminimum_fmaximum_num;
 mod fmod;
 mod frexp;
-mod frexpf;
 mod hypot;
 mod hypotf;
 mod ilogb;
-mod ilogbf;
 mod j0;
 mod j0f;
 mod j1;
@@ -260,12 +240,10 @@ pub use self::fmin_fmax::{fmax, fmaxf, fmin, fminf};
 pub use self::fminimum_fmaximum::{fmaximum, fmaximumf, fminimum, fminimumf};
 pub use self::fminimum_fmaximum_num::{fmaximum_num, fmaximum_numf, fminimum_num, fminimum_numf};
 pub use self::fmod::{fmod, fmodf};
-pub use self::frexp::frexp;
-pub use self::frexpf::frexpf;
+pub use self::frexp::{frexp, frexpf};
 pub use self::hypot::hypot;
 pub use self::hypotf::hypotf;
-pub use self::ilogb::ilogb;
-pub use self::ilogbf::ilogbf;
+pub use self::ilogb::{ilogb, ilogbf};
 pub use self::j0::{j0, y0};
 pub use self::j0f::{j0f, y0f};
 pub use self::j1::{j1, y1};
@@ -326,6 +304,8 @@ cfg_if! {
         pub use self::fminimum_fmaximum::{fmaximumf16, fminimumf16};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf16, fminimum_numf16};
         pub use self::fmod::fmodf16;
+        pub use self::frexp::frexpf16;
+        pub use self::ilogb::ilogbf16;
         pub use self::ldexp::ldexpf16;
         pub use self::rint::rintf16;
         pub use self::round::roundf16;
@@ -353,6 +333,8 @@ cfg_if! {
         pub use self::fminimum_fmaximum::{fmaximumf128, fminimumf128};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf128, fminimum_numf128};
         pub use self::fmod::fmodf128;
+        pub use self::frexp::frexpf128;
+        pub use self::ilogb::ilogbf128;
         pub use self::ldexp::ldexpf128;
         pub use self::rint::rintf128;
         pub use self::round::roundf128;

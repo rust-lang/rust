@@ -2,7 +2,7 @@ use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use tracing::debug;
 
 use crate::builder::scope::{BreakableTarget, LintLevel};

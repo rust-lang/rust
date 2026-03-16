@@ -339,10 +339,14 @@ fn create_generic_args<'tcx>(
         | (FnKind::AssocTrait, FnKind::AssocTrait) => delegation_args,
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            // Special case, as user specifies Trait args in impl trait header, we want to treat
-            // them as parent args.
+            // Special case, as user specifies Trait args in trait impl header, we want to treat
+            // them as parent args. We always generate a function whose generics match
+            // child generics in trait.
             let parent = tcx.local_parent(delegation_id);
             parent_args = tcx.impl_trait_header(parent).trait_ref.instantiate_identity().args;
+
+            assert!(child_args.is_empty(), "Child args can not be used in trait impl case");
+
             tcx.mk_args(&delegation_args[delegation_parent_args_count..])
         }
 
@@ -597,31 +601,35 @@ fn get_delegation_user_specified_args<'tcx>(
             .as_slice()
     });
 
-    let child_args = info.child_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {
-        let parent_args = if let Some(parent_args) = parent_args {
-            parent_args
-        } else {
-            let parent = tcx.parent(def_id);
-            if matches!(tcx.def_kind(parent), DefKind::Trait) {
-                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+    let child_args = info
+        .child_args_segment_id
+        .and_then(get_segment)
+        .filter(|(_, def_id)| matches!(tcx.def_kind(*def_id), DefKind::Fn | DefKind::AssocFn))
+        .map(|(segment, def_id)| {
+            let parent_args = if let Some(parent_args) = parent_args {
+                parent_args
             } else {
-                &[]
-            }
-        };
+                let parent = tcx.parent(def_id);
+                if matches!(tcx.def_kind(parent), DefKind::Trait) {
+                    ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+                } else {
+                    &[]
+                }
+            };
 
-        let args = lowerer
-            .lower_generic_args_of_path(
-                segment.ident.span,
-                def_id,
-                parent_args,
-                segment,
-                None,
-                GenericArgPosition::Value,
-            )
-            .0;
+            let args = lowerer
+                .lower_generic_args_of_path(
+                    segment.ident.span,
+                    def_id,
+                    parent_args,
+                    segment,
+                    None,
+                    GenericArgPosition::Value,
+                )
+                .0;
 
-        &args[parent_args.len()..]
-    });
+            &args[parent_args.len()..]
+        });
 
     (parent_args.unwrap_or_default(), child_args.unwrap_or_default())
 }

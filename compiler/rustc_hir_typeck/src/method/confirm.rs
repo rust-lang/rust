@@ -736,12 +736,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
-        self.tcx.node_lint(AMBIGUOUS_GLOB_IMPORTED_TRAITS, segment.hir_id, |diag| {
-            diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
+        self.tcx.emit_node_lint(
+            AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+            segment.hir_id,
+            rustc_errors::DiagDecorator(|diag| {
+                diag.primary_message(format!(
+                    "Use of ambiguously glob imported trait `{trait_name}`"
+                ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
                 .help(format!("Import `{trait_name}` explicitly"));
-        });
+            }),
+        );
     }
 
     fn upcast(

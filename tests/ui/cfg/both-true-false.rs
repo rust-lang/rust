@@ -1,5 +1,6 @@
 /// Test that placing a `cfg(true)` and `cfg(false)` on the same item result in
 //. it being disabled.`
+//@ reference: cfg.attr.duplicates
 
 #[cfg(false)]
 #[cfg(true)]

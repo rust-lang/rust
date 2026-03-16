@@ -17,7 +17,6 @@ pub enum I128Enum {
     I128D = i128::MAX.to_le(),
 }
 
-#[cfg(not(old_llvm))]
 #[repr(u128)]
 pub enum U128VariantEnum {
     VariantU128A(u8) = 0_u128.to_le(),
@@ -26,7 +25,6 @@ pub enum U128VariantEnum {
     VariantU128D = u128::MAX.to_le(),
 }
 
-#[cfg(not(old_llvm))]
 #[repr(i128)]
 pub enum I128VariantEnum {
     VariantI128A(u8) = 0_i128.to_le(),
@@ -37,13 +35,9 @@ pub enum I128VariantEnum {
 
 pub fn f(_: U128Enum, _: I128Enum) {}
 
-#[cfg(not(old_llvm))]
 pub fn g(_: U128VariantEnum, _: I128VariantEnum) {}
 
 fn main() {
     f(U128Enum::U128A, I128Enum::I128A);
-    #[cfg(not(old_llvm))]
-    {
-        g(U128VariantEnum::VariantU128A(1), I128VariantEnum::VariantI128A(2));
-    }
+    g(U128VariantEnum::VariantU128A(1), I128VariantEnum::VariantI128A(2));
 }

@@ -20,6 +20,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Mips,
         options: TargetOptions {
             features: "+soft-float".into(),
+            llvm_abiname: "o32".into(),
             mcount: "__mcount".into(),
             endian: Endian::Little,
             ..base

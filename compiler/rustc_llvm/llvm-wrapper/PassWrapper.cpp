@@ -301,12 +301,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   std::string Error;
   auto Trip = Triple(Triple::normalize(TripleStr));
-  const llvm::Target *TheTarget =
-#if LLVM_VERSION_GE(21, 0)
-      TargetRegistry::lookupTarget(Trip, Error);
-#else
-      TargetRegistry::lookupTarget(Trip.getTriple(), Error);
-#endif
+  const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip, Error);
   if (TheTarget == nullptr) {
     LLVMRustSetLastError(Error.c_str());
     return nullptr;
@@ -367,13 +362,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
-#if LLVM_VERSION_GE(21, 0)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
                                                      Options, RM, CM, OptLevel);
-#else
-  TargetMachine *TM = TheTarget->createTargetMachine(
-      Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
-#endif
 
   if (LargeDataThreshold != 0) {
     TM->setLargeDataThreshold(LargeDataThreshold);
@@ -701,12 +691,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   if (LintIR) {
     PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM,
                                           OptimizationLevel Level) {
-#if LLVM_VERSION_GE(21, 0)
       MPM.addPass(
           createModuleToFunctionPassAdaptor(LintPass(/*AbortOnError=*/true)));
-#else
-      MPM.addPass(createModuleToFunctionPassAdaptor(LintPass()));
-#endif
     });
   }
 
@@ -1210,12 +1196,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // Convert the preserved symbols set from string to GUID, this is then needed
   // for internalization.
   for (size_t i = 0; i < num_symbols; i++) {
-#if LLVM_VERSION_GE(21, 0)
     auto GUID =
         GlobalValue::getGUIDAssumingExternalLinkage(preserved_symbols[i]);
-#else
-    auto GUID = GlobalValue::getGUID(preserved_symbols[i]);
-#endif
     Ret->GUIDPreservedSymbols.insert(GUID);
   }
 
@@ -1474,21 +1456,12 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   DenseSet<GlobalValue::GUID> CfiFunctionDecls;
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
-#if LLVM_VERSION_GE(21, 0)
   for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
     CfiFunctionDefs.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
   for (auto &Name : Data->Index.cfiFunctionDecls().symbols())
     CfiFunctionDecls.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
-#else
-  for (auto &Name : Data->Index.cfiFunctionDefs())
-    CfiFunctionDefs.insert(
-        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
-  for (auto &Name : Data->Index.cfiFunctionDecls())
-    CfiFunctionDecls.insert(
-        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
-#endif
 
   Key = llvm::computeLTOCacheKey(conf, Data->Index, ModId, ImportList,
                                  ExportList, ResolvedODR, DefinedGlobals,

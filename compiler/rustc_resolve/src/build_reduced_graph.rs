@@ -1474,7 +1474,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 return;
             }
 
-            AssocItemKind::DelegationMac(..) => bug!(),
+            AssocItemKind::DelegationMac(..) => {
+                span_bug!(item.span, "delegation mac should already have been removed")
+            }
         };
         let vis = self.resolve_visibility(&item.vis);
         let feed = self.r.feed(item.id);

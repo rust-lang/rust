@@ -7,7 +7,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_span::source_map::Spanned;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits;
@@ -116,7 +115,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attrs: &[RustcLayout
         }
 
         Err(layout_error) => {
-            tcx.dcx().emit_err(Spanned { node: layout_error.into_diagnostic(), span });
+            tcx.dcx().span_err(span, layout_error.to_string());
         }
     }
 }

@@ -917,6 +917,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     RetagInfo { cause: self.retag_cause, in_field: self.in_field },
                 )?;
                 self.ecx.write_immediate(*val, place)?;
+
                 interp_ok(())
             }
         }
@@ -963,6 +964,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
                         self.walk_value(place)?;
+                    }
+                    ty::Adt(adt, _) if adt.is_maybe_dangling() => {
+                        // Skip traversing for everything inside of `MaybeDangling`
                     }
                     _ => {
                         // Not a reference/pointer/box. Recurse.

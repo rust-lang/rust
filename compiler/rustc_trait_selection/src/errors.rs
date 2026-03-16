@@ -1707,7 +1707,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "if you meant to write a byte literal, prefix with `b`",
         code = "b'{code}'",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     MeantByteLiteral {
         #[primary_span]
@@ -1717,7 +1718,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "if you meant to write a `char` literal, use single quotes",
         code = "'{code}'",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     MeantCharLiteral {
         #[primary_span]
@@ -1737,7 +1739,8 @@ pub enum TypeErrorAdditionalDiags {
     #[suggestion(
         "consider specifying the actual array length",
         code = "{length}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     ConsiderSpecifyingLength {
         #[primary_span]

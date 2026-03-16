@@ -1,12 +1,71 @@
 use std::ops::Neg;
-use std::{f32, f64};
 
 use rand::Rng as _;
-use rustc_apfloat::Float;
-use rustc_apfloat::ieee::{DoubleS, IeeeFloat, Semantics, SingleS};
+use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, Semantics, SingleS};
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
 use crate::*;
+
+/// Convert a softfloat type to its corresponding hostfloat type.
+pub trait ToHost {
+    type HostFloat;
+    fn to_host(self) -> Self::HostFloat;
+}
+
+/// Convert a hostfloat type to its corresponding softfloat type.
+pub trait ToSoft {
+    type SoftFloat;
+    fn to_soft(self) -> Self::SoftFloat;
+}
+
+impl ToHost for rustc_apfloat::ieee::Double {
+    type HostFloat = f64;
+
+    fn to_host(self) -> Self::HostFloat {
+        f64::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f64 {
+    type SoftFloat = rustc_apfloat::ieee::Double;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Single {
+    type HostFloat = f32;
+
+    fn to_host(self) -> Self::HostFloat {
+        f32::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f32 {
+    type SoftFloat = rustc_apfloat::ieee::Single;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Half {
+    type HostFloat = f16;
+
+    fn to_host(self) -> Self::HostFloat {
+        f16::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f16 {
+    type SoftFloat = rustc_apfloat::ieee::Half;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
@@ -108,6 +167,21 @@ pub(crate) fn apply_random_float_error_to_imm<'tcx>(
     interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
+/// Remove `f16`/`f32`/`f64`/`f128` suffix, if any.
+///
+/// Also strip trailing `f` (indicates "float"), with an exception for "erf" to avoid
+/// removing that `f`.
+fn strip_float_suffix(intrinsic_name: &str) -> &str {
+    let name = intrinsic_name
+        .strip_suffix("f16")
+        .or_else(|| intrinsic_name.strip_suffix("f32"))
+        .or_else(|| intrinsic_name.strip_suffix("f64"))
+        .or_else(|| intrinsic_name.strip_suffix("f128"))
+        .unwrap_or(intrinsic_name);
+
+    if name == "erf" { name } else { name.strip_suffix("f").unwrap_or(name) }
+}
+
 /// Given a floating-point operation and a floating-point value, clamps the result to the output
 /// range of the given operation according to the C standard, if any.
 pub(crate) fn clamp_float_value<S: Semantics>(
@@ -123,40 +197,33 @@ where
     let pi = IeeeFloat::<S>::pi();
     let pi_over_2 = (pi / two).value;
 
-    match intrinsic_name {
+    match strip_float_suffix(intrinsic_name) {
         // sin, cos, tanh: [-1, 1]
-        #[rustfmt::skip]
-        | "sinf32"
-        | "sinf64"
-        | "cosf32"
-        | "cosf64"
-        | "tanhf"
-        | "tanh"
-         => val.clamp(one.neg(), one),
+        "sin" | "cos" | "tanh" => val.clamp(one.neg(), one),
 
         // exp: [0, +INF)
-        "expf32" | "exp2f32" | "expf64" | "exp2f64" => val.maximum(zero),
+        "exp" | "exp2" => val.maximum(zero),
 
         // cosh: [1, +INF)
-        "coshf" | "cosh" => val.maximum(one),
+        "cosh" => val.maximum(one),
 
         // acos: [0, π]
-        "acosf" | "acos" => val.clamp(zero, pi),
+        "acos" => val.clamp(zero, pi),
 
         // asin: [-π, +π]
-        "asinf" | "asin" => val.clamp(pi.neg(), pi),
+        "asin" => val.clamp(pi.neg(), pi),
 
         // atan: (-π/2, +π/2)
-        "atanf" | "atan" => val.clamp(pi_over_2.neg(), pi_over_2),
+        "atan" => val.clamp(pi_over_2.neg(), pi_over_2),
 
         // erfc: (-1, 1)
-        "erff" | "erf" => val.clamp(one.neg(), one),
+        "erf" => val.clamp(one.neg(), one),
 
         // erfc: (0, 2)
-        "erfcf" | "erfc" => val.clamp(zero, two),
+        "erfc" => val.clamp(zero, two),
 
         // atan2(y, x): arctan(y/x) in [−π, +π]
-        "atan2f" | "atan2" => val.clamp(pi.neg(), pi),
+        "atan2" => val.clamp(pi.neg(), pi),
 
         _ => val,
     }
@@ -210,15 +277,7 @@ where
     let pi_over_2 = (pi / two).value;
     let pi_over_4 = (pi_over_2 / two).value;
 
-    // Remove `f32`/`f64` suffix, if any.
-    let name = intrinsic_name
-        .strip_suffix("f32")
-        .or_else(|| intrinsic_name.strip_suffix("f64"))
-        .unwrap_or(intrinsic_name);
-    // Also strip trailing `f` (indicates "float"), with an exception for "erf" to avoid
-    // removing that `f`.
-    let name = if name == "erf" { name } else { name.strip_suffix("f").unwrap_or(name) };
-    Some(match (name, args) {
+    Some(match (strip_float_suffix(intrinsic_name), args) {
         // cos(±0) and cosh(±0)= 1
         ("cos" | "cosh", [input]) if input.is_zero() => one,
 
@@ -400,6 +459,129 @@ pub(crate) fn sqrt<F: Float>(x: F) -> F {
     }
 }
 
+pub fn sqrt_op<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
+    this: &mut MiriInterpCx<'tcx>,
+    f: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let f: F = this.read_scalar(f)?.to_float()?;
+    // Sqrt is specified to be fully precise.
+    let res = math::sqrt(f);
+    let res = this.adjust_nan(res, &[f]);
+    this.write_scalar(res, dest)
+}
+
+pub trait HostFloatOperation {
+    fn host_sin(self) -> Self;
+    fn host_cos(self) -> Self;
+    fn host_exp(self) -> Self;
+    fn host_exp2(self) -> Self;
+    fn host_log(self) -> Self;
+    fn host_log10(self) -> Self;
+    fn host_log2(self) -> Self;
+    fn host_powf(self, y: Self) -> Self;
+    fn host_powi(self, y: i32) -> Self;
+}
+
+macro_rules! impl_float_host_operations {
+    ($ty:ty) => {
+        impl HostFloatOperation for $ty {
+            fn host_sin(self) -> Self {
+                self.to_host().sin().to_soft()
+            }
+            fn host_cos(self) -> Self {
+                self.to_host().cos().to_soft()
+            }
+            fn host_exp(self) -> Self {
+                self.to_host().exp().to_soft()
+            }
+            fn host_exp2(self) -> Self {
+                self.to_host().exp2().to_soft()
+            }
+            fn host_log(self) -> Self {
+                self.to_host().ln().to_soft()
+            }
+            fn host_log10(self) -> Self {
+                self.to_host().log10().to_soft()
+            }
+            fn host_log2(self) -> Self {
+                self.to_host().log2().to_soft()
+            }
+            fn host_powf(self, y: Self) -> Self {
+                self.to_host().powf(y.to_host()).to_soft()
+            }
+            fn host_powi(self, y: i32) -> Self {
+                self.to_host().powi(y).to_soft()
+            }
+        }
+    };
+}
+
+impl_float_host_operations!(IeeeFloat<HalfS>);
+impl_float_host_operations!(IeeeFloat<SingleS>);
+impl_float_host_operations!(IeeeFloat<DoubleS>);
+
+#[derive(Debug, Clone, Copy)]
+pub enum HostUnaryFloatOp {
+    Sin,
+    Cos,
+    Exp,
+    Exp2,
+    Log,
+    Log10,
+    Log2,
+}
+
+pub fn host_unary_float_op<'tcx, S: Semantics>(
+    this: &mut MiriInterpCx<'tcx>,
+    f: &OpTy<'tcx>,
+    op: HostUnaryFloatOp,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx>
+where
+    IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
+{
+    use HostFloatOperation;
+
+    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
+
+    // The fixed-value and clamping functions need the name as a string.
+    let name = match op {
+        HostUnaryFloatOp::Sin => "sin",
+        HostUnaryFloatOp::Cos => "cos",
+        HostUnaryFloatOp::Exp => "exp",
+        HostUnaryFloatOp::Exp2 => "exp2",
+        HostUnaryFloatOp::Log => "log",
+        HostUnaryFloatOp::Log10 => "log10",
+        HostUnaryFloatOp::Log2 => "log2",
+    };
+    let res = math::fixed_float_value(this, name, &[f]).unwrap_or_else(|| {
+        // Using host floats (but it's fine, these operations do not have
+        // guaranteed precision).
+        let res = match op {
+            HostUnaryFloatOp::Sin => f.host_sin(),
+            HostUnaryFloatOp::Cos => f.host_cos(),
+            HostUnaryFloatOp::Exp => f.host_exp(),
+            HostUnaryFloatOp::Exp2 => f.host_exp2(),
+            HostUnaryFloatOp::Log => f.host_log(),
+            HostUnaryFloatOp::Log10 => f.host_log10(),
+            HostUnaryFloatOp::Log2 => f.host_log2(),
+        };
+
+        // Apply a relative error of 4ULP to introduce some non-determinism
+        // simulating imprecise implementations and optimizations.
+        let res = math::apply_random_float_error_ulp(this, res, 4);
+
+        // Clamp the result to the guaranteed range of this function according to the C standard,
+        // if any.
+        math::clamp_float_value(name, res)
+    });
+
+    let res = this.adjust_nan(res, &[f]);
+    this.write_scalar(res, dest)?;
+    interp_ok(())
+}
+
 /// Extend functionality of `rustc_apfloat` softfloats for IEEE float types.
 pub trait IeeeExt: rustc_apfloat::Float {
     // Some values we use:
@@ -433,12 +615,13 @@ macro_rules! impl_ieee_pi {
             #[inline]
             fn pi() -> Self {
                 // We take the value from the standard library as the most reasonable source for an exact π here.
-                Self::from_bits($float_ty::consts::PI.to_bits().into())
+                Self::from_bits(core::$float_ty::consts::PI.to_bits().into())
             }
         }
     };
 }
 
+impl_ieee_pi!(f16, HalfS);
 impl_ieee_pi!(f32, SingleS);
 impl_ieee_pi!(f64, DoubleS);
 

@@ -7,7 +7,8 @@
 //! - +0.0 if x and y are zero with opposite signs
 //! - qNaN if either operation is NaN
 //!
-//! Excluded from our implementation is sNaN handling.
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
 
 use crate::support::Float;
 

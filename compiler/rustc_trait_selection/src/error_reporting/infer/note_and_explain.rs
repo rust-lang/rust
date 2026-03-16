@@ -272,18 +272,21 @@ impl<T> Trait<T> for X {
                                 values.found, values.expected,
                             )
                         };
-                        if !(self.suggest_constraining_opaque_associated_type(
-                            diag,
-                            msg,
-                            proj_ty,
-                            values.expected,
-                        ) || self.suggest_constraint(
-                            diag,
-                            &msg,
-                            body_owner_def_id,
-                            proj_ty,
-                            values.expected,
-                        )) {
+                        let suggested_projection_constraint = proj_ty.kind(tcx)
+                            == ty::AliasTyKind::Projection
+                            && (self.suggest_constraining_opaque_associated_type(
+                                diag,
+                                msg,
+                                proj_ty,
+                                values.expected,
+                            ) || self.suggest_constraint(
+                                diag,
+                                &msg,
+                                body_owner_def_id,
+                                proj_ty,
+                                values.expected,
+                            ));
+                        if !suggested_projection_constraint {
                             diag.help(msg());
                             diag.note(
                                 "for more information, visit \

@@ -21,6 +21,8 @@ const fn minmax() {
     let nan = f32::NAN;
     // MIPS hardware except MIPS R6 treats f32::NAN as SNAN. Clear the signaling bit.
     // See https://github.com/rust-lang/rust/issues/52746.
+    // The "-1" works because we rely on `NAN` to have an all-0 payload, so the signaling
+    // bit is the least significant non-zero bit.
     #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
     let nan = f32::from_bits(f32::NAN.to_bits() - 1);
 

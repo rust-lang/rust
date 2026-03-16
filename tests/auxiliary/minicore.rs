@@ -236,6 +236,8 @@ impl_marker_trait!(
     ]
 );
 
+impl Sync for () {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 

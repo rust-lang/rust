@@ -27,8 +27,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Spanned, sym};
 use tracing::debug;
 
 #[macro_use]

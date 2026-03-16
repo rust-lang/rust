@@ -49,4 +49,19 @@ fn test_display() {
     assert_eq!(&format!("{b2:->3}!"), "�(��!");
     assert_eq!(&format!("{b2:-^3}!"), "�(��!");
     assert_eq!(&format!("{b2:-^2}!"), "�(��!");
+
+    assert_eq!(&format!("{b1:.1}!"), &format!("{:.1}!", "abc"));
+    assert_eq!(&format!("{b1:.2}!"), &format!("{:.2}!", "abc"));
+    assert_eq!(&format!("{b1:.3}!"), &format!("{:.3}!", "abc"));
+    assert_eq!(&format!("{b1:-<5.2}!"), &format!("{:-<5.2}!", "abc"));
+    assert_eq!(&format!("{b1:-^5.2}!"), &format!("{:-^5.2}!", "abc"));
+    assert_eq!(&format!("{b1:->5.2}!"), &format!("{:->5.2}!", "abc"));
+
+    assert_eq!(&format!("{b2:.1}!"), "�!");
+    assert_eq!(&format!("{b2:.2}!"), "�(!");
+    assert_eq!(&format!("{b2:.3}!"), "�(�!");
+    assert_eq!(&format!("{b2:.4}!"), "�(��!");
+    assert_eq!(&format!("{b2:-<6.3}!"), "�(�---!");
+    assert_eq!(&format!("{b2:-^6.3}!"), "-�(�--!");
+    assert_eq!(&format!("{b2:->6.3}!"), "---�(�!");
 }

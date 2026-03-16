@@ -39,6 +39,7 @@ declare_lint_pass! {
         DEPRECATED_IN_FUTURE,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        DUPLICATE_FEATURES,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
@@ -1032,8 +1033,8 @@ declare_lint! {
     /// ```rust
     /// #[warn(unused_macro_rules)]
     /// macro_rules! unused_empty {
-    ///     (hello) => { println!("Hello, world!") }; // This rule is unused
-    ///     () => { println!("empty") }; // This rule is used
+    ///     (hello) => { println!("Hello, world!") }; // This rule is used
+    ///     () => { println!("empty") }; // This rule is unused
     /// }
     ///
     /// fn main() {
@@ -1091,6 +1092,33 @@ declare_lint! {
     pub UNUSED_FEATURES,
     Warn,
     "unused features found in crate-level `#[feature]` directives"
+}
+
+declare_lint! {
+    /// The `duplicate_features` lint detects duplicate features found in
+    /// crate-level [`feature` attributes].
+    ///
+    /// Note: This lint used to be a hard error (E0636).
+    ///
+    /// [`feature` attributes]: https://doc.rust-lang.org/nightly/unstable-book/
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![allow(internal_features)]
+    /// #![feature(rustc_attrs)]
+    /// #![feature(rustc_attrs)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Enabling a feature more than once is a no-op.
+    /// To avoid this warning, remove the second `feature()` attribute.
+    pub DUPLICATE_FEATURES,
+    Deny,
+    "duplicate features found in crate-level `#[feature]` directives"
 }
 
 declare_lint! {

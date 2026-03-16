@@ -988,14 +988,6 @@ pub(crate) struct ImpliedFeatureNotExist {
 }
 
 #[derive(Diagnostic)]
-#[diag("the feature `{$feature}` has already been enabled", code = E0636)]
-pub(crate) struct DuplicateFeatureErr {
-    #[primary_span]
-    pub span: Span,
-    pub feature: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`"
 )]
@@ -1142,6 +1134,12 @@ pub(crate) struct ProcMacroBadSig {
     #[primary_span]
     pub span: Span,
     pub kind: ProcMacroKind,
+}
+
+#[derive(Diagnostic)]
+#[diag("the feature `{$feature}` has already been enabled")]
+pub(crate) struct DuplicateFeature {
+    pub feature: Symbol,
 }
 
 #[derive(Diagnostic)]

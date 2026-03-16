@@ -123,6 +123,8 @@ fn main() {
     let listener = bind_socket(config.bind);
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
         ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
+    } else if cfg!(target_os = "uefi") {
+        ("tmp\\work".into(), "tmp\\work\\tmp".into())
     } else {
         let mut work_dir = env::temp_dir();
         work_dir.push("work");
@@ -274,6 +276,8 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     } else if cfg!(target_vendor = "apple") {
         // On Apple platforms, the environment variable is named differently.
         "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "uefi") {
+        "path"
     } else {
         "LD_LIBRARY_PATH"
     };

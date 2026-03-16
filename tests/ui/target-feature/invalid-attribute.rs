@@ -1,14 +1,20 @@
-//@ only-x86_64
+//@ add-minicore
+//@ compile-flags: --target=x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
 
 #![warn(unused_attributes)]
+#![feature(no_core)]
+#![no_core]
+
+use minicore::*;
 
 #[target_feature(enable = "sse2")]
 //~^ ERROR attribute cannot be used on
-extern crate alloc;
+extern crate minicore;
 
 #[target_feature(enable = "sse2")]
 //~^ ERROR attribute cannot be used on
-use alloc::alloc::alloc;
+use minicore::mem::transmute;
 
 #[target_feature(enable = "sse2")]
 //~^ ERROR attribute cannot be used on
@@ -112,3 +118,8 @@ fn main() {
 //~^ ERROR `+sse2` is not valid for this target
 //~| NOTE `+sse2` is not valid for this target
 unsafe fn hey() {}
+
+#[target_feature(enable = "+sse5")]
+//~^ ERROR `+sse5` is not valid for this target
+//~| NOTE `+sse5` is not valid for this target
+unsafe fn typo() {}

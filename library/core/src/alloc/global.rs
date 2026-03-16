@@ -19,7 +19,7 @@ use crate::{cmp, ptr};
 ///
 /// # Example
 ///
-/// ```
+/// ```standalone_crate
 /// use std::alloc::{GlobalAlloc, Layout};
 /// use std::cell::UnsafeCell;
 /// use std::ptr::null_mut;

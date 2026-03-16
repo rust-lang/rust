@@ -257,6 +257,8 @@ declare_features! (
     (internal, rustc_attrs, "1.0.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
+    /// Perma-unstable, only used to test the `incomplete_features` lint.
+    (incomplete, test_incomplete_feature, "CURRENT_RUSTC_VERSION", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
@@ -429,7 +431,7 @@ declare_features! (
     /// Allows defining and calling c-variadic functions in const contexts.
     (unstable, const_c_variadic, "1.95.0", Some(151787)),
     /// Allows `const || {}` closures in const contexts.
-    (incomplete, const_closures, "1.68.0", Some(106003)),
+    (unstable, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
     (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
@@ -465,7 +467,7 @@ declare_features! (
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
-    (incomplete, deref_patterns, "1.79.0", Some(87121)),
+    (unstable, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
