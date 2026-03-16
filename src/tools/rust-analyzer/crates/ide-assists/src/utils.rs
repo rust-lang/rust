@@ -1109,7 +1109,7 @@ pub(crate) fn convert_param_list_to_arg_list(
             args.push(expr);
         }
     }
-    make::arg_list(args)
+    make.arg_list(args)
 }
 
 /// Calculate the number of hashes required for a raw string containing `s`
