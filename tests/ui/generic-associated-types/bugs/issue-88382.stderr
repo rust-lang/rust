@@ -4,7 +4,7 @@ error[E0283]: type annotations needed
 LL |     do_something(SomeImplementation(), test);
    |                                        ^^^^ cannot infer type of the type parameter `I` declared on the function `test`
    |
-   = note: cannot satisfy `_: Iterable`
+   = note: the type must implement `Iterable`
 help: the trait `Iterable` is implemented for `SomeImplementation`
   --> $DIR/issue-88382.rs:13:1
    |

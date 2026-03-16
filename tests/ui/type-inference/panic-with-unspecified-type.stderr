@@ -7,7 +7,7 @@ LL |     panic!(std::default::Default::default());
    |     |      cannot infer type
    |     required by a bound introduced by this call
    |
-   = note: cannot satisfy `_: Any`
+   = note: the type must implement `Any`
 note: required by a bound in `std::rt::begin_panic`
   --> $SRC_DIR/std/src/panicking.rs:LL:COL
 
