@@ -127,35 +127,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
         sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
 
-        sym::floorf16 => ("llvm.floor", &[bx.type_f16()]),
-        sym::floorf32 => ("llvm.floor", &[bx.type_f32()]),
-        sym::floorf64 => ("llvm.floor", &[bx.type_f64()]),
-        sym::floorf128 => ("llvm.floor", &[bx.type_f128()]),
-
-        sym::ceilf16 => ("llvm.ceil", &[bx.type_f16()]),
-        sym::ceilf32 => ("llvm.ceil", &[bx.type_f32()]),
-        sym::ceilf64 => ("llvm.ceil", &[bx.type_f64()]),
-        sym::ceilf128 => ("llvm.ceil", &[bx.type_f128()]),
-
-        sym::truncf16 => ("llvm.trunc", &[bx.type_f16()]),
-        sym::truncf32 => ("llvm.trunc", &[bx.type_f32()]),
-        sym::truncf64 => ("llvm.trunc", &[bx.type_f64()]),
-        sym::truncf128 => ("llvm.trunc", &[bx.type_f128()]),
-
-        // We could use any of `rint`, `nearbyint`, or `roundeven`
-        // for this -- they are all identical in semantics when
-        // assuming the default FP environment.
-        // `rint` is what we used for $forever.
-        sym::round_ties_even_f16 => ("llvm.rint", &[bx.type_f16()]),
-        sym::round_ties_even_f32 => ("llvm.rint", &[bx.type_f32()]),
-        sym::round_ties_even_f64 => ("llvm.rint", &[bx.type_f64()]),
-        sym::round_ties_even_f128 => ("llvm.rint", &[bx.type_f128()]),
-
-        sym::roundf16 => ("llvm.round", &[bx.type_f16()]),
-        sym::roundf32 => ("llvm.round", &[bx.type_f32()]),
-        sym::roundf64 => ("llvm.round", &[bx.type_f64()]),
-        sym::roundf128 => ("llvm.round", &[bx.type_f128()]),
-
         _ => return None,
     };
     Some(bx.call_intrinsic(
@@ -498,13 +469,30 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs => {
+            sym::fabs
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round_ties_even
+            | sym::round => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(span, "the `fabs` intrinsic requires a floating-point argument, got {:?}", ty);
                 };
                 let llty = self.type_float_from_ty(*f);
-                let llvm_name = "llvm.fabs";
+                let llvm_name = match name {
+                    sym::fabs => "llvm.fabs",
+                    sym::floor => "llvm.floor",
+                    sym::ceil => "llvm.ceil",
+                    sym::trunc => "llvm.trunc",
+                    // We could use any of `rint`, `nearbyint`, or `roundeven`
+                    // for this -- they are all identical in semantics when
+                    // assuming the default FP environment.
+                    // `rint` is what we used for $forever.
+                    sym::round_ties_even => "llvm.rint",
+                    sym::round => "llvm.round",
+                    _ => bug!(),
+                };
                 self.call_intrinsic(
                     llvm_name,
                     &[llty],
