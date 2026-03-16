@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/4265
+// Ensure the compiler rejects duplicate method definitions in an impl block.
 struct Foo {
       baz: usize
 }

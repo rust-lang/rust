@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/3702
+// Checks that method resolution fails when multiple traits provide the same method in scope.
 pub trait ToPrimitive {
     fn to_int(&self) -> isize { 0 }
 }

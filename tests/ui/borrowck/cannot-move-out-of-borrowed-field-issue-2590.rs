@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/2590
+// Tests that you cannot move out of a borrowed field in a struct.
 struct Parser {
     tokens: Vec<isize> ,
 }
