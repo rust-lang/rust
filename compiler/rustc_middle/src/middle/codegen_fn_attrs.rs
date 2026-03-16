@@ -210,6 +210,7 @@ bitflags::bitflags! {
         /// As such, we must make sure these symbols really do exist in the final binary/library.
         /// This flag is put on both the implementations of EIIs and the foreign item they implement.
         const EXTERNALLY_IMPLEMENTABLE_ITEM = 1 << 18;
+        const PANIC_ENTRYPOINT = 1 << 19;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
