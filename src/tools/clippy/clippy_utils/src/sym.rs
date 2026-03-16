@@ -562,7 +562,6 @@ generate! {
     split_whitespace,
     splitn,
     splitn_mut,
-    sqrt,
     starts_with,
     std_detect,
     step_by,
