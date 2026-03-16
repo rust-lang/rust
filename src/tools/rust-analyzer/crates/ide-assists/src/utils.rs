@@ -86,14 +86,14 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
     None
 }
 
-pub(crate) fn wrap_block(expr: &ast::Expr) -> ast::BlockExpr {
+pub(crate) fn wrap_block(expr: &ast::Expr, make: &SyntaxFactory) -> ast::BlockExpr {
     if let ast::Expr::BlockExpr(block) = expr
         && let Some(first) = block.syntax().first_token()
         && first.kind() == T!['{']
     {
         block.reset_indent()
     } else {
-        make::block_expr(None, Some(expr.reset_indent().indent(1.into())))
+        make.block_expr(None, Some(expr.reset_indent().indent(1.into())))
     }
 }
 
