@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-24.04
     environment: publish
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
       - name: Install Rust (rustup)
         run: rustup update nightly --no-self-update && rustup default nightly
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@1528104d2ca23787631a1c1f022abb64b34c1e11 # v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
