@@ -1927,6 +1927,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {
-        intrinsics::sqrtf128(self)
+        intrinsics::sqrt(self)
     }
 }

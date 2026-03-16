@@ -23851,7 +23851,7 @@ pub fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fsqrt))]
 pub fn vsqrth_f16(a: f16) -> f16 {
-    sqrtf16(a)
+    sqrt(a)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s8)"]

@@ -1019,34 +1019,13 @@ pub unsafe fn unaligned_volatile_load<T>(src: *const T) -> T;
 #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
 pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
-/// Returns the square root of an `f16`
+/// Returns the square root of a floating point value.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
+/// The stabilized versions of this intrinsic are available on the float
+/// primitives via the `sqrt` method. For example, [`f32::sqrt`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sqrtf16(x: f16) -> f16;
-/// Returns the square root of an `f32`
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf32(x: f32) -> f32;
-/// Returns the square root of an `f64`
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf64(x: f64) -> f64;
-/// Returns the square root of an `f128`
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sqrt`](../../std/primitive.f128.html#method.sqrt)
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sqrtf128(x: f128) -> f128;
+pub fn sqrt<T: bounds::FloatPrimitive>(x: T) -> T;
 
 /// Raises an `f16` to an integer power.
 ///

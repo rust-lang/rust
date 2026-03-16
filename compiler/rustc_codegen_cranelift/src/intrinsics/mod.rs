@@ -322,10 +322,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32, types::F32),
         sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
         sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
-        sym::sqrtf16 => ("sqrtf16", 1, fx.tcx.types.f16, types::F16),
-        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32, types::F32),
-        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64, types::F64),
-        sym::sqrtf128 => ("sqrtf128", 1, fx.tcx.types.f128, types::F128),
         sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
@@ -409,7 +405,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::copysignf16 => codegen_f16_f128::copysign_f16(fx, args[0], args[1]),
         sym::copysignf128 => codegen_f16_f128::copysign_f128(fx, args[0], args[1]),
         sym::copysignf32 | sym::copysignf64 => fx.bcx.ins().fcopysign(args[0], args[1]),
-        sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
@@ -1121,6 +1116,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // Float unop intrinsics
         sym::fabs
+        | sym::sqrt
         | sym::floor
         | sym::ceil
         | sym::trunc
@@ -1144,6 +1140,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 // backend lowerings are implemented.
                 (sym::fabs, F16) => Ok(codegen_f16_f128::abs_f16(fx, x)),
                 (sym::fabs, F128) => Ok(codegen_f16_f128::abs_f128(fx, x)),
+                (sym::sqrt, F32 | F64) => Ok(fx.bcx.ins().sqrt(x)),
+                (sym::sqrt, F16) => Err("sqrtf16"),
+                (sym::sqrt, F128) => Err("sqrtf128"),
                 (sym::floor, F32 | F64) => Ok(fx.bcx.ins().floor(x)),
                 (sym::floor, F16) => Err("floorf16"),
                 (sym::floor, F128) => Err("floorf128"),
