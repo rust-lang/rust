@@ -26,7 +26,7 @@ mod partial_eq {
         }
         if let V = vec![] {} //~ ERROR: constant of non-structural type
         let V = vec![] else { return; }; //~ ERROR: constant of non-structural type
-        // ^ maybe suggest if V != vec![] { return; } ?
+        let V = Vec::new() else { return; }; //~ ERROR: constant of non-structural type
     }
 }
 

@@ -107,6 +107,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL |     impl PartialEq<S> for S {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: check for equality instead of pattern matching
+   |
+LL -         let Some(C) = Some(S) else { return; };
+LL +         if Some(C) == Some(S) { return; };
+   |
 
 error: constant of non-structural type `Vec<()>` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:24:13
@@ -157,6 +162,26 @@ LL |         let V = vec![] else { return; };
    = note: `Vec<()>` is not usable in patterns
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:29:13
+   |
+LL |     const V: Vec<()> = vec![];
+   |     ---------------- constant defined here
+...
+LL |         let V = Vec::new() else { return; };
+   |             ^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` is not usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -         let V = Vec::new() else { return; };
+LL +         if V == Vec::new() { return; };
+   |
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:40:18
@@ -247,6 +272,11 @@ LL |         let Some(C) = Some(S) else { return; };
    |                  ^ constant of non-structural type
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -         let Some(C) = Some(S) else { return; };
+LL +         if Some(C) == Some(S) { return; };
+   |
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

@@ -1144,6 +1144,24 @@ pub(crate) enum SuggestEq<'tcx> {
         ty: Ty<'tcx>,
         manual_partialeq_impl: bool,
     },
+    #[multipart_suggestion(
+        "{$manual_partialeq_impl ->
+            [false] if `{$ty}` manually implemented `PartialEq`, you could check
+            *[true] check
+        } for equality instead of pattern matching",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    ReplaceLetElseWithIf {
+        #[suggestion_part(code = "if ")]
+        if_span: Span,
+        #[suggestion_part(code = " == ")]
+        eq: Span,
+        #[suggestion_part(code = " ")]
+        else_span: Span,
+        ty: Ty<'tcx>,
+        manual_partialeq_impl: bool,
+    },
 }
 
 #[derive(Diagnostic)]

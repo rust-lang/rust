@@ -283,6 +283,21 @@ impl<'tcx> ConstToPat<'tcx> {
                                 None
                             }
                         }
+                        hir::Node::LetStmt(let_stmt)
+                            if let Some(init) = let_stmt.init
+                                && let Some(els) = let_stmt.els
+                                && init.span.ctxt().is_root()
+                                && els.span.ctxt().is_root() =>
+                        {
+                            // `let PAT = expr else {` -> `if PAT == expr {`.
+                            Some(SuggestEq::ReplaceLetElseWithIf {
+                                if_span: let_stmt.span.until(let_stmt.pat.span),
+                                eq: let_stmt.pat.span.between(init.span),
+                                else_span: init.span.between(els.span),
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
                         _ => None,
                     }
                 } else {
