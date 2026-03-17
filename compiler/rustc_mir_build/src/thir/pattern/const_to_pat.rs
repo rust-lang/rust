@@ -22,7 +22,7 @@ use tracing::{debug, instrument, trace};
 use super::PatCtxt;
 use crate::errors::{
     ConstPatternDependsOnGenericParameter, CouldNotEvalConstPattern, InvalidPattern, NaNPattern,
-    PointerPattern, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
+    PointerPattern, SuggestEq, TypeNotPartialEq, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'tcx> PatCtxt<'tcx> {
@@ -224,13 +224,78 @@ impl<'tcx> ConstToPat<'tcx> {
                         }
                         _ => (None, true),
                     };
+                let manual_partialeq_impl =
+                    manual_partialeq_impl_note || manual_partialeq_impl_span.is_some();
+                let is_local = adt_def.did().is_local();
                 let ty_def_span = tcx.def_span(adt_def.did());
+                let suggestion = if let Ok(name) = tcx.sess.source_map().span_to_snippet(self.span)
+                    && (is_local || manual_partialeq_impl)
+                {
+                    let mut hir_id = self.id;
+                    while let hir::Node::Pat(pat) = tcx.parent_hir_node(hir_id) {
+                        hir_id = pat.hir_id;
+                    }
+                    match tcx.parent_hir_node(hir_id) {
+                        hir::Node::Arm(hir::Arm { pat, guard: None, .. }) => {
+                            // Add an if condition to the match arm.
+                            Some(SuggestEq::AddIf {
+                                if_span: pat.span.shrink_to_hi(),
+                                pat_span: self.span,
+                                name,
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
+                        hir::Node::Arm(hir::Arm { guard: Some(guard), .. }) => {
+                            // Modify the the match arm if condition and add a check for equality.
+                            Some(SuggestEq::AddToIf {
+                                span: guard.span.shrink_to_hi(),
+                                pat_span: self.span,
+                                name,
+                                ty,
+                                manual_partialeq_impl,
+                            })
+                        }
+                        hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::Let(let_expr),
+                            span,
+                            ..
+                        }) => {
+                            if let_expr.pat.span == self.span {
+                                // `if let CONST = expr` -> `if CONST == expr`.
+                                Some(SuggestEq::ReplaceWithEq {
+                                    removal: span.until(self.span),
+                                    eq: self.span.between(let_expr.init.span),
+                                    ty,
+                                    manual_partialeq_impl,
+                                })
+                            } else if tcx.sess.edition().at_least_rust_2024() {
+                                // `if let Some(CONST) = expr` ->
+                                // `if let Some(binding) = expr && binding == CONST`.
+                                Some(SuggestEq::AddToLetChain {
+                                    span: span.shrink_to_hi(),
+                                    pat_span: self.span,
+                                    name,
+                                    ty,
+                                    manual_partialeq_impl,
+                                })
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
                 let err = TypeNotStructural {
                     span,
                     ty,
                     ty_def_span,
                     manual_partialeq_impl_span,
                     manual_partialeq_impl_note,
+                    is_local,
+                    suggestion,
                 };
                 return self.mk_err(tcx.dcx().create_err(err), ty);
             }

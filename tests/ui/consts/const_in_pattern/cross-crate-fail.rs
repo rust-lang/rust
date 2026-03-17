@@ -14,7 +14,7 @@ fn main() {
     }
 
     match None {
-        <Defaulted as consts::AssocConst>::SOME  => panic!(),
+        <Defaulted as consts::AssocConst>::SOME => panic!(),
         //~^ ERROR constant of non-structural type `CustomEq` in a pattern
         _ => {}
     }
