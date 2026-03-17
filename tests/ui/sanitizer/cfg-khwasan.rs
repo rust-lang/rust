@@ -3,10 +3,8 @@
 
 //@ add-minicore
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-hwaddress
-//@ revisions: aarch64
-//@[aarch64] compile-flags: --target aarch64-unknown-none
-//@[aarch64] needs-llvm-components: aarch64
+//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]

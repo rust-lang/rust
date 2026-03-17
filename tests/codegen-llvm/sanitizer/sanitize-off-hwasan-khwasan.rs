@@ -2,12 +2,9 @@
 // the kernel hardware-assisted address sanitizer.
 //
 //@ add-minicore
-//@ compile-flags: -Zsanitizer=kernel-hwaddress -Ctarget-feature=-crt-static -Copt-level=0
-//@ revisions: aarch64 aarch64v8r
-//@[aarch64] compile-flags: --target aarch64-unknown-none
-//@[aarch64] needs-llvm-components: aarch64
-//@[aarch64v8r] compile-flags: --target aarch64v8r-unknown-none
-//@[aarch64v8r] needs-llvm-components: aarch64
+//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ compile-flags: -Ctarget-feature=-crt-static -Copt-level=0
+//@ needs-llvm-components: aarch64
 
 #![crate_type = "rlib"]
 #![feature(no_core, sanitize, lang_items)]

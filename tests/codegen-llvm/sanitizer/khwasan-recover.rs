@@ -2,15 +2,12 @@
 // with -Zsanitizer-recover=kernel-hwaddress.
 //
 //@ add-minicore
-//@[KHWASAN] needs-llvm-components: aarch64
-//@[KHWASAN-RECOVER] needs-llvm-components: aarch64
+//@ needs-llvm-components: aarch64
 //@ revisions: KHWASAN KHWASAN-RECOVER
 //@ no-prefer-dynamic
 //@ compile-flags: -Copt-level=0
-//@[KHWASAN]            compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
-//@[KHWASAN-RECOVER]    compile-flags: -Zsanitizer=kernel-hwaddress
-//@[KHWASAN-RECOVER]    compile-flags: -Zsanitizer-recover=kernel-hwaddress
-//@[KHWASAN-RECOVER]    compile-flags: --target aarch64-unknown-none
+//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@[KHWASAN-RECOVER] compile-flags: -Zsanitizer-recover=kernel-hwaddress
 
 #![feature(no_core, sanitize, lang_items)]
 #![no_core]

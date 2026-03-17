@@ -4,7 +4,9 @@
 //@ assembly-output: emit-asm
 //@ revisions: hwasan khwasan
 //@[hwasan] compile-flags: --target aarch64-unknown-linux-gnu -Zsanitizer=hwaddress
+//@[hwasan] needs-llvm-components: aarch64
 //@[khwasan] compile-flags: --target aarch64-unknown-none -Zsanitizer=kernel-hwaddress
+//@[khwasan] needs-llvm-components: aarch64
 //@ compile-flags: -Copt-level=1
 
 #![crate_type = "lib"]
