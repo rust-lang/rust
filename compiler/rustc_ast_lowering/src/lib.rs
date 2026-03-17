@@ -1269,9 +1269,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty_alloc(ty, itctx).try_as_ambig_ty().unwrap())
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(
-                self.lower_anon_const_to_const_arg_and_alloc(ct).try_as_ambig_ct().unwrap(),
-            ),
+            ast::GenericArg::Const(ct) => {
+                let ct = self.lower_anon_const_to_const_arg_and_alloc(ct);
+                match ct.try_as_ambig_ct() {
+                    Some(ct) => GenericArg::Const(ct),
+                    None => GenericArg::Infer(hir::InferArg { hir_id: ct.hir_id, span: ct.span }),
+                }
+            }
         }
     }
 
