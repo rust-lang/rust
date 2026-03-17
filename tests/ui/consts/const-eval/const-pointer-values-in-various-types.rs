@@ -1,7 +1,7 @@
 //@ only-x86_64
 //@ stderr-per-bitwidth
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #[repr(C)]
 union Nonsense {
     u: usize,

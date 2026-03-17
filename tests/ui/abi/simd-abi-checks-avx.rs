@@ -1,7 +1,7 @@
 //@ only-x86_64
 //@ build-fail
 //@ compile-flags: -C target-feature=-avx
-
+//@ ignore-parallel-frontend post-monomorphization errors
 #![feature(portable_simd)]
 #![feature(simd_ffi)]
 #![allow(improper_ctypes_definitions)]

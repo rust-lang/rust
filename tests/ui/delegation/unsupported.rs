@@ -2,7 +2,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-fail
-
+//@ ignore-parallel-frontend query cycle
 // Next solver revision included because of trait-system-refactor-initiative#234.
 // If we end up in a query cycle, it should be okay as long as results are the same.
 

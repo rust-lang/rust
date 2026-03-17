@@ -4,7 +4,7 @@
 //@[opt] compile-flags: -O
 //! This fails without optimizations, so it should also fail with optimizations.
 #![feature(type_alias_impl_trait)]
-
+//@ ignore-parallel-frontend post-monomorphization errors
 mod m {
     struct Fail<T>(T);
     impl<T> Fail<T> {

@@ -219,7 +219,14 @@ fn parse_config(args: Vec<String>) -> Config {
             "CODEGEN BACKEND [NAME | PATH]",
         )
         .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
-        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS");
+        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS")
+        .optopt(
+            "",
+            "parallel-frontend-threads",
+            "number of parallel threads to use for the frontend when building test artifacts",
+            "THREADS_COUNT",
+        )
+        .optopt("", "iteration-count", "number of times to execute each test", "COUNT");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -369,6 +376,20 @@ fn parse_config(args: Vec<String>) -> Config {
         None => panic!("`--jobs` is required"),
     };
 
+    let parallel_frontend_threads = match matches.opt_str("parallel-frontend-threads") {
+        Some(threads) => {
+            threads.parse::<u32>().expect("expected `--parallel-frontend-threads` to be an `u32`")
+        }
+        None => Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
+    };
+    let iteration_count = match matches.opt_str("iteration-count") {
+        Some(count) => {
+            count.parse::<u32>().expect("expected `--iteration-count` to be a positive integer")
+        }
+        None => Config::DEFAULT_ITERATION_COUNT,
+    };
+    assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -489,6 +510,9 @@ fn parse_config(args: Vec<String>) -> Config {
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
 
         jobs,
+
+        parallel_frontend_threads,
+        iteration_count,
     }
 }
 

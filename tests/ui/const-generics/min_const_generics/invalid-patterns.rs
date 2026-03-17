@@ -1,6 +1,6 @@
 //@ stderr-per-bitwidth
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 use std::mem::transmute;
 
 fn get_flag<const FlagSet: bool, const ShortName: char>() -> Option<char> {
