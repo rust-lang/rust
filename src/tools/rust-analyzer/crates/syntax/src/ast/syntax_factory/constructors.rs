@@ -96,7 +96,35 @@ impl SyntaxFactory {
         generic_param_list: Option<ast::GenericParamList>,
         field_list: ast::FieldList,
     ) -> ast::Struct {
-        make::struct_(visibility, strukt_name, generic_param_list, field_list).clone_for_update()
+        let ast = make::struct_(
+            visibility.clone(),
+            strukt_name.clone(),
+            generic_param_list.clone(),
+            field_list.clone(),
+        )
+        .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+            builder.map_node(strukt_name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            if let Some(generic_param_list) = generic_param_list {
+                builder.map_node(
+                    generic_param_list.syntax().clone(),
+                    ast.generic_param_list().unwrap().syntax().clone(),
+                );
+            }
+            builder
+                .map_node(field_list.syntax().clone(), ast.field_list().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn enum_(
