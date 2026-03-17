@@ -258,7 +258,16 @@ impl SyntaxFactory {
         &self,
         predicates: impl IntoIterator<Item = ast::WherePred>,
     ) -> ast::WhereClause {
-        make::where_clause(predicates).clone_for_update()
+        let (predicates, input) = iterator_input(predicates);
+        let ast = make::where_clause(predicates).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.predicates().map(|p| p.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn impl_trait_type(&self, bounds: ast::TypeBoundList) -> ast::ImplTraitType {
