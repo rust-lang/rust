@@ -756,12 +756,6 @@ Tests for rustc-internal lints.
 
 Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
-## `tests/ui/invalid/`
-
-Various tests related to rejecting invalid inputs.
-
-**FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
-
 ## `tests/ui/io-checks/`: Input Output
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
