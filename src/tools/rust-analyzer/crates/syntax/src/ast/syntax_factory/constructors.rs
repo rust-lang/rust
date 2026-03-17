@@ -511,7 +511,20 @@ impl SyntaxFactory {
     }
 
     pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
-        make::expr_bin_op(lhs, op, rhs)
+        let ast::Expr::BinExpr(ast) =
+            make::expr_bin_op(lhs.clone(), op, rhs.clone()).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(lhs.syntax().clone(), ast.lhs().unwrap().syntax().clone());
+            builder.map_node(rhs.syntax().clone(), ast.rhs().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast.into()
     }
 
     pub fn ty_placeholder(&self) -> ast::Type {
