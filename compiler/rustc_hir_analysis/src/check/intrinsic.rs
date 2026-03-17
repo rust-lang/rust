@@ -147,22 +147,22 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::logf32
         | sym::logf64
         | sym::logf128
+        | sym::maximum_number_nsz_f16
+        | sym::maximum_number_nsz_f32
+        | sym::maximum_number_nsz_f64
+        | sym::maximum_number_nsz_f128
         | sym::maximumf16
         | sym::maximumf32
         | sym::maximumf64
         | sym::maximumf128
-        | sym::maxnumf16
-        | sym::maxnumf32
-        | sym::maxnumf64
-        | sym::maxnumf128
+        | sym::minimum_number_nsz_f16
+        | sym::minimum_number_nsz_f32
+        | sym::minimum_number_nsz_f64
+        | sym::minimum_number_nsz_f128
         | sym::minimumf16
         | sym::minimumf32
         | sym::minimumf64
         | sym::minimumf128
-        | sym::minnumf16
-        | sym::minnumf32
-        | sym::minnumf64
-        | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
         | sym::offload
@@ -468,20 +468,24 @@ pub(crate) fn check_intrinsic_type(
         sym::fabsf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
         sym::fabsf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
-        sym::minnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::minnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::minnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::minnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+        sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+        sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+        sym::minimum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+        sym::minimum_number_nsz_f128 => {
+            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
+        }
 
         sym::minimumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minimumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
         sym::minimumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
         sym::minimumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
-        sym::maxnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::maxnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::maxnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::maxnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+        sym::maximum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+        sym::maximum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+        sym::maximum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+        sym::maximum_number_nsz_f128 => {
+            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
+        }
 
         sym::maximumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::maximumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),

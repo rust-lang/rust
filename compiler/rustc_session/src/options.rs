@@ -2456,6 +2456,8 @@ options! {
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
     min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
         "align all functions to at least this many bytes. Must be a power of 2"),
+    min_recursion_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "set a minimum recursion limit (final limit = max(this, recursion_limit_from_crate))"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),

@@ -8,11 +8,15 @@
 //! - Otherwise, either `x` or `y`, canonicalized
 //! - -0.0 and +0.0 may be disregarded (unlike newer operations)
 //!
-//! Excluded from our implementation is sNaN handling.
+//! We do not treat sNaN and qNaN differently; even though IEEE technically requires this, (a call
+//! with sNaN should return qNaN rather than the other result), it breaks associativity so isn't
+//! desired behavior. C23 does not differentiate between sNaN and qNaN, so we do not either. More
+//! on the problems with `minNum` [here][minnum-removal].
 //!
-//! More on the differences: [link].
+//! IEEE also specifies that a sNaN in either argument should signal invalid, but we do not
+//! implement this.
 //!
-//! [link]: https://grouper.ieee.org/groups/msc/ANSI_IEEE-Std-754-2019/background/minNum_maxNum_Removal_Demotion_v3.pdf
+//! [minnum-removal]: https://grouper.ieee.org/groups/msc/ANSI_IEEE-Std-754-2019/background/minNum_maxNum_Removal_Demotion_v3.pdf
 
 use crate::support::Float;
 

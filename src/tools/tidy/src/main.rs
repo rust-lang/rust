@@ -109,6 +109,7 @@ fn main() {
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path]);
         check!(target_policy, &root_path);
         check!(gcc_submodule, &root_path, &compiler_path);
+        check!(codegen, &compiler_path);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);

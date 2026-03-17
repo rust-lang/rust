@@ -18,6 +18,7 @@ pub(crate) fn target() -> Target {
             endian: Endian::Big,
             cpu: "mips32r6".into(),
             features: "+mips32r6".into(),
+            llvm_abiname: "o32".into(),
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
 

@@ -7,19 +7,19 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
-use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, EnsureMode, QueryCache, QueryJob, QueryJobId,
-    QueryKey, QueryLatch, QueryMode, QueryState,
+    ActiveKeyStatus, CycleError, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey,
+    QueryLatch, QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
+use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
-use crate::for_each_query_vtable;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
+use crate::query_impl::for_each_query_vtable;
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
@@ -30,94 +30,79 @@ pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
     state.active.lock_shards().all(|shard| shard.is_empty())
 }
 
+#[derive(Clone, Copy)]
+pub enum CollectActiveJobsKind {
+    /// We need the full query job map, and we are willing to wait to obtain the query state
+    /// shard lock(s).
+    Full,
+
+    /// We need the full query job map, and we shouldn't need to wait to obtain the shard lock(s),
+    /// because we are in a place where nothing else could hold the shard lock(s).
+    FullNoContention,
+
+    /// We can get by without the full query job map, so we won't bother waiting to obtain the
+    /// shard lock(s) if they're not already unlocked.
+    PartialAllowed,
+}
+
 /// Returns a map of currently active query jobs, collected from all queries.
-///
-/// If `require_complete` is `true`, this function locks all shards of the
-/// query results to produce a complete map, which always returns `Ok`.
-/// Otherwise, it may return an incomplete map as an error if any shard
-/// lock cannot be acquired.
-///
-/// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
-/// especially when called from within a deadlock handler, unless a
-/// complete map is needed and no deadlock is possible at this call site.
-pub fn collect_active_jobs_from_all_queries<'tcx>(
+pub fn collect_active_query_jobs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    require_complete: bool,
-) -> Result<QueryJobMap<'tcx>, QueryJobMap<'tcx>> {
-    let mut job_map_out = QueryJobMap::default();
-    let mut complete = true;
+    collect_kind: CollectActiveJobsKind,
+) -> QueryJobMap<'tcx> {
+    let mut job_map = QueryJobMap::default();
 
     for_each_query_vtable!(ALL, tcx, |query| {
-        let res = gather_active_jobs(query, tcx, require_complete, &mut job_map_out);
-        if res.is_none() {
-            complete = false;
-        }
+        collect_active_query_jobs_inner(query, collect_kind, &mut job_map);
     });
 
-    if complete { Ok(job_map_out) } else { Err(job_map_out) }
+    job_map
 }
 
 /// Internal plumbing for collecting the set of active jobs for this query.
 ///
-/// Should only be called from `collect_active_jobs_from_all_queries`.
-///
-/// (We arbitrarily use the word "gather" when collecting the jobs for
-/// each individual query, so that we have distinct function names to
-/// grep for.)
-fn gather_active_jobs<'tcx, C>(
+/// Aborts if jobs can't be gathered as specified by `collect_kind`.
+fn collect_active_query_jobs_inner<'tcx, C>(
     query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    require_complete: bool,
-    job_map_out: &mut QueryJobMap<'tcx>, // Out-param; job info is gathered into this map
-) -> Option<()>
-where
+    collect_kind: CollectActiveJobsKind,
+    job_map: &mut QueryJobMap<'tcx>,
+) where
     C: QueryCache<Key: QueryKey + DynSend + DynSync>,
     QueryVTable<'tcx, C>: DynSync,
 {
-    let mut active = Vec::new();
-
-    // Helper to gather active jobs from a single shard.
-    let mut gather_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
-        for (k, v) in shard.iter() {
-            if let ActiveKeyStatus::Started(ref job) = *v {
-                active.push((*k, job.clone()));
+    let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
+        for (key, status) in shard.iter() {
+            if let ActiveKeyStatus::Started(job) = status {
+                // This function is safe to call with the shard locked because it is very simple.
+                let frame = crate::plumbing::create_query_stack_frame(query, *key);
+                job_map.insert(job.id, QueryJobInfo { frame, job: job.clone() });
             }
         }
     };
 
-    // Lock shards and gather jobs from each shard.
-    if require_complete {
-        for shard in query.state.active.lock_shards() {
-            gather_shard_jobs(&shard);
+    match collect_kind {
+        CollectActiveJobsKind::Full => {
+            for shard in query.state.active.lock_shards() {
+                collect_shard_jobs(&shard);
+            }
         }
-    } else {
-        // We use try_lock_shards here since we are called from the
-        // deadlock handler, and this shouldn't be locked.
-        for shard in query.state.active.try_lock_shards() {
-            // This can be called during unwinding, and the function has a `try_`-prefix, so
-            // don't `unwrap()` here, just manually check for `None` and do best-effort error
-            // reporting.
-            match shard {
-                None => {
-                    tracing::warn!(
-                        "Failed to collect active jobs for query with name `{}`!",
-                        query.name
-                    );
-                    return None;
+        CollectActiveJobsKind::FullNoContention => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    None => panic!("Failed to collect active jobs for query `{}`!", query.name),
                 }
-                Some(shard) => gather_shard_jobs(&shard),
+            }
+        }
+        CollectActiveJobsKind::PartialAllowed => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    None => warn!("Failed to collect active jobs for query `{}`!", query.name),
+                }
             }
         }
     }
-
-    // Call `make_frame` while we're not holding a `state.active` lock as `make_frame` may call
-    // queries leading to a deadlock.
-    for (key, job) in active {
-        let frame = crate::plumbing::create_deferred_query_stack_frame(tcx, query, key);
-        job_map_out.insert(job.id, QueryJobInfo { frame, job });
-    }
-
-    Some(())
 }
 
 #[cold]
@@ -125,19 +110,11 @@ where
 fn mk_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
-    cycle_error: CycleError,
+    key: C::Key,
+    cycle_error: CycleError<'tcx>,
 ) -> C::Value {
-    let error = report_cycle(tcx.sess, &cycle_error);
-    match query.cycle_error_handling {
-        CycleErrorHandling::Error => {
-            let guar = error.emit();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
-        }
-        CycleErrorHandling::DelayBug => {
-            let guar = error.delay_as_bug();
-            (query.value_from_cycle_error)(tcx, cycle_error, guar)
-        }
-    }
+    let error = report_cycle(tcx, &cycle_error);
+    (query.value_from_cycle_error)(tcx, key, cycle_error, error)
 }
 
 /// Guard object representing the responsibility to execute a query job and
@@ -219,17 +196,16 @@ where
 fn cycle_error<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
+    key: C::Key,
     try_execute: QueryJobId,
     span: Span,
 ) -> (C::Value, Option<DepNodeIndex>) {
-    // Ensure there was no errors collecting all active jobs.
+    // Ensure there were no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let job_map = collect_active_jobs_from_all_queries(tcx, false)
-        .ok()
-        .expect("failed to collect active queries");
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
 
     let error = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
-    (mk_cycle(query, tcx, error.lift()), None)
+    (mk_cycle(query, tcx, key, error), None)
 }
 
 #[inline(always)]
@@ -238,6 +214,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
+    key_hash: u64,
     latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
 ) -> (C::Value, Option<DepNodeIndex>) {
@@ -246,8 +223,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     // self-profiler.
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
-    // With parallel queries we might just have to wait on some other
-    // thread.
+    // With parallel queries we might just have to wait on some other thread.
     let result = latch.wait_on(tcx, current, span);
 
     match result {
@@ -256,7 +232,6 @@ fn wait_for_query<'tcx, C: QueryCache>(
                 outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
-                    let key_hash = sharded::make_hash(&key);
                     let shard = query.state.active.lock_shard_by_hash(key_hash);
                     match shard.find(key_hash, equivalent_key(key)) {
                         // The query we waited on panicked. Continue unwinding here.
@@ -274,7 +249,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, tcx, cycle.lift()), None),
+        Err(cycle) => (mk_cycle(query, tcx, key, cycle), None),
     }
 }
 
@@ -309,16 +284,37 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
     match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
-            // Nothing has computed or is computing the query, so we start a new job and insert it in the
-            // state map.
+            // Nothing has computed or is computing the query, so we start a new job and insert it
+            // in the state map.
             let id = next_job_id(tcx);
             let job = QueryJob::new(id, span, current_job_id);
             entry.insert((key, ActiveKeyStatus::Started(job)));
 
-            // Drop the lock before we start executing the query
+            // Drop the lock before we start executing the query.
             drop(state_lock);
 
-            execute_job::<C, INCR>(query, tcx, key, key_hash, id, dep_node)
+            // Set up a guard object that will automatically poison the query if a
+            // panic occurs while executing the query (or any intermediate plumbing).
+            let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+            debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
+
+            // Delegate to another function to actually execute the query job.
+            let (value, dep_node_index) = if INCR {
+                execute_job_incr(query, tcx, key, dep_node, id)
+            } else {
+                execute_job_non_incr(query, tcx, key, id)
+            };
+
+            if query.feedable {
+                check_feedable_consistency(tcx, query, key, &value);
+            }
+
+            // Tell the guard to insert `value` in the cache and remove the status entry from
+            // `query.state`.
+            job_guard.complete(&query.cache, value, dep_node_index);
+
+            (value, Some(dep_node_index))
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
@@ -330,14 +326,14 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, latch, current_job_id)
+                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
                     } else {
                         let id = job.id;
                         drop(state_lock);
 
                         // If we are single-threaded we know that we have cycle error,
                         // so we just return the error.
-                        cycle_error(query, tcx, id, span)
+                        cycle_error(query, tcx, key, id, span)
                     }
                 }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
@@ -347,67 +343,44 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 }
 
 #[inline(always)]
-fn execute_job<'tcx, C: QueryCache, const INCR: bool>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn check_feedable_consistency<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
-    key_hash: u64,
-    id: QueryJobId,
-    dep_node: Option<DepNode>,
-) -> (C::Value, Option<DepNodeIndex>) {
-    // Set up a guard object that will automatically poison the query if a
-    // panic occurs while executing the query (or any intermediate plumbing).
-    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+    value: &C::Value,
+) {
+    // We should not compute queries that also got a value via feeding.
+    // This can't happen, as query feeding adds the very dependencies to the fed query
+    // as its feeding query had. So if the fed query is red, so is its feeder, which will
+    // get evaluated first, and re-feed the query.
+    let Some((cached_value, _)) = query.cache.lookup(&key) else { return };
 
-    debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
-
-    // Delegate to another function to actually execute the query job.
-    let (value, dep_node_index) = if INCR {
-        execute_job_incr(query, tcx, key, dep_node, id)
-    } else {
-        execute_job_non_incr(query, tcx, key, id)
+    let Some(hash_value_fn) = query.hash_value_fn else {
+        panic!(
+            "no_hash fed query later has its value computed.\n\
+            Remove `no_hash` modifier to allow recomputation.\n\
+            The already cached value: {}",
+            (query.format_value)(&cached_value)
+        );
     };
 
-    let cache = &query.cache;
-    if query.feedable {
-        // We should not compute queries that also got a value via feeding.
-        // This can't happen, as query feeding adds the very dependencies to the fed query
-        // as its feeding query had. So if the fed query is red, so is its feeder, which will
-        // get evaluated first, and re-feed the query.
-        if let Some((cached_value, _)) = cache.lookup(&key) {
-            let Some(hash_value_fn) = query.hash_value_fn else {
-                panic!(
-                    "no_hash fed query later has its value computed.\n\
-                    Remove `no_hash` modifier to allow recomputation.\n\
-                    The already cached value: {}",
-                    (query.format_value)(&cached_value)
-                );
-            };
-
-            let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-                (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, &value))
-            });
-            let formatter = query.format_value;
-            if old_hash != new_hash {
-                // We have an inconsistency. This can happen if one of the two
-                // results is tainted by errors.
-                assert!(
-                    tcx.dcx().has_errors().is_some(),
-                    "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
-                        computed={:#?}\nfed={:#?}",
-                    query.dep_kind,
-                    key,
-                    formatter(&value),
-                    formatter(&cached_value),
-                );
-            }
-        }
+    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
+        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
+    });
+    let formatter = query.format_value;
+    if old_hash != new_hash {
+        // We have an inconsistency. This can happen if one of the two
+        // results is tainted by errors.
+        assert!(
+            tcx.dcx().has_errors().is_some(),
+            "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                computed={:#?}\nfed={:#?}",
+            query.dep_kind,
+            key,
+            formatter(value),
+            formatter(&cached_value),
+        );
     }
-
-    // Tell the guard to perform completion bookkeeping, and also to not poison the query.
-    job_guard.complete(cache, value, dep_node_index);
-
-    (value, Some(dep_node_index))
 }
 
 // Fast path for when incr. comp. is off.

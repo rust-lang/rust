@@ -4344,7 +4344,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
- "rustc_lint",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_middle",
  "rustc_pattern_analysis",
@@ -4575,7 +4575,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
  "rustc_thread_pool",
  "tracing",
@@ -5372,9 +5371,9 @@ dependencies = [
 
 [[package]]
 name = "stringdex"
-version = "0.0.5"
+version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07ab85c3f308f022ce6861ab57576b5b6ebc4835f9577e67e0f35f6c351e3f0a"
+checksum = "155cb460a7ede06f71ac9961e28d3ba4b3408355e233f8edd158b957ceba3950"
 dependencies = [
  "stacker",
 ]

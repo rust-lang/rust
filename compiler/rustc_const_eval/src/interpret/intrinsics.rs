@@ -40,20 +40,20 @@ pub(crate) enum MinMax {
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Minimum,
-    /// The IEEE-2008 `minNum` operation with the SNaN handling of the
-    /// IEEE-2019 `minimumNumber` operation - see `f32::min` etc.
+    /// The IEEE-2019 `minimumNumber` operation but with non-deterministic signed zero handling
+    /// (like in IEEE-2008 `minNum`) - see `f32::min` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
-    MinimumNumber,
+    MinimumNumberNsz,
     /// The IEEE-2019 `maximum` operation - see `f32::maximum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Maximum,
-    /// The IEEE-2008 `maxNum` operation with the SNaN handling of the
-    /// IEEE-2019 `maximumNumber` operation - see `f32::max` etc.
+    /// The IEEE-2019 `maximumNumber` operation but with non-deterministic signed zero handling
+    /// (like in IEEE-2008 `maxNum`) - see `f32::max` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
-    MaximumNumber,
+    MaximumNumberNsz,
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -526,17 +526,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minnumf16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumberNsz, dest)?
             }
 
             sym::minimumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Minimum, dest)?,
@@ -548,17 +548,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
 
-            sym::maxnumf16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumberNsz, dest)?
             }
 
             sym::maximumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Maximum, dest)?,
@@ -1031,16 +1031,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = a.to_float()?;
         let b: F = b.to_float()?;
-        let res = if matches!(op, MinMax::MinimumNumber | MinMax::MaximumNumber) && a == b {
+        let res = if matches!(op, MinMax::MinimumNumberNsz | MinMax::MaximumNumberNsz) && a == b {
             // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
             // Let the machine decide which one to return.
             M::equal_float_min_max(self, a, b)
         } else {
             let result = match op {
                 MinMax::Minimum => a.minimum(b),
-                MinMax::MinimumNumber => a.min(b),
+                MinMax::MinimumNumberNsz => a.min(b),
                 MinMax::Maximum => a.maximum(b),
-                MinMax::MaximumNumber => a.max(b),
+                MinMax::MaximumNumberNsz => a.max(b),
             };
             self.adjust_nan(result, &[a, b])
         };

@@ -870,7 +870,7 @@ impl CrateGraphBuilder {
 impl Crate {
     pub fn root_file_id(self, db: &dyn salsa::Database) -> EditionedFileId {
         let data = self.data(db);
-        EditionedFileId::new(db, data.root_file_id, data.edition, self)
+        EditionedFileId::new(db, data.root_file_id, data.edition)
     }
 }
 

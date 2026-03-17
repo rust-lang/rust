@@ -230,6 +230,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.id,
                         expr_hir_id,
                         *coroutine_kind,
+                        *constness,
                         fn_decl,
                         body,
                         *fn_decl_span,
@@ -1060,7 +1061,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
-        constness: Const,
+        mut constness: Const,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
@@ -1070,11 +1071,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
+        if let Const::Yes(span) = constness {
+            if !self.is_in_const_context {
+                self.dcx().span_err(span, "cannot use `const` closures outside of const contexts");
+                constness = Const::No;
+            }
+        }
+
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
             let mut coroutine_kind = find_attr!(attrs, Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
 
             // FIXME(contracts): Support contracts on closures?
-            let body_id = this.lower_fn_body(decl, None, |this| {
+            let body_id = this.lower_fn_body(decl, None, constness, |this| {
                 this.coroutine_kind = coroutine_kind;
                 let e = this.lower_expr_mut(body);
                 coroutine_kind = this.coroutine_kind;
@@ -1157,6 +1165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_id: NodeId,
         closure_hir_id: HirId,
         coroutine_kind: CoroutineKind,
+        constness: Const,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
@@ -1203,6 +1212,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl =
             self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
+        if let Const::Yes(span) = constness {
+            self.dcx().span_err(span, "const coroutines are not supported");
+        }
+
         let c = self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
             binder: binder_clause,
@@ -1216,7 +1229,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: hir::Constness::NotConst,
+            constness: self.lower_constness(constness),
         });
         hir::ExprKind::Closure(c)
     }

@@ -6,7 +6,6 @@
 //@[s390x_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
 //@[s390x_vector] needs-llvm-components: systemz
 //@ compile-flags: -Zmerge-functions=disabled
-//@ min-llvm-version: 21
 
 #![feature(no_core, repr_simd, f16, f128)]
 #![cfg_attr(s390x_vector, feature(asm_experimental_reg))]

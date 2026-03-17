@@ -339,10 +339,14 @@ fn create_generic_args<'tcx>(
         | (FnKind::AssocTrait, FnKind::AssocTrait) => delegation_args,
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            // Special case, as user specifies Trait args in impl trait header, we want to treat
-            // them as parent args.
+            // Special case, as user specifies Trait args in trait impl header, we want to treat
+            // them as parent args. We always generate a function whose generics match
+            // child generics in trait.
             let parent = tcx.local_parent(delegation_id);
             parent_args = tcx.impl_trait_header(parent).trait_ref.instantiate_identity().args;
+
+            assert!(child_args.is_empty(), "Child args can not be used in trait impl case");
+
             tcx.mk_args(&delegation_args[delegation_parent_args_count..])
         }
 

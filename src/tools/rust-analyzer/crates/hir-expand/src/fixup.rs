@@ -208,7 +208,6 @@ pub(crate) fn fixup_syntax(
                         ]);
                     }
                 },
-                // FIXME: foo::
                 ast::MatchExpr(it) => {
                     if it.expr().is_none() {
                         let match_token = match it.match_token() {

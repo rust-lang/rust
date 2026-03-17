@@ -126,8 +126,8 @@ impl flags::AnalysisStats {
         let source_roots = krates
             .iter()
             .cloned()
-            .map(|krate| db.file_source_root(krate.root_file(db)).source_root_id(db))
-            .unique();
+            .map(|krate| (db.file_source_root(krate.root_file(db)).source_root_id(db), krate))
+            .unique_by(|(source_root_id, _)| *source_root_id);
 
         let mut dep_loc = 0;
         let mut workspace_loc = 0;
@@ -137,7 +137,7 @@ impl flags::AnalysisStats {
         let mut workspace_item_stats = PrettyItemStats::default();
         let mut dep_item_stats = PrettyItemStats::default();
 
-        for source_root_id in source_roots {
+        for (source_root_id, krate) in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
             for file_id in source_root.iter() {
                 if let Some(p) = source_root.path_for_file(&file_id)
@@ -148,7 +148,8 @@ impl flags::AnalysisStats {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
                             .file_item_tree(
-                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
+                                EditionedFileId::current_edition(db, file_id).into(),
+                                krate.into(),
                             )
                             .item_tree_stats()
                             .into();
@@ -160,7 +161,8 @@ impl flags::AnalysisStats {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
                             .file_item_tree(
-                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
+                                EditionedFileId::current_edition(db, file_id).into(),
+                                krate.into(),
                             )
                             .item_tree_stats()
                             .into();
@@ -492,7 +494,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in file_ids {
-            let file_id = file_id.editioned_file_id(db);
+            let file_id = file_id.span_file_id(db);
             let sema = hir::Semantics::new(db);
             let display_target = match sema.first_crate(file_id.file_id()) {
                 Some(krate) => krate.to_display_target(sema.db),

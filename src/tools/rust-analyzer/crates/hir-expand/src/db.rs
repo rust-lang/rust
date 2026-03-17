@@ -162,7 +162,7 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
 }
 
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
-    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
+    let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
     let anchor_offset =
         db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
     FileRange { file_id, range: range + anchor_offset }

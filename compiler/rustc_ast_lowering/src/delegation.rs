@@ -725,9 +725,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result: &mut GenericsGenerationResult<'hir>,
         add_lifetimes: bool,
     ) -> hir::PathSegment<'hir> {
+        let details = result.generics.args_propagation_details();
+
         // The first condition is needed when there is SelfAndUserSpecified case,
         // we don't want to propagate generics params in this situation.
-        let segment = if !result.generics.is_user_specified()
+        let segment = if details.should_propagate
             && let Some(args) = result
                 .generics
                 .into_hir_generics(self, item_id, span)
@@ -738,7 +740,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             segment.clone()
         };
 
-        if result.generics.is_user_specified() {
+        if details.use_args_in_sig_inheritance {
             result.args_segment_id = Some(segment.hir_id);
         }
 

@@ -37,6 +37,7 @@ trait AssocConst {
     //~^ ERROR mismatched types
     //~| NOTE expected associated type, found `u8`
     //~| NOTE expected associated type `<Self as AssocConst>::Ty`
+    //~| NOTE expected because
 }
 
 // An impl can, however
