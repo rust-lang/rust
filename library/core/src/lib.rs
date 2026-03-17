@@ -107,7 +107,6 @@
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
-#![feature(internal_impls_macro)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
