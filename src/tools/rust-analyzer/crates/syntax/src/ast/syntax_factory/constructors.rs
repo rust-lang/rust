@@ -180,7 +180,15 @@ impl SyntaxFactory {
     }
 
     pub fn unnamed_param(&self, ty: ast::Type) -> ast::Param {
-        make::unnamed_param(ty).clone_for_update()
+        let ast = make::unnamed_param(ty.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
