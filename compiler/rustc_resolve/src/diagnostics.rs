@@ -3204,11 +3204,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 continue;
             }
 
-            let item_was = if let CfgEntry::NameValue { value: Some(feature), .. } = cfg.0 {
-                errors::ItemWas::BehindFeature { feature, span: cfg.1 }
-            } else {
-                errors::ItemWas::CfgOut { span: cfg.1 }
+            let span = cfg.1;
+            let item_was = match cfg.0 {
+                CfgEntry::Bool(false, _) => errors::ItemWas::Disabled { span },
+                CfgEntry::Any(ref any, _) if any.is_empty() => errors::ItemWas::Disabled { span },
+                CfgEntry::NameValue { name: sym::feature, value: Some(name), .. } => {
+                    errors::ItemWas::BehindCargoFeature { name, span }
+                }
+                CfgEntry::NameValue { name, value, .. } => {
+                    errors::ItemWas::BehindFeature { name, value, span }
+                }
+                _ => errors::ItemWas::CfgOut { span },
             };
+
             let note = errors::FoundItemConfigureOut { span: ident.span, item_was };
             err.subdiagnostic(note);
         }

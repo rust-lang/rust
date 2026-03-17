@@ -5,7 +5,7 @@ macro_rules! test { ($nm:ident,
                      $i:item) => (mod $nm { #![$a] $i }); }
 
 test!(a, //~ NOTE: found an item that was configured out
-      #[cfg(false)], //~ NOTE: the item is gated here
+      #[cfg(false)], //~ NOTE: the item is disabled
       pub fn bar() { });
 
 test!(b,
