@@ -465,8 +465,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         dep_graph_data.with_task(
             dep_node,
             tcx,
-            (query, key),
-            |tcx, (query, key)| (query.invoke_provider_fn)(tcx, key),
+            || (query.invoke_provider_fn)(tcx, key),
             query.hash_value_fn,
         )
     });

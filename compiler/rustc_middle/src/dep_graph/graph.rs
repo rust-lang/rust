@@ -52,6 +52,7 @@ pub enum QuerySideEffect {
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
 }
+
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Arc<DepGraphData>>,
@@ -215,11 +216,11 @@ impl DepGraph {
         }
     }
 
-    pub fn with_ignore<OP, R>(&self, op: OP) -> R
+    pub fn with_ignore<F, R>(&self, f: F) -> R
     where
-        OP: FnOnce() -> R,
+        F: FnOnce() -> R,
     {
-        with_deps(TaskDepsRef::Ignore, op)
+        with_deps(TaskDepsRef::Ignore, f)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -268,87 +269,72 @@ impl DepGraph {
     /// in the query infrastructure, and is not currently needed by the
     /// decoding of any query results. Should the need arise in the future,
     /// we should consider extending the query system with this functionality.
-    pub fn with_query_deserialization<OP, R>(&self, op: OP) -> R
+    pub fn with_query_deserialization<F, R>(&self, f: F) -> R
     where
-        OP: FnOnce() -> R,
+        F: FnOnce() -> R,
     {
-        with_deps(TaskDepsRef::Forbid, op)
+        with_deps(TaskDepsRef::Forbid, f)
     }
 
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, F, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        f: F,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+    ) -> (R, DepNodeIndex)
+    where
+        F: FnOnce() -> R,
+    {
         match self.data() {
-            Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
-            None => (task_fn(tcx, task_arg), self.next_virtual_depnode_index()),
+            Some(data) => data.with_task(dep_node, tcx, f, hash_result),
+            None => (f(), self.next_virtual_depnode_index()),
         }
     }
 
-    pub fn with_anon_task<'tcx, OP, R>(
+    pub fn with_anon_task<'tcx, F, R>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
-        op: OP,
+        f: F,
     ) -> (R, DepNodeIndex)
     where
-        OP: FnOnce() -> R,
+        F: FnOnce() -> R,
     {
         match self.data() {
             Some(data) => {
-                let (result, index) = data.with_anon_task_inner(tcx, dep_kind, op);
+                let (result, index) = data.with_anon_task_inner(tcx, dep_kind, f);
                 self.read_index(index);
                 (result, index)
             }
-            None => (op(), self.next_virtual_depnode_index()),
+            None => (f(), self.next_virtual_depnode_index()),
         }
     }
 }
 
 impl DepGraphData {
-    /// Starts a new dep-graph task. Dep-graph tasks are specified
-    /// using a free function (`task`) and **not** a closure -- this
-    /// is intentional because we want to exercise tight control over
-    /// what state they have access to. In particular, we want to
-    /// prevent implicit 'leaks' of tracked state into the task (which
-    /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [rustc dev guide] for more details on
-    /// the dep-graph).
-    ///
-    /// Therefore, the task function takes a `TyCtxt`, plus exactly one
-    /// additional argument, `task_arg`. The additional argument type can be
-    /// `()` if no argument is needed, or a tuple if multiple arguments are
-    /// needed.
-    ///
-    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, F, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        f: F,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+    ) -> (R, DepNodeIndex)
+    where
+        F: FnOnce() -> R,
+    {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
         // 2. Two distinct query keys get mapped to the same `DepNode`
         //    (see for example #48923).
         self.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
-            format!(
-                "forcing query with already existing `DepNode`\n\
-                 - query-key: {task_arg:?}\n\
-                 - dep-node: {dep_node:?}"
-            )
+            format!("forcing query with already existing `DepNode`: {dep_node:?}")
         });
 
-        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let with_deps = |task_deps| with_deps(task_deps, f);
         let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
@@ -377,14 +363,14 @@ impl DepGraphData {
     /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
     /// user of this function actually performs the read; we'll have to see
     /// how to make that work with `anon` in `execute_job_incr`, though.
-    pub fn with_anon_task_inner<'tcx, OP, R>(
+    pub fn with_anon_task_inner<'tcx, F, R>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
-        op: OP,
+        f: F,
     ) -> (R, DepNodeIndex)
     where
-        OP: FnOnce() -> R,
+        F: FnOnce() -> R,
     {
         debug_assert!(!tcx.is_eval_always(dep_kind));
 
@@ -395,7 +381,7 @@ impl DepGraphData {
             None,
             128,
         ));
-        let result = with_deps(TaskDepsRef::Allow(&task_deps), op);
+        let result = with_deps(TaskDepsRef::Allow(&task_deps), f);
         let task_deps = task_deps.into_inner();
         let reads = task_deps.reads;
 
