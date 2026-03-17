@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 // `N + 1` also depends on `T` here even if it doesn't use it.
 fn q<T, const N: usize>(_: T) -> [u8; N + 1] {

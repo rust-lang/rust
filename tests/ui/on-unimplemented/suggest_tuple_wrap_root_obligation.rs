@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 struct Tuple; //~ HELP the trait `From<u8>` is not implemented for `Tuple`
 
 impl From<(u8,)> for Tuple {

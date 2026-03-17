@@ -5,6 +5,7 @@
 // - the `FnOnce` bounds need an arg that is a reference
 // - a custom `Drop` is needed somewhere in the type that `accept` returns, to create universes
 //   during liveness and dropck outlives computation
+#![allow(todo_macro_uses)]
 
 //@ check-fail
 

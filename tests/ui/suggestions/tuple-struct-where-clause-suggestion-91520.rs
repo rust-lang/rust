@@ -2,6 +2,7 @@
 // Previously, the suggestion to add `where` clause was placed inside the derive
 // like `#[derive(Clone where Inner<T>: Clone)]`
 // instead of `struct Outer<T>(Inner<T>) where Inner<T>: Clone`
+#![allow(todo_macro_uses)]
 
 #![crate_type = "lib"]
 

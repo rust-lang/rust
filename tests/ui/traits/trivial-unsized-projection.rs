@@ -6,7 +6,7 @@
 //@[good_new] check-pass
 
 #![feature(trivial_bounds)]
-#![allow(trivial_bounds)]
+#![allow(trivial_bounds, todo_macro_uses)]
 
 trait Bad {
     type Assert

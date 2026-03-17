@@ -3,6 +3,7 @@
 //@ no-prefer-dynamic
 //@ needs-crate-type: cdylib
 //@ ignore-backends: gcc
+#![allow(todo_macro_uses)]
 
 use std::alloc::{GlobalAlloc, Layout};
 

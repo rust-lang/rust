@@ -16,7 +16,7 @@
 //
 // cc trait-system-refactor-initiative#110
 
-#![allow(unused)]
+#![allow(unused, todo_macro_uses)]
 trait HigherRanked {
     type Output<'a>;
 }

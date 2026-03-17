@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 fn process_slice(data: &[i32]) {
     todo!()
 }

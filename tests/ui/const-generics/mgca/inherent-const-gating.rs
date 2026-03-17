@@ -1,5 +1,5 @@
 #![feature(min_generic_const_args)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_uses)]
 
 struct S;
 

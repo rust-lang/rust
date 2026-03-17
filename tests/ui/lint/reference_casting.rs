@@ -1,4 +1,5 @@
 //@ check-fail
+#![allow(todo_macro_uses)]
 
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as

@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 struct Process;
 
 pub type Group = (Vec<String>, Vec<Process>);

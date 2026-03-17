@@ -1,3 +1,5 @@
+#![allow(todo_macro_uses)]
+
 fn sum<I: Iterator<Item = ()>>(i: I) -> i32 where I::Item = i32 {
 //~^ ERROR equality constraints are not yet supported in `where` clauses
     panic!()

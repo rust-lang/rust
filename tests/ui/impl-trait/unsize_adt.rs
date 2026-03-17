@@ -1,4 +1,5 @@
 //! Test that we allow unsizing `Foo<[Opaque; N]>` to `Foo<[Concrete]>`.
+#![allow(todo_macro_uses)]
 
 //@check-pass
 

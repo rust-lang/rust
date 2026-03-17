@@ -1,7 +1,7 @@
 //@ run-rustfix
 
 #![deny(unused_imports)]
-#![allow(unreachable_code)]
+#![allow(unreachable_code, todo_macro_uses)]
 
 use std::collections::{HashMap, self as coll};
 //~^ ERROR unused import: `HashMap`

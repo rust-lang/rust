@@ -9,6 +9,7 @@
 //@[e2024] edition: 2024
 //
 //@[e2021] check-pass
+#![allow(todo_macro_uses)]
 
 use std::marker::PhantomData;
 

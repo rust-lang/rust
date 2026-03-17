@@ -3,6 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 //@[next] check-fail
 //@ ignore-compare-mode-next-solver (explicit revisions)
+#![allow(todo_macro_uses)]
 
 /// This triggers an ICE with (and without) `--emit metadata` using the old
 /// trait solver:

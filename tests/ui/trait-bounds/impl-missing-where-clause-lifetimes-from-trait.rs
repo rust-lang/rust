@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 trait Trait<T> {
     fn foo<'a, K>(self, _: T, _: K) where T: 'a, K: 'a;
 }

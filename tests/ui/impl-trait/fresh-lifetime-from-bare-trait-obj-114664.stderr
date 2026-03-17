@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:5:24
+  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:6:24
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |                        ^^^^^^^
@@ -13,7 +13,7 @@ LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:5:24
+  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:6:24
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |                        ^^^^^^^

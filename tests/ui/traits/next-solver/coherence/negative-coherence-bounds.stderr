@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/negative-coherence-bounds.rs:12:12
+  --> $DIR/negative-coherence-bounds.rs:13:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^

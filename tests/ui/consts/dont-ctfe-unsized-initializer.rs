@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 static S: str = todo!();
 //~^ ERROR the size for values of type `str` cannot be known at compilation time
 

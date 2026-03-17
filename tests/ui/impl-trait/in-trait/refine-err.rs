@@ -1,3 +1,4 @@
+#![allow(todo_macro_uses)]
 #![deny(refining_impl_trait)]
 
 trait FromRow {

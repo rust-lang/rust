@@ -1,6 +1,7 @@
 //@ check-pass
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 pub trait BufferTrait<'buffer> {
     type Subset<'channel>

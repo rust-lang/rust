@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition:2018
+#![allow(todo_macro_uses)]
 
 // This is a regression test for https://github.com/rust-lang/rust/issues/105501.
 // It was minified from the published `msf-ice:0.2.1` crate which failed in a crater run.

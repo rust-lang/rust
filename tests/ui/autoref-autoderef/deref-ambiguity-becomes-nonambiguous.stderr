@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `Value<Rc<_>>`
-  --> $DIR/deref-ambiguity-becomes-nonambiguous.rs:31:9
+  --> $DIR/deref-ambiguity-becomes-nonambiguous.rs:32:9
    |
 LL |     let var_fn = Value::wrap();
    |         ^^^^^^

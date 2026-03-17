@@ -1,5 +1,6 @@
 // This code (probably) _should_ compile, but it currently does not because we
 // are not smart enough about implied bounds.
+#![allow(todo_macro_uses)]
 
 use std::io;
 

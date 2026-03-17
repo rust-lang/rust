@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Inner<T>: Clone` is not satisfied
-  --> $DIR/tuple-struct-where-clause-suggestion-91520.rs:15:17
+  --> $DIR/tuple-struct-where-clause-suggestion-91520.rs:16:17
    |
 LL | #[derive(Clone)]
    |          ----- in this derive macro expansion

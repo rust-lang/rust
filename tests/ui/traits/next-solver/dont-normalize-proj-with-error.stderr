@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `TypeError` in this scope
-  --> $DIR/dont-normalize-proj-with-error.rs:17:20
+  --> $DIR/dont-normalize-proj-with-error.rs:18:20
    |
 LL | fn type_error() -> TypeError { todo!() }
    |                    ^^^^^^^^^ not found in this scope

@@ -76,7 +76,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         #[inline]
         #[deprecated(since = "5.2.0")]
         fn builtins_fn() {{
-            #![allow(unused_variables)]
+            #![allow(unused_variables, todo_macro_uses)]
 
             let x = ();
             let y = ();

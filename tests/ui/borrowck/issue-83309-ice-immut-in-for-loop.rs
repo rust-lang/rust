@@ -3,6 +3,7 @@
 // find such methods, it still tries to add suggestions
 // which then fails an assertion later because there was
 // no suggestions to make.
+#![allow(todo_macro_uses)]
 
 
 fn main() {

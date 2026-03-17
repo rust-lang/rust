@@ -1,4 +1,5 @@
 //@ edition:2018
+#![allow(todo_macro_uses)]
 
 fn is_unwindsafe(_: impl std::panic::UnwindSafe) {}
 

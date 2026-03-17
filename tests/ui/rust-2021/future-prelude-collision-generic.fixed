@@ -3,7 +3,7 @@
 //@ edition:2018
 //@ check-pass
 #![warn(rust_2021_prelude_collisions)]
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_uses)]
 #![allow(unused_imports)]
 
 struct Generic<'a, U>(&'a U);

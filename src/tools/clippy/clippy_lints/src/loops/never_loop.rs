@@ -5,7 +5,7 @@ use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{contains_return, sym};
+use clippy_utils::{contains_return};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -13,7 +13,7 @@ use rustc_hir::{
     StructTailExpr,
 };
 use rustc_lint::LateContext;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 use std::iter::once;
 use std::ops::ControlFlow;
 

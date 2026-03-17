@@ -1,4 +1,5 @@
 //! Check that pattern types patterns must be of the type of the base type
+#![allow(todo_macro_uses)]
 
 #![feature(pattern_types)]
 #![feature(pattern_type_macro)]

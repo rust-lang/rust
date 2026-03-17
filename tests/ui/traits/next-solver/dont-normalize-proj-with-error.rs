@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // Test that we don't incorrectly leak unconstrained inference variables
 // if the projection contained an error. This caused an ICE in writeback.

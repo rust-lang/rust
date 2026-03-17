@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 // A regression test for a fairly subtle issue with how we
 // generalize aliases referencing higher-ranked regions

@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // Regression test for trait-system-refactor-initiative#264.
 //

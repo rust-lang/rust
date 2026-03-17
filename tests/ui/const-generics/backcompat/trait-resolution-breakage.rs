@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_uses)]
 
 trait Trait<T> {
     const ASSOC_CONST: usize = 0;

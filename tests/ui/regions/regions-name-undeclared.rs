@@ -1,6 +1,7 @@
 //@ edition:2018
 // Check that lifetime resolver enforces the lifetime name scoping
 // rules correctly in various scenarios.
+#![allow(todo_macro_uses)]
 
 struct Foo<'a> {
     x: &'a isize

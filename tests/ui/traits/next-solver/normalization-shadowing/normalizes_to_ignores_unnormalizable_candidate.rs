@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_uses)]
 
 // Checks whether the new solver is smart enough to infer `?0 = U` when solving:
 // `normalizes-to(<Vec<?0> as Trait>::Assoc, u8)`

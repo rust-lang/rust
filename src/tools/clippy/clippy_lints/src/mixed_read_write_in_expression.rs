@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::{get_parent_expr, sym};
+use clippy_utils::{get_parent_expr};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
+use rustc_span::sym as rsym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -140,7 +141,7 @@ impl<'tcx> DivergenceVisitor<'_, 'tcx> {
 
     fn report_diverging_sub_expr(&self, e: &Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(self.cx, e)
-            && self.cx.tcx.is_diagnostic_item(sym::todo_macro, macro_call.def_id)
+            && self.cx.tcx.is_diagnostic_item(rsym::todo_macro, macro_call.def_id)
         {
             return;
         }

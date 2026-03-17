@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `*mut (): Trait<'_>` is not satisfied
-  --> $DIR/issue-101623.rs:21:21
+  --> $DIR/issue-101623.rs:22:21
    |
 LL |     Trait::do_stuff({ fun(&mut *inner) });
    |     --------------- ^^----------------^^
@@ -9,7 +9,7 @@ LL |     Trait::do_stuff({ fun(&mut *inner) });
    |
 help: the trait `Trait<'_>` is not implemented for `*mut ()`
       but it is implemented for `()`
-  --> $DIR/issue-101623.rs:15:1
+  --> $DIR/issue-101623.rs:16:1
    |
 LL | impl<'a> Trait<'a> for () {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

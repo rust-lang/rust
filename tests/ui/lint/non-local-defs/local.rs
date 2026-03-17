@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition:2021
+#![allow(todo_macro_uses)]
 
 use std::fmt::Debug;
 
