@@ -345,7 +345,8 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
                 // Only set the target cpu on x86_64 as Cranelift is missing
                 // the target cpu list for most other targets.
-                builder.enable(sess.target.cpu.as_ref()).unwrap();
+                // FIXME remove the replace once bytecodealliance/wasmtime#12792 lands
+                builder.enable(&sess.target.cpu.replace("-", "_")).unwrap();
             }
             builder
         }
