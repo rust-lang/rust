@@ -216,10 +216,7 @@ impl DepGraph {
         }
     }
 
-    pub fn with_ignore<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce() -> R,
-    {
+    pub fn with_ignore<R>(&self, f: impl FnOnce() -> R) -> R {
         with_deps(TaskDepsRef::Ignore, f)
     }
 
@@ -269,39 +266,30 @@ impl DepGraph {
     /// in the query infrastructure, and is not currently needed by the
     /// decoding of any query results. Should the need arise in the future,
     /// we should consider extending the query system with this functionality.
-    pub fn with_query_deserialization<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce() -> R,
-    {
+    pub fn with_query_deserialization<R>(&self, f: impl FnOnce() -> R) -> R {
         with_deps(TaskDepsRef::Forbid, f)
     }
 
     #[inline(always)]
-    pub fn with_task<'tcx, F, R>(
+    pub fn with_task<'tcx, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        f: F,
+        f: impl FnOnce() -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex)
-    where
-        F: FnOnce() -> R,
-    {
+    ) -> (R, DepNodeIndex) {
         match self.data() {
             Some(data) => data.with_task(dep_node, tcx, f, hash_result),
             None => (f(), self.next_virtual_depnode_index()),
         }
     }
 
-    pub fn with_anon_task<'tcx, F, R>(
+    pub fn with_anon_task<'tcx, R>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
-        f: F,
-    ) -> (R, DepNodeIndex)
-    where
-        F: FnOnce() -> R,
-    {
+        f: impl FnOnce() -> R,
+    ) -> (R, DepNodeIndex) {
         match self.data() {
             Some(data) => {
                 let (result, index) = data.with_anon_task_inner(tcx, dep_kind, f);
@@ -315,16 +303,13 @@ impl DepGraph {
 
 impl DepGraphData {
     #[inline(always)]
-    pub fn with_task<'tcx, F, R>(
+    pub fn with_task<'tcx, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        f: F,
+        f: impl FnOnce() -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex)
-    where
-        F: FnOnce() -> R,
-    {
+    ) -> (R, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
@@ -363,15 +348,12 @@ impl DepGraphData {
     /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
     /// user of this function actually performs the read; we'll have to see
     /// how to make that work with `anon` in `execute_job_incr`, though.
-    pub fn with_anon_task_inner<'tcx, F, R>(
+    pub fn with_anon_task_inner<'tcx, R>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
-        f: F,
-    ) -> (R, DepNodeIndex)
-    where
-        F: FnOnce() -> R,
-    {
+        f: impl FnOnce() -> R,
+    ) -> (R, DepNodeIndex) {
         debug_assert!(!tcx.is_eval_always(dep_kind));
 
         // Large numbers of reads are common enough here that pre-sizing `read_set`
@@ -832,10 +814,11 @@ impl DepGraph {
 
     #[cfg(debug_assertions)]
     #[inline(always)]
-    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
-    where
-        F: FnOnce() -> String,
-    {
+    pub(crate) fn register_dep_node_debug_str(
+        &self,
+        dep_node: DepNode,
+        debug_str_gen: impl FnOnce() -> String,
+    ) {
         // Early queries (e.g., `-Z query-dep-graph` on empty crates) can reach here
         // before the graph is initialized. Return early to prevent an ICE.
         let data = match &self.data {
