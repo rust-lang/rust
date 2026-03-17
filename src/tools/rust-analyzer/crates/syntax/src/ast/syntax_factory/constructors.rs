@@ -561,7 +561,23 @@ impl SyntaxFactory {
         visibility: Option<ast::Visibility>,
         use_tree: ast::UseTree,
     ) -> ast::Use {
-        make::use_(attrs, visibility, use_tree).clone_for_update()
+        let (attrs, attrs_input) = iterator_input(attrs);
+        let ast = make::use_(attrs, visibility.clone(), use_tree.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(attrs_input, ast.attrs().map(|attr| attr.syntax().clone()));
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+            builder.map_node(use_tree.syntax().clone(), ast.use_tree().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn use_tree(
