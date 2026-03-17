@@ -9,7 +9,7 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::{
     ActiveKeyStatus, CycleError, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey,
-    QueryLatch, QueryMode, QueryState, QueryVTable,
+    QueryLatch, QueryMode, QueryStackFrame, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
@@ -73,8 +73,9 @@ fn collect_active_query_jobs_inner<'tcx, C>(
     let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
         for (key, status) in shard.iter() {
             if let ActiveKeyStatus::Started(job) = status {
-                // This function is safe to call with the shard locked because it is very simple.
-                let frame = crate::plumbing::create_query_stack_frame(query, *key);
+                // It's fine to call `create_tagged_key` with the shard locked,
+                // because it's just a `TaggedQueryKey` variant constructor.
+                let frame = QueryStackFrame { tagged_key: (query.create_tagged_key)(*key) };
                 job_map.insert(job.id, QueryJobInfo { frame, job: job.clone() });
             }
         }

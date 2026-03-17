@@ -1,8 +1,3 @@
-use std::fmt::Debug;
-
-use rustc_span::def_id::DefId;
-
-use crate::dep_graph::DepKind;
 use crate::queries::TaggedQueryKey;
 
 /// Description of a frame in the query stack.
@@ -10,7 +5,10 @@ use crate::queries::TaggedQueryKey;
 /// This is mostly used in case of cycles for error reporting.
 #[derive(Clone, Debug)]
 pub struct QueryStackFrame<'tcx> {
+    /// The query and key of the query method call that this stack frame
+    /// corresponds to.
+    ///
+    /// Code that doesn't care about the specific key can still use this to
+    /// check which query it's for, or obtain the query's name.
     pub tagged_key: TaggedQueryKey<'tcx>,
-    pub dep_kind: DepKind,
-    pub def_id: Option<DefId>,
 }
