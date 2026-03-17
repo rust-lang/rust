@@ -574,8 +574,7 @@ rustc_queries! {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
-        // entire cycle to be in memory for diagnostics. This means we can't
-        // use `ensure_ok()` with this query.
+        // entire cycle to be in memory for diagnostics.
         no_force
     }
 
