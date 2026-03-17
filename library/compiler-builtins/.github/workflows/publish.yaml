@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Install Rust (rustup)
         run: rustup update nightly --no-self-update && rustup default nightly

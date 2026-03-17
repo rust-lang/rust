@@ -31,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          persist-credentials: false
           fetch-depth: 500
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
@@ -125,6 +126,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -y rustup
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install Rust (rustup)
       shell: bash
       run: |
@@ -135,7 +137,7 @@ jobs:
         rustup default "$channel"
         rustup target add "$JOB_TARGET"
 
-    - uses: taiki-e/install-action@de6bbd1333b8f331563d54a051e542c7dfef81c3 # v2
+    - uses: taiki-e/install-action@de6bbd1333b8f331563d54a051e542c7dfef81c3 # v2.68.34
       with:
         tool: nextest@0.9.130
 
@@ -205,6 +207,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
@@ -223,11 +226,9 @@ jobs:
       security-events: write
     timeout-minutes: 10
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Run zizmor
-        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: { persist-credentials: false }
+      - uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
 
   build-custom:
     name: Build custom target
@@ -235,6 +236,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -256,6 +258,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -284,7 +287,8 @@ jobs:
       JOB_TARGET: ${{ matrix.target }}
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-    - uses: taiki-e/install-action@de6bbd1333b8f331563d54a051e542c7dfef81c3 # v2
+      with: { persist-credentials: false }
+    - uses: taiki-e/install-action@de6bbd1333b8f331563d54a051e542c7dfef81c3 # v2.68.34
       with:
         tool: cargo-binstall@1.17.7
 
@@ -322,6 +326,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install Rust (rustup)
       run: rustup update nightly --no-self-update && rustup default nightly
       shell: bash
@@ -338,6 +343,7 @@ jobs:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
@@ -356,6 +362,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with: { persist-credentials: false }
     - name: Install nightly `rustfmt`
       run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
     - run: cargo fmt -- --check
@@ -379,6 +386,7 @@ jobs:
       TO_TEST: ${{ matrix.to_test }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with: { persist-credentials: false }
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
