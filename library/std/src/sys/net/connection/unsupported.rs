@@ -87,6 +87,14 @@ impl TcpStream {
         self.0
     }
 
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        self.0
+    }
+
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         self.0
     }
