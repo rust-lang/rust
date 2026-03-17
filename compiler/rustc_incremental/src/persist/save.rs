@@ -6,6 +6,7 @@ use rustc_data_structures::sync::par_join;
 use rustc_middle::dep_graph::{
     DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
 };
+use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::FileEncoder;
@@ -82,7 +83,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 
                     file_format::save_in(sess, query_cache_path, "query cache", |encoder| {
                         tcx.sess.time("incr_comp_serialize_result_cache", || {
-                            on_disk_cache.serialize(tcx, encoder)
+                            on_disk_cache::OnDiskCache::serialize(tcx, encoder)
                         })
                     });
                 });

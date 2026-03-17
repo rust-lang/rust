@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -52,10 +52,6 @@ const SYMBOL_PREDEFINED: u8 = 2;
 pub struct OnDiskCache {
     // The complete cache data in serialized form.
     serialized_data: RwLock<Option<Mmap>>,
-
-    // Collects all `QuerySideEffect` created during the current compilation
-    // session.
-    current_side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffect>>,
 
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
@@ -172,7 +168,6 @@ impl OnDiskCache {
             serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
-            current_side_effects: Default::default(),
             query_values_index: footer.query_values_index.into_iter().collect(),
             side_effects_index: footer.side_effects_index.into_iter().collect(),
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
@@ -188,7 +183,6 @@ impl OnDiskCache {
             serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
-            current_side_effects: Default::default(),
             query_values_index: Default::default(),
             side_effects_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
@@ -205,7 +199,9 @@ impl OnDiskCache {
         *self.serialized_data.write() = None;
     }
 
-    pub fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
+    /// Serialize the current-session data that will be loaded by [`OnDiskCache`]
+    /// in a subsequent incremental compilation session.
+    pub fn serialize(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -249,7 +245,7 @@ impl OnDiskCache {
             });
 
             // Encode side effects.
-            for (&dep_node_index, side_effect) in self.current_side_effects.borrow().iter() {
+            for (&dep_node_index, side_effect) in tcx.query_system.side_effects.borrow().iter() {
                 encoder.encode_side_effect(dep_node_index, side_effect);
             }
 
@@ -337,15 +333,6 @@ impl OnDiskCache {
         let side_effect: Option<QuerySideEffect> =
             self.load_indexed(tcx, dep_node_index, &self.side_effects_index);
         side_effect
-    }
-
-    /// Stores a `QuerySideEffect` emitted during the current compilation session.
-    /// Anything stored like this will be available via `load_side_effect` in
-    /// the next compilation session.
-    pub fn store_side_effect(&self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        let mut current_side_effects = self.current_side_effects.borrow_mut();
-        let prev = current_side_effects.insert(dep_node_index, side_effect);
-        debug_assert!(prev.is_none());
     }
 
     /// Returns true if there is a disk-cached query return value for the given node.

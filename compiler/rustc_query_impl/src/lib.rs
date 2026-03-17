@@ -53,6 +53,7 @@ pub fn query_system<'tcx>(
     QuerySystem {
         arenas: Default::default(),
         query_vtables,
+        side_effects: Default::default(),
         on_disk_cache,
         local_providers,
         extern_providers,

@@ -709,7 +709,7 @@ impl DepGraphData {
             // side effect.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        tcx.store_side_effect(dep_node_index, side_effect);
+        tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         dep_node_index
     }
 
@@ -745,7 +745,7 @@ impl DepGraphData {
             }
 
             // This will just overwrite the same value for concurrent calls.
-            tcx.store_side_effect(dep_node_index, side_effect);
+            tcx.query_system.side_effects.borrow_mut().insert(dep_node_index, side_effect);
         })
     }
 
@@ -1559,13 +1559,5 @@ impl<'tcx> TyCtxt<'tcx> {
             .on_disk_cache
             .as_ref()
             .and_then(|c| c.load_side_effect(self, prev_dep_node_index))
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        if let Some(c) = self.query_system.on_disk_cache.as_ref() {
-            c.store_side_effect(dep_node_index, side_effect)
-        }
     }
 }
