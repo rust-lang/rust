@@ -6,9 +6,13 @@ LL |     foo(1.0);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following other types implement trait `Trait`:
-             f16
-             f32
+help: the following other types implement trait `Trait`
+  --> $DIR/trait-f16-or-f32.rs:6:1
+   |
+LL | impl Trait for f16 {}
+   | ^^^^^^^^^^^^^^^^^^ `f16`
+LL | impl Trait for f32 {}
+   | ^^^^^^^^^^^^^^^^^^ `f32`
 note: required by a bound in `foo`
   --> $DIR/trait-f16-or-f32.rs:9:16
    |

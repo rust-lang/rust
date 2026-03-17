@@ -5667,7 +5667,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// Rust allows traits that are only implemented for a single floating point type to guide type
-    /// inferrence for floating point literals. This used to apply in the case of `f32: From<T>`
+    /// inference for floating point literals. This used to apply in the case of `f32: From<T>`
     /// (where `T` was inferred to be the same type as a floating point literal), as the only
     /// floating point type impl was `f32: From<f32>`. However, as Rust is in the process of adding
     /// support for `f16`, there are now two implementations for floating point types:
@@ -5681,14 +5681,15 @@ declare_lint! {
     /// to the literal, which will fix the problem.
     ///
     /// This is a [future-incompatible] lint to transition this to a hard error in the future. See
-    /// [issue #FIXME] for more details.
+    /// [issue #154024] for more details.
     ///
-    /// [issue #FIXME]: https://github.com/rust-lang/rust/issues/FIXME
+    /// [issue #154024]: https://github.com/rust-lang/rust/issues/154024
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub FLOAT_LITERAL_F32_FALLBACK,
     Warn,
     "detects unsuffixed floating point literals whose type fallback to `f32`",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #0),
+        reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
     };
 }
