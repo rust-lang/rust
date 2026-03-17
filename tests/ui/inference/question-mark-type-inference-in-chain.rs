@@ -41,7 +41,7 @@ pub fn error2(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect()?;
     //~^ ERROR: type annotations needed
     //~| NOTE: cannot infer type of the type parameter `B`
-    //~| NOTE: cannot satisfy `_: FromIterator<std::result::Result<Version, Error>>`
+    //~| NOTE: the type must implement `FromIterator<std::result::Result<Version, Error>>`
     //~| NOTE: required by a bound in `collect`
     //~| HELP: consider specifying the generic argument
     tags.sort();
