@@ -1,16 +1,14 @@
 // Test that Copy bounds inherited by trait are checked.
 
-
 use std::any::Any;
 
-trait Foo : Copy {
+trait Foo: Copy {
     fn foo(&self) {}
 }
 
-impl<T:Copy> Foo for T {
-}
+impl<T: Copy> Foo for T {}
 
-fn take_param<T:Foo>(foo: &T) { }
+fn take_param<T: Foo>(foo: &T) {}
 
 fn a() {
     let x: Box<_> = Box::new(3);
@@ -24,4 +22,4 @@ fn b() {
     //~^ ERROR E0038
 }
 
-fn main() { }
+fn main() {}
