@@ -1,6 +1,6 @@
 //@ build-fail
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend post-monomorphization errors
 trait Unsigned {
     const MAX: u8;
 }

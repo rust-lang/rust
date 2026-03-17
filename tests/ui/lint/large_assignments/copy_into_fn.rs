@@ -1,5 +1,5 @@
 //@ build-fail
-
+//@ ignore-parallel-frontend post-monomorphization errors
 #![feature(large_assignments)]
 #![move_size_limit = "1000"]
 #![deny(large_assignments)]

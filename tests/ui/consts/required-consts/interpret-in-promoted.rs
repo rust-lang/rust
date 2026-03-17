@@ -2,7 +2,7 @@
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend post-monomorphization errors
 //! Make sure we evaluate const fn calls even if they get promoted and their result ignored.
 
 const unsafe fn ub() {

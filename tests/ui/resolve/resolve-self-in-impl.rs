@@ -1,5 +1,5 @@
 #![feature(associated_type_defaults)]
-
+//@ ignore-parallel-frontend query cycle
 struct S<T = u8>(T);
 trait Tr<T = u8> {
     type A = ();
