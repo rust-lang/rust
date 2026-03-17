@@ -4,7 +4,7 @@ error: in expressions, `_` can only be used on the left-hand side of an assignme
 LL |         _
    |         ^ `_` not allowed here
    |
-  ::: $DIR/main.rs:5:5
+  ::: $DIR/cross-file-errors.rs:5:5
    |
 LL |     underscore!();
    |     ------------- in this macro invocation

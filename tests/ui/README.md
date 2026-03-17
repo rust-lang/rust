@@ -344,10 +344,6 @@ Tests for `#![feature(coverage_attribute)]`. See [Tracking issue for function at
 
 Tests for crate resolution and loading behavior, including `extern crate` declarations, `--extern` flags, or the `use` keyword.
 
-## `tests/ui/cross/`: Various tests related to the concept of "cross"
-
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
-
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
 Tests for behavior spanning multiple crates, including visibility rules, trait implementations, and type resolution across crate boundaries.
