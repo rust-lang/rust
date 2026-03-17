@@ -98,8 +98,8 @@ pub unsafe fn issue_75761() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal $modifier:literal) => {
-        // FIXME(f16_f128): Change back to `$func(x: $ty) -> $ty` once arm64ec can pass and return
-        // `f16` and `f128` without LLVM erroring.
+        // FIXME(f128): Change back to `$func(x: $ty) -> $ty` once arm64ec can pass and return
+        // `f128` without LLVM erroring.
         // LLVM issue: <https://github.com/llvm/llvm-project/issues/94434>
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
@@ -117,7 +117,7 @@ macro_rules! check {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
-        // FIXME(f16_f128): See FIXME in `check!`
+        // FIXME(f128): See FIXME in `check!`
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
             let x = *inp;
