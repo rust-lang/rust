@@ -47,12 +47,12 @@ pub enum ActiveKeyStatus<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct CycleError<'tcx> {
+pub struct Cycle<'tcx> {
     /// The query and related span that uses the cycle.
     pub usage: Option<QueryStackFrame<'tcx>>,
 
     /// The span here corresponds to the reason for which this query was required.
-    pub cycle: Vec<QueryStackFrame<'tcx>>,
+    pub frames: Vec<QueryStackFrame<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -114,13 +114,10 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
-    /// error is created and emitted).
-    pub value_from_cycle_error: fn(
-        tcx: TyCtxt<'tcx>,
-        key: C::Key,
-        cycle_error: CycleError<'tcx>,
-        error: Diag<'_>,
-    ) -> C::Value,
+    /// error is created and emitted). A value may be returned, or (more commonly) the function may
+    /// just abort after emitting the error.
+    pub handle_cycle_error_fn:
+        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
 
     pub format_value: fn(&C::Value) -> String,
 
