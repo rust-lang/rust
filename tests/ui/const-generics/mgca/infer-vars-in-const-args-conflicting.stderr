@@ -1,17 +1,17 @@
 error[E0741]: `T` can't be used as a const parameter type
-  --> $DIR/infer-vars-in-const-args.rs:11:23
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:16:23
    |
 LL | struct PC<T, const N: T> {
    |                       ^
 
-error: inference variables are not supported in constants
-  --> $DIR/infer-vars-in-const-args.rs:5:16
+error: type annotations needed for the literal
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:10:16
    |
 LL |     foo::<_, { 2 }>();
    |                ^
 
-error: inference variables are not supported in constants
-  --> $DIR/infer-vars-in-const-args.rs:7:20
+error: type annotations needed for the literal
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:12:20
    |
 LL |     let _: PC<_, { 42 }> = PC { a: 1, b: 1 };
    |                    ^^

@@ -2875,10 +2875,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        if ty.has_infer() {
-            let e = self.dcx().span_err(span, "inference variables are not supported in constants");
-            return ty::Const::new_error(tcx, e);
-        }
+        let ty = if !ty.has_infer() { Some(ty) } else { None };
 
         if let LitKind::Err(guar) = *kind {
             return ty::Const::new_error(tcx, guar);
@@ -2911,16 +2908,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: false }),
+            hir::ExprKind::Lit(lit) => {
+                Some(LitToConstInput { lit: lit.node, ty: Some(ty), neg: false })
+            }
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: lit.node, ty, neg: true }),
+                hir::ExprKind::Lit(lit) => {
+                    Some(LitToConstInput { lit: lit.node, ty: Some(ty), neg: true })
+                }
                 _ => None,
             },
             _ => None,
         };
 
         lit_input.and_then(|l| {
-            if const_lit_matches_ty(tcx, &l.lit, l.ty, l.neg) {
+            if const_lit_matches_ty(tcx, &l.lit, ty, l.neg) {
                 tcx.at(expr.span)
                     .lit_to_const(l)
                     .map(|value| ty::Const::new_value(tcx, value.valtree, value.ty))
