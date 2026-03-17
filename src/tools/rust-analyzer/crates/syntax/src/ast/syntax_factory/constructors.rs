@@ -198,7 +198,27 @@ impl SyntaxFactory {
         params: I,
         ret_type: Option<ast::RetType>,
     ) -> ast::FnPtrType {
-        make::ty_fn_ptr(is_unsafe, abi, params, ret_type).clone_for_update()
+        let (params, params_input) = iterator_input(params);
+        let ast = make::ty_fn_ptr(is_unsafe, abi.clone(), params.into_iter(), ret_type.clone())
+            .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(abi) = abi {
+                builder.map_node(abi.syntax().clone(), ast.abi().unwrap().syntax().clone());
+            }
+            builder.map_children(
+                params_input,
+                ast.param_list().unwrap().params().map(|p| p.syntax().clone()),
+            );
+            if let Some(ret_type) = ret_type {
+                builder
+                    .map_node(ret_type.syntax().clone(), ast.ret_type().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn where_pred(
