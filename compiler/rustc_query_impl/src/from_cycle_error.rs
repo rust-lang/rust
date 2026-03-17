@@ -8,7 +8,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::dep_graph::DepKind;
 use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
 use rustc_middle::query::CycleError;
 use rustc_middle::query::erase::erase_val;
@@ -77,11 +76,10 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
     for frame in &cycle_error.cycle {
-        if frame.node.dep_kind == DepKind::check_representability
-            && let Some(field_id) = frame.node.def_id
-            && let Some(field_id) = field_id.as_local()
-            && let Some(DefKind::Field) = frame.node.tagged_key.def_kind(tcx)
+        if let TaggedQueryKey::check_representability(def_id) = frame.node.tagged_key
+            && tcx.def_kind(def_id) == DefKind::Field
         {
+            let field_id: LocalDefId = def_id;
             let parent_id = tcx.parent(field_id.to_def_id());
             let item_id = match tcx.def_kind(parent_id) {
                 DefKind::Variant => tcx.parent(parent_id),
@@ -110,8 +108,7 @@ fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> &'tcx
         &cycle_error.cycle,
         |cycle| {
             if let Some(frame) = cycle.get(0)
-                && frame.node.dep_kind == DepKind::variances_of
-                && let Some(def_id) = frame.node.def_id
+                && let TaggedQueryKey::variances_of(def_id) = frame.node.tagged_key
             {
                 let n = tcx.generics_of(def_id).own_params.len();
                 ControlFlow::Break(tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n)))
