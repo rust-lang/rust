@@ -17,7 +17,7 @@ use hir_def::{
         path::Path,
         scope::{ExprScopes, ScopeId},
     },
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId, generics::GenericParams},
     lang_item::LangItems,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
@@ -92,7 +92,9 @@ pub(crate) enum BodyOrSig<'db> {
         def: GenericDefId,
         store: Arc<ExpressionStore>,
         source_map: Arc<ExpressionStoreSourceMap>,
-        // infer: Option<Arc<InferenceResult>>,
+        infer: Option<&'db InferenceResult>,
+        #[expect(dead_code)]
+        generics: Arc<GenericParams>,
     },
 }
 
@@ -147,14 +149,46 @@ impl<'db> SourceAnalyzer<'db> {
     pub(crate) fn new_generic_def(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-        InFile { file_id, .. }: InFile<&SyntaxNode>,
-        _offset: Option<TextSize>,
+        node: InFile<&SyntaxNode>,
+        offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        let (_params, store, source_map) = db.generic_params_and_store_and_source_map(def);
-        let resolver = def.resolver(db);
+        Self::new_generic_def_(db, def, node, offset, Some(InferenceResult::for_signature(db, def)))
+    }
+
+    pub(crate) fn new_generic_def_no_infer(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+        node: InFile<&SyntaxNode>,
+        offset: Option<TextSize>,
+    ) -> SourceAnalyzer<'db> {
+        Self::new_generic_def_(db, def, node, offset, None)
+    }
+
+    pub(crate) fn new_generic_def_(
+        db: &'db dyn HirDatabase,
+        def: GenericDefId,
+        node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
+        offset: Option<TextSize>,
+        infer: Option<&'db InferenceResult>,
+    ) -> SourceAnalyzer<'db> {
+        let (generics, store, source_map) = db.generic_params_and_store_and_source_map(def);
+        let scopes = db.expr_scopes(def.into());
+        let scope = match offset {
+            None => scope_for(db, &scopes, &source_map, node),
+            Some(offset) => {
+                debug_assert!(
+                    node.text_range().contains_inclusive(offset),
+                    "{:?} not in {:?}",
+                    offset,
+                    node.text_range()
+                );
+                scope_for_offset(db, &scopes, &source_map, node.file_id, offset)
+            }
+        };
+        let resolver = resolver_for_scope(db, def, scope);
         SourceAnalyzer {
             resolver,
-            body_or_sig: Some(BodyOrSig::Sig { def, store, source_map }),
+            body_or_sig: Some(BodyOrSig::Sig { def, store, source_map, generics, infer }),
             file_id,
         }
     }
@@ -197,17 +231,8 @@ impl<'db> SourceAnalyzer<'db> {
 
     fn infer(&self) -> Option<&InferenceResult> {
         self.body_or_sig.as_ref().and_then(|it| match it {
-            BodyOrSig::Sig { .. } => None,
             BodyOrSig::VariantFields { .. } => None,
-            BodyOrSig::Body { infer, .. } => infer.as_deref(),
-        })
-    }
-
-    fn body(&self) -> Option<&Body> {
-        self.body_or_sig.as_ref().and_then(|it| match it {
-            BodyOrSig::Sig { .. } => None,
-            BodyOrSig::VariantFields { .. } => None,
-            BodyOrSig::Body { body, .. } => Some(&**body),
+            BodyOrSig::Sig { infer, .. } | BodyOrSig::Body { infer, .. } => infer.as_deref(),
         })
     }
 
@@ -232,11 +257,13 @@ impl<'db> SourceAnalyzer<'db> {
     }
 
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
-        self.param_and(
-            self.body_()
-                .map(|(def, ..)| def)
-                .map_or_else(ParamEnv::empty, |def| db.trait_environment_for_body(def)),
-        )
+        self.param_and(self.body_or_sig.as_ref().map_or_else(ParamEnv::empty, |body_or_sig| {
+            match *body_or_sig {
+                BodyOrSig::Body { def, .. } => db.trait_environment_for_body(def),
+                BodyOrSig::VariantFields { .. } => ParamEnv::empty(),
+                BodyOrSig::Sig { def, .. } => db.trait_environment(def),
+            }
+        }))
     }
 
     pub(crate) fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {
@@ -371,7 +398,10 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         _param: &ast::SelfParam,
     ) -> Option<Type<'db>> {
-        let binding = self.body()?.self_param?;
+        let binding = match self.body_or_sig.as_ref()? {
+            BodyOrSig::Sig { .. } | BodyOrSig::VariantFields { .. } => return None,
+            BodyOrSig::Body { body, .. } => body.self_param?,
+        };
         let ty = self.infer()?.binding_ty(binding);
         Some(Type::new_with_resolver(db, &self.resolver, ty))
     }
@@ -1526,7 +1556,7 @@ impl<'db> SourceAnalyzer<'db> {
 fn scope_for(
     db: &dyn HirDatabase,
     scopes: &ExprScopes,
-    source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db)
@@ -1545,7 +1575,7 @@ fn scope_for(
 fn scope_for_offset(
     db: &dyn HirDatabase,
     scopes: &ExprScopes,
-    source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     from_file: HirFileId,
     offset: TextSize,
 ) -> Option<ScopeId> {
@@ -1579,7 +1609,7 @@ fn scope_for_offset(
 fn adjust(
     db: &dyn HirDatabase,
     scopes: &ExprScopes,
-    source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     expr_range: TextRange,
     from_file: HirFileId,
     offset: TextSize,
