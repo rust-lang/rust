@@ -22,7 +22,7 @@ pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
 mod dep_kind_vtables;
 mod error;
 mod execution;
-mod from_cycle_error;
+mod handle_cycle_error;
 mod job;
 mod plumbing;
 mod profiling_support;
@@ -49,7 +49,7 @@ pub fn query_system<'tcx>(
     incremental: bool,
 ) -> QuerySystem<'tcx> {
     let mut query_vtables = query_impl::make_query_vtables(incremental);
-    from_cycle_error::specialize_query_vtables(&mut query_vtables);
+    handle_cycle_error::specialize_query_vtables(&mut query_vtables);
     QuerySystem {
         arenas: Default::default(),
         query_vtables,

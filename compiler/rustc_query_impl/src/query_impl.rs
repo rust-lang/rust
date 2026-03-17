@@ -166,10 +166,10 @@ macro_rules! define_queries {
                         try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
 
                         // The default just emits `err` and then aborts.
-                        // `from_cycle_error::specialize_query_vtables` overwrites this default for
-                        // certain queries.
-                        value_from_cycle_error: |_tcx, _key, _cycle, err| {
-                            $crate::from_cycle_error::default(err)
+                        // `handle_cycle_error::specialize_query_vtables` overwrites this default
+                        // for certain queries.
+                        handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
+                            $crate::handle_cycle_error::default(err)
                         },
 
                         #[cfg($no_hash)]

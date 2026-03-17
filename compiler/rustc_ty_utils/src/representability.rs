@@ -58,7 +58,7 @@ fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
 //     -> check_representability_adt_ty(Bar<Foo>)
 //     -> check_representability(Foo)
 //
-// For the diagnostic output (in `Value::from_cycle_error`), we want to detect
+// For the diagnostic output (in `check_representability`), we want to detect
 // that the `Foo` in the *second* field of the struct is culpable. This
 // requires traversing the HIR of the struct and calling `params_in_repr(Bar)`.
 // But we can't call params_in_repr for a given type unless it is known to be
