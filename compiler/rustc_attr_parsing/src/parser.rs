@@ -390,7 +390,7 @@ fn expr_to_lit<'sess>(
             }
         }
     } else {
-        if matches!(should_emit, ShouldEmit::Nothing) {
+        if matches!(should_emit, ShouldEmit::Nothing) || matches!(expr.kind, ExprKind::Err(_)) {
             return Ok(None);
         }
 
