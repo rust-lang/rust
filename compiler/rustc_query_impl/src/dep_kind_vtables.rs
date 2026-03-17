@@ -99,6 +99,7 @@ pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
     is_anon: bool,
     is_cache_on_disk: bool,
     is_eval_always: bool,
+    is_no_force: bool,
 ) -> DepKindVTable<'tcx>
 where
     Q: GetQueryVTable<'tcx>,
@@ -119,7 +120,8 @@ where
     DepKindVTable {
         is_eval_always,
         key_fingerprint_style,
-        force_from_dep_node_fn: can_recover.then_some(force_from_dep_node_inner::<Q>),
+        force_from_dep_node_fn: (can_recover && !is_no_force)
+            .then_some(force_from_dep_node_inner::<Q>),
         promote_from_disk_fn: (can_recover && is_cache_on_disk)
             .then_some(promote_from_disk_inner::<Q>),
     }
@@ -139,6 +141,7 @@ macro_rules! define_dep_kind_vtables {
                     depth_limit: $depth_limit:literal,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
@@ -168,6 +171,7 @@ macro_rules! define_dep_kind_vtables {
                     $anon,
                     $cache_on_disk,
                     $eval_always,
+                    $no_force,
                 )
             ),*
         ];

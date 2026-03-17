@@ -59,6 +59,16 @@ pub(crate) struct eval_always;
 /// Generate a `feed` method to set the query's value from another query.
 pub(crate) struct feedable;
 
+/// # `no_force` query modifier
+///
+/// Dep nodes of queries with this modifier will never be "forced" when trying
+/// to mark their dependents green, even if their key is recoverable from the
+/// key fingerprint.
+///
+/// Used by some queries with custom cycle-handlers to ensure that if a cycle
+/// occurs, all of the relevant query calls will be on the query stack.
+pub(crate) struct no_force;
+
 /// # `no_hash` query modifier
 ///
 /// Do not hash the query's return value for incremental compilation. If the value needs to be

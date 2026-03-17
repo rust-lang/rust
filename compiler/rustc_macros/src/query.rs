@@ -147,6 +147,7 @@ struct QueryModifiers {
     desc: Desc,
     eval_always: Option<Ident>,
     feedable: Option<Ident>,
+    no_force: Option<Ident>,
     no_hash: Option<Ident>,
     separate_provide_extern: Option<Ident>,
     // tidy-alphabetical-end
@@ -156,6 +157,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut arena_cache = None;
     let mut cache_on_disk_if = None;
     let mut desc = None;
+    let mut no_force = None;
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
@@ -189,6 +191,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(cache_on_disk_if = CacheOnDiskIf { modifier, block });
         } else if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
+        } else if modifier == "no_force" {
+            try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
         } else if modifier == "anon" {
@@ -212,6 +216,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         arena_cache,
         cache_on_disk_if,
         desc,
+        no_force,
         no_hash,
         anon,
         eval_always,
@@ -250,6 +255,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         desc: _,
         eval_always,
         feedable,
+        no_force,
         no_hash,
         separate_provide_extern,
         // tidy-alphabetical-end
@@ -261,6 +267,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let depth_limit = depth_limit.is_some();
     let eval_always = eval_always.is_some();
     let feedable = feedable.is_some();
+    let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
     let separate_provide_extern = separate_provide_extern.is_some();
@@ -279,6 +286,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         depth_limit: #depth_limit,
         eval_always: #eval_always,
         feedable: #feedable,
+        no_force: #no_force,
         no_hash: #no_hash,
         returns_error_guaranteed: #returns_error_guaranteed,
         separate_provide_extern: #separate_provide_extern,
@@ -393,6 +401,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
         depth_limit,
         eval_always,
         feedable,
+        no_force,
         no_hash,
         separate_provide_extern,
         // tidy-alphabetical-end
