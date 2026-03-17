@@ -38,6 +38,16 @@ pub trait EncodableWithShorthand<'tcx, E: TyEncoder<'tcx>>: Copy + Eq + Hash {
     fn variant(&self) -> &Self::Variant;
 }
 
+#[allow(rustc::usage_of_ty_tykind)]
+impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
+    type Variant = ty::TyKind<'tcx>;
+
+    #[inline]
+    fn variant(&self) -> &Self::Variant {
+        self.kind()
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::PredicateKind<'tcx> {
     type Variant = ty::PredicateKind<'tcx>;
 
@@ -97,6 +107,35 @@ where
     // full encoding itself, i.e., it's an obvious win.
     if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
         cache(encoder).insert(*value, shorthand);
+    }
+}
+
+impl<'tcx> rustc_type_ir::codec::TyCodec<'tcx> for TyCtxt<'tcx> {
+    fn encode_ty<E>(ty: Ty<'tcx>, e: &mut E)
+    where
+        E: IrTyEncoder<'tcx, Interner = Self>,
+    {
+        encode_with_shorthand(e, &ty, |e| e.type_shorthands());
+    }
+
+    #[allow(rustc::usage_of_ty_tykind)]
+    fn decode_ty<D>(decoder: &mut D) -> Ty<'tcx>
+    where
+        D: IrTyDecoder<'tcx, Interner = Self>,
+    {
+        // Handle shorthands first, if we have a usize > 0x80.
+        if decoder.positioned_at_shorthand() {
+            let pos = decoder.read_usize();
+            assert!(pos >= SHORTHAND_OFFSET);
+            let shorthand = pos - SHORTHAND_OFFSET;
+
+            decoder.cached_ty_for_shorthand(shorthand, |decoder| {
+                decoder.with_position(shorthand, |decoder| Self::decode_ty(decoder))
+            })
+        } else {
+            let tcx = decoder.interner();
+            tcx.mk_ty_from_kind(ty::TyKind::decode(decoder))
+        }
     }
 }
 

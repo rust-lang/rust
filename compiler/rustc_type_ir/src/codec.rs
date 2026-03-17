@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{SpanDecoder, SpanEncoder};
 
-use crate::{Interner, PredicateKind, Ty, TyKind};
+use crate::{Interner, PredicateKind, Ty};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -49,57 +49,32 @@ pub trait TyDecoder<'tcx>: SpanDecoder {
     fn decode_alloc_id(&mut self) -> <Self::Interner as Interner>::AllocId;
 }
 
+pub trait TyCodec<'tcx>: Interner {
+    fn encode_ty<E>(ty: Ty<Self>, e: &mut E)
+    where
+        E: TyEncoder<'tcx, Interner = Self>;
+
+    fn decode_ty<D>(decoder: &mut D) -> Ty<Self>
+    where
+        D: TyDecoder<'tcx, Interner = Self>;
+}
+
 impl<'tcx, I, E> Encodable<E> for Ty<I>
 where
-    I: Interner,
+    I: TyCodec<'tcx>,
     E: TyEncoder<'tcx, Interner = I>,
-    TyKind<I>: Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
-        let existing_shorthand = e.type_shorthands().get(self).copied();
-        if let Some(shorthand) = existing_shorthand {
-            e.emit_usize(shorthand);
-            return;
-        }
-
-        let kind = crate::inherent::IntoKind::kind(*self);
-        let start = e.position();
-        kind.encode(e);
-        let len = e.position() - start;
-
-        let shorthand = start + SHORTHAND_OFFSET;
-
-        // Get the number of bits that leb128 could fit
-        // in the same space as the fully encoded type.
-        let leb128_bits = len * 7;
-
-        // Check that the shorthand is a not longer than the
-        // full encoding itself, i.e., it's an obvious win.
-        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
-            e.type_shorthands().insert(*self, shorthand);
-        }
+        I::encode_ty(*self, e);
     }
 }
 
 impl<'tcx, I, D> Decodable<D> for Ty<I>
 where
-    I: Interner,
+    I: TyCodec<'tcx>,
     D: TyDecoder<'tcx, Interner = I>,
-    TyKind<I>: Decodable<D>,
 {
     fn decode(decoder: &mut D) -> Ty<I> {
-        // Handle shorthands first, if we have a usize > 0x80.
-        if decoder.positioned_at_shorthand() {
-            let pos = decoder.read_usize();
-            assert!(pos >= SHORTHAND_OFFSET);
-            let shorthand = pos - SHORTHAND_OFFSET;
-
-            decoder.cached_ty_for_shorthand(shorthand, |decoder| {
-                decoder.with_position(shorthand, Ty::decode)
-            })
-        } else {
-            let interner = decoder.interner();
-            interner.mk_ty_from_kind(TyKind::decode(decoder))
-        }
+        I::decode_ty(decoder)
     }
 }

@@ -32,6 +32,7 @@ use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
     Symbol, SyntaxContext, sym,
 };
+use rustc_type_ir::TyEncoder;
 use tracing::{debug, instrument, trace};
 
 use crate::eii::EiiMapEncodedKeyValue;

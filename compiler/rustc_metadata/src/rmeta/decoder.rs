@@ -35,6 +35,7 @@ use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
     SpanDecoder, Symbol, SyntaxContext, kw,
 };
+use rustc_type_ir::TyDecoder;
 use tracing::debug;
 
 use crate::creader::CStore;
