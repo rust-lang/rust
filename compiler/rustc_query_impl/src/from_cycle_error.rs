@@ -76,7 +76,7 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
     for frame in &cycle_error.cycle {
-        if let TaggedQueryKey::check_representability(def_id) = frame.node.tagged_key
+        if let TaggedQueryKey::check_representability(def_id) = frame.tagged_key
             && tcx.def_kind(def_id) == DefKind::Field
         {
             let field_id: LocalDefId = def_id;
@@ -89,7 +89,7 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
         }
     }
     for frame in &cycle_error.cycle {
-        if let TaggedQueryKey::check_representability_adt_ty(key) = frame.node.tagged_key
+        if let TaggedQueryKey::check_representability_adt_ty(key) = frame.tagged_key
             && let Some(adt) = key.ty_adt_def()
             && let Some(def_id) = adt.did().as_local()
             && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
@@ -134,7 +134,7 @@ fn layout_of<'tcx>(
     let diag = search_for_cycle_permutation(
         &cycle_error.cycle,
         |cycle| {
-            if let TaggedQueryKey::layout_of(key) = cycle[0].node.tagged_key
+            if let TaggedQueryKey::layout_of(key) = cycle[0].tagged_key
                 && let ty::Coroutine(def_id, _) = key.value.kind()
                 && let Some(def_id) = def_id.as_local()
                 && let def_kind = tcx.def_kind(def_id)
@@ -159,7 +159,7 @@ fn layout_of<'tcx>(
                     tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                 );
                 for (i, frame) in cycle.iter().enumerate() {
-                    let TaggedQueryKey::layout_of(frame_key) = frame.node.tagged_key else {
+                    let TaggedQueryKey::layout_of(frame_key) = frame.tagged_key else {
                         continue;
                     };
                     let &ty::Coroutine(frame_def_id, _) = frame_key.value.kind() else {
@@ -169,7 +169,7 @@ fn layout_of<'tcx>(
                         continue;
                     };
                     let frame_span =
-                        frame.node.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
+                        frame.tagged_key.default_span(tcx, cycle[(i + 1) % cycle.len()].span);
                     if frame_span.is_dummy() {
                         continue;
                     }
