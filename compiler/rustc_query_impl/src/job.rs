@@ -314,6 +314,8 @@ fn remove_cycle<'tcx>(
             .query_waiting_on_cycle
             .map(|(span, job)| respan(span, job_map.frame_of(job).clone()));
 
+        let span = entry_point.query_waiting_on_cycle.map_or(DUMMY_SP, |(s, _)| s);
+        stack[0].0 = span;
         // Create the cycle error
         let error = CycleError {
             usage,
@@ -324,17 +326,16 @@ fn remove_cycle<'tcx>(
         };
 
         if cfg!(debug_assertions)
-            && let Some(query_waiting_on_cycle) = entry_point.query_waiting_on_cycle
             && let Some(expected) = find_cycle_in_stack(
-                query_waiting_on_cycle.1,
+                entry_point.query_in_cycle,
                 job_map,
                 stack.last().map(|&(_, job)| job),
-                query_waiting_on_cycle.0,
+                span,
             )
         {
             if error != expected {
                 panic!(
-                    "CycleError coherency check failed:\n  expected: {expected:#?}\n  got: {error:#?}"
+                    "CycleError coherency check failed:\nexpected: {expected:#?}\ngot: {error:#?}"
                 );
             }
         }
