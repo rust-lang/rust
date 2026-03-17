@@ -2998,16 +2998,16 @@ mod tests {
     }
 
     macro_rules! test_mm_cvtss_si32_impl {
-    ($alias:ident) => {
-        let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
-        let result = &[42i32, -3, i32::MIN, 0, i32::MIN, 2147483520];
-        for i in 0..inputs.len() {
-            let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
-            let e = result[i];
-            let r = $alias(x);
-            assert_eq!(e, r, "TestCase #{} f({:?}) = {}, expected: {}", i, x, r, e);
+        ($alias:ident) => {
+            let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
+            let result = &[42i32, -3, i32::MIN, 0, i32::MIN, 2147483520];
+            for i in 0..inputs.len() {
+                let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
+                let e = result[i];
+                let r = $alias(x);
+                assert_eq!(e, r, "TestCase #{} f({:?}) = {}, expected: {}", i, x, r, e);
             }
-        }
+        };
     }
 
     #[simd_test(enable = "sse")]
@@ -3021,25 +3021,25 @@ mod tests {
     }
 
     macro_rules! test_cvttss_si32_impl {
-    ($alias:ident) => {
-        let inputs = &[
-            (42.0f32, 42i32),
-            (-31.4, -31),
-            (-33.5, -33),
-            (-34.5, -34),
-            (10.999, 10),
-            (-5.99, -5),
-            (4.0e10, i32::MIN),
-            (4.0e-10, 0),
-            (NAN, i32::MIN),
-            (2147483500.1, 2147483520),
-        ];
-        for (i, &(xi, e)) in inputs.iter().enumerate() {
-            let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
-            let r = $alias(x);
-            assert_eq!(e, r, "TestCase #{} f({:?}) = {}, expected: {}", i, x, r, e);
+        ($alias:ident) => {
+            let inputs = &[
+                (42.0f32, 42i32),
+                (-31.4, -31),
+                (-33.5, -33),
+                (-34.5, -34),
+                (10.999, 10),
+                (-5.99, -5),
+                (4.0e10, i32::MIN),
+                (4.0e-10, 0),
+                (NAN, i32::MIN),
+                (2147483500.1, 2147483520),
+            ];
+            for (i, &(xi, e)) in inputs.iter().enumerate() {
+                let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
+                let r = $alias(x);
+                assert_eq!(e, r, "TestCase #{} f({:?}) = {}, expected: {}", i, x, r, e);
             }
-        }
+        };
     }
 
     #[simd_test(enable = "sse")]
@@ -3053,21 +3053,21 @@ mod tests {
     }
 
     macro_rules! test_mm_cvtsi32_ss_impl {
-    ($alias:ident) => {
-        let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
+        ($alias:ident) => {
+            let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
 
-        let r = $alias(a, 4555);
-        assert_eq_m128(_mm_setr_ps(4555.0, 6.0, 7.0, 8.0), r);
+            let r = $alias(a, 4555);
+            assert_eq_m128(_mm_setr_ps(4555.0, 6.0, 7.0, 8.0), r);
 
-        let r = $alias(a, 322223333);
-        assert_eq_m128(_mm_setr_ps(322223333.0, 6.0, 7.0, 8.0), r);
+            let r = $alias(a, 322223333);
+            assert_eq_m128(_mm_setr_ps(322223333.0, 6.0, 7.0, 8.0), r);
 
-        let r = $alias(a, -432);
-        assert_eq_m128(_mm_setr_ps(-432.0, 6.0, 7.0, 8.0), r);
+            let r = $alias(a, -432);
+            assert_eq_m128(_mm_setr_ps(-432.0, 6.0, 7.0, 8.0), r);
 
-        let r = $alias(a, -322223333);
-        assert_eq_m128(_mm_setr_ps(-322223333.0, 6.0, 7.0, 8.0), r);
-        }
+            let r = $alias(a, -322223333);
+            assert_eq_m128(_mm_setr_ps(-322223333.0, 6.0, 7.0, 8.0), r);
+        };
     }
 
     #[simd_test(enable = "sse")]
@@ -3093,13 +3093,13 @@ mod tests {
     }
 
     macro_rules! test_mm_set1_ps_impl {
-    ($alias:ident) => {
-        let r = $alias(black_box(4.25));
-        assert_eq!(get_m128(r, 0), 4.25);
-        assert_eq!(get_m128(r, 1), 4.25);
-        assert_eq!(get_m128(r, 2), 4.25);
-        assert_eq!(get_m128(r, 3), 4.25);
-        }
+        ($alias:ident) => {
+            let r = $alias(black_box(4.25));
+            assert_eq!(get_m128(r, 0), 4.25);
+            assert_eq!(get_m128(r, 1), 4.25);
+            assert_eq!(get_m128(r, 2), 4.25);
+            assert_eq!(get_m128(r, 3), 4.25);
+        };
     }
 
     #[simd_test(enable = "sse")]
@@ -3199,11 +3199,11 @@ mod tests {
     }
 
     macro_rules! test_mm_load1_ps_impl {
-    ($alias:ident) => {
-        let a = 42.0f32;
-        let r = $alias(ptr::addr_of!(a));
-        assert_eq_m128(r, _mm_setr_ps(42.0, 42.0, 42.0, 42.0));
-        }
+        ($alias:ident) => {
+            let a = 42.0f32;
+            let r = $alias(ptr::addr_of!(a));
+            assert_eq_m128(r, _mm_setr_ps(42.0, 42.0, 42.0, 42.0));
+        };
     }
 
     #[simd_test(enable = "sse")]
@@ -3266,13 +3266,13 @@ mod tests {
     }
 
     macro_rules! test_mm_store1_ps_impl {
-    ($alias:ident) => {
-        let mut vals = Memory { data: [0.0f32; 4] };
-        let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
-        let p = vals.data.as_mut_ptr();
-        $alias(p, *black_box(&a));
-        assert_eq!(vals.data, [1.0, 1.0, 1.0, 1.0]);
-        }
+        ($alias:ident) => {
+            let mut vals = Memory { data: [0.0f32; 4] };
+            let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+            let p = vals.data.as_mut_ptr();
+            $alias(p, *black_box(&a));
+            assert_eq!(vals.data, [1.0, 1.0, 1.0, 1.0]);
+        };
     }
 
     #[simd_test(enable = "sse")]
