@@ -512,7 +512,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         cfg_span: Span,
     ) {
         self.stripped_cfg_items.push(StrippedCfgItem {
-            parent_module: parent_node,
+            parent_scope: parent_node,
             ident,
             cfg: (cfg, cfg_span),
         });
