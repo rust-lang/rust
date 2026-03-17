@@ -495,7 +495,19 @@ impl SyntaxFactory {
     }
 
     pub fn tail_only_block_expr(&self, tail_expr: ast::Expr) -> ast::BlockExpr {
-        make::tail_only_block_expr(tail_expr)
+        let ast = make::tail_only_block_expr(tail_expr.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let stmt_list = ast.stmt_list().unwrap();
+            let mut builder = SyntaxMappingBuilder::new(stmt_list.syntax().clone());
+            builder.map_node(
+                tail_expr.syntax().clone(),
+                stmt_list.tail_expr().unwrap().syntax().clone(),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
