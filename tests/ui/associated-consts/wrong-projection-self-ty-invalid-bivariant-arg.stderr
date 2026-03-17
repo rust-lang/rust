@@ -16,8 +16,7 @@ LL | struct Fail<T>;
 LL |     Fail::<()>::C
    |                 ^ associated item not found in `Fail<()>`
    |
-   = note: the associated item was found for
-           - `Fail<i32>`
+   = note: the associated item was found for `Fail<i32>`
 
 error: aborting due to 2 previous errors
 
