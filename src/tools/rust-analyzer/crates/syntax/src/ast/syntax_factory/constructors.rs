@@ -127,58 +127,6 @@ impl SyntaxFactory {
         ast
     }
 
-    pub fn enum_(
-        &self,
-        attrs: impl IntoIterator<Item = ast::Attr>,
-        visibility: Option<ast::Visibility>,
-        enum_name: ast::Name,
-        generic_param_list: Option<ast::GenericParamList>,
-        where_clause: Option<ast::WhereClause>,
-        variant_list: ast::VariantList,
-    ) -> ast::Enum {
-        let (attrs, attrs_input) = iterator_input(attrs);
-        let ast = make::enum_(
-            attrs,
-            visibility.clone(),
-            enum_name.clone(),
-            generic_param_list.clone(),
-            where_clause.clone(),
-            variant_list.clone(),
-        )
-        .clone_for_update();
-
-        if let Some(mut mapping) = self.mappings() {
-            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
-            builder.map_children(attrs_input, ast.attrs().map(|attr| attr.syntax().clone()));
-            if let Some(visibility) = visibility {
-                builder.map_node(
-                    visibility.syntax().clone(),
-                    ast.visibility().unwrap().syntax().clone(),
-                );
-            }
-            builder.map_node(enum_name.syntax().clone(), ast.name().unwrap().syntax().clone());
-            if let Some(generic_param_list) = generic_param_list {
-                builder.map_node(
-                    generic_param_list.syntax().clone(),
-                    ast.generic_param_list().unwrap().syntax().clone(),
-                );
-            }
-            if let Some(where_clause) = where_clause {
-                builder.map_node(
-                    where_clause.syntax().clone(),
-                    ast.where_clause().unwrap().syntax().clone(),
-                );
-            }
-            builder.map_node(
-                variant_list.syntax().clone(),
-                ast.variant_list().unwrap().syntax().clone(),
-            );
-            builder.finish(&mut mapping);
-        }
-
-        ast
-    }
-
     pub fn unnamed_param(&self, ty: ast::Type) -> ast::Param {
         let ast = make::unnamed_param(ty.clone()).clone_for_update();
 
