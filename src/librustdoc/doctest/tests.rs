@@ -24,15 +24,16 @@ fn make_test(
         builder = builder.test_id(test_id.to_string());
     }
     let doctest = builder.build(None);
-    let (wrapped, line_offset) =
-        doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);
+    let (wrapped, line_offset) = doctest.generate_unique_doctest(test_code, dont_insert_main, opts);
     (wrapped.to_string(), line_offset)
 }
 
 /// Default [`GlobalTestOptions`] for these unit tests.
 fn default_global_opts(crate_name: impl Into<String>) -> GlobalTestOptions {
+    let crate_name = crate_name.into();
     GlobalTestOptions {
-        crate_name: crate_name.into(),
+        crate_name: Some(crate_name.clone()),
+        filestem: crate_name,
         no_crate_inject: false,
         insert_indent_space: false,
         args_file: PathBuf::new(),

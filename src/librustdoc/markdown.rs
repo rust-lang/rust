@@ -66,7 +66,11 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
     let input_str =
         read_to_string(input).map_err(|err| format!("{input}: {err}", input = input.display()))?;
     let playground_url = options.markdown_playground_url.or(options.playground_url);
-    let playground = playground_url.map(|url| markdown::Playground { crate_name: None, url });
+    let playground = playground_url.map(|url| markdown::Playground {
+        crate_name: None,
+        filestem: input.file_stem().unwrap_or_default().to_string_lossy().to_string(),
+        url,
+    });
 
     let mut out =
         File::create(&output).map_err(|e| format!("{output}: {e}", output = output.display()))?;

@@ -46,7 +46,8 @@ pub struct StripUnconfigured<'a> {
     pub lint_node_id: NodeId,
 }
 
-pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
+pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
+    let crate_name = sess.crate_name();
     let mut features = Features::default();
 
     if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =

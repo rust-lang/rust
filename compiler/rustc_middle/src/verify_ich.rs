@@ -1,6 +1,8 @@
 use std::cell::Cell;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_session::utils::was_invoked_from_cargo;
 use tracing::instrument;
 
 use crate::dep_graph::{DepGraphData, SerializedDepNodeIndex};
@@ -66,10 +68,10 @@ fn incremental_verify_ich_failed<'tcx>(
     if old_in_panic {
         tcx.dcx().emit_err(crate::error::Reentrant);
     } else {
-        let run_cmd = if let Some(crate_name) = &tcx.sess.opts.crate_name {
-            format!("`cargo clean -p {crate_name}` or `cargo clean`")
+        let run_cmd = if was_invoked_from_cargo() {
+            format!("run `cargo clean -p {}` or `cargo clean`", tcx.crate_name(LOCAL_CRATE))
         } else {
-            "`cargo clean`".to_string()
+            "clean your build cache".to_owned()
         };
 
         let dep_node = tcx.dep_graph.data().unwrap().prev_node_of(prev_index);

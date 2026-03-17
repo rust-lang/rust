@@ -158,7 +158,7 @@ pub(crate) struct Reentrant;
 #[note(
     "an ideal reproduction consists of the code before and some patch that then triggers the bug when applied and compiled again"
 )]
-#[note("as a workaround, you can run {$run_cmd} to allow your project to compile")]
+#[note("as a workaround, you can {$run_cmd} to allow your project to compile")]
 pub(crate) struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,

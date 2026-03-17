@@ -107,14 +107,14 @@ pub fn link_binary(
         });
 
         if outputs.outputs.should_link() {
-            let output = out_filename(sess, crate_type, outputs, crate_info.local_crate_name);
+            let output = out_filename(sess, crate_type, outputs);
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")
                 .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
                 .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
 
-            let crate_name = format!("{}", crate_info.local_crate_name);
+            let crate_name = format!("{}", sess.crate_name());
             let out_filename = output.file_for_writing(
                 outputs,
                 OutputType::Exe,
@@ -2747,12 +2747,8 @@ fn add_order_independent_options(
     cmd.optimize();
 
     // Gather the set of NatVis files, if any, and write them out to a temp directory.
-    let natvis_visualizers = collect_natvis_visualizers(
-        tmpdir,
-        sess,
-        &crate_info.local_crate_name,
-        &crate_info.natvis_debugger_visualizers,
-    );
+    let natvis_visualizers =
+        collect_natvis_visualizers(tmpdir, sess, &crate_info.natvis_debugger_visualizers);
 
     // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
     cmd.debuginfo(sess.opts.cg.strip, &natvis_visualizers);
@@ -2783,13 +2779,12 @@ fn add_order_independent_options(
 fn collect_natvis_visualizers(
     tmpdir: &Path,
     sess: &Session,
-    crate_name: &Symbol,
     natvis_debugger_visualizers: &BTreeSet<DebuggerVisualizerFile>,
 ) -> Vec<PathBuf> {
     let mut visualizer_paths = Vec::with_capacity(natvis_debugger_visualizers.len());
 
     for (index, visualizer) in natvis_debugger_visualizers.iter().enumerate() {
-        let visualizer_out_file = tmpdir.join(format!("{}-{}.natvis", crate_name.as_str(), index));
+        let visualizer_out_file = tmpdir.join(format!("{}-{}.natvis", sess.crate_name(), index));
 
         match fs::write(&visualizer_out_file, &visualizer.src) {
             Ok(()) => {

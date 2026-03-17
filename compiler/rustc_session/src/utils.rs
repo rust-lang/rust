@@ -5,6 +5,7 @@ use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::NativeLibKind;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::{Symbol, sym};
 
 use crate::session::Session;
 
@@ -15,6 +16,53 @@ impl Session {
     /// Used by `-Z self-profile`.
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
         self.prof.verbose_generic_activity(what).run(f)
+    }
+
+    /// Return the normalized final crate name.
+    ///
+    /// Crate name precedence is as follows:
+    /// - `#![crate_name]` must match `--crate-name` if both are present.
+    /// - Both `#![crate_name]` and `--crate-name` are validated.
+    /// - If neither are present, the input comes from an on-disk file, and the file is valid
+    /// UTF-8, the normalized filename. The normalized filename is not validated.
+    /// - Otherwise, `rust_out`.
+    ///
+    /// If you don't want the crate name to be normalized, use [`Session::filestem`].
+    ///
+    /// Note that `#![cfg_attr(..., crate_name = "...")]` is a hard error.
+    /// Note that the normalization applied to input filestem is very incomplete and cannot be
+    /// relied upon to produce a valid Rust ientifier.
+    ///
+    /// See `rustc_interface::passes::get_crate_name` for more info.
+    #[track_caller]
+    pub fn crate_name(&self) -> Symbol {
+        #[expect(deprecated, reason = "can't use crate_name(), we are crate_name()")]
+        self.crate_name.get().expect("call `load_crate_name` before crate_name").normalized
+    }
+
+    /// Get the unnormalized crate name, as suitable for an [`OutFileName`].
+    /// If no crate name was present, fall back to the filestem of the input.
+    ///
+    /// Note that no normalization is applied and the stem may be an invalid Rust identifier.
+    ///
+    /// Usually you don't want this and should use [`Session::crate_name`] instead.
+    /// See its docs for more information.
+    ///
+    /// I don't know why some existing code depends on this behavior but it does.
+    #[track_caller]
+    pub fn filestem(&self) -> &str {
+        #[expect(deprecated, reason = "can't use crate_name(), we are crate_name()")]
+        self.crate_name
+            .get()
+            .as_ref()
+            .expect("call `load_crate_name` before crate_name")
+            .unnormalized
+            .as_str()
+    }
+
+    /// Check if this a Cargo build script. If so, it will be named `build_script_build`.
+    pub fn is_build_script(&self) -> bool {
+        self.crate_name() == sym::build_script_build
     }
 }
 

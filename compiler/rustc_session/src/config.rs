@@ -1012,6 +1012,8 @@ pub enum Input {
 }
 
 impl Input {
+    #[deprecated = "Use [`Session::filestem`] instead"]
+    /// This exists for rustdoc, but should probably just be inlined there at some point.
     pub fn filestem(&self) -> &str {
         if let Input::File(ifile) = self {
             // If for some reason getting the file stem as a UTF-8 string fails,
@@ -1204,6 +1206,7 @@ impl OutputFilenames {
     }
 
     pub fn interface_path(&self) -> PathBuf {
+        debug!("using crate_name={} for interface_path", self.crate_stem);
         self.out_directory.join(format!("lib{}.rs", self.crate_stem))
     }
 
@@ -1213,6 +1216,7 @@ impl OutputFilenames {
         let extension = flavor.extension();
         match flavor {
             OutputType::Metadata => {
+                debug!("using crate_name={} for {extension}", self.crate_stem);
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
             _ => self.with_directory_and_extension(&self.out_directory, extension),
@@ -1287,6 +1291,7 @@ impl OutputFilenames {
     }
 
     pub fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
+        debug!("using filestem={} for {extension}", self.filestem);
         let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path
@@ -1425,6 +1430,7 @@ impl Default for Options {
             error_format: ErrorOutputType::default(),
             diagnostic_width: None,
             externs: Externs(BTreeMap::new()),
+            #[expect(deprecated)]
             crate_name: None,
             libs: Vec::new(),
             unstable_features: UnstableFeatures::Disallow,
@@ -2780,6 +2786,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         diagnostic_width,
         externs,
         unstable_features,
+        #[expect(deprecated)]
         crate_name,
         libs,
         debug_assertions,

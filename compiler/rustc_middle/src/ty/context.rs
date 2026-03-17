@@ -44,7 +44,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
@@ -1492,6 +1492,40 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl FnOnce(StableHashingContext<'_>) -> R,
     ) -> R {
         f(StableHashingContext::new(self.sess, &self.untracked))
+    }
+
+    /// For use in diagnostics only.
+    pub fn local_crate_ident(self) -> Option<Ident> {
+        #[expect(
+            deprecated,
+            reason = "we care about the difference between the option and the attribute for diagnostics"
+        )]
+        if let Some(name) = &self.sess.opts.crate_name {
+            return Some(Ident::from_str(name));
+        }
+
+        find_attr!(self, crate, CrateName{name, name_span,..} => (name, name_span)).map(
+            |(&name, &span)| {
+                // Discard the double quotes surrounding the literal.
+                let sp = self
+                    .sess
+                    .source_map()
+                    .span_to_snippet(span)
+                    .ok()
+                    .and_then(|snippet| {
+                        let left = snippet.find('"')?;
+                        let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
+
+                        Some(
+                            span.with_lo(span.lo() + BytePos(left as u32 + 1))
+                                .with_hi(span.hi() - BytePos(right as u32)),
+                        )
+                    })
+                    .unwrap_or(span);
+
+                Ident::new(name, sp)
+            },
+        )
     }
 
     #[inline]

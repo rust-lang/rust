@@ -270,6 +270,7 @@ pub(crate) fn create_config(
         diagnostic_width,
         edition,
         describe_lints,
+        #[expect(deprecated)]
         crate_name,
         test,
         remap_path_prefix,

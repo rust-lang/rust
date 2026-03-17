@@ -117,7 +117,6 @@ use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
 use rustc_session::{Session, StableCrateId};
-use rustc_span::Symbol;
 use tracing::debug;
 
 use crate::errors;
@@ -210,11 +209,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(
-    sess: &Session,
-    crate_name: Symbol,
-    stable_crate_id: StableCrateId,
-) {
+pub(crate) fn prepare_session_directory(sess: &Session, stable_crate_id: StableCrateId) {
     if sess.opts.incremental.is_none() {
         return;
     }
@@ -224,7 +219,7 @@ pub(crate) fn prepare_session_directory(
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
+    let crate_dir = crate_path(sess, stable_crate_id);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -597,11 +592,14 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_name =
-        format!("{crate_name}-{}", stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE));
+    let crate_name = format!(
+        "{}-{}",
+        sess.crate_name(),
+        stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE)
+    );
     incr_dir.join(crate_name)
 }
 
