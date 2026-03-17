@@ -4,7 +4,7 @@ error[E0283]: type annotations needed
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
    |
-   = note: cannot satisfy `_: Scalar`
+   = note: the type must implement `Scalar`
 note: required by a bound in `cmp_eq`
   --> $DIR/ambig-hr-projection-issue-93340.rs:10:22
    |
