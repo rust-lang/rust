@@ -9,6 +9,7 @@ use std::thread::panicking;
 
 use rustc_data_structures::sync::DynSend;
 use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
+use rustc_errors::formatting::{format_diag_message, format_diag_messages};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
@@ -349,7 +350,7 @@ impl DiagInner {
         }
     }
 
-    /// Fields used for Hash, and PartialEq trait.
+    /// Fields used for PartialEq trait.
     fn keys(
         &self,
     ) -> (
@@ -382,7 +383,41 @@ impl Hash for DiagInner {
     where
         H: Hasher,
     {
-        self.keys().hash(state);
+        // Instead of using `Self::keys`, we compute the hash for every field because we want to
+        // ensure that two independent diagnostics that are built from different structured errors
+        // or through the `Diag` API are equivalent if their *rendered output* is the same, which
+        // means we have to format the diagnostic messages (and labels) before computing the hash.
+        self.level.hash(state);
+        format_diag_messages(&self.messages, &self.args).hash(state);
+        self.code.hash(state);
+        for span in self.span.primary_spans() {
+            span.hash(state);
+        }
+        for span_label in self.span.span_labels() {
+            span_label.span.hash(state);
+            span_label.is_primary.hash(state);
+            if let Some(label) = span_label.label {
+                format_diag_message(&label, &self.args).hash(state);
+            }
+        }
+        for c in &self.children {
+            c.level.hash(state);
+            format_diag_messages(&c.messages, &self.args).hash(state);
+            for span_label in c.span.span_labels() {
+                span_label.span.hash(state);
+                span_label.is_primary.hash(state);
+                if let Some(label) = span_label.label {
+                    format_diag_message(&label, &self.args).hash(state);
+                }
+            }
+        }
+        for s in self.suggestions.borrow_tag() {
+            s.style.hash(state);
+            s.substitutions.hash(state);
+            format_diag_message(&s.msg, &self.args).hash(state);
+            s.applicability.hash(state);
+        }
+        self.is_lint.hash(state);
     }
 }
 

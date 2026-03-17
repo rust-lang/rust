@@ -43,6 +43,7 @@ LL | /     while index < n {
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
+   = note: number of steps elapsed: 32
 help: the constant being evaluated
   --> $DIR/ctfe-simple-loop.rs:20:1
    |
