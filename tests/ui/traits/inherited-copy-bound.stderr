@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Box<{integer}>: Foo` is not satisfied
-  --> $DIR/kindck-inherited-copy-bound.rs:15:16
+  --> $DIR/inherited-copy-bound.rs:15:16
    |
 LL |     take_param(&x);
    |     ---------- ^^ the trait `Copy` is not implemented for `Box<{integer}>`
@@ -7,27 +7,27 @@ LL |     take_param(&x);
    |     required by a bound introduced by this call
    |
 note: required for `Box<{integer}>` to implement `Foo`
-  --> $DIR/kindck-inherited-copy-bound.rs:9:15
+  --> $DIR/inherited-copy-bound.rs:9:15
    |
 LL | impl<T: Copy> Foo for T {}
    |         ----  ^^^     ^
    |         |
    |         unsatisfied trait bound introduced here
 note: required by a bound in `take_param`
-  --> $DIR/kindck-inherited-copy-bound.rs:11:18
+  --> $DIR/inherited-copy-bound.rs:11:18
    |
 LL | fn take_param<T: Foo>(foo: &T) {}
    |                  ^^^ required by this bound in `take_param`
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/kindck-inherited-copy-bound.rs:21:24
+  --> $DIR/inherited-copy-bound.rs:21:24
    |
 LL |     let z = &x as &dyn Foo;
    |                        ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/kindck-inherited-copy-bound.rs:5:12
+  --> $DIR/inherited-copy-bound.rs:5:12
    |
 LL | trait Foo: Copy {
    |       ---  ^^^^ ...because it requires `Self: Sized`
