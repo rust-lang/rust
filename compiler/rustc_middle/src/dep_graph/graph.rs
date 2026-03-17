@@ -572,13 +572,13 @@ impl DepGraph {
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller's node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the "normal" way.
-    pub fn with_feed_task<'tcx, R>(
+    pub(crate) fn with_feed_task<'tcx, V>(
         &self,
-        node: DepNode,
         tcx: TyCtxt<'tcx>,
-        result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-        format_value_fn: fn(&R) -> String,
+        node: DepNode,
+        value: &V,
+        hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+        format_value_fn: fn(&V) -> String,
     ) -> DepNodeIndex {
         let Some(data) = self.data() else {
             // Incremental compilation is turned off. We just execute the task
@@ -597,10 +597,10 @@ impl DepGraph {
         if let Some(prev_index) = data.previous.node_to_index_opt(&node)
             && let Some(dep_node_index) = data.colors.current(prev_index)
         {
-            incremental_verify_ich(tcx, data, result, prev_index, hash_result, format_value_fn);
+            incremental_verify_ich(tcx, data, value, prev_index, hash_value_fn, format_value_fn);
 
             #[cfg(debug_assertions)]
-            if hash_result.is_some() {
+            if hash_value_fn.is_some() {
                 data.current.record_edge(
                     dep_node_index,
                     node,
@@ -621,7 +621,7 @@ impl DepGraph {
             TaskDepsRef::Forbid => panic!("Tried to feed while dependencies are forbidden"),
         });
 
-        data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
+        data.hash_result_and_alloc_node(tcx, node, edges, value, hash_value_fn)
     }
 }
 

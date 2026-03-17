@@ -148,8 +148,8 @@ pub(crate) fn query_feed<'tcx, C>(
             // adding the provided value to the cache.
             let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
             let dep_node_index = tcx.dep_graph.with_feed_task(
-                dep_node,
                 tcx,
+                dep_node,
                 &value,
                 query.hash_value_fn,
                 query.format_value,
