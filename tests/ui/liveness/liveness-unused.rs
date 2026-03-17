@@ -3,7 +3,7 @@
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types, trivial_numeric_casts, dropping_copy_types)]
 #![feature(intrinsics)]
-
+//@ ignore-parallel-frontend `note`s on different source lines
 use std::ops::AddAssign;
 
 fn f1(x: isize) {

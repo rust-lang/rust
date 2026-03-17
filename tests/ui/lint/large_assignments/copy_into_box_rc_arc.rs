@@ -3,7 +3,7 @@
 #![move_size_limit = "1000"]
 //@ build-fail
 //@ only-64bit
-
+//@ ignore-parallel-frontend post-monomorphization errors
 //@ edition:2018
 //@ compile-flags: -Zmir-opt-level=1
 

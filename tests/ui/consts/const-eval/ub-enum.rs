@@ -4,7 +4,7 @@
 //@ normalize-stderr: "0x0+" -> "0x0"
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(never_type)]
 #![allow(invalid_value, unnecessary_transmutes)]
 
