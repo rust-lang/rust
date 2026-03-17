@@ -472,13 +472,10 @@ pub(crate) fn report_cycle<'tcx>(
         cycle_stack.push(crate::error::CycleStack { span, desc: node.tagged_key.description(tcx) });
     }
 
-    let mut cycle_usage = None;
-    if let Some(usage) = usage {
-        cycle_usage = Some(crate::error::CycleUsage {
-            span: usage.node.tagged_key.default_span(tcx, usage.span),
-            usage: usage.node.tagged_key.description(tcx),
-        });
-    }
+    let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
+        span: usage.node.tagged_key.default_span(tcx, usage.span),
+        usage: usage.node.tagged_key.description(tcx),
+    });
 
     let alias = if stack
         .iter()
