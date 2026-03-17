@@ -271,7 +271,16 @@ impl SyntaxFactory {
     }
 
     pub fn impl_trait_type(&self, bounds: ast::TypeBoundList) -> ast::ImplTraitType {
-        make::impl_trait_type(bounds).clone_for_update()
+        let ast = make::impl_trait_type(bounds.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder
+                .map_node(bounds.syntax().clone(), ast.type_bound_list().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn expr_field(&self, receiver: ast::Expr, field: &str) -> ast::FieldExpr {
