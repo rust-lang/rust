@@ -576,14 +576,14 @@ rustc_queries! {
         // incremental compilation because, if a cycle occurs, we need the
         // entire cycle to be in memory for diagnostics. This means we can't
         // use `ensure_ok()` with this query.
-        anon
+        no_force
     }
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
     query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
-        anon
+        no_force
     }
 
     /// Set of param indexes for type params that are in the type's representation
