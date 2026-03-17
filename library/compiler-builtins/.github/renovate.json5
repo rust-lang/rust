@@ -1,0 +1,37 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":maintainLockFilesMonthly",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  packageRules: [
+    {
+      matchCategories: [
+        "rust"
+      ],
+      updateTypes: [
+        "patch"
+      ],
+      // Disable patch updates for single dependencies because patches
+      // are updated periodically with lockfile maintainance.
+      enabled: false,
+    },
+    {
+      matchManagers: [
+        "github-actions"
+      ],
+      // Every month
+      schedule: "* 0 1 * *",
+      groupName: "Github Actions",
+    }
+  ],
+  // Receive any update that fixes security vulnerabilities.
+  // We need this because we disabled "patch" updates for Rust.
+  // Note: You need to enable "Dependabot alerts" in "Code security" GitHub
+  // Settings to receive security updates.
+  // See https://docs.renovatebot.com/configuration-options/#vulnerabilityalerts
+  vulnerabilityAlerts: {
+    enabled: true,
+  },
+}
