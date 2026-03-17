@@ -14,7 +14,8 @@ use crate::ty::TyCtxt;
 pub(crate) mod arena_cached;
 mod caches;
 pub mod erase;
-pub(crate) mod inner;
+//pub(crate) mod inner; // njn: temp
+pub mod inner; // njn: temp
 mod job;
 mod keys;
 pub(crate) mod modifiers;

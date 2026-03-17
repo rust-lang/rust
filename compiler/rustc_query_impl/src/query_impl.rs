@@ -126,9 +126,10 @@ macro_rules! define_queries {
                     }
                 }
 
-                pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
-                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
-                {
+                pub(crate) fn make_query_vtable<'tcx>(
+                    incremental: bool,
+                    prof_query_cache_hits: bool
+                ) -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>> {
                     use rustc_middle::queries::$name::Value;
 
                     QueryVTable {
@@ -140,6 +141,20 @@ macro_rules! define_queries {
                         dep_kind: rustc_middle::dep_graph::DepKind::$name,
                         state: Default::default(),
                         cache: Default::default(),
+
+                        // njn: a `match (incremental, prof_query_cache_hits` here tickles a
+                        // compiler bug!
+                        try_get_cached_fn: if !incremental && !prof_query_cache_hits {
+                            rustc_middle::query::inner::try_get_cached_ff
+                        } else if !incremental && prof_query_cache_hits {
+                            rustc_middle::query::inner::try_get_cached_ft
+                        } else if incremental && !prof_query_cache_hits {
+                            rustc_middle::query::inner::try_get_cached_tf
+                        } else if incremental && prof_query_cache_hits {
+                            rustc_middle::query::inner::try_get_cached_tt
+                        } else {
+                            unreachable!();
+                        },
 
                         invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
@@ -216,12 +231,15 @@ macro_rules! define_queries {
             }
         )*
 
-        pub(crate) fn make_query_vtables<'tcx>(incremental: bool)
+        pub(crate) fn make_query_vtables<'tcx>(incremental: bool, prof_query_cache_hits: bool)
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query_impl::$name::make_query_vtable(
+                        incremental,
+                        prof_query_cache_hits
+                    ),
                 )*
             }
         }

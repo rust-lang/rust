@@ -963,6 +963,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     }
 
     let incremental = dep_graph.is_fully_enabled();
+    // njn: too coarse
+    let prof_query_cache_hits = sess.prof.enabled(); //event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS);
 
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
@@ -994,6 +996,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             providers.extern_queries,
             query_result_on_disk_cache,
             incremental,
+            prof_query_cache_hits,
         ),
         providers.hooks,
         compiler.current_gcx.clone(),

@@ -92,6 +92,9 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
+    // njn: rename
+    pub try_get_cached_fn: fn(TyCtxt<'tcx>, DepNodeIndex),
+
     /// Function pointer that actually calls this query's provider.
     /// Also performs some associated secondary tasks; see the macro-defined
     /// implementation in `mod invoke_provider_fn` for more details.
