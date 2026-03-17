@@ -154,8 +154,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         delegation: &Delegation,
         item_id: NodeId,
+        item_span: Span,
     ) -> DelegationResults<'hir> {
-        let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
+        let last_seg_span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
+        let item_span = self.lower_span(item_span);
+
+        // Check if the span of the last segment is contained in item span. The span of last segment
+        // may refer to completely different entity, for example when we do a glob reuse we
+        // generate segments (in `rustc_expand::expand::build_single_delegations`),
+        // and during `rustc_resolve::macros::glob_delegation_suffixes` we generate
+        // suffixes, where identifiers that are used in generated segment
+        // use spans of the original functions from trait,
+        // thus those spans can point either to local or external
+        // trait functions. This `span` is also used for diagnostics purposes, so we want it to point
+        // to delegation, not to the random trait function, so we perform this check here.
+        // We could have added similar check in `rustc_resolve::macros::glob_delegation_suffixes`
+        // (i.e. create ident with span related to ast path of delegation, not the original trait item),
+        // or in `rustc_expand::expand::build_single_delegations`,
+        // however it will break `impl-reuse-pass` test and checking span here seems to be good solution,
+        // as bad spans may come from different places in future.
+        let span = if item_span.contains(last_seg_span) { last_seg_span } else { item_span };
 
         // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
         let ids = if let Some(delegation_info) =
@@ -651,7 +669,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             // FIXME(fn_delegation): proper support for parent generics propagation
             // in method call scenario.
-            let segment = self.process_segment(item_id, span, &segment, &mut generics.child, false);
+            let segment = self.process_segment(item_id, span, &segment, &mut generics.child, true);
             let segment = self.arena.alloc(segment);
 
             self.arena.alloc(hir::Expr {
@@ -677,14 +695,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     new_path.segments = self.arena.alloc_from_iter(
                         new_path.segments.iter().enumerate().map(|(idx, segment)| {
-                            let mut process_segment = |result, add_lifetimes| {
-                                self.process_segment(item_id, span, segment, result, add_lifetimes)
+                            let mut process_segment = |result, is_child| {
+                                self.process_segment(item_id, span, segment, result, is_child)
                             };
 
                             if idx + 2 == len {
-                                process_segment(&mut generics.parent, true)
+                                process_segment(&mut generics.parent, false)
                             } else if idx + 1 == len {
-                                process_segment(&mut generics.child, false)
+                                process_segment(&mut generics.child, true)
                             } else {
                                 segment.clone()
                             }
@@ -695,7 +713,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 hir::QPath::TypeRelative(ty, segment) => {
                     let segment =
-                        self.process_segment(item_id, span, segment, &mut generics.child, false);
+                        self.process_segment(item_id, span, segment, &mut generics.child, true);
 
                     hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
                 }
@@ -723,17 +741,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         segment: &hir::PathSegment<'hir>,
         result: &mut GenericsGenerationResult<'hir>,
-        add_lifetimes: bool,
+        is_child_segment: bool,
     ) -> hir::PathSegment<'hir> {
         let details = result.generics.args_propagation_details();
 
         // The first condition is needed when there is SelfAndUserSpecified case,
         // we don't want to propagate generics params in this situation.
-        let segment = if details.should_propagate
+        let mut segment = if details.should_propagate
             && let Some(args) = result
                 .generics
                 .into_hir_generics(self, item_id, span)
-                .into_generic_args(self, add_lifetimes, span)
+                .into_generic_args(self, !is_child_segment, span)
         {
             hir::PathSegment { args: Some(args), ..segment.clone() }
         } else {
@@ -742,6 +760,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if details.use_args_in_sig_inheritance {
             result.args_segment_id = Some(segment.hir_id);
+        }
+
+        // Update segment ident span if it is not contained in delegation span, see comment
+        // in `lower_delegation` function in this file.
+        if is_child_segment && !span.contains(segment.ident.span) {
+            segment.ident.span = span;
         }
 
         segment
