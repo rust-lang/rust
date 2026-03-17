@@ -478,7 +478,20 @@ impl SyntaxFactory {
         name_ref: ast::NameRef,
         generic_args: impl IntoIterator<Item = ast::GenericArg>,
     ) -> ast::PathSegment {
-        make::generic_ty_path_segment(name_ref, generic_args).clone_for_update()
+        let (generic_args, input) = iterator_input(generic_args);
+        let ast = make::generic_ty_path_segment(name_ref.clone(), generic_args).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name_ref.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            builder.map_children(
+                input,
+                ast.generic_arg_list().unwrap().generic_args().map(|a| a.syntax().clone()),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn tail_only_block_expr(&self, tail_expr: ast::Expr) -> ast::BlockExpr {
