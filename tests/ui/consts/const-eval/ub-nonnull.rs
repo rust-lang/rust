@@ -2,7 +2,7 @@
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 #![feature(rustc_attrs, ptr_metadata)]
 

@@ -6,7 +6,7 @@ LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
    |     |
    |     required by a bound introduced by this call
    |
-   = note: cannot satisfy `_: Clone`
+   = note: the type must implement `Clone`
 note: required by a bound in `Foo::bar`
   --> $DIR/issue-86162-2.rs:8:20
    |

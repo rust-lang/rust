@@ -376,7 +376,6 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut reason = None;
     let mut issue = None;
     let mut issue_num = None;
-    let mut is_soft = false;
     let mut implied_by = None;
     let mut old_name = None;
 
@@ -423,12 +422,6 @@ pub(crate) fn parse_unstability<S: Stage>(
                     },
                 };
             }
-            Some(sym::soft) => {
-                if let Err(span) = args.no_args() {
-                    cx.emit_err(session_diagnostics::SoftNoArgs { span });
-                }
-                is_soft = true;
-            }
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
             }
@@ -438,14 +431,7 @@ pub(crate) fn parse_unstability<S: Stage>(
             _ => {
                 cx.expected_specific_argument(
                     param.span(),
-                    &[
-                        sym::feature,
-                        sym::reason,
-                        sym::issue,
-                        sym::soft,
-                        sym::implied_by,
-                        sym::old_name,
-                    ],
+                    &[sym::feature, sym::reason, sym::issue, sym::implied_by, sym::old_name],
                 );
                 return None;
             }
@@ -468,7 +454,6 @@ pub(crate) fn parse_unstability<S: Stage>(
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
-                is_soft,
                 implied_by,
                 old_name,
             };

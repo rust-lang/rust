@@ -1,5 +1,5 @@
 const FOO: usize = FOO; //~ ERROR E0391
-
+//@ ignore-parallel-frontend query cycle
 fn main() {
     let _x: [u8; FOO]; // caused stack overflow prior to fix
     let _y: usize = 1 + {

@@ -8,12 +8,12 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::bug;
 use rustc_middle::queries::{QueryVTables, TaggedQueryKey};
 use rustc_middle::query::CycleError;
 use rustc_middle::query::erase::erase_val;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -31,9 +31,9 @@ pub(crate) fn specialize_query_vtables<'tcx>(vtables: &mut QueryVTables<'tcx>) {
     vtables.check_representability_adt_ty.value_from_cycle_error =
         |tcx, _, cycle, _err| check_representability(tcx, cycle);
 
-    vtables.variances_of.value_from_cycle_error = |tcx, _, cycle, err| {
+    vtables.variances_of.value_from_cycle_error = |tcx, key, _, err| {
         let _guar = err.delay_as_bug();
-        erase_val(variances_of(tcx, cycle))
+        erase_val(variances_of(tcx, key))
     };
 
     vtables.layout_of.value_from_cycle_error = |tcx, _, cycle, err| {
@@ -103,26 +103,9 @@ fn check_representability<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>
     guar.raise_fatal()
 }
 
-fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, cycle_error: CycleError<'tcx>) -> &'tcx [ty::Variance] {
-    search_for_cycle_permutation(
-        &cycle_error.cycle,
-        |cycle| {
-            if let Some(frame) = cycle.get(0)
-                && let TaggedQueryKey::variances_of(def_id) = frame.node.tagged_key
-            {
-                let n = tcx.generics_of(def_id).own_params.len();
-                ControlFlow::Break(tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n)))
-            } else {
-                ControlFlow::Continue(())
-            }
-        },
-        || {
-            span_bug!(
-                cycle_error.usage.as_ref().unwrap().span,
-                "only `variances_of` returns `&[ty::Variance]`"
-            )
-        },
-    )
+fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [ty::Variance] {
+    let n = tcx.generics_of(def_id).own_params.len();
+    tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
 }
 
 // Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.

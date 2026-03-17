@@ -21,7 +21,6 @@ fn b(s: Option<S>) {
         S => {
             //~^ ERROR mismatched types
             //~| HELP try wrapping
-            //~| HELP introduce a new binding instead
         }
         _ => {}
     }
@@ -32,7 +31,6 @@ fn c(s: Result<S, S>) {
         S => {
             //~^ ERROR mismatched types
             //~| HELP try wrapping
-            //~| HELP introduce a new binding instead
         }
         _ => {}
     }
