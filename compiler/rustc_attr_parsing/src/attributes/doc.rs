@@ -1,10 +1,12 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
+use rustc_errors::msg;
 use rustc_feature::template;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
 };
 use rustc_hir::lints::AttributeLintKind;
+use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
@@ -553,7 +555,26 @@ impl DocParser {
             ),
             Some(sym::fake_variadic) => no_args_and_not_crate_level!(fake_variadic),
             Some(sym::search_unbox) => no_args_and_not_crate_level!(search_unbox),
-            Some(sym::rust_logo) => no_args_and_crate_level!(rust_logo),
+            Some(sym::rust_logo) => {
+                if let Err(span) = args.no_args() {
+                    expected_no_args(cx, span);
+                    return;
+                }
+                let span = path.span();
+                if !check_attr_crate_level(cx, span) {
+                    return;
+                }
+                if !cx.features().rustdoc_internals() {
+                    feature_err(
+                        cx.sess(),
+                        sym::rustdoc_internals,
+                        span,
+                        msg!("the `#[doc(rust_logo)]` attribute is used for Rust branding"),
+                    )
+                    .emit();
+                }
+                self.attribute.rust_logo = Some(span);
+            }
             Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
             Some(sym::test) => {
                 let Some(list) = args.list() else {
