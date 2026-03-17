@@ -587,7 +587,25 @@ impl SyntaxFactory {
         alias: Option<ast::Rename>,
         add_star: bool,
     ) -> ast::UseTree {
-        make::use_tree(path, use_tree_list, alias, add_star).clone_for_update()
+        let ast = make::use_tree(path.clone(), use_tree_list.clone(), alias.clone(), add_star)
+            .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            if let Some(use_tree_list) = use_tree_list {
+                builder.map_node(
+                    use_tree_list.syntax().clone(),
+                    ast.use_tree_list().unwrap().syntax().clone(),
+                );
+            }
+            if let Some(alias) = alias {
+                builder.map_node(alias.syntax().clone(), ast.rename().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn path_unqualified(&self, segment: ast::PathSegment) -> ast::Path {
