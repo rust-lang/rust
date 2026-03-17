@@ -33,7 +33,7 @@ use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, Ty, TyCtxt, UnusedGenericParams};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
