@@ -226,7 +226,32 @@ impl SyntaxFactory {
         path: Either<ast::Lifetime, ast::Type>,
         bounds: impl IntoIterator<Item = ast::TypeBound>,
     ) -> ast::WherePred {
-        make::where_pred(path, bounds).clone_for_update()
+        let (bounds, bounds_input) = iterator_input(bounds);
+        let ast = make::where_pred(path.clone(), bounds).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            match &path {
+                Either::Left(lifetime) => {
+                    builder.map_node(
+                        lifetime.syntax().clone(),
+                        ast.lifetime().unwrap().syntax().clone(),
+                    );
+                }
+                Either::Right(ty) => {
+                    builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+                }
+            }
+            if let Some(type_bound_list) = ast.type_bound_list() {
+                builder.map_children(
+                    bounds_input,
+                    type_bound_list.bounds().map(|b| b.syntax().clone()),
+                );
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn where_clause(
