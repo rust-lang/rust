@@ -429,6 +429,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             if let hir::ItemKind::Impl(impl_) = item.kind {
                 self.add_to_current_mod(
                     item,
+                    // The symbol here is used as a "sentinel" value and has no meaning in
+                    // itself. It just tells that this is an inlined impl and that it should not
+                    // be cleaned as a normal `ImplItem` but instead as a `PlaceholderImplItem`.
+                    // It's to ensure that `doc_cfg` inheritance works as expected.
                     if impl_.of_trait.is_none() {
                         None
                     } else {
@@ -539,6 +543,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if !self.inlining {
                     self.add_to_current_mod(
                         item,
+                        // The symbol here is used as a "sentinel" value and has no meaning in
+                        // itself. It just tells that this is an inlined impl and that it should not
+                        // be cleaned as a normal `ImplItem` but instead as a `PlaceholderImplItem`.
+                        // It's to ensure that `doc_cfg` inheritance works as expected.
                         if impl_.of_trait.is_none() {
                             None
                         } else {

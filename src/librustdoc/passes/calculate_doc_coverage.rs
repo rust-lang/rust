@@ -199,8 +199,12 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
         }
 
         match i.kind {
-            clean::StrippedItem(..) | clean::PlaceholderImplItem => {
+            clean::StrippedItem(..) => {
                 // don't count items in stripped modules
+                return;
+            }
+            clean::PlaceholderImplItem => {
+                // The "real" impl items are handled below.
                 return;
             }
             // docs on `use` and `extern crate` statements are not displayed, so they're not

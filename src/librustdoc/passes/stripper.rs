@@ -120,7 +120,8 @@ impl DocFolder for Stripper<'_, '_> {
 
             clean::ImplItem(..) => {}
 
-            // They have no use anymore, so always remove them.
+            // Since the `doc_cfg` propagation was handled before the current pass, we can (and
+            // should) remove all placeholder impl items.
             clean::PlaceholderImplItem => return None,
 
             // tymethods etc. have no control over privacy

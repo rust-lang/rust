@@ -2777,6 +2777,9 @@ fn clean_maybe_renamed_item<'tcx>(
         // before.
         match item.kind {
             ItemKind::Impl(ref impl_) => {
+                // `renamed` is passed down to `clean_impl` because we use it as a marker to
+                // indicate that this is an inlined impl and that we should generate an impl
+                // placeholder and not a "real" impl item.
                 return clean_impl(impl_, item.owner_id.def_id, cx, renamed);
             }
             ItemKind::Use(path, kind) => {
@@ -2911,7 +2914,7 @@ fn clean_impl<'tcx>(
     impl_: &hir::Impl<'tcx>,
     def_id: LocalDefId,
     cx: &mut DocContext<'tcx>,
-    // If `renamed` is some, then this is an inlined impl and it will be handled later on in the
+    // If `renamed` is some, then `impl_` is an inlined impl and it will be handled later on in the
     // code. In here, we will generate a placeholder for it in order to be able to compute its
     // `doc_cfg` info.
     renamed: Option<Symbol>,
