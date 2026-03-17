@@ -452,6 +452,8 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
+            // Stable *language* features shouldn't be used as unstable library features.
+            // (Not doing this for stable library features is checked by tidy.)
             if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
                 cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
                     attr_span: cx.attr_span,

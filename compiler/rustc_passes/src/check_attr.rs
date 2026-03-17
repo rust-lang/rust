@@ -1541,6 +1541,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
         &self,
         hir_id: HirId,
