@@ -34,7 +34,9 @@ pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
 pub use self::lock::{Lock, LockGuard, Mode};
-pub use self::mode::{is_dyn_thread_safe, FromDyn, set_dyn_thread_safe_mode};
+pub use self::mode::{
+    FromDyn, check_dyn_thread_safe, is_dyn_thread_safe, set_dyn_thread_safe_mode,
+};
 pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
     try_par_for_each_in,
@@ -74,6 +76,12 @@ mod mode {
 
     // Whether thread safety is enabled (due to running under multiple threads).
     #[inline]
+    pub fn check_dyn_thread_safe() -> Option<FromDyn<()>> {
+        is_dyn_thread_safe().then_some(FromDyn(()))
+    }
+
+    // Whether thread safety is enabled (due to running under multiple threads).
+    #[inline]
     pub fn is_dyn_thread_safe() -> bool {
         match DYN_THREAD_SAFE_MODE.load(Ordering::Relaxed) {
             DYN_NOT_THREAD_SAFE => false,
@@ -106,15 +114,6 @@ mod mode {
     pub struct FromDyn<T>(T);
 
     impl<T> FromDyn<T> {
-        #[inline(always)]
-        pub fn from(val: T) -> Self {
-            // Check that `sync::is_dyn_thread_safe()` is true on creation so we can
-            // implement `Send` and `Sync` for this structure when `T`
-            // implements `DynSend` and `DynSync` respectively.
-            assert!(crate::sync::is_dyn_thread_safe());
-            FromDyn(val)
-        }
-
         #[inline(always)]
         pub fn derive<O>(&self, val: O) -> FromDyn<O> {
             // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
