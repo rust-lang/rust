@@ -70,8 +70,8 @@ impl_from_bool!(i8 i16 i32 i64 i128 isize);
 
 /// Implement `From<$small>` for `$large`
 macro_rules! impl_from {
-    ($small:ty => $large:ty, #[$attr:meta]) => {
-        #[$attr]
+    ($small:ty => $large:ty, $(#[$attrs:meta]),+) => {
+        $(#[$attrs])+
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$small> for $large {
             #[doc = concat!("Converts from [`", stringify!($small), "`] to [`", stringify!($large), "`] losslessly.")]
@@ -174,9 +174,14 @@ impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0
 // impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 
 // float -> float
-// FIXME(f16,f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
-// <https://github.com/rust-lang/rust/issues/123831>
-impl_from!(f16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+
+// FIXME(f16): adding the additional `From<{float}>` impl to `f32` would break inference in cases
+// like `f32::from(1.0)`. The type checker has a custom workaround to keep that and similar code
+// compiling even with the second `From<16> for f32` instance. We keep this instance unstable for
+// now so that we can later remove the workaround.
+//
+// See also <https://github.com/rust-lang/rust/issues/123831>.
+impl_from!(f16 => f32, #[unstable(feature = "f32_from_f16", issue = "154005")], #[unstable_feature_bound(f32_from_f16)]);
 impl_from!(f16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);

@@ -10,6 +10,9 @@ pub fn main() {
     let a: f16 = 100.0; //~ ERROR the type `f16` is unstable
     let b = 0.0f16; //~ ERROR the type `f16` is unstable
     let c = 0f16; //~ ERROR the type `f16` is unstable
+    let d: f32 = 1.0f16.into();
+    //~^ ERROR the type `f16` is unstable
+    //~| ERROR use of unstable library feature `f32_from_f16`
     foo(1.23);
 }
 
