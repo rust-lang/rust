@@ -127,7 +127,7 @@ impl TcpStream {
         moto_rt::net::linger(self.inner.as_raw_fd()).map_err(map_motor_error)
     }
 
-    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
         unsupported()
     }
 

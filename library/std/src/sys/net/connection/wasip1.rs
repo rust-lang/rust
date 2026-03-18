@@ -145,7 +145,7 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
         unsupported()
     }
 
