@@ -1607,9 +1607,9 @@ fn test_non_determinism() {
             check_nondet(|| 1.0f32.sinh());
             check_nondet(|| 1.0f32.cosh());
             check_nondet(|| 1.0f32.tanh());
+            check_nondet(|| 1.0f32.asinh());
+            check_nondet(|| 2.0f32.acosh());
         }
-        check_nondet(|| 1.0f32.asinh());
-        check_nondet(|| 2.0f32.acosh());
         check_nondet(|| 0.5f32.atanh());
         check_nondet(|| 5.0f32.gamma());
         check_nondet(|| 5.0f32.ln_gamma());
