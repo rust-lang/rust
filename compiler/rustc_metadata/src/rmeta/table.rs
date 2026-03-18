@@ -44,16 +44,6 @@ impl<T> IsDefault for LazyArray<T> {
     }
 }
 
-impl IsDefault for UnusedGenericParams {
-    fn is_default(&self) -> bool {
-        // UnusedGenericParams encodes the *un*usedness as a bitset.
-        // This means that 0 corresponds to all bits used, which is indeed the default.
-        let is_default = self.bits() == 0;
-        debug_assert_eq!(is_default, self.all_used());
-        is_default
-    }
-}
-
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
 ///
