@@ -6625,6 +6625,7 @@ intrinsics:
               arch: aarch64,arm64ec
 
 
+
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6636,7 +6637,11 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - FnCall: [simd_fmax, [a, b]]
+      - LLVMLink:
+          name: "fmaxnm.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmh_{type}"
@@ -6652,7 +6657,11 @@ intrinsics:
     types:
       - f16
     compose:
-      - FnCall: ["f16::max", [a, b]]
+      - LLVMLink:
+          name: "vmaxh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnm.{type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vminnmh_{type}"
@@ -6668,7 +6677,11 @@ intrinsics:
     types:
       - f16
     compose:
-      - FnCall: ["f16::min", [a, b]]
+      - LLVMLink:
+          name: "vminh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnm.{type}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6682,7 +6695,11 @@ intrinsics:
       - [float32x2_t, f32]
       - [float64x2_t, f64]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vmaxnmv{neon_type[0].no}"
     doc: Floating-point maximum number across vector
@@ -6694,7 +6711,11 @@ intrinsics:
     types:
       - [float32x4_t, f32]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxnmv{neon_type[0].no}"
@@ -6711,7 +6732,11 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - FnCall: [simd_reduce_max, [a]]
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vminnmv{neon_type[0].no}"
@@ -6728,7 +6753,11 @@ intrinsics:
       - [float16x4_t, f16]
       - [float16x8_t, f16]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "fminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
 
   - name: "vmaxv{neon_type[0].no}"
@@ -6837,7 +6866,11 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - FnCall: [simd_fmin, [a, b]]
+      - LLVMLink:
+          name: "fminnm.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
+              arch: aarch64,arm64ec
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6851,7 +6884,11 @@ intrinsics:
       - [float32x2_t, "f32"]
       - [float64x2_t, "f64"]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "vminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vminnmv{neon_type[0].no}"
     doc: "Floating-point minimum number across vector"
@@ -6864,7 +6901,11 @@ intrinsics:
     types:
       - [float32x4_t, "f32"]
     compose:
-      - FnCall: [simd_reduce_min, [a]]
+      - LLVMLink:
+          name: "vminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
 
   - name: "vmovl_high{neon_type[0].noq}"
     doc: Vector move

@@ -4,7 +4,7 @@ error[E0283]: type annotations needed
 LL |     println!("{:?}", iter::<_>());
    |                      ^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `iter`
    |
-   = note: cannot satisfy `_: Iterator`
+   = note: the type must implement `Iterator`
 note: required by a bound in `iter`
   --> $DIR/runaway-impl-candidate-selection.rs:8:12
    |

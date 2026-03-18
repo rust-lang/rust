@@ -131,7 +131,6 @@ const FORCE_UNSTABLE: Stability = Stability {
     level: StabilityLevel::Unstable {
         reason: UnstableReason::Default,
         issue: NonZero::new(27812),
-        is_soft: false,
         implied_by: None,
         old_name: None,
     },

@@ -18,7 +18,7 @@ error[E0283]: type annotations needed
 LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect()?;
    |                                                                 ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
    |
-   = note: cannot satisfy `_: FromIterator<std::result::Result<Version, Error>>`
+   = note: the type must implement `FromIterator<std::result::Result<Version, Error>>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument

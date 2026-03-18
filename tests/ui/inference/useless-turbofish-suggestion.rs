@@ -4,8 +4,8 @@
 // rewriting them — the suggestion just rewrites user syntax into
 // fully-qualified form without resolving anything.
 //
-// The span still points at the method name rather than the unresolved `_`;
-// fixing that is left as future work.
+// When a turbofish is present, the diagnostic points at the specific
+// uninferred generic argument rather than the method name.
 
 struct S;
 
@@ -15,8 +15,13 @@ impl S {
     }
 }
 
-fn with_turbofish() {
+fn turbofish_second_arg() {
     S.f::<u32, _>(42);
+    //~^ ERROR type annotations needed
+}
+
+fn turbofish_first_arg() {
+    S.f::<_, _>(42);
     //~^ ERROR type annotations needed
 }
 

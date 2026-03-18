@@ -1,7 +1,7 @@
 //@ check-pass
 
 #![feature(generic_const_items, min_generic_const_args)]
-#![feature(adt_const_params, unsized_const_params, generic_const_parameter_types)]
+#![feature(adt_const_params, const_param_ty_trait, generic_const_parameter_types)]
 #![expect(incomplete_features)]
 
 use std::marker::{ConstParamTy, ConstParamTy_};

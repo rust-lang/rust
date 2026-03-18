@@ -14,7 +14,7 @@ error[E0283]: type annotations needed
 LL | fn main() { foo(); }
    |             ^^^^^ cannot infer type
    |
-   = note: cannot satisfy `_: Foo`
+   = note: the type must implement `Foo`
 
 error: aborting due to 2 previous errors
 

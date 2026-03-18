@@ -1358,7 +1358,6 @@ ui/infinite/issue-41731-infinite-macro-print.rs
 ui/infinite/issue-41731-infinite-macro-println.rs
 ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
-ui/invalid/issue-114435-layout-type-err.rs
 ui/iterators/issue-28098.rs
 ui/iterators/issue-58952-filter-type-length.rs
 ui/lang-items/issue-83471.rs

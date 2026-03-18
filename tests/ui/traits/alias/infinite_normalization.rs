@@ -2,7 +2,7 @@
 //! recursion during normalization.
 //!
 //! issue: https://github.com/rust-lang/rust/issues/133901
-
+//@ ignore-parallel-frontend query cycle
 #![feature(trait_alias)]
 fn foo<T: Baz<i32>>() {}
 trait Baz<A> = Baz<Option<A>>;

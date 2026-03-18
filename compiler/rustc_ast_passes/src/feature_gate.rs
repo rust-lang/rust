@@ -1,5 +1,5 @@
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{self as ast, AttrVec, NodeId, PatKind, attr, token};
+use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
@@ -149,7 +149,14 @@ impl<'a> PostExpansionVisitor<'a> {
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                if param.bounds.iter().any(|bound| matches!(bound, GenericBound::Trait(_))) {
+                    // Issue #149695
+                    // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
+                    // which will cause ICEs when errors of the items visit unlowered parents.
+                    self.sess.dcx().emit_fatal(errors::ForbiddenBound { spans });
+                } else {
+                    self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                }
             }
         }
     }
