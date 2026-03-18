@@ -2870,7 +2870,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// struct Foo<'a>(&'a ());
     ///
     /// impl<'a> Foo<'a> {
@@ -2888,7 +2888,7 @@ declare_lint! {
     /// aliases, ignores generic arguments, and may silently choose an
     /// incorrect lifetime. Use `&self` or `self: &Self` instead.
     pub SELF_LIFETIME_ELISION_NOT_APPLICABLE,
-    Warn,
+    Deny,
     "self-type lifetime elision for non-`Self` type",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #140611),
