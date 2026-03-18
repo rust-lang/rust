@@ -6,10 +6,7 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_errors::Diag;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::hir_id::OwnerId;
 use rustc_span::Span;
-pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
@@ -271,8 +268,8 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 macro_rules! query_helper_param_ty {
-    (DefId) => { impl $crate::query::IntoQueryParam<DefId> };
-    (LocalDefId) => { impl $crate::query::IntoQueryParam<LocalDefId> };
+    (DefId) => { impl $crate::query::IntoQueryKey<DefId> };
+    (LocalDefId) => { impl $crate::query::IntoQueryKey<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -413,7 +410,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                         $crate::query::EnsureMode::Ok,
                     )
                 }
@@ -433,7 +430,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_result(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                     )
                 }
             )*
@@ -447,7 +444,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                         $crate::query::EnsureMode::Done,
                     );
                 }
@@ -476,7 +473,7 @@ macro_rules! define_callbacks {
                         self.tcx,
                         self.span,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                     ))
                 }
             )*
@@ -484,13 +481,13 @@ macro_rules! define_callbacks {
 
         $(
             #[cfg($feedable)]
-            impl<'tcx, K: $crate::query::IntoQueryParam<$name::Key<'tcx>> + Copy>
+            impl<'tcx, K: $crate::query::IntoQueryKey<$name::Key<'tcx>> + Copy>
                 TyCtxtFeed<'tcx, K>
             {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
-                    let key = self.key().into_query_param();
+                    let key = self.key().into_query_key();
                     let erased_value = $name::provided_to_erased(self.tcx, value);
                     $crate::query::inner::query_feed(
                         self.tcx,
@@ -646,69 +643,6 @@ macro_rules! define_callbacks {
 // Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
 pub(crate) use define_callbacks;
 pub(crate) use query_helper_param_ty;
-
-mod sealed {
-    use rustc_hir::def_id::{LocalModDefId, ModDefId};
-
-    use super::{DefId, LocalDefId, OwnerId};
-
-    /// An analogue of the `Into` trait that's intended only for query parameters.
-    ///
-    /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
-    /// user call `to_def_id` to convert between them everywhere else.
-    pub trait IntoQueryParam<P> {
-        fn into_query_param(self) -> P;
-    }
-
-    impl<P> IntoQueryParam<P> for P {
-        #[inline(always)]
-        fn into_query_param(self) -> P {
-            self
-        }
-    }
-
-    impl IntoQueryParam<LocalDefId> for OwnerId {
-        #[inline(always)]
-        fn into_query_param(self) -> LocalDefId {
-            self.def_id
-        }
-    }
-
-    impl IntoQueryParam<DefId> for LocalDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for OwnerId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for ModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for LocalModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<LocalDefId> for LocalModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> LocalDefId {
-            self.into()
-        }
-    }
-}
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
