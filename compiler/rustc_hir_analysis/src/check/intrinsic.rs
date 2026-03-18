@@ -726,8 +726,8 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_and
         | sym::simd_or
         | sym::simd_xor
-        | sym::simd_fmin
-        | sym::simd_fmax
+        | sym::simd_minimum_number_nsz
+        | sym::simd_maximum_number_nsz
         | sym::simd_saturating_add
         | sym::simd_saturating_sub
         | sym::simd_carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
