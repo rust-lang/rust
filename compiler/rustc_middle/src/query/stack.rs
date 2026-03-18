@@ -1,10 +1,14 @@
+use rustc_span::Span;
+
 use crate::queries::TaggedQueryKey;
 
 /// Description of a frame in the query stack.
 ///
 /// This is mostly used in case of cycles for error reporting.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct QueryStackFrame<'tcx> {
+    pub span: Span,
+
     /// The query and key of the query method call that this stack frame
     /// corresponds to.
     ///

@@ -23,9 +23,8 @@ extern crate tikv_jemalloc_sys as _;
 use clippy_utils::sym;
 use declare_clippy_lint::LintListBuilder;
 use rustc_interface::interface;
-use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
-use rustc_session::parse::ParseSess;
+use rustc_session::{EarlyDiagCtxt, Session};
 use rustc_span::symbol::Symbol;
 
 use std::env;
@@ -81,17 +80,16 @@ fn test_has_arg() {
     assert!(!has_arg(args, "--bar"));
 }
 
-fn track_clippy_args(psess: &mut ParseSess, args_env_var: Option<&str>) {
-    psess
-        .env_depinfo
-        .get_mut()
+fn track_clippy_args(sess: &Session, args_env_var: Option<&str>) {
+    sess.env_depinfo
+        .borrow_mut()
         .insert((sym::CLIPPY_ARGS, args_env_var.map(Symbol::intern)));
 }
 
 /// Track files that may be accessed at runtime in `file_depinfo` so that cargo will re-run clippy
 /// when any of them are modified
-fn track_files(psess: &mut ParseSess) {
-    let file_depinfo = psess.file_depinfo.get_mut();
+fn track_files(sess: &Session) {
+    let mut file_depinfo = sess.file_depinfo.borrow_mut();
 
     // Used by `clippy::cargo` lints and to determine the MSRV. `cargo clippy` executes `clippy-driver`
     // with the current directory set to `CARGO_MANIFEST_DIR` so a relative path is fine
@@ -123,8 +121,8 @@ struct RustcCallbacks {
 impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let clippy_args_var = self.clippy_args_var.take();
-        config.psess_created = Some(Box::new(move |psess| {
-            track_clippy_args(psess, clippy_args_var.as_deref());
+        config.track_state = Some(Box::new(move |sess, _hasher| {
+            track_clippy_args(sess, clippy_args_var.as_deref());
         }));
         config.extra_symbols = sym::EXTRA_SYMBOLS.into();
     }
@@ -140,13 +138,13 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
-        config.psess_created = Some(Box::new(move |psess| {
-            track_clippy_args(psess, clippy_args_var.as_deref());
-            track_files(psess);
+        config.track_state = Some(Box::new(move |sess, _hasher| {
+            track_clippy_args(sess, clippy_args_var.as_deref());
+            track_files(sess);
 
             // Trigger a rebuild if CLIPPY_CONF_DIR changes. The value must be a valid string so
             // changes between dirs that are invalid UTF-8 will not trigger rebuilds
-            psess.env_depinfo.get_mut().insert((
+            sess.env_depinfo.borrow_mut().insert((
                 sym::CLIPPY_CONF_DIR,
                 env::var("CLIPPY_CONF_DIR").ok().map(|dir| Symbol::intern(&dir)),
             ));
