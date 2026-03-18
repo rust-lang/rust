@@ -1482,6 +1482,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
+                // Handle splatted method arguments
+                let tuple_arguments = if method.sig.splatted {
+                    // self is already handled as `rcvr`, so it's never splatted here
+                    TupleArgumentsFlag::TupleSplattedArguments
+                } else {
+                    TupleArgumentsFlag::DontTupleArguments
+                };
+
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
@@ -1490,7 +1498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected,
                     args,
                     method.sig.c_variadic,
-                    TupleArgumentsFlag::DontTupleArguments,
+                    tuple_arguments,
                     Some(method.def_id),
                 );
 

@@ -216,9 +216,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // First, let's unify the formal method signature with the expectation eagerly.
-        // We use this to guide coercion inference; it's output is "fudged" which means
+        // We use this to guide coercion inference; its output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
         // is because the inference guidance here is only speculative.
+        // FIXME(splat): do we need to splat arguments before this type inference?
         let formal_output = self.resolve_vars_with_obligations(formal_output);
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
@@ -284,39 +285,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err_code = E0061;
 
-        // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
-        let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
-            let tuple_type = self.structurally_resolve_type(call_span, formal_input_tys[0]);
+        // If the arguments should be wrapped in a tuple (ex: closures, splats), unwrap them here
+        let (formal_input_tys, expected_input_tys) = if tuple_arguments.last_argument_is_tupled() {
+            // An empty argument list should be a single unit type argument in the callee.
+            // The Fn* traits ensure this by construction, and `#[splat]` can only be applied to an actual argument.
+            let tupled_arg_index =
+                formal_input_tys.len().checked_sub(1).expect("must have a tuple argument");
+            // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
+            let tuple_type = if tuple_arguments.is_splatted() {
+                let tuple_type = self
+                    .try_structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index]);
+                if tuple_type.is_ty_var() {
+                    let tuple_len = provided_args.len().checked_sub(tupled_arg_index);
+                    if let Some(tuple_len) = tuple_len {
+                        // FIXME(splat before merging): how do we force the type variable to resolve to (a supertype) of the caller's tupled argument types?
+                        Ty::new_tup_from_iter(
+                            self.tcx,
+                            iter::repeat_with(|| self.next_ty_var(call_span)).take(tuple_len),
+                        )
+                    } else {
+                        // Just let it likely fail later
+                        tuple_type
+                    }
+                } else {
+                    tuple_type
+                }
+            } else {
+                self.structurally_resolve_type(call_span, formal_input_tys[tupled_arg_index])
+            };
             match tuple_type.kind() {
                 // We expected a tuple and got a tuple
                 ty::Tuple(arg_types) => {
                     // Argument length differs
-                    if arg_types.len() != provided_args.len() {
+                    // FIXME(splat): update the error code E0057 docs when splat is stabilized
+                    if Some(arg_types.len()) != provided_args.len().checked_sub(tupled_arg_index) {
                         err_code = E0057;
                     }
                     let expected_input_tys = match expected_input_tys {
-                        Some(expected_input_tys) => match expected_input_tys.get(0) {
-                            Some(ty) => match ty.kind() {
-                                ty::Tuple(tys) => Some(tys.iter().collect()),
-                                _ => None,
-                            },
-                            None => None,
-                        },
+                        Some(expected_input_tys) => {
+                            match expected_input_tys.get(tupled_arg_index) {
+                                Some(ty) => match ty.kind() {
+                                    ty::Tuple(tys) => Some(
+                                        expected_input_tys
+                                            .into_iter()
+                                            .take(tupled_arg_index)
+                                            .chain(tys.iter())
+                                            .collect::<Vec<_>>(),
+                                    ),
+                                    _ => None,
+                                },
+                                None => None,
+                            }
+                        }
                         None => None,
                     };
-                    (arg_types.iter().collect(), expected_input_tys)
+                    // FIXME(splat before merging): if splatting, update the caller's arguments to be a tuple, so MIR typecheck passes
+                    (
+                        formal_input_tys[..tupled_arg_index]
+                            .into_iter()
+                            .cloned()
+                            .chain(arg_types.into_iter())
+                            .collect(),
+                        expected_input_tys,
+                    )
                 }
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    let guar = struct_span_code_err!(
-                        self.dcx(),
-                        call_span,
-                        E0059,
-                        "cannot use call notation; the first type parameter \
-                         for the function trait is neither a tuple nor unit"
-                    )
-                    .emit();
+                    let guar = match tuple_arguments {
+                        TupleAllArguments => struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            E0059,
+                            "cannot use call notation; the first type parameter \
+                            for the function trait is neither a tuple nor unit"
+                        )
+                        .emit(),
+                        TupleSplattedArguments { .. } => struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            // FIXME(splat): add a new error code before stabilization
+                            E0277,
+                            "cannot use splat attribute; the last type parameter \
+                            for the function must be a tuple or unit, not a {:?} ({:?})",
+                            tuple_type.kind(),
+                            self.structurally_resolve_type(
+                                call_span,
+                                formal_input_tys[tupled_arg_index]
+                            )
+                            .kind(),
+                        )
+                        .emit(),
+                        DontTupleArguments => unreachable!(),
+                    };
                     (self.err_args(provided_args.len(), guar), None)
                 }
             }
@@ -1371,8 +1432,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we're calling a method of a Fn/FnMut/FnOnce trait object implicitly
         // (eg invoking a closure) we want to point at the underlying callable,
         // not the method implicitly invoked (eg call_once).
-        // TupleArguments is set only when this is an implicit call (my_closure(...)) rather than explicit (my_closure.call(...))
-        if tuple_arguments == TupleArguments
+        // TupleAllArguments is set only when this is an implicit call `my_closure(...)` rather
+        // than explicit `my_closure.call(...)`.
+        if tuple_arguments == TupleAllArguments
             && let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
             // Since this is an associated item, it might point at either an impl or a trait item.
             // We want it to always point to the trait item.

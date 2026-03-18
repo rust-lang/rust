@@ -777,14 +777,6 @@ impl<I: Interner> FnSig<I> {
         let FnSig { safety, abi, c_variadic, .. } = self;
         !c_variadic && safety.is_safe() && abi.is_rust()
     }
-
-    pub fn splatted_arg_index(self) -> Option<u16> {
-        // A function with no inputs behaves the same regardless of splatting.
-        let last_index = self.inputs().len().checked_sub(1)?;
-
-        debug_assert!(last_index <= u16::MAX as usize);
-        self.splatted.then_some(last_index as u16)
-    }
 }
 
 impl<I: Interner> ty::Binder<I, FnSig<I>> {

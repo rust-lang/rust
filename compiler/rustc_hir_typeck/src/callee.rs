@@ -53,12 +53,17 @@ pub(crate) fn check_legal_trait_for_method_call(
     tcx.ensure_result().coherent_trait(trait_id)
 }
 
+/// State machine for typechecking a call, based on the callee type.
 #[derive(Debug)]
 enum CallStep<'tcx> {
+    /// Typecheck a call to a function definition or pointer.
     Builtin(Ty<'tcx>),
+    /// Deferred closure Fn* trait typechecking, when the callee is a closure.
     DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
     /// Call overloading when callee implements one of the Fn* traits.
     Overloaded(MethodCallee<'tcx>),
+    /// Caller argument tupling, when callee uses `#[splat]`.
+    Splatted(Ty<'tcx>),
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -147,6 +152,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(CallStep::Overloaded(method_callee)) => {
                 self.confirm_overloaded_call(call_expr, arg_exprs, expected, method_callee)
             }
+
+            Some(CallStep::Splatted(callee_ty)) => {
+                self.confirm_splatted_call(call_expr, callee_ty, arg_exprs, expected)
+            }
         };
 
         // we must check that return type of called functions is WF:
@@ -219,12 +228,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
+
+                // If the callee has `#[splat]` on an argument
+                if let hir::ExprKind::Path(ref qpath) = callee_expr.kind
+                    && let Res::Def(_def_kind, def_id) =
+                        self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
+                    && self.tcx.fn_sig(def_id).skip_binder().skip_binder().splatted
+                {
+                    return Some(CallStep::Splatted(adjusted_ty));
+                }
+
                 return Some(CallStep::Builtin(adjusted_ty));
             }
 
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
+            // FIXME(splat): handle splatting of closure arguments
             ty::Closure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_sig = args.as_closure().sig();
@@ -252,6 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // signature with an infer var for the `tupled_upvars_ty` of the coroutine,
             // and record a deferred call resolution which will constrain that var
             // as part of `AsyncFn*` trait confirmation.
+            // FIXME(splat): handle splatting of coroutine closure arguments
             ty::CoroutineClosure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_args = args.as_coroutine_closure();
@@ -907,7 +928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
             arg_exprs,
             fn_sig.c_variadic,
-            TupleArgumentsFlag::TupleArguments,
+            TupleArgumentsFlag::TupleAllArguments,
             Some(closure_def_id.to_def_id()),
         );
 
@@ -978,13 +999,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
             arg_exprs,
             method.sig.c_variadic,
-            TupleArgumentsFlag::TupleArguments,
+            TupleArgumentsFlag::TupleAllArguments,
             Some(method.def_id),
         );
 
         self.write_method_call_and_enforce_effects(call_expr.hir_id, call_expr.span, method);
 
         method.sig.output()
+    }
+
+    fn confirm_splatted_call(
+        &self,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        callee_ty: Ty<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        let (fn_sig, def_id) = match *callee_ty.kind() {
+            ty::FnDef(def_id, args) => {
+                self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
+                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+                (fn_sig, Some(def_id))
+            }
+
+            // FIXME(const_trait_impl): these arms should error because we can't enforce them
+            ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
+
+            _ => unreachable!(),
+        };
+
+        // Replace any late-bound regions that appear in the function
+        // signature with region variables. We also have to
+        // renormalize the associated types at this point, since they
+        // previously appeared within a `Binder<>` and hence would not
+        // have been normalized before.
+        let fn_sig = self.instantiate_binder_with_fresh_vars(
+            call_expr.span,
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
+        let fn_sig = self.normalize(call_expr.span, fn_sig);
+
+        self.check_argument_types(
+            call_expr.span,
+            call_expr,
+            fn_sig.inputs(),
+            fn_sig.output(),
+            expected,
+            arg_exprs,
+            fn_sig.c_variadic,
+            TupleArgumentsFlag::TupleSplattedArguments,
+            def_id,
+        );
+
+        // FIXME(splat): is splatting incompatible with RustCall?
+        if fn_sig.abi == rustc_abi::ExternAbi::RustCall {
+            let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
+            self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
+        }
+
+        fn_sig.output()
     }
 }
 
