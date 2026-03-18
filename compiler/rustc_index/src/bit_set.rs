@@ -3,14 +3,16 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
-use std::{fmt, iter, slice};
+use std::{fmt, iter};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
+use crate::bit_set::raw::RawBitIter;
 use crate::{Idx, IndexVec};
 
+mod raw;
 #[cfg(test)]
 mod tests;
 
@@ -410,54 +412,22 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 }
 
 pub struct BitIter<'a, T: Idx> {
-    /// A copy of the current word, but with any already-visited bits cleared.
-    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
-    /// is reduced to 0, we move onto the next word.
-    word: Word,
-
-    /// The offset (measured in bits) of the current word.
-    offset: usize,
-
-    /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
-
+    raw: RawBitIter<'a>,
     marker: PhantomData<T>,
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
-        // We initialize `word` and `offset` to degenerate values. On the first
-        // call to `next()` we will fall through to getting the first word from
-        // `iter`, which sets `word` to the first word (if there is one) and
-        // `offset` to 0. Doing it this way saves us from having to maintain
-        // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
+    #[inline(always)]
+    fn new(words: &'a [Word]) -> Self {
+        BitIter { raw: RawBitIter::new(words), marker: PhantomData }
     }
 }
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     type Item = T;
-    fn next(&mut self) -> Option<T> {
-        loop {
-            if self.word != 0 {
-                // Get the position of the next set bit in the current word,
-                // then clear the bit.
-                let bit_pos = self.word.trailing_zeros() as usize;
-                self.word ^= 1 << bit_pos;
-                return Some(T::new(bit_pos + self.offset));
-            }
 
-            // Move onto the next word. `wrapping_add()` is needed to handle
-            // the degenerate initial value given to `offset` in `new()`.
-            self.word = *self.iter.next()?;
-            self.offset = self.offset.wrapping_add(WORD_BITS);
-        }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.raw.next().map(T::new)
     }
 }
 
@@ -740,7 +710,7 @@ impl<T: Idx> ChunkedBitSet<T> {
             Some(Ones) => ChunkIter::Ones(0..chunk_domain_size as usize),
             Some(Mixed { ones_count: _, words }) => {
                 let num_words = num_words(chunk_domain_size as usize);
-                ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
+                ChunkIter::Mixed(RawBitIter::new(&words[0..num_words]))
             }
             None => ChunkIter::Finished,
         }
@@ -1058,7 +1028,7 @@ impl Chunk {
 enum ChunkIter<'a> {
     Zeros,
     Ones(Range<usize>),
-    Mixed(BitIter<'a, usize>),
+    Mixed(RawBitIter<'a>),
     Finished,
 }
 
