@@ -10,7 +10,10 @@ pub struct LitToConstInput<'tcx> {
     /// The absolute value of the resultant constant.
     pub lit: LitKind,
     /// The type of the constant.
-    pub ty: Ty<'tcx>,
+    ///
+    /// `None` is used by const generics when the type of the constant is unknown, e.g.
+    /// if there are inference variables
+    pub ty: Option<Ty<'tcx>>,
     /// If the constant is negative.
     pub neg: bool,
 }
