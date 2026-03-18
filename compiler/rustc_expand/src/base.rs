@@ -1018,18 +1018,24 @@ impl SyntaxExtension {
     pub fn glob_delegation(
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
+        star_span: Span,
         edition: Edition,
     ) -> SyntaxExtension {
         struct GlobDelegationExpanderImpl {
             trait_def_id: DefId,
             impl_def_id: LocalDefId,
+            star_span: Span,
         }
         impl GlobDelegationExpander for GlobDelegationExpanderImpl {
             fn expand(
                 &self,
                 ecx: &mut ExtCtxt<'_>,
             ) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()> {
-                match ecx.resolver.glob_delegation_suffixes(self.trait_def_id, self.impl_def_id) {
+                match ecx.resolver.glob_delegation_suffixes(
+                    self.trait_def_id,
+                    self.impl_def_id,
+                    self.star_span,
+                ) {
                     Ok(suffixes) => ExpandResult::Ready(suffixes),
                     Err(Indeterminate) if ecx.force_mode => ExpandResult::Ready(Vec::new()),
                     Err(Indeterminate) => ExpandResult::Retry(()),
@@ -1037,7 +1043,7 @@ impl SyntaxExtension {
             }
         }
 
-        let expander = GlobDelegationExpanderImpl { trait_def_id, impl_def_id };
+        let expander = GlobDelegationExpanderImpl { trait_def_id, impl_def_id, star_span };
         SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Arc::new(expander)), edition)
     }
 
@@ -1169,6 +1175,7 @@ pub trait ResolverExpand {
         &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
+        star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
 
     /// Record the name of an opaque `Ty::ImplTrait` pre-expansion so that it can be used
