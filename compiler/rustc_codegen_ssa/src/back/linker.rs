@@ -1,5 +1,5 @@
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::{env, iter, mem, str};
@@ -1097,26 +1097,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         // This default behavior can be overridden by explicitly passing
         // `-Clink-arg=/PDBALTPATH:...` to rustc.
         self.link_arg("/PDBALTPATH:%_PDB%");
-
-        // This will cause the Microsoft linker to embed .natvis info into the PDB file
-        let natvis_dir_path = self.sess.opts.sysroot.path().join("lib\\rustlib\\etc");
-        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
-            for entry in natvis_dir {
-                match entry {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        if path.extension() == Some("natvis".as_ref()) {
-                            let mut arg = OsString::from("/NATVIS:");
-                            arg.push(path);
-                            self.link_arg(arg);
-                        }
-                    }
-                    Err(error) => {
-                        self.sess.dcx().emit_warn(errors::NoNatvisDirectory { error });
-                    }
-                }
-            }
-        }
 
         // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
         for path in natvis_debugger_visualizers {
