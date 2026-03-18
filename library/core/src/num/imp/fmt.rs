@@ -68,9 +68,11 @@ pub struct Formatted<'a> {
 }
 
 impl<'a> Formatted<'a> {
-    /// Returns the exact byte length of combined formatted result.
+    /// Returns the byte length of combined formatted result.
+    ///
+    /// Saturates at `usize::MAX` if the actual length is larger.
     pub fn len(&self) -> usize {
-        self.sign.len() + self.parts.iter().map(|part| part.len()).sum::<usize>()
+        self.parts.iter().fold(self.sign.len(), |len, part| len.saturating_add(part.len()))
     }
 
     /// Writes all formatted parts into the supplied buffer.
