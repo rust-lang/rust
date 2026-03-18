@@ -6,10 +6,7 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_errors::Diag;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::hir_id::OwnerId;
 use rustc_span::Span;
-pub use sealed::IntoQueryParam;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
@@ -646,69 +643,6 @@ macro_rules! define_callbacks {
 // Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
 pub(crate) use define_callbacks;
 pub(crate) use query_helper_param_ty;
-
-mod sealed {
-    use rustc_hir::def_id::{LocalModDefId, ModDefId};
-
-    use super::{DefId, LocalDefId, OwnerId};
-
-    /// An analogue of the `Into` trait that's intended only for query parameters.
-    ///
-    /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
-    /// user call `to_def_id` to convert between them everywhere else.
-    pub trait IntoQueryParam<P> {
-        fn into_query_param(self) -> P;
-    }
-
-    impl<P> IntoQueryParam<P> for P {
-        #[inline(always)]
-        fn into_query_param(self) -> P {
-            self
-        }
-    }
-
-    impl IntoQueryParam<LocalDefId> for OwnerId {
-        #[inline(always)]
-        fn into_query_param(self) -> LocalDefId {
-            self.def_id
-        }
-    }
-
-    impl IntoQueryParam<DefId> for LocalDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for OwnerId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for ModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<DefId> for LocalModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> DefId {
-            self.to_def_id()
-        }
-    }
-
-    impl IntoQueryParam<LocalDefId> for LocalModDefId {
-        #[inline(always)]
-        fn into_query_param(self) -> LocalDefId {
-            self.into()
-        }
-    }
-}
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
