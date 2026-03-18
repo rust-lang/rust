@@ -330,48 +330,28 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             name.chars().skip(1).next(),
                             Some(c) if c.is_ascii_digit()
                         );
-                        let mut emoji = vec![];
-                        for (i, c) in name.char_indices().skip(1) {
-                            let i = i as u32;
-                            if !c.is_ascii() && c.is_emoji_char() {
-                                let lo = start + BytePos(i);
-                                emoji.push(self.mk_sp(lo, lo + Pos::from_usize(c.len_utf8())));
-                            }
+                        if name.chars().any(|c| !c.is_ascii() && c.is_emoji_char()) {
+                            self.psess
+                                .bad_unicode_identifiers
+                                .borrow_mut()
+                                .entry(lifetime_name)
+                                .or_default()
+                                .push(span);
                         }
-                        let err = match (starts_with_number, &emoji[..]) {
-                            (false, []) => {
-                                unreachable!("lifetime {name:?} incorrectly marked as invalid?");
-                            }
-                            (true, []) if name.len() > 2 => {
+                        if starts_with_number {
+                            let mut err = self.dcx()
+                                .struct_err(format!(
+                                    "lifetimes cannot start with a number: `{name}`"
+                                ))
+                                .with_span(span);
+                            if name.len() > 2 {
                                 // Point at the first lifetime name character.
                                 let start_span = self.mk_sp(start + BytePos(1), start + BytePos(2));
-                                self.dcx()
-                                    .struct_err(format!(
-                                        "lifetimes cannot start with a number: `{name}`"
-                                    ))
-                                    .with_span(start_span)
-                                    .with_span_label(span, "")
+                                err.span(start_span);
+                                err.span_label(span, "");
                             }
-                            (true, []) => {
-                                // Point at the whole lifetime name.
-                                self.dcx()
-                                    .struct_err(format!(
-                                        "lifetimes cannot start with a number: `{name}`"
-                                    ))
-                                    .with_span(span)
-                            }
-                            (false, [_, ..]) => self.dcx()
-                                .struct_err(format!("lifetimes cannot have emoji: `{name}`"))
-                                .with_span(emoji.clone())
-                                .with_span_label(span, ""),
-                            (true, [_, ..]) => self.dcx()
-                                .struct_err(format!(
-                                    "invalid lifetime name: `{}`",
-                                    name.escape_default(),
-                                ))
-                                .with_span(span),
-                        };
-                        err.stash(span, StashKey::LifetimeIsChar);
+                            err.stash(span, StashKey::LifetimeIsChar);
+                        }
                     }
                     token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }
