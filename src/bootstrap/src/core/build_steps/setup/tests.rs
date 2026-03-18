@@ -8,13 +8,11 @@ fn check_matching_settings_hash() {
     for editor in EditorKind::ALL {
         let mut hasher = sha2::Sha256::new();
         hasher.update(&editor.settings_template());
-        let hash = hex_encode(hasher.finalize().as_slice());
+        let actual = hex_encode(hasher.finalize().as_slice());
+        let expected = *editor.hashes().last().unwrap();
         assert_eq!(
-            &hash,
-            editor.hashes().last().unwrap(),
-            "Update `EditorKind::hashes()` with the new hash of `{}` for `EditorKind::{:?}`",
-            editor.settings_template(),
-            editor,
+            expected, actual,
+            "Update `setup/hashes.json` with the new hash of `{actual}` for `EditorKind::{editor:?}`",
         );
     }
 }
