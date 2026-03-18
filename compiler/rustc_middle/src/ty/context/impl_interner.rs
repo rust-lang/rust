@@ -14,7 +14,6 @@ use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
-use crate::query::IntoQueryParam;
 use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
@@ -720,7 +719,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn item_name(self, id: DefId) -> Symbol {
-        let id = id.into_query_param();
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
