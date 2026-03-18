@@ -1,4 +1,3 @@
-//! FIXME: This test should pass! However, `async fn` does not yet use `UnsafePinned`.
 //! This is a regression test for <https://github.com/rust-lang/rust/issues/137750>:
 //! `UnsafePinned` must include the effects of `UnsafeCell`.
 //@revisions: stack tree
@@ -13,7 +12,7 @@ fn main() {
     let mut f = pin!(async move {
         let x = &mut 0u8;
         core::future::poll_fn(move |_| {
-            *x = 1; //~ERROR: write access
+            *x = 1;
             Poll::<()>::Pending
         })
         .await
