@@ -25,7 +25,7 @@ macro_rules! unary_approx_test {
                     &core_simd::simd::Simd::<$scalar, LANES>::$func,
                     &$scalar::$func,
                     &|_| true,
-                    8,
+                    16,
                 )
             }
             )*

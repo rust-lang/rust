@@ -1,17 +1,15 @@
 #![no_std]
 #![feature(
-    const_eval_select,
     convert_float_to_int,
     core_intrinsics,
     decl_macro,
-    intra_doc_pointers,
     repr_simd,
-    simd_ffi,
     staged_api,
     prelude_import,
     ptr_metadata,
     rustc_attrs
 )]
+#![cfg_attr(doc, feature(intra_doc_pointers))]
 #![cfg_attr(
     all(
         any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm",),
