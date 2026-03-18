@@ -152,7 +152,7 @@ impl<'db> SourceAnalyzer<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        Self::new_generic_def_(db, def, node, offset, Some(InferenceResult::for_signature(db, def)))
+        Self::new_generic_def_(db, def, node, offset, true)
     }
 
     pub(crate) fn new_generic_def_no_infer(
@@ -161,7 +161,7 @@ impl<'db> SourceAnalyzer<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        Self::new_generic_def_(db, def, node, offset, None)
+        Self::new_generic_def_(db, def, node, offset, false)
     }
 
     pub(crate) fn new_generic_def_(
@@ -169,7 +169,7 @@ impl<'db> SourceAnalyzer<'db> {
         def: GenericDefId,
         node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
-        infer: Option<&'db InferenceResult>,
+        infer: bool,
     ) -> SourceAnalyzer<'db> {
         let (generics, store, source_map) = db.generic_params_and_store_and_source_map(def);
         let scopes = db.expr_scopes(def.into());
@@ -186,6 +186,11 @@ impl<'db> SourceAnalyzer<'db> {
             }
         };
         let resolver = resolver_for_scope(db, def, scope);
+        let infer = if infer && !Arc::ptr_eq(&store, &ExpressionStore::empty_singleton().0) {
+            Some(InferenceResult::for_signature(db, def))
+        } else {
+            None
+        };
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::Sig { def, store, source_map, generics, infer }),

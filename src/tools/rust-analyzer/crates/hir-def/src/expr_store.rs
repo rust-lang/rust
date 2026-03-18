@@ -319,7 +319,7 @@ impl ExpressionStoreBuilder {
             mut bindings,
             mut binding_owners,
             mut ident_hygiene,
-            const_expr_origins,
+            mut const_expr_origins,
             mut types,
             mut lifetimes,
 
@@ -379,6 +379,9 @@ impl ExpressionStoreBuilder {
 
         let store = {
             let expr_only = if has_exprs {
+                if let Some(const_expr_origins) = &mut const_expr_origins {
+                    const_expr_origins.shrink_to_fit();
+                }
                 Some(Box::new(ExpressionOnlyStore {
                     exprs,
                     pats,

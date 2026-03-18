@@ -2,8 +2,8 @@
 
 use hir_def::{
     AdtId, AnonConstId, AttrDefId, BuiltinDeriveImplId, CallableDefId, ConstId, DefWithBodyId,
-    EnumId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId, StaticId, StructId,
-    TraitId, TypeAliasId, UnionId,
+    EnumId, EnumVariantId, ExpressionStoreOwner, FunctionId, GeneralConstId, GenericDefId, ImplId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -12,13 +12,13 @@ use crate::db::{InternedClosureId, InternedCoroutineId, InternedOpaqueTyId};
 
 use super::DbInterner;
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ctor {
     Struct(StructId),
     Enum(EnumVariantId),
 }
 
-#[derive(PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
+#[derive(PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverDefId {
     AdtId(AdtId),
     ConstId(ConstId),
@@ -33,7 +33,6 @@ pub enum SolverDefId {
     InternedCoroutineId(InternedCoroutineId),
     InternedOpaqueTyId(InternedOpaqueTyId),
     EnumVariantId(EnumVariantId),
-    // FIXME(next-solver): Do we need the separation of `Ctor`? It duplicates some variants.
     Ctor(Ctor),
 }
 
@@ -135,6 +134,15 @@ impl From<GenericDefId> for SolverDefId {
             GenericDefId::StaticId(static_id) => SolverDefId::StaticId(static_id),
             GenericDefId::TraitId(trait_id) => SolverDefId::TraitId(trait_id),
             GenericDefId::TypeAliasId(type_alias_id) => SolverDefId::TypeAliasId(type_alias_id),
+        }
+    }
+}
+
+impl From<ExpressionStoreOwner> for SolverDefId {
+    fn from(value: ExpressionStoreOwner) -> Self {
+        match value {
+            ExpressionStoreOwner::Signature(generic_def_id) => generic_def_id.into(),
+            ExpressionStoreOwner::Body(def_with_body_id) => def_with_body_id.into(),
         }
     }
 }

@@ -33,9 +33,9 @@ use std::{cell::OnceCell, convert::identity, iter};
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    AdtId, AnonConstId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwner,
-    FieldId, FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup,
-    TraitId, TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwner, FieldId,
+    FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup, TraitId,
+    TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
     expr_store::{ConstExprOrigin, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
@@ -146,6 +146,10 @@ pub fn infer_query_with_inspect<'db>(
 
     ctx.infer_mut_body(body.body_expr);
 
+    finalize_infer(ctx)
+}
+
+fn finalize_infer(mut ctx: InferenceContext<'_, '_>) -> InferenceResult {
     ctx.handle_opaque_type_uses();
 
     ctx.type_inference_fallback();
@@ -213,9 +217,7 @@ fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceRe
         ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
     }
 
-    ctx.type_inference_fallback();
-    ctx.table.select_obligations_where_possible();
-    ctx.resolve_all()
+    finalize_infer(ctx)
 }
 
 fn infer_signature_cycle_result(
@@ -618,24 +620,6 @@ impl InferenceResult {
 }
 
 impl InferenceResult {
-    /// Look up inference results for a specific anonymous const in a signature.
-    ///
-    /// This delegates to [`Self::for_signature`] on the anon const's owner.
-    /// The returned `InferenceResult` contains types for *all* expressions in
-    /// the owner's signature store, not just this anon const's sub-tree.
-    /// Callers should index into it with `loc.expr` to get the root expression's
-    /// type.
-    // FIXME: This function doesn't make sense in that we can't return a full inference result here
-    // as the anon const is just part of an inference result.
-    pub fn for_anon_const(db: &dyn HirDatabase, id: AnonConstId) -> &InferenceResult {
-        match id.lookup(db).owner {
-            ExpressionStoreOwner::Signature(generic_def_id) => {
-                Self::for_signature(db, generic_def_id)
-            }
-            ExpressionStoreOwner::Body(def_with_body_id) => Self::for_body(db, def_with_body_id),
-        }
-    }
-
     fn new(error_ty: Ty<'_>) -> Self {
         Self {
             method_resolutions: Default::default(),
@@ -943,8 +927,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 db.trait_environment_for_body(def_with_body_id)
             }
         };
-        let table =
-            unify::InferenceTable::new(db, trait_env, resolver.krate(), owner.as_def_with_body());
+        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));
         let types = crate::next_solver::default_types(db);
         InferenceContext {
             result: InferenceResult::new(types.types.error),

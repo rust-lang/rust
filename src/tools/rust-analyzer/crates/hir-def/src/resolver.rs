@@ -860,7 +860,15 @@ impl<'db> Resolver<'db> {
         owner: impl Into<ExpressionStoreOwner>,
         expr_id: ExprId,
     ) -> UpdateGuard {
-        let owner = owner.into();
+        self.update_to_inner_scope_(db, owner.into(), expr_id)
+    }
+
+    fn update_to_inner_scope_(
+        &mut self,
+        db: &'db dyn DefDatabase,
+        owner: ExpressionStoreOwner,
+        expr_id: ExprId,
+    ) -> UpdateGuard {
         #[inline(always)]
         fn append_expr_scope<'db>(
             db: &'db dyn DefDatabase,

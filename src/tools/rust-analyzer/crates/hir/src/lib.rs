@@ -508,6 +508,21 @@ impl ModuleDef {
         }
     }
 
+    pub fn as_generic_def(self) -> Option<GenericDef> {
+        match self {
+            ModuleDef::Function(it) => Some(it.into()),
+            ModuleDef::Adt(it) => Some(it.into()),
+            ModuleDef::Trait(it) => Some(it.into()),
+            ModuleDef::TypeAlias(it) => Some(it.into()),
+            ModuleDef::Static(it) => Some(it.into()),
+            ModuleDef::Const(it) => Some(it.into()),
+            ModuleDef::Variant(_)
+            | ModuleDef::Module(_)
+            | ModuleDef::BuiltinType(_)
+            | ModuleDef::Macro(_) => None,
+        }
+    }
+
     pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
         Some(match self {
             ModuleDef::Module(it) => it.attrs(db),
@@ -3972,6 +3987,30 @@ impl_from!(
 );
 
 impl GenericDef {
+    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        match self {
+            GenericDef::Function(it) => Some(it.name(db)),
+            GenericDef::Adt(it) => Some(it.name(db)),
+            GenericDef::Trait(it) => Some(it.name(db)),
+            GenericDef::TypeAlias(it) => Some(it.name(db)),
+            GenericDef::Impl(_) => None,
+            GenericDef::Const(it) => it.name(db),
+            GenericDef::Static(it) => Some(it.name(db)),
+        }
+    }
+
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        match self {
+            GenericDef::Function(it) => it.module(db),
+            GenericDef::Adt(it) => it.module(db),
+            GenericDef::Trait(it) => it.module(db),
+            GenericDef::TypeAlias(it) => it.module(db),
+            GenericDef::Impl(it) => it.module(db),
+            GenericDef::Const(it) => it.module(db),
+            GenericDef::Static(it) => it.module(db),
+        }
+    }
+
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let Ok(id) = self.try_into() else {
             // Let's pretend builtin derive impls don't have generic parameters.
