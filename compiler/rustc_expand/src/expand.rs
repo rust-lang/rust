@@ -8,9 +8,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline,
-    ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind,
-    TyKind, token,
+    DUMMY_NODE_ID, DelegationSuffixes, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
@@ -2365,7 +2365,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     res
                 }
                 None if let Some((deleg, item)) = node.delegation() => {
-                    let Some(suffixes) = &deleg.suffixes else {
+                    let DelegationSuffixes::List(suffixes) = &deleg.suffixes else {
                         let traitless_qself =
                             matches!(&deleg.qself, Some(qself) if qself.position == 0);
                         let (item, of_trait) = match node.to_annotatable() {
