@@ -10,6 +10,7 @@ from lldb import (
     eBasicTypeUnsignedChar,
     eFormatChar,
     eTypeIsInteger,
+    LLDB_INVALID_ADDRESS,
 )
 
 from rust_types import is_tuple_fields
@@ -405,6 +406,66 @@ class StructSyntheticProvider:
 
     def has_children(self) -> bool:
         return True
+
+
+def _child_is_valid(child: SBValue) -> bool:
+    """
+    Return True only if `child` is a non-None, valid SBValue whose load
+    address satisfies the alignment required by its own type.
+
+    This protects against LLDB crashing when it tries to materialise a union
+    variant that is incompatible with the object's actual memory address —
+    which happens with #[repr(C, align(N))] types nested inside unions that
+    also contain zero-sized / lower-aligned variants (e.g. ManuallyDrop).
+    """
+    if child is None or not child.IsValid():
+        return False
+
+    ty = child.GetType()
+    if not ty.IsValid():
+        return False
+
+    byte_align = ty.GetByteAlign()  # SBType.GetByteAlign() → alignment in bytes
+    if byte_align <= 1:
+        return True  # trivially satisfied
+
+    addr = child.GetLoadAddress()
+    if addr == LLDB_INVALID_ADDRESS:
+        return True  # can't check — let LLDB decide
+
+    return (addr % byte_align) == 0
+
+
+class UnionSyntheticProvider:
+    """Pretty-printer for unions"""
+
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+        self._children = []
+
+    def num_children(self) -> int:
+        return len(self._children)
+
+    def get_child_index(self, name: str) -> int:
+        return self.valobj.GetIndexOfChildWithName(name)
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        if index < 0 or index >= len(self._children):
+            return SBValue()  # nothing found
+        return self._children[index]
+
+    def update(self):
+        # Count only children whose alignment is actually satisfiable so that
+        # LLDB never asks us for an index that would crash on materialisation.
+        raw_count = self.valobj.GetNumChildren()
+        self._children = [
+            self.valobj.GetChildAtIndex(i)
+            for i in range(raw_count)
+            if _child_is_valid(self.valobj.GetChildAtIndex(i))
+        ]
+
+    def has_children(self) -> bool:
+        return self.valobj.MightHaveChildren()
 
 
 class StdStringSyntheticProvider:
