@@ -5,17 +5,17 @@
 //! allows setting up things that cannot be simply captured inside the bootstrap.toml, in addition to
 //! leading people away from manually editing most of the bootstrap.toml values.
 
+use std::collections::BTreeMap;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Write;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 use std::str::FromStr;
-use std::{fmt, fs, io};
-use std::collections::HashMap;
 use std::sync::LazyLock;
+use std::{fmt, fs, io};
 
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
@@ -532,7 +532,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 }
 
 /// Handles editor-specific setup differences
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum EditorKind {
     Emacs,
@@ -541,6 +541,13 @@ enum EditorKind {
     VsCode,
     Zed,
 }
+
+static PARSED_HASHES: LazyLock<BTreeMap<EditorKind, Vec<&'static str>>> = LazyLock::new(|| {
+    const ALL_HASHES: &str = include_str!("setup/hashes.json");
+    let mut map: BTreeMap<_, Vec<_>> = serde_json::from_str(ALL_HASHES).unwrap();
+    map.insert(EditorKind::Vim, map.get(&EditorKind::VsCode).unwrap().clone());
+    map
+});
 
 impl EditorKind {
     // Used in `./tests.rs`.
@@ -592,13 +599,7 @@ Select which editor you would like to set up [default: None]: ";
     /// New entries should be appended whenever this is updated so we can detect
     /// outdated vs. user-modified settings files.
     fn hashes(&self) -> &'static [&'static str] {
-        const ALL_HASHES: &str = include_str!("setup/hashes.json");
-        static PARSED_HASHES: LazyLock<HashMap<EditorKind, Vec<&'static str>>> = LazyLock::new(|| {
-            let mut map: HashMap<_, Vec<_>> = serde_json::from_str(ALL_HASHES).unwrap();
-            map.insert(EditorKind::Vim, map.get(&EditorKind::VsCode).unwrap().clone());
-            map
-        });
-        &*PARSED_HASHES.get(self).unwrap()
+        PARSED_HASHES.get(self).unwrap()
     }
 
     fn settings_path(&self, config: &Config) -> PathBuf {
