@@ -2006,7 +2006,13 @@ impl<'a> Formatter<'a> {
                 // SAFETY: Per the precondition.
                 unsafe { self.write_formatted_parts(&formatted) }
             } else {
-                let post_padding = self.padding(width - len as u16, Alignment::Right)?;
+                // Padding widths are capped at `u16`, so reaching this branch means
+                // the formatted output is also shorter than `u16::MAX`.
+                let len = match u16::try_from(len) {
+                    Ok(len) => len,
+                    Err(_) => unreachable!(),
+                };
+                let post_padding = self.padding(width - len, Alignment::Right)?;
                 // SAFETY: Per the precondition.
                 unsafe {
                     self.write_formatted_parts(&formatted)?;
