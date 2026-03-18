@@ -101,12 +101,6 @@ pub(crate) struct LinkerUnsupportedModifier;
 pub(crate) struct L4BenderExportingSymbolsUnimplemented;
 
 #[derive(Diagnostic)]
-#[diag("error enumerating natvis directory: {$error}")]
-pub(crate) struct NoNatvisDirectory {
-    pub error: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag("cached cgu {$cgu_name} should have an object file, but doesn't")]
 pub(crate) struct NoSavedObjectFile<'a> {
     pub cgu_name: &'a str,

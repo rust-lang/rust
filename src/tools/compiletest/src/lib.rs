@@ -707,8 +707,6 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&path);
     }
 
-    stamp.add_dir(&src_root.join("src/etc/natvis"));
-
     stamp.add_dir(&config.target_run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
