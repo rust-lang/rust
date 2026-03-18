@@ -8,6 +8,7 @@ use std::iter;
 
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::bug;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,

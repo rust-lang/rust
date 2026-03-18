@@ -12,7 +12,9 @@ use rustc_lint_defs::Level;
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
+use rustc_middle::ty::inhabitedness::TyInhabitedHelpers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{

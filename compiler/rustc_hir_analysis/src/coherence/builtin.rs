@@ -13,6 +13,7 @@ use rustc_infer::infer::{self, RegionResolutionError, SubregionOrigin, TyCtxtInf
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
 };

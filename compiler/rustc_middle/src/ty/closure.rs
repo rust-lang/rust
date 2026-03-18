@@ -13,6 +13,7 @@ use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
 use crate::query::Providers;
+use crate::ty::util::TyKindRef;
 use crate::{mir, ty};
 
 /// Captures are represented using fields inside a structure.

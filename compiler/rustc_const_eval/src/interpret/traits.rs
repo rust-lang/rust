@@ -1,5 +1,6 @@
 use rustc_abi::{Align, Size};
 use rustc_middle::mir::interpret::{InterpResult, Pointer};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt, Ty, TyCtxt, VtblEntry};
 use tracing::trace;
 

@@ -22,8 +22,8 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::{AssocContainer, TyEncoder};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
@@ -32,7 +32,6 @@ use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
     Symbol, SyntaxContext, sym,
 };
-use rustc_type_ir::TyEncoder;
 use tracing::{debug, instrument, trace};
 
 use crate::eii::EiiMapEncodedKeyValue;
@@ -368,7 +367,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
-impl<'a, 'tcx> rustc_middle::ty::TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     const CLEAR_CROSS_CRATE: bool = true;

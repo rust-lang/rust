@@ -1,3 +1,4 @@
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };

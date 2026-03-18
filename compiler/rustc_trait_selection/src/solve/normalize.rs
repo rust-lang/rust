@@ -6,7 +6,7 @@ use rustc_infer::infer::at::At;
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::util::TyUtil;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, UniverseIndex,

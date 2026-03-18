@@ -6,6 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 pub use rustc_hir::lints::FormatWarning;
 use rustc_middle::ty::print::PrintTraitRefExt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
 use rustc_span::Symbol;
 

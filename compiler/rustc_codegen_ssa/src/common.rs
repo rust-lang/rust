@@ -3,6 +3,7 @@
 use rustc_hir::LangItem;
 use rustc_hir::attrs::PeImportNameType;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::cstore::{DllCallingConvention, DllImport, DllImportSymbolType};

@@ -1,6 +1,7 @@
 use rustc_abi::{Integer, Primitive, Size, TagEncoding, Variants};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 // FIXME(eddyb) find a place for this (or a way to replace it).

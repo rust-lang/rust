@@ -4,6 +4,7 @@
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 use crate::mir;
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, Ty};
 
 /// Types that are represented as ints.

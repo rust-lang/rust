@@ -25,6 +25,7 @@ use rustc_middle::mir::interpret::{
     interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;

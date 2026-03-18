@@ -8,6 +8,7 @@ use super::interpret::GlobalAlloc;
 use super::*;
 use crate::traits::ObligationCause;
 use crate::ty::CoroutineArgsExt;
+use crate::ty::util::TyKindRef;
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements

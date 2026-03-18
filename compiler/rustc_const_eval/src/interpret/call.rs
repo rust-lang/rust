@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::callconv::{ArgAbi, FnAbi};

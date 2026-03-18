@@ -24,6 +24,7 @@
 pub use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
 pub use rustc_middle::infer::canonical::*;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 

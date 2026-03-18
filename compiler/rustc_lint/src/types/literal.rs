@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::{HirId, attrs};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::{bug, ty};
 use rustc_span::{Span, Symbol};
 

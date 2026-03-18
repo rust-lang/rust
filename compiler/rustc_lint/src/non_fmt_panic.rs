@@ -3,6 +3,7 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::fcw;

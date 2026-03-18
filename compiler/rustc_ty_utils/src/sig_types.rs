@@ -4,6 +4,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, VisitorResult, try_visit};
 use rustc_span::Span;
 use tracing::{instrument, trace};

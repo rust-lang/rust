@@ -25,6 +25,7 @@ pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, CandidatePreferenceMode, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate,
     SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,

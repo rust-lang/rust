@@ -8,6 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TypingMode};
 use thin_vec::{ThinVec, thin_vec};
 

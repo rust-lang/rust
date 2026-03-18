@@ -675,11 +675,11 @@ where
     // noticeable performance hit. See #126069 for details.
     // Using `rustc::disallowed_pass_by_ref` otherwise we need to import the
     // `IntoKind` trait everywhere and deference which is a lot of noise
-    #[expect(rustc::disallowed_pass_by_ref)]
-    #[inline(always)]
-    pub fn kind(&self) -> &TyKind<I> {
-        &self.0
-    }
+    // #[expect(rustc::disallowed_pass_by_ref)]
+    // #[inline(always)]
+    // pub fn kind(&self) -> &TyKind<I> {
+    //     &self.0
+    // }
 
     // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]

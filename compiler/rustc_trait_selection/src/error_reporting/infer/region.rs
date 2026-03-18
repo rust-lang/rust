@@ -11,6 +11,7 @@ use rustc_hir::{self as hir, ParamName};
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
@@ -585,7 +586,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_args = trait_ref
             .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
-            .with_replaced_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
+            .with_replaced_self_ty(
+                self.tcx,
+                Ty::new_param(self.tcx, ty::ParamTy::new(0, kw::SelfUpper)),
+            )
             .args;
         let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_args);

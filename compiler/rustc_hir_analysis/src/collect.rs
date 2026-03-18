@@ -32,7 +32,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::util::{Discr, IntTypeExt, TyKindRef};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
 };

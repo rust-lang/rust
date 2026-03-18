@@ -3,6 +3,7 @@ use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{self as hir};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2015;

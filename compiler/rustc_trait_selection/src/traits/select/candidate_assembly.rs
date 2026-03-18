@@ -14,6 +14,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, TypingMode, elaborate,
 };

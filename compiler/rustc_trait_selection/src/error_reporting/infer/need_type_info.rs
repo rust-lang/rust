@@ -15,6 +15,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::error::TyErrorHelpers;
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypeckResults,

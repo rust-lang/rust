@@ -11,6 +11,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, FieldInfo, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};

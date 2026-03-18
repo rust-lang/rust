@@ -11,7 +11,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::inhabitedness::TyInhabitedHelpers;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::util::TyUtil;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };

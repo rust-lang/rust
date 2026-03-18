@@ -4,6 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
 use rustc_middle::ty::cast::mir_cast_kind;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_span::{Span, Spanned};
 
 use super::{PResult, ParseCtxt, parse_by_kind};

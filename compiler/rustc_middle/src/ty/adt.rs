@@ -25,7 +25,7 @@ use super::{
 };
 use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
-use crate::ty::util::{Discr, IntTypeExt};
+use crate::ty::util::{Discr, IntTypeExt, TyKindRef};
 use crate::ty::{self, ConstKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]

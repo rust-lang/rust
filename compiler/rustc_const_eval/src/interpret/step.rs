@@ -8,6 +8,7 @@ use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Spanned;

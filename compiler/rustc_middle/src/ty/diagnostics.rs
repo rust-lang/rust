@@ -13,7 +13,7 @@ use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicate
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
-use crate::ty::util::TyUtil;
+use crate::ty::util::{TyKindRef, TyUtil};
 use crate::ty::{
     self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
@@ -33,7 +33,7 @@ into_diag_arg_using_display! {
     ty::Region<'_>,
 }
 
-trait TyDiagnostics<'tcx> {
+pub trait TyDiagnostics<'tcx> {
     fn is_primitive_ty(self) -> bool;
     fn is_simple_ty(self) -> bool;
     fn is_simple_text(self) -> bool;

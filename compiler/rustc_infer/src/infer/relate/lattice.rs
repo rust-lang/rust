@@ -21,6 +21,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument};

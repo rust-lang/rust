@@ -14,6 +14,7 @@ use rustc_type_ir::{self as ir, TypeVisitableExt};
 use tracing::instrument;
 
 use crate::infer::canonical::Canonical;
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, Discr, GenericArg, GenericArgsRef, List, ParamEnv, TyCtxt, TypeVisitable};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here

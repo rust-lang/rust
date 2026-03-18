@@ -5,6 +5,7 @@ use std::num::NonZero;
 
 use rustc_abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
 use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
 

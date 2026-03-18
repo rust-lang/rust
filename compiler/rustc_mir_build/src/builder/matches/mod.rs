@@ -17,6 +17,7 @@ use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
+use rustc_middle::ty::util::TyUtil;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::constructor::RangeEnd;

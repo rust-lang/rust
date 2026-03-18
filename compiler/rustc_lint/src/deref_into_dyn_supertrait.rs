@@ -1,5 +1,6 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Ident, sym};
 use rustc_trait_selection::traits::supertraits;

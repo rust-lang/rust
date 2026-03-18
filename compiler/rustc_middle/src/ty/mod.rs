@@ -125,7 +125,7 @@ use crate::ty::codec::{TyDecoder as CodecTyDecoder, TyEncoder as CodecTyEncoder}
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{FnAbiError, LayoutError};
-use crate::ty::util::{Discr, TyUtil};
+use crate::ty::util::{Discr, TyKindRef, TyUtil};
 use crate::ty::walk::TypeWalker;
 
 pub mod abstract_const;

@@ -14,6 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
     IntTy, List, Region, RegionKind, TermKind, Ty, TyCtxt, TypeFoldable, UintTy,

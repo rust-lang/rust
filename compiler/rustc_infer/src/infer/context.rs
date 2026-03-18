@@ -3,6 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 

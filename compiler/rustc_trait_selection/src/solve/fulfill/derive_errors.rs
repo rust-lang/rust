@@ -9,6 +9,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt as _};

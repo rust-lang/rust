@@ -13,6 +13,7 @@ use std::fmt;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::bug;
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_span::sym;
 

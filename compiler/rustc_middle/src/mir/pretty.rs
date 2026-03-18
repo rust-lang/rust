@@ -5,6 +5,7 @@ use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_middle::ty::util::TyKindRef;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 

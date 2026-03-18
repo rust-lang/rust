@@ -23,7 +23,7 @@ use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
-use crate::ty::util::Discr;
+use crate::ty::util::{Discr, TyKindRef};
 use crate::ty::{
     self, Clause, Const, GenericArgs, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
     Region, Ty, TyCtxt,

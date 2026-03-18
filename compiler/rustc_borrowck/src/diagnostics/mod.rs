@@ -19,6 +19,7 @@ use rustc_middle::mir::{
     StatementKind, Terminator, TerminatorKind, VarDebugInfoContents, find_self_call,
 };
 use rustc_middle::ty::print::Print;
+use rustc_middle::ty::util::{TyKindRef, TyUtil};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};

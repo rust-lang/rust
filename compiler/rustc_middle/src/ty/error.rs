@@ -12,6 +12,7 @@ use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
 use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, Lift, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;

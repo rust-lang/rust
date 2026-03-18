@@ -5,6 +5,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::bug;
 use rustc_middle::mir::{Body, ConstraintCategory};
+use rustc_middle::ty::util::TyKindRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;

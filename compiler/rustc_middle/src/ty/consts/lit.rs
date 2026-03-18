@@ -2,6 +2,7 @@ use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir;
 use rustc_macros::HashStable;
 
+use crate::ty::util::TyKindRef;
 use crate::ty::{self, Ty, TyCtxt};
 
 /// Input argument for `tcx.lit_to_const`.

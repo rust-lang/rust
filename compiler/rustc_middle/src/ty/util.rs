@@ -1594,6 +1594,21 @@ pub fn needs_drop_components_with_async<'tcx>(
     }
 }
 
+pub trait TyKindRef<'tcx> {
+    fn kind(self) -> &'tcx ty::TyKind<'tcx>;
+}
+
+impl<'tcx> TyKindRef<'tcx> for Ty<'tcx> {
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
+    #[inline(always)]
+    fn kind(self) -> &'tcx ty::TyKind<'tcx> {
+        self.0.0
+    }
+}
+
 /// Does the equivalent of
 /// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
