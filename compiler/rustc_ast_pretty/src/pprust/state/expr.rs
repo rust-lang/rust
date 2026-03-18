@@ -670,7 +670,8 @@ impl<'a> State<'a> {
                 let expr_fixup = fixup.leftmost_subexpression_with_operator(true);
                 self.print_expr_cond_paren(
                     expr,
-                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous,
+                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous
+                        || classify::expr_is_complete(expr),
                     expr_fixup,
                 );
                 self.word("[");
