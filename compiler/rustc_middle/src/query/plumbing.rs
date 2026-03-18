@@ -269,8 +269,8 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 macro_rules! query_helper_param_ty {
-    (DefId) => { impl $crate::query::IntoQueryParam<DefId> };
-    (LocalDefId) => { impl $crate::query::IntoQueryParam<LocalDefId> };
+    (DefId) => { impl $crate::query::IntoQueryKey<DefId> };
+    (LocalDefId) => { impl $crate::query::IntoQueryKey<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -411,7 +411,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                         $crate::query::EnsureMode::Ok,
                     )
                 }
@@ -431,7 +431,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_result(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                     )
                 }
             )*
@@ -445,7 +445,7 @@ macro_rules! define_callbacks {
                     crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                         $crate::query::EnsureMode::Done,
                     );
                 }
@@ -474,7 +474,7 @@ macro_rules! define_callbacks {
                         self.tcx,
                         self.span,
                         &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryParam::into_query_param(key),
+                        $crate::query::IntoQueryKey::into_query_key(key),
                     ))
                 }
             )*
@@ -482,13 +482,13 @@ macro_rules! define_callbacks {
 
         $(
             #[cfg($feedable)]
-            impl<'tcx, K: $crate::query::IntoQueryParam<$name::Key<'tcx>> + Copy>
+            impl<'tcx, K: $crate::query::IntoQueryKey<$name::Key<'tcx>> + Copy>
                 TyCtxtFeed<'tcx, K>
             {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
-                    let key = self.key().into_query_param();
+                    let key = self.key().into_query_key();
                     let erased_value = $name::provided_to_erased(self.tcx, value);
                     $crate::query::inner::query_feed(
                         self.tcx,
