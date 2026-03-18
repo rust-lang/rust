@@ -9,11 +9,6 @@ fn bad_lifetime_name<
     'a‌b // bare zero-width-joiners are accepted as XID_Continue
 >() {}
 
-
-
-
-
-
 fn main() {
     'a🐛: { // pointed at on the error from line 5
         todo!();
