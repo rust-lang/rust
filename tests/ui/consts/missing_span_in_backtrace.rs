@@ -1,7 +1,7 @@
 //! Check what happens when the error occurs inside a std function that we can't print the span of.
 //@ ignore-backends: gcc
 //@ compile-flags: -Z ui-testing=no --diagnostic-width=80
-
+//@ ignore-parallel-frontend different alloc ids
 use std::{
     mem::{self, MaybeUninit},
     ptr,

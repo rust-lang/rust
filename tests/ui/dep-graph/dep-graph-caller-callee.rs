@@ -3,7 +3,7 @@
 
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
-
+//@ ignore-parallel-frontend dep graph
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 

@@ -4,7 +4,7 @@ error[E0283]: type annotations needed
 LL |     foo(42);
    |     ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
-   = note: cannot satisfy `_: Into<String>`
+   = note: the type must implement `Into<String>`
 note: required by a bound in `foo`
   --> $DIR/type-annotation-needed.rs:1:11
    |

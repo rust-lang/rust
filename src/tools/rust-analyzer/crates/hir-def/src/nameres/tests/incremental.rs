@@ -604,7 +604,7 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into());
+            db.file_item_tree(pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"
@@ -624,7 +624,7 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into());
+            db.file_item_tree(pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"

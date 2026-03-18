@@ -3,7 +3,7 @@
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 //! This passes without optimizations, so it can (and should) also pass with optimizations.
-
+//@ ignore-parallel-frontend post-monomorphization errors
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!();

@@ -98,7 +98,7 @@ declare_hooks! {
     /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
     hook save_dep_graph() -> ();
 
-    hook query_key_hash_verify_all() -> ();
+    hook verify_query_key_hashes() -> ();
 
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
@@ -109,7 +109,7 @@ declare_hooks! {
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
-    hook encode_all_query_results(
+    hook encode_query_values(
         encoder: &mut CacheEncoder<'_, 'tcx>,
         query_result_index: &mut EncodedDepNodeIndex
     ) -> ();

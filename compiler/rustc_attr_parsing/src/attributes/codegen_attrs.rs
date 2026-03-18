@@ -671,6 +671,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                         item.path().span(),
                         &[
                             sym::address,
+                            sym::kernel_address,
                             sym::cfi,
                             sym::kcfi,
                             sym::memory,

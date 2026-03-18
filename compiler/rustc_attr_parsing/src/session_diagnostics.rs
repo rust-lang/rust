@@ -375,13 +375,6 @@ pub(crate) struct InvalidSince {
 }
 
 #[derive(Diagnostic)]
-#[diag("`soft` should not have any arguments")]
-pub(crate) struct SoftNoArgs {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown version literal format, assuming it refers to a future version")]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]

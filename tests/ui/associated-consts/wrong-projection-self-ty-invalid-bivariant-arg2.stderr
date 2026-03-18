@@ -24,8 +24,7 @@ LL | struct Fail<T: Proj<Assoc = U>, U>(T);
 LL |     Fail::<i32, u32>::C
    |                       ^ associated item not found in `Fail<i32, u32>`
    |
-   = note: the associated item was found for
-           - `Fail<i32, i32>`
+   = note: the associated item was found for `Fail<i32, i32>`
 
 error: aborting due to 2 previous errors
 

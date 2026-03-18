@@ -9,12 +9,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, edit_distance, sym};
 use rustc_target::spec::Arch;
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
-use crate::errors::{FeatureNotValid, RemovePlusFromFeatureName};
+use crate::errors::{FeatureNotValid, FeatureNotValidHint};
 use crate::{errors, target_features};
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
@@ -32,15 +32,25 @@ pub(crate) fn from_target_feature_attr(
     for &(feature, feature_span) in features {
         let feature_str = feature.as_str();
         let Some(stability) = rust_target_features.get(feature_str) else {
-            let plus_hint = feature_str
-                .strip_prefix('+')
-                .filter(|stripped| rust_target_features.contains_key(*stripped))
-                .map(|stripped| RemovePlusFromFeatureName { span: feature_span, stripped });
-            tcx.dcx().emit_err(FeatureNotValid {
-                feature: feature_str,
-                span: feature_span,
-                plus_hint,
-            });
+            let hint = if let Some(stripped) = feature_str.strip_prefix('+')
+                && rust_target_features.contains_key(stripped)
+            {
+                FeatureNotValidHint::RemovePlusFromFeatureName { span: feature_span, stripped }
+            } else {
+                // Show the 5 feature names that are most similar to the input.
+                let mut valid_names: Vec<_> =
+                    rust_target_features.keys().map(|name| name.as_str()).into_sorted_stable_ord();
+                valid_names.sort_by_key(|name| {
+                    edit_distance::edit_distance(name, feature.as_str(), 5).unwrap_or(usize::MAX)
+                });
+                valid_names.truncate(5);
+
+                FeatureNotValidHint::ValidFeatureNames {
+                    possibilities: valid_names.into(),
+                    and_more: rust_target_features.len().saturating_sub(5),
+                }
+            };
+            tcx.dcx().emit_err(FeatureNotValid { feature: feature_str, span: feature_span, hint });
             continue;
         };
 

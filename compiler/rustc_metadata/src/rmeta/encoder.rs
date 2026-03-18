@@ -2145,7 +2145,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.tcx
                 .stripped_cfg_items(LOCAL_CRATE)
                 .into_iter()
-                .map(|item| item.clone().map_mod_id(|def_id| def_id.index)),
+                .map(|item| item.clone().map_scope_id(|def_id| def_id.index)),
         )
     }
 

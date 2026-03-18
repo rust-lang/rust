@@ -224,4 +224,21 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn type_as_trait_does_not_count() {
+        check_diagnostics(
+            r#"
+pub trait Lock<T> {
+    fn new(b: T) -> Self;
+}
+pub trait LockChoice {
+    type Lock<T>: Lock<T>;
+}
+fn f<L: LockChoice>() {
+    <L as LockChoice>::Lock::new(());
+}
+        "#,
+        );
+    }
 }

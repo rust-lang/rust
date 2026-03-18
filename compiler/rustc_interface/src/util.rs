@@ -18,7 +18,7 @@ use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
-use rustc_query_impl::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
+use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
@@ -255,7 +255,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                         // Ensure there were no errors collecting all active jobs.
                                         // We need the complete map to ensure we find a cycle to
                                         // break.
-                                        collect_active_jobs_from_all_queries(
+                                        collect_active_query_jobs(
                                             tcx,
                                             CollectActiveJobsKind::FullNoContention,
                                         )

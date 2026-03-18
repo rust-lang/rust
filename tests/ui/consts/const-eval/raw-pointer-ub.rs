@@ -4,7 +4,7 @@ const MISALIGNED_LOAD: () = unsafe {
     let _val = *ptr; //~NOTE: failed here
     //~^ERROR: based on pointer with alignment 1, but alignment 4 is required
 };
-
+//@ ignore-parallel-frontend different alloc ids
 const MISALIGNED_STORE: () = unsafe {
     let mut mem = [0u32; 8];
     let ptr = mem.as_mut_ptr().byte_add(1);

@@ -1805,18 +1805,27 @@ fn resolve_type_param_assoc_type_shorthand(
                 }
                 AssocTypeShorthandResolution::Cycle => return AssocTypeShorthandResolution::Cycle,
             };
+            let (assoc_type, args) = assoc_type_and_args
+                .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
+                .skip_binder();
+            let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
+            let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
             if let Some(this_trait_resolution) = this_trait_resolution {
                 return AssocTypeShorthandResolution::Ambiguous {
                     sub_trait_resolution: Some(this_trait_resolution),
                 };
-            } else if supertraits_resolution.is_some() {
-                return AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None };
+            } else if let Some(prev_resolution) = &supertraits_resolution {
+                if let AssocTypeShorthandResolution::Ambiguous {
+                    sub_trait_resolution: Some(prev_resolution),
+                }
+                | AssocTypeShorthandResolution::Resolved(prev_resolution) = prev_resolution
+                    && *prev_resolution == current_result
+                {
+                    continue;
+                } else {
+                    return AssocTypeShorthandResolution::Ambiguous { sub_trait_resolution: None };
+                }
             } else {
-                let (assoc_type, args) = assoc_type_and_args
-                    .get_with(|(assoc_type, args)| (*assoc_type, args.as_ref()))
-                    .skip_binder();
-                let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
-                let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
                 supertraits_resolution = Some(match lookup_on_bounded_trait {
                     AssocTypeShorthandResolution::Resolved(_) => {
                         AssocTypeShorthandResolution::Resolved(current_result)
