@@ -368,7 +368,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
     }
 }
 
-impl<'a, 'tcx> rustc_type_ir::codec::TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> rustc_middle::ty::TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     type Interner = TyCtxt<'tcx>;
 
     const CLEAR_CROSS_CRATE: bool = true;

@@ -17,7 +17,6 @@ use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
-use rustc_type_ir::inherent::GenericArgs as _;
 use rustc_type_ir::{FieldInfo, Upcast as _, elaborate};
 use smallvec::SmallVec;
 

@@ -121,7 +121,7 @@ impl<'tcx> TypeError<'tcx> {
     }
 }
 
-trait TyErrorHelpers<'tcx> {
+pub trait TyErrorHelpers<'tcx> {
     fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str>;
     fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str>;
 }

@@ -10,15 +10,11 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{Span, Symbol, kw};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::{self as ir, CollectAndApply, TypeVisitableExt};
+use rustc_type_ir::{self as ir, TypeVisitableExt};
 use tracing::instrument;
-use ty::util::IntTypeExt;
 
 use crate::infer::canonical::Canonical;
-use crate::ty::{
-    self, Discr, GenericArg, GenericArgsRef, List, ParamEnv, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
-};
+use crate::ty::{self, Discr, GenericArg, GenericArgsRef, List, ParamEnv, TyCtxt, TypeVisitable};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
@@ -39,6 +35,7 @@ pub type BoundRegion<'tcx> = ir::BoundRegion<TyCtxt<'tcx>>;
 pub type BoundVariableKind<'tcx> = ir::BoundVariableKind<TyCtxt<'tcx>>;
 pub type BoundRegionKind<'tcx> = ir::BoundRegionKind<TyCtxt<'tcx>>;
 pub type BoundTyKind<'tcx> = ir::BoundTyKind<TyCtxt<'tcx>>;
+#[allow(rustc::usage_of_qualified_ty)]
 pub type Ty<'tcx> = ir::Ty<TyCtxt<'tcx>>;
 
 pub trait Article {

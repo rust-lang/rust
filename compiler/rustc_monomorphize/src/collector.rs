@@ -227,6 +227,7 @@ use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::util::TyUtil;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, VtblEntry,

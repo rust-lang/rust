@@ -97,7 +97,7 @@ impl<'tcx> VariantDef {
     }
 }
 
-trait TyInhabitedHelpers<'tcx> {
+pub trait TyInhabitedHelpers<'tcx> {
     fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx>;
     fn is_inhabited_from(
         self,

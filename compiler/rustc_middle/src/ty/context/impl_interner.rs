@@ -877,10 +877,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn struct_tail_raw(
         self,
-        mut ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
         cause: &ObligationCause<'tcx>,
-        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-        mut f: impl FnMut() -> (),
+        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        f: impl FnMut() -> (),
     ) -> Ty<'tcx> {
         self.struct_tail_raw(ty, cause, normalize, f)
     }
