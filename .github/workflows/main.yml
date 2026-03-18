@@ -19,6 +19,16 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  todo_check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check todo
+      run: ./y.sh check-todo
+
   rustfmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -232,7 +242,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/main' }}
-    needs: [rustfmt, test, bench, dist]
+    needs: [todo_check, rustfmt, test, bench, dist]
 
     permissions:
       contents: write # for creating the dev tag and release
