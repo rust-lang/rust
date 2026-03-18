@@ -483,15 +483,19 @@ impl DocParser {
         }
         macro_rules! no_args_and_crate_level {
             ($ident: ident) => {{
+                no_args_and_crate_level!($ident, |span| {});
+            }};
+            ($ident: ident, |$span:ident| $extra_validation:block) => {{
                 if let Err(span) = args.no_args() {
                     expected_no_args(cx, span);
                     return;
                 }
-                let span = path.span();
-                if !check_attr_crate_level(cx, span) {
+                let $span = path.span();
+                if !check_attr_crate_level(cx, $span) {
                     return;
                 }
-                self.attribute.$ident = Some(span);
+                $extra_validation
+                self.attribute.$ident = Some($span);
             }};
         }
         macro_rules! string_arg_and_crate_level {
@@ -555,15 +559,7 @@ impl DocParser {
             ),
             Some(sym::fake_variadic) => no_args_and_not_crate_level!(fake_variadic),
             Some(sym::search_unbox) => no_args_and_not_crate_level!(search_unbox),
-            Some(sym::rust_logo) => {
-                if let Err(span) = args.no_args() {
-                    expected_no_args(cx, span);
-                    return;
-                }
-                let span = path.span();
-                if !check_attr_crate_level(cx, span) {
-                    return;
-                }
+            Some(sym::rust_logo) => no_args_and_crate_level!(rust_logo, |span| {
                 if !cx.features().rustdoc_internals() {
                     feature_err(
                         cx.sess(),
@@ -573,8 +569,7 @@ impl DocParser {
                     )
                     .emit();
                 }
-                self.attribute.rust_logo = Some(span);
-            }
+            }),
             Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
             Some(sym::test) => {
                 let Some(list) = args.list() else {
