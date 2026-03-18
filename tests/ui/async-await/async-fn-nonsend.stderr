@@ -29,7 +29,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:46:15
    |
 LL |     let f: &mut std::fmt::Formatter = &mut get_formatter();
-   |                                            --------------- has type `Formatter<'_>` which is not `Send`
+   |                                            --------------- has type `UnsafePinned<Formatter<'_>>` which is not `Send`
 ...
 LL |         fut().await;
    |               ^^^^^ await occurs here, with `get_formatter()` maybe used later
