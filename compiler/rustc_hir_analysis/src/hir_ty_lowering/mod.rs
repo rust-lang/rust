@@ -376,15 +376,15 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
     ) -> ty::GenericArg<'tcx>;
 }
 
-/// Context in which `ForbidMCGParamUsesFolder` is being used, to emit appropriate diagnostics.
+/// Context in which `ForbidParamUsesFolder` is being used, to emit appropriate diagnostics.
 enum ForbidParamContext {
-    /// Anon const in a min-const-generics (MCG) position, e.g. a const argument.
-    MinConstGenerics,
+    /// Anon const in a const argument position.
+    ConstArgument,
     /// Enum discriminant expression.
     EnumDiscriminant,
 }
 
-struct ForbidMCGParamUsesFolder<'tcx> {
+struct ForbidParamUsesFolder<'tcx> {
     tcx: TyCtxt<'tcx>,
     anon_const_def_id: LocalDefId,
     span: Span,
@@ -392,7 +392,7 @@ struct ForbidMCGParamUsesFolder<'tcx> {
     context: ForbidParamContext,
 }
 
-impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
+impl<'tcx> ForbidParamUsesFolder<'tcx> {
     fn error(&self) -> ErrorGuaranteed {
         let msg = match self.context {
             ForbidParamContext::EnumDiscriminant if self.is_self_alias => {
@@ -401,10 +401,10 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
             ForbidParamContext::EnumDiscriminant => {
                 "generic parameters may not be used in enum discriminant values"
             }
-            ForbidParamContext::MinConstGenerics if self.is_self_alias => {
+            ForbidParamContext::ConstArgument if self.is_self_alias => {
                 "generic `Self` types are currently not permitted in anonymous constants"
             }
-            ForbidParamContext::MinConstGenerics => {
+            ForbidParamContext::ConstArgument => {
                 if self.tcx.features().generic_const_args() {
                     "generic parameters in const blocks are only allowed as the direct value of a `type const`"
                 } else {
@@ -413,7 +413,7 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
             }
         };
         let mut diag = self.tcx.dcx().struct_span_err(self.span, msg);
-        if self.is_self_alias && matches!(self.context, ForbidParamContext::MinConstGenerics) {
+        if self.is_self_alias && matches!(self.context, ForbidParamContext::ConstArgument) {
             let anon_const_hir_id: HirId = HirId::make_owner(self.anon_const_def_id);
             let parent_impl = self.tcx.hir_parent_owner_iter(anon_const_hir_id).find_map(
                 |(_, node)| match node {
@@ -427,7 +427,7 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
                 diag.span_note(impl_.self_ty.span, "not a concrete type");
             }
         }
-        if matches!(self.context, ForbidParamContext::MinConstGenerics)
+        if matches!(self.context, ForbidParamContext::ConstArgument)
             && self.tcx.features().min_generic_const_args()
         {
             if !self.tcx.features().generic_const_args() {
@@ -440,7 +440,7 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
     }
 }
 
-impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ForbidMCGParamUsesFolder<'tcx> {
+impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for ForbidParamUsesFolder<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -482,12 +482,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && tcx.def_kind(parent_def_id) == DefKind::AnonConst
             && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
         {
-            let folder = ForbidMCGParamUsesFolder {
+            let folder = ForbidParamUsesFolder {
                 tcx,
                 anon_const_def_id: parent_def_id,
                 span,
                 is_self_alias: false,
-                context: ForbidParamContext::MinConstGenerics,
+                context: ForbidParamContext::ConstArgument,
             };
             return Err(folder.error());
         }
@@ -495,8 +495,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Returns the `ForbidParamContext` for the current anon const if it is a context that
-    /// forbids uses of generic parameters that escape through type-dependent paths (e.g. `Self`
-    /// aliasing a generic type), or `None` if the current item is not such a context.
+    /// forbids uses of generic parameters. `None` if the current item is not such a context.
     ///
     /// Name resolution handles most invalid generic parameter uses in these contexts, but it
     /// cannot reject `Self` that aliases a generic type, nor generic parameters introduced by
@@ -509,13 +508,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return None;
         }
         match tcx.anon_const_kind(parent_def_id) {
-            ty::AnonConstKind::MCG => Some(ForbidParamContext::MinConstGenerics),
+            ty::AnonConstKind::MCG => Some(ForbidParamContext::ConstArgument),
             ty::AnonConstKind::NonTypeSystem => {
                 let hir_id = tcx.local_def_id_to_hir_id(parent_def_id);
                 matches!(tcx.parent_hir_node(hir_id), hir::Node::Variant(_))
                     .then_some(ForbidParamContext::EnumDiscriminant)
             }
-            _ => None,
+            ty::AnonConstKind::GCE
+            | ty::AnonConstKind::OGCA
+            | ty::AnonConstKind::RepeatExprCount => None,
         }
     }
 
@@ -530,13 +531,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         T: ty::TypeFoldable<TyCtxt<'tcx>>,
     {
         let tcx = self.tcx();
-        let anon_const_def_id = self.item_def_id();
         if let Some(context) = self.anon_const_forbids_generic_params()
             // Fast path if contains no params/escaping bound vars.
             && (term.has_param() || term.has_escaping_bound_vars())
         {
+            let anon_const_def_id = self.item_def_id();
             let mut folder =
-                ForbidMCGParamUsesFolder { tcx, anon_const_def_id, span, is_self_alias, context };
+                ForbidParamUsesFolder { tcx, anon_const_def_id, span, is_self_alias, context };
             term.fold_with(&mut folder)
         } else {
             term
