@@ -16,6 +16,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::ParseSess;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::debug;
+use unicode_properties::emoji::UnicodeEmoji;
 
 use crate::errors;
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
@@ -315,21 +316,62 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.lint_literal_unicode_text_flow(symbol, kind, self.mk_sp(start, self.pos), "literal");
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
-                rustc_lexer::TokenKind::Lifetime { starts_with_number, has_emoji } => {
+                rustc_lexer::TokenKind::Lifetime { invalid } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let lifetime_name = nfc_normalize(self.str_from(start));
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     let span = self.mk_sp(start, self.pos);
-                    if starts_with_number {
-                        self.dcx()
-                            .struct_err("lifetimes cannot start with a number")
-                            .with_span(span)
-                            .stash(span, StashKey::LifetimeIsChar);
-                    }
-                    if has_emoji {
-                        self.dcx().struct_span_err(span, "lifetimes cannot contain emoji").emit();
+                    if invalid {
+                        let name = lifetime_name.as_str();
+                        // skip(1) to skip the `'`
+                        let starts_with_number = matches!(
+                            name.chars().skip(1).next(),
+                            Some(c) if c.is_ascii_digit()
+                        );
+                        let mut emoji = vec![];
+                        for (i, c) in name.char_indices().skip(1) {
+                            let i = i as u32;
+                            if !c.is_ascii() && c.is_emoji_char() {
+                                let lo = start + BytePos(i);
+                                emoji.push(self.mk_sp(lo, lo + Pos::from_usize(c.len_utf8())));
+                            }
+                        }
+                        let err = match (starts_with_number, &emoji[..]) {
+                            (false, []) => {
+                                unreachable!("lifetime {name:?} incorrectly marked as invalid?");
+                            }
+                            (true, []) if name.len() > 2 => {
+                                // Point at the first lifetime name character.
+                                let start_span = self.mk_sp(start + BytePos(1), start + BytePos(2));
+                                self.dcx()
+                                    .struct_err(format!(
+                                        "lifetimes cannot start with a number: `{name}`"
+                                    ))
+                                    .with_span(start_span)
+                                    .with_span_label(span, "")
+                            }
+                            (true, []) => {
+                                // Point at the whole lifetime name.
+                                self.dcx()
+                                    .struct_err(format!(
+                                        "lifetimes cannot start with a number: `{name}`"
+                                    ))
+                                    .with_span(span)
+                            }
+                            (false, [_, ..]) => self.dcx()
+                                .struct_err(format!("lifetimes cannot have emoji: `{name}`"))
+                                .with_span(emoji.clone())
+                                .with_span_label(span, ""),
+                            (true, [_, ..]) => self.dcx()
+                                .struct_err(format!(
+                                    "invalid lifetime name: `{}`",
+                                    name.escape_default(),
+                                ))
+                                .with_span(span),
+                        };
+                        err.stash(span, StashKey::LifetimeIsChar);
                     }
                     token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }

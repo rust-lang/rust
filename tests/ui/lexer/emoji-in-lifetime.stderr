@@ -1,20 +1,38 @@
-error: lifetimes cannot contain emoji
-  --> $DIR/emoji-in-lifetime.rs:2:22
+error: lifetimes cannot have emoji: `'🐛🐛🐛family👨👩👧👦`
+  --> $DIR/emoji-in-lifetime.rs:3:6
    |
-LL | fn bad_lifetime_name<'🐛🐛🐛family👨👩👧👦>(_: &'🐛🐛🐛family👨👩👧👦 ()) {}
-   |                      ^^^^^^^^^^^^^^^^^^^^^
+LL |     '🐛🐛🐛family👨👩👧👦,
+   |     -^^^^^^------^^^^^^^^
 
-error: lifetimes cannot contain emoji
-  --> $DIR/emoji-in-lifetime.rs:2:45
+error: lifetimes cannot start with a number: `'12`
+  --> $DIR/emoji-in-lifetime.rs:4:6
    |
-LL | fn bad_lifetime_name<'🐛🐛🐛family👨👩👧👦>(_: &'🐛🐛🐛family👨👩👧👦 ()) {}
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^
+LL |     '12,
+   |     -^-
 
-error: lifetimes cannot contain emoji
+error: lifetimes cannot have emoji: `'a🐛`
+  --> $DIR/emoji-in-lifetime.rs:5:7
+   |
+LL |     'a🐛,
+   |     --^^
+
+error: invalid lifetime name: `\'1\u{1f41b}`
   --> $DIR/emoji-in-lifetime.rs:6:5
    |
-LL |     '🐛: {
-   |     ^^^
+LL |     '1🐛,
+   |     ^^^^
 
-error: aborting due to 3 previous errors
+error: lifetimes cannot start with a number: `'1`
+  --> $DIR/emoji-in-lifetime.rs:7:5
+   |
+LL |     '1,
+   |     ^^
+
+error: lifetimes cannot have emoji: `'🐛`
+  --> $DIR/emoji-in-lifetime.rs:17:6
+   |
+LL |     '🐛: {
+   |     -^^
+
+error: aborting due to 6 previous errors
 
