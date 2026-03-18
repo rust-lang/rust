@@ -14,7 +14,7 @@ use super::errors::{
 use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
 use crate::{AllowReturnTypeNotation, ImplTraitPosition};
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }

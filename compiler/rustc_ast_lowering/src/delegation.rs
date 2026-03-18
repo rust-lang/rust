@@ -37,6 +37,7 @@
 //! also be emitted during HIR ty lowering.
 
 use std::iter;
+use std::marker::PhantomData;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, PartialRes, Res};
@@ -51,7 +52,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs, ResolverAstLowering};
+use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs};
 use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
@@ -134,16 +135,14 @@ impl DelegationIds {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
             DefKind::AssocFn => match def_id.as_local() {
-                Some(local_def_id) => self
-                    .resolver
-                    .delegation_fn_sigs
-                    .get(&local_def_id)
-                    .is_some_and(|sig| sig.has_self),
+                Some(local_def_id) => {
+                    self.resolver.delegation_fn_sig(local_def_id).is_some_and(|sig| sig.has_self)
+                }
                 None => self.tcx.associated_item(def_id).is_method(),
             },
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
@@ -159,7 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
         let ids = if let Some(delegation_info) =
-            self.resolver.delegation_infos.get(&self.local_def_id(item_id))
+            self.resolver.delegation_info(self.local_def_id(item_id))
         {
             self.get_delegation_ids(delegation_info.resolution_node, span)
         } else {
@@ -344,10 +343,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn get_attrs(&self, local_id: LocalDefId) -> &DelegationAttrs {
         // local_id can correspond either to a function or other delegation
-        if let Some(fn_sig) = self.resolver.delegation_fn_sigs.get(&local_id) {
+        if let Some(fn_sig) = self.resolver.delegation_fn_sig(local_id) {
             &fn_sig.attrs
         } else {
-            &self.resolver.delegation_infos[&local_id].attrs
+            &self.resolver.delegation_info(local_id).expect("processing delegation").attrs
         }
     }
 
@@ -378,7 +377,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // it means that we refer to another delegation as a callee, so in order to obtain
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
-                && let Some(delegation_info) = self.resolver.delegation_infos.get(&local_id)
+                && let Some(delegation_info) = self.resolver.delegation_info(local_id)
             {
                 node_id = delegation_info.resolution_node;
                 if visited.contains(&node_id) {
@@ -402,7 +401,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // Function parameter count, including C variadic `...` if present.
     fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
         if let Some(local_sig_id) = def_id.as_local() {
-            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.delegation_fn_sig(local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
             }
@@ -457,7 +456,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
-            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.delegation_fn_sig(local_sig_id) {
                 Some(sig) => {
                     let parent = self.tcx.parent(sig_id);
                     // HACK: we override the default safety instead of generating attributes from the ether.
@@ -573,6 +572,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         resolver: this.resolver,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
+                        phantom: PhantomData,
                     };
                     self_resolver.visit_block(block);
                     // Target expr needs to lower `self` path.
@@ -818,25 +818,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a, 'tcx> {
-    resolver: &'a mut ResolverAstLowering<'tcx>,
+struct SelfResolver<'a, 'tcx, R> {
+    resolver: &'a mut R,
     path_id: NodeId,
     self_param_id: NodeId,
+    phantom: PhantomData<&'tcx ()>,
 }
 
-impl SelfResolver<'_, '_> {
+impl<'tcx, R: ResolverAstLoweringExt<'tcx>> SelfResolver<'_, 'tcx, R> {
     fn try_replace_id(&mut self, id: NodeId) {
-        if let Some(res) = self.resolver.partial_res_map.get(&id)
+        if let Some(res) = self.resolver.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
             let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.resolver.partial_res_map.insert(id, new_res);
+            self.resolver.insert_partial_res(id, new_res);
         }
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a, '_> {
+impl<'ast, 'a, 'tcx, R: ResolverAstLoweringExt<'tcx>> Visitor<'ast> for SelfResolver<'a, 'tcx, R> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }
