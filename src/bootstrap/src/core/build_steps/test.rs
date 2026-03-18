@@ -904,6 +904,58 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchVerify {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for StdarchVerify {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch/crates/stdarch-verify")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let build_compiler = get_compiler_to_test(builder, run.target);
+        builder.ensure(StdarchVerify { build_compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let build_compiler = self.build_compiler;
+        let target = self.target;
+
+        builder.std(build_compiler, target);
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::ToolStd,
+            target,
+            Kind::Test,
+            "library/stdarch/crates/stdarch-verify",
+            SourceType::InTree,
+            &[],
+        );
+
+        run_cargo_test(
+            cargo,
+            &[],
+            &["stdarch-verify".to_string()],
+            Some("stdarch-verify"),
+            target,
+            builder,
+        );
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
 }
