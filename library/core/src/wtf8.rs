@@ -484,11 +484,22 @@ unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
     }
 }
 
-/// Copied from core::str::raw::slice_error_fail
 #[inline(never)]
 fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
-    assert!(begin <= end);
-    panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");
+    let len = s.len();
+    if begin > len {
+        panic!("start byte index {begin} is out of bounds for string of length {len}");
+    }
+    if end > len {
+        panic!("end byte index {end} is out of bounds for string of length {len}");
+    }
+    if begin > end {
+        panic!("byte range starts at {begin} but ends at {end}");
+    }
+    if !s.is_code_point_boundary(begin) {
+        panic!("byte index {begin} is not a code point boundary");
+    }
+    panic!("byte index {end} is not a code point boundary");
 }
 
 /// Iterator for the code points of a WTF-8 string.
