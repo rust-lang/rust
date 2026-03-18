@@ -1732,8 +1732,18 @@ fn check_fn_or_method<'tcx>(
 
     if sig.abi() == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
-        let has_implicit_self = hir_decl.implicit_self() != hir::ImplicitSelfKind::None;
+        let has_implicit_self = hir_decl.implicit_self().has_implicit_self();
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
+        // FIXME(splat): support the rest of closure splatting, or replace this code with an error
+        if let Some(mut splatted_arg_index) = sig.splatted() {
+            let mut inputs_count = sig.inputs().len();
+            if has_implicit_self {
+                splatted_arg_index = splatted_arg_index.strict_sub(1);
+                inputs_count = inputs_count.strict_sub(1);
+            }
+            debug!(?splatted_arg_index, ?inputs_count, ?has_implicit_self, ?sig);
+            sig = sig.set_splatted(Some(splatted_arg_index), inputs_count).unwrap();
+        }
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(

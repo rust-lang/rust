@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter};
+use std::{assert_matches, fmt, iter};
 
 use itertools::Itertools;
 use rustc_ast as ast;
@@ -18,7 +18,9 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, FnSigKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
@@ -184,13 +186,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expectation: Expectation<'tcx>,
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
-        // Whether the function is variadic, for example when imported from C
-        // FIXME(splat): maybe change this to FnSigKind?
-        c_variadic: bool,
-        // Whether the arguments have been bundled in a tuple (ex: closures)
+        // Whether the function is variadic (e.g. from C), or has a splatted argument
+        fn_sig_kind: FnSigKind,
+        // Whether all the arguments have been bundled in a tuple (ex: closures).
+        // Splatting is handled separately.
         tuple_arguments: TupleArgumentsFlag,
         // The DefId for the function being called, for better error messages
         fn_def_id: Option<DefId>,
+        // The generics of the function being called. Only used for splatting
+        callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
     ) {
         let tcx = self.tcx;
 
@@ -242,11 +246,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // First, let's unify the formal method signature with the expectation eagerly.
-        // We use this to guide coercion inference; it's output is "fudged" which means
+        // We use this to guide coercion inference; its output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
         // is because the inference guidance here is only speculative.
+        // FIXME(splat): do we need to splat arguments before this type inference?
         let formal_output = self.resolve_vars_with_obligations(formal_output);
-        let expected_input_tys: Option<Vec<_>> = expectation
+        let mut expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
                 // FIXME(#149379): This operation results in expected input
@@ -294,45 +299,216 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err_code = E0061;
 
-        // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
-        let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
-            let tuple_type = self.structurally_resolve_type(call_span, formal_input_tys[0]);
-            match tuple_type.kind() {
-                // We expected a tuple and got a tuple
-                ty::Tuple(arg_types) => {
-                    // Argument length differs
-                    if arg_types.len() != provided_args.len() {
-                        err_code = E0057;
+        let mut formal_input_tys = formal_input_tys.to_vec();
+
+        // Caller arguments are tupled before typechecking, starting at the given index.
+        // Tupling makes the callee and caller argument counts match.
+        let first_tupled_arg_index = if let Some(splatted_arg_index) = fn_sig_kind.splatted() {
+            Some(usize::from(splatted_arg_index))
+        } else if tuple_arguments == TupleAllCallArgs {
+            Some(0)
+        } else {
+            None
+        };
+
+        // If the arguments should be wrapped in a tuple (ex: closures, splats), unwrap them here
+        if let Some(first_tupled_arg_index) = first_tupled_arg_index {
+            // The argument difference can range from -1 to u16::MAX - 1, so we count the number
+            // of tupled arguments instead.
+            // (An empty argument list becomes a unit tuple in the callee.)
+            // 0: f() -> f(#[splat] _: ())
+            // 1: f(a) -> f(#[splat] _: (A,))
+            // 2: f(a, b) -> f(#[splat] _: (A, B))
+            // The Fn* traits ensure this by construction, and `#[splat]` can only be applied to
+            // an actual argument.
+            let tupled_args_count = (1 + provided_args.len()).checked_sub(formal_input_tys.len());
+            debug!(
+                ?first_tupled_arg_index, ?tupled_args_count,
+                ?tuple_arguments, ?fn_sig_kind,
+                provided_args_len = ?provided_args.len(), formal_input_tys_len = ?formal_input_tys.len()
+            );
+
+            // If earlier code has modified the FnSig argument list without adjusting the splatted
+            // argument, indexing into the formal input types will panic.
+            if usize::from(first_tupled_arg_index) >= formal_input_tys.len() {
+                span_bug!(
+                    call_span,
+                    "splatted argument index is out of bounds: {first_tupled_arg_index} >= {}, \
+                    tupled_args_count = {tupled_args_count:?}, {tuple_arguments:?}, \
+                    {fn_sig_kind:?}, provided_args: {}",
+                    formal_input_tys.len(),
+                    provided_args.len(),
+                );
+            }
+
+            // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
+            let tuple_type = if fn_sig_kind.splatted().is_some() {
+                let calee_tuple_type = self.try_structurally_resolve_type(
+                    call_span,
+                    formal_input_tys[first_tupled_arg_index],
+                );
+                if calee_tuple_type.is_ty_var()
+                    && let Some(tupled_args_count) = tupled_args_count
+                {
+                    // Make the original type variable resolve to a tuple containing new type variables
+                    let ocx = ObligationCtxt::new(self);
+                    let origin = self.misc(call_span);
+
+                    let new_tupled_type = Ty::new_tup_from_iter(
+                        self.tcx,
+                        iter::repeat_with(|| self.next_ty_var(call_span)).take(tupled_args_count),
+                    );
+
+                    // FIXME(splat): should this be a sub/super type relationship?
+                    let ocx_error =
+                        ocx.eq(&origin, self.param_env, calee_tuple_type, new_tupled_type);
+                    if let Err(ocx_error) = ocx_error {
+                        struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            // FIXME(splat): add a new error code before stabilization (and below as well)
+                            E0277,
+                            "cannot resolve splatted arguments; the last type parameter \
+                                for the function must be a tuple or unit: {:?}",
+                            ocx_error,
+                        )
+                        .emit();
                     }
-                    let expected_input_tys = match expected_input_tys {
-                        Some(expected_input_tys) => match expected_input_tys.get(0) {
-                            Some(ty) => match ty.kind() {
-                                ty::Tuple(tys) => Some(tys.iter().collect()),
-                                _ => None,
-                            },
-                            None => None,
-                        },
-                        None => None,
-                    };
-                    (arg_types.iter().collect(), expected_input_tys)
+
+                    let type_errors = ocx.try_evaluate_obligations();
+                    if type_errors.is_empty() {
+                        assert_matches!(new_tupled_type.kind(), ty::Tuple(_));
+                        new_tupled_type
+                    } else {
+                        let guar = struct_span_code_err!(
+                            self.dcx(),
+                            call_span,
+                            E0277,
+                            "cannot resolve splatted arguments; the last type parameter \
+                                for the function must be a tuple or unit: {:?}",
+                            type_errors,
+                        )
+                        .emit();
+                        Ty::new_error(self.tcx, guar)
+                    }
+                } else {
+                    // Otherwise, just let the argument type checker make a suggestion
+                    calee_tuple_type
                 }
-                _ => {
-                    // Otherwise, there's a mismatch, so clear out what we're expecting, and set
-                    // our input types to err_args so we don't blow up the error messages
+            } else {
+                self.structurally_resolve_type(call_span, formal_input_tys[first_tupled_arg_index])
+            };
+
+            // We expected a tuple and got a tuple (or made one ourselves)
+            if let ty::Tuple(detup_formal_arg_tys) = tuple_type.kind() {
+                // Argument length differs
+                // FIXME(splat): update the error code E0057 docs when splat is stabilized
+                if Some(detup_formal_arg_tys.len()) != tupled_args_count {
+                    err_code = E0057;
+                }
+                if let Some(ref mut expected_input_tys) = expected_input_tys
+                    && let Some(ty) = expected_input_tys.get(first_tupled_arg_index)
+                    && let ty::Tuple(detup_expected_arg_tys) = ty.kind()
+                {
+                    let substitute_tys = if Some(detup_expected_arg_tys.len()) == tupled_args_count
+                    {
+                        detup_expected_arg_tys.iter()
+                    } else {
+                        // Just fall back to the formal argument types
+                        detup_formal_arg_tys.iter()
+                    };
+
+                    expected_input_tys
+                        .splice(first_tupled_arg_index..=first_tupled_arg_index, substitute_tys)
+                        .for_each(|_| {});
+                } else {
+                    expected_input_tys = None;
+                }
+                // If splatting, record this call in a side-table, so MIR lowering can tuple the caller's arguments
+                if fn_sig_kind.splatted().is_some() {
+                    // FIXME(const_trait_impl): does not enforce constness yet
+                    self.write_splatted_call(
+                        call_expr.hir_id,
+                        call_span,
+                        fn_def_id,
+                        callee_generic_args,
+                        first_tupled_arg_index.try_into().unwrap(),
+                        tupled_args_count.unwrap().try_into().unwrap(),
+                    );
+                }
+
+                formal_input_tys
+                    .splice(
+                        first_tupled_arg_index..=first_tupled_arg_index,
+                        detup_formal_arg_tys.iter(),
+                    )
+                    .for_each(|_| {});
+                if let Some(ref expected_input_tys) = expected_input_tys {
+                    assert_eq!(
+                        formal_input_tys.len(),
+                        expected_input_tys.len(),
+                        "incorrectly constructed input type tuples, argument counts must match: \
+                        tuple_arguments: {tuple_arguments:?}",
+                    )
+                }
+            }
+
+            // Otherwise, there's a mismatch during splatting or a rust-call.
+            // So clear out what we're expecting, and set our input types to err_args so we don't
+            // blow up the error messages.
+            if tuple_arguments == TupleAllCallArgs && !matches!(tuple_type.kind(), ty::Tuple(_)) {
+                let guar = struct_span_code_err!(
+                    self.dcx(),
+                    call_span,
+                    E0059,
+                    "cannot use call notation; the first type parameter \
+                    for the function trait is neither a tuple nor unit"
+                )
+                .emit();
+
+                formal_input_tys = self.err_args(provided_args.len(), guar);
+                expected_input_tys = None;
+            } else if fn_sig_kind.splatted().is_some() {
+                // If we don't check argument counts here, and there's a subtle bug in the code above,
+                // later compilation stages can fail in unrelated places with confusing errors.
+                if !matches!(tuple_type.kind(), ty::Tuple(_)) {
                     let guar = struct_span_code_err!(
                         self.dcx(),
                         call_span,
-                        E0059,
-                        "cannot use call notation; the first type parameter \
-                         for the function trait is neither a tuple nor unit"
+                        // FIXME(splat): add a new error code before stabilization
+                        E0277,
+                        "cannot use splat attribute; the splatted type parameter {} \
+                            for the function must be a tuple or unit, not a {:?} ({:?})",
+                        first_tupled_arg_index,
+                        tuple_type.kind(),
+                        self.structurally_resolve_type(
+                            call_span,
+                            formal_input_tys[first_tupled_arg_index]
+                        )
+                        .kind(),
                     )
                     .emit();
-                    (self.err_args(provided_args.len(), guar), None)
+
+                    formal_input_tys = self.err_args(provided_args.len(), guar);
+                    expected_input_tys = None;
+                } else if formal_input_tys.len() != provided_args.len() {
+                    // FIXME(splat): suggest alternative argument counts, if there are any
+                    let guar = struct_span_code_err!(
+                        self.dcx(),
+                        call_span,
+                        E0057,
+                        "this splatted function takes {} arguments, but {} {} provided",
+                        formal_input_tys.len(),
+                        provided_args.len(),
+                        if provided_args.len() == 1 { "was" } else { "were" },
+                    )
+                    .emit();
+
+                    formal_input_tys = self.err_args(provided_args.len(), guar);
+                    expected_input_tys = None;
                 }
             }
-        } else {
-            (formal_input_tys.to_vec(), expected_input_tys)
-        };
+        }
 
         // If there are no external expectations at the call site, just use the types from the function defn
         let expected_input_tys = if let Some(expected_input_tys) = expected_input_tys {
@@ -405,7 +581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // if the wrong number of arguments were supplied, we CAN'T be satisfied,
         // and if we're c_variadic, the supplied arguments must be >= the minimum count from the function
         // otherwise, they need to be identical, because rust doesn't currently support variadic functions
-        let mut call_appears_satisfied = if c_variadic {
+        let mut call_appears_satisfied = if fn_sig_kind.c_variadic() {
             provided_arg_count >= minimum_input_count
         } else {
             provided_arg_count == minimum_input_count
@@ -467,7 +643,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if c_variadic && provided_arg_count < minimum_input_count {
+        if fn_sig_kind.c_variadic() && provided_arg_count < minimum_input_count {
             err_code = E0060;
         }
 
@@ -479,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // so we need to check those, and write out the types
             // Ideally this would be folded into the above, for uniform style
             // but c-variadic is already a corner case
-            if c_variadic {
+            if fn_sig_kind.c_variadic() {
                 fn variadic_error<'tcx>(
                     sess: &'tcx Session,
                     span: Span,
@@ -540,11 +716,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !call_appears_satisfied {
             let compatibility_diagonal = IndexVec::from_raw(compatibility_diagonal);
-            let provided_args = IndexVec::from_iter(provided_args.iter().take(if c_variadic {
-                minimum_input_count
-            } else {
-                provided_arg_count
-            }));
+            let provided_args =
+                IndexVec::from_iter(provided_args.iter().take(if fn_sig_kind.c_variadic() {
+                    minimum_input_count
+                } else {
+                    provided_arg_count
+                }));
             debug_assert_eq!(
                 formal_input_tys.len(),
                 expected_input_tys.len(),
@@ -562,7 +739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
-                c_variadic,
+                fn_sig_kind.c_variadic(),
                 err_code,
                 fn_def_id,
                 call_span,
@@ -592,6 +769,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
+        // FIXME(splat): when the feature design is settled, replace this with FnSigKind, and
+        // improve the errors here
         c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
@@ -1377,8 +1556,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we're calling a method of a Fn/FnMut/FnOnce trait object implicitly
         // (eg invoking a closure) we want to point at the underlying callable,
         // not the method implicitly invoked (eg call_once).
-        // TupleArguments is set only when this is an implicit call (my_closure(...)) rather than explicit (my_closure.call(...))
-        if tuple_arguments == TupleArguments
+        // TupleAllCallArgs is set only when this is an implicit call `my_closure(...)` rather
+        // than explicit `my_closure.call(...)`.
+        if tuple_arguments == TupleAllCallArgs
             && let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
             // Since this is an associated item, it might point at either an impl or a trait item.
             // We want it to always point to the trait item.

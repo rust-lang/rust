@@ -824,9 +824,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         //                              ^^^^^
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
+        let splatted_arg_index1 = sig1.splatted().map(usize::from);
+        let splatted_arg_index2 = sig2.splatted().map(usize::from);
         if len1 == len2 {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 self.push_comma(&mut values.0, &mut values.1, i);
+                if Some(i) == splatted_arg_index1 {
+                    values.0.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.0.push_normal(" ");
+                }
+                if Some(i) == splatted_arg_index2 {
+                    values.1.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.1.push_normal(" ");
+                }
                 let (x1, x2) = self.cmp(*l, *r);
                 (values.0).0.extend(x1.0);
                 (values.1).0.extend(x2.0);

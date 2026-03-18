@@ -169,6 +169,10 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
             return Err(TypeError::AbiMismatch(ExpectedFound::new(a.abi(), b.abi())));
         };
 
+        if a.splatted() != b.splatted() {
+            return Err(TypeError::SplatMismatch(ExpectedFound::new(a.splatted(), b.splatted())));
+        }
+
         let a_inputs = a.inputs();
         let b_inputs = b.inputs();
         if a_inputs.len() != b_inputs.len() {
