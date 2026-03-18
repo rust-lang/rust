@@ -475,14 +475,15 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
-        self.psess()
+        self.ecx
+            .sess
             .env_depinfo
             .borrow_mut()
             .insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
 
     fn track_path(&mut self, path: &str) {
-        self.psess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
+        self.ecx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(path));
     }
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, String> {

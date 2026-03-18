@@ -208,6 +208,22 @@ impl NotifyActor {
                                 )
                             })
                             .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
+                                // Ignore events for files/directories that we're not watching.
+                                if !(self.watched_file_entries.contains(&path)
+                                    || self
+                                        .watched_dir_entries
+                                        .iter()
+                                        .any(|dir| dir.contains_file(&path)))
+                                {
+                                    return None;
+                                }
+
+                                // For removed files, fs::metadata() will return Err, but
+                                // we still want to update the VFS.
+                                if matches!(event.kind, EventKind::Remove(_)) {
+                                    return Some((path, None));
+                                }
+
                                 let meta = fs::metadata(&path).ok()?;
                                 if meta.file_type().is_dir()
                                     && self
@@ -220,15 +236,6 @@ impl NotifyActor {
                                 }
 
                                 if !meta.file_type().is_file() {
-                                    return None;
-                                }
-
-                                if !(self.watched_file_entries.contains(&path)
-                                    || self
-                                        .watched_dir_entries
-                                        .iter()
-                                        .any(|dir| dir.contains_file(&path)))
-                                {
                                     return None;
                                 }
 
@@ -317,7 +324,7 @@ impl NotifyActor {
 
     fn watch(&mut self, path: &Path) {
         if let Some((watcher, _)) = &mut self.watcher {
-            log_notify_error(watcher.watch(path, RecursiveMode::NonRecursive));
+            log_notify_error(watcher.watch(path, RecursiveMode::Recursive));
         }
     }
 

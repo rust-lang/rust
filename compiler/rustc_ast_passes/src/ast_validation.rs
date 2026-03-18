@@ -1487,6 +1487,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ident,
                     sig,
                 );
+
+                if let Some(attr) = attr::find_by_name(fi.attrs(), sym::track_caller)
+                    && self.extern_mod_abi != Some(ExternAbi::Rust)
+                {
+                    self.dcx().emit_err(errors::RequiresRustAbi {
+                        track_caller_span: attr.span,
+                        extern_abi_span: self.current_extern_span(),
+                    });
+                }
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1672,10 +1681,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         if let FnKind::Fn(ctxt, _, fun) = fk
-            && let Extern::Explicit(str_lit, _) = fun.sig.header.ext
+            && let Extern::Explicit(str_lit, extern_abi_span) = fun.sig.header.ext
             && let Ok(abi) = ExternAbi::from_str(str_lit.symbol.as_str())
         {
             self.check_extern_fn_signature(abi, ctxt, &fun.ident, &fun.sig);
+
+            if let Some(attr) = attr::find_by_name(attrs, sym::track_caller)
+                && abi != ExternAbi::Rust
+            {
+                self.dcx().emit_err(errors::RequiresRustAbi {
+                    track_caller_span: attr.span,
+                    extern_abi_span,
+                });
+            }
         }
 
         self.check_c_variadic_type(fk, attrs);

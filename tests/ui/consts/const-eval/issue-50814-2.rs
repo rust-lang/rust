@@ -2,7 +2,7 @@
 //@ revisions: normal mir-opt
 //@ [mir-opt]compile-flags: -Zmir-opt-level=4
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend post-monomorphization errors
 trait C {
     const BOO: usize;
 }

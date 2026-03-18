@@ -1140,3 +1140,13 @@ pub(crate) struct ScalableVectorBadArch {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[track_caller]` can only be used with the Rust ABI", code = E0737)]
+pub(crate) struct RequiresRustAbi {
+    #[primary_span]
+    #[label("using `#[track_caller]` here")]
+    pub track_caller_span: Span,
+    #[label("not using the Rust ABI because of this")]
+    pub extern_abi_span: Span,
+}

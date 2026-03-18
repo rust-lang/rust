@@ -1,5 +1,5 @@
 // Test that changing what a `type` points to does not go unnoticed.
-
+//@ ignore-parallel-frontend dep graph
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 

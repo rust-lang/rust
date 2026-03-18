@@ -8,7 +8,7 @@ jobs:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: ci/style.sh
@@ -18,7 +18,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: ci/dox.sh
@@ -30,7 +30,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
@@ -216,7 +216,7 @@ jobs:
           build_std: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -285,7 +285,7 @@ jobs:
             build_std: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -310,7 +310,7 @@ jobs:
     name: Check stdarch-gen-{arm, loongarch, hexagon} output
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly && rustup default nightly && rustup component add rustfmt
     - name: Check arm spec

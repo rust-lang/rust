@@ -28,7 +28,7 @@ use crate::{
     traits::StoredParamEnvAndCrate,
 };
 
-use super::mir::{interpret_mir, lower_to_mir, pad16};
+use super::mir::{interpret_mir, lower_body_to_mir, pad16};
 
 pub fn unknown_const<'db>(_ty: Ty<'db>) -> Const<'db> {
     Const::new(DbInterner::conjure(), rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
@@ -333,7 +333,7 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
             return c;
         }
     }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+    if let Ok(mir_body) = lower_body_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
         return result;

@@ -1,6 +1,6 @@
 //@ normalize-stderr: "[[:xdigit:]]{2} __ ([[:xdigit:]]{2}\s){2}" -> "HEX_DUMP"
 #![feature(core_intrinsics)]
-
+//@ ignore-parallel-frontend different alloc ids
 const RAW_EQ_PADDING: bool = unsafe {
     std::intrinsics::raw_eq(&(1_u8, 2_u16), &(1_u8, 2_u16))
 //~^ ERROR requires initialized memory

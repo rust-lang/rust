@@ -12,10 +12,10 @@ LL |     let x: Option<_> = None::<T>;
    |                            +++++
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-42234-unknown-receiver-type.rs:12:10
+  --> $DIR/issue-42234-unknown-receiver-type.rs:12:16
    |
 LL |         .sum::<_>()
-   |          ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
+   |                ^ cannot infer type of the type parameter `S` declared on the method `sum`
 
 error: aborting due to 2 previous errors
 

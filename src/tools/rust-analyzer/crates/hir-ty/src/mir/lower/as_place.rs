@@ -137,11 +137,11 @@ impl<'db> MirLowerCtx<'_, 'db> {
             }
             this.lower_expr_to_some_place_without_adjust(expr_id, current)
         };
-        match &self.body[expr_id] {
+        match &self.store[expr_id] {
             Expr::Path(p) => {
                 let resolver_guard =
                     self.resolver.update_to_inner_scope(self.db, self.owner, expr_id);
-                let hygiene = self.body.expr_path_hygiene(expr_id);
+                let hygiene = self.store.expr_path_hygiene(expr_id);
                 let resolved = self.resolver.resolve_path_in_value_ns_fully(self.db, p, hygiene);
                 self.resolver.reset_to_guard(resolver_guard);
                 let Some(pr) = resolved else {

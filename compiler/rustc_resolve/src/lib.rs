@@ -1817,9 +1817,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .stripped_cfg_items
             .into_iter()
             .filter_map(|item| {
-                let parent_module =
-                    self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
+                let parent_scope =
+                    self.node_id_to_def_id.get(&item.parent_scope)?.key().to_def_id();
+                Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg })
             })
             .collect();
 

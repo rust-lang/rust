@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::rc::Rc;
-
+//@ ignore-parallel-frontend query cycle
 fn send<T: Send>(_: T) {}
 
 fn main() {}

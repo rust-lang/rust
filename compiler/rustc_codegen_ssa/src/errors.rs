@@ -8,7 +8,8 @@ use std::process::ExitStatus;
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
+    Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::layout::LayoutError;
@@ -109,13 +110,6 @@ pub(crate) struct NoNatvisDirectory {
 #[diag("cached cgu {$cgu_name} should have an object file, but doesn't")]
 pub(crate) struct NoSavedObjectFile<'a> {
     pub cgu_name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[track_caller]` requires Rust ABI", code = E0737)]
-pub(crate) struct RequiresRustAbi {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1249,20 +1243,29 @@ pub(crate) struct FeatureNotValid<'a> {
     #[label("`{$feature}` is not valid for this target")]
     pub span: Span,
     #[subdiagnostic]
-    pub plus_hint: Option<RemovePlusFromFeatureName<'a>>,
+    pub hint: FeatureNotValidHint<'a>,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    "consider removing the leading `+` in the feature name",
-    code = "enable = \"{stripped}\"",
-    applicability = "maybe-incorrect",
-    style = "verbose"
-)]
-pub struct RemovePlusFromFeatureName<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub stripped: &'a str,
+pub(crate) enum FeatureNotValidHint<'a> {
+    #[suggestion(
+        "consider removing the leading `+` in the feature name",
+        code = "enable = \"{stripped}\"",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    RemovePlusFromFeatureName {
+        #[primary_span]
+        span: Span,
+        stripped: &'a str,
+    },
+    #[help(
+        "valid names are: {$possibilities}{$and_more ->
+            [0] {\"\"}
+            *[other] {\" \"}and {$and_more} more
+        }"
+    )]
+    ValidFeatureNames { possibilities: DiagSymbolList<&'a str>, and_more: usize },
 }
 
 #[derive(Diagnostic)]

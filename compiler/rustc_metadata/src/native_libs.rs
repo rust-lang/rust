@@ -5,12 +5,17 @@ use rustc_abi::ExternAbi;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{NativeLibKind, PeImportNameType};
+use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
+use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, NativeLib};
+use rustc_session::cstore::{
+    DllCallingConvention, DllImport, DllImportSymbolType, ForeignModule, NativeLib,
+};
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -451,12 +456,32 @@ impl<'tcx> Collector<'tcx> {
             }
         }
 
-        DllImport {
-            name,
-            import_name_type,
-            calling_convention,
-            span,
-            is_fn: self.tcx.def_kind(item).is_fn_like(),
-        }
+        let def_kind = self.tcx.def_kind(item);
+        let symbol_type = if def_kind.is_fn_like() {
+            DllImportSymbolType::Function
+        } else if matches!(def_kind, DefKind::Static { .. }) {
+            if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                DllImportSymbolType::ThreadLocal
+            } else {
+                DllImportSymbolType::Static
+            }
+        } else {
+            bug!("Unexpected type for raw-dylib: {}", def_kind.descr(item));
+        };
+
+        let size = match symbol_type {
+            // We cannot determine the size of a function at compile time, but it shouldn't matter anyway.
+            DllImportSymbolType::Function => rustc_abi::Size::ZERO,
+            DllImportSymbolType::Static | DllImportSymbolType::ThreadLocal => {
+                let ty = self.tcx.type_of(item).instantiate_identity();
+                self.tcx
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                    .ok()
+                    .map(|layout| layout.size)
+                    .unwrap_or_else(|| bug!("Non-function symbols must have a size"))
+            }
+        };
+
+        DllImport { name, import_name_type, calling_convention, span, symbol_type, size }
     }
 }

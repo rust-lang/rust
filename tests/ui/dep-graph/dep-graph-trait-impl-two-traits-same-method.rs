@@ -1,6 +1,6 @@
 // Test that adding an impl to a trait `Foo` DOES affect functions
 // that only use `Bar` if they have methods in common.
-
+//@ ignore-parallel-frontend dep graph
 //@ incremental
 //@ compile-flags: -Z query-dep-graph
 
