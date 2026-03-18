@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/4972
-// Ensure box pattern matching with trait objects does not incorrectly dereference.
+
 #![feature(box_patterns)]
 
 trait MyTrait {

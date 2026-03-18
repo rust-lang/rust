@@ -1,6 +1,5 @@
 // https://github.com/rust-lang/rust/issues/17252
-// Tests that constant evaluation cycles (self-referential consts) are detected
-// and reported as errors instead of causing a stack overflow.
+
 const FOO: usize = FOO; //~ ERROR E0391
 //@ ignore-parallel-frontend query cycle
 fn main() {

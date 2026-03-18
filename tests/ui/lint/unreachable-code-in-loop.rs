@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/2150
-// Tests that statements after panic!() are considered unreachable and raise a lint error.
+
 #![deny(unreachable_code)]
 #![allow(unused_variables)]
 #![allow(dead_code)]

@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/17800
-// Ensure that tuple enum variants cannot be matched using struct pattern syntax.
+
 enum MyOption<T> {
     MySome(T),
     MyNone,

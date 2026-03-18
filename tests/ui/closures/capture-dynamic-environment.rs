@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/3021
-// Tests that closures cannot capture a variable from the dynamic environment in this context.
+
 fn siphash(k0 : u64) {
 
     struct SipHash {

@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/4335
-// Ensure the borrow checker rejects moving a value out of borrowed content inside a closure.
+
 #![feature(fn_traits)]
 
 fn id<T>(t: T) -> T { t }
