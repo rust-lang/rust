@@ -1,7 +1,7 @@
 //@ ignore-32bit
 // This test gives a different error on 32-bit architectures.
 //@ stderr-per-bitwidth
-
+//@ ignore-parallel-frontend different alloc ids
 union Transmute<T: Copy, U: Copy> {
     t: T,
     u: U,

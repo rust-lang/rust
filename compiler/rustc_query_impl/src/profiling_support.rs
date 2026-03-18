@@ -6,8 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::query::QueryCache;
-use rustc_middle::query::plumbing::QueryVTable;
+use rustc_middle::query::{QueryCache, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 
 use crate::query_impl::for_each_query_vtable;
@@ -192,7 +191,7 @@ pub(crate) fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
     let mut string_cache = QueryKeyStringCache::new();
 
     for_each_query_vtable!(ALL, tcx, |query| {
-        alloc_self_profile_query_strings_for_query_cache(tcx, query, &mut string_cache);
+        alloc_self_profile_query_strings_inner(tcx, query, &mut string_cache);
     });
 
     tcx.sess.prof.store_query_cache_hits();
@@ -201,7 +200,7 @@ pub(crate) fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 /// Allocate the self-profiling query strings for a single query cache. This
 /// method is called from `alloc_self_profile_query_strings` which knows all
 /// the queries via macro magic.
-fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
+fn alloc_self_profile_query_strings_inner<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     string_cache: &mut QueryKeyStringCache,

@@ -1,5 +1,5 @@
 //@ build-fail
-
+//@ ignore-parallel-frontend post-monomorphization errors
 // Regression test for #66975
 #![warn(unconditional_panic)]
 #![feature(never_type)]

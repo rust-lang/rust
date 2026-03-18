@@ -11,6 +11,7 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
+use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
 use rustc_session::parse::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
@@ -306,8 +307,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.cancel();
                         return e;
                     }
-                    let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
-                    err.note(format!("cannot satisfy `{pred}`"));
+                    if let Some(clause) = predicate.as_trait_clause()
+                        && let ty::Infer(_) = clause.self_ty().skip_binder().kind()
+                    {
+                        let tr = self.tcx.short_string(
+                            clause.print_modifiers_and_trait_path(),
+                            &mut err.long_ty_path(),
+                        );
+                        err.note(format!("the type must implement `{tr}`"));
+                    } else {
+                        let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
+                        err.note(format!("cannot satisfy `{pred}`"));
+                    }
                     let impl_candidates =
                         self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
                     if impl_candidates.len() < 40 {

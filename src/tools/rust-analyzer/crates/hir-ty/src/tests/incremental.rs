@@ -31,6 +31,7 @@ fn foo() -> i32 {
         &[("InferenceResult::for_body_", 1)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -118,6 +119,7 @@ fn baz() -> i32 {
         &[("InferenceResult::for_body_", 3)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -237,6 +239,7 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -311,6 +314,7 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -386,6 +390,7 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -462,6 +467,7 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",
@@ -562,6 +568,7 @@ fn main() {
         &[("trait_solve_shim", 0)],
         expect_test::expect![[r#"
             [
+                "source_root_crates_shim",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map_shim",

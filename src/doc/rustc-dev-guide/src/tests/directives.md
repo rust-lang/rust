@@ -148,6 +148,7 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When [remote testing] is used: `remote`
 - When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
 - When particular debugger versions are matched: `ignore-gdb-version`
+- When the [parallel frontend] is enabled: `ignore-parallel-frontend`
 - Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
@@ -233,6 +234,7 @@ The following directives will check LLVM support:
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ignoring debuggers.
 
 [remote testing]: running.md#running-tests-on-a-remote-machine
+[parallel frontend]: compiletest.md#parallel-frontend
 [compare modes]: ui.md#compare-modes
 [`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
 [`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32

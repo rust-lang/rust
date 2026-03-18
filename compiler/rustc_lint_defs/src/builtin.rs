@@ -106,7 +106,6 @@ declare_lint_pass! {
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SHADOWING_SUPERTRAIT_ITEMS,
         SINGLE_USE_LIFETIMES,
-        SOFT_UNSTABLE,
         STABLE_FEATURES,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
@@ -2342,22 +2341,6 @@ declare_lint! {
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #57644),
-    };
-}
-
-declare_lint! {
-    /// The `soft_unstable` lint detects unstable features that were unintentionally allowed on
-    /// stable. This is a [future-incompatible] lint to transition this to a hard error in the
-    /// future. See [issue #64266] for more details.
-    ///
-    /// [issue #64266]: https://github.com/rust-lang/rust/issues/64266
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub SOFT_UNSTABLE,
-    Deny,
-    "a feature gate that doesn't break dependent crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #64266),
-        report_in_deps: true,
     };
 }
 

@@ -9,16 +9,16 @@ use super::{check_infer, check_types};
 fn cfg_impl_def() {
     check_types(
         r#"
-//- /main.rs crate:main deps:foo cfg:test
+//- /main.rs crate:main deps:foo cfg:some_cfg
 use foo::S as T;
 struct S;
 
-#[cfg(test)]
+#[cfg(some_cfg)]
 impl S {
     fn foo1(&self) -> i32 { 0 }
 }
 
-#[cfg(not(test))]
+#[cfg(not(some_cfg))]
 impl S {
     fn foo2(&self) -> i32 { 0 }
 }
@@ -31,12 +31,12 @@ fn test() {
 //- /foo.rs crate:foo
 pub struct S;
 
-#[cfg(not(test))]
+#[cfg(not(some_cfg))]
 impl S {
     pub fn foo3(&self) -> i32 { 0 }
 }
 
-#[cfg(test)]
+#[cfg(some_cfg)]
 impl S {
     pub fn foo4(&self) -> i32 { 0 }
 }

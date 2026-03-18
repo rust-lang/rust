@@ -1,5 +1,5 @@
 use std::ptr;
-
+//@ ignore-parallel-frontend different alloc ids
 //@ normalize-stderr: "0xf+" -> "0xf..f"
 //@ normalize-stderr: "0x7f+" -> "0x7f..f"
 //@ normalize-stderr: "\d+ bytes" -> "$$BYTES bytes"

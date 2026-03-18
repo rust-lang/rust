@@ -4,7 +4,7 @@ error[E0539]: malformed `sanitize` attribute input
 LL | #[sanitize(brontosaurus = "off")]
    | ^^^^^^^^^^^------------^^^^^^^^^^
    |            |
-   |            valid arguments are "address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress" or "realtime"
+   |            valid arguments are "address", "kernel_address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress" or "realtime"
 
 error: multiple `sanitize` attributes
   --> $DIR/invalid-sanitize.rs:7:1

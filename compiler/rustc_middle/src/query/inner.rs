@@ -6,8 +6,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::plumbing::QueryVTable;
-use crate::query::{EnsureMode, QueryCache, QueryMode};
+use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
 
 /// Checks whether there is already a value for this key in the in-memory

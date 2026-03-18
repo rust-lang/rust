@@ -7,6 +7,5 @@
 
 #![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))]
 //~^ ERROR: wasn't a utf-8 file
-//~| ERROR: attribute value must be a literal
 
 fn main() {}

@@ -419,9 +419,9 @@ top_level_options!(
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
         assert_incr_state: Option<IncrementalStateAssertion> [UNTRACKED],
-        /// Set by the `Config::hash_untracked_state` callback for custom
-        /// drivers to invalidate the incremental cache
-        #[rustc_lint_opt_deny_field_access("should only be used via `Config::hash_untracked_state`")]
+        /// Set based on the result of the `Config::track_state` callback
+        /// for custom drivers to invalidate the incremental cache.
+        #[rustc_lint_opt_deny_field_access("should only be used via `Config::track_state`")]
         untracked_state_hash: Hash64 [TRACKED_NO_CRATE_HASH],
 
         unstable_opts: UnstableOptions [SUBSTRUCT UnstableOptionsTargetModifiers UnstableOptions],
