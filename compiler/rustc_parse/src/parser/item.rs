@@ -857,7 +857,7 @@ impl<'a> Parser<'a> {
             kind: AssocItemKind::DelegationMac(Box::new(DelegationMac {
                 qself: None,
                 prefix: of_trait.trait_ref.path.clone(),
-                suffixes: None,
+                suffixes: DelegationSuffixes::Glob(whole_reuse_span),
                 body,
             })),
         }));
@@ -879,10 +879,12 @@ impl<'a> Parser<'a> {
 
         Ok(if self.eat_path_sep() {
             let suffixes = if self.eat(exp!(Star)) {
-                None
+                DelegationSuffixes::Glob(self.prev_token.span)
             } else {
                 let parse_suffix = |p: &mut Self| Ok((p.parse_path_segment_ident()?, rename(p)?));
-                Some(self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), parse_suffix)?.0)
+                DelegationSuffixes::List(
+                    self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), parse_suffix)?.0,
+                )
             };
 
             ItemKind::DelegationMac(Box::new(DelegationMac {
@@ -1519,7 +1521,10 @@ impl<'a> Parser<'a> {
         let span = self.psess.source_map().guess_head_span(span);
         let descr = kind.descr();
         let help = match kind {
-            ItemKind::DelegationMac(deleg) if deleg.suffixes.is_none() => false,
+            ItemKind::DelegationMac(box DelegationMac {
+                suffixes: DelegationSuffixes::Glob(_),
+                ..
+            }) => false,
             _ => true,
         };
         self.dcx().emit_err(errors::BadItemKind { span, descr, ctx, help });
