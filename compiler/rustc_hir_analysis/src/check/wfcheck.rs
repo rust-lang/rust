@@ -15,6 +15,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
+use rustc_infer::traits::PredicateObligations;
 use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
 use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -124,6 +125,20 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             ty::ClauseKind::WellFormed(term),
         ));
     }
+
+    pub(super) fn unnormalized_obligations(
+        &self,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> Option<PredicateObligations<'tcx>> {
+        traits::wf::unnormalized_obligations(
+            self.ocx.infcx,
+            self.param_env,
+            ty.into(),
+            span,
+            self.body_def_id,
+        )
+    }
 }
 
 pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
@@ -140,7 +155,12 @@ where
 
     let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env };
 
-    if !tcx.features().trivial_bounds() {
+    // As of now, bounds are only checked on lazy type aliases, they're ignored for most type
+    // aliases. So, only check for false global bounds if we're not ignoring bounds altogether.
+    let ignore_bounds =
+        tcx.def_kind(body_def_id) == DefKind::TyAlias && !tcx.type_alias_is_lazy(body_def_id);
+
+    if !ignore_bounds && !tcx.features().trivial_bounds() {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx)?;
