@@ -572,14 +572,12 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     value
 }
 
-/// Return value struct for [`check_if_ensure_can_skip_execution`].
-struct EnsureCanSkip {
-    /// If true, the current `tcx.ensure_ok()` or `tcx.ensure_done()` query
-    /// can return early without actually trying to execute.
-    skip_execution: bool,
-    /// A dep node that was prepared while checking whether execution can be
-    /// skipped, to be reused by execution itself if _not_ skipped.
-    dep_node: Option<DepNode>,
+/// Can a `tcx.ensure_ok()` or `tcx.ensure_done()` query return early without
+/// actually trying to execute?
+enum EnsureCanSkip {
+    Yes,
+    // We may have created a `DepNode` while determining whether we can skip.
+    No(Option<DepNode>),
 }
 
 /// Checks whether a `tcx.ensure_ok()` or `tcx.ensure_done()` query call can
@@ -597,7 +595,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
 ) -> EnsureCanSkip {
     // Queries with `eval_always` should never skip execution.
     if query.eval_always {
-        return EnsureCanSkip { skip_execution: false, dep_node: None };
+        return EnsureCanSkip::No(None);
     }
 
     // Ensuring an anonymous query makes no sense
@@ -613,7 +611,7 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            return EnsureCanSkip { skip_execution: false, dep_node: Some(dep_node) };
+            return EnsureCanSkip::No(Some(dep_node));
         }
         Some((serialized_dep_node_index, dep_node_index)) => {
             tcx.dep_graph.read_index(dep_node_index);
@@ -627,14 +625,17 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // In ensure-ok mode, we can skip execution for this key if the node
             // is green. It must have succeeded in the previous session, and
             // therefore would succeed in the current session if executed.
-            EnsureCanSkip { skip_execution: true, dep_node: None }
+            EnsureCanSkip::Yes
         }
         EnsureMode::Done => {
             // In ensure-done mode, we can only skip execution for this key if
             // there's a disk-cached value available to load later if needed,
             // which guarantees the query provider will never run for this key.
-            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
-            EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
+            if (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index) {
+                EnsureCanSkip::Yes
+            } else {
+                EnsureCanSkip::No(Some(dep_node))
+            }
         }
     }
 }
@@ -669,16 +670,13 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     // This might have the side-effect of creating a suitable DepNode, which
     // we should reuse for execution instead of creating a new one.
     let dep_node: Option<DepNode> = match mode {
-        QueryMode::Ensure { ensure_mode } => {
-            let EnsureCanSkip { skip_execution, dep_node } =
-                check_if_ensure_can_skip_execution(query, tcx, key, ensure_mode);
-            if skip_execution {
-                // Return early to skip execution.
-                return None;
-            }
-            dep_node
-        }
         QueryMode::Get => None,
+        QueryMode::Ensure { ensure_mode } => {
+            match check_if_ensure_can_skip_execution(query, tcx, key, ensure_mode) {
+                EnsureCanSkip::Yes => return None,
+                EnsureCanSkip::No(dep_node) => dep_node,
+            }
+        }
     };
 
     let (result, dep_node_index) =
