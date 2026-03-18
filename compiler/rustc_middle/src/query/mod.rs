@@ -1,7 +1,7 @@
 use rustc_hir::def_id::LocalDefId;
 
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
-pub use self::into_query_key::IntoQueryParam;
+pub use self::into_query_key::IntoQueryKey;
 pub use self::job::{QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
