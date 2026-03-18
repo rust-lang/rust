@@ -1091,9 +1091,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinhf(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -1119,11 +1117,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acoshf(self)
     }
 
     /// Inverse hyperbolic tangent function.

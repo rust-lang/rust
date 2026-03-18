@@ -30,6 +30,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "acosf"
             | "asinf"
             | "atanf"
+            | "acoshf"
+            | "asinhf"
             | "log1pf"
             | "expm1f"
             | "tgammaf"
@@ -52,6 +54,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "acosf" => f_host.acos(),
                         "asinf" => f_host.asin(),
                         "atanf" => f_host.atan(),
+                        "acoshf" => f_host.acosh(),
+                        "asinhf" => f_host.asinh(),
                         "log1pf" => f_host.ln_1p(),
                         "expm1f" => f_host.exp_m1(),
                         "tgammaf" => f_host.gamma(),
@@ -113,6 +117,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "acos"
             | "asin"
             | "atan"
+            | "acosh"
+            | "asinh"
             | "log1p"
             | "expm1"
             | "tgamma"
@@ -135,6 +141,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "acos" => f_host.acos(),
                         "asin" => f_host.asin(),
                         "atan" => f_host.atan(),
+                        "acosh" => f_host.acosh(),
+                        "asinh" => f_host.asinh(),
                         "log1p" => f_host.ln_1p(),
                         "expm1" => f_host.exp_m1(),
                         "tgamma" => f_host.gamma(),
