@@ -1472,6 +1472,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             iter::once(i8p),
             tcx.types.unit,
             false,
+            false,
             rustc_hir::Safety::Unsafe,
             ExternAbi::Rust,
         )),
@@ -1483,6 +1484,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             [i8p, i8p].iter().cloned(),
             tcx.types.unit,
             false,
+            false,
             rustc_hir::Safety::Unsafe,
             ExternAbi::Rust,
         )),
@@ -1491,6 +1493,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
+        false,
         false,
         rustc_hir::Safety::Unsafe,
         ExternAbi::Rust,

@@ -156,6 +156,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         [],
         expected_return_type,
         false,
+        false,
         hir::Safety::Safe,
         ExternAbi::Rust,
     ));

@@ -265,6 +265,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .map(|ty| ty.stable(tables, cx))
                 .collect(),
             c_variadic: self.c_variadic,
+            splatted: self.splatted,
             safety: self.safety.stable(tables, cx),
             abi: self.abi.stable(tables, cx),
         }

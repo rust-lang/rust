@@ -276,6 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tupled_upvars_ty,
                     ),
                     coroutine_closure_sig.c_variadic,
+                    coroutine_closure_sig.splatted,
                     coroutine_closure_sig.safety,
                     coroutine_closure_sig.abi,
                 );

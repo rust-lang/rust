@@ -173,7 +173,8 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                         && let output = typeck.expr_ty(body.value)
                         && let ty::Tuple(tys) = *subs.type_at(1).kind()
                     {
-                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, ExternAbi::Rust)
+                        cx.tcx
+                            .mk_fn_sig(tys, output, false, false, Safety::Safe, ExternAbi::Rust)
                     } else {
                         return;
                     }

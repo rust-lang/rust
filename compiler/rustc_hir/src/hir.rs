@@ -3926,6 +3926,8 @@ pub struct FnDecl<'hir> {
     pub inputs: &'hir [Ty<'hir>],
     pub output: FnRetTy<'hir>,
     pub c_variadic: bool,
+    /// Is the last argument of the function splatted into multiple arguments in callers?
+    pub splatted: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
     /// Is lifetime elision allowed.

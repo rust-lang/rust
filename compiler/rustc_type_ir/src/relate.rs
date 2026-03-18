@@ -161,6 +161,10 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
             )));
         }
 
+        if a.splatted != b.splatted {
+            return Err(TypeError::SplatMismatch(ExpectedFound::new(a.splatted, b.splatted)));
+        }
+
         if a.safety != b.safety {
             return Err(TypeError::SafetyMismatch(ExpectedFound::new(a.safety, b.safety)));
         }
@@ -203,6 +207,7 @@ impl<I: Interner> Relate<I> for ty::FnSig<I> {
         Ok(ty::FnSig {
             inputs_and_output: cx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
+            splatted: a.splatted,
             safety: a.safety,
             abi: a.abi,
         })

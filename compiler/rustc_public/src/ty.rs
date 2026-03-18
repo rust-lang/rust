@@ -1089,6 +1089,7 @@ impl PolyFnSig {
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
+    pub splatted: bool,
     pub safety: Safety,
     pub abi: Abi,
 }

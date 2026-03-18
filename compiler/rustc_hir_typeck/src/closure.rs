@@ -89,6 +89,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         [Ty::new_tup(tcx, sig.inputs())],
                         sig.output(),
                         sig.c_variadic,
+                        sig.splatted,
                         sig.safety,
                         sig.abi,
                     )
@@ -232,6 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ],
                                     Ty::new_tup(tcx, &[bound_yield_ty, bound_return_ty]),
                                     sig.c_variadic,
+                                    sig.splatted,
                                     sig.safety,
                                     sig.abi,
                                 )
@@ -274,6 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
                     liberated_sig.c_variadic,
+                    liberated_sig.splatted,
                     liberated_sig.safety,
                     liberated_sig.abi,
                 );
@@ -548,6 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             input_tys,
             ret_param_ty,
             false,
+            false,
             hir::Safety::Safe,
             ExternAbi::Rust,
         ));
@@ -633,6 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys,
             return_ty,
+            false,
             false,
             hir::Safety::Safe,
             ExternAbi::Rust,
@@ -746,6 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.inputs().iter().cloned(),
                 sig.output(),
                 sig.c_variadic,
+                sig.splatted,
                 hir::Safety::Safe,
                 ExternAbi::RustCall,
             )
@@ -885,6 +891,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 inputs,
                 supplied_output_ty,
                 expected_sigs.liberated_sig.c_variadic,
+                expected_sigs.liberated_sig.splatted,
                 hir::Safety::Safe,
                 ExternAbi::RustCall,
             );
@@ -962,6 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_arguments,
                 supplied_return,
                 decl.c_variadic,
+                decl.splatted,
                 hir::Safety::Safe,
                 ExternAbi::RustCall,
             ),
@@ -1125,6 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             supplied_arguments,
             err_ty,
             decl.c_variadic,
+            decl.splatted,
             hir::Safety::Safe,
             ExternAbi::RustCall,
         ));

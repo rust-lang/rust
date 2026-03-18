@@ -2265,6 +2265,9 @@ impl<'a> State<'a> {
             if i == 0 && decl.implicit_self.has_implicit_self() {
                 s.print_implicit_self(&decl.implicit_self);
             } else {
+                if decl.splatted && Some(i) == decl.inputs.len().checked_sub(1) {
+                    s.word("#[splat]");
+                }
                 if let Some(arg_ident) = arg_idents.get(i) {
                     if let Some(arg_ident) = arg_ident {
                         s.word(arg_ident.to_string());
@@ -2293,6 +2296,9 @@ impl<'a> State<'a> {
             }
             print_arg(self, None);
             self.word("...");
+        }
+        if decl.splatted && decl.inputs.is_empty() {
+            self.word("#[splat] ()");
         }
         self.pclose();
 

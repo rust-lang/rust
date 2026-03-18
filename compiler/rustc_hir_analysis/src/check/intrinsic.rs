@@ -646,12 +646,14 @@ pub(crate) fn check_intrinsic_type(
                 [mut_u8],
                 tcx.types.unit,
                 false,
+                false,
                 hir::Safety::Safe,
                 ExternAbi::Rust,
             ));
             let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                 [mut_u8, mut_u8],
                 tcx.types.unit,
+                false,
                 false,
                 hir::Safety::Safe,
                 ExternAbi::Rust,
@@ -816,7 +818,7 @@ pub(crate) fn check_intrinsic_type(
             return;
         }
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
+    let sig = tcx.mk_fn_sig(inputs, output, false, false, safety, ExternAbi::Rust);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

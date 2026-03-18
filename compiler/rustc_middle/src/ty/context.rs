@@ -2144,7 +2144,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, ExternAbi::Rust)
+            self.mk_fn_sig(params, s.output(), s.c_variadic, s.splatted, safety, ExternAbi::Rust)
         })
     }
 
@@ -2422,6 +2422,7 @@ impl<'tcx> TyCtxt<'tcx> {
         inputs: I,
         output: I::Item,
         c_variadic: bool,
+        splatted: bool,
         safety: hir::Safety,
         abi: ExternAbi,
     ) -> T::Output
@@ -2432,6 +2433,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.mk_type_list(xs),
             c_variadic,
+            splatted,
             safety,
             abi,
         })

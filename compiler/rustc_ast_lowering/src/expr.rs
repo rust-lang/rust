@@ -763,6 +763,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             inputs,
             output,
             c_variadic: false,
+            splatted: false,
             implicit_self: hir::ImplicitSelfKind::None,
             lifetime_elision_allowed: false,
         });

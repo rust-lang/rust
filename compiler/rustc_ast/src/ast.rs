@@ -3057,6 +3057,9 @@ impl FnDecl {
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
     }
+    pub fn splatted(&self) -> bool {
+        self.inputs.last().is_some_and(|arg| arg.attrs.iter().any(|attr| attr.has_name(sym::splat)))
+    }
 }
 
 /// Is the trait definition an auto trait?

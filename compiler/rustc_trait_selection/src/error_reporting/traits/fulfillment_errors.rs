@@ -3274,6 +3274,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 given,
                 self.tcx.types.unit,
                 false,
+                false,
                 hir::Safety::Safe,
                 ExternAbi::Rust,
             )),
@@ -3283,6 +3284,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_pred.rebind(self.tcx.mk_fn_sig(
                 expected,
                 self.tcx.types.unit,
+                false,
                 false,
                 hir::Safety::Safe,
                 ExternAbi::Rust,

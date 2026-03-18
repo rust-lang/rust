@@ -1657,6 +1657,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                     [sig.tupled_inputs_ty],
                     output_ty,
                     sig.c_variadic,
+                    sig.splatted,
                     sig.safety,
                     sig.abi,
                 )
