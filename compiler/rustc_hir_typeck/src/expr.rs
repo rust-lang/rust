@@ -1660,14 +1660,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
-            // This shouldn't happen unless there's another error
-            // (e.g., never patterns in inappropriate contexts).
-            if self.diverges.get() != Diverges::Maybe {
-                self.dcx()
-                    .struct_span_err(expr.span, "unexpected divergence state in checking array")
-                    .delay_as_bug();
-            }
-
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| {
