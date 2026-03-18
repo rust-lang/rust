@@ -1,7 +1,7 @@
 Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4)
 Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:26:37: 26:43 (#3) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:26:43: 26:44 (#3) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:44: 26:45 (#3) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:26:45: 26:50 (#3) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:26:50: 26:51 (#3) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:26:51: 26:53 (#3) }]
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
-#![feature /* 0#0 */(prelude_import)]
+#![feature /* 0#0 */(prelude_import /* 0#0 */)]
 //@ aux-build:make-macro.rs
 //@ proc-macro: meta-macro.rs
 //@ edition:2018
@@ -30,7 +30,8 @@ macro_rules! produce_it
     */ {
     () =>
     {
-        meta_macro::print_def_site!($crate::dummy!());
+        meta_macro /* 0#0 */::print_def_site /* 0#0
+        */!($crate /* 0#0 */::dummy /* 0#0 */!());
         // `print_def_site!` will respan the `$crate` identifier
         // with `Span::def_site()`. This should cause it to resolve
         // relative to `meta_macro`, *not* `make_macro` (despite
