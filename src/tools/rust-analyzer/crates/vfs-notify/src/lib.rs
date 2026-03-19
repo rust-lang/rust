@@ -198,7 +198,7 @@ impl NotifyActor {
                         && let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
                             event.kind
                     {
-                        let files = event
+                        let abs_paths: Vec<AbsPathBuf> = event
                             .paths
                             .into_iter()
                             .filter_map(|path| {
@@ -207,6 +207,10 @@ impl NotifyActor {
                                         .expect("path is absolute"),
                                 )
                             })
+                            .collect();
+
+                        let files = abs_paths
+                            .into_iter()
                             .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
                                 // Ignore events for files/directories that we're not watching.
                                 if !(self.watched_file_entries.contains(&path)
