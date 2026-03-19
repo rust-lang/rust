@@ -267,7 +267,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-macro_rules! query_helper_param_ty {
+macro_rules! maybe_into_query_key {
     (DefId) => { impl $crate::query::IntoQueryKey<DefId> };
     (LocalDefId) => { impl $crate::query::IntoQueryKey<LocalDefId> };
     ($K:ty) => { $K };
@@ -276,7 +276,7 @@ macro_rules! query_helper_param_ty {
 macro_rules! define_callbacks {
     (
         // You might expect the key to be `$K:ty`, but it needs to be `$($K:tt)*` so that
-        // `query_helper_param_ty!` can match on specific type names.
+        // `maybe_into_query_key!` can match on specific type names.
         queries {
             $(
                 $(#[$attr:meta])*
@@ -555,7 +555,7 @@ macro_rules! define_callbacks {
                 $(#[$attr])*
                 #[inline(always)]
                 #[must_use]
-                pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V {
+                pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     self.at(DUMMY_SP).$name(key)
                 }
             )*
@@ -565,7 +565,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
-                pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V {
+                pub fn $name(self, key: maybe_into_query_key!($($K)*)) -> $V {
                     use $crate::query::{erase, inner};
 
                     erase::restore_val::<$V>(inner::query_get_at(
@@ -582,7 +582,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
-                pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
@@ -601,7 +601,7 @@ macro_rules! define_callbacks {
                 #[inline(always)]
                 pub fn $name(
                     self,
-                    key: query_helper_param_ty!($($K)*),
+                    key: maybe_into_query_key!($($K)*),
                 ) -> Result<(), rustc_errors::ErrorGuaranteed> {
                     $crate::query::inner::query_ensure_result(
                         self.tcx,
@@ -616,7 +616,7 @@ macro_rules! define_callbacks {
             $(
                 $(#[$attr])*
                 #[inline(always)]
-                pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
                     $crate::query::inner::query_ensure_ok_or_done(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
@@ -650,7 +650,7 @@ macro_rules! define_callbacks {
 
 // Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
 pub(crate) use define_callbacks;
-pub(crate) use query_helper_param_ty;
+pub(crate) use maybe_into_query_key;
 
 #[cold]
 pub(crate) fn default_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
