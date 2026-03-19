@@ -203,30 +203,10 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     #[inline]
-    pub fn insert_range(&mut self, elems: impl RangeBounds<T>) {
-        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
-            return;
-        };
-
-        let (start_word_index, start_mask) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        // Set all words in between start and end (exclusively of both).
-        for word_index in (start_word_index + 1)..end_word_index {
-            self.words[word_index] = !0;
-        }
-
-        if start_word_index != end_word_index {
-            // Start and end are in different words, so we handle each in turn.
-            //
-            // We set all leading bits. This includes the start_mask bit.
-            self.words[start_word_index] |= !(start_mask - 1);
-            // And all trailing bits (i.e. from 0..=end) in the end word,
-            // including the end.
-            self.words[end_word_index] |= end_mask | (end_mask - 1);
-        } else {
-            self.words[start_word_index] |= end_mask | (end_mask - start_mask);
-        }
+    pub fn insert_range(&mut self, range: impl RangeBounds<T>) {
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::insert_range(self.domain_size, &mut self.words, (start, end));
     }
 
     /// Sets all bits to true.
@@ -237,28 +217,10 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Checks whether any bit in the given range is a 1.
     #[inline]
-    pub fn contains_any(&self, elems: impl RangeBounds<T>) -> bool {
-        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
-            return false;
-        };
-        let (start_word_index, start_mask) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        if start_word_index == end_word_index {
-            self.words[start_word_index] & (end_mask | (end_mask - start_mask)) != 0
-        } else {
-            if self.words[start_word_index] & !(start_mask - 1) != 0 {
-                return true;
-            }
-
-            let remaining = start_word_index + 1..end_word_index;
-            if remaining.start <= remaining.end {
-                self.words[remaining].iter().any(|&w| w != 0)
-                    || self.words[end_word_index] & (end_mask | (end_mask - 1)) != 0
-            } else {
-                false
-            }
-        }
+    pub fn contains_any(&self, range: impl RangeBounds<T>) -> bool {
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::contains_any(self.domain_size, &self.words, (start, end))
     }
 
     /// Returns `true` if the set has changed.
@@ -280,33 +242,9 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
-        let (start, end) = inclusive_start_end(range, self.domain_size)?;
-        let (start_word_index, _) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        let end_word = self.words[end_word_index] & (end_mask | (end_mask - 1));
-        if end_word != 0 {
-            let pos = max_bit(end_word) + WORD_BITS * end_word_index;
-            if start <= pos {
-                return Some(T::new(pos));
-            }
-        }
-
-        // We exclude end_word_index from the range here, because we don't want
-        // to limit ourselves to *just* the last word: the bits set it in may be
-        // after `end`, so it may not work out.
-        if let Some(offset) =
-            self.words[start_word_index..end_word_index].iter().rposition(|&w| w != 0)
-        {
-            let word_idx = start_word_index + offset;
-            let start_word = self.words[word_idx];
-            let pos = max_bit(start_word) + WORD_BITS * word_idx;
-            if start <= pos {
-                return Some(T::new(pos));
-            }
-        }
-
-        None
+        let start = range.start_bound().map(|i| i.index());
+        let end = range.end_bound().map(|i| i.index());
+        raw::last_set_in(self.domain_size, &self.words, (start, end)).map(T::new)
     }
 
     bit_relations_inherent_impls! {}
