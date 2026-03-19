@@ -1,11 +1,12 @@
 use rustc_hir::def_id::LocalDefId;
 
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
+pub use self::into_query_key::IntoQueryKey;
 pub use self::job::{QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
-    ActiveKeyStatus, CycleError, EnsureMode, IntoQueryParam, QueryMode, QueryState, QuerySystem,
-    QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
+    ActiveKeyStatus, CycleError, EnsureMode, QueryMode, QueryState, QuerySystem, QueryVTable,
+    TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
 pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;
@@ -15,6 +16,7 @@ pub(crate) mod arena_cached;
 mod caches;
 pub mod erase;
 pub(crate) mod inner;
+mod into_query_key;
 mod job;
 mod keys;
 pub(crate) mod modifiers;
