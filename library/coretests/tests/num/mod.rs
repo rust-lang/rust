@@ -37,6 +37,8 @@ mod niche_types;
 mod ops;
 mod wrapping;
 
+use floats::{assert_biteq, float_test};
+
 /// Adds the attribute to all items in the block.
 macro_rules! cfg_block {
     ($(#[$attr:meta]{$($it:item)*})*) => {$($(

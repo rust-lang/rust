@@ -18,8 +18,8 @@
 //! integer types.
 //!
 //! For our purposes,
-//! "interchange format"          => f32, f64
-//! "arithmetic format"           => f32, f64, and any "soft floats"
+//! "interchange format"          => f16, f32, f64, f128
+//! "arithmetic format"           => f16, f32, f64, f128, and any "soft floats"
 //! "external character sequence" => str from any float
 //! "integer format"              => {i,u}{8,16,32,64,128}
 //!
@@ -28,131 +28,139 @@
 //! Please consider this carefully when adding, removing, or reorganizing these tests. They are
 //! here so that it is clear what tests are required by the standard and what can be changed.
 
-use ::core::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
-// IEEE 754 for many tests is applied to specific bit patterns.
-// These generally are not applicable to NaN, however.
-macro_rules! assert_biteq {
-    ($lhs:expr, $rhs:expr) => {
-        assert_eq!($lhs.to_bits(), $rhs.to_bits())
-    };
+use crate::num::{assert_biteq, float_test};
+
+/// ToString uses the default fmt::Display impl without special concerns, and bypasses other parts
+/// of the formatting infrastructure, which makes it ideal for testing here.
+#[track_caller]
+fn string_roundtrip<T>(x: T) -> T
+where
+    T: FromStr<Err: fmt::Debug> + fmt::Display,
+{
+    x.to_string().parse::<T>().unwrap()
 }
 
-// ToString uses the default fmt::Display impl without special concerns, and bypasses other parts
-// of the formatting infrastructure, which makes it ideal for testing here.
-macro_rules! roundtrip {
-    ($f:expr => $t:ty) => {
-        ($f).to_string().parse::<$t>().unwrap()
-    };
-}
-
-macro_rules! assert_floats_roundtrip {
-    ($f:ident) => {
-        assert_biteq!(f32::$f, roundtrip!(f32::$f => f32));
-        assert_biteq!(f64::$f, roundtrip!(f64::$f => f64));
-    };
-    ($f:expr) => {
-        assert_biteq!($f as f32, roundtrip!($f => f32));
-        assert_biteq!($f as f64, roundtrip!($f => f64));
-    }
-}
-
-macro_rules! assert_floats_bitne {
-    ($lhs:ident, $rhs:ident) => {
-        assert_ne!(f32::$lhs.to_bits(), f32::$rhs.to_bits());
-        assert_ne!(f64::$lhs.to_bits(), f64::$rhs.to_bits());
-    };
-    ($lhs:expr, $rhs:expr) => {
-        assert_ne!(f32::to_bits($lhs), f32::to_bits($rhs));
-        assert_ne!(f64::to_bits($lhs), f64::to_bits($rhs));
-    };
-}
+// FIXME(f128): Tests are disabled while we don't have parsing / printing
 
 // We must preserve signs on all numbers. That includes zero.
 // -0 and 0 are == normally, so test bit equality.
-#[test]
-fn preserve_signed_zero() {
-    assert_floats_roundtrip!(-0.0);
-    assert_floats_roundtrip!(0.0);
-    assert_floats_bitne!(0.0, -0.0);
+float_test! {
+    name: preserve_signed_zero,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        let neg0 = flt(-0.0);
+        let pos0 = flt(0.0);
+        assert_biteq!(neg0, string_roundtrip(neg0));
+        assert_biteq!(pos0, string_roundtrip(pos0));
+        assert_ne!(neg0.to_bits(), pos0.to_bits());
+    }
 }
 
-#[test]
-fn preserve_signed_infinity() {
-    assert_floats_roundtrip!(INFINITY);
-    assert_floats_roundtrip!(NEG_INFINITY);
-    assert_floats_bitne!(INFINITY, NEG_INFINITY);
+float_test! {
+    name: preserve_signed_infinity,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        let neg_inf = Float::NEG_INFINITY;
+        let pos_inf = Float::INFINITY;
+        assert_biteq!(neg_inf, string_roundtrip(neg_inf));
+        assert_biteq!(pos_inf, string_roundtrip(pos_inf));
+        assert_ne!(neg_inf.to_bits(), pos_inf.to_bits());
+    }
 }
 
-#[test]
-fn infinity_to_str() {
-    assert!(match f32::INFINITY.to_string().to_lowercase().as_str() {
-        "+infinity" | "infinity" => true,
-        "+inf" | "inf" => true,
-        _ => false,
-    });
-    assert!(
-        match f64::INFINITY.to_string().to_lowercase().as_str() {
-            "+infinity" | "infinity" => true,
-            "+inf" | "inf" => true,
-            _ => false,
-        },
-        "Infinity must write to a string as some casing of inf or infinity, with an optional +."
-    );
+float_test! {
+    name: infinity_to_str,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        assert!(
+            match Float::INFINITY.to_string().to_lowercase().as_str() {
+                "+infinity" | "infinity" => true,
+                "+inf" | "inf" => true,
+                _ => false,
+            },
+            "Infinity must write to a string as some casing of inf or infinity, with an optional +."
+        );
+        assert!(
+            match Float::NEG_INFINITY.to_string().to_lowercase().as_str() {
+                "-infinity" | "-inf" => true,
+                _ => false,
+            },
+            "Negative Infinity must write to a string as some casing of -inf or -infinity"
+        );
+    }
 }
 
-#[test]
-fn neg_infinity_to_str() {
-    assert!(match f32::NEG_INFINITY.to_string().to_lowercase().as_str() {
-        "-infinity" | "-inf" => true,
-        _ => false,
-    });
-    assert!(
-        match f64::NEG_INFINITY.to_string().to_lowercase().as_str() {
-            "-infinity" | "-inf" => true,
-            _ => false,
-        },
-        "Negative Infinity must write to a string as some casing of -inf or -infinity"
-    )
+float_test! {
+    name: nan_to_str,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        assert!(
+            match Float::NAN.to_string().to_lowercase().as_str() {
+                "nan" | "+nan" | "-nan" => true,
+                _ => false,
+            },
+            "NaNs must write to a string as some casing of nan."
+        )
+    }
 }
 
-#[test]
-fn nan_to_str() {
-    assert!(
-        match f32::NAN.to_string().to_lowercase().as_str() {
-            "nan" | "+nan" | "-nan" => true,
-            _ => false,
-        },
-        "NaNs must write to a string as some casing of nan."
-    )
+float_test! {
+    name: infinity_from_str,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        // "+"?("inf"|"infinity") in any case => Infinity
+        assert_biteq!(Float::INFINITY, Float::from_str("infinity").unwrap());
+        assert_biteq!(Float::INFINITY, Float::from_str("inf").unwrap());
+        assert_biteq!(Float::INFINITY, Float::from_str("+infinity").unwrap());
+        assert_biteq!(Float::INFINITY, Float::from_str("+inf").unwrap());
+        // yes! this means you are weLcOmE tO mY iNfInItElY tWiStEd MiNd
+        assert_biteq!(Float::INFINITY, Float::from_str("+iNfInItY").unwrap());
+
+        // "-inf"|"-infinity" in any case => Negative Infinity
+        assert_biteq!(Float::NEG_INFINITY, Float::from_str("-infinity").unwrap());
+        assert_biteq!(Float::NEG_INFINITY, Float::from_str("-inf").unwrap());
+        assert_biteq!(Float::NEG_INFINITY, Float::from_str("-INF").unwrap());
+        assert_biteq!(Float::NEG_INFINITY, Float::from_str("-INFinity").unwrap());
+
+    }
 }
 
-// "+"?("inf"|"infinity") in any case => Infinity
-#[test]
-fn infinity_from_str() {
-    assert_biteq!(f32::INFINITY, f32::from_str("infinity").unwrap());
-    assert_biteq!(f32::INFINITY, f32::from_str("inf").unwrap());
-    assert_biteq!(f32::INFINITY, f32::from_str("+infinity").unwrap());
-    assert_biteq!(f32::INFINITY, f32::from_str("+inf").unwrap());
-    // yes! this means you are weLcOmE tO mY iNfInItElY tWiStEd MiNd
-    assert_biteq!(f32::INFINITY, f32::from_str("+iNfInItY").unwrap());
-}
-
-// "-inf"|"-infinity" in any case => Negative Infinity
-#[test]
-fn neg_infinity_from_str() {
-    assert_biteq!(f32::NEG_INFINITY, f32::from_str("-infinity").unwrap());
-    assert_biteq!(f32::NEG_INFINITY, f32::from_str("-inf").unwrap());
-    assert_biteq!(f32::NEG_INFINITY, f32::from_str("-INF").unwrap());
-    assert_biteq!(f32::NEG_INFINITY, f32::from_str("-INFinity").unwrap());
-}
-
-// ("+"|"-"")?"s"?"nan" in any case => qNaN
-#[test]
-fn qnan_from_str() {
-    assert!("nan".parse::<f32>().unwrap().is_nan());
-    assert!("-nan".parse::<f32>().unwrap().is_nan());
-    assert!("+nan".parse::<f32>().unwrap().is_nan());
-    assert!("+NAN".parse::<f32>().unwrap().is_nan());
-    assert!("-NaN".parse::<f32>().unwrap().is_nan());
+float_test! {
+    name: qnan_from_str,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(false)],
+    },
+    test {
+        // ("+"|"-"")?"s"?"nan" in any case => qNaN
+        assert!("nan".parse::<Float>().unwrap().is_nan());
+        assert!("-nan".parse::<Float>().unwrap().is_nan());
+        assert!("+nan".parse::<Float>().unwrap().is_nan());
+        assert!("+NAN".parse::<Float>().unwrap().is_nan());
+        assert!("-NaN".parse::<Float>().unwrap().is_nan());
+    }
 }

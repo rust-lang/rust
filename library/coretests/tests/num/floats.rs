@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-trait TestableFloat: Sized {
+pub(crate) trait TestableFloat: Sized {
     const BITS: u32;
     /// Unsigned int with the same size, for converting to/from bits.
     type Int;
@@ -224,7 +224,7 @@ impl TestableFloat for f128 {
 }
 
 /// Determine the tolerance for values of the argument type.
-const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
+pub(crate) const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
     T::APPROX
 }
 
@@ -272,8 +272,8 @@ macro_rules! assert_biteq {
             // We rely on the `Float` type being brought in scope by the macros below.
             l: Float = l,
             r: Float = r,
-            lb: <Float as TestableFloat>::Int = l.to_bits(),
-            rb: <Float as TestableFloat>::Int = r.to_bits(),
+            lb: <Float as $crate::num::floats::TestableFloat>::Int = l.to_bits(),
+            rb: <Float as $crate::num::floats::TestableFloat>::Int = r.to_bits(),
             width: usize = ((bits / 4) + 2) as usize,
         );
     }};
@@ -314,6 +314,7 @@ macro_rules! float_test {
         test $test:block
     ) => {
         mod $name {
+            #[allow(unused_imports)]
             use super::*;
 
             #[test]
@@ -362,6 +363,7 @@ macro_rules! float_test {
 
             $( $( #[$const_meta] )+ )?
             mod const_ {
+                #[allow(unused_imports)]
                 use super::*;
 
                 #[test]
@@ -411,6 +413,9 @@ macro_rules! float_test {
         }
     };
 }
+
+pub(crate) use assert_biteq;
+pub(crate) use float_test;
 
 float_test! {
     name: num,
