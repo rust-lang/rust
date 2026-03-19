@@ -19,7 +19,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (can only be run in cargo build scripts)
+    /// ```rust,ignore (should only be run in cargo build scripts)
     /// if cfg!(windows) {}
     /// ```
     ///
@@ -199,19 +199,10 @@ fn get_invalid_cfg_attrs(attr: &MetaItem, spans: &mut Vec<Span>, has_unknown: &m
     }
 }
 
-fn is_build_script(cx: &EarlyContext<'_>) -> bool {
-    rustc_session::utils::was_invoked_from_cargo()
-        && cx.sess().opts.crate_name.as_deref() == Some("build_script_build")
-}
-
 const ERROR_MESSAGE: &str = "target-based cfg should be avoided in build scripts";
 
 impl EarlyLintPass for MisleadingCfgInBuildScript {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        if !is_build_script(cx) {
-            return;
-        }
-
         let mut spans = Vec::new();
         let mut has_unknown = false;
         match attr.name() {
@@ -252,10 +243,6 @@ impl EarlyLintPass for MisleadingCfgInBuildScript {
     }
 
     fn check_mac(&mut self, cx: &EarlyContext<'_>, call: &MacCall) {
-        if !is_build_script(cx) {
-            return;
-        }
-
         if call.path.segments.len() == 1 && call.path.segments[0].ident.name == sym::cfg {
             let mut ast = Vec::new();
             let mut has_unknown = false;
