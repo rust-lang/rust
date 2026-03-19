@@ -2,11 +2,10 @@
 
 //@ has all_targets/fn.foo.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on GNU or target_env=macabi or target_env=mlibc or MSVC or musl or \
-//  Newlib or target_env=nto70 or target_env=nto71 or target_env=nto71_iosock or \
-//  target_env=nto80 or target_env=ohos or target_env=relibc or SGX or \
-//  target_env=sim or target_env=p1 or target_env=p2 or target_env=p3 or uClibc or \
-//  target_env=v5 or target_env=fake_env only.'
+//  'Available on GNU or Catalyst or mac ABI or MSVC or musl or Newlib or \
+//  Neutrino 7.0 or Neutrino 7.1 or Neutrino 7.1 with io-sock or Neutrino 8.0 or \
+//  OpenHarmony or relibc or SGX or Simulator or WASIp1 or WASIp2 or WASIp3 or \
+//  uClibc or V5 or target_env=fake_env only.'
 #[doc(cfg(any(
     target_env = "gnu",
     target_env = "macabi",
@@ -33,13 +32,12 @@ pub fn foo() {}
 
 //@ has all_targets/fn.bar.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on AArch64 or target_arch=amdgpu or ARM or target_arch=arm64ec or \
-//  target_arch=avr or target_arch=bpf or CSKY or target_arch=hexagon or LoongArch \
-//  LA32 or LoongArch LA64 or M68k or MIPS or MIPS Release 6 or MIPS-64 or MIPS-64 \
-//  Release 6 or MSP430 or target_arch=nvptx64 or PowerPC or PowerPC-64 or RISC-V \
-//  RV32 or RISC-V RV64 or s390x or target_arch=sparc or SPARC64 or \
-//  target_arch=spirv or WebAssembly or WebAssembly or x86 or x86-64 or \
-//  target_arch=xtensa or target_arch=fake_arch only.'
+//  'Available on AArch64 or AMG GPU or ARM or ARM64EC or AVR or BPF or C-SKY or \
+//  Hexagon or LoongArch64 or LoongArch32 or Motorola 680x0 or MIPS or MIPS release \
+//  6 or MIPS-64 or MIPS-64 release 6 or MSP430 or NVidia GPU or PowerPC or \
+//  PowerPC64 or RISC-V RV32 or RISC-V RV64 or s390x or SPARC or SPARC-64 or SPIR-V \
+//  or WebAssembly or WebAssembly or x86 or x86-64 or Xtensa or \
+//  target_arch=fake_arch only.'
 #[doc(cfg(any(
     target_arch = "aarch64",
     target_arch = "amdgpu",
@@ -77,18 +75,15 @@ pub fn bar() {}
 
 //@ has all_targets/fn.baz.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on target_os=aix and target_os=amdhsa and Android and target_os=cuda \
-//  and Cygwin and DragonFly BSD and Emscripten and target_os=espidf and FreeBSD \
-//  and Fuchsia and Haiku and target_os=helenos and Hermit and target_os=horizon \
-//  and target_os=hurd and illumos and iOS and L4Re and Linux and \
-//  target_os=lynxos178 and macOS and target_os=managarm and target_os=motor and \
-//  NetBSD and target_os=none and target_os=nto and target_os=nuttx and OpenBSD and \
-//  target_os=psp and target_os=psx and target_os=qurt and Redox and \
-//  target_os=rtems and Solaris and target_os=solid_asp3 and target_os=teeos and \
-//  target_os=trusty and tvOS and target_os=uefi and target_os=vexos and visionOS \
-//  and target_os=vita and target_os=vxworks and WASI and watchOS and Windows and \
-//  target_os=xous and target_os=zkvm and target_os=unknown and target_os=fake_os \
-//  only.'
+//  'Available on AIX and AMD HSA and Android and CUDA and Cygwin and DragonFly \
+//  BSD and Emscripten and ESP-IDF and FreeBSD and Fuchsia and Haiku and HelenOS \
+//  and Hermit and Horizon and GNU/Hurd and illumos and iOS and L4Re and Linux \
+//  and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and bare-metal \
+//  and QNX Neutrino and NuttX and OpenBSD and Play Station Portable and Play \
+//  Station 1 and QuRT and Redox OS and RTEMS OS and Solaris and SOLID ASP3 and \
+//  TEEOS and Trusty and tvOS and UEFI and VEXos and visionOS and Play Station \
+//  Vita and VxWorks and WASI and watchOS and Windows and Xous and zero knowledge \
+//  Virtual Machine and target_os=unknown and target_os=fake_os only.'
 #[doc(cfg(all(
     target_os = "aix",
     target_os = "amdhsa",
