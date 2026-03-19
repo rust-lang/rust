@@ -185,21 +185,11 @@ impl<T: Idx> DenseBitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert `elem`. Returns whether the set has changed.
+    /// Inserts `value` into the set, and returns true if the set has changed
+    /// (i.e. the set did not contain the value).
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
-        assert!(
-            elem.index() < self.domain_size,
-            "inserting element at index {} but domain size is {}",
-            elem.index(),
-            self.domain_size,
-        );
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word | mask;
-        *word_ref = new_word;
-        new_word != word
+    pub fn insert(&mut self, value: T) -> bool {
+        raw::insert(self.domain_size, &mut self.words, value.index())
     }
 
     #[inline]
@@ -223,16 +213,11 @@ impl<T: Idx> DenseBitSet<T> {
         raw::contains_any(self.domain_size, &self.words, (start, end))
     }
 
-    /// Returns `true` if the set has changed.
+    /// Removes `value` from the set, and returns true if the set has changed
+    /// (i.e. the set did contain the value).
     #[inline]
-    pub fn remove(&mut self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word & !mask;
-        *word_ref = new_word;
-        new_word != word
+    pub fn remove(&mut self, value: T) -> bool {
+        raw::remove(self.domain_size, &mut self.words, value.index())
     }
 
     /// Iterates over the indices of set bits in a sorted order.
@@ -1608,12 +1593,9 @@ fn num_chunks<T: Idx>(domain_size: T) -> usize {
     domain_size.index().div_ceil(CHUNK_BITS)
 }
 
-#[inline]
+#[inline(always)]
 fn word_index_and_mask<T: Idx>(elem: T) -> (usize, Word) {
-    let elem = elem.index();
-    let word_index = elem / WORD_BITS;
-    let mask = 1 << (elem % WORD_BITS);
-    (word_index, mask)
+    raw::word_index_and_mask(elem.index())
 }
 
 #[inline]

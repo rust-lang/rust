@@ -1,7 +1,7 @@
 use std::ops::Bound;
 use std::slice;
 
-use crate::bit_set::{WORD_BITS, Word, inclusive_start_end, max_bit, word_index_and_mask};
+use crate::bit_set::{WORD_BITS, Word, inclusive_start_end, max_bit};
 
 #[inline]
 pub(crate) fn contains_any(
@@ -65,6 +65,40 @@ pub(crate) fn last_set_in(
     }
 
     None
+}
+
+#[inline(always)]
+pub(crate) fn insert(domain_size: usize, words: &mut [Word], index: usize) -> bool {
+    if index >= domain_size {
+        index_not_in_domain("inserting", index, domain_size);
+    }
+
+    let (word_index, mask) = word_index_and_mask(index);
+    modify_word(&mut words[word_index], |w| w | mask)
+}
+
+#[inline(always)]
+pub(crate) fn remove(domain_size: usize, words: &mut [Word], index: usize) -> bool {
+    if index >= domain_size {
+        index_not_in_domain("removing", index, domain_size);
+    }
+
+    let (word_index, mask) = word_index_and_mask(index);
+    modify_word(&mut words[word_index], |w| w & !mask)
+}
+
+#[cold]
+#[inline(never)]
+fn index_not_in_domain(verb: &'static str, index: usize, domain_size: usize) -> ! {
+    panic!("{verb} at index {index} but domain size is {domain_size}");
+}
+
+/// Updates a `&mut Word` using the given function, and returns true if the value was changed.
+#[inline(always)]
+fn modify_word(word: &mut Word, modify_fn: impl Fn(Word) -> Word) -> bool {
+    let old = *word;
+    *word = modify_fn(old);
+    old != *word
 }
 
 #[inline]
@@ -148,4 +182,11 @@ impl<'a> Iterator for RawBitIter<'a> {
             self.offset = self.offset.wrapping_add(WORD_BITS);
         }
     }
+}
+
+#[inline(always)]
+pub(crate) fn word_index_and_mask(bit_index: usize) -> (usize, Word) {
+    let word_index = bit_index / WORD_BITS;
+    let mask = 1 << (bit_index % WORD_BITS);
+    (word_index, mask)
 }
