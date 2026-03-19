@@ -6,7 +6,9 @@ use std::marker;
 struct S<T>(marker::PhantomData<T>);
 
 trait Gettable<T> {
-    fn get(&self) -> T { panic!() }
+    fn get(&self) -> T {
+        panic!()
+    }
 }
 
 impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -45,4 +47,4 @@ fn foo3<'a>() {
     //~^ ERROR : Copy` is not satisfied
 }
 
-fn main() { }
+fn main() {}
