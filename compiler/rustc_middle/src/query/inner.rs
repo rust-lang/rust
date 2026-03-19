@@ -79,21 +79,26 @@ where
 {
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => erase::restore_val(value).map(drop),
-        None => (query.execute_query_fn)(
-            tcx,
-            DUMMY_SP,
-            key,
-            QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
-        )
-        .map(erase::restore_val)
-        .map(|value| value.map(drop))
-        // Either we actually executed the query, which means we got a full `Result`,
-        // or we can just assume the query succeeded, because it was green in the
-        // incremental cache. If it is green, that means that the previous compilation
-        // that wrote to the incremental cache compiles successfully. That is only
-        // possible if the cache entry was `Ok(())`, so we emit that here, without
-        // actually encoding the `Result` in the cache or loading it from there.
-        .unwrap_or(Ok(())),
+        None => {
+            match (query.execute_query_fn)(
+                tcx,
+                DUMMY_SP,
+                key,
+                QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
+            ) {
+                // We executed the query. If the restored result is `Ok(_)`, dropping it converts
+                // it to `Ok(())`. If the restored result is `Err(guar)`, we pass that along.
+                Some(res) => erase::restore_val(res).map(drop),
+
+                // Reaching here means we didn't execute the query, but we can just assume the
+                // query succeeded, because it was green in the incremental cache. If it is green,
+                // that means that the previous compilation that wrote to the incremental cache
+                // compiles successfully. That is only possible if the cache entry was `Ok(())`, so
+                // we emit that here, without actually encoding the `Result` in the cache or
+                // loading it from there.
+                None => Ok(()),
+            }
+        }
     }
 }
 
