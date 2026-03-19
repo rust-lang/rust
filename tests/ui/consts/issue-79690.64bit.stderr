@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
+error[E0080]: constructing invalid value of type Fat<'_>: at .1, encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/issue-79690.rs:30:1
    |
 LL | const G: Fat = unsafe { Transmute { t: FOO }.u };

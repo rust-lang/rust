@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at [3]: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type [u8; 4]: at [3], encountered uninitialized memory, but expected an integer
   --> tests/fail-dep/libc/libc-read-and-uninit-premature-eof.rs:LL:CC
    |
 LL |         buf.assume_init();

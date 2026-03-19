@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a null reference
+error: Undefined Behavior: constructing invalid value of type &i32: encountered a null reference
   --> tests/fail/validity/cast_fn_ptr_invalid_caller_ret.rs:LL:CC
    |
 LL |     let _x = g();

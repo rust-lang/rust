@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .<deref>: encountered 0x03, but expected a boolean
+error: Undefined Behavior: constructing invalid value of type &bool: at .<deref>, encountered 0x03, but expected a boolean
   --> tests/fail/validity/recursive-validity-ref-bool.rs:LL:CC
    |
 LL |     let xref_wrong_type: &bool = unsafe { std::mem::transmute(xref) };
