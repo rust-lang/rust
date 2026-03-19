@@ -1000,6 +1000,18 @@ impl Duration {
         }
     }
 
+    #[inline]
+    #[track_caller]
+    fn from_nanos_f128(nanos: f128) -> Duration {
+        if nanos < 0.0 {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        } else if nanos <= const { Self::MAX.as_nanos() as f128 } {
+            Self::from_nanos_u128(nanos.round_ties_even() as u128)
+        } else {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
+        }
+    }
+
     /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
@@ -1018,7 +1030,8 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(rhs * self.as_secs_f64())
+        let nanos = (self.as_nanos() as f128) * (rhs as f128);
+        Self::from_nanos_f128(nanos)
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1031,7 +1044,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_283));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1039,7 +1052,8 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(rhs * self.as_secs_f32())
+        let nanos = (self.as_nanos() as f128) * (rhs as f128);
+        Self::from_nanos_f128(nanos)
     }
 
     /// Divides `Duration` by `f64`.
@@ -1060,7 +1074,8 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(self.as_secs_f64() / rhs)
+        let nanos = (self.as_nanos() as f128) / (rhs as f128);
+        Self::from_nanos_f128(nanos)
     }
 
     /// Divides `Duration` by `f32`.
@@ -1075,7 +1090,7 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_583));
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1083,7 +1098,8 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(self.as_secs_f32() / rhs)
+        let nanos = (self.as_nanos() as f128) / (rhs as f128);
+        Self::from_nanos_f128(nanos)
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
