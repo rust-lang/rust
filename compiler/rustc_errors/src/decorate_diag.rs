@@ -11,7 +11,7 @@ use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
     Dynamic(Box<dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>),
-    Builtin(BuiltinLintDiag),
+    Builtin(Box<BuiltinLintDiag>),
 }
 
 impl std::fmt::Debug for DecorateDiagCompat {
@@ -30,7 +30,7 @@ impl<D: for<'a> Diagnostic<'a, ()> + DynSend + 'static> From<D> for DecorateDiag
 impl From<BuiltinLintDiag> for DecorateDiagCompat {
     #[inline]
     fn from(b: BuiltinLintDiag) -> Self {
-        Self::Builtin(b)
+        Self::Builtin(Box::new(b))
     }
 }
 

@@ -22,12 +22,12 @@ mod check_cfg;
 pub struct DecorateBuiltinLint<'sess, 'tcx> {
     pub sess: &'sess Session,
     pub tcx: Option<TyCtxt<'tcx>>,
-    pub diagnostic: BuiltinLintDiag,
+    pub diagnostic: Box<BuiltinLintDiag>,
 }
 
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        match self.diagnostic {
+        match *self.diagnostic {
             BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
                 let spans: Vec<_> = content
                     .char_indices()
