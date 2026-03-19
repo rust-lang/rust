@@ -696,7 +696,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 // patterns to `str`, and byte-string literal patterns to `[u8; N]` or `[u8]`.
 
                 let pat_ty = self.typeck_results.node_type(pat.hir_id);
-                let lit_input = LitToConstInput { lit: lit.node, ty: pat_ty, neg: *negated };
+                let lit_input = LitToConstInput { lit: lit.node, ty: Some(pat_ty), neg: *negated };
                 let constant = const_lit_matches_ty(self.tcx, &lit.node, pat_ty, *negated)
                     .then(|| self.tcx.at(expr.span).lit_to_const(lit_input))
                     .flatten()

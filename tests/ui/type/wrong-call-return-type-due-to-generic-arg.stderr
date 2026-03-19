@@ -112,6 +112,9 @@ LL +     let x: u16 = (S {}).method(0u16);
 error[E0308]: arguments to this function are incorrect
   --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:27:5
    |
+LL | fn main() {
+   |          - this implicit `()` return type influences the call expression's return type
+...
 LL |     function(0u32, 8u8)
    |     ^^^^^^^^ ----  --- expected `bool`, found `u8`
    |              |
