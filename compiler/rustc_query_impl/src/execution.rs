@@ -298,8 +298,6 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // panic occurs while executing the query (or any intermediate plumbing).
             let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
 
-            debug_assert_eq!(tcx.dep_graph.is_fully_enabled(), INCR);
-
             // Delegate to another function to actually execute the query job.
             let (value, dep_node_index) = if INCR {
                 execute_job_incr(query, tcx, key, dep_node, id)
@@ -618,8 +616,6 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    debug_assert!(!tcx.dep_graph.is_fully_enabled());
-
     ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
 }
 
@@ -633,8 +629,6 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     key: C::Key,
     mode: QueryMode,
 ) -> Option<C::Value> {
-    debug_assert!(tcx.dep_graph.is_fully_enabled());
-
     // Check if query execution can be skipped, for `ensure_ok` or `ensure_done`.
     // This might have the side-effect of creating a suitable DepNode, which
     // we should reuse for execution instead of creating a new one.
