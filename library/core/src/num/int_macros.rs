@@ -1846,32 +1846,9 @@ macro_rules! int_impl {
                 None
             } else {
                 // SAFETY: Input is nonnegative in this `else` branch.
-                let result = unsafe {
-                    imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT
-                };
-
-                // Inform the optimizer what the range of outputs is. If
-                // testing `core` crashes with no panic message and a
-                // `num::int_sqrt::i*` test failed, it's because your edits
-                // caused these assertions to become false.
-                //
-                // SAFETY: Integer square root is a monotonically nondecreasing
-                // function, which means that increasing the input will never
-                // cause the output to decrease. Thus, since the input for
-                // nonnegative signed integers is bounded by
-                // `[0, <$ActualT>::MAX]`, sqrt(n) will be bounded by
-                // `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
                 unsafe {
-                    // SAFETY: `<$ActualT>::MAX` is nonnegative.
-                    const MAX_RESULT: $SelfT = unsafe {
-                        imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT
-                    };
-
-                    crate::hint::assert_unchecked(result >= 0);
-                    crate::hint::assert_unchecked(result <= MAX_RESULT);
+                    Some(imp::int_sqrt::isqrt_of_nonnegative!(self, $SelfT, $ActualT))
                 }
-
-                Some(result)
             }
         }
 

@@ -314,3 +314,58 @@ unsigned_fn!(u128, u64, u128_stages);
 pub(in crate::num) const fn panic_for_negative_argument() -> ! {
     panic!("argument of integer square root cannot be negative")
 }
+
+/// Takes the isqrt of `$n` assuming its non-negative.
+///
+/// # Safety:
+///
+/// `$n` must be nonnegative
+macro_rules! isqrt_of_nonnegative {
+    ($n:expr, $SelfT:ty, $ActualT:ident) => {{
+        #[allow(unused_comparisons, reason = "Unknown if `$n` is signed or unsigned.")]
+        let _ = debug_assert!($n >= 0, "`$n` is negative in `isqrt_of_nonnegative`");
+
+        // SAFETY: $n >= 0
+        let result = imp::int_sqrt::$ActualT($n as $ActualT) as $SelfT;
+
+        #[allow(unused_unsafe, reason = "Unknown if `$n` is signed or unsigned.")]
+        // SAFETY: `<$ActualT>::MAX` is nonnegative.
+        const MAX_RESULT: $SelfT = unsafe { imp::int_sqrt::$ActualT(<$ActualT>::MAX) } as $SelfT;
+
+        #[allow(
+            unused_unsafe,
+            reason = "Macro invocation may or may not be wrapped in an unsafe block"
+        )]
+        // SAFETY: Integer square root is a monotonically nondecreasing
+        // function, which means that increasing the input will never
+        // cause the output to decrease. Thus, since the input for
+        // nonnegative signed integers is bounded by
+        // `[0, <$ActualT>::MAX]`, sqrt(n) will be bounded by
+        // `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+        unsafe {
+            #[allow(unused_comparisons, reason = "Unknown if `$n` is signed or unsigned.")]
+            crate::hint::assert_unchecked(result >= 0);
+            crate::hint::assert_unchecked(result <= MAX_RESULT);
+            if $n > 0 {
+                crate::hint::assert_unchecked(result > 0);
+            }
+        }
+
+        #[allow(
+            unused_unsafe,
+            reason = "Macro invocation may or may not be wrapped in an unsafe block."
+        )]
+        // SAFETY: the definition of isqrt is that it returns
+        // the greatest integer for which the first assertion holds.
+        // Since these are integers, the first implies the second
+        // (though the compiler is too stupid to realize this).
+        unsafe {
+            crate::hint::assert_unchecked(result * result <= $n);
+            crate::hint::assert_unchecked(result <= $n);
+        }
+
+        result
+    }};
+}
+
+pub(in crate::num) use isqrt_of_nonnegative;
