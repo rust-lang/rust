@@ -5,7 +5,7 @@ use rustc_hir::attrs::PeImportNameType;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_session::cstore::{DllCallingConvention, DllImport};
+use rustc_session::cstore::{DllCallingConvention, DllImport, DllImportSymbolType};
 use rustc_span::Span;
 use rustc_target::spec::{Abi, Env, Os, Target};
 
@@ -199,7 +199,7 @@ pub fn i686_decorated_name(
         decorated_name.push('\x01');
     }
 
-    let prefix = if add_prefix && dll_import.is_fn {
+    let prefix = if add_prefix && dll_import.symbol_type == DllImportSymbolType::Function {
         match dll_import.calling_convention {
             DllCallingConvention::C | DllCallingConvention::Vectorcall(_) => None,
             DllCallingConvention::Stdcall(_) => (!mingw
@@ -207,7 +207,7 @@ pub fn i686_decorated_name(
             .then_some('_'),
             DllCallingConvention::Fastcall(_) => Some('@'),
         }
-    } else if !dll_import.is_fn && !mingw {
+    } else if dll_import.symbol_type != DllImportSymbolType::Function && !mingw {
         // For static variables, prefix with '_' on MSVC.
         Some('_')
     } else {
@@ -219,7 +219,7 @@ pub fn i686_decorated_name(
 
     decorated_name.push_str(name);
 
-    if add_suffix && dll_import.is_fn {
+    if add_suffix && dll_import.symbol_type == DllImportSymbolType::Function {
         use std::fmt::Write;
 
         match dll_import.calling_convention {
