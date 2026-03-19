@@ -394,8 +394,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
         // list at <https://github.com/rust-lang/rust/issues/116909>)
         (Arch::PowerPC | Arch::PowerPC64, _) => false,
-        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
-        (Arch::Sparc, _) => false,
+        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
+        (Arch::Sparc, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
         // There are no known problems on other platforms, so the only requirement is that symbols
