@@ -425,7 +425,7 @@ fn const_validate_mplace<'tcx>(
     cid: GlobalId<'tcx>,
 ) -> Result<(), ErrorHandled> {
     let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
-    let mut ref_tracking = RefTracking::new(mplace.clone());
+    let mut ref_tracking = RefTracking::new(mplace.clone(), mplace.layout.ty);
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.next() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {

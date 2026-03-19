@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type i32: encountered uninitialized memory, but expected an integer
   --> tests/fail/storage-live-resets-var.rs:LL:CC
    |
 LL |             _val2 = val;

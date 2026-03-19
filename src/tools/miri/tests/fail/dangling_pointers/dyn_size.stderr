@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+error: Undefined Behavior: constructing invalid value of type &SliceWithHead: encountered a dangling reference (going beyond the bounds of its allocation)
   --> tests/fail/dangling_pointers/dyn_size.rs:LL:CC
    |
 LL |     let _ptr = unsafe { &*ptr };
