@@ -492,9 +492,12 @@ impl TestProps {
     fn update_add_minicore(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let add_minicore = config.parse_name_directive(ln, directives::ADD_MINICORE);
         if add_minicore {
-            if !matches!(config.mode, TestMode::Ui | TestMode::Codegen | TestMode::Assembly) {
+            if !matches!(
+                config.mode,
+                TestMode::Ui | TestMode::Codegen | TestMode::Assembly | TestMode::MirOpt
+            ) {
                 panic!(
-                    "`add-minicore` is currently only supported for ui, codegen and assembly test modes"
+                    "`add-minicore` is currently only supported for ui, codegen, assembly and mir-opt test modes"
                 );
             }
 
