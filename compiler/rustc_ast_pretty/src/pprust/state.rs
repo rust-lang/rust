@@ -737,6 +737,23 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             TokenTree::Token(token, spacing) => {
                 let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
+                // Emit hygiene annotations for identity-bearing tokens,
+                // matching how print_ident() and print_lifetime() call ann_post().
+                match token.kind {
+                    token::Ident(name, _) => {
+                        self.ann_post(Ident::new(name, token.span));
+                    }
+                    token::NtIdent(ident, _) => {
+                        self.ann_post(ident);
+                    }
+                    token::Lifetime(name, _) => {
+                        self.ann_post(Ident::new(name, token.span));
+                    }
+                    token::NtLifetime(ident, _) => {
+                        self.ann_post(ident);
+                    }
+                    _ => {}
+                }
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
