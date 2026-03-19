@@ -1,7 +1,8 @@
 #![warn(clippy::manual_pop_if)]
 #![allow(clippy::collapsible_if, clippy::redundant_closure)]
+#![feature(binary_heap_pop_if)]
 
-use std::collections::VecDeque;
+use std::collections::{BinaryHeap, VecDeque};
 use std::marker::PhantomData;
 
 // FakeVec has the same methods as Vec but isn't actually a Vec
@@ -17,7 +18,7 @@ impl<T> FakeVec<T> {
     }
 }
 
-fn is_some_and_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn is_some_and_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
     if vec.last().is_some_and(|x| *x > 2) {
         //~^ manual_pop_if
         vec.pop().unwrap();
@@ -36,6 +37,11 @@ fn is_some_and_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
     if deque.front().is_some_and(|x| *x > 2) {
         //~^ manual_pop_if
         deque.pop_front().unwrap();
+    }
+
+    if heap.peek().is_some_and(|x| *x > 2) {
+        //~^ manual_pop_if
+        heap.pop().unwrap();
     }
 }
 
@@ -78,7 +84,7 @@ fn is_some_and_pattern_negative(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
     };
 }
 
-fn if_let_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn if_let_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
     if let Some(x) = vec.last() {
         //~^ manual_pop_if
         if *x > 2 {
@@ -104,6 +110,13 @@ fn if_let_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
         //~^ manual_pop_if
         if *x > 2 {
             deque.pop_front().unwrap();
+        }
+    }
+
+    if let Some(x) = heap.peek() {
+        //~^ manual_pop_if
+        if *x > 2 {
+            heap.pop().unwrap();
         }
     }
 }
@@ -147,7 +160,7 @@ fn if_let_pattern_negative(mut vec: Vec<i32>) {
     };
 }
 
-fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
     if let Some(x) = vec.last() //~ manual_pop_if
         && *x > 2
     {
@@ -170,6 +183,12 @@ fn let_chain_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
         && *x > 2
     {
         deque.pop_front().unwrap();
+    }
+
+    if let Some(x) = heap.peek() //~ manual_pop_if
+        && *x > 2
+    {
+        heap.pop().unwrap();
     }
 }
 
@@ -213,7 +232,7 @@ fn let_chain_pattern_negative(mut vec: Vec<i32>) {
     };
 }
 
-fn map_unwrap_or_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
+fn map_unwrap_or_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>, mut heap: BinaryHeap<i32>) {
     if vec.last().map(|x| *x > 2).unwrap_or(false) {
         //~^ manual_pop_if
         vec.pop().unwrap();
@@ -232,6 +251,11 @@ fn map_unwrap_or_pattern_positive(mut vec: Vec<i32>, mut deque: VecDeque<i32>) {
     if deque.front().map(|x| *x > 2).unwrap_or(false) {
         //~^ manual_pop_if
         deque.pop_front().unwrap();
+    }
+
+    if heap.peek().map(|x| *x > 2).unwrap_or(false) {
+        //~^ manual_pop_if
+        heap.pop().unwrap();
     }
 }
 
