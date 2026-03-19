@@ -3221,24 +3221,6 @@ pub(crate) struct RawPrefix {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression"
-)]
-pub(crate) struct BreakWithLabelAndLoop {
-    #[subdiagnostic]
-    pub sub: BreakWithLabelAndLoopSub,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("wrap this expression in parentheses", applicability = "machine-applicable")]
-pub(crate) struct BreakWithLabelAndLoopSub {
-    #[suggestion_part(code = "(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("where clause not allowed here")]
 #[note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information")]
 pub(crate) struct DeprecatedWhereClauseLocation {

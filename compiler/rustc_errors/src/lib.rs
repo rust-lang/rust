@@ -34,7 +34,7 @@ pub use anstyle::{
     Ansi256Color, AnsiColor, Color, EffectIter, Effects, Reset, RgbColor, Style as Anstyle,
 };
 pub use codes::*;
-pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
+pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, DynamicDiag, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
     EmissionGuarantee, FatalAbort, StringPart, Subdiag, Subdiagnostic,

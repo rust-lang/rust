@@ -686,7 +686,6 @@ pub enum BuiltinLintDiag {
         is_string: bool,
         suggestion: Span,
     },
-    BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {

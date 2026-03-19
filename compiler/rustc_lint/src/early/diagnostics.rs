@@ -170,13 +170,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                     lints::ReservedMultihash { suggestion }.into_diag(dcx, level)
                 }
             }
-            BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => lints::BreakWithLabelAndLoop {
-                sub: lints::BreakWithLabelAndLoopSub {
-                    left: sugg_span.shrink_to_lo(),
-                    right: sugg_span.shrink_to_hi(),
-                },
-            }
-            .into_diag(dcx, level),
             BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
                 let suggestion = match sugg {
                     Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {

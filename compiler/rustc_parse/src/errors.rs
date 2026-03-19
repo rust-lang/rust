@@ -4499,3 +4499,21 @@ impl TokenDescription {
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression"
+)]
+pub(crate) struct BreakWithLabelAndLoop {
+    #[subdiagnostic]
+    pub sub: BreakWithLabelAndLoopSub,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("wrap this expression in parentheses", applicability = "machine-applicable")]
+pub(crate) struct BreakWithLabelAndLoopSub {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
