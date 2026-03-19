@@ -17,10 +17,10 @@ where
 {
     pub(super) fn normalize_inherent_associated_term(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
         let cx = self.cx();
-        let inherent = goal.predicate.alias;
+        let inherent = goal.predicate.projection_term;
 
         let impl_def_id = cx.parent(inherent.def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id);
@@ -56,7 +56,7 @@ where
         } else {
             cx.const_of_item(inherent.def_id).instantiate(cx, inherent_args).into()
         };
-        self.instantiate_normalizes_to_term(goal, normalized);
+        self.instantiate_projection_term(goal, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

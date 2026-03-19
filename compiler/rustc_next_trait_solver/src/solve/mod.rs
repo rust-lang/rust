@@ -16,7 +16,6 @@ mod assembly;
 mod effect_goals;
 mod eval_ctxt;
 pub mod inspect;
-mod normalizes_to;
 mod project_goals;
 mod search_graph;
 mod trait_goals;

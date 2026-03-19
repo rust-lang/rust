@@ -97,13 +97,19 @@ pub(super) fn instantiate_and_apply_query_response<D, I>(
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
     span: I::Span,
+    prev_universe: ty::UniverseIndex,
 ) -> (NestedNormalizationGoals<I>, Certainty)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    let instantiation =
-        compute_query_response_instantiation_values(delegate, &original_values, &response, span);
+    let instantiation = compute_query_response_instantiation_values(
+        delegate,
+        &original_values,
+        &response,
+        span,
+        prev_universe,
+    );
 
     let Response { var_values, external_constraints, certainty } =
         delegate.instantiate_canonical(response, instantiation);
@@ -127,6 +133,7 @@ fn compute_query_response_instantiation_values<D, I, T>(
     original_values: &[I::GenericArg],
     response: &Canonical<I, T>,
     span: I::Span,
+    prev_universe: ty::UniverseIndex,
 ) -> CanonicalVarValues<I>
 where
     D: SolverDelegate<Interner = I>,
@@ -136,7 +143,6 @@ where
     // FIXME: Longterm canonical queries should deal with all placeholders
     // created inside of the query directly instead of returning them to the
     // caller.
-    let prev_universe = delegate.universe();
     let universes_created_in_query = response.max_universe.index();
     for _ in 0..universes_created_in_query {
         delegate.create_next_universe();
@@ -328,8 +334,13 @@ where
             .map(|&arg| delegate.fresh_var_for_kind_with_span(arg, span)),
     );
 
-    let instantiation =
-        compute_query_response_instantiation_values(delegate, orig_values, &state, span);
+    let instantiation = compute_query_response_instantiation_values(
+        delegate,
+        orig_values,
+        &state,
+        span,
+        delegate.universe(),
+    );
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 

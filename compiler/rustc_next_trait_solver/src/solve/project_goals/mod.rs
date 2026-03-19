@@ -7,12 +7,14 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{self as ty, FieldInfo, Interner, PredicateKind, Upcast as _};
 use tracing::instrument;
 
+use crate::canonical::instantiate_and_apply_query_response;
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
 use crate::solve::assembly::{self, Candidate};
+use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
@@ -25,63 +27,120 @@ where
     I: Interner,
 {
     #[instrument(level = "trace", skip(self), ret)]
-    pub(super) fn compute_normalizes_to_goal(
+    pub(super) fn compute_projection_goal(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResult<I> {
-        debug_assert!(self.term_is_fully_unconstrained(goal));
         let cx = self.cx();
-        match goal.predicate.alias.kind(cx) {
+        match goal.predicate.projection_term.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let trait_ref = goal.predicate.alias.trait_ref(cx);
+                let trait_ref = goal.predicate.projection_term.trait_ref(cx);
                 let (_, proven_via) =
                     self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
                         let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.assemble_and_merge_candidates(
-                    proven_via,
-                    goal,
-                    |ecx| {
-                        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
-                        //
-                        // If this type is a GAT with currently unconstrained arguments, we do not
-                        // want to normalize it via a candidate which only applies for a specific
-                        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
-                        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
-                        //
-                        // This only avoids normalization if a GAT argument is fully unconstrained.
-                        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
-                        for arg in goal.predicate.alias.own_args(cx).iter() {
-                            let Some(term) = arg.as_term() else {
-                                continue;
-                            };
-                            match ecx.structurally_normalize_term(goal.param_env, term) {
-                                Ok(term) => {
-                                    if term.is_infer() {
-                                        return Some(
+
+                let term = self.next_term_infer_of_kind(goal.predicate.term);
+                self.eq(goal.param_env, goal.predicate.term, term)?;
+                let unconstrained_term = self.next_term_infer_of_kind(goal.predicate.term);
+                let unconstrained_goal: Goal<I, ty::ProjectionPredicate<I>> = Goal {
+                    param_env: goal.param_env,
+                    predicate: ty::ProjectionPredicate {
+                        projection_term: goal.predicate.projection_term,
+                        term: unconstrained_term,
+                    },
+                };
+
+                let extended_var_values = cx.mk_args_from_iter(
+                    self.var_values
+                        .var_values
+                        .iter()
+                        .chain(std::iter::once(unconstrained_term.into())),
+                );
+                let mut extended_var_kinds = self.var_kinds.to_vec();
+                let extra_var_kind = match unconstrained_term.kind() {
+                    ty::TermKind::Ty(_) => ty::CanonicalVarKind::Ty {
+                        ui: self.max_input_universe,
+                        sub_root: ty::BoundVar::from_usize(extended_var_kinds.len()),
+                    },
+                    ty::TermKind::Const(_) => ty::CanonicalVarKind::Const(self.max_input_universe),
+                };
+                extended_var_kinds.push(extra_var_kind);
+                let extended_var_kinds = cx.mk_canonical_var_kinds(&extended_var_kinds);
+
+                let resp = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+                    ecx.var_values.var_values = extended_var_values;
+                    ecx.var_kinds = extended_var_kinds;
+                    ecx.current_goal_kind = CurrentGoalKind::NormalizesTo;
+
+                    ecx.assemble_and_merge_candidates(
+                        proven_via,
+                        unconstrained_goal,
+                        |ecx| {
+                            // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+                            //
+                            // If this type is a GAT with currently unconstrained arguments, we do not
+                            // want to normalize it via a candidate which only applies for a specific
+                            // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+                            // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+                            //
+                            // This only avoids normalization if a GAT argument is fully unconstrained.
+                            // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+                            for arg in
+                                unconstrained_goal.predicate.projection_term.own_args(cx).iter()
+                            {
+                                let Some(term) = arg.as_term() else {
+                                    continue;
+                                };
+                                match ecx
+                                    .structurally_normalize_term(unconstrained_goal.param_env, term)
+                                {
+                                    Ok(term) => {
+                                        if term.is_infer() {
+                                            return Some(
                                             ecx.evaluate_added_goals_and_make_canonical_response(
                                                 Certainty::AMBIGUOUS,
                                             ),
                                         );
+                                        }
                                     }
+                                    Err(NoSolution) => return Some(Err(NoSolution)),
                                 }
-                                Err(NoSolution) => return Some(Err(NoSolution)),
                             }
-                        }
 
-                        None
-                    },
-                    |ecx| {
-                        ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                            this.structurally_instantiate_normalizes_to_term(
-                                goal,
-                                goal.predicate.alias,
-                            );
-                            this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        })
-                    },
-                )
+                            None
+                        },
+                        |ecx| {
+                            ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                                this.structurally_instantiate_projection_term(
+                                    unconstrained_goal,
+                                    unconstrained_goal.predicate.projection_term,
+                                )?;
+                                this.evaluate_added_goals_and_make_canonical_response(
+                                    Certainty::Yes,
+                                )
+                            })
+                        },
+                    )
+                })?;
+
+                let (nested_goals, certainty) = instantiate_and_apply_query_response(
+                    self.delegate,
+                    goal.param_env,
+                    extended_var_values.as_slice(),
+                    resp,
+                    self.origin_span,
+                    self.max_input_universe,
+                );
+
+                self.eq_structurally_relating_aliases(goal.param_env, term, unconstrained_term)?;
+
+                for (source, nested_goal) in nested_goals.0 {
+                    self.add_goal(source, nested_goal);
+                }
+
+                self.evaluate_added_goals_and_make_canonical_response(certainty)
             }
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
@@ -99,28 +158,26 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
-    pub fn instantiate_normalizes_to_term(
+    pub fn instantiate_projection_term(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
         term: I::Term,
-    ) {
+    ) -> Result<(), NoSolution> {
         self.eq(goal.param_env, goal.predicate.term, term)
-            .expect("expected goal term to be fully unconstrained");
     }
 
-    /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
+    /// Unlike `instantiate_projection_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
-    pub fn structurally_instantiate_normalizes_to_term(
+    pub fn structurally_instantiate_projection_term(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
         term: ty::AliasTerm<I>,
-    ) {
+    ) -> Result<(), NoSolution> {
         self.relate_rigid_alias_non_alias(goal.param_env, term, ty::Invariant, goal.predicate.term)
-            .expect("expected goal term to be fully unconstrained");
     }
 }
 
-impl<D, I> assembly::GoalKind<D> for NormalizesTo<I>
+impl<D, I> assembly::GoalKind<D> for ty::ProjectionPredicate<I>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -130,7 +187,7 @@ where
     }
 
     fn trait_ref(self, cx: I) -> ty::TraitRef<I> {
-        self.alias.trait_ref(cx)
+        self.projection_term.trait_ref(cx)
     }
 
     fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
@@ -149,7 +206,7 @@ where
         if let Some(projection_pred) = assumption.as_projection_clause()
             && projection_pred.item_def_id() == goal.predicate.def_id()
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
-                goal.predicate.alias.args,
+                goal.predicate.projection_term.args,
                 projection_pred.skip_binder().projection_term.args,
             )
         {
@@ -168,16 +225,20 @@ where
         let cx = ecx.cx();
         let projection_pred = assumption.as_projection_clause().unwrap();
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
-        ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
+        ecx.eq(
+            goal.param_env,
+            goal.predicate.projection_term,
+            assumption_projection_pred.projection_term,
+        )?;
 
-        ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
+        ecx.instantiate_projection_term(goal, assumption_projection_pred.term)?;
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.
         ecx.add_goals(
             GoalSource::AliasWellFormed,
             cx.own_predicates_of(goal.predicate.def_id())
-                .iter_instantiated(cx, goal.predicate.alias.args)
+                .iter_instantiated(cx, goal.predicate.projection_term.args)
                 .map(|pred| goal.with(cx, pred)),
         );
 
@@ -208,16 +269,16 @@ where
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
-        let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
+        let goal_trait_ref = goal.predicate.projection_term.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
-            goal.predicate.alias.trait_ref(cx).args,
+            goal.predicate.projection_term.trait_ref(cx).args,
             impl_trait_ref.skip_binder().args,
         ) {
             return Err(NoSolution);
@@ -257,17 +318,17 @@ where
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())
-                    .iter_instantiated(cx, goal.predicate.alias.args)
+                    .iter_instantiated(cx, goal.predicate.projection_term.args)
                     .map(|pred| goal.with(cx, pred)),
             );
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
-                let error_term = match goal.predicate.alias.kind(cx) {
+                let error_term = match goal.predicate.projection_term.kind(cx) {
                     ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
                     kind => panic!("expected projection, found {kind:?}"),
                 };
-                ecx.instantiate_normalizes_to_term(goal, error_term);
+                ecx.instantiate_projection_term(goal, error_term)?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
@@ -300,10 +361,10 @@ where
                         | ty::TypingMode::Borrowck { .. }
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
-                            ecx.structurally_instantiate_normalizes_to_term(
+                            ecx.structurally_instantiate_projection_term(
                                 goal,
-                                goal.predicate.alias,
-                            );
+                                goal.predicate.projection_term,
+                            )?;
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                         }
@@ -338,10 +399,10 @@ where
                         | ty::TypingMode::Borrowck { .. }
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
-                            ecx.structurally_instantiate_normalizes_to_term(
+                            ecx.structurally_instantiate_projection_term(
                                 goal,
-                                goal.predicate.alias,
-                            );
+                                goal.predicate.projection_term,
+                            )?;
                             return then(ecx, Certainty::Yes);
                         }
                     }
@@ -378,7 +439,7 @@ where
             }
 
             // Finally we construct the actual value of the associated type.
-            let term = match goal.predicate.alias.kind(cx) {
+            let term = match goal.predicate.projection_term.kind(cx) {
                 ty::AliasTermKind::ProjectionTy => {
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
@@ -388,7 +449,7 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(goal, term.instantiate(cx, target_args));
+            ecx.instantiate_projection_term(goal, term.instantiate(cx, target_args))?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -488,7 +549,9 @@ where
         let cx = ecx.cx();
 
         let env_region = match goal_kind {
-            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                goal.predicate.projection_term.args.region_at(2)
+            }
             // Doesn't matter what this region is
             ty::ClosureKind::FnOnce => Region::new_static(cx),
         };
@@ -573,7 +636,7 @@ where
             tupled_inputs_ty,
             tupled_upvars_ty,
             coroutine_captures_by_ref_ty,
-        ] = *goal.predicate.alias.args.as_slice()
+        ] = *goal.predicate.projection_term.args.as_slice()
         else {
             panic!();
         };
@@ -604,7 +667,7 @@ where
         );
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, upvars_ty.into());
+            ecx.instantiate_projection_term(goal, upvars_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -666,17 +729,17 @@ where
                             [I::GenericArg::from(goal.predicate.self_ty())],
                         );
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
-                        ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into());
+                        ecx.instantiate_projection_term(goal, Ty::new_unit(cx).into())?;
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     });
                 // In case the dummy alias-bound candidate does not apply, we instead treat this projection
                 // as rigid.
                 return alias_bound_result.or_else(|NoSolution| {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
-                        this.structurally_instantiate_normalizes_to_term(
+                        this.structurally_instantiate_projection_term(
                             goal,
-                            goal.predicate.alias,
-                        );
+                            goal.predicate.projection_term,
+                        )?;
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 });
@@ -708,7 +771,7 @@ where
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, metadata_ty.into());
+            ecx.instantiate_projection_term(goal, metadata_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -815,7 +878,7 @@ where
             );
             let yield_ty = args.as_coroutine().yield_ty();
             ecx.eq(goal.param_env, wrapped_expected_ty, yield_ty)?;
-            ecx.instantiate_normalizes_to_term(goal, expected_ty.into());
+            ecx.instantiate_projection_term(goal, expected_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -912,7 +975,10 @@ where
             // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    ecx.structurally_instantiate_projection_term(
+                        goal,
+                        goal.predicate.projection_term,
+                    )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 });
             }
@@ -925,7 +991,7 @@ where
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, discriminant_ty.into());
+            ecx.instantiate_projection_term(goal, discriminant_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -969,7 +1035,7 @@ where
             _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
         };
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, ty.into());
+            ecx.instantiate_projection_term(goal, ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -982,7 +1048,7 @@ where
 {
     fn translate_args(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
         impl_def_id: I::ImplId,
         impl_args: I::GenericArgs,
         impl_trait_ref: rustc_type_ir::TraitRef<I>,
@@ -991,11 +1057,15 @@ where
         let cx = self.cx();
         Ok(if target_container_def_id == impl_trait_ref.def_id.into() {
             // Default value from the trait definition. No need to rebase.
-            goal.predicate.alias.args
+            goal.predicate.projection_term.args
         } else if target_container_def_id == impl_def_id.into() {
             // Same impl, no need to fully translate, just a rebase from
             // the trait is sufficient.
-            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), impl_args)
+            goal.predicate.projection_term.args.rebase_onto(
+                cx,
+                impl_trait_ref.def_id.into(),
+                impl_args,
+            )
         } else {
             let target_args = self.fresh_args_for_item(target_container_def_id);
             let target_trait_ref = cx
@@ -1011,7 +1081,11 @@ where
                     .iter_instantiated(cx, target_args)
                     .map(|pred| goal.with(cx, pred)),
             );
-            goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
+            goal.predicate.projection_term.args.rebase_onto(
+                cx,
+                impl_trait_ref.def_id.into(),
+                target_args,
+            )
         })
     }
 }
