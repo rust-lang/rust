@@ -276,12 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Record all the argument types, with the args
                     // produced from the above subtyping unification.
-                    Ok(Some(
-                        formal_input_tys
-                            .iter()
-                            .map(|&ty| self.resolve_vars_if_possible(ty))
-                            .collect(),
-                    ))
+                    Ok(Some(formal_input_tys.to_vec()))
                 })
                 .ok()
             })
