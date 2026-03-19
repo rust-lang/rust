@@ -287,6 +287,7 @@ pub(crate) fn handle_run_test(
                     Some(cargo.target_directory().as_ref()),
                     target,
                     state.test_run_sender.clone(),
+                    ws.toolchain.as_ref(),
                 )?;
                 handles.push(handle);
             }

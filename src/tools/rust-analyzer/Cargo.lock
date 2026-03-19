@@ -3000,6 +3000,7 @@ name = "toolchain"
 version = "0.0.0"
 dependencies = [
  "camino",
+ "semver",
 ]
 
 [[package]]
