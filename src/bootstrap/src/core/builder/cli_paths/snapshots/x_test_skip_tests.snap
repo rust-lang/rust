@@ -145,6 +145,9 @@ expression: test --skip=tests
 [Test] test::RustcBook
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/doc/rustc})
+[Test] test::StdarchVerify
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/stdarch-verify})
 [Test] test::RustdocTheme
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/tools/rustdoc-themes})

@@ -182,6 +182,9 @@ expression: test
 [Test] test::RustcBook
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/doc/rustc})
+[Test] test::StdarchVerify
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/stdarch-verify})
 [Test] test::RustdocJSStd
     targets: [x86_64-unknown-linux-gnu]
     - Suite(test::tests/rustdoc-js-std)
