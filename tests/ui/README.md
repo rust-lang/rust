@@ -778,10 +778,6 @@ These tests revolve around the `--json` compiler flag. See [JSON Output](https:/
 
 Tests exercising keywords, such as attempting to use them as identifiers when not contextual keywords.
 
-## `tests/ui/kindck/`
-
-**FIXME**: `kindck` is no longer a thing, these tests probably need to be audited and rehomed.
-
 ## `tests/ui/label/`
 
 Exercises block and loop `'label`s.
