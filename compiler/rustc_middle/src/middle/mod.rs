@@ -1,4 +1,5 @@
 pub mod codegen_fn_attrs;
+pub mod dead_code;
 pub mod debugger_visualizer;
 pub mod deduced_param_attrs;
 pub mod dependency_format;
