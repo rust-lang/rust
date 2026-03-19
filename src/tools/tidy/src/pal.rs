@@ -56,6 +56,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/core/src/os", // Platform-specific public interfaces
     "library/std/src/sys", // Platform-specific code for std lives here.
     "library/std/src/os",  // Platform-specific public interfaces
+    // need platform-specific code to select correct RawOsError type and Repr mod.
+    "library/core/src/io/error.rs",
     // Temporary `std` exceptions
     // FIXME: platform-specific code should be moved to `sys`
     "library/std/src/io/stdio.rs",

@@ -7,6 +7,7 @@ pub fn errno() -> i32 {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(code: i32) -> bool {
     code == fortanix_sgx_abi::Error::Interrupted as _
 }

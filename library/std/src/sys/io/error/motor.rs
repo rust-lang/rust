@@ -20,6 +20,7 @@ pub fn errno() -> RawOsError {
     error_code.into()
 }
 
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(_code: io::RawOsError) -> bool {
     false // Motor OS doesn't have signals.
 }

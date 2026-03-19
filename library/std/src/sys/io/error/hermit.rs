@@ -5,6 +5,7 @@ pub fn errno() -> i32 {
 }
 
 #[inline]
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(errno: i32) -> bool {
     errno == hermit_abi::errno::EINTR
 }

@@ -102,12 +102,11 @@
 //! to use a pointer type to store something that may hold an integer, some of
 //! the time.
 
-use core::io::error_internals::kind_from_prim;
 use core::marker::PhantomData;
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 
-use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
+use super::{Custom, ErrorBox, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 
 // The 2 least-significant bits are used as tag.
 const TAG_MASK: usize = 0b11;
@@ -127,15 +126,15 @@ const TAG_SIMPLE: usize = 0b11;
 /// ```
 #[repr(transparent)]
 #[rustc_insignificant_dtor]
-pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
+pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<ErrorBox<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.
 unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}
 
 impl Repr {
-    pub(super) fn new_custom(b: Box<Custom>) -> Self {
-        let p = Box::into_raw(b).cast::<u8>();
+    pub(super) fn new_custom(b: ErrorBox<Custom>) -> Self {
+        let p = ErrorBox::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
         debug_assert_eq!(p.addr() & TAG_MASK, 0);
@@ -218,11 +217,11 @@ impl Repr {
     }
 
     #[inline]
-    pub(super) fn into_data(self) -> ErrorData<Box<Custom>> {
+    pub(super) fn into_data(self) -> ErrorData<ErrorBox<Custom>> {
         let this = core::mem::ManuallyDrop::new(self);
         // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we prevent double-drop using `ManuallyDrop`.
-        unsafe { decode_repr(this.0, |p| Box::from_raw(p)) }
+        unsafe { decode_repr(this.0, |p| ErrorBox::from_raw(p)) }
     }
 }
 
@@ -232,7 +231,7 @@ impl Drop for Repr {
         // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we're being dropped.
         unsafe {
-            let _ = decode_repr(self.0, |p| Box::<Custom>::from_raw(p));
+            let _ = decode_repr(self.0, |p| ErrorBox::<Custom>::from_raw(p));
         }
     }
 }
@@ -284,6 +283,71 @@ where
     }
 }
 
+// This compiles to the same code as the check+transmute, but doesn't require
+// unsafe, or to hard-code max ErrorKind or its size in a way the compiler
+// couldn't verify.
+/// implementation detail of [`super::Error`]
+#[unstable(feature = "core_io_error_internals", issue = "none")]
+#[inline]
+pub fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
+    macro_rules! from_prim {
+        ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
+            // Force a compile error if the list gets out of date.
+            const _: fn(e: $Enum) = |e: $Enum| match e {
+                $($Enum::$Variant => ()),*
+            };
+            match $prim {
+                $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+                _ => None,
+            }
+        }}
+    }
+    from_prim!(ek => ErrorKind {
+        NotFound,
+        PermissionDenied,
+        ConnectionRefused,
+        ConnectionReset,
+        HostUnreachable,
+        NetworkUnreachable,
+        ConnectionAborted,
+        NotConnected,
+        AddrInUse,
+        AddrNotAvailable,
+        NetworkDown,
+        BrokenPipe,
+        AlreadyExists,
+        WouldBlock,
+        NotADirectory,
+        IsADirectory,
+        DirectoryNotEmpty,
+        ReadOnlyFilesystem,
+        FilesystemLoop,
+        StaleNetworkFileHandle,
+        InvalidInput,
+        InvalidData,
+        TimedOut,
+        WriteZero,
+        StorageFull,
+        NotSeekable,
+        QuotaExceeded,
+        FileTooLarge,
+        ResourceBusy,
+        ExecutableFileBusy,
+        Deadlock,
+        CrossesDevices,
+        TooManyLinks,
+        InvalidFilename,
+        ArgumentListTooLong,
+        Interrupted,
+        Other,
+        UnexpectedEof,
+        Unsupported,
+        OutOfMemory,
+        InProgress,
+        Uncategorized,
+    })
+}
+
 // Some static checking to alert us if a change breaks any of the assumptions
 // that our encoding relies on for correctness and soundness. (Some of these are
 // a bit overly thorough/cautious, admittedly)
@@ -307,7 +371,7 @@ static_assert!(@usize_eq: size_of::<NonNull<()>>(), size_of::<usize>());
 
 // `Custom` and `SimpleMessage` need to be thin pointers.
 static_assert!(@usize_eq: size_of::<&'static SimpleMessage>(), 8);
-static_assert!(@usize_eq: size_of::<Box<Custom>>(), 8);
+static_assert!(@usize_eq: size_of::<ErrorBox<Custom>>(), 8);
 
 static_assert!((TAG_MASK + 1).is_power_of_two());
 // And they must have sufficient alignment.

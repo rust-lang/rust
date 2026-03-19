@@ -297,19 +297,36 @@
 #[cfg(test)]
 mod tests;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc::io::ErrorKind;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+pub use alloc::io::{Error, Result};
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use core::io::RawOsError;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "io_const_error", issue = "133448")]
+pub use core::io::const_error;
+#[cfg(not(bootstrap))]
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
+pub use core::io::error_internals::SimpleMessage;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub use self::error::RawOsError;
+#[cfg(bootstrap)]
 #[doc(hidden)]
 #[unstable(feature = "io_const_error_internals", issue = "none")]
 pub use self::error::SimpleMessage;
+#[cfg(bootstrap)]
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use self::error::const_error;
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::error::{Error, Result};
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
@@ -326,7 +343,6 @@ pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
     copy::copy,
     cursor::Cursor,
-    error::{Error, ErrorKind, Result},
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
     util::{Empty, Repeat, Sink, empty, repeat, sink},
 };

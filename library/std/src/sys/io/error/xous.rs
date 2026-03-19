@@ -4,6 +4,7 @@ pub fn errno() -> i32 {
     0
 }
 
+#[cfg(any(bootstrap, not(test)))]
 pub fn is_interrupted(_code: i32) -> bool {
     false
 }

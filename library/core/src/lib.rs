@@ -108,6 +108,7 @@
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
 #![feature(internal_impls_macro)]
+#![feature(io_const_error)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
@@ -295,7 +296,8 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+// TODO: how to make unstable for either of two features?
+// #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub mod io;
 pub mod iter;
 pub mod net;
