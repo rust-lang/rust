@@ -1263,7 +1263,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             def_location,
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
-            DIFlags::FlagZero,
+            visibility_di_flags(cx, union_def_id, union_def_id),
         ),
         // Fields:
         |cx, owner| {
@@ -1284,7 +1284,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                         f.name.as_str(),
                         field_layout,
                         Size::ZERO,
-                        DIFlags::FlagZero,
+                        visibility_di_flags(cx, f.did, union_def_id),
                         type_di_node(cx, field_layout.ty),
                         def_id,
                     )
