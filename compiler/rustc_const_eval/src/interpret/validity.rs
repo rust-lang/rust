@@ -680,8 +680,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 format!("encountered a {ptr_kind} pointing to uninhabited type {ty}")
             )
         }
-        // Recursive checking
-        if let Some(ref_tracking) = self.ref_tracking.as_deref_mut() {
+
+        // Recursive checking (but not inside `MaybeDangling` of course).
+        if let Some(ref_tracking) = self.ref_tracking.as_deref_mut()
+            && !self.may_dangle
+        {
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
             if let Some(ctfe_mode) = self.ctfe_mode {
