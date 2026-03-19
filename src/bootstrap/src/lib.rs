@@ -883,6 +883,12 @@ impl Build {
             features.push("check_only");
         }
 
+        if crates.iter().any(|c| c == "rustc_transmute") {
+            // for `x test rustc_transmute`, this feature isn't enabled automatically by a
+            // dependent crate.
+            features.push("rustc");
+        }
+
         // If debug logging is on, then we want the default for tracing:
         // https://github.com/tokio-rs/tracing/blob/3dd5c03d907afdf2c39444a29931833335171554/tracing/src/level_filters.rs#L26
         // which is everything (including debug/trace/etc.)
