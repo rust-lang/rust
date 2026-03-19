@@ -18,3 +18,6 @@ expression: test library
     - Set({test::library/sysroot})
     - Set({test::library/test})
     - Set({test::library/unwind})
+[Test] test::StdarchVerify
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/stdarch-verify})
