@@ -1,6 +1,102 @@
+use std::ops::Bound;
 use std::slice;
 
-use crate::bit_set::{WORD_BITS, Word};
+use crate::bit_set::{WORD_BITS, Word, inclusive_start_end, max_bit, word_index_and_mask};
+
+#[inline]
+pub(crate) fn contains_any(
+    domain_size: usize,
+    words: &[Word],
+    range: (Bound<usize>, Bound<usize>),
+) -> bool {
+    let Some((start, end)) = inclusive_start_end(range, domain_size) else {
+        return false;
+    };
+
+    let (start_word_index, start_mask) = word_index_and_mask(start);
+    let (end_word_index, end_mask) = word_index_and_mask(end);
+
+    if start_word_index == end_word_index {
+        words[start_word_index] & (end_mask | (end_mask - start_mask)) != 0
+    } else {
+        if words[start_word_index] & !(start_mask - 1) != 0 {
+            return true;
+        }
+
+        let remaining = start_word_index + 1..end_word_index;
+        if remaining.start <= remaining.end {
+            words[remaining].iter().any(|&w| w != 0)
+                || words[end_word_index] & (end_mask | (end_mask - 1)) != 0
+        } else {
+            false
+        }
+    }
+}
+
+#[inline]
+pub(crate) fn last_set_in(
+    domain_size: usize,
+    words: &[Word],
+    range: (Bound<usize>, Bound<usize>),
+) -> Option<usize> {
+    let (start, end) = inclusive_start_end(range, domain_size)?;
+
+    let (start_word_index, _) = word_index_and_mask(start);
+    let (end_word_index, end_mask) = word_index_and_mask(end);
+
+    let end_word = words[end_word_index] & (end_mask | (end_mask - 1));
+    if end_word != 0 {
+        let pos = max_bit(end_word) + WORD_BITS * end_word_index;
+        if start <= pos {
+            return Some(pos);
+        }
+    }
+
+    // We exclude end_word_index from the range here, because we don't want
+    // to limit ourselves to *just* the last word: the bits set it in may be
+    // after `end`, so it may not work out.
+    if let Some(offset) = words[start_word_index..end_word_index].iter().rposition(|&w| w != 0) {
+        let word_idx = start_word_index + offset;
+        let start_word = words[word_idx];
+        let pos = max_bit(start_word) + WORD_BITS * word_idx;
+        if start <= pos {
+            return Some(pos);
+        }
+    }
+
+    None
+}
+
+#[inline]
+pub(crate) fn insert_range(
+    domain_size: usize,
+    words: &mut [Word],
+    range: (Bound<usize>, Bound<usize>),
+) {
+    let Some((start, end)) = inclusive_start_end(range, domain_size) else {
+        return;
+    };
+
+    let (start_word_index, start_mask) = word_index_and_mask(start);
+    let (end_word_index, end_mask) = word_index_and_mask(end);
+
+    // Set all words in between start and end (exclusively of both).
+    for word_index in (start_word_index + 1)..end_word_index {
+        words[word_index] = !0;
+    }
+
+    if start_word_index != end_word_index {
+        // Start and end are in different words, so we handle each in turn.
+        //
+        // We set all leading bits. This includes the start_mask bit.
+        words[start_word_index] |= !(start_mask - 1);
+        // And all trailing bits (i.e. from 0..=end) in the end word,
+        // including the end.
+        words[end_word_index] |= end_mask | (end_mask - 1);
+    } else {
+        words[start_word_index] |= end_mask | (end_mask - start_mask);
+    }
+}
 
 pub(crate) struct RawBitIter<'a> {
     /// A copy of the current word, but with any already-visited bits cleared.
