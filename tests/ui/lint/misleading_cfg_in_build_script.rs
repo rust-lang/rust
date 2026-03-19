@@ -1,8 +1,6 @@
 // This test checks the `cfg()` attributes/macros in cargo build scripts.
 //
 //@ no-auto-check-cfg
-//@ rustc-env:CARGO_CRATE_NAME=build_script_build
-//@ compile-flags:--crate-name=build_script_build
 
 #![deny(misleading_cfg_in_build_script)]
 #![allow(dead_code)]
