@@ -156,6 +156,14 @@ LL |                 z = T::default();
    |
    = help: maybe it is overwritten before being read?
 
+warning: unused variable: `z`
+  --> $DIR/liveness-upvars.rs:101:9
+   |
+LL |     let mut z = T::default();
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_z`
+   |
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
 warning: value captured by `state` is never read
   --> $DIR/liveness-upvars.rs:131:9
    |
@@ -196,5 +204,5 @@ LL |         s = yield ();
    |
    = help: maybe it is overwritten before being read?
 
-warning: 24 warnings emitted
+warning: 25 warnings emitted
 

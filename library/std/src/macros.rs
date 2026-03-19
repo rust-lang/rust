@@ -5,6 +5,9 @@
 //! library.
 // ignore-tidy-dbg
 
+#[cfg(test)]
+mod tests;
+
 #[doc = include_str!("../../core/src/macros/panic.md")]
 #[macro_export]
 #[rustc_builtin_macro(std_panic)]
@@ -359,19 +362,16 @@ macro_rules! dbg {
     };
 }
 
-/// Internal macro that processes a list of expressions and produces a chain of
-/// nested `match`es, one for each expression, before finally calling `eprint!`
-/// with the collected information and returning all the evaluated expressions
-/// in a tuple.
+/// Internal macro that processes a list of expressions, binds their results
+/// with `match`, calls `eprint!` with the collected information, and returns
+/// all the evaluated expressions in a tuple.
 ///
 /// E.g. `dbg_internal!(() () (1, 2))` expands into
 /// ```rust, ignore
-/// match 1 {
-///     tmp_1 => match 2 {
-///         tmp_2 => {
-///             eprint!("...", &tmp_1, &tmp_2, /* some other arguments */);
-///             (tmp_1, tmp_2)
-///         }
+/// match (1, 2) {
+///     (tmp_1, tmp_2) => {
+///         eprint!("...", &tmp_1, &tmp_2, /* some other arguments */);
+///         (tmp_1, tmp_2)
 ///     }
 /// }
 /// ```
@@ -380,37 +380,41 @@ macro_rules! dbg {
 #[doc(hidden)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro dbg_internal {
-    (($($piece:literal),+) ($($processed:expr => $bound:expr),+) ()) => {{
-        $crate::eprint!(
-            $crate::concat!($($piece),+),
-            $(
-                $crate::stringify!($processed),
-                // The `&T: Debug` check happens here (not in the format literal desugaring)
-                // to avoid format literal related messages and suggestions.
-                &&$bound as &dyn $crate::fmt::Debug
-            ),+,
-            // The location returned here is that of the macro invocation, so
-            // it will be the same for all expressions. Thus, label these
-            // arguments so that they can be reused in every piece of the
-            // formatting template.
-            file=$crate::file!(),
-            line=$crate::line!(),
-            column=$crate::column!()
-        );
-        // Comma separate the variables only when necessary so that this will
-        // not yield a tuple for a single expression, but rather just parenthesize
-        // the expression.
-        ($($bound),+)
-    }},
-    (($($piece:literal),*) ($($processed:expr => $bound:expr),*) ($val:expr $(,$rest:expr)*)) => {
+    (($($piece:literal),+) ($($processed:expr => $bound:ident),+) ()) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
-        match $val {
-            tmp => $crate::macros::dbg_internal!(
-                ($($piece,)* "[{file}:{line}:{column}] {} = {:#?}\n")
-                ($($processed => $bound,)* $val => tmp)
-                ($($rest),*)
-            ),
+        // Always put the arguments in a tuple to avoid an unused parens lint on the pattern.
+        match ($($processed,)+) {
+            ($($bound,)+) => {
+                $crate::eprint!(
+                    $crate::concat!($($piece),+),
+                    $(
+                        $crate::stringify!($processed),
+                        // The `&T: Debug` check happens here (not in the format literal desugaring)
+                        // to avoid format literal related messages and suggestions.
+                        &&$bound as &dyn $crate::fmt::Debug
+                    ),+,
+                    // The location returned here is that of the macro invocation, so
+                    // it will be the same for all expressions. Thus, label these
+                    // arguments so that they can be reused in every piece of the
+                    // formatting template.
+                    file=$crate::file!(),
+                    line=$crate::line!(),
+                    column=$crate::column!()
+                );
+                // Comma separate the variables only when necessary so that this will
+                // not yield a tuple for a single expression, but rather just parenthesize
+                // the expression.
+                ($($bound),+)
+
+            }
         }
+    },
+    (($($piece:literal),*) ($($processed:expr => $bound:ident),*) ($val:expr $(,$rest:expr)*)) => {
+        $crate::macros::dbg_internal!(
+            ($($piece,)* "[{file}:{line}:{column}] {} = {:#?}\n")
+            ($($processed => $bound,)* $val => tmp)
+            ($($rest),*)
+        )
     },
 }
