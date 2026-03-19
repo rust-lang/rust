@@ -51,20 +51,6 @@ macro_rules! diagnostics {
         )*
     };
 }
-// FIXME Accept something like the following in the macro call instead
-// diagnostics![
-// pub struct BreakOutsideOfLoop {
-//     pub expr: InFile<AstPtr<ast::Expr>>,
-//     pub is_break: bool,
-//     pub bad_value_break: bool,
-// }, ...
-// or more concisely
-// BreakOutsideOfLoop {
-//     expr: InFile<AstPtr<ast::Expr>>,
-//     is_break: bool,
-//     bad_value_break: bool,
-// }, ...
-// ]
 
 diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
