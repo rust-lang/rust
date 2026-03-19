@@ -26,7 +26,7 @@ Windows 10 or higher is required for client installs, Windows Server 2016 or hig
 ### Host tooling
 
 The minimum supported Visual Studio version is 2017 but this support is not actively tested in CI.
-It is **highly** recommended to use the latest version of VS (currently VS 2022).
+It is **highly** recommended to use the latest version of VS (currently VS 2026).
 
 ### Platform details
 
