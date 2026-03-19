@@ -232,7 +232,9 @@ const fn lim_for_ty<T: TestableFloat + Copy>(_x: T) -> T {
 
 /// Verify that floats are within a tolerance of each other.
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr $(,)?) => {{ assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a)) }};
+    ($a:expr, $b:expr $(,)?) => {{
+        assert_approx_eq!($a, $b, $crate::num::floats::lim_for_ty($a))
+    }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
         let diff = (*a - *b).abs();

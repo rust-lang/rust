@@ -26,6 +26,7 @@ mod carryless_mul;
 mod const_from;
 mod dec2flt;
 mod float_iter_sum_identity;
+mod floats;
 mod flt2dec;
 mod ieee754;
 mod int_log;
