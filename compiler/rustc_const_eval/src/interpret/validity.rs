@@ -790,6 +790,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
             } else {
                 // This is not CTFE, so it's Miri with recursive checking.
+                if matches!(ptr_kind, PointerKind::Box) {
+                    // Work around <https://github.com/rust-lang/rust/issues/154089>.
+                    return interp_ok(());
+                }
                 // FIXME: should we skip `UnsafeCell` behind shared references? Currently that is
                 // not needed since validation reads bypass Stacked Borrows and data race checks,
                 // but is that really coherent?
