@@ -1,4 +1,4 @@
-//@ compile-flags: -C no-prepopulate-passes -Zbranch-protection=bti
+//@ compile-flags: -C no-prepopulate-passes -Zbranch-protection=bti -Cunsafe-allow-abi-mismatch=branch-protection
 //@ assembly-output: emit-asm
 //@ needs-asm-support
 //@ only-aarch64

@@ -591,6 +591,7 @@ symbols! {
         cfg_target_vendor,
         cfg_trace: "<cfg_trace>", // must not be a valid identifier
         cfg_ub_checks,
+        cfg_unstable_target_modifier,
         cfg_version,
         cfi,
         cfi_encoding,
