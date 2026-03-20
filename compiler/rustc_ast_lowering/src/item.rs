@@ -3,6 +3,7 @@ use std::mem;
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
@@ -27,11 +28,31 @@ use super::{
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
 
+/// Wraps either IndexVec (during `hir_crate`), which acts like a primary
+/// storage for most of the MaybeOwners, or FxIndexMap during delayed AST -> HIR
+/// lowering of delegations (`lower_delayed_owner`),
+/// in this case we can not modify already created IndexVec, so we use other map.
+pub(super) enum Owners<'a, 'hir> {
+    IndexVec(&'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>),
+    Map(&'a mut FxIndexMap<LocalDefId, hir::MaybeOwner<'hir>>),
+}
+
+impl<'hir> Owners<'_, 'hir> {
+    fn get_or_insert_mut(&mut self, def_id: LocalDefId) -> &mut hir::MaybeOwner<'hir> {
+        match self {
+            Owners::IndexVec(index_vec) => {
+                index_vec.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom)
+            }
+            Owners::Map(map) => map.entry(def_id).or_insert(hir::MaybeOwner::Phantom),
+        }
+    }
+}
+
 pub(super) struct ItemLowerer<'a, 'hir, R> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut R,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
+    pub(super) owners: Owners<'a, 'hir>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -59,11 +80,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.ast_index, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
-            let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+            let owner = self.owners.get_or_insert_mut(def_id);
             assert!(
                 matches!(owner, hir::MaybeOwner::Phantom),
                 "duplicate copy of {def_id:?} in lctx.children"
@@ -73,7 +94,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
     }
 
     pub(super) fn lower_node(&mut self, def_id: LocalDefId) {
-        let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+        let owner = self.owners.get_or_insert_mut(def_id);
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
             match node {
