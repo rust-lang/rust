@@ -64,8 +64,11 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                     }
                 }
             };
-            let init_expr =
-                if let_expr_needs_paren(&init) { make.expr_paren(init).into() } else { init };
+            let init_expr = if let_expr_needs_paren(&init, &make) {
+                make.expr_paren(init).into()
+            } else {
+                init
+            };
 
             let block = make.block_expr([], None);
             let block = block.indent(IndentLevel::from_node(let_stmt.syntax()));
@@ -85,9 +88,8 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
     )
 }
 
-fn let_expr_needs_paren(expr: &ast::Expr) -> bool {
-    let fake_expr_let =
-        ast::make::expr_let(ast::make::tuple_pat(None).into(), ast::make::ext::expr_unit());
+fn let_expr_needs_paren(expr: &ast::Expr, make: &SyntaxFactory) -> bool {
+    let fake_expr_let = make.expr_let(make.tuple_pat(None).into(), make.expr_unit());
     let Some(fake_expr) = fake_expr_let.expr() else {
         stdx::never!();
         return false;

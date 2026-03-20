@@ -21,6 +21,14 @@ impl SyntaxFactory {
         make::name_ref(name).clone_for_update()
     }
 
+    pub fn name_ref_self_ty(&self) -> ast::NameRef {
+        make::name_ref_self_ty().clone_for_update()
+    }
+
+    pub fn expr_todo(&self) -> ast::Expr {
+        make::ext::expr_todo().clone_for_update()
+    }
+
     pub fn lifetime(&self, text: &str) -> ast::Lifetime {
         make::lifetime(text).clone_for_update()
     }
