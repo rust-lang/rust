@@ -1002,14 +1002,43 @@ impl Duration {
 
     #[inline]
     #[track_caller]
-    fn from_nanos_f128(nanos: f128) -> Duration {
+    fn from_nanos_f128_subnormal(nanos: f128) -> Duration {
+        // NB: the mul/div methods below are converting nanos with `f128::from_bits`, which puts
+        // them in the subnormal range, with the value packed in the least-significant bits of the
+        // mantissa -- even `Duration::MAX` fits this way. This avoids double-rounding operations,
+        // since we're not keeping any excess precision, and we can convert back `to_bits()`.
         if nanos < 0.0 {
             panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
-        } else if nanos <= const { Self::MAX.as_nanos() as f128 } {
-            Self::from_nanos_u128(nanos.round_ties_even() as u128)
-        } else {
+        } else if nanos == 0.0 {
+            // In particular, -0.0 is an exception that we can't just
+            // convert `to_bits()`, but it's still a valid zero.
+            return Duration::ZERO;
+        }
+        let nanos = nanos.to_bits();
+        if nanos > const { Self::MAX.as_nanos() } {
             panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
         }
+        Self::from_nanos_u128(nanos)
+    }
+
+    #[inline]
+    #[track_caller]
+    fn mul_f128(self, rhs: f128) -> Duration {
+        if rhs < 0.0 && self != Self::ZERO {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        }
+        let nanos = f128::from_bits(self.as_nanos()) * (rhs as f128);
+        Self::from_nanos_f128_subnormal(nanos)
+    }
+
+    #[inline]
+    #[track_caller]
+    fn div_f128(self, rhs: f128) -> Duration {
+        if rhs < 0.0 && rhs.is_finite() && self != Self::ZERO {
+            panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        }
+        let nanos = f128::from_bits(self.as_nanos()) / (rhs as f128);
+        Self::from_nanos_f128_subnormal(nanos)
     }
 
     /// Multiplies `Duration` by `f64`.
@@ -1030,8 +1059,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        let nanos = (self.as_nanos() as f128) * (rhs as f128);
-        Self::from_nanos_f128(nanos)
+        self.mul_f128(rhs.into())
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1052,8 +1080,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        let nanos = (self.as_nanos() as f128) * (rhs as f128);
-        Self::from_nanos_f128(nanos)
+        self.mul_f128(rhs.into())
     }
 
     /// Divides `Duration` by `f64`.
@@ -1074,8 +1101,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        let nanos = (self.as_nanos() as f128) / (rhs as f128);
-        Self::from_nanos_f128(nanos)
+        self.div_f128(rhs.into())
     }
 
     /// Divides `Duration` by `f32`.
@@ -1098,8 +1124,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        let nanos = (self.as_nanos() as f128) / (rhs as f128);
-        Self::from_nanos_f128(nanos)
+        self.div_f128(rhs.into())
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
