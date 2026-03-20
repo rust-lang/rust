@@ -95,7 +95,7 @@ jobs:
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -165,7 +165,7 @@ jobs:
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -214,7 +214,7 @@ jobs:
     - uses: actions/checkout@v6
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -233,7 +233,7 @@ jobs:
       run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar.xz

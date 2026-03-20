@@ -17,7 +17,7 @@ jobs:
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
@@ -37,7 +37,7 @@ jobs:
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
