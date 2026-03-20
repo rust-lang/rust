@@ -9,7 +9,6 @@ use syntax::{
     ast::{
         self, AstNode,
         edit::{AstNodeEdit, IndentLevel},
-        make,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
@@ -176,7 +175,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 let mut editor = edit.make_editor(&expr_replace);
 
                 let pat_name = make.name(&var_name);
-                let name_expr = make.expr_path(make::ext::ident_path(&var_name));
+                let name_expr = make.expr_path(make.ident_path(&var_name));
 
                 if let Some(cap) = ctx.config.snippet_cap {
                     let tabstop = edit.make_tabstop_before(cap);
@@ -233,7 +232,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             Position::before(place),
                             vec![
                                 new_stmt.syntax().clone().into(),
-                                make::tokens::whitespace(&trailing_ws).into(),
+                                make.whitespace(&trailing_ws).into(),
                             ],
                         );
 
