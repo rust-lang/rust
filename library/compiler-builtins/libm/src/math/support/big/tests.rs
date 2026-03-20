@@ -269,10 +269,10 @@ fn shr_u256_overflow() {
 #[test]
 #[cfg(not(debug_assertions))]
 fn shr_u256_overflow() {
-    // No panic without debug assertions
-    assert_eq!(u256::MAX >> 256, u256::ZERO);
-    assert_eq!(u256::MAX >> 257, u256::ZERO);
-    assert_eq!(u256::MAX >> u32::MAX, u256::ZERO);
+    // Without debug assertions, the shift amount is wrapped
+    assert_eq!(u256::MAX >> 256, u256::MAX);
+    assert_eq!(u256::MAX >> 257, u256::MAX >> 1);
+    assert_eq!(u256::MAX >> u32::MAX, u256::ONE);
 }
 
 #[test]
