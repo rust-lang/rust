@@ -1,4 +1,6 @@
 pub mod kitties {
+    use std::fmt;
+    #[derive(Clone)]
     pub struct cat {
         meows : usize,
 
@@ -19,6 +21,8 @@ pub mod kitties {
                 return false;
             }
         }
+
+        pub fn noop(&self) {}
     }
 
     impl cat {
@@ -29,6 +33,9 @@ pub mod kitties {
                 self.how_hungry += 1;
             }
         }
+        pub fn meow_count(&self) -> usize {
+            self.meows
+        }
     }
 
     pub fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
@@ -38,4 +45,18 @@ pub mod kitties {
             name: in_name
         }
     }
+    pub fn cat_unnamed(in_x : usize, in_y : isize) -> cat {
+        cat {
+            meows: in_x,
+            how_hungry: in_y,
+            name: String::new(),
+        }
+    }
+
+    impl fmt::Display for cat {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.name)
+        }
+    }
+
 }
