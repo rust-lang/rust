@@ -1130,7 +1130,9 @@ fn check_type_defn<'tcx>(
                 match tcx.const_eval_poly(discr_def_id) {
                     Ok(_) => {}
                     Err(ErrorHandled::Reported(..)) => {}
-                    Err(ErrorHandled::TooGeneric(_)) => {}
+                    Err(ErrorHandled::TooGeneric(sp)) => {
+                        span_bug!(sp, "enum variant discr was too generic to eval")
+                    }
                 }
             }
         }
