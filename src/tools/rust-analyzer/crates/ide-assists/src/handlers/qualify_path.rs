@@ -183,8 +183,7 @@ impl QualifyCandidate<'_> {
                 Some(args) => make.arg_list(iter::once(receiver).chain(args)),
                 None => make.arg_list(iter::once(receiver)),
             };
-            let call_path =
-                make.path_from_text(&format!("{import}::{method_name}{generics}"));
+            let call_path = make.path_from_text(&format!("{import}::{method_name}{generics}"));
             let call_expr = make.expr_call(make.expr_path(call_path), arg_list);
             editor.replace(mcall_expr.syntax(), call_expr.syntax());
         }
