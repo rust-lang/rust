@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level,
     elided_lifetime_in_path_suggestion,
@@ -10,7 +9,6 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
-use rustc_span::BytePos;
 use tracing::debug;
 
 use crate::lints;
@@ -28,32 +26,6 @@ pub struct DecorateBuiltinLint<'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
-                let spans: Vec<_> = content
-                    .char_indices()
-                    .filter_map(|(i, c)| {
-                        TEXT_FLOW_CONTROL_CHARS.contains(&c).then(|| {
-                            let lo = comment_span.lo() + BytePos(2 + i as u32);
-                            (c, comment_span.with_lo(lo).with_hi(lo + BytePos(c.len_utf8() as u32)))
-                        })
-                    })
-                    .collect();
-                let characters = spans
-                    .iter()
-                    .map(|&(c, span)| lints::UnicodeCharNoteSub { span, c_debug: format!("{c:?}") })
-                    .collect();
-                let suggestions = (!spans.is_empty()).then_some(lints::UnicodeTextFlowSuggestion {
-                    spans: spans.iter().map(|(_c, span)| *span).collect(),
-                });
-
-                lints::UnicodeTextFlow {
-                    comment_span,
-                    characters,
-                    suggestions,
-                    num_codepoints: spans.len(),
-                }
-                .into_diag(dcx, level)
-            }
             BuiltinLintDiag::AbsPathWithModule(mod_span) => {
                 let (replacement, applicability) =
                     match self.sess.source_map().span_to_snippet(mod_span) {
@@ -153,30 +125,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 }
                 .into_diag(dcx, level)
             }
-            BuiltinLintDiag::ReservedPrefix(label_span, prefix) => lints::ReservedPrefix {
-                label: label_span,
-                suggestion: label_span.shrink_to_hi(),
-                prefix,
-            }
-            .into_diag(dcx, level),
-            BuiltinLintDiag::RawPrefix(label_span) => {
-                lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
-                    .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::ReservedString { is_string, suggestion } => {
-                if is_string {
-                    lints::ReservedString { suggestion }.into_diag(dcx, level)
-                } else {
-                    lints::ReservedMultihash { suggestion }.into_diag(dcx, level)
-                }
-            }
-            BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => lints::BreakWithLabelAndLoop {
-                sub: lints::BreakWithLabelAndLoopSub {
-                    left: sugg_span.shrink_to_lo(),
-                    right: sugg_span.shrink_to_hi(),
-                },
-            }
-            .into_diag(dcx, level),
             BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
                 let suggestion = match sugg {
                     Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
