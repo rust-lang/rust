@@ -1272,7 +1272,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Some((pat_sp, Some(ty_sp), None))
                     if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
                 {
-                    err.span_suggestion_short(
+                    err.span_suggestion_verbose(
                         pat_sp.between(ty_sp),
                         "use `=` if you meant to assign",
                         " = ",
