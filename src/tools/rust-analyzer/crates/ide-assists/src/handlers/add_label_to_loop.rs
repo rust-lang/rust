@@ -3,11 +3,7 @@ use ide_db::{
 };
 use syntax::{
     SyntaxToken, T,
-    ast::{
-        self, AstNode, HasLoopBody,
-        make::{self, tokens},
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasLoopBody, syntax_factory::SyntaxFactory},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -52,8 +48,8 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             let label = make.lifetime("'l");
             let elements = vec![
                 label.syntax().clone().into(),
-                make::token(T![:]).into(),
-                tokens::single_space().into(),
+                make.token(T![:]).into(),
+                make.whitespace(" ").into(),
             ];
             editor.insert_all(Position::before(&loop_kw), elements);
 
@@ -88,7 +84,7 @@ fn insert_label_after_token(
     builder: &mut SourceChangeBuilder,
 ) {
     let label = make.lifetime("'l");
-    let elements = vec![tokens::single_space().into(), label.syntax().clone().into()];
+    let elements = vec![make.whitespace(" ").into(), label.syntax().clone().into()];
     editor.insert_all(Position::after(token), elements);
 
     if let Some(cap) = ctx.config.snippet_cap {
