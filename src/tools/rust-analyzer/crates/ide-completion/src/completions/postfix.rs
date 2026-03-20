@@ -66,6 +66,12 @@ pub(crate) fn complete_postfix(
         Some(it) => it,
         None => return,
     };
+    let semi =
+        if expr_ctx.in_block_expr && ctx.token.next_token().is_none_or(|it| it.kind() != T![;]) {
+            ";"
+        } else {
+            ""
+        };
 
     let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
@@ -151,9 +157,9 @@ pub(crate) fn complete_postfix(
                     .add_to(acc, ctx.db);
             }
             _ if matches!(parent.kind(), STMT_LIST | EXPR_STMT) => {
-                postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
+                postfix_snippet("let", "let", &format!("let $0 = {receiver_text}{semi}"))
                     .add_to(acc, ctx.db);
-                postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
+                postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text}{semi}"))
                     .add_to(acc, ctx.db);
             }
             _ if ast::MatchArm::can_cast(parent.kind()) => {
@@ -307,26 +313,12 @@ pub(crate) fn complete_postfix(
         add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
     }
 
-    postfix_snippet(
-        "return",
-        "return expr",
-        &format!(
-            "return {receiver_text}{semi}",
-            semi = if expr_ctx.in_block_expr { ";" } else { "" }
-        ),
-    )
-    .add_to(acc, ctx.db);
+    postfix_snippet("return", "return expr", &format!("return {receiver_text}{semi}"))
+        .add_to(acc, ctx.db);
 
     if let Some(BreakableKind::Block | BreakableKind::Loop) = expr_ctx.in_breakable {
-        postfix_snippet(
-            "break",
-            "break expr",
-            &format!(
-                "break {receiver_text}{semi}",
-                semi = if expr_ctx.in_block_expr { ";" } else { "" }
-            ),
-        )
-        .add_to(acc, ctx.db);
+        postfix_snippet("break", "break expr", &format!("break {receiver_text}{semi}"))
+            .add_to(acc, ctx.db);
     }
 }
 
@@ -664,6 +656,22 @@ fn main() {
 
     #[test]
     fn let_middle_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0
+    res
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+    res
+}
+"#,
+        );
+
         check(
             r#"
 fn main() {
@@ -720,6 +728,20 @@ fn main() {
 
     #[test]
     fn let_tail_block() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+}
+"#,
+        );
+
         check(
             r#"
 fn main() {
@@ -770,6 +792,23 @@ fn main() {
                 sn unsafe    unsafe {}
                 sn while while expr {}
             "#]],
+        );
+    }
+
+    #[test]
+    fn let_before_semicolon() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    baz.l$0;
+}
+"#,
+            r#"
+fn main() {
+    let $0 = baz;
+}
+"#,
         );
     }
 
