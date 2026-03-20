@@ -1,7 +1,7 @@
 extern crate std;
 use std::eprintln;
 
-use super::{HInt, MinInt, i256, u256};
+use super::{DInt, HInt, MinInt, i256, u256};
 use crate::support::{Int as _, NarrowingDiv};
 
 const LOHI_SPLIT: u128 = 0xaaaaaaaaaaaaaaaaffffffffffffffff;
@@ -96,6 +96,172 @@ fn widen_mul_u128() {
 #[test]
 fn not_u256() {
     assert_eq!(!u256::ZERO, u256::MAX);
+}
+
+#[test]
+fn shl_u256() {
+    let only_high = [
+        1,
+        u16::MAX.into(),
+        u32::MAX.into(),
+        u64::MAX.into(),
+        u128::MAX,
+    ];
+    let mut has_errors = false;
+
+    let mut add_error = |a, b, expected, actual| {
+        has_errors = true;
+        eprintln!(
+            "\
+            FAILURE:  {} << {b}\n\
+                expected: {}\n\
+                actual:   {}\
+            ",
+            hexu(a),
+            hexu(expected),
+            hexu(actual),
+        );
+    };
+
+    for a in only_high {
+        for perturb in 0..10 {
+            let a = a.saturating_add(perturb);
+            for shift in 0..128 {
+                let res = u256::from_lo_hi(0, a) << shift;
+                let expected = u256::from_lo_hi(0, a << shift);
+                if res != expected {
+                    add_error(a.widen(), shift, expected, res);
+                }
+            }
+        }
+    }
+
+    let check = [
+        (
+            u256::MAX,
+            1,
+            u256 {
+                lo: u128::MAX << 1,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            5,
+            u256 {
+                lo: u128::MAX << 5,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            63,
+            u256 {
+                lo: u128::MAX << 63,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            64,
+            u256 {
+                lo: (u64::MAX as u128) << 64,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            65,
+            u256 {
+                lo: (u64::MAX as u128) << 65,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            127,
+            u256 {
+                lo: 1 << 127,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            128,
+            u256 {
+                lo: 0,
+                hi: u128::MAX,
+            },
+        ),
+        (
+            u256::MAX,
+            129,
+            u256 {
+                lo: 0,
+                hi: u128::MAX << 1,
+            },
+        ),
+        (
+            u256::MAX,
+            191,
+            u256 {
+                lo: 0,
+                hi: u128::MAX << 63,
+            },
+        ),
+        (
+            u256::MAX,
+            192,
+            u256 {
+                lo: 0,
+                hi: u128::MAX << 64,
+            },
+        ),
+        (
+            u256::MAX,
+            193,
+            u256 {
+                lo: 0,
+                hi: u128::MAX << 65,
+            },
+        ),
+        (
+            u256::MAX,
+            254,
+            u256 {
+                lo: 0,
+                hi: 0b11 << 126,
+            },
+        ),
+        (
+            u256::MAX,
+            255,
+            u256 {
+                lo: 0,
+                hi: 1 << 127,
+            },
+        ),
+        (
+            u256 {
+                hi: 0,
+                lo: LOHI_SPLIT,
+            },
+            64,
+            u256 {
+                lo: 0xffffffffffffffff0000000000000000,
+                hi: 0xaaaaaaaaaaaaaaaa,
+            },
+        ),
+    ];
+
+    for (input, shift, expected) in check {
+        let res = input << shift;
+        if res != expected {
+            add_error(input, shift, expected, res);
+        }
+    }
+
+    assert!(!has_errors);
 }
 
 #[test]
