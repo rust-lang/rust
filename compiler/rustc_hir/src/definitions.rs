@@ -269,6 +269,13 @@ impl DefPath {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
+pub enum DelegationDefPathKind {
+    Lifetime,
+    ConstParam,
+    TyParam,
+}
+
 /// New variants should only be added in synchronization with `enum DefKind`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
 pub enum DefPathData {
@@ -318,6 +325,10 @@ pub enum DefPathData {
     SyntheticCoroutineBody,
     /// Additional static data referred to by a static.
     NestedStatic,
+    Delegation {
+        name: Symbol,
+        kind: DelegationDefPathKind,
+    },
 }
 
 impl Definitions {
@@ -455,8 +466,12 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
-            | OpaqueLifetime(name) => Some(name),
+            TypeNs(name)
+            | ValueNs(name)
+            | MacroNs(name)
+            | LifetimeNs(name)
+            | OpaqueLifetime(name)
+            | Delegation { name, .. } => Some(name),
 
             DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
 
@@ -479,8 +494,13 @@ impl DefPathData {
     fn hashed_symbol(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
-            | OpaqueLifetime(name) => Some(name),
+            TypeNs(name)
+            | ValueNs(name)
+            | MacroNs(name)
+            | LifetimeNs(name)
+            | AnonAssocTy(name)
+            | OpaqueLifetime(name)
+            | Delegation { name, .. } => Some(name),
 
             DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
 
@@ -502,8 +522,12 @@ impl DefPathData {
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
-            | OpaqueLifetime(name) => DefPathDataName::Named(name),
+            TypeNs(name)
+            | ValueNs(name)
+            | MacroNs(name)
+            | LifetimeNs(name)
+            | OpaqueLifetime(name)
+            | Delegation { name, .. } => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },

@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
+use rustc_hir::definitions::{DefPathData, DelegationDefPathKind};
 use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
@@ -672,26 +672,33 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     def_path.data.reverse();
     for disambiguated_data in &def_path.data {
         s.push('N');
+
+        const TYPE_NS: &str = "t";
+        const VALUE_NS: &str = "v";
         s.push_str(match disambiguated_data.data {
-            hir::definitions::DefPathData::Impl => "I", // Not specified in v0's <namespace>
-            hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
-            hir::definitions::DefPathData::TypeNs(..) => "t",
-            hir::definitions::DefPathData::ValueNs(..) => "v",
-            hir::definitions::DefPathData::Closure => "C",
-            hir::definitions::DefPathData::Ctor => "c",
-            hir::definitions::DefPathData::AnonConst => "K",
-            hir::definitions::DefPathData::LateAnonConst => "k",
-            hir::definitions::DefPathData::OpaqueTy => "i",
-            hir::definitions::DefPathData::SyntheticCoroutineBody => "s",
-            hir::definitions::DefPathData::NestedStatic => "n",
-            hir::definitions::DefPathData::CrateRoot
-            | hir::definitions::DefPathData::Use
-            | hir::definitions::DefPathData::GlobalAsm
-            | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::OpaqueLifetime(..)
-            | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::DesugaredAnonymousLifetime
-            | hir::definitions::DefPathData::AnonAssocTy(..) => {
+            DefPathData::Impl => "I",       // Not specified in v0's <namespace>
+            DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
+            DefPathData::TypeNs(..) => TYPE_NS,
+            DefPathData::ValueNs(..) => VALUE_NS,
+            DefPathData::Closure => "C",
+            DefPathData::Ctor => "c",
+            DefPathData::AnonConst => "K",
+            DefPathData::LateAnonConst => "k",
+            DefPathData::OpaqueTy => "i",
+            DefPathData::SyntheticCoroutineBody => "s",
+            DefPathData::NestedStatic => "n",
+            DefPathData::Delegation { kind: DelegationDefPathKind::ConstParam, .. } => VALUE_NS,
+            DefPathData::Delegation { kind: DelegationDefPathKind::TyParam, .. } => TYPE_NS,
+
+            DefPathData::CrateRoot
+            | DefPathData::Use
+            | DefPathData::GlobalAsm
+            | DefPathData::MacroNs(..)
+            | DefPathData::OpaqueLifetime(..)
+            | DefPathData::LifetimeNs(..)
+            | DefPathData::DesugaredAnonymousLifetime
+            | DefPathData::AnonAssocTy(..)
+            | DefPathData::Delegation { kind: DelegationDefPathKind::Lifetime, .. } => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });

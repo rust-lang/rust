@@ -12,7 +12,7 @@ use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefPathData, DelegationDefPathKind, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
@@ -877,14 +877,16 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<(), PrintError> {
+        const TYPE_NS: char = 't';
+        const VALUE_NS: char = 'v';
         let ns = match disambiguated_data.data {
             // Extern block segments can be skipped, names from extern blocks
             // are effectively living in their parent modules.
             DefPathData::ForeignMod => return print_prefix(self),
 
             // Uppercase categories are more stable than lowercase ones.
-            DefPathData::TypeNs(_) => 't',
-            DefPathData::ValueNs(_) => 'v',
+            DefPathData::TypeNs(_) => TYPE_NS,
+            DefPathData::ValueNs(_) => VALUE_NS,
             DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'K',
@@ -894,6 +896,9 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::NestedStatic => 'n',
             DefPathData::GlobalAsm => 'a',
 
+            DefPathData::Delegation { kind: DelegationDefPathKind::ConstParam, .. } => VALUE_NS,
+            DefPathData::Delegation { kind: DelegationDefPathKind::TyParam, .. } => TYPE_NS,
+
             // These should never show up as `print_path_with_simple` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
@@ -902,7 +907,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             | DefPathData::LifetimeNs(_)
             | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
-            | DefPathData::AnonAssocTy(..) => {
+            | DefPathData::AnonAssocTy(..)
+            | DefPathData::Delegation { kind: DelegationDefPathKind::Lifetime, .. } => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };
