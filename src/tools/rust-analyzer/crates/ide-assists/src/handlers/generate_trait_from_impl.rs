@@ -47,7 +47,7 @@ use syntax::{
 //     };
 // }
 //
-// trait ${0:NewTrait}<const N: usize> {
+// trait ${0:Create}<const N: usize> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -56,7 +56,7 @@ use syntax::{
 //     const_maker! {i32, 7}
 // }
 //
-// impl<const N: usize> ${0:NewTrait}<N> for Foo<N> {
+// impl<const N: usize> ${0:Create}<N> for Foo<N> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -109,7 +109,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             };
             let trait_ast = make::trait_(
                 false,
-                "NewTrait",
+                &trait_name(&impl_assoc_items).text(),
                 impl_ast.generic_param_list(),
                 impl_ast.where_clause(),
                 trait_items,
@@ -161,6 +161,18 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
     );
 
     Some(())
+}
+
+fn trait_name(items: &ast::AssocItemList) -> ast::Name {
+    let mut fn_names = items
+        .assoc_items()
+        .filter_map(|x| if let ast::AssocItem::Fn(f) = x { f.name() } else { None });
+    fn_names
+        .next()
+        .and_then(|name| {
+            fn_names.next().is_none().then(|| make::name(&stdx::to_camel_case(&name.text())))
+        })
+        .unwrap_or_else(|| make::name("NewTrait"))
 }
 
 /// `E0449` Trait items always share the visibility of their trait
@@ -240,11 +252,11 @@ impl F$0oo {
             r#"
 struct Foo(f64);
 
-trait NewTrait {
+trait Add {
     fn add(&mut self, x: f64);
 }
 
-impl NewTrait for Foo {
+impl Add for Foo {
     fn add(&mut self, x: f64) {
         self.0 += x;
     }
@@ -271,7 +283,7 @@ impl F$0oo {
             r#"
 struct Foo(f64);
 
-trait NewTrait {
+trait Add {
     /// Add `x`
     ///
     /// # Examples
@@ -279,7 +291,7 @@ trait NewTrait {
     fn add(&mut self, x: f64);
 }
 
-impl NewTrait for Foo {
+impl Add for Foo {
     #[cfg(true)]
     fn add(&mut self, x: f64) {
         self.0 += x;
@@ -389,11 +401,11 @@ impl F$0oo {
             r#"
 struct Foo;
 
-trait NewTrait {
+trait AFunc {
     fn a_func() -> Option<()>;
 }
 
-impl NewTrait for Foo {
+impl AFunc for Foo {
     fn a_func() -> Option<()> {
         Some(())
     }
@@ -423,13 +435,35 @@ mod a {
 }"#,
             r#"
 mod a {
-    trait NewTrait {
+    trait Foo {
         fn foo();
     }
 
-    impl NewTrait for S {
+    impl Foo for S {
         fn foo() {}
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_multi_fn_impl_not_suggest_trait_name() {
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+impl S$0 {
+    fn foo() {}
+    fn bar() {}
+}"#,
+            r#"
+trait NewTrait {
+    fn foo();
+    fn bar();
+}
+
+impl NewTrait for S {
+    fn foo() {}
+    fn bar() {}
 }"#,
         )
     }
