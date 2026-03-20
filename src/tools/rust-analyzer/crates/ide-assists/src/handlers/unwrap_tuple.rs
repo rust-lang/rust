@@ -33,7 +33,7 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let (ty, init, prefix, suffix) = match &let_stmt {
         Either::Left(let_stmt) => (let_stmt.ty(), let_stmt.initializer()?, "", ";"),
         Either::Right(let_expr) => {
-            indent_level = indent_level + 1;
+            indent_level += 1;
             (None, let_expr.expr()?, "&& ", "")
         }
     };

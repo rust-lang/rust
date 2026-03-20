@@ -43,6 +43,12 @@ impl ops::Add<u8> for IndentLevel {
     }
 }
 
+impl ops::AddAssign<u8> for IndentLevel {
+    fn add_assign(&mut self, rhs: u8) {
+        self.0 += rhs;
+    }
+}
+
 impl IndentLevel {
     pub fn single() -> IndentLevel {
         IndentLevel(0)
