@@ -5,7 +5,7 @@ use crate::spec::{
 pub(crate) fn target() -> Target {
     let mut base = base::linux::opts();
     base.cpu = "x86-64".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
     base.linker_flavor = LinkerFlavor::Gnu(Cc::No, Lld::Yes);
     base.linker = Some("rust-lld".into());

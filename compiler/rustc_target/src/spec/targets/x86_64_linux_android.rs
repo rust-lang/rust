@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
     base.plt_by_default = false;
     // https://developer.android.com/ndk/guides/abis.html#86-64
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.stack_probes = StackProbeType::Inline;
     base.supports_xray = true;

@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::lynxos178::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
     base.static_position_independent_executables = false;
     base.supported_sanitizers = SanitizerSet::ADDRESS

@@ -2540,7 +2540,9 @@ macro_rules! if_8_bit {
 
 #[cfg(target_has_atomic_load_store)]
 macro_rules! atomic_int {
-    ($cfg_cas:meta,
+    ($($cfg_target_feature:meta)*,
+     $($target_feature_enable:meta)*,
+     $cfg_cas:meta,
      $cfg_align:meta,
      $stable:meta,
      $stable_cxchg:meta,
@@ -2607,7 +2609,17 @@ macro_rules! atomic_int {
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
+                #[allow(unused_unsafe)]
+                $(#[$cfg_target_feature])*
+                // SAFETY:
+                // These features are enable in build-time.
+                unsafe {
+                    return fmt::Debug::fmt(&self.load(Ordering::Relaxed), f);
+                }
+                #[allow(unreachable_code)]
+                {
+                    f.debug_struct(stringify!($atomic_type)).finish()
+                }
             }
         }
 
@@ -2863,6 +2875,7 @@ macro_rules! atomic_int {
             /// assert_eq!(some_var.load(Ordering::Relaxed), 5);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn load(&self, order: Ordering) -> $int_type {
@@ -2890,6 +2903,7 @@ macro_rules! atomic_int {
             /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             #[rustc_should_not_be_called_on_const_items]
@@ -2918,6 +2932,7 @@ macro_rules! atomic_int {
             /// assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2979,6 +2994,7 @@ macro_rules! atomic_int {
             /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[deprecated(
                 since = "1.50.0",
@@ -3052,6 +3068,7 @@ macro_rules! atomic_int {
             /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
             /// [compare-and-swap operation]: https://en.wikipedia.org/wiki/Compare-and-swap
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable_cxchg]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3116,6 +3133,7 @@ macro_rules! atomic_int {
             /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
             /// [compare-and-swap operation]: https://en.wikipedia.org/wiki/Compare-and-swap
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable_cxchg]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3153,6 +3171,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), 10);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3184,6 +3203,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), 10);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3218,6 +3238,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3252,6 +3273,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable_nand]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3286,6 +3308,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3320,6 +3343,7 @@ macro_rules! atomic_int {
             /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[$stable]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3333,6 +3357,7 @@ macro_rules! atomic_int {
             #[doc = concat!("[`", stringify!($atomic_type), "::try_update`]")]
             /// .
             #[inline]
+            $(#[$target_feature_enable])*
             #[stable(feature = "no_more_cas", since = "1.45.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3398,6 +3423,7 @@ macro_rules! atomic_int {
             /// assert_eq!(x.load(Ordering::SeqCst), 9);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[stable(feature = "atomic_try_update", since = "1.95.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3464,6 +3490,7 @@ macro_rules! atomic_int {
             /// assert_eq!(x.load(Ordering::SeqCst), 9);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[stable(feature = "atomic_try_update", since = "1.95.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3519,6 +3546,7 @@ macro_rules! atomic_int {
             /// assert!(max_foo == 42);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[stable(feature = "atomic_min_max", since = "1.45.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3566,6 +3594,7 @@ macro_rules! atomic_int {
             /// assert_eq!(min_foo, 12);
             /// ```
             #[inline]
+            $(#[$target_feature_enable])*
             #[stable(feature = "atomic_min_max", since = "1.45.0")]
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3620,6 +3649,8 @@ macro_rules! atomic_int {
 
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "8"),
     cfg(target_has_atomic_equal_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3638,6 +3669,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "8"),
     cfg(target_has_atomic_equal_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3656,6 +3689,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "16"),
     cfg(target_has_atomic_equal_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3674,6 +3709,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "16"),
     cfg(target_has_atomic_equal_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3692,6 +3729,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "32"),
     cfg(target_has_atomic_equal_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3710,6 +3749,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "32"),
     cfg(target_has_atomic_equal_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3728,6 +3769,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "64"),
     cfg(target_has_atomic_equal_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3746,6 +3789,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
+    ,
+    ,
     cfg(target_has_atomic = "64"),
     cfg(target_has_atomic_equal_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3764,6 +3809,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
+    cfg_attr(target_arch = "x86_64", cfg(target_feature = "cmpxchg16b")),
+    cfg_attr(target_arch = "x86_64", target_feature(enable = "cmpxchg16b")),
     cfg(target_has_atomic = "128"),
     cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3782,6 +3829,8 @@ atomic_int! {
 }
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
+    cfg_attr(target_arch = "x86_64", cfg(target_feature = "cmpxchg16b")),
+    cfg_attr(target_arch = "x86_64", target_feature(enable = "cmpxchg16b")),
     cfg(target_has_atomic = "128"),
     cfg(target_has_atomic_equal_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3804,6 +3853,8 @@ macro_rules! atomic_int_ptr_sized {
     ( $($target_pointer_width:literal $align:literal)* ) => { $(
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
+            ,
+            ,
             cfg(target_has_atomic = "ptr"),
             cfg(target_has_atomic_equal_alignment = "ptr"),
             stable(feature = "rust1", since = "1.0.0"),
@@ -3822,6 +3873,8 @@ macro_rules! atomic_int_ptr_sized {
         }
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
+            ,
+            ,
             cfg(target_has_atomic = "ptr"),
             cfg(target_has_atomic_equal_alignment = "ptr"),
             stable(feature = "rust1", since = "1.0.0"),

@@ -5,7 +5,7 @@ pub(crate) fn target() -> Target {
         vendor: "win7".into(),
         cpu: "x86-64".into(),
         plt_by_default: false,
-        max_atomic_width: Some(64),
+        max_atomic_width: Some(128),
         supported_sanitizers: SanitizerSet::ADDRESS,
         ..base::windows_msvc::opts()
     };

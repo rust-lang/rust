@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
             cpu: "x86-64".into(),
             features: "+rdrand,+rdseed".into(),
             plt_by_default: false,
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(128),
             stack_probes: StackProbeType::Inline,
             ..base::hermit::opts()
         },

@@ -5,7 +5,7 @@ pub(crate) fn target() -> Target {
     base.cpu = "x86-64".into();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pep"]);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.linker = Some("x86_64-pc-cygwin-gcc".into());
     Target {
         llvm_target: "x86_64-pc-cygwin".into(),

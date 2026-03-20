@@ -4,7 +4,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.stack_probes = StackProbeType::Inline;
     base.supports_xray = true;
