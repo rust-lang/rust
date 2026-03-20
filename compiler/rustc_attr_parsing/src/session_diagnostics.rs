@@ -1046,3 +1046,14 @@ pub(crate) struct CustomMirIncompatibleDialectAndPhase {
     #[label("... is not compatible with this phase")]
     pub phase_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("can't mark as unstable using an already stable feature")]
+pub(crate) struct UnstableAttrForAlreadyStableFeature {
+    #[primary_span]
+    #[label("this feature is already stable")]
+    #[help("consider removing the attribute")]
+    pub attr_span: Span,
+    #[label("the stability attribute annotates this item")]
+    pub item_span: Span,
+}
