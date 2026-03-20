@@ -7,6 +7,7 @@ use rustc_errors::{
 };
 use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
+use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
@@ -465,6 +466,28 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("`dialect` key required")]
+pub(crate) struct CustomMirPhaseRequiresDialect {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("`phase` argument requires a `dialect` argument")]
+    pub phase_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the {$dialect} dialect is not compatible with the {$phase} phase")]
+pub(crate) struct CustomMirIncompatibleDialectAndPhase {
+    pub dialect: MirDialect,
+    pub phase: MirPhase,
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("this dialect...")]
+    pub dialect_span: Span,
+    #[label("... is not compatible with this phase")]
+    pub phase_span: Span,
 }
 
 #[derive(Diagnostic)]

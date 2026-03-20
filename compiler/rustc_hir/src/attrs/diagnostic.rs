@@ -27,7 +27,8 @@ impl Directive {
     /// generic of the item. If not then `visit` must issue a diagnostic.
     ///
     /// We can't check this while parsing the attribute because `rustc_attr_parsing` doesn't have
-    /// access to the item an attribute is on. Instead we later call this function in `check_attr`.
+    /// access to the item an attribute is on. Instead the compiler calls this from
+    /// `late_validation::for_each_unknown_diagnostic_format_param` (built from HIR in `check_attr`).
     pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
         if let Some(condition) = &self.condition {
             condition.visit_params(visit);
