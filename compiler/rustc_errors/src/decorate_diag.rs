@@ -14,18 +14,6 @@ pub enum DecorateDiagCompat {
     Builtin(BuiltinLintDiag),
 }
 
-pub struct DynamicDiag<
-    F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static,
->(Box<F>);
-
-impl<F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>
-    DynamicDiag<F>
-{
-    pub fn new(f: F) -> Self {
-        Self(Box::new(f))
-    }
-}
-
 impl std::fmt::Debug for DecorateDiagCompat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DecorateDiagCompat").finish()
@@ -43,15 +31,6 @@ impl From<BuiltinLintDiag> for DecorateDiagCompat {
     #[inline]
     fn from(b: BuiltinLintDiag) -> Self {
         Self::Builtin(b)
-    }
-}
-
-impl<F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>
-    From<DynamicDiag<F>> for DecorateDiagCompat
-{
-    #[inline]
-    fn from(d: DynamicDiag<F>) -> Self {
-        Self::Dynamic(d.0)
     }
 }
 

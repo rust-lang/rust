@@ -1921,11 +1921,11 @@ impl<'a> Parser<'a> {
                     }
                 {
                     let span = expr.span;
-                    self.psess.buffer_lint(
+                    self.psess.dyn_buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        rustc_errors::DynamicDiag::new(move |dcx, level| {
+                        move |dcx, level| {
                             errors::BreakWithLabelAndLoop {
                                 sub: errors::BreakWithLabelAndLoopSub {
                                     left: span.shrink_to_lo(),
@@ -1933,7 +1933,7 @@ impl<'a> Parser<'a> {
                                 },
                             }
                             .into_diag(dcx, level)
-                        }),
+                        },
                     );
                 }
 
