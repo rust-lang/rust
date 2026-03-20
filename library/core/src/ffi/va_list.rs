@@ -256,6 +256,7 @@ impl<'f> const Clone for VaList<'f> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Drop for VaList<'f> {
+    #[inline]
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
