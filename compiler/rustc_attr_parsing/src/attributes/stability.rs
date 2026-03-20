@@ -367,7 +367,7 @@ pub(crate) fn parse_stability<S: Stage>(
     }
 }
 
-// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,

@@ -152,10 +152,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ProcMacroDerive { .. }) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
-                Attribute::Parsed(
-                    AttributeKind::Stability { .. }
-                    | AttributeKind::RustcConstStability { .. },
-                ) => {}
                 Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
                     self.check_inline(hir_id, *attr_span, kind, target)
@@ -302,6 +298,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::RustcCoinductive(..)
                     | AttributeKind::RustcConfusables { .. }
+                    | AttributeKind::RustcConstStability { .. }
                     | AttributeKind::RustcConstStableIndirect
                     | AttributeKind::RustcConversionSuggestion
                     | AttributeKind::RustcDeallocator
@@ -374,6 +371,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
                     | AttributeKind::ShouldPanic { .. }
+                    | AttributeKind::Stability { .. }
                     | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal
                     | AttributeKind::TypeLengthLimit { .. }
