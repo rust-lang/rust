@@ -26,12 +26,15 @@ impl Bar for i32 {}
 // cannot use special rustc_on_unimplement symbols
 // in the format string
 #[diagnostic::on_unimplemented(
-    message = "{from_desugaring}{direct}{cause}{integral}{integer}",
+    message = "{from_desugaring}{direct}{cause}{integral}{integer}{struct}{enum}{union}",
     //~^WARN there is no parameter `from_desugaring` on trait `Baz`
     //~|WARN there is no parameter `direct` on trait `Baz`
     //~|WARN there is no parameter `cause` on trait `Baz`
     //~|WARN there is no parameter `integral` on trait `Baz`
     //~|WARN there is no parameter `integer` on trait `Baz`
+    //~|WARN there is no parameter `r#struct` on trait `Baz`
+    //~|WARN there is no parameter `r#enum` on trait `Baz`
+    //~|WARN there is no parameter `union` on trait `Baz`
     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}{This}"
     //~^WARN there is no parameter `float` on trait `Baz`
     //~|WARN there is no parameter `_Self` on trait `Baz`
@@ -52,5 +55,5 @@ fn main() {
     takes_bar(());
     //~^ERROR the trait bound `(): Bar` is not satisfied
     takes_baz(());
-    //~^ERROR {from_desugaring}{direct}{cause}{integral}{integer}
+    //~^ERROR {from_desugaring}{direct}{cause}{integral}{integer}{struct}{enum}{union}
 }
