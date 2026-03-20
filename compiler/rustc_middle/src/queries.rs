@@ -767,14 +767,10 @@ rustc_queries! {
     /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
     query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
-        // This query is not expected to have input -- as a result, it
-        // is not a good candidates for "replay" because it is essentially a
-        // pure function of its input (and hence the expectation is that
-        // no caller would be green **apart** from just these
-        // queries). Making it anonymous avoids hashing the result, which
-        // may save a bit of time.
-        anon
         desc { "erasing regions from `{}`", ty }
+        // Not hashing the return value appears to give marginally better perf for this query,
+        // which should always be marked green for having no dependencies anyway.
+        no_hash
     }
 
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
