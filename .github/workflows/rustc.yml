@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
@@ -31,7 +31,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo

@@ -43,7 +43,7 @@ jobs:
           #    TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       if: matrix.os == 'ubuntu-latest'
