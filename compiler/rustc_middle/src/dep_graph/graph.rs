@@ -1415,28 +1415,29 @@ impl DepNodeColorMap {
         if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
     }
 
-    /// This tries to atomically mark a node green and assign `index` as the new
-    /// index if `green` is true, otherwise it will try to atomicaly mark it red.
+    /// Atomically sets the color of a previous-session dep node to either green
+    /// or red, if it has not already been colored.
     ///
-    /// This returns `Ok` if `index` gets assigned or the node is marked red, otherwise it returns
-    /// the already allocated index in `Err` if it is green already. If it was already
-    /// red, `Err(None)` is returned.
+    /// If the node already has a color, the new color is ignored, and the
+    /// return value indicates the existing color.
     #[inline(always)]
-    pub(super) fn try_mark(
+    pub(super) fn try_set_color(
         &self,
         prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-        green: bool,
-    ) -> Result<(), Option<DepNodeIndex>> {
-        let value = &self.values[prev_index];
-        match value.compare_exchange(
+        color: DesiredColor,
+    ) -> TrySetColorResult {
+        match self.values[prev_index].compare_exchange(
             COMPRESSED_UNKNOWN,
-            if green { index.as_u32() } else { COMPRESSED_RED },
+            match color {
+                DesiredColor::Red => COMPRESSED_RED,
+                DesiredColor::Green { index } => index.as_u32(),
+            },
             Ordering::Relaxed,
             Ordering::Relaxed,
         ) {
-            Ok(_) => Ok(()),
-            Err(v) => Err(if v == COMPRESSED_RED { None } else { Some(DepNodeIndex::from_u32(v)) }),
+            Ok(_) => TrySetColorResult::Success,
+            Err(COMPRESSED_RED) => TrySetColorResult::AlreadyRed,
+            Err(index) => TrySetColorResult::AlreadyGreen { index: DepNodeIndex::from_u32(index) },
         }
     }
 
@@ -1461,6 +1462,28 @@ impl DepNodeColorMap {
         // Sanity check for duplicate nodes
         assert_eq!(value, COMPRESSED_UNKNOWN, "tried to color an already colored node as red");
     }
+}
+
+/// The color that [`DepNodeColorMap::try_set_color`] should try to apply to a node.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum DesiredColor {
+    /// Try to mark the node red.
+    Red,
+    /// Try to mark the node green, associating it with a current-session node index.
+    Green { index: DepNodeIndex },
+}
+
+/// Return value of [`DepNodeColorMap::try_set_color`], indicating success or failure,
+/// and (on failure) what the existing color is.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum TrySetColorResult {
+    /// The [`DesiredColor`] was freshly applied to the node.
+    Success,
+    /// Coloring failed because the node was already marked red.
+    AlreadyRed,
+    /// Coloring failed because the node was already marked green,
+    /// and corresponds to node `index` in the current-session dep graph.
+    AlreadyGreen { index: DepNodeIndex },
 }
 
 #[inline(never)]
