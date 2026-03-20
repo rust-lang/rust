@@ -23,7 +23,7 @@ use rustc_feature::{
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    MirDialect, MirPhase, ReprAttr, SanitizerSet,
+    ReprAttr, SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -208,9 +208,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
-                &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
-                    self.check_custom_mir(dialect, phase, attr_span)
-                }
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
@@ -247,6 +244,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Coverage (..)
                     | AttributeKind::CrateName { .. }
                     | AttributeKind::CrateType(..)
+                    | AttributeKind::CustomMir(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::DefaultLibAllocator
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
@@ -1855,48 +1853,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
             self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
         };
-    }
-
-    fn check_custom_mir(
-        &self,
-        dialect: Option<(MirDialect, Span)>,
-        phase: Option<(MirPhase, Span)>,
-        attr_span: Span,
-    ) {
-        let Some((dialect, dialect_span)) = dialect else {
-            if let Some((_, phase_span)) = phase {
-                self.dcx()
-                    .emit_err(errors::CustomMirPhaseRequiresDialect { attr_span, phase_span });
-            }
-            return;
-        };
-
-        match dialect {
-            MirDialect::Analysis => {
-                if let Some((MirPhase::Optimized, phase_span)) = phase {
-                    self.dcx().emit_err(errors::CustomMirIncompatibleDialectAndPhase {
-                        dialect,
-                        phase: MirPhase::Optimized,
-                        attr_span,
-                        dialect_span,
-                        phase_span,
-                    });
-                }
-            }
-
-            MirDialect::Built => {
-                if let Some((phase, phase_span)) = phase {
-                    self.dcx().emit_err(errors::CustomMirIncompatibleDialectAndPhase {
-                        dialect,
-                        phase,
-                        attr_span,
-                        dialect_span,
-                        phase_span,
-                    });
-                }
-            }
-            MirDialect::Runtime => {}
-        }
     }
 }
 
