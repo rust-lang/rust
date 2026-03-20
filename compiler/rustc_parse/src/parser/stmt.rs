@@ -362,7 +362,7 @@ impl<'a> Parser<'a> {
                 // init parsed, ty error
                 // Could parse the type as if it were the initializer, it is likely there was a
                 // typo in the code: `:` instead of `=`. Add suggestion and emit the error.
-                err.span_suggestion_short(
+                err.span_suggestion_verbose(
                     colon_sp,
                     "use `=` if you meant to assign",
                     " =",
@@ -1134,7 +1134,7 @@ impl<'a> Parser<'a> {
                                     false
                                 };
                                 if suggest_eq {
-                                    e.span_suggestion_short(
+                                    e.span_suggestion_verbose(
                                         colon_sp,
                                         "use `=` if you meant to assign",
                                         "=",
