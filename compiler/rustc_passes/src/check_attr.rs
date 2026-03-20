@@ -243,22 +243,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_inline(hir_id, *attr_span, kind, target)
                 }
                 Attribute::Parsed(AttributeKind::LoopMatch(attr_span)) => {
-                    if let Some(v) = late_validation::validate_loop_match(&late_ctx, *attr_span) {
-                        self.dcx().emit_err(errors::LoopMatchAttr {
-                            attr_span: v.attr_span,
-                            node_span: v.node_span,
-                        });
-                    }
+                    self.check_loop_match(hir_id, *attr_span, target);
                 }
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
-                    if let Some(v) =
-                        late_validation::validate_const_continue(&late_ctx, *attr_span)
-                    {
-                        self.dcx().emit_err(errors::ConstContinueAttr {
-                            attr_span: v.attr_span,
-                            node_span: v.node_span,
-                        });
-                    }
+                    self.check_const_continue(hir_id, *attr_span, target);
                 }
                 Attribute::Parsed(AttributeKind::AllowInternalUnsafe(attr_span) | AttributeKind::AllowInternalUnstable(.., attr_span)) => {
                     self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -306,6 +294,25 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::CustomMir(..)) => {
                     // Validation (dialect/phase compatibility) is done in the attribute parser.
                 }
+                    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
+                        let node_span = self.tcx.hir_span(hir_id);
+                        if !matches!(target, Target::Expression) {
+                            return; // Handled in target checking during attr parse
+                        }
+                        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
+                            self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
+                        }
+                    }
+
+                    fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
+                        let node_span = self.tcx.hir_span(hir_id);
+                        if !matches!(target, Target::Expression) {
+                            return; // Handled in target checking during attr parse
+                        }
+                        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
+                            self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
+                        }
+                    }
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
