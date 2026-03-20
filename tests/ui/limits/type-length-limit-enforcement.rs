@@ -1,4 +1,4 @@
-//~ ERROR reached the type-length limit
+//~? ERROR reached the type-length limit
 
 //! Checks the enforcement of the type-length limit
 //! and its configurability via `#![type_length_limit]`.
