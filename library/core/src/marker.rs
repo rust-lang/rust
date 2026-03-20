@@ -52,9 +52,6 @@ use crate::pin::UnsafePinned;
 ///         u32,
 /// }
 /// ```
-#[unstable(feature = "internal_impls_macro", issue = "none")]
-// Allow implementations of `UnsizedConstParamTy` even though std cannot use that feature.
-#[allow_internal_unstable(const_param_ty_trait)]
 macro marker_impls {
     ( $(#[$($meta:tt)*])* $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
         $(#[$($meta)*])* impl< $($($bounds)*)? > $Trait for $T {}
