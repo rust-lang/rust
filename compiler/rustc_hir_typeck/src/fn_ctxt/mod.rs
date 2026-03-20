@@ -446,7 +446,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _generics: Option<&rustc_hir::Generics<'_>>,
         _hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
-        _suppress_ret_ty_placeholder_errors: bool,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
         let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_ty(a)).collect();
 

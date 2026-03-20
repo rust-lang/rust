@@ -143,7 +143,7 @@ fn typeck_with_inspect<'tcx>(
             // type that has an infer in it, lower the type directly so that it'll
             // be correctly filled with infer. We'll use this inference to provide
             // a suggestion later on.
-            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None, false)
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };

@@ -533,7 +533,6 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         _generics: Option<&hir::Generics<'_>>,
         hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
-        suppress_ret_ty_placeholder_errors: bool,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
         let tcx = self.tcx();
 
@@ -562,9 +561,13 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 let _restore =
                     defer(|| self.suppress_placeholder_errors.set(old_suppress_placeholder_errors));
 
+                let suppress_ret_ty_placeholder_errors = hir_id == self.hir_id()
+                    && suggest_ret_ty_in_typeck(tcx, &self.node(), hir_id).is_some();
+
                 if suppress_ret_ty_placeholder_errors {
                     self.suppress_placeholder_errors.set(true);
                 }
+
                 if !suppress_ret_ty_placeholder_errors
                     && let hir::TyKind::Infer(()) = output.kind
                     && let Some(suggested_ty) =
@@ -1019,8 +1022,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
 
     let node = &tcx.hir_node(hir_id);
 
-    let suggest_ret_ty_in_typeck = suggest_ret_ty_in_typeck(tcx, node, hir_id).is_some();
-
     let output = match *node {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
@@ -1037,7 +1038,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                 sig.decl,
                 Some(generics),
                 None,
-                suggest_ret_ty_in_typeck,
             )
         }
 
@@ -1317,9 +1317,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let fty = ItemCtxt::new(tcx, def_id)
-        .lowerer()
-        .lower_fn_ty(hir_id, safety, abi, decl, None, None, false);
+    let fty =
+        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
