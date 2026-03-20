@@ -415,7 +415,7 @@ macro_rules! uint_impl {
             return intrinsics::rotate_right(self, n);
         }
 
-        /// Performs a left funnel shift (concatenates `self` with `rhs`, with `self`
+        /// Performs a left funnel shift (concatenates `self` with `right`, with `self`
         /// making up the most significant half, then shifts the combined value left
         /// by `n`, and most significant half is extracted to produce the result).
         ///
@@ -444,13 +444,13 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
+        pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+            unsafe { intrinsics::unchecked_funnel_shl(self, right, n) }
         }
 
-        /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
+        /// Performs a right funnel shift (concatenates `self` and `right`, with `self`
         /// making up the most significant half, then shifts the combined value right
         /// by `n`, and least significant half is extracted to produce the result).
         ///
@@ -479,10 +479,10 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
+        pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
             assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
             // SAFETY: just checked that `shift` is in-range
-            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
+            unsafe { intrinsics::unchecked_funnel_shr(self, right, n) }
         }
 
         /// Performs a carry-less multiplication, returning the lower bits.
