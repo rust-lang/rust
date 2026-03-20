@@ -7,6 +7,7 @@
 //@[default] check-pass
 
 #![allow(dead_code)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 use std::pin::Pin;
 use std::pin::pin;

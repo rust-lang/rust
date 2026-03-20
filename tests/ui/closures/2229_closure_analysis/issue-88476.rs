@@ -1,6 +1,7 @@
 //@ edition:2021
 
 #![feature(rustc_attrs)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 // Test that we can't move out of struct that impls `Drop`.
 

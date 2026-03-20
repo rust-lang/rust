@@ -1,4 +1,5 @@
 #![feature(arbitrary_self_types)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 struct PtrA<T>(T);
 

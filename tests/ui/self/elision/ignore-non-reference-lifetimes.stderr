@@ -1,5 +1,5 @@
 warning: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/ignore-non-reference-lifetimes.rs:6:41
+  --> $DIR/ignore-non-reference-lifetimes.rs:7:41
    |
 LL |     fn a<'a>(self: Self, a: &'a str) -> &str {
    |                              --         ^^^^ the same lifetime is elided here
@@ -14,7 +14,7 @@ LL |     fn a<'a>(self: Self, a: &'a str) -> &'a str {
    |                                          ++
 
 warning: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/ignore-non-reference-lifetimes.rs:10:44
+  --> $DIR/ignore-non-reference-lifetimes.rs:11:44
    |
 LL |     fn b<'a>(self: Foo<'b>, a: &'a str) -> &str {
    |                                 --         ^^^^ the same lifetime is elided here
