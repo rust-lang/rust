@@ -224,7 +224,7 @@ impl<'tcx> Collector<'tcx> {
             let dll_imports = match attr.kind {
                 NativeLibKind::RawDylib { .. } => foreign_items
                     .iter()
-                    .map(|&child_item| {
+                    .filter_map(|&child_item| {
                         self.build_dll_import(
                             abi,
                             attr.import_name_type.map(|(import_name_type, _)| import_name_type),
@@ -388,7 +388,7 @@ impl<'tcx> Collector<'tcx> {
         abi: ExternAbi,
         import_name_type: Option<PeImportNameType>,
         item: DefId,
-    ) -> DllImport {
+    ) -> Option<DllImport> {
         let span = self.tcx.def_span(item);
 
         // This `extern` block should have been checked for general ABI support before, but let's
@@ -465,6 +465,8 @@ impl<'tcx> Collector<'tcx> {
             } else {
                 DllImportSymbolType::Static
             }
+        } else if def_kind == DefKind::ForeignTy {
+            return None;
         } else {
             bug!("Unexpected type for raw-dylib: {}", def_kind.descr(item));
         };
@@ -482,6 +484,6 @@ impl<'tcx> Collector<'tcx> {
             }
         };
 
-        DllImport { name, import_name_type, calling_convention, span, symbol_type, size }
+        Some(DllImport { name, import_name_type, calling_convention, span, symbol_type, size })
     }
 }
