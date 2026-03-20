@@ -25,6 +25,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         edit_in_place::AttrsOwnerEdit,
         make,
+        prec::ExprPrecedence,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Element, Removable, SyntaxEditor},
@@ -95,6 +96,20 @@ pub(crate) fn wrap_block(expr: &ast::Expr, make: &SyntaxFactory) -> ast::BlockEx
     } else {
         make.block_expr(None, Some(expr.reset_indent().indent(1.into())))
     }
+}
+
+pub(crate) fn wrap_paren(expr: ast::Expr, make: &SyntaxFactory, prec: ExprPrecedence) -> ast::Expr {
+    if expr.precedence().needs_parentheses_in(prec) { make.expr_paren(expr).into() } else { expr }
+}
+
+pub(crate) fn wrap_paren_in_call(expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_call(&expr) { make.expr_paren(expr).into() } else { expr }
+}
+
+fn needs_parens_in_call(param: &ast::Expr) -> bool {
+    let call = make::expr_call(make::ext::expr_unit(), make::arg_list(Vec::new()));
+    let callable = call.expr().expect("invalid make call");
+    param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
