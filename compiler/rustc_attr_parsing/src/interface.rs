@@ -14,7 +14,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
-use crate::parser::{ArgParser, PathParser, RefPathParser};
+use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
 
@@ -139,7 +139,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
-        allow_expr_metavar: bool,
+        allow_expr_metavar: AllowExprMetavar,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
@@ -335,7 +335,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
-                            false,
+                            AllowExprMetavar::No,
                         ) else {
                             continue;
                         };

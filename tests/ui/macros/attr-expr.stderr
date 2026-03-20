@@ -9,5 +9,16 @@ LL | foo!(inline);
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 1 previous error
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
+  --> $DIR/attr-expr.rs:12:18
+   |
+LL |         #[inline($e)]
+   |                  ^^
+...
+LL | bar!(always);
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
 

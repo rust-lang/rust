@@ -20,7 +20,9 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, ShouldEmit, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
+use crate::parser::{
+    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
+};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
@@ -363,7 +365,7 @@ fn parse_cfg_attr_internal<'a>(
     let meta = MetaItemOrLitParser::parse_single(
         parser,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
-        true,
+        AllowExprMetavar::Yes,
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 

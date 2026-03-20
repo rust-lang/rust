@@ -10,9 +10,10 @@ use rustc_ast::{
     self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, DUMMY_NODE_ID, EarlyParsedAttribute,
     HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
 };
-use rustc_attr_parsing as attr;
+use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg,
+    self as attr, AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry,
+    parse_cfg,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::msg;
@@ -402,7 +403,7 @@ impl<'a> StripUnconfigured<'a> {
             emit_errors,
             parse_cfg,
             &CFG_TEMPLATE,
-            true,
+            AllowExprMetavar::Yes,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
