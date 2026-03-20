@@ -470,11 +470,12 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
                 // if the integer type has been resolved, to allow targeting all integers.
                 // `"{integer}"` and `"{float}"` come from numerics that haven't been inferred yet,
                 // from the `Display` impl of `InferTy` to be precise.
+                // `"{union|enum|struct}"` is used as a special selector for ADTs.
                 //
                 // Don't try to format these later!
-                Position::ArgumentNamed(arg @ ("integer" | "integral" | "float")) => {
-                    LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}")))
-                }
+                Position::ArgumentNamed(
+                    arg @ ("integer" | "integral" | "float" | "union" | "enum" | "struct"),
+                ) => LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}"))),
 
                 Position::ArgumentNamed(arg) => LitOrArg::Arg(Symbol::intern(arg)),
                 Position::ArgumentImplicitlyIs(_) => LitOrArg::Lit(sym::empty_braces),

@@ -4037,12 +4037,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => return false,
         };
         let is_derivable_trait = match diagnostic_name {
-            sym::Default => !adt.is_enum(),
+            sym::Copy | sym::Clone => true,
+            _ if adt.is_union() => false,
             sym::PartialEq | sym::PartialOrd => {
                 let rhs_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
                 trait_pred.skip_binder().self_ty() == rhs_ty
             }
-            sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+            sym::Eq | sym::Ord | sym::Hash | sym::Debug | sym::Default => true,
             _ => false,
         };
         is_derivable_trait &&
