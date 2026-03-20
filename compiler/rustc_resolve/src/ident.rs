@@ -925,16 +925,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None
                 };
 
-                self.ambiguity_errors.push(AmbiguityError {
-                    kind,
-                    ambig_vis,
-                    ident: ident.orig(orig_ident_span),
-                    b1: innermost_decl,
-                    b2: decl,
-                    scope1: innermost_scope,
-                    scope2: scope,
-                    warning,
-                });
+                if ambig_vis.is_none() {
+                    self.ambiguity_errors.push(AmbiguityError {
+                        kind,
+                        ambig_vis,
+                        ident: ident.orig(orig_ident_span),
+                        b1: innermost_decl,
+                        b2: decl,
+                        scope1: innermost_scope,
+                        scope2: scope,
+                        warning,
+                    });
+                }
                 return true;
             }
         }

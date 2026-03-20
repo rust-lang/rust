@@ -1,41 +1,41 @@
-warning: ambiguous import visibility: pub or pub(in crate::min_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:12:19
+error: ambiguous import visibility: pub or pub(in crate::min_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:10:19
    |
 LL |     pub use self::S as S1;
    |                   ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:10:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:8:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:8:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:6:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
-   = note: `#[warn(ambiguous_import_visibilities)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[deny(ambiguous_import_visibilities)]` (part of `#[deny(future_incompatible)]`) on by default
 
-warning: ambiguous import visibility: pub(crate) or pub(in crate::min_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:15:26
+error: ambiguous import visibility: pub(crate) or pub(in crate::min_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:13:26
    |
 LL |     pub(crate) use self::S as S2;
    |                          ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:10:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:8:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:8:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:6:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
@@ -43,21 +43,21 @@ LL |     use crate::m::*;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
 
-warning: ambiguous import visibility: pub or pub(in crate::mid_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:26:19
+error: ambiguous import visibility: pub or pub(in crate::mid_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:24:19
    |
 LL |     pub use self::S as S1;
    |                   ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:24:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:22:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:23:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:21:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
@@ -65,21 +65,21 @@ LL |     use crate::m::*;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
 
-warning: ambiguous import visibility: pub(crate) or pub(in crate::mid_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:29:26
+error: ambiguous import visibility: pub(crate) or pub(in crate::mid_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:27:26
    |
 LL |     pub(crate) use self::S as S2;
    |                          ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:24:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:22:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:23:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:21:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
@@ -87,21 +87,21 @@ LL |     use crate::m::*;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
 
-warning: ambiguous import visibility: pub or pub(in crate::max_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:40:19
+error: ambiguous import visibility: pub or pub(in crate::max_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:38:19
    |
 LL |     pub use self::S as S1;
    |                   ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:36:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:34:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:37:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:35:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
@@ -109,21 +109,21 @@ LL |     use crate::m::*;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
 
-warning: ambiguous import visibility: pub(crate) or pub(in crate::max_vis_first)
-  --> $DIR/ambiguous-import-visibility-globglob.rs:43:26
+error: ambiguous import visibility: pub(crate) or pub(in crate::max_vis_first)
+  --> $DIR/ambiguous-import-visibility-globglob.rs:41:26
    |
 LL |     pub(crate) use self::S as S2;
    |                          ^
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:36:13
+  --> $DIR/ambiguous-import-visibility-globglob.rs:34:13
    |
 LL |     pub use crate::m::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `S` to disambiguate
 note: `S` could also refer to the struct imported here
-  --> $DIR/ambiguous-import-visibility-globglob.rs:37:9
+  --> $DIR/ambiguous-import-visibility-globglob.rs:35:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
@@ -131,5 +131,5 @@ LL |     use crate::m::*;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
 
-warning: 6 warnings emitted
+error: aborting due to 6 previous errors
 
