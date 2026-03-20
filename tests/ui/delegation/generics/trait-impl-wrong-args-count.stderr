@@ -1,11 +1,11 @@
 error[E0107]: function takes at most 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/trait-impl-wrong-args-count.rs:25:25
    |
-LL |         fn bar<'x: 'x, 'y: 'y, AA, BB, const NN: usize>(&self) {}
-   |                                      ----------------- help: remove the unnecessary generic argument
-...
 LL |         reuse to_reuse::bar;
-   |                         ^^^ expected at most 2 generic arguments
+   |                         ^^^
+   |                         |
+   |                         expected at most 2 generic arguments
+   |                         help: remove the unnecessary generic argument
    |
 note: function defined here, with at most 2 generic parameters: `A`, `B`
   --> $DIR/trait-impl-wrong-args-count.rs:7:16
@@ -138,11 +138,11 @@ LL |         reuse <X as Trait1::<(), ()>>::foo as bar2;
 error[E0107]: associated function takes at most 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/trait-impl-wrong-args-count.rs:105:40
    |
-LL |         fn bar3<X, Y, Z>() {}
-   |                     --- help: remove the unnecessary generic argument
-...
 LL |         reuse <X as Trait1::<(), ()>>::foo as bar3;
-   |                                        ^^^ expected at most 2 generic arguments
+   |                                        ^^^
+   |                                        |
+   |                                        expected at most 2 generic arguments
+   |                                        help: remove the unnecessary generic argument
    |
 note: associated function defined here, with at most 2 generic parameters: `X`, `Y`
   --> $DIR/trait-impl-wrong-args-count.rs:88:12

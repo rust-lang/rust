@@ -68,7 +68,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
+use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -82,6 +82,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
+use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -208,6 +209,16 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "getting the crate HIR" }
+    }
+
+    query lower_delayed_owner(def_id: LocalDefId) {
+        eval_always
+        desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
+        feedable
+        desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
     /// All items in the crate.
