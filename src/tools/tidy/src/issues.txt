@@ -1475,7 +1475,6 @@ ui/lint/issue-97094.rs
 ui/lint/issue-99387.rs
 ui/lint/let_underscore/issue-119696-err-on-fn.rs
 ui/lint/let_underscore/issue-119697-extra-let.rs
-ui/lint/must_not_suspend/issue-89562.rs
 ui/lint/unused/issue-103320-must-use-ops.rs
 ui/lint/unused/issue-104397.rs
 ui/lint/unused/issue-105061-array-lint.rs
