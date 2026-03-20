@@ -3879,11 +3879,16 @@ pub struct Delegation {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum DelegationSuffixes {
+    List(ThinVec<(Ident, Option<Ident>)>),
+    Glob(Span),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct DelegationMac {
     pub qself: Option<Box<QSelf>>,
     pub prefix: Path,
-    // Some for list delegation, and None for glob delegation.
-    pub suffixes: Option<ThinVec<(Ident, Option<Ident>)>>,
+    pub suffixes: DelegationSuffixes,
     pub body: Option<Box<Block>>,
 }
 

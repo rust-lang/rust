@@ -3005,7 +3005,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     item.id,
                     LifetimeBinderKind::Function,
                     span,
-                    |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
+                    |this| {
+                        this.resolve_delegation(delegation, item.id, false, &item.attrs, item.span)
+                    },
                 );
             }
 
@@ -3351,7 +3353,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         item.id,
                         LifetimeBinderKind::Function,
                         delegation.path.segments.last().unwrap().ident.span,
-                        |this| this.resolve_delegation(delegation, item.id, false, &item.attrs),
+                        |this| {
+                            this.resolve_delegation(
+                                delegation,
+                                item.id,
+                                false,
+                                &item.attrs,
+                                item.span,
+                            )
+                        },
                     );
                 }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
@@ -3665,7 +3675,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                         // Here we don't use `trait_id`, as we can process unresolved trait, however
                         // in this case we are still in a trait impl, https://github.com/rust-lang/rust/issues/150152
-                        this.resolve_delegation(delegation, item.id, is_in_trait_impl, &item.attrs);
+                        this.resolve_delegation(
+                            delegation,
+                            item.id,
+                            is_in_trait_impl,
+                            &item.attrs,
+                            item.span,
+                        );
                     },
                 );
             }
@@ -3821,6 +3837,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         item_id: NodeId,
         is_in_trait_impl: bool,
         attrs: &[Attribute],
+        item_span: Span,
     ) {
         self.smart_resolve_path(
             delegation.id,
@@ -3845,8 +3862,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
-            let span = delegation.path.segments.last().unwrap().ident.span;
-            let ident = Ident::new(kw::SelfLower, span.normalize_to_macro_rules());
+            let ident = Ident::new(kw::SelfLower, item_span.normalize_to_macro_rules());
             let res = Res::Local(delegation.id);
             this.innermost_rib_bindings(ValueNS).insert(ident, res);
 
