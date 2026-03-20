@@ -896,10 +896,6 @@ impl SyntaxFactory {
             unreachable!()
         };
 
-        if let Some(mut mapping) = self.mappings() {
-            SyntaxMappingBuilder::new(ast.syntax().clone()).finish(&mut mapping);
-        }
-
         ast
     }
 
