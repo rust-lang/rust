@@ -167,6 +167,9 @@ fn main() {
 
     rust_call_abi();
 
+    // #[cfg(target_arch = "x86_64")]
+    // inline_asm_call_custom_abi();
+
     const fn no_str() -> Option<Box<str>> {
         None
     }
@@ -678,3 +681,18 @@ fn map(a: Option<(u8, Box<Instruction>)>) -> Option<Box<Instruction>> {
         Some((_, instr)) => Some(instr),
     }
 }
+
+// FIXME enable once inline asm sym references are stabilized in cg_clif
+// #[cfg(target_arch = "x86_64")]
+// fn inline_asm_call_custom_abi() {
+//     use std::arch::{asm, naked_asm};
+//
+//     #[unsafe(naked)]
+//     unsafe extern "custom" fn double() {
+//         naked_asm!("add rax, rax", "ret");
+//     }
+//
+//     let mut x: u64 = 21;
+//     unsafe { asm!("call {}", sym double, inout("rax") x) };
+//     assert_eq!(x, 42);
+// }
