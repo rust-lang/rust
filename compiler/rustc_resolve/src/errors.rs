@@ -884,6 +884,21 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to introduce a const parameter `{$item_name}` on the {$item_location}",
+    code = "{snippet}",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedMissingConstParameter {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: String,
+    pub item_name: String,
+    pub item_location: String,
+}
+
+#[derive(Subdiagnostic)]
 #[multipart_suggestion(
     "you might have meant to write a const parameter here",
     applicability = "has-placeholders",
