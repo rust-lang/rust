@@ -485,13 +485,6 @@ respect to incremental compilation:
    For example, it makes no sense to store values from upstream
    crates in the cache because they are already available in the upstream crate's metadata.
 
- - `anon` - This attribute makes the system use "anonymous" dep-nodes for the given query.
-   An anonymous dep-node is not identified by the corresponding query key.
-   Instead, its ID is computed from the IDs of its dependencies.
-   This allows the red-green system to do its change detection even if there is no
-   query key available for a given dep-node -- something which is needed for
-   handling trait selection because it is not based on queries.
-
 [mod]: ../query.html#adding-a-new-kind-of-query
 
 

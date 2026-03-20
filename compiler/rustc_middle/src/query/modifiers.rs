@@ -7,11 +7,6 @@
 
 // tidy-alphabetical-start
 //
-/// # `anon` query modifier
-///
-/// Generate a dep node based not on the query key, but on the query's dependencies.
-pub(crate) struct anon;
-
 /// # `arena_cache` query modifier
 ///
 /// Query return values must impl `Copy` and be small, but some queries must return values that

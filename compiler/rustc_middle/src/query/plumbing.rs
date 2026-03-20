@@ -77,8 +77,6 @@ pub enum EnsureMode {
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
 
-    /// True if this query has the `anon` modifier.
-    pub anon: bool,
     /// True if this query has the `eval_always` modifier.
     pub eval_always: bool,
     /// True if this query has the `depth_limit` modifier.
@@ -283,7 +281,6 @@ macro_rules! define_callbacks {
                 fn $name:ident($($K:tt)*) -> $V:ty
                 {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,

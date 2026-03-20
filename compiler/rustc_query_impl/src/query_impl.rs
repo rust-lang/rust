@@ -16,7 +16,6 @@ macro_rules! define_queries {
                 fn $name:ident($K:ty) -> $V:ty
                 {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
@@ -133,7 +132,6 @@ macro_rules! define_queries {
 
                     QueryVTable {
                         name: stringify!($name),
-                        anon: $anon,
                         eval_always: $eval_always,
                         depth_limit: $depth_limit,
                         feedable: $feedable,

@@ -140,7 +140,6 @@ struct CacheOnDiskIf {
 /// See `rustc_middle::query::modifiers` for documentation of each query modifier.
 struct QueryModifiers {
     // tidy-alphabetical-start
-    anon: Option<Ident>,
     arena_cache: Option<Ident>,
     cache_on_disk_if: Option<CacheOnDiskIf>,
     depth_limit: Option<Ident>,
@@ -159,7 +158,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut desc = None;
     let mut no_force = None;
     let mut no_hash = None;
-    let mut anon = None;
     let mut eval_always = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
@@ -195,8 +193,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
-        } else if modifier == "anon" {
-            try_insert!(anon = modifier);
         } else if modifier == "eval_always" {
             try_insert!(eval_always = modifier);
         } else if modifier == "depth_limit" {
@@ -218,7 +214,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         desc,
         no_force,
         no_hash,
-        anon,
         eval_always,
         depth_limit,
         separate_provide_extern,
@@ -248,7 +243,6 @@ fn returns_error_guaranteed(ret_ty: &ReturnType) -> bool {
 fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let QueryModifiers {
         // tidy-alphabetical-start
-        anon,
         arena_cache,
         cache_on_disk_if,
         depth_limit,
@@ -261,7 +255,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-end
     } = &query.modifiers;
 
-    let anon = anon.is_some();
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk_if.is_some();
     let depth_limit = depth_limit.is_some();
@@ -280,7 +273,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         query_name_span =>
         // Search for (QMODLIST) to find all occurrences of this query modifier list.
         // tidy-alphabetical-start
-        anon: #anon,
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
         depth_limit: #depth_limit,
@@ -396,7 +388,6 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
 
     doc_link!(
         // tidy-alphabetical-start
-        anon,
         arena_cache,
         depth_limit,
         eval_always,
@@ -487,11 +478,6 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         });
 
         if let Some(feedable) = &modifiers.feedable {
-            assert!(
-                modifiers.anon.is_none(),
-                feedable.span(),
-                "Query {name} cannot be both `feedable` and `anon`."
-            );
             assert!(
                 modifiers.eval_always.is_none(),
                 feedable.span(),

@@ -94,10 +94,14 @@ impl DepKind {
 pub struct DepNode {
     pub kind: DepKind,
 
-    /// This is _typically_ a hash of the query key, but sometimes not.
+    /// If `kind` is a query method, then its "key fingerprint" is always a
+    /// stable hash of the query key.
     ///
-    /// For example, `anon` nodes have a fingerprint that is derived from their
-    /// dependencies instead of a key.
+    /// For non-query nodes, the content of this field varies:
+    /// - Some dep kinds always use a dummy `ZERO` fingerprint.
+    /// - Some dep kinds use the stable hash of some relevant key-like value.
+    /// - Some dep kinds use the `with_anon_task` mechanism, and set their key
+    ///   fingerprint to a hash derived from the task's dependencies.
     ///
     /// In some cases the key value can be reconstructed from this fingerprint;
     /// see [`KeyFingerprintStyle`].

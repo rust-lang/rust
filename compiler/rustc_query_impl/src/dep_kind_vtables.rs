@@ -96,7 +96,6 @@ mod non_query {
 /// Shared implementation of the [`DepKindVTable`] constructor for queries.
 /// Called from macro-generated code for each query.
 pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
-    is_anon: bool,
     is_cache_on_disk: bool,
     is_eval_always: bool,
     is_no_force: bool,
@@ -104,18 +103,10 @@ pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
 where
     Q: GetQueryVTable<'tcx>,
 {
-    let key_fingerprint_style = if is_anon {
-        KeyFingerprintStyle::Opaque
-    } else {
-        <Q::Cache as QueryCache>::Key::key_fingerprint_style()
-    };
-
     // A query dep-node can only be forced or promoted if it can recover a key
     // from its key fingerprint.
+    let key_fingerprint_style = <Q::Cache as QueryCache>::Key::key_fingerprint_style();
     let can_recover = key_fingerprint_style.is_maybe_recoverable();
-    if is_anon {
-        assert!(!can_recover);
-    }
 
     DepKindVTable {
         is_eval_always,
@@ -135,7 +126,6 @@ macro_rules! define_dep_kind_vtables {
                 fn $name:ident($K:ty) -> $V:ty
                 {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
@@ -168,7 +158,6 @@ macro_rules! define_dep_kind_vtables {
                 $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
                     $crate::query_impl::$name::VTableGetter,
                 >(
-                    $anon,
                     $cache_on_disk,
                     $eval_always,
                     $no_force,
