@@ -1133,11 +1133,11 @@ impl<'a> Parser<'a> {
                                 } else {
                                     false
                                 };
-                                if suggest_eq {
+                                if suggest_eq && let Some(ty) = &local.ty {
                                     e.span_suggestion_verbose(
-                                        colon_sp,
+                                        local.pat.span.between(ty.span),
                                         "use `=` if you meant to assign",
-                                        "=",
+                                        " = ",
                                         Applicability::MaybeIncorrect,
                                     );
                                 }

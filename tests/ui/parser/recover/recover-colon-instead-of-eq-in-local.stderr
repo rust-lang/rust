@@ -17,7 +17,7 @@ LL |     let _: std::env::temp_dir().join("foo");
 help: use `=` if you meant to assign
    |
 LL -     let _: std::env::temp_dir().join("foo");
-LL +     let _= std::env::temp_dir().join("foo");
+LL +     let _ = std::env::temp_dir().join("foo");
    |
 
 error: aborting due to 2 previous errors
