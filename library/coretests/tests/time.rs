@@ -723,3 +723,16 @@ fn precise_duration_fp_div() {
 
     let _ = Duration::MAX.div_f32(1.0);
 }
+
+#[test]
+fn duration_fp_mul_rounding() {
+    // This precise result in ns would start 9223372036854777855999999999.4999999999999998...
+    // If that is rounded too early to 9223372036854777855999999999.5,
+    // then the final result would be incorrectly rounded up again.
+    assert_eq!(
+        Duration::MAX.mul_f64(0.5_f64.next_up()),
+        Duration::from_nanos_u128(9223372036854777855999999999)
+    );
+    // This is precisely 9223372036854775807999999999.5 ns, which *should* round up.
+    assert_eq!(Duration::MAX.mul_f64(0.5_f64), Duration::from_secs(9223372036854775808));
+}
