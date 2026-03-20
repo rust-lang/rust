@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-52049.rs:6:10
+  --> $DIR/non-promotable-static-ref.rs:6:10
    |
 LL |     foo(&unpromotable(5u32));
    |     -----^^^^^^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
