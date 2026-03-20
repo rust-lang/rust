@@ -164,10 +164,14 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
 }
 
 fn trait_name(items: &ast::AssocItemList) -> ast::Name {
-    items
+    let mut fn_names = items
         .assoc_items()
-        .find_map(|x| if let ast::AssocItem::Fn(f) = x { f.name() } else { None })
-        .map(|name| make::name(&stdx::to_camel_case(&name.text())))
+        .filter_map(|x| if let ast::AssocItem::Fn(f) = x { f.name() } else { None });
+    fn_names
+        .next()
+        .and_then(|name| {
+            fn_names.next().is_none().then(|| make::name(&stdx::to_camel_case(&name.text())))
+        })
         .unwrap_or_else(|| make::name("NewTrait"))
 }
 
@@ -438,6 +442,28 @@ mod a {
     impl Foo for S {
         fn foo() {}
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_multi_fn_impl_not_suggest_trait_name() {
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+impl S$0 {
+    fn foo() {}
+    fn bar() {}
+}"#,
+            r#"
+trait NewTrait {
+    fn foo();
+    fn bar();
+}
+
+impl NewTrait for S {
+    fn foo() {}
+    fn bar() {}
 }"#,
         )
     }
