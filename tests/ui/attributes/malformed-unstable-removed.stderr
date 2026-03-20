@@ -1,0 +1,40 @@
+error[E0539]: malformed `unstable_removed` attribute input
+  --> $DIR/malformed-unstable-removed.rs:3:1
+   |
+LL | #![unstable_removed(feature = "old_feature")]
+   | ^^^^^^^^^^^^^^^^^^^-------------------------^
+   | |                  |
+   | |                  missing argument `reason = "..."`
+   | help: must be of the form: `#![unstable_removed(feature = "name", reason = "...", link = "...", since = "version")]`
+
+error[E0539]: malformed `unstable_removed` attribute input
+  --> $DIR/malformed-unstable-removed.rs:6:1
+   |
+LL | #![unstable_removed(invalid = "old_feature")]
+   | ^^^^^^^^^^^^^^^^^^^^-----------------------^^
+   | |                   |
+   | |                   valid arguments are `feature`, `reason`, `link` or `since`
+   | help: must be of the form: `#![unstable_removed(feature = "name", reason = "...", link = "...", since = "version")]`
+
+error[E0565]: malformed `unstable_removed` attribute input
+  --> $DIR/malformed-unstable-removed.rs:9:1
+   |
+LL | #![unstable_removed("invalid literal")]
+   | ^^^^^^^^^^^^^^^^^^^^-----------------^^
+   | |                   |
+   | |                   didn't expect a literal here
+   | help: must be of the form: `#![unstable_removed(feature = "name", reason = "...", link = "...", since = "version")]`
+
+error[E0539]: malformed `unstable_removed` attribute input
+  --> $DIR/malformed-unstable-removed.rs:12:1
+   |
+LL | #![unstable_removed = "invalid literal"]
+   | ^^^^^^^^^^^^^^^^^^^^-------------------^
+   | |                   |
+   | |                   expected this to be a list
+   | help: must be of the form: `#![unstable_removed(feature = "name", reason = "...", link = "...", since = "version")]`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.
