@@ -4517,3 +4517,93 @@ pub(crate) struct BreakWithLabelAndLoopSub {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("prefix `'r` is reserved")]
+pub(crate) struct RawPrefix {
+    #[label("reserved prefix")]
+    pub label: Span,
+    #[suggestion(
+        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unicode codepoint changing visible direction of text present in comment")]
+#[note(
+    "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
+)]
+pub(crate) struct UnicodeTextFlow {
+    #[label(
+        "{$num_codepoints ->
+            [1] this comment contains an invisible unicode text flow control codepoint
+            *[other] this comment contains invisible unicode text flow control codepoints
+        }"
+    )]
+    pub comment_span: Span,
+    #[subdiagnostic]
+    pub characters: Vec<UnicodeCharNoteSub>,
+    #[subdiagnostic]
+    pub suggestions: Option<UnicodeTextFlowSuggestion>,
+
+    pub num_codepoints: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[label("{$c_debug}")]
+pub(crate) struct UnicodeCharNoteSub {
+    #[primary_span]
+    pub span: Span,
+    pub c_debug: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "if their presence wasn't intentional, you can remove them",
+    applicability = "machine-applicable",
+    style = "hidden"
+)]
+pub(crate) struct UnicodeTextFlowSuggestion {
+    #[suggestion_part(code = "")]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("prefix `{$prefix}` is unknown")]
+pub(crate) struct ReservedPrefix {
+    #[label("unknown prefix")]
+    pub label: Span,
+    #[suggestion(
+        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Span,
+
+    pub prefix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("will be parsed as a guarded string in Rust 2024")]
+pub(crate) struct ReservedStringLint {
+    #[suggestion(
+        "insert whitespace here to avoid this being parsed as a guarded string in Rust 2024",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("reserved token in Rust 2024")]
+pub(crate) struct ReservedMultihashLint {
+    #[suggestion(
+        "insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024",
+        code = " ",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Span,
+}

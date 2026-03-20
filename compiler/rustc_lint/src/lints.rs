@@ -3020,46 +3020,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
-#[diag("unicode codepoint changing visible direction of text present in comment")]
-#[note(
-    "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
-)]
-pub(crate) struct UnicodeTextFlow {
-    #[label(
-        "{$num_codepoints ->
-            [1] this comment contains an invisible unicode text flow control codepoint
-            *[other] this comment contains invisible unicode text flow control codepoints
-        }"
-    )]
-    pub comment_span: Span,
-    #[subdiagnostic]
-    pub characters: Vec<UnicodeCharNoteSub>,
-    #[subdiagnostic]
-    pub suggestions: Option<UnicodeTextFlowSuggestion>,
-
-    pub num_codepoints: usize,
-}
-
-#[derive(Subdiagnostic)]
-#[label("{$c_debug}")]
-pub(crate) struct UnicodeCharNoteSub {
-    #[primary_span]
-    pub span: Span,
-    pub c_debug: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "if their presence wasn't intentional, you can remove them",
-    applicability = "machine-applicable",
-    style = "hidden"
-)]
-pub(crate) struct UnicodeTextFlowSuggestion {
-    #[suggestion_part(code = "")]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition"
 )]
@@ -3190,34 +3150,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
     pub span: Span,
 
     pub ident: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag("prefix `{$prefix}` is unknown")]
-pub(crate) struct ReservedPrefix {
-    #[label("unknown prefix")]
-    pub label: Span,
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-
-    pub prefix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("prefix `'r` is reserved")]
-pub(crate) struct RawPrefix {
-    #[label("reserved prefix")]
-    pub label: Span,
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -3404,28 +3336,6 @@ pub(crate) enum MutRefSugg {
 #[derive(Diagnostic)]
 #[diag("`use` of a local item without leading `self::`, `super::`, or `crate::`")]
 pub(crate) struct UnqualifiedLocalImportsDiag;
-
-#[derive(Diagnostic)]
-#[diag("will be parsed as a guarded string in Rust 2024")]
-pub(crate) struct ReservedString {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a guarded string in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("reserved token in Rust 2024")]
-pub(crate) struct ReservedMultihash {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("direct cast of function item into an integer")]
