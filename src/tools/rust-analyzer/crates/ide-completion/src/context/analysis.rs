@@ -778,6 +778,16 @@ fn expected_type_and_name<'db>(
                     let ty = sema.type_of_pat(&ast::Pat::from(it)).map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::TupleStructPat(it) => {
+                    let fields = it.path().and_then(|path| match sema.resolve_path(&path)? {
+                        hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) => Some(adt.as_struct()?.fields(sema.db)),
+                        hir::PathResolution::Def(hir::ModuleDef::Variant(variant)) => Some(variant.fields(sema.db)),
+                        _ => None,
+                    });
+                    let nr = it.fields().take_while(|it| it.syntax().text_range().end() <= token.text_range().start()).count();
+                    let ty = fields.and_then(|fields| Some(fields.get(nr)?.ty(sema.db).to_type(sema.db)));
+                    (ty, None)
+                },
                 ast::Fn(it) => {
                     cov_mark::hit!(expected_type_fn_ret_with_leading_char);
                     cov_mark::hit!(expected_type_fn_ret_without_leading_char);
