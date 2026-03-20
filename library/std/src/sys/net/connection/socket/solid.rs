@@ -6,6 +6,7 @@ use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
+use crate::sys::pal::unsupported;
 use crate::sys::{FromInner, IntoInner, abi};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, str};
@@ -332,13 +333,12 @@ impl Socket {
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
-    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
-        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE, keepalive as c_int) }
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unsupported()
     }
 
     pub fn keepalive(&self) -> io::Result<bool> {
-        let raw: c_int = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE)? };
-        Ok(raw != 0)
+        unsupported()
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
