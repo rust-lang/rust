@@ -452,6 +452,8 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     DefineOpaques,
     /// Resolving a macro
     Macro,
+    /// Paths for module or crate root. Used for restrictions.
+    Module,
 }
 
 impl PathSource<'_, '_, '_> {
@@ -460,7 +462,8 @@ impl PathSource<'_, '_, '_> {
             PathSource::Type
             | PathSource::Trait(_)
             | PathSource::Struct(_)
-            | PathSource::DefineOpaques => TypeNS,
+            | PathSource::DefineOpaques
+            | PathSource::Module => TypeNS,
             PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::TupleStruct(..)
@@ -485,7 +488,8 @@ impl PathSource<'_, '_, '_> {
             | PathSource::DefineOpaques
             | PathSource::Delegation
             | PathSource::PreciseCapturingArg(..)
-            | PathSource::Macro => false,
+            | PathSource::Macro
+            | PathSource::Module => false,
         }
     }
 
@@ -528,6 +532,7 @@ impl PathSource<'_, '_, '_> {
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
             PathSource::Macro => "macro",
+            PathSource::Module => "module",
         }
     }
 
@@ -626,6 +631,7 @@ impl PathSource<'_, '_, '_> {
             ),
             PathSource::PreciseCapturingArg(MacroNS) => false,
             PathSource::Macro => matches!(res, Res::Def(DefKind::Macro(_), _)),
+            PathSource::Module => matches!(res, Res::Def(DefKind::Mod, _)),
         }
     }
 
@@ -646,6 +652,12 @@ impl PathSource<'_, '_, '_> {
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
             (PathSource::Macro, _) => E0425,
+            // FIXME: There is no dedicated error code for this case yet.
+            // E0577 already covers the same situation for visibilities,
+            // so we reuse it here for now. It may make sense to generalize
+            // it for restrictions in the future.
+            (PathSource::Module, true) => E0577,
+            (PathSource::Module, false) => E0433,
         }
     }
 }
@@ -2174,7 +2186,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::Type
                 | PathSource::PreciseCapturingArg(..)
                 | PathSource::ReturnTypeNotation
-                | PathSource::Macro => false,
+                | PathSource::Macro
+                | PathSource::Module => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct(_)
@@ -2800,7 +2813,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
-            ItemKind::Trait(box Trait { generics, bounds, items, .. }) => {
+            ItemKind::Trait(box Trait { generics, bounds, items, impl_restriction, .. }) => {
+                // resolve paths for `impl` restrictions
+                self.resolve_impl_restriction_path(impl_restriction);
+
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -4386,6 +4402,25 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 "unexpected resolution for an identifier in pattern: {:?}",
                 res,
             ),
+        }
+    }
+
+    fn resolve_impl_restriction_path(&mut self, restriction: &'ast ast::ImplRestriction) {
+        match &restriction.kind {
+            ast::RestrictionKind::Unrestricted => (),
+            ast::RestrictionKind::Restricted { path, id, shorthand: _ } => {
+                self.smart_resolve_path(*id, &None, path, PathSource::Module);
+                if let Some(res) = self.r.partial_res_map[&id].full_res()
+                    && let Some(def_id) = res.opt_def_id()
+                {
+                    if !self.r.is_accessible_from(
+                        Visibility::Restricted(def_id),
+                        self.parent_scope.module,
+                    ) {
+                        self.r.dcx().create_err(errors::RestrictionAncestorOnly(path.span)).emit();
+                    }
+                }
+            }
         }
     }
 

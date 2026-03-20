@@ -840,6 +840,9 @@ pub enum AttributeLintKind {
     MalformedOnConstAttr {
         span: Span,
     },
+    MalformedOnMoveAttr {
+        span: Span,
+    },
     MalformedDiagnosticFormat {
         warning: FormatWarning,
     },
@@ -855,6 +858,11 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnMove,
+    OnMoveMalformedFormatLiterals {
+        name: Symbol,
+    },
+    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

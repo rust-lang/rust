@@ -329,6 +329,19 @@ fn print_crate_inner<'a>(
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
 /// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
 ///
+/// Returns `true` if both token trees are identifier-like tokens that would
+/// merge into a single token if printed without a space between them.
+/// E.g. `ident` + `where` would merge into `identwhere`.
+fn idents_would_merge(tt1: &TokenTree, tt2: &TokenTree) -> bool {
+    fn is_ident_like(tt: &TokenTree) -> bool {
+        matches!(
+            tt,
+            TokenTree::Token(Token { kind: token::Ident(..) | token::NtIdent(..), .. }, _,)
+        )
+    }
+    is_ident_like(tt1) && is_ident_like(tt2)
+}
+
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use Delimiter::*;
     use TokenTree::{Delimited as Del, Token as Tok};
@@ -810,6 +823,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             let spacing = self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
                 if spacing == Spacing::Alone && space_between(tt, next) {
+                    self.space();
+                } else if spacing != Spacing::Alone && idents_would_merge(tt, next) {
+                    // When tokens from macro `tt` captures preserve their
+                    // original `Joint`/`JointHidden` spacing, adjacent
+                    // identifier-like tokens can be concatenated without a
+                    // space (e.g. `$x:identwhere`). Insert a space to
+                    // prevent this.
                     self.space();
                 }
             }
