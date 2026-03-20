@@ -5,8 +5,7 @@ Subject: [PATCH] Add missing feature gate
 
 ---
  coretests/benches/lib.rs | 1 +
- coretests/tests/lib.rs   | 1 +
- 2 file changed, 2 insertion(+)
+ 1 file changed, 1 insertion(+)
 
 diff --git a/coretests/benches/lib.rs b/coretests/benches/lib.rs
 index 150b9b3..281aa75 100644
@@ -20,18 +19,6 @@ index 150b9b3..281aa75 100644
  #![feature(uint_gather_scatter_bits)]
  
  extern crate test;
-diff --git a/coretests/tests/lib.rs b/coretests/tests/lib.rs
-index ecdb687..ab2cf77 100644
---- a/coretests/tests/lib.rs
-+++ b/coretests/tests/lib.rs
-@@ -88,6 +88,7 @@
- #![feature(non_exhaustive_omitted_patterns_lint)]
- #![feature(nonzero_from_str_radix)]
- #![feature(numfmt)]
-+#![feature(num_internals)]
- #![feature(one_sided_range)]
- #![feature(panic_internals)]
- #![feature(pattern)]
 -- 
 2.43.0
 
