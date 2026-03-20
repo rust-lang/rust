@@ -641,7 +641,7 @@ Definite bugs found:
 * [`winit` registering a global constructor with the wrong ABI on Windows](https://github.com/rust-windowing/winit/issues/4435)
 * [`VecDeque::splice` confusing physical and logical indices](https://github.com/rust-lang/rust/issues/151758)
 * [Data race in `oneshot` channel](https://github.com/faern/oneshot/issues/69)
-* [Memory leak in serde-yaml-bw caused by early return before libyaml event cleanup in Parser::next](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
+* [Memory leak in serde-yaml-bw](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
