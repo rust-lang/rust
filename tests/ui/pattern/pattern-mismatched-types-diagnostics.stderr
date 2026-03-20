@@ -1,9 +1,73 @@
-error[E0033]: type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced
-  --> $DIR/issue-4972.rs:13:25
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:10:9
    |
-LL |         TraitWrapper::A(box ref map) => map,
-   |                         ^^^^^^^^^^^ type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         A::B => (),
+   |         ^^^^ expected `(bool, bool)`, found `A`
+   |
+   = note: expected tuple `(bool, bool)`
+               found enum `A`
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:19:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected tuple `(bool, bool)`
+              found tuple `(_, _, _)`
 
-For more information about this error, try `rustc --explain E0033`.
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:27:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected tuple `(bool, bool)`
+              found tuple `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:35:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         box (true, false) => ()
+   |         ^^^^^^^^^^^^^^^^^ expected `(bool, bool)`, found `Box<_>`
+   |
+   = note: expected tuple `(bool, bool)`
+             found struct `Box<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:42:9
+   |
+LL |     match (true, false) {
+   |           ------------- this expression has type `(bool, bool)`
+LL |         &(true, false) => ()
+   |         ^^^^^^^^^^^^^^ expected `(bool, bool)`, found `&_`
+   |
+   = note:  expected tuple `(bool, bool)`
+           found reference `&_`
+
+error[E0618]: expected function, found `(char, char)`
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:50:14
+   |
+LL |     let v = [('a', 'b')
+   |              ^^^^^^^^^^- help: consider separating array elements with a comma: `,`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:57:19
+   |
+LL |     let x: char = true;
+   |            ----   ^^^^ expected `char`, found `bool`
+   |            |
+   |            expected due to this
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0308, E0618.
+For more information about an error, try `rustc --explain E0308`.
