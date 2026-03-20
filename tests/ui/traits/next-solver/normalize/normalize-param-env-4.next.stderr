@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
 LL |     <T as Trait>::Assoc: Trait,
    |                          ^^^^^
 
-error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc well-formed`
+error[E0275]: overflow evaluating whether `<T as Trait>::Assoc` is well-formed
   --> $DIR/normalize-param-env-4.rs:19:26
    |
 LL |     <T as Trait>::Assoc: Trait,
