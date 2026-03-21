@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: 
             macro_call.span,
             format!("empty string literal in `{name}!`"),
             |diag| {
-                if span_extract_comments(cx.sess().source_map(), macro_call.span).is_empty() {
+                if span_extract_comments(cx, macro_call.span).is_empty() {
                     let closing_paren = cx.sess().source_map().span_extend_to_prev_char_before(
                         macro_call.span.shrink_to_hi(),
                         ')',
