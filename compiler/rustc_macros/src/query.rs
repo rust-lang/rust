@@ -387,13 +387,15 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     }
 
     doc_link!(
-        arena_cache,
-        no_hash,
+        // tidy-alphabetical-start
         anon,
-        eval_always,
+        arena_cache,
         depth_limit,
-        separate_provide_extern,
+        eval_always,
         feedable,
+        no_hash,
+        separate_provide_extern,
+        // tidy-alphabetical-end
     );
 
     let name = &query.name;
