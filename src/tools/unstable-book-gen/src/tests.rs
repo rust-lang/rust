@@ -54,10 +54,7 @@ fn parser_accepts_optional_trailing_metadata() {
 
     let features = parse_compiler_flags(options_rs, Path::new("options/unstable.rs"));
     assert_eq!(features["deprecated_flag"].description.as_deref(), Some("deprecated flag"));
-    assert_eq!(
-        features["raw_description"].description.as_deref(),
-        Some("raw \"quoted\" text"),
-    );
+    assert_eq!(features["raw_description"].description.as_deref(), Some("raw \"quoted\" text"),);
 }
 
 #[test]
