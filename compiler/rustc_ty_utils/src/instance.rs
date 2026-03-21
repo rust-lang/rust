@@ -239,8 +239,10 @@ fn resolve_associated_item<'tcx>(
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
             let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
-            // `final` methods should be called directly.
-            if tcx.defaultness(trait_item_id).is_final() {
+            // `final` methods should be called directly if they are not dyn-compatible.
+            if tcx.defaultness(trait_item_id).is_final()
+                && tcx.is_dyn_incompatible_final_assoc_fn(trait_item_id)
+            {
                 return Ok(Some(ty::Instance::new_raw(trait_item_id, rcvr_args)));
             }
 

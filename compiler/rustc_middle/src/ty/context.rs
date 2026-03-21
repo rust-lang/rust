@@ -720,6 +720,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
     }
+
+    pub fn feed_is_dyn_incompatible_final_assoc_fn(self, key: DefId, value: bool) {
+        debug_assert_eq!(self.def_kind(key), DefKind::AssocFn);
+        debug_assert!(self.defaultness(key).is_final());
+
+        TyCtxtFeed { tcx: self, key }.is_dyn_incompatible_final_assoc_fn_query(value)
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
