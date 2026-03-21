@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 #![feature(core_intrinsics)]
-
+//@ ignore-parallel-frontend different alloc ids
 use std::intrinsics::{copy, copy_nonoverlapping};
 use std::mem;
 

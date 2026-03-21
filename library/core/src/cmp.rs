@@ -357,6 +357,7 @@ pub const trait Eq: [const] PartialEq<Self> + PointeeSized {
 }
 
 /// Derive macro generating an impl of the trait [`Eq`].
+/// The behavior of this macro is described in detail [here](Eq#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_eq_internals, structural_match)]

@@ -82,7 +82,7 @@ struct MirLowerCtx<'a, 'db> {
     labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'db dyn HirDatabase,
-    body: &'a Body,
+    store: &'a ExpressionStore,
     infer: &'a InferenceResult,
     types: &'db crate::next_solver::DefaultAny<'db>,
     resolver: Resolver<'db>,
@@ -285,7 +285,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
-        body: &'a Body,
+        store: &'a ExpressionStore,
         infer: &'a InferenceResult,
     ) -> Self {
         let mut basic_blocks = Arena::new();
@@ -316,7 +316,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             result: mir,
             db,
             infer,
-            body,
+            store,
             types: crate::next_solver::default_types(db),
             owner,
             resolver,
@@ -354,7 +354,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         current: BasicBlockId,
     ) -> Result<'db, Option<(Operand, BasicBlockId)>> {
         if !self.has_adjustments(expr_id)
-            && let Expr::Literal(l) = &self.body[expr_id]
+            && let Expr::Literal(l) = &self.store[expr_id]
         {
             let ty = self.expr_ty_without_adjust(expr_id);
             return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
@@ -461,7 +461,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         place: Place,
         mut current: BasicBlockId,
     ) -> Result<'db, Option<BasicBlockId>> {
-        match &self.body[expr_id] {
+        match &self.store[expr_id] {
             Expr::OffsetOf(_) => {
                 not_supported!("builtin#offset_of")
             }
@@ -500,7 +500,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     } else {
                         let resolver_guard =
                             self.resolver.update_to_inner_scope(self.db, self.owner, expr_id);
-                        let hygiene = self.body.expr_path_hygiene(expr_id);
+                        let hygiene = self.store.expr_path_hygiene(expr_id);
                         let result = self
                             .resolver
                             .resolve_path_in_value_ns_fully(self.db, p, hygiene)
@@ -509,7 +509,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                     self.db,
                                     p,
                                     DisplayTarget::from_crate(self.db, self.krate()),
-                                    self.body,
+                                    self.store,
                                 )
                             })?;
                         self.resolver.reset_to_guard(resolver_guard);
@@ -882,7 +882,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {
                         Some(p) => MirLowerError::UnresolvedName(
-                            hir_display_with_store(&**p, self.body)
+                            hir_display_with_store(&**p, self.store)
                                 .display(self.db, self.display_target())
                                 .to_string(),
                         ),
@@ -1382,7 +1382,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     }
 
     fn push_field_projection(&mut self, place: &mut Place, expr_id: ExprId) -> Result<'db, ()> {
-        if let Expr::Field { expr, name } = &self.body[expr_id] {
+        if let Expr::Field { expr, name } = &self.store[expr_id] {
             if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind() {
                 let index =
                     name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
@@ -1411,7 +1411,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         ty: Ty<'db>,
         loc: &ExprId,
     ) -> Result<'db, Operand> {
-        match &self.body[*loc] {
+        match &self.store[*loc] {
             Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
             Expr::Path(c) => {
                 let owner = self.owner;
@@ -1421,7 +1421,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         self.db,
                         c,
                         DisplayTarget::from_crate(db, owner.krate(db)),
-                        self.body,
+                        self.store,
                     )
                 };
                 let pr = self
@@ -1859,7 +1859,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         }
                     } else {
                         let mut err = None;
-                        self.body.walk_bindings_in_pat(*pat, |b| {
+                        self.store.walk_bindings_in_pat(*pat, |b| {
                             if let Err(e) = self.push_storage_live(b, current) {
                                 err = Some(e);
                             }
@@ -1913,9 +1913,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         self.result.param_locals.extend(params.clone().map(|(it, ty)| {
             let local_id = self.result.locals.alloc(Local { ty: ty.store() });
             self.drop_scopes.last_mut().unwrap().locals.push(local_id);
-            if let Pat::Bind { id, subpat: None } = self.body[it]
+            if let Pat::Bind { id, subpat: None } = self.store[it]
                 && matches!(
-                    self.body[id].mode,
+                    self.store[id].mode,
                     BindingAnnotation::Unannotated | BindingAnnotation::Mutable
                 )
             {
@@ -1924,7 +1924,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             local_id
         }));
         // and then rest of bindings
-        for (id, _) in self.body.bindings() {
+        for (id, _) in self.store.bindings() {
             if !pick_binding(id) {
                 continue;
             }
@@ -1953,7 +1953,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             .into_iter()
             .skip(base_param_count + self_binding.is_some() as usize);
         for ((param, _), local) in params.zip(local_params) {
-            if let Pat::Bind { id, .. } = self.body[param]
+            if let Pat::Bind { id, .. } = self.store[param]
                 && local == self.binding_local(id)?
             {
                 continue;
@@ -2115,7 +2115,7 @@ pub fn mir_body_for_closure_query<'db>(
         implementation_error!("closure expression is not closure");
     };
     let (captures, kind) = infer.closure_info(closure);
-    let mut ctx = MirLowerCtx::new(db, owner, &body, infer);
+    let mut ctx = MirLowerCtx::new(db, owner, &body.store, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer.expr_ty(*root).store() });
     let closure_local = ctx.result.locals.alloc(Local {
@@ -2205,7 +2205,7 @@ pub fn mir_body_for_closure_query<'db>(
         .result
         .binding_locals
         .into_iter()
-        .filter(|it| ctx.body.binding_owner(it.0) == Some(expr))
+        .filter(|it| ctx.store.binding_owner(it.0) == Some(expr))
         .collect();
     if let Some(err) = err {
         return Err(MirLowerError::UnresolvedUpvar(err));
@@ -2245,7 +2245,7 @@ pub fn mir_body_query<'db>(
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);
     let infer = InferenceResult::for_body(db, def);
-    let mut result = lower_to_mir(db, def, &body, infer, body.body_expr)?;
+    let mut result = lower_body_to_mir(db, def, &body, infer, body.body_expr)?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }
@@ -2258,44 +2258,74 @@ pub(crate) fn mir_body_cycle_result<'db>(
     Err(MirLowerError::Loop)
 }
 
-pub fn lower_to_mir<'db>(
+/// Extracts params from `body.params`/`body.self_param` and the callable signature,
+/// then delegates to [`lower_to_mir_with_store`].
+pub fn lower_body_to_mir<'db>(
     db: &'db dyn HirDatabase,
     owner: DefWithBodyId,
     body: &Body,
     infer: &InferenceResult,
-    // FIXME: root_expr should always be the body.body_expr, but since `X` in `[(); X]` doesn't have its own specific body yet, we
-    // need to take this input explicitly.
+    // FIXME: root_expr should always be the body.body_expr,
+    // but this is currently also used for `X` in `[(); X]` which live in the same expression store
     root_expr: ExprId,
+) -> Result<'db, MirBody> {
+    let is_root = root_expr == body.body_expr;
+    // Extract params and self_param only when lowering the body's root expression for a function.
+    if is_root && let DefWithBodyId::FunctionId(fid) = owner {
+        let callable_sig =
+            db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
+        let mut param_tys = callable_sig.inputs().iter().copied();
+        let self_param = body.self_param.and_then(|id| Some((id, param_tys.next()?)));
+
+        lower_to_mir_with_store(
+            db,
+            owner,
+            &body.store,
+            infer,
+            root_expr,
+            body.params.iter().copied().zip(param_tys),
+            self_param,
+            is_root,
+        )
+    } else {
+        lower_to_mir_with_store(
+            db,
+            owner,
+            &body.store,
+            infer,
+            root_expr,
+            iter::empty(),
+            None,
+            is_root,
+        )
+    }
+}
+
+/// # Parameters
+/// - `is_root`: `true` when `root_expr` is the body's top-level expression (picks
+///   bindings with no owner); `false` when lowering an inline const or anonymous
+///   const (picks bindings owned by `root_expr`).
+pub fn lower_to_mir_with_store<'db>(
+    db: &'db dyn HirDatabase,
+    owner: DefWithBodyId,
+    store: &ExpressionStore,
+    infer: &InferenceResult,
+    root_expr: ExprId,
+    params: impl Iterator<Item = (PatId, Ty<'db>)> + Clone,
+    self_param: Option<(BindingId, Ty<'db>)>,
+    is_root: bool,
 ) -> Result<'db, MirBody> {
     if infer.type_mismatches().next().is_some() || infer.is_erroneous() {
         return Err(MirLowerError::HasErrors);
     }
-    let mut ctx = MirLowerCtx::new(db, owner, body, infer);
+    let mut ctx = MirLowerCtx::new(db, owner, store, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: ctx.expr_ty_after_adjustments(root_expr).store() });
     let binding_picker = |b: BindingId| {
-        let owner = ctx.body.binding_owner(b);
-        if root_expr == body.body_expr { owner.is_none() } else { owner == Some(root_expr) }
+        let owner = ctx.store.binding_owner(b);
+        if is_root { owner.is_none() } else { owner == Some(root_expr) }
     };
-    // 1 to param_len is for params
-    // FIXME: replace with let chain once it becomes stable
-    let current = 'b: {
-        if body.body_expr == root_expr {
-            // otherwise it's an inline const, and has no parameter
-            if let DefWithBodyId::FunctionId(fid) = owner {
-                let callable_sig =
-                    db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
-                let mut params = callable_sig.inputs().iter().copied();
-                let self_param = body.self_param.and_then(|id| Some((id, params.next()?)));
-                break 'b ctx.lower_params_and_bindings(
-                    body.params.iter().zip(params).map(|(it, y)| (*it, y)),
-                    self_param,
-                    binding_picker,
-                )?;
-            }
-        }
-        ctx.lower_params_and_bindings([].into_iter(), None, binding_picker)?
-    };
+    let current = ctx.lower_params_and_bindings(params, self_param, binding_picker)?;
     if let Some(current) = ctx.lower_expr_to_place(root_expr, return_slot().into(), current)? {
         let current = ctx.pop_drop_scope_assert_finished(current, root_expr.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, root_expr.into());

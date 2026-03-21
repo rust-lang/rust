@@ -866,6 +866,13 @@ pub enum PatKind<'tcx> {
         pats: Box<[Pat<'tcx>]>,
     },
 
+    /// A guard pattern, e.g. `x if guard(x)`
+    Guard {
+        subpattern: Box<Pat<'tcx>>,
+        #[type_visitable(ignore)]
+        condition: ExprId,
+    },
+
     /// A never pattern `!`.
     Never,
 

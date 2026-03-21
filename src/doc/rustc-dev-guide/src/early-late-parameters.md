@@ -3,6 +3,12 @@
 
 > **NOTE**: This chapter largely talks about early/late bound as being solely relevant when discussing function item types/function definitions. This is potentially not completely true, async blocks and closures should likely be discussed somewhat in this chapter.
 
+See also these blog posts from when the distinction between early and late bound parameters was
+introduced: [Intermingled parameter lists] and [Intermingled parameter lists, take 2].
+
+[Intermingled parameter lists]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
+[Intermingled parameter lists, take 2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
+
 ## What does it mean to be "early" bound or "late" bound
 
 Every function definition has a corresponding ZST that implements the `Fn*` traits known as a [function item type][function_item_type]. This part of the chapter will talk a little bit about the "desugaring" of function item types as it is useful context for explaining the difference between early bound and late bound generic parameters.

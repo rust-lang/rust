@@ -40,7 +40,10 @@ pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
     Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
+pub use lower::{
+    MirLowerError, lower_body_to_mir, lower_to_mir_with_store, mir_body_for_closure_query,
+    mir_body_query,
+};
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };

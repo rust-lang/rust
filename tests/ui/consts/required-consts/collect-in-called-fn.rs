@@ -4,7 +4,7 @@
 //@[opt] compile-flags: -O
 //! Make sure we detect erroneous constants post-monomorphization even when they are unused. This is
 //! crucial, people rely on it for soundness. (https://github.com/rust-lang/rust/issues/112090)
-
+//@ ignore-parallel-frontend post-monomorphization errors
 struct Fail<T>(T);
 impl<T> Fail<T> {
     const C: () = panic!(); //~ERROR evaluation panicked: explicit panic

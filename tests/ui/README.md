@@ -133,7 +133,7 @@ Runtime panics and error handling generate backtraces to assist in debugging and
 
 This directory was originally meant to contain tests related to time complexity and benchmarking.
 
-However, only a single test was ever added to this category: https://github.com/rust-lang/rust/pull/32062
+However, only a single test was ever added to this category: <https://github.com/rust-lang/rust/pull/32062>
 
 **FIXME**: It is also unclear what would happen were this test to "fail" - would it cause the test suite to remain stuck on this test for a much greater duration than normal?
 
@@ -343,10 +343,6 @@ Tests for `#![feature(coverage_attribute)]`. See [Tracking issue for function at
 ## `tests/ui/crate-loading/`: Crate Loading
 
 Tests for crate resolution and loading behavior, including `extern crate` declarations, `--extern` flags, or the `use` keyword.
-
-## `tests/ui/cross/`: Various tests related to the concept of "cross"
-
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
 
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
@@ -698,9 +694,7 @@ This test category revolves around trait objects with `Sized` having illegal ope
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
 ## `tests/ui/impl-restriction/`
-Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
-](https://github.com/rust-lang/rust/issues/105077).
-
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/impl-trait/`
 
@@ -760,12 +754,6 @@ Tests for rustc-internal lints.
 
 Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
-## `tests/ui/invalid/`
-
-Various tests related to rejecting invalid inputs.
-
-**FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
-
 ## `tests/ui/io-checks/`: Input Output
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
@@ -788,10 +776,6 @@ These tests revolve around the `--json` compiler flag. See [JSON Output](https:/
 
 Tests exercising keywords, such as attempting to use them as identifiers when not contextual keywords.
 
-## `tests/ui/kindck/`
-
-**FIXME**: `kindck` is no longer a thing, these tests probably need to be audited and rehomed.
-
 ## `tests/ui/label/`
 
 Exercises block and loop `'label`s.
@@ -810,8 +794,7 @@ See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.ht
 
 ## `tests/ui/lazy-type-alias/`
 
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792
-](https://github.com/rust-lang/rust/issues/112792).
+Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -866,7 +849,7 @@ See:
 
 Tests exercising analysis for unused variables, unreachable statements, functions which are supposed to return a value but do not, as well as values moved elsewhere before they could be used by a function.
 
-**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions
+**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions>
 
 ## `tests/ui/loop-match`
 

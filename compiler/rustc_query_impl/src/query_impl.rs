@@ -1,7 +1,6 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::plumbing::QueryVTable;
-use rustc_middle::query::{AsLocalQueryKey, QueryMode};
+use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -245,7 +244,7 @@ macro_rules! define_queries {
             (ALL, $tcx:expr, $closure:expr) => {{
                 let tcx: rustc_middle::ty::TyCtxt<'_> = $tcx;
                 $(
-                    let query: &rustc_middle::query::plumbing::QueryVTable<'_, _> =
+                    let query: &rustc_middle::query::QueryVTable<'_, _> =
                         &tcx.query_system.query_vtables.$name;
                     $closure(query);
                 )*
@@ -260,7 +259,7 @@ macro_rules! define_queries {
                 $(
                     #[cfg($cache_on_disk)]
                     {
-                        let query: &rustc_middle::query::plumbing::QueryVTable<'_, _> =
+                        let query: &rustc_middle::query::QueryVTable<'_, _> =
                             &tcx.query_system.query_vtables.$name;
                         $closure(query);
                     }
@@ -272,4 +271,4 @@ macro_rules! define_queries {
     }
 }
 
-rustc_middle::rustc_with_all_queries! { define_queries! }
+rustc_middle::queries::rustc_with_all_queries! { define_queries! }

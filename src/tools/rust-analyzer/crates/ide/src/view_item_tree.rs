@@ -10,6 +10,9 @@ use ide_db::{FileId, RootDatabase};
 // | VS Code | **rust-analyzer: Debug ItemTree** |
 pub(crate) fn view_item_tree(db: &RootDatabase, file_id: FileId) -> String {
     let sema = Semantics::new(db);
+    let Some(krate) = sema.first_crate(file_id) else {
+        return String::new();
+    };
     let file_id = sema.attach_first_edition(file_id);
-    db.file_item_tree(file_id.into()).pretty_print(db, file_id.edition(db))
+    db.file_item_tree(file_id.into(), krate.into()).pretty_print(db, file_id.edition(db))
 }

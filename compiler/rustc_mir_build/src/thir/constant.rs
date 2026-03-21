@@ -31,25 +31,27 @@ pub(crate) fn lit_to_const<'tcx>(
             .unwrap_or_else(|| bug!("expected to create ScalarInt from uint {:?}", result))
     };
 
-    let (valtree, valtree_ty) = match (lit, expected_ty.kind()) {
+    let (valtree, valtree_ty) = match (lit, expected_ty.map(|ty| ty.kind())) {
         (ast::LitKind::Str(s, _), _) => {
             let str_bytes = s.as_str().as_bytes();
             let valtree_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_);
             (ty::ValTree::from_raw_bytes(tcx, str_bytes), valtree_ty)
         }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Ref(_, inner_ty, _))
+        (ast::LitKind::ByteStr(byte_sym, _), Some(ty::Ref(_, inner_ty, _)))
             if let ty::Slice(ty) | ty::Array(ty, _) = inner_ty.kind()
                 && let ty::Uint(UintTy::U8) = ty.kind() =>
         {
-            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty)
+            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty.unwrap())
         }
-        (ast::LitKind::ByteStr(byte_sym, _), ty::Slice(inner_ty) | ty::Array(inner_ty, _))
-            if tcx.features().deref_patterns()
-                && let ty::Uint(UintTy::U8) = inner_ty.kind() =>
+        (
+            ast::LitKind::ByteStr(byte_sym, _),
+            Some(ty::Slice(inner_ty) | ty::Array(inner_ty, _)),
+        ) if tcx.features().deref_patterns()
+            && let ty::Uint(UintTy::U8) = inner_ty.kind() =>
         {
             // Byte string literal patterns may have type `[u8]` or `[u8; N]` if `deref_patterns` is
             // enabled, in order to allow, e.g., `deref!(b"..."): Vec<u8>`.
-            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty)
+            (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), expected_ty.unwrap())
         }
         (ast::LitKind::ByteStr(byte_sym, _), _) => {
             let valtree = ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str());
@@ -79,11 +81,11 @@ pub(crate) fn lit_to_const<'tcx>(
                 trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, i))
         }
-        (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), ty::Uint(ui)) if !neg => {
+        (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Uint(ui))) if !neg => {
             let scalar_int = trunc(n.get(), *ui);
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_uint(tcx, *ui))
         }
-        (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), ty::Int(i)) => {
+        (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Int(i))) => {
             // Unsigned "negation" has the same bitwise effect as signed negation,
             // which gets the result we want without additional casts.
             let scalar_int =
@@ -101,7 +103,7 @@ pub(crate) fn lit_to_const<'tcx>(
             let bits = parse_float_into_scalar(n, fty, neg)?;
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, fty))
         }
-        (ast::LitKind::Float(n, ast::LitFloatType::Unsuffixed), ty::Float(fty)) => {
+        (ast::LitKind::Float(n, ast::LitFloatType::Unsuffixed), Some(ty::Float(fty))) => {
             let bits = parse_float_into_scalar(n, *fty, neg)?;
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, *fty))
         }

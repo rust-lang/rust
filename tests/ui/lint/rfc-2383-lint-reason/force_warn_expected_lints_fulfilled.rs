@@ -2,7 +2,7 @@
 //@ compile-flags: --force-warn unused_variables
 //@ compile-flags: --force-warn unused_mut
 //@ check-pass
-
+//@ ignore-parallel-frontend `note`s on different source lines
 fn expect_early_pass_lint() {
     #[expect(while_true)]
     while true {

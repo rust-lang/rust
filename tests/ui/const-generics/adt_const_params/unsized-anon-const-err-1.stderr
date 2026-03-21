@@ -36,7 +36,9 @@ error[E0308]: mismatched types
   --> $DIR/unsized-anon-const-err-1.rs:8:34
    |
 LL |     const EMPTY_MATRIX: Matrix = [[0; 4]; 4];
-   |                                  ^^^^^^^^^^^ expected `[&u32]`, found `[&u32; 4]`
+   |                         ------   ^^^^^^^^^^^ expected `[&u32]`, found `[&u32; 4]`
+   |                         |
+   |                         expected because of the type of the constant
 
 error: aborting due to 5 previous errors
 

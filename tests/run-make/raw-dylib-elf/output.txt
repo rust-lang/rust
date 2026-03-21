@@ -1,1 +1,1 @@
-42
+42 3 33 795 906 sums of three cubes

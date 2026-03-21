@@ -246,10 +246,10 @@ impl OnDiskCache {
             // Encode query results.
             let mut query_result_index = EncodedDepNodeIndex::new();
 
-            tcx.sess.time("encode_query_results", || {
+            tcx.sess.time("encode_query_values", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                tcx.encode_all_query_results(enc, qri);
+                tcx.encode_query_values(enc, qri);
             });
 
             // Encode side effects.

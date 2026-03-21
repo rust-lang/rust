@@ -498,8 +498,8 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         /// Higher-order macro that invokes the specified macro with (a) a list of all query
         /// signatures (including modifiers), and (b) a list of non-query names. This allows
         /// multiple simpler macros to each have access to these lists.
-        #[macro_export]
-        macro_rules! rustc_with_all_queries {
+        #[rustc_macro_transparency = "semiopaque"] // Use `macro_rules!` hygiene.
+        pub macro rustc_with_all_queries {
             (
                 // The macro to invoke once, on all queries and non-queries.
                 $macro:ident!

@@ -1,21 +1,22 @@
 use std::io::Write;
-use std::iter;
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
+use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{
-    CycleError, QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter,
+    CycleError, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
+use crate::{CollectActiveJobsKind, collect_active_query_jobs};
 
 /// Map from query job IDs to job information collected by
-/// `collect_active_jobs_from_all_queries`.
+/// `collect_active_query_jobs`.
 #[derive(Debug, Default)]
 pub struct QueryJobMap<'tcx> {
     map: FxHashMap<QueryJobId, QueryJobInfo<'tcx>>,
@@ -24,13 +25,13 @@ pub struct QueryJobMap<'tcx> {
 impl<'tcx> QueryJobMap<'tcx> {
     /// Adds information about a job ID to the job map.
     ///
-    /// Should only be called by `gather_active_jobs`.
+    /// Should only be called by `collect_active_query_jobs_inner`.
     pub(crate) fn insert(&mut self, id: QueryJobId, info: QueryJobInfo<'tcx>) {
         self.map.insert(id, info);
     }
 
-    fn frame_of(&self, id: QueryJobId) -> &QueryStackFrame<'tcx> {
-        &self.map[&id].frame
+    fn tagged_key_of(&self, id: QueryJobId) -> TaggedQueryKey<'tcx> {
+        self.map[&id].tagged_key
     }
 
     fn span_of(&self, id: QueryJobId) -> Span {
@@ -48,7 +49,7 @@ impl<'tcx> QueryJobMap<'tcx> {
 
 #[derive(Debug)]
 pub(crate) struct QueryJobInfo<'tcx> {
-    pub(crate) frame: QueryStackFrame<'tcx>,
+    pub(crate) tagged_key: TaggedQueryKey<'tcx>,
     pub(crate) job: QueryJob<'tcx>,
 }
 
@@ -64,7 +65,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
-        cycle.push(QueryInfo { span: info.job.span, frame: info.frame.clone() });
+        cycle.push(QueryStackFrame { span: info.job.span, tagged_key: info.tagged_key });
 
         if job == id {
             cycle.reverse();
@@ -77,7 +78,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
             // Find out why the cycle itself was used
             let usage = try {
                 let parent = info.job.parent?;
-                (info.job.span, job_map.frame_of(parent).clone())
+                QueryStackFrame { span: info.job.span, tagged_key: job_map.tagged_key_of(parent) }
             };
             return CycleError { usage, cycle };
         }
@@ -88,8 +89,8 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
     panic!("did not find a cycle")
 }
 
-/// Finds the job closest to the root with a `DepKind` matching the `DepKind` of `id` and returns
-/// information about it.
+/// Finds the query job closest to the root that is for the same query method as `id`
+/// (but not necessarily the same query key), and returns information about it.
 #[cold]
 #[inline(never)]
 pub(crate) fn find_dep_kind_root<'tcx>(
@@ -99,17 +100,19 @@ pub(crate) fn find_dep_kind_root<'tcx>(
 ) -> (Span, String, usize) {
     let mut depth = 1;
     let mut info = &job_map.map[&id];
-    let dep_kind = info.frame.dep_kind;
+    // Two query jobs are for the same query method if they have the same
+    // `TaggedQueryKey` discriminant.
+    let expected_query = mem::discriminant::<TaggedQueryKey<'tcx>>(&info.tagged_key);
     let mut last_info = info;
 
     while let Some(id) = info.job.parent {
         info = &job_map.map[&id];
-        if info.frame.dep_kind == dep_kind {
+        if mem::discriminant(&info.tagged_key) == expected_query {
             depth += 1;
             last_info = info;
         }
     }
-    (last_info.job.span, last_info.frame.tagged_key.description(tcx), depth)
+    (last_info.job.span, last_info.tagged_key.description(tcx), depth)
 }
 
 /// The locaton of a resumable waiter. The usize is the index into waiters in the query's latch.
@@ -152,11 +155,11 @@ fn abstracted_waiters_of(job_map: &QueryJobMap<'_>, query: QueryJobId) -> Vec<Ab
     result
 }
 
-/// Look for query cycles by doing a depth first search starting at `query`.
+/// Looks for a query cycle by doing a depth first search starting at `query`.
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
-/// the cycle.
-fn cycle_check<'tcx>(
+/// the cycle. `stack` will contain just the cycle on return if detected.
+fn find_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
     query: QueryJobId,
     span: Span,
@@ -187,7 +190,7 @@ fn cycle_check<'tcx>(
             continue;
         };
         if let ControlFlow::Break(maybe_resumable) =
-            cycle_check(job_map, parent, abstracted_waiter.span, stack, visited)
+            find_cycle(job_map, parent, abstracted_waiter.span, stack, visited)
         {
             // Return the resumable waiter in `waiter.resumable` if present
             return ControlFlow::Break(abstracted_waiter.resumable.or(maybe_resumable));
@@ -229,7 +232,7 @@ fn connected_to_root<'tcx>(
     false
 }
 
-/// Looks for query cycles starting from the last query in `jobs`.
+/// Looks for a query cycle using the last query in `jobs`.
 /// If a cycle is found, all queries in the cycle is removed from `jobs` and
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
@@ -243,7 +246,7 @@ fn remove_cycle<'tcx>(
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
     if let ControlFlow::Break(resumable) =
-        cycle_check(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+        find_cycle(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
     {
         // The stack is a vector of pairs of spans and queries; reverse it so that
         // the earlier entries require later entries
@@ -313,14 +316,17 @@ fn remove_cycle<'tcx>(
 
         let usage = entry_point
             .query_waiting_on_cycle
-            .map(|(span, job)| (span, job_map.frame_of(job).clone()));
+            .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
 
         // Create the cycle error
         let error = CycleError {
             usage,
             cycle: stack
                 .iter()
-                .map(|&(span, job)| QueryInfo { span, frame: job_map.frame_of(job).clone() })
+                .map(|&(span, job)| QueryStackFrame {
+                    span,
+                    tagged_key: job_map.tagged_key_of(job),
+                })
                 .collect(),
         };
 
@@ -407,7 +413,7 @@ pub fn print_query_stack<'tcx>(
     let mut count_total = 0;
 
     // Make use of a partial query job map if we fail to take locks collecting active queries.
-    let job_map = collect_active_jobs_from_all_queries(tcx, CollectActiveJobsKind::PartialAllowed);
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::PartialAllowed);
 
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "\n\nquery stack during panic:");
@@ -416,12 +422,12 @@ pub fn print_query_stack<'tcx>(
         let Some(query_info) = job_map.map.get(&query) else {
             break;
         };
-        let description = query_info.frame.tagged_key.description(tcx);
+        let description = query_info.tagged_key.description(tcx);
         if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             dcx.struct_failure_note(format!(
-                "#{} [{:?}] {}",
-                count_printed, query_info.frame.dep_kind, description
+                "#{count_printed} [{query_name}] {description}",
+                query_name = query_info.tagged_key.query_name(),
             ))
             .with_span(query_info.job.span)
             .emit();
@@ -431,8 +437,8 @@ pub fn print_query_stack<'tcx>(
         if let Some(ref mut file) = file {
             let _ = writeln!(
                 file,
-                "#{} [{:?}] {}",
-                count_total, query_info.frame.dep_kind, description
+                "#{count_total} [{query_name}] {description}",
+                query_name = query_info.tagged_key.query_name(),
             );
         }
 
@@ -454,12 +460,12 @@ pub(crate) fn report_cycle<'tcx>(
 ) -> Diag<'tcx> {
     assert!(!stack.is_empty());
 
-    let span = stack[0].frame.tagged_key.default_span(tcx, stack[1 % stack.len()].span);
+    let span = stack[0].tagged_key.default_span(tcx, stack[1 % stack.len()].span);
 
     let mut cycle_stack = Vec::new();
 
     use crate::error::StackCount;
-    let stack_bottom = stack[0].frame.tagged_key.description(tcx);
+    let stack_bottom = stack[0].tagged_key.description(tcx);
     let stack_count = if stack.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
     } else {
@@ -467,28 +473,23 @@ pub(crate) fn report_cycle<'tcx>(
     };
 
     for i in 1..stack.len() {
-        let frame = &stack[i].frame;
+        let frame = &stack[i];
         let span = frame.tagged_key.default_span(tcx, stack[(i + 1) % stack.len()].span);
         cycle_stack
             .push(crate::error::CycleStack { span, desc: frame.tagged_key.description(tcx) });
     }
 
-    let mut cycle_usage = None;
-    if let Some((span, ref query)) = *usage {
-        cycle_usage = Some(crate::error::CycleUsage {
-            span: query.tagged_key.default_span(tcx, span),
-            usage: query.tagged_key.description(tcx),
-        });
-    }
+    let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
+        span: usage.tagged_key.default_span(tcx, usage.span),
+        usage: usage.tagged_key.description(tcx),
+    });
 
     let alias = if stack
         .iter()
-        .all(|entry| matches!(entry.frame.tagged_key.def_kind(tcx), Some(DefKind::TyAlias)))
+        .all(|frame| frame.tagged_key.def_kind(tcx) == Some(DefKind::TyAlias))
     {
         Some(crate::error::Alias::Ty)
-    } else if stack
-        .iter()
-        .all(|entry| entry.frame.tagged_key.def_kind(tcx) == Some(DefKind::TraitAlias))
+    } else if stack.iter().all(|frame| frame.tagged_key.def_kind(tcx) == Some(DefKind::TraitAlias))
     {
         Some(crate::error::Alias::Trait)
     } else {

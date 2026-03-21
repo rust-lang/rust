@@ -272,22 +272,26 @@ impl<'test> TestCx<'test> {
         {
             self.fatal("cannot use should-ice in a test that is not cfail");
         }
-        match self.config.mode {
-            TestMode::Pretty => self.run_pretty_test(),
-            TestMode::DebugInfo => self.run_debuginfo_test(),
-            TestMode::Codegen => self.run_codegen_test(),
-            TestMode::RustdocHtml => self.run_rustdoc_html_test(),
-            TestMode::RustdocJson => self.run_rustdoc_json_test(),
-            TestMode::CodegenUnits => self.run_codegen_units_test(),
-            TestMode::Incremental => self.run_incremental_test(),
-            TestMode::RunMake => self.run_rmake_test(),
-            TestMode::Ui => self.run_ui_test(),
-            TestMode::MirOpt => self.run_mir_opt_test(),
-            TestMode::Assembly => self.run_assembly_test(),
-            TestMode::RustdocJs => self.run_rustdoc_js_test(),
-            TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
-            TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
-            TestMode::Crashes => self.run_crash_test(),
+        // Run the test multiple times if requested.
+        // This is useful for catching flaky tests under the parallel frontend.
+        for _ in 0..self.config.iteration_count {
+            match self.config.mode {
+                TestMode::Pretty => self.run_pretty_test(),
+                TestMode::DebugInfo => self.run_debuginfo_test(),
+                TestMode::Codegen => self.run_codegen_test(),
+                TestMode::RustdocHtml => self.run_rustdoc_html_test(),
+                TestMode::RustdocJson => self.run_rustdoc_json_test(),
+                TestMode::CodegenUnits => self.run_codegen_units_test(),
+                TestMode::Incremental => self.run_incremental_test(),
+                TestMode::RunMake => self.run_rmake_test(),
+                TestMode::Ui => self.run_ui_test(),
+                TestMode::MirOpt => self.run_mir_opt_test(),
+                TestMode::Assembly => self.run_assembly_test(),
+                TestMode::RustdocJs => self.run_rustdoc_js_test(),
+                TestMode::CoverageMap => self.run_coverage_map_test(), // see self::coverage
+                TestMode::CoverageRun => self.run_coverage_run_test(), // see self::coverage
+                TestMode::Crashes => self.run_crash_test(),
+            }
         }
     }
 
@@ -1752,6 +1756,14 @@ impl<'test> TestCx<'test> {
                 compiler.arg("-Zwrite-long-types-to-disk=no");
                 // FIXME: use this for other modes too, for perf?
                 compiler.arg("-Cstrip=debuginfo");
+
+                if self.config.parallel_frontend_enabled() {
+                    // Currently, we only use multiple threads for the UI test suite,
+                    // because UI tests can effectively verify the parallel frontend and
+                    // require minimal modification. The option will later be extended to
+                    // other test suites.
+                    compiler.arg(&format!("-Zthreads={}", self.config.parallel_frontend_threads));
+                }
             }
             TestMode::MirOpt => {
                 // We check passes under test to minimize the mir-opt test dump
@@ -2109,7 +2121,7 @@ impl<'test> TestCx<'test> {
     }
 
     /// Prints a message to (captured) stdout if `config.verbose` is true.
-    /// The message is also logged to `tracing::debug!` regardles of verbosity.
+    /// The message is also logged to `tracing::debug!` regardless of verbosity.
     ///
     /// Use `format_args!` as the argument to perform formatting if required.
     fn logv(&self, message: impl fmt::Display) {
@@ -2736,7 +2748,7 @@ impl<'test> TestCx<'test> {
                 return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
-                // if we have no lines to check, force a full overwite
+                // if we have no lines to check, force a full overwrite
                 ("", actual)
             } else {
                 // this prints/blesses the subset, not the actual

@@ -3,14 +3,16 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
+use std::marker::PhantomData;
+
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId};
+use rustc_span::{ExpnHash, ExpnId, Span};
 
-use crate::mir;
 use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex};
 use crate::ty::{Ty, TyCtxt};
+use crate::{mir, ty};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -35,8 +37,10 @@ macro_rules! declare_hooks {
 
         impl Default for Providers {
             fn default() -> Self {
+                #[allow(unused)]
                 Providers {
-                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
+                    $($name:
+                        |_, $($arg,)*| default_hook(stringify!($name))),*
                 }
             }
         }
@@ -98,7 +102,7 @@ declare_hooks! {
     /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
     hook save_dep_graph() -> ();
 
-    hook query_key_hash_verify_all() -> ();
+    hook verify_query_key_hashes() -> ();
 
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
@@ -109,15 +113,36 @@ declare_hooks! {
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
-    hook encode_all_query_results(
+    hook encode_query_values(
         encoder: &mut CacheEncoder<'_, 'tcx>,
         query_result_index: &mut EncodedDepNodeIndex
     ) -> ();
+
+    /// Tries to normalize an alias, ignoring any errors.
+    ///
+    /// Generalization with the new trait solver calls into this,
+    /// when generalizing outside of the trait solver in `hir_typeck`.
+    hook try_eagerly_normalize_alias(
+        type_erased_infcx: TypeErasedInfcx<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+        alias: ty::AliasTy<'tcx>
+    ) -> Ty<'tcx>;
+}
+
+/// The `try_eagerly_normalize_alias` hook passes an `Infcx` from where it's called (in `rustc_infer`)
+/// to where it's provided (in `rustc_trait_selection`).
+/// Both of those crates have that type available, but `rustc_middle` does not.
+/// Instead we pass this type-erased `Infcx` and transmute on both sides.
+///
+/// Has to be `repr(transparent)` so we can transmute a `&'a Infcx<'tcx>` to this struct.
+#[repr(transparent)]
+pub struct TypeErasedInfcx<'a, 'tcx> {
+    _infcx: *const (),
+    phantom: PhantomData<&'a mut &'tcx ()>,
 }
 
 #[cold]
-fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
-    bug!(
-        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
-    )
+fn default_hook(name: &str) -> ! {
+    bug!("`tcx.{name}` cannot be called as `{name}` was never assigned to a provider function")
 }

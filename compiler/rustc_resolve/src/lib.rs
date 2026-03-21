@@ -40,7 +40,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
     self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    NodeId, Path, attr,
+    Generics, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
@@ -65,8 +65,8 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationFnSig, DelegationInfo, Feed, MainDefinition, RegisteredTools,
-    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationInfo, Feed, MainDefinition, RegisteredTools, ResolverAstLowering,
+    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -1157,6 +1157,11 @@ pub struct ResolverOutputs<'tcx> {
     pub ast_lowering: ResolverAstLowering<'tcx>,
 }
 
+#[derive(Debug)]
+struct DelegationFnSig {
+    pub has_self: bool,
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -1316,6 +1321,10 @@ pub struct Resolver<'ra, 'tcx> {
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)> = Default::default(),
+
+    /// for all the struct
+    /// it's not used during normal resolution, only for better error reporting.
+    struct_generics: LocalDefIdMap<Generics> = Default::default(),
 
     lint_buffer: LintBuffer,
 
@@ -1817,9 +1826,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .stripped_cfg_items
             .into_iter()
             .filter_map(|item| {
-                let parent_module =
-                    self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                Some(StrippedCfgItem { parent_module, ident: item.ident, cfg: item.cfg })
+                let parent_scope =
+                    self.node_id_to_def_id.get(&item.parent_scope)?.key().to_def_id();
+                Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg })
             })
             .collect();
 
@@ -1856,7 +1865,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_fn_sigs: self.delegation_fn_sigs,
             delegation_infos: self.delegation_infos,
         };
         ResolverOutputs { global_ctxt, ast_lowering }

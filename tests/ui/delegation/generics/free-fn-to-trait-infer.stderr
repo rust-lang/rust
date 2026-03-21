@@ -23,7 +23,6 @@ LL | reuse <u8 as Trait<_>>::foo as generic_arguments2;
    |                         ^^^
    |                         |
    |                         expected `&u8`, found `&Self`
-   |                         found this type parameter
    |                         arguments to this function are incorrect
    |
    = note: expected reference `&u8`

@@ -30,7 +30,9 @@ error[E0308]: mismatched types
   --> $DIR/unsized-anon-const-struct-err.rs:6:22
    |
 LL | const VALUE: [u32] = [0; 4];
-   |                      ^^^^^^ expected `[u32]`, found `[u32; 4]`
+   |              -----   ^^^^^^ expected `[u32]`, found `[u32; 4]`
+   |              |
+   |              expected because of the type of the constant
 
 error: aborting due to 4 previous errors
 

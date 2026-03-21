@@ -36,7 +36,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
-    // TODO(bjorn3): Can this field be removed?
+    // FIXME(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
     pub function_address_names: RefCell<FxHashMap<RValue<'gcc>, String>>,
@@ -99,7 +99,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
-    // TODO(antoyo): improve the SSA API to not require those.
+    // FIXME(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
     pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
     /// Mapping from function to indexes of on stack parameters.
@@ -109,7 +109,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
-    /// TODO(antoyo): remove when the rustc API is fixed.
+    /// FIXME(antoyo): remove when the rustc API is fixed.
     pub global_lvalues: RefCell<FxHashMap<RValue<'gcc>, LValue<'gcc>>>,
 
     /// Cache of constant strings,
@@ -198,7 +198,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
             let u128_align = layout.align.bytes();*/
 
-            // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
+            // FIXME(antoyo): re-enable the alignment when libgccjit fixed the issue in
             // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).
             let i128_type = new_array_type(context, None, i64_type, 2)/*.get_aligned(i128_align)*/;
             let u128_type = new_array_type(context, None, u64_type, 2)/*.get_aligned(u128_align)*/;
@@ -207,7 +207,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
-        // TODO(antoyo): set alignment on those types as well.
+        // FIXME(antoyo): set alignment on those types as well.
         let float_type = context.new_type::<f32>();
         let double_type = context.new_type::<f64>();
 
@@ -308,7 +308,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             #[cfg(feature = "master")]
             cleanup_blocks: Default::default(),
         };
-        // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.
+        // FIXME(antoyo): instead of doing this, add SsizeT to libgccjit.
         cx.isize_type = usize_type.to_signed(&cx);
         cx
     }
@@ -381,15 +381,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Function = Function<'gcc>;
     type BasicBlock = Block<'gcc>;
-    type Funclet = (); // TODO(antoyo)
+    type Funclet = (); // FIXME(antoyo)
 
     type Value = RValue<'gcc>;
     type Type = Type<'gcc>;
     type FunctionSignature = Type<'gcc>;
 
-    type DIScope = (); // TODO(antoyo)
+    type DIScope = (); // FIXME(antoyo)
     type DILocation = Location<'gcc>;
-    type DIVariable = (); // TODO(antoyo)
+    type DIVariable = (); // FIXME(antoyo)
 }
 
 impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
@@ -413,7 +413,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         };
         let ptr = func.get_address(None);
 
-        // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
+        // FIXME(antoyo): don't do this twice: i.e. in declare_fn and here.
         // FIXME(antoyo): the rustc API seems to call get_fn_addr() when not needed (e.g. for FFI).
 
         self.normal_function_addresses.borrow_mut().insert(ptr);
@@ -471,7 +471,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.declare_func(name, self.type_i32(), &[], true)
             }
         };
-        // TODO(antoyo): apply target cpu attributes.
+        // FIXME(antoyo): apply target cpu attributes.
         self.eh_personality.set(Some(func));
         func
     }
@@ -481,11 +481,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn set_frame_pointer_type(&self, _llfn: Function<'gcc>) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn apply_target_cpu_attr(&self, _llfn: Function<'gcc>) {
-        // TODO(antoyo)
+        // FIXME(antoyo)
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {

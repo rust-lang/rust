@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -561,6 +561,10 @@ pub(crate) struct ExpectedModuleFound {
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
+#[diag("trait implementation can only be restricted to ancestor modules")]
+pub(crate) struct RestrictionAncestorOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]
 pub(crate) struct ToolModuleImported {
     #[primary_span]
@@ -881,6 +885,21 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     pub span: Span,
     #[applicability]
     pub applicability: Applicability,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to introduce a const parameter `{$item_name}` on the {$item_location}",
+    code = "{snippet}",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedMissingConstParameter {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: String,
+    pub item_name: String,
+    pub item_location: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -1451,17 +1470,6 @@ pub(crate) struct UnusedMacroDefinition {
 pub(crate) struct MacroRuleNeverUsed {
     pub n: usize,
     pub name: Symbol,
-}
-
-pub(crate) struct UnstableFeature {
-    pub msg: DiagMessage,
-}
-
-impl<'a> Diagnostic<'a, ()> for UnstableFeature {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        let Self { msg } = self;
-        Diag::new(dcx, level, msg)
-    }
 }
 
 #[derive(Diagnostic)]

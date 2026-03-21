@@ -18,7 +18,7 @@ use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
-use rustc_query_impl::{CollectActiveJobsKind, collect_active_jobs_from_all_queries};
+use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
@@ -183,7 +183,6 @@ pub(crate) fn run_in_thread_pool_with_globals<
     use std::process;
 
     use rustc_data_structures::defer;
-    use rustc_data_structures::sync::FromDyn;
     use rustc_middle::ty::tls;
     use rustc_query_impl::break_query_cycles;
 
@@ -191,7 +190,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
-    if !sync::is_dyn_thread_safe() {
+    let Some(proof) = sync::check_dyn_thread_safe() else {
         return run_in_thread_with_globals(
             thread_stack_size,
             edition,
@@ -204,9 +203,9 @@ pub(crate) fn run_in_thread_pool_with_globals<
                 f(current_gcx, jobserver_proxy)
             },
         );
-    }
+    };
 
-    let current_gcx = FromDyn::from(CurrentGcx::new());
+    let current_gcx = proof.derive(CurrentGcx::new());
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
@@ -255,7 +254,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                         // Ensure there were no errors collecting all active jobs.
                                         // We need the complete map to ensure we find a cycle to
                                         // break.
-                                        collect_active_jobs_from_all_queries(
+                                        collect_active_query_jobs(
                                             tcx,
                                             CollectActiveJobsKind::FullNoContention,
                                         )
@@ -278,7 +277,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
     // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, extra_symbols, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
-            let session_globals = FromDyn::from(session_globals);
+            let session_globals = proof.derive(session_globals);
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
