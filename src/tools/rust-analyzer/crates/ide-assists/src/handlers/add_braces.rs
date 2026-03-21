@@ -84,6 +84,7 @@ fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Exp
             match parent {
                 ast::LetStmt(it) => it.initializer()?,
                 ast::LetExpr(it) => it.expr()?,
+                ast::BinExpr(it) => it.rhs()?,
                 ast::Static(it) => it.body()?,
                 ast::Const(it) => it.body()?,
                 _ => return None,
@@ -191,6 +192,22 @@ fn foo() {
     x = {
         n + 100
     };
+}
+"#,
+        );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    if let x =$0 n + 100 {}
+}
+"#,
+            r#"
+fn foo() {
+    if let x = {
+        n + 100
+    } {}
 }
 "#,
         );
