@@ -616,4 +616,9 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
             }
         })]);
     }
+
+    fn try_eagerly_normalize_alias(&mut self, _alias: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        // Past hir typeck, so we don't have to worry about type inference anymore.
+        self.type_checker.infcx.next_ty_var(self.span())
+    }
 }

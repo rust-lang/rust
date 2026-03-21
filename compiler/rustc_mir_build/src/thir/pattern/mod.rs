@@ -30,9 +30,11 @@ use tracing::{debug, instrument};
 pub(crate) use self::check_match::check_match;
 use self::migration::PatMigration;
 use crate::errors::*;
+use crate::thir::cx::ThirBuildCx;
 
 /// Context for lowering HIR patterns to THIR patterns.
-struct PatCtxt<'tcx> {
+struct PatCtxt<'tcx, 'ptcx> {
+    upper: &'ptcx mut ThirBuildCx<'tcx>,
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -41,8 +43,9 @@ struct PatCtxt<'tcx> {
     rust_2024_migration: Option<PatMigration<'tcx>>,
 }
 
-#[instrument(level = "debug", skip(tcx, typing_env, typeck_results), ret)]
-pub(super) fn pat_from_hir<'tcx>(
+#[instrument(level = "debug", skip(upper, tcx, typing_env, typeck_results), ret)]
+pub(super) fn pat_from_hir<'tcx, 'ptcx>(
+    upper: &'ptcx mut ThirBuildCx<'tcx>,
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -51,6 +54,7 @@ pub(super) fn pat_from_hir<'tcx>(
     let_stmt_type: Option<&hir::Ty<'tcx>>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
+        upper,
         tcx,
         typing_env,
         typeck_results,
@@ -87,7 +91,7 @@ pub(super) fn pat_from_hir<'tcx>(
     thir_pat
 }
 
-impl<'tcx> PatCtxt<'tcx> {
+impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         let adjustments: &[PatAdjustment<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
@@ -443,8 +447,10 @@ impl<'tcx> PatCtxt<'tcx> {
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
-            // FIXME(guard_patterns): implement guard pattern lowering
-            hir::PatKind::Guard(pat, _) => self.lower_pattern(pat).kind,
+            hir::PatKind::Guard(pat, condition) => PatKind::Guard {
+                subpattern: self.lower_pattern(pat),
+                condition: self.upper.mirror_expr(condition),
+            },
 
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
@@ -696,7 +702,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 // patterns to `str`, and byte-string literal patterns to `[u8; N]` or `[u8]`.
 
                 let pat_ty = self.typeck_results.node_type(pat.hir_id);
-                let lit_input = LitToConstInput { lit: lit.node, ty: pat_ty, neg: *negated };
+                let lit_input = LitToConstInput { lit: lit.node, ty: Some(pat_ty), neg: *negated };
                 let constant = const_lit_matches_ty(self.tcx, &lit.node, pat_ty, *negated)
                     .then(|| self.tcx.at(expr.span).lit_to_const(lit_input))
                     .flatten()

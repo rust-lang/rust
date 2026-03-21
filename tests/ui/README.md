@@ -133,7 +133,7 @@ Runtime panics and error handling generate backtraces to assist in debugging and
 
 This directory was originally meant to contain tests related to time complexity and benchmarking.
 
-However, only a single test was ever added to this category: https://github.com/rust-lang/rust/pull/32062
+However, only a single test was ever added to this category: <https://github.com/rust-lang/rust/pull/32062>
 
 **FIXME**: It is also unclear what would happen were this test to "fail" - would it cause the test suite to remain stuck on this test for a much greater duration than normal?
 
@@ -694,9 +694,7 @@ This test category revolves around trait objects with `Sized` having illegal ope
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
 ## `tests/ui/impl-restriction/`
-Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077
-](https://github.com/rust-lang/rust/issues/105077).
-
+Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/impl-trait/`
 
@@ -778,10 +776,6 @@ These tests revolve around the `--json` compiler flag. See [JSON Output](https:/
 
 Tests exercising keywords, such as attempting to use them as identifiers when not contextual keywords.
 
-## `tests/ui/kindck/`
-
-**FIXME**: `kindck` is no longer a thing, these tests probably need to be audited and rehomed.
-
 ## `tests/ui/label/`
 
 Exercises block and loop `'label`s.
@@ -800,8 +794,7 @@ See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.ht
 
 ## `tests/ui/lazy-type-alias/`
 
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792
-](https://github.com/rust-lang/rust/issues/112792).
+Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -856,7 +849,7 @@ See:
 
 Tests exercising analysis for unused variables, unreachable statements, functions which are supposed to return a value but do not, as well as values moved elsewhere before they could be used by a function.
 
-**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions
+**FIXME**: This seems unrelated to "liveness" as defined in the rustc compiler guide. Is this misleadingly named? <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/lifetime_parameters.html#liveness-and-universal-regions>
 
 ## `tests/ui/loop-match`
 

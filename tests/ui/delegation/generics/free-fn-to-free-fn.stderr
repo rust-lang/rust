@@ -1,3 +1,17 @@
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/free-fn-to-free-fn.rs:19:5
+   |
+LL |     late::<'static>(&0u8);
+   |     ^^^^----------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/free-fn-to-free-fn.rs:15:17
+   |
+LL | reuse to_reuse::late;
+   |                 ^^^^
+
 error[E0277]: the trait bound `S: Clone` is not satisfied
   --> $DIR/free-fn-to-free-fn.rs:23:12
    |
@@ -20,6 +34,7 @@ LL +     #[derive(Clone)]
 LL |     struct S;
    |
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

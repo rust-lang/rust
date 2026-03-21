@@ -876,7 +876,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     };
 
                 let indices = self.typeck_results.offset_of_data().get(expr.hir_id).unwrap();
-                let mut expr = None::<ExprKind<'tcx>>;
+                let mut expr = None::<ExprKind<'_>>;
 
                 for &(container, variant, field) in indices.iter() {
                     let next = mk_call(&mut self.thir, container, variant, field);

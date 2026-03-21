@@ -7,12 +7,12 @@ use std::sync::Arc;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sync::{AppendOnlyVec, Lock};
+use rustc_data_structures::sync::{AppendOnlyVec, DynSend, Lock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{EmitterWithNote, stderr_destination};
 use rustc_errors::{
     BufferedEarlyLint, ColorConfig, DecorateDiagCompat, Diag, DiagCtxt, DiagCtxtHandle,
-    DiagMessage, EmissionGuarantee, MultiSpan, StashKey,
+    DiagMessage, EmissionGuarantee, Level, MultiSpan, StashKey,
 };
 use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
@@ -329,6 +329,23 @@ impl ParseSess {
         diagnostic: impl Into<DecorateDiagCompat>,
     ) {
         self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic.into())
+    }
+
+    pub fn dyn_buffer_lint<
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static,
+    >(
+        &self,
+        lint: &'static Lint,
+        span: impl Into<MultiSpan>,
+        node_id: NodeId,
+        callback: F,
+    ) {
+        self.opt_span_buffer_lint(
+            lint,
+            Some(span.into()),
+            node_id,
+            DecorateDiagCompat::Dynamic(Box::new(callback)),
+        )
     }
 
     pub(crate) fn opt_span_buffer_lint(

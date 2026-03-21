@@ -177,7 +177,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 cache: Default::default(),
             };
             let param_env = param_env.fold_with(&mut env_canonicalizer);
-            debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
+            debug_assert!(
+                env_canonicalizer.sub_root_lookup_table.is_empty(),
+                "{:?}",
+                env_canonicalizer.sub_root_lookup_table
+            );
             (
                 param_env,
                 env_canonicalizer.variables,
