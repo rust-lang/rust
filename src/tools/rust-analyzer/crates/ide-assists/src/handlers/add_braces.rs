@@ -179,6 +179,36 @@ fn foo() {
     }
 
     #[test]
+    fn suggest_add_braces_for_const_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+const X: i32 =$0 1 + 2;
+"#,
+            r#"
+const X: i32 = {
+    1 + 2
+};
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_static_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+static X: i32 $0= 1 + 2;
+"#,
+            r#"
+static X: i32 = {
+    1 + 2
+};
+"#,
+        );
+    }
+
+    #[test]
     fn no_assist_for_closures_with_braces() {
         check_assist_not_applicable(
             add_braces,
