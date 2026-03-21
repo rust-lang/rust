@@ -2474,8 +2474,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        path,
-        |tcx, path| {
+        || {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
