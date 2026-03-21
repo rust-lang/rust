@@ -327,14 +327,14 @@ impl DepGraphData {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, A: Debug, V>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
         task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> V,
+        hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    ) -> (V, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
@@ -348,22 +348,28 @@ impl DepGraphData {
             )
         });
 
-        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
-        let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
-            (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
+        let exec_task_with_dep_tracking =
+            |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let value;
+        let edges;
+
+        if tcx.is_eval_always(dep_node.kind) {
+            value = exec_task_with_dep_tracking(TaskDepsRef::EvalAlways);
+            edges = EdgesVec::new();
         } else {
             let task_deps = Lock::new(TaskDeps::new(
                 #[cfg(debug_assertions)]
                 Some(dep_node),
                 0,
             ));
-            (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
+            value = exec_task_with_dep_tracking(TaskDepsRef::Allow(&task_deps));
+            edges = task_deps.into_inner().reads;
         };
 
         let dep_node_index =
-            self.hash_result_and_alloc_node(tcx, dep_node, edges, &result, hash_result);
+            self.hash_result_and_alloc_node(tcx, dep_node, edges, &value, hash_value_fn);
 
-        (result, dep_node_index)
+        (value, dep_node_index)
     }
 
     /// Executes something within an "anonymous" task, that is, a task the
