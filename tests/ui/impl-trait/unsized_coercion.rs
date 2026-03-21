@@ -3,18 +3,21 @@
 
 //@ revisions: next old
 //@[next] compile-flags: -Znext-solver
-//@ check-pass
+//@[old] check-pass
 
 trait Trait {}
 
 impl Trait for u32 {}
 
 fn hello() -> Box<impl Trait> {
+    //[next]~^ ERROR: the size for values of type `dyn Trait` cannot be known at compilation time
     if true {
         let x = hello();
+        //[next]~^ ERROR: the size for values of type `dyn Trait` cannot be known at compilation time
         let y: Box<dyn Trait> = x;
     }
     Box::new(1u32)
+    //[next]~^ ERROR: mismatched types
 }
 
 fn main() {}

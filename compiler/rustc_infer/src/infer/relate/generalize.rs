@@ -68,7 +68,37 @@ impl<'tcx> InferCtxt<'tcx> {
             let normalized_alias = relation.try_eagerly_normalize_alias(*alias);
 
             if normalized_alias.is_ty_var() {
-                normalized_alias
+                // If normalization returns an infer var, we shouldn't directly output it.
+                // This can cause us to wrongly assume that another type is *exactly equal*
+                // to the alias that this infer var represents, while it may actually be a subtype.
+                // Unless the variance is invariant, we therefore generate a new infer var,
+                // with a subtyping relation to the infer var returned by normalization.
+                match instantiation_variance {
+                    ty::Invariant => normalized_alias,
+                    ty::Covariant => {
+                        let new_tyvar = self.next_ty_var(relation.span());
+                        relation.register_predicates([ty::PredicateKind::Subtype(
+                            ty::SubtypePredicate {
+                                a_is_expected: true,
+                                a: new_tyvar,
+                                b: normalized_alias,
+                            },
+                        )]);
+                        new_tyvar
+                    }
+                    ty::Contravariant => {
+                        let new_tyvar = self.next_ty_var(relation.span());
+                        relation.register_predicates([ty::PredicateKind::Subtype(
+                            ty::SubtypePredicate {
+                                a_is_expected: true,
+                                a: normalized_alias,
+                                b: new_tyvar,
+                            },
+                        )]);
+                        new_tyvar
+                    }
+                    ty::Bivariant => unreachable!("bivariant generalization"),
+                }
             } else {
                 let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
                     relation.span(),
