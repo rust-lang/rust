@@ -4499,3 +4499,12 @@ impl TokenDescription {
         }
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("equality constraints are not supported in where-clauses")]
+#[note("see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information")]
+pub(crate) struct EqualityConstraintInWhereClause {
+    #[primary_span]
+    #[label("not supported")]
+    pub span: Span,
+}

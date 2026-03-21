@@ -1,30 +1,30 @@
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:1:51
    |
 LL | fn sum<I: Iterator<Item = ()>>(i: I) -> i32 where I::Item = i32 {
    |                                                   ^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `Iterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `Iterator::Item` is an associated type you're trying to set
    |
 LL - fn sum<I: Iterator<Item = ()>>(i: I) -> i32 where I::Item = i32 {
 LL + fn sum<I: Iterator<Item = (), Item = i32>>(i: I) -> i32  {
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:5:41
    |
 LL | fn sum2<I: Iterator>(i: I) -> i32 where I::Item = i32 {
    |                                         ^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `Iterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `Iterator::Item` is an associated type you're trying to set
    |
 LL - fn sum2<I: Iterator>(i: I) -> i32 where I::Item = i32 {
 LL + fn sum2<I: Iterator<Item = i32>>(i: I) -> i32  {
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:9:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
@@ -32,79 +32,79 @@ LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:20:58
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
 LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:31:58
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
    |                                                          ^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
 LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:42:55
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
 LL +     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self 
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:53:55
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
    |                                                       ^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
 LL +     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self 
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:64:41
    |
 LL |     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
 LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/equality-bound.rs:75:41
    |
 LL |     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
    |                                         ^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `IntoIterator::Item` is an associated type you're trying to set
    |
 LL -     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
 LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,

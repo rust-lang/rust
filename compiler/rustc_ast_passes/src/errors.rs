@@ -879,27 +879,14 @@ pub(crate) struct PatternInBodiless {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag("equality constraints are not yet supported in `where` clauses")]
-#[note("see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information")]
-pub(crate) struct EqualityInWhere {
-    #[primary_span]
-    #[label("not supported")]
-    pub span: Span,
-    #[subdiagnostic]
-    pub assoc: Option<AssociatedSuggestion>,
-    #[subdiagnostic]
-    pub assoc2: Option<AssociatedSuggestion2>,
-}
-
 #[derive(Subdiagnostic)]
 #[suggestion(
-    "if `{$ident}` is an associated type you're trying to set, use the associated type binding syntax",
+    "use the associated type binding syntax if `{$ident}` is an associated type you're trying to set",
     code = "{param}: {path}",
     style = "verbose",
     applicability = "maybe-incorrect"
 )]
-pub(crate) struct AssociatedSuggestion {
+pub(crate) struct UseAssocTypeBindingSyntaxSugg {
     #[primary_span]
     pub span: Span,
     pub ident: Ident,
@@ -909,10 +896,10 @@ pub(crate) struct AssociatedSuggestion {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "if `{$trait_segment}::{$potential_assoc}` is an associated type you're trying to set, use the associated type binding syntax",
+    "use the associated type binding syntax if `{$trait_segment}::{$potential_assoc}` is an associated type you're trying to set",
     applicability = "maybe-incorrect"
 )]
-pub(crate) struct AssociatedSuggestion2 {
+pub(crate) struct UseAssocTypeBindingSyntaxMultipartSugg {
     #[suggestion_part(code = "{args}")]
     pub span: Span,
     pub args: String,

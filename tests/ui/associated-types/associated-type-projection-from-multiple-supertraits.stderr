@@ -1,4 +1,4 @@
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:47
    |
 LL | fn dent_object_2<COLOR>(c: &dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
