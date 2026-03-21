@@ -178,6 +178,10 @@ impl fmt::Debug for DepNode {
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
 pub struct DepKindVTable<'tcx> {
+    /// If true, dep nodes of this kind that would have no dependencies can be
+    /// replaced with `SINGLETON_ZERO_DEPS_ANON_NODE`.
+    pub anonymizable: bool,
+
     /// Eval-always queries do not track their dependencies, and are always recomputed, even if
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.

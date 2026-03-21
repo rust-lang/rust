@@ -14,6 +14,7 @@ mod non_query {
     // We use this for most things when incr. comp. is turned off.
     pub(crate) fn Null<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: Some(|_, dep_node, _| {
@@ -26,6 +27,7 @@ mod non_query {
     // We use this for the forever-red node.
     pub(crate) fn Red<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: Some(|_, dep_node, _| {
@@ -37,6 +39,7 @@ mod non_query {
 
     pub(crate) fn SideEffect<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: Some(|tcx, _, prev_index| {
@@ -49,6 +52,7 @@ mod non_query {
 
     pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node_fn: Some(|_, _, _| bug!("cannot force an anon node")),
@@ -58,6 +62,7 @@ mod non_query {
 
     pub(crate) fn TraitSelect<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: None,
@@ -67,6 +72,7 @@ mod non_query {
 
     pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node_fn: None,
@@ -76,6 +82,7 @@ mod non_query {
 
     pub(crate) fn CompileMonoItem<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node_fn: None,
@@ -85,6 +92,7 @@ mod non_query {
 
     pub(crate) fn Metadata<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
+            anonymizable: false,
             is_eval_always: false,
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node_fn: None,
@@ -108,7 +116,10 @@ where
     let key_fingerprint_style = <Q::Cache as QueryCache>::Key::key_fingerprint_style();
     let can_recover = key_fingerprint_style.is_maybe_recoverable();
 
+    let anonymizable = !is_cache_on_disk && !can_recover && !is_eval_always;
+
     DepKindVTable {
+        anonymizable,
         is_eval_always,
         key_fingerprint_style,
         force_from_dep_node_fn: (can_recover && !is_no_force)

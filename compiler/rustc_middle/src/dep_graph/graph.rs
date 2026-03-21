@@ -364,6 +364,10 @@ impl DepGraphData {
             ));
             value = exec_task_with_dep_tracking(TaskDepsRef::Allow(&task_deps));
             edges = task_deps.into_inner().reads;
+
+            if edges.is_empty() && tcx.dep_kind_vtable(dep_node.kind).anonymizable {
+                return (value, DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE);
+            }
         };
 
         let dep_node_index =
