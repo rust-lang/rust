@@ -269,14 +269,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .span_delayed_bug(span, "Type may implement copy, but there is no other error.");
             return;
         }
+
+        let mut has_clone_suggestion = false;
         let mut err = match kind {
-            &IllegalMoveOriginKind::BorrowedContent { target_place } => self
-                .report_cannot_move_from_borrowed_content(
+            &IllegalMoveOriginKind::BorrowedContent { target_place } => {
+                let (diag, clone_sugg) = self.report_cannot_move_from_borrowed_content(
                     original_path,
                     target_place,
                     span,
                     use_spans,
-                ),
+                );
+                has_clone_suggestion = clone_sugg;
+                diag
+            }
             &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                 self.cannot_move_out_of_interior_of_drop(span, ty)
             }
@@ -285,7 +290,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         };
 
-        self.add_move_hints(error, &mut err, span);
+        self.add_move_hints(error, &mut err, span, has_clone_suggestion);
         self.buffer_error(err);
     }
 
@@ -426,7 +431,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> Diag<'infcx> {
+    ) -> (Diag<'infcx>, bool) {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -447,8 +452,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let decl = &self.body.local_decls[local];
             let local_name = self.local_name(local).map(|sym| format!("`{sym}`"));
             if decl.is_ref_for_guard() {
-                return self
-                    .cannot_move_out_of(
+                return (
+                    self.cannot_move_out_of(
                         span,
                         &format!(
                             "{} in pattern guard",
@@ -458,9 +463,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .with_note(
                         "variables bound in patterns cannot be moved from \
                          until after the end of the pattern guard",
-                    );
+                    ),
+                    false,
+                );
             } else if decl.is_ref_to_static() {
-                return self.report_cannot_move_from_static(move_place, span);
+                return (self.report_cannot_move_from_static(move_place, span), false);
             }
         }
 
@@ -539,10 +546,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             has_suggest_reborrow: false,
             maybe_reinitialized_locations_is_empty: true,
         };
-        if let Some(use_spans) = use_spans {
-            self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt);
-        }
-        err
+        let suggested_cloning = if let Some(use_spans) = use_spans {
+            self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt)
+                .clone_suggestion
+        } else {
+            false
+        };
+        (err, suggested_cloning)
     }
 
     fn report_closure_move_error(
@@ -675,7 +685,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
+    fn add_move_hints(
+        &self,
+        error: GroupedMoveError<'tcx>,
+        err: &mut Diag<'_>,
+        span: Span,
+        has_clone_suggestion: bool,
+    ) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
                 self.add_borrow_suggestions(err, span);
@@ -718,14 +734,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     None => "value".to_string(),
                 };
 
-                if let Some(expr) = self.find_expr(use_span) {
-                    self.suggest_cloning(
-                        err,
-                        original_path.as_ref(),
-                        place_ty,
-                        expr,
-                        Some(use_spans),
-                    );
+                if !has_clone_suggestion {
+                    if let Some(expr) = self.find_expr(use_span) {
+                        self.suggest_cloning(
+                            err,
+                            original_path.as_ref(),
+                            place_ty,
+                            expr,
+                            Some(use_spans),
+                        );
+                    }
                 }
 
                 if let Some(upvar_field) = self
