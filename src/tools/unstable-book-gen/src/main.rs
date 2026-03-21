@@ -5,6 +5,9 @@ use std::env;
 use std::fs::{self, write};
 use std::path::Path;
 
+use proc_macro2::{Span, TokenStream, TokenTree};
+use syn::parse::{Parse, ParseStream};
+use syn::{Attribute, Ident, Item, LitStr, Token, parenthesized};
 use tidy::diagnostics::RunningCheck;
 use tidy::features::{
     Feature, Features, Status, collect_env_vars, collect_lang_features, collect_lib_features,
@@ -116,7 +119,7 @@ fn copy_recursive(from: &Path, to: &Path) {
 }
 
 fn collect_compiler_flags(compiler_path: &Path) -> Features {
-    let options_path = compiler_path.join("rustc_session/src/options.rs");
+    let options_path = compiler_path.join("rustc_session/src/options/unstable.rs");
     let options_rs = t!(fs::read_to_string(&options_path), options_path);
     parse_compiler_flags(&options_rs, &options_path)
 }
@@ -125,50 +128,103 @@ const DESCRIPTION_FIELD: usize = 3;
 const REQUIRED_FIELDS: usize = 4;
 const OPTIONAL_FIELDS: usize = 5;
 
-struct SourceBlock<'a> {
-    content: &'a str,
-    offset: usize,
+struct ParsedOptionEntry {
+    name: String,
+    line: usize,
+    description: String,
 }
 
-struct ParsedOptionEntry<'a> {
-    name: &'a str,
-    name_start: usize,
-    description: Option<String>,
-    next_idx: usize,
+struct UnstableOptionsInput {
+    struct_name: Ident,
+    entries: Vec<ParsedOptionEntry>,
+}
+
+impl Parse for ParsedOptionEntry {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let _attrs = input.call(Attribute::parse_outer)?;
+
+        let name: Ident = input.parse()?;
+        let line = name.span().start().line;
+        input.parse::<Token![:]>()?;
+        let _ty: syn::Type = input.parse()?;
+        input.parse::<Token![=]>()?;
+
+        let tuple_content;
+        parenthesized!(tuple_content in input);
+        let tuple_tokens: TokenStream = tuple_content.parse()?;
+        let tuple_fields = split_tuple_fields(tuple_tokens);
+
+        if !matches!(tuple_fields.len(), REQUIRED_FIELDS | OPTIONAL_FIELDS) {
+            return Err(syn::Error::new(
+                name.span(),
+                format!(
+                    "unexpected field count for option `{name}`: expected 4 or 5, found {}",
+                    tuple_fields.len()
+                ),
+            ));
+        }
+
+        if tuple_fields.len() == OPTIONAL_FIELDS
+            && !is_deprecated_marker_field(&tuple_fields[REQUIRED_FIELDS])
+        {
+            return Err(syn::Error::new(
+                name.span(),
+                format!(
+                    "unexpected trailing field in option `{name}`: expected `is_deprecated_and_do_nothing: ...`"
+                ),
+            ));
+        }
+
+        let description = parse_description_field(&tuple_fields[DESCRIPTION_FIELD], &name)?;
+        Ok(Self { name: name.to_string(), line, description })
+    }
+}
+
+impl Parse for UnstableOptionsInput {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let struct_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _tmod_enum_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _stat_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _opt_module_name: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _prefix: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let _output_name: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+
+        let entries =
+            syn::punctuated::Punctuated::<ParsedOptionEntry, Token![,]>::parse_terminated(input)?
+                .into_iter()
+                .collect();
+
+        Ok(Self { struct_name, entries })
+    }
 }
 
 fn parse_compiler_flags(options_rs: &str, options_path: &Path) -> Features {
-    let options_block = find_options_block(options_rs, "UnstableOptions");
-    let alphabetical_section = find_tidy_alphabetical_section(options_block);
-    let section_line_offset = line_number(options_rs, alphabetical_section.offset) - 1;
+    let options_input = parse_unstable_options_macro(options_rs).unwrap_or_else(|error| {
+        panic!("failed to parse unstable options from `{}`: {error}", options_path.display())
+    });
 
     let mut features = Features::new();
-    let mut idx = 0;
-
-    while idx < alphabetical_section.content.len() {
-        skip_ws_comments_and_attrs(alphabetical_section.content, &mut idx);
-        if idx >= alphabetical_section.content.len() {
-            break;
-        }
-
-        let entry = parse_one_entry(alphabetical_section.content, idx);
-        idx = entry.next_idx;
-
+    for entry in options_input.entries {
         if entry.name == "help" {
             continue;
         }
 
         features.insert(
-            entry.name.to_owned(),
+            entry.name,
             Feature {
                 level: Status::Unstable,
                 since: None,
                 has_gate_test: false,
                 tracking_issue: None,
                 file: options_path.to_path_buf(),
-                line: section_line_offset
-                    + line_number(alphabetical_section.content, entry.name_start),
-                description: entry.description,
+                line: entry.line,
+                description: Some(entry.description),
             },
         );
     }
@@ -176,447 +232,72 @@ fn parse_compiler_flags(options_rs: &str, options_path: &Path) -> Features {
     features
 }
 
-fn parse_one_entry(source: &str, start_idx: usize) -> ParsedOptionEntry<'_> {
-    let name_start = start_idx;
-    let name_end =
-        parse_ident_end(source, name_start).expect("expected an option name in UnstableOptions");
-    let name = &source[name_start..name_end];
-    let mut idx = name_end;
+fn parse_unstable_options_macro(source: &str) -> syn::Result<UnstableOptionsInput> {
+    let ast = syn::parse_file(source)?;
 
-    skip_ws_comments(source, &mut idx);
-    expect_byte(source, idx, b':', &format!("expected `:` after option name `{name}`"));
-    idx += 1;
+    for item in ast.items {
+        let Item::Macro(item_macro) = item else {
+            continue;
+        };
 
-    idx =
-        find_char_outside_nested(source, idx, b'=').expect("expected `=` in UnstableOptions entry");
-    idx += 1;
-
-    skip_ws_comments(source, &mut idx);
-    expect_byte(source, idx, b'(', &format!("expected tuple payload for option `{name}`"));
-
-    let tuple_start = idx;
-    let tuple_end = find_matching_delimiter(source, tuple_start, b'(', b')')
-        .expect("UnstableOptions tuple should be balanced");
-    let next_idx = skip_past_entry_delimiter(source, tuple_end + 1, name);
-
-    let description = if name == "help" {
-        None
-    } else {
-        let fields = split_top_level_fields(&source[tuple_start + 1..tuple_end]);
-        validate_option_fields(&fields, name);
-        // The `options!` macro layout is `(init, parse, [dep_tracking...], desc, ...)`.
-        Some(parse_string_literal(
-            fields.get(DESCRIPTION_FIELD).expect("option description should be present"),
-        ))
-    };
-
-    ParsedOptionEntry { name, name_start, description, next_idx }
-}
-
-fn find_options_block<'a>(source: &'a str, struct_name: &str) -> SourceBlock<'a> {
-    let mut search_from = 0;
-
-    while let Some(relative_start) = source[search_from..].find("options!") {
-        let macro_start = search_from + relative_start;
-        let open_brace = source[macro_start..]
-            .find('{')
-            .map(|relative| macro_start + relative)
-            .expect("options! invocation should contain `{`");
-        let close_brace = find_matching_delimiter(source, open_brace, b'{', b'}')
-            .expect("options! invocation should have a matching `}`");
-        let block = &source[open_brace + 1..close_brace];
-
-        if block.trim_start().starts_with(struct_name) {
-            return SourceBlock { content: block, offset: open_brace + 1 };
-        }
-
-        search_from = close_brace + 1;
-    }
-
-    panic!("could not find `{struct_name}` options! block");
-}
-
-fn find_tidy_alphabetical_section(block: SourceBlock<'_>) -> SourceBlock<'_> {
-    let start_marker = "// tidy-alphabetical-start";
-    let end_marker = "// tidy-alphabetical-end";
-
-    let section_start = block
-        .content
-        .find(start_marker)
-        .map(|start| start + start_marker.len())
-        .expect("options! block should contain `// tidy-alphabetical-start`");
-    let section_end = block.content[section_start..]
-        .find(end_marker)
-        .map(|end| section_start + end)
-        .expect("options! block should contain `// tidy-alphabetical-end`");
-
-    SourceBlock {
-        content: &block.content[section_start..section_end],
-        offset: block.offset + section_start,
-    }
-}
-
-fn line_number(source: &str, offset: usize) -> usize {
-    source[..offset].bytes().filter(|&byte| byte == b'\n').count() + 1
-}
-
-fn expect_byte(source: &str, idx: usize, expected: u8, context: &str) {
-    assert_eq!(source.as_bytes().get(idx).copied(), Some(expected), "{context}");
-}
-
-fn skip_ws_comments_and_attrs(source: &str, idx: &mut usize) {
-    loop {
-        skip_ws_comments(source, idx);
-
-        if source[*idx..].starts_with("#[") {
-            let attr_start = *idx + 1;
-            let attr_end = find_matching_delimiter(source, attr_start, b'[', b']')
-                .expect("attribute should have matching `]`");
-            *idx = attr_end + 1;
+        if !item_macro.mac.path.is_ident("options") {
             continue;
         }
 
-        break;
+        let parsed = syn::parse2::<UnstableOptionsInput>(item_macro.mac.tokens)?;
+        if parsed.struct_name == "UnstableOptions" {
+            return Ok(parsed);
+        }
     }
+
+    Err(syn::Error::new(
+        Span::call_site(),
+        "could not find `options!` invocation for `UnstableOptions`",
+    ))
 }
 
-fn skip_ws_comments(source: &str, idx: &mut usize) {
-    loop {
-        while let Some(byte) = source.as_bytes().get(*idx) {
-            if byte.is_ascii_whitespace() {
-                *idx += 1;
-            } else {
-                break;
-            }
-        }
-
-        if source[*idx..].starts_with("//") {
-            *idx = source[*idx..].find('\n').map_or(source.len(), |end| *idx + end + 1);
-            continue;
-        }
-
-        if source[*idx..].starts_with("/*") {
-            *idx = skip_block_comment(source, *idx);
-            continue;
-        }
-
-        break;
-    }
+fn parse_description_field(field: &TokenStream, option_name: &Ident) -> syn::Result<String> {
+    let lit = syn::parse2::<LitStr>(field.clone()).map_err(|_| {
+        syn::Error::new_spanned(
+            field.clone(),
+            format!("expected description string literal in option `{option_name}`"),
+        )
+    })?;
+    Ok(lit.value())
 }
 
-fn skip_block_comment(source: &str, mut idx: usize) -> usize {
-    let mut depth = 1;
-    idx += 2;
-
-    while idx < source.len() {
-        match source.as_bytes().get(idx..idx + 2) {
-            Some(b"/*") => {
-                depth += 1;
-                idx += 2;
-            }
-            Some(b"*/") => {
-                depth -= 1;
-                idx += 2;
-                if depth == 0 {
-                    return idx;
-                }
-            }
-            _ => idx += 1,
-        }
-    }
-
-    panic!("unterminated block comment");
-}
-
-fn parse_ident_end(source: &str, start: usize) -> Option<usize> {
-    let bytes = source.as_bytes();
-    let first = *bytes.get(start)?;
-    if !(first == b'_' || first.is_ascii_alphabetic()) {
-        return None;
-    }
-
-    let mut idx = start + 1;
-    while let Some(byte) = bytes.get(idx) {
-        if *byte == b'_' || byte.is_ascii_alphanumeric() {
-            idx += 1;
-        } else {
-            break;
-        }
-    }
-
-    Some(idx)
-}
-
-fn find_char_outside_nested(source: &str, start: usize, needle: u8) -> Option<usize> {
-    let mut idx = start;
-    let mut paren_depth = 0;
-    let mut bracket_depth = 0;
-    let mut brace_depth = 0;
-
-    while idx < source.len() {
-        match source.as_bytes()[idx] {
-            b'/' if source[idx..].starts_with("//") => {
-                idx = source[idx..].find('\n').map_or(source.len(), |end| idx + end + 1);
-            }
-            b'/' if source[idx..].starts_with("/*") => idx = skip_block_comment(source, idx),
-            b'"' => idx = skip_string_literal(source, idx),
-            b'(' => {
-                paren_depth += 1;
-                idx += 1;
-            }
-            b')' => {
-                paren_depth -= 1;
-                idx += 1;
-            }
-            b'[' => {
-                bracket_depth += 1;
-                idx += 1;
-            }
-            b']' => {
-                bracket_depth -= 1;
-                idx += 1;
-            }
-            b'{' => {
-                brace_depth += 1;
-                idx += 1;
-            }
-            b'}' => {
-                brace_depth -= 1;
-                idx += 1;
-            }
-            byte if byte == needle
-                && paren_depth == 0
-                && bracket_depth == 0
-                && brace_depth == 0 =>
-            {
-                return Some(idx);
-            }
-            _ => idx += 1,
-        }
-    }
-
-    None
-}
-
-fn find_matching_delimiter(source: &str, start: usize, open: u8, close: u8) -> Option<usize> {
-    let mut idx = start;
-    let mut depth = 0;
-
-    while idx < source.len() {
-        match source.as_bytes()[idx] {
-            b'/' if source[idx..].starts_with("//") => {
-                idx = source[idx..].find('\n').map_or(source.len(), |end| idx + end + 1);
-            }
-            b'/' if source[idx..].starts_with("/*") => idx = skip_block_comment(source, idx),
-            b'"' => idx = skip_string_literal(source, idx),
-            byte if byte == open => {
-                depth += 1;
-                idx += 1;
-            }
-            byte if byte == close => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(idx);
-                }
-                idx += 1;
-            }
-            _ => idx += 1,
-        }
-    }
-
-    None
-}
-
-fn split_top_level_fields(source: &str) -> Vec<&str> {
+fn split_tuple_fields(tuple_tokens: TokenStream) -> Vec<TokenStream> {
     let mut fields = Vec::new();
-    let mut field_start = 0;
-    let mut idx = 0;
-    let mut paren_depth = 0;
-    let mut bracket_depth = 0;
-    let mut brace_depth = 0;
+    let mut current = TokenStream::new();
 
-    while idx < source.len() {
-        match source.as_bytes()[idx] {
-            b'/' if source[idx..].starts_with("//") => {
-                idx = source[idx..].find('\n').map_or(source.len(), |end| idx + end + 1);
+    for token in tuple_tokens {
+        if let TokenTree::Punct(punct) = &token {
+            if punct.as_char() == ',' {
+                fields.push(current);
+                current = TokenStream::new();
+                continue;
             }
-            b'/' if source[idx..].starts_with("/*") => idx = skip_block_comment(source, idx),
-            b'"' => idx = skip_string_literal(source, idx),
-            b'(' => {
-                paren_depth += 1;
-                idx += 1;
-            }
-            b')' => {
-                paren_depth -= 1;
-                idx += 1;
-            }
-            b'[' => {
-                bracket_depth += 1;
-                idx += 1;
-            }
-            b']' => {
-                bracket_depth -= 1;
-                idx += 1;
-            }
-            b'{' => {
-                brace_depth += 1;
-                idx += 1;
-            }
-            b'}' => {
-                brace_depth -= 1;
-                idx += 1;
-            }
-            b',' if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
-                fields.push(source[field_start..idx].trim());
-                idx += 1;
-                field_start = idx;
-            }
-            _ => idx += 1,
         }
+        current.extend([token]);
+    }
+    fields.push(current);
+
+    while matches!(fields.last(), Some(field) if field.is_empty()) {
+        fields.pop();
     }
 
-    fields.push(source[field_start..].trim());
     fields
 }
 
-fn validate_option_fields(fields: &[&str], name: &str) {
-    assert!(
-        matches!(fields.len(), REQUIRED_FIELDS | OPTIONAL_FIELDS),
-        "unexpected field count for option `{name}`: expected 4 or 5 fields, found {}",
-        fields.len()
-    );
-    assert!(
-        fields[2].starts_with('[') && fields[2].ends_with(']'),
-        "expected dep-tracking field in option `{name}`, found `{}`",
-        fields[2]
-    );
-    assert!(
-        looks_like_string_literal(fields[DESCRIPTION_FIELD]),
-        "expected description string literal in option `{name}`, found `{}`",
-        fields[DESCRIPTION_FIELD]
-    );
-
-    if let Some(extra_field) = fields.get(REQUIRED_FIELDS) {
-        assert!(
-            extra_field.trim_start().starts_with("is_deprecated_and_do_nothing:"),
-            "unexpected trailing field in option `{name}`: `{extra_field}`",
-        );
-    }
-}
-
-fn looks_like_string_literal(field: &str) -> bool {
-    let field = field.trim();
-    (field.starts_with('"') && field.ends_with('"')) || parse_raw_string_literal(field).is_some()
-}
-
-fn skip_past_entry_delimiter(source: &str, start: usize, name: &str) -> usize {
-    let mut idx = start;
-    skip_ws_comments(source, &mut idx);
-
-    match source.as_bytes().get(idx).copied() {
-        Some(b',') => idx + 1,
-        None => idx,
-        Some(byte) => {
-            panic!("expected `,` after option entry `{name}`, found {:?}", char::from(byte))
-        }
-    }
-}
-
-fn skip_string_literal(source: &str, mut idx: usize) -> usize {
-    idx += 1;
-
-    while idx < source.len() {
-        match source.as_bytes()[idx] {
-            b'\\' => {
-                idx += 1;
-                if idx < source.len() {
-                    idx += 1;
-                }
-            }
-            b'"' => return idx + 1,
-            _ => idx += 1,
-        }
-    }
-
-    panic!("unterminated string literal");
-}
-
-fn parse_string_literal(literal: &str) -> String {
-    let literal = literal.trim();
-
-    if let Some(raw_literal) = parse_raw_string_literal(literal) {
-        return raw_literal;
-    }
-
-    let inner = literal
-        .strip_prefix('"')
-        .and_then(|value| value.strip_suffix('"'))
-        .expect("expected a string literal");
-    let mut output = String::new();
-    let mut chars = inner.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if ch != '\\' {
-            output.push(ch);
-            continue;
-        }
-
-        let escaped = chars.next().expect("unterminated string escape");
-        match escaped {
-            '\n' => while chars.next_if(|ch| ch.is_whitespace()).is_some() {},
-            '\r' => {
-                let _ = chars.next_if_eq(&'\n');
-                while chars.next_if(|ch| ch.is_whitespace()).is_some() {}
-            }
-            '"' => output.push('"'),
-            '\'' => output.push('\''),
-            '\\' => output.push('\\'),
-            'n' => output.push('\n'),
-            'r' => output.push('\r'),
-            't' => output.push('\t'),
-            '0' => output.push('\0'),
-            'x' => {
-                let hi = chars.next().expect("missing first hex digit in escape");
-                let lo = chars.next().expect("missing second hex digit in escape");
-                let byte = u8::from_str_radix(&format!("{hi}{lo}"), 16)
-                    .expect("invalid hex escape in string literal");
-                output.push(char::from(byte));
-            }
-            'u' => {
-                assert_eq!(chars.next(), Some('{'), "expected `{{` after `\\u`");
-                let mut digits = String::new();
-                for ch in chars.by_ref() {
-                    if ch == '}' {
-                        break;
-                    }
-                    digits.push(ch);
-                }
-                let scalar =
-                    u32::from_str_radix(&digits, 16).expect("invalid unicode escape in string");
-                output.push(char::from_u32(scalar).expect("unicode escape should be valid"));
-            }
-            _ => panic!("unsupported escape in string literal"),
-        }
-    }
-
-    output
-}
-
-fn parse_raw_string_literal(literal: &str) -> Option<String> {
-    let rest = literal.strip_prefix('r')?;
-    let hashes = rest.bytes().take_while(|&byte| byte == b'#').count();
-    let quote_idx = 1 + hashes;
-
-    if literal.as_bytes().get(quote_idx) != Some(&b'"') {
-        return None;
-    }
-
-    let suffix = format!("\"{}", "#".repeat(hashes));
-    let content = literal[quote_idx + 1..]
-        .strip_suffix(&suffix)
-        .expect("raw string literal should have a matching terminator");
-
-    Some(content.to_owned())
+fn is_deprecated_marker_field(field: &TokenStream) -> bool {
+    let mut tokens = field.clone().into_iter();
+    let Some(TokenTree::Ident(name)) = tokens.next() else {
+        return false;
+    };
+    let Some(TokenTree::Punct(colon)) = tokens.next() else {
+        return false;
+    };
+    name == "is_deprecated_and_do_nothing" && colon.as_char() == ':'
 }
 
 fn main() {
