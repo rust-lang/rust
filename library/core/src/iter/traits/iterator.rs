@@ -1631,11 +1631,6 @@ pub const trait Iterator {
     /// items yielded by `self`). If 𝑘 is less than `N`, this method yields an
     /// empty iterator.
     ///
-    /// The returned iterator implements [`FusedIterator`], because once `self`
-    /// returns `None`, even if it returns a `Some(T)` again in the next iterations,
-    /// we cannot put it into a contiguous array buffer, and thus the returned iterator
-    /// should be fused.
-    ///
     /// [`slice::windows()`]: slice::windows
     /// [`FusedIterator`]: crate::iter::FusedIterator
     ///
@@ -1696,7 +1691,7 @@ pub const trait Iterator {
     /// assert_eq!(it.next(), None);
     /// ```
     ///
-    /// For non-fused iterators, they are fused after `map_windows`.
+    /// For non-fused iterators, the window is reset after `None` is yielded.
     ///
     /// ```
     /// #![feature(iter_map_windows)]
@@ -1713,11 +1708,11 @@ pub const trait Iterator {
     ///         let val = self.state;
     ///         self.state = self.state + 1;
     ///
-    ///         // yields `0..5` first, then only even numbers since `6..`.
-    ///         if val < 5 || val % 2 == 0 {
-    ///             Some(val)
-    ///         } else {
+    ///         // Skip every 5th number
+    ///         if (val + 1) % 5 == 0 {
     ///             None
+    ///         } else {
+    ///             Some(val)
     ///         }
     ///     }
     /// }
@@ -1725,32 +1720,35 @@ pub const trait Iterator {
     ///
     /// let mut iter = NonFusedIterator::default();
     ///
-    /// // yields 0..5 first.
     /// assert_eq!(iter.next(), Some(0));
     /// assert_eq!(iter.next(), Some(1));
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(3));
-    /// assert_eq!(iter.next(), Some(4));
-    /// // then we can see our iterator going back and forth
     /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(5));
     /// assert_eq!(iter.next(), Some(6));
-    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(7));
     /// assert_eq!(iter.next(), Some(8));
     /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), Some(11));
     ///
-    /// // however, with `.map_windows()`, it is fused.
     /// let mut iter = NonFusedIterator::default()
     ///     .map_windows(|arr: &[_; 2]| *arr);
     ///
     /// assert_eq!(iter.next(), Some([0, 1]));
     /// assert_eq!(iter.next(), Some([1, 2]));
     /// assert_eq!(iter.next(), Some([2, 3]));
-    /// assert_eq!(iter.next(), Some([3, 4]));
     /// assert_eq!(iter.next(), None);
     ///
-    /// // it will always return `None` after the first time.
+    /// assert_eq!(iter.next(), Some([5, 6]));
+    /// assert_eq!(iter.next(), Some([6, 7]));
+    /// assert_eq!(iter.next(), Some([7, 8]));
     /// assert_eq!(iter.next(), None);
-    /// assert_eq!(iter.next(), None);
+    ///
+    /// assert_eq!(iter.next(), Some([10, 11]));
+    /// assert_eq!(iter.next(), Some([11, 12]));
+    /// assert_eq!(iter.next(), Some([12, 13]));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
