@@ -333,4 +333,17 @@ impl<'tcx> TyCtxt<'tcx> {
         let parent_def_id = self.parent(fn_def_id);
         &self.associated_types_for_impl_traits_in_trait_or_impl(parent_def_id)[&fn_def_id]
     }
+
+    /// Returns true if the given final associated function violates the dyn-
+    /// compatibility and has no `Self: Sized` requirement.
+    ///
+    /// Such final associated functions will be excluded from the trait's vtable
+    /// and could be called from a trait object directly.
+    pub fn is_dyn_incompatible_final_assoc_fn(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::AssocFn)
+            && matches!(self.defaultness(def_id), hir::Defaultness::Final)
+            // Any item that has a `Self: Sized` requisite is non-dispatchable.
+            && !self.generics_require_sized_self(def_id)
+            && self.is_dyn_incompatible_final_assoc_fn_query(def_id)
+    }
 }
