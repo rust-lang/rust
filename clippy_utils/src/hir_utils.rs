@@ -26,7 +26,8 @@ use std::slice;
 
 /// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
 /// other conditions would make them equal.
-type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
+type SpanlessEqCallback<'a, 'tcx> =
+    dyn FnMut(&TypeckResults<'tcx>, &Expr<'_>, &TypeckResults<'tcx>, &Expr<'_>) -> bool + 'a;
 
 /// Determines how paths are hashed and compared for equality.
 #[derive(Copy, Clone, Debug, Default)]
@@ -59,7 +60,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
-    expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
+    expr_fallback: Option<Box<SpanlessEqCallback<'a, 'tcx>>>,
     path_check: PathCheck,
 }
 
@@ -94,7 +95,10 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     #[must_use]
-    pub fn expr_fallback(self, expr_fallback: impl FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a) -> Self {
+    pub fn expr_fallback(
+        self,
+        expr_fallback: impl FnMut(&TypeckResults<'tcx>, &Expr<'_>, &TypeckResults<'tcx>, &Expr<'_>) -> bool + 'a,
+    ) -> Self {
         Self {
             expr_fallback: Some(Box::new(expr_fallback)),
             ..self
@@ -639,7 +643,15 @@ impl HirEqInterExpr<'_, '_, '_> {
             ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
-            || self.inner.expr_fallback.as_mut().is_some_and(|f| f(left, right))
+            || self
+                .inner
+                .maybe_typeck_results
+                .is_some_and(|(left_typeck_results, right_typeck_results)| {
+                    self.inner
+                        .expr_fallback
+                        .as_mut()
+                        .is_some_and(|f| f(left_typeck_results, left, right_typeck_results, right))
+                })
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
