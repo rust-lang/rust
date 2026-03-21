@@ -176,6 +176,24 @@ fn foo() {
 }
 "#,
         );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    let x;
+    x =$0 n + 100;
+}
+"#,
+            r#"
+fn foo() {
+    let x;
+    x = {
+        n + 100
+    };
+}
+"#,
+        );
     }
 
     #[test]
