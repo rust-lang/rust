@@ -108,6 +108,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
 
+    type OutlivesArg = ty::OutlivesArg<'tcx>;
+
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
@@ -817,6 +819,7 @@ bidirectional_lang_item_map! {
     PointeeSized,
     PointeeTrait,
     Sized,
+    TraitMetadataTable,
     TransmuteTrait,
     TrivialClone,
     Tuple,

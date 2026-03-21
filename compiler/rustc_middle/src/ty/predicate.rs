@@ -69,6 +69,10 @@ impl<'tcx> rustc_type_ir::Flags for Predicate<'tcx> {
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }
+
+    fn region_slots(&self) -> u32 {
+        self.0.region_slots
+    }
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -657,6 +661,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 64);
     // tidy-alphabetical-end
 }

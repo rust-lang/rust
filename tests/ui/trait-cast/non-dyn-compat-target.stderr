@@ -1,0 +1,19 @@
+error[E0038]: the trait `NotDynCompat` is not dyn compatible
+  --> $DIR/non-dyn-compat-target.rs:38:54
+   |
+LL |     let _ = core::cast!(in dyn CleanRoot, obj => dyn NotDynCompat);
+   |                                                      ^^^^^^^^^^^^ `NotDynCompat` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/non-dyn-compat-target.rs:27:24
+   |
+LL | trait NotDynCompat: CleanRoot {
+   |       ------------ this trait is not dyn compatible...
+LL |     fn build(&self) -> Self;
+   |                        ^^^^ ...because method `build` references the `Self` type in its return type
+   = help: consider moving `build` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,128 @@
+error[E0277]: the trait bound `dyn Sub1<u64>: std::marker::TraitMetadataTable<dyn Root1<&u32>>` is not satisfied
+  --> $DIR/invalid-cast-target.rs:65:55
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub1<u64>);
+   |                                                       ^^^^^^^^^^^^^ the trait `Sized` is not implemented for `dyn Sub1<u64>`
+   |
+   = note: required for `dyn Sub1<u64>` to implement `std::marker::TraitMetadataTable<dyn Root1<&u32>>`
+note: required by a bound in `std::trait_cast::TraitCast::cast`
+  --> $SRC_DIR/core/src/trait_cast.rs:LL:COL
+
+error[E0277]: the size for values of type `dyn Sub1<u64>` cannot be known at compilation time
+  --> $DIR/invalid-cast-target.rs:65:48
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub1<u64>);
+   |             -----------------------------------^^^------------------
+   |             |                                  |
+   |             |                                  the trait `Sized` is not implemented for `dyn Sub1<u64>`
+   |             required by a bound introduced by this call
+   |
+   = note: the trait bound `Sized` is not satisfied
+   = note: required for `dyn Sub1<u64>` to implement `std::marker::TraitMetadataTable<dyn Root1<&u32>>`
+   = note: required for `&dyn Root1<&u32>` to implement `TraitCast<dyn Root1<&u32>, dyn Sub1<u64>>`
+help: consider borrowing here
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &obj => dyn Sub1<u64>);
+   |                                                +
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &mut obj => dyn Sub1<u64>);
+   |                                                ++++
+
+error[E0277]: the trait bound `dyn Sub1<u64>: std::marker::TraitMetadataTable<dyn Root1<&u32>>` is not satisfied
+  --> $DIR/invalid-cast-target.rs:65:13
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub1<u64>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `dyn Sub1<u64>`
+   |
+   = help: the following other types implement trait `TraitCast<I, U>`:
+             &'r T
+             &'r mut T
+             Arc<T, A>
+             Box<T, A>
+             Rc<T, A>
+   = note: required for `dyn Sub1<u64>` to implement `std::marker::TraitMetadataTable<dyn Root1<&u32>>`
+   = note: required for `&dyn Root1<&u32>` to implement `TraitCast<dyn Root1<&u32>, dyn Sub1<u64>>`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `Sub2` is not in the trait graph rooted at `Root1`
+  --> $DIR/invalid-cast-target.rs:88:13
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub2<&'_ u32>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Sub2` does not have `Root1` as a (transitive) supertrait
+   = help: add `Root1` as a supertrait bound on `Sub2`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Sub2<&u32>` cannot be known at compilation time
+  --> $DIR/invalid-cast-target.rs:88:48
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub2<&'_ u32>);
+   |             -----------------------------------^^^----------------------
+   |             |                                  |
+   |             |                                  the trait `Sized` is not implemented for `dyn Sub2<&u32>`
+   |             required by a bound introduced by this call
+   |
+   = note: the trait bound `Sized` is not satisfied
+   = note: required for `dyn Sub2<&u32>` to implement `std::marker::TraitMetadataTable<dyn Root1<&u32>>`
+   = note: required for `&dyn Root1<&u32>` to implement `TraitCast<dyn Root1<&u32>, dyn Sub2<&u32>>`
+help: consider borrowing here
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &obj => dyn Sub2<&'_ u32>);
+   |                                                +
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &mut obj => dyn Sub2<&'_ u32>);
+   |                                                ++++
+
+error: `Sub2` is not in the trait graph rooted at `Root1`
+  --> $DIR/invalid-cast-target.rs:88:13
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Sub2<&'_ u32>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Sub2` does not have `Root1` as a (transitive) supertrait
+   = help: add `Root1` as a supertrait bound on `Sub2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `Unrelated` is not in the trait graph rooted at `Root1`
+  --> $DIR/invalid-cast-target.rs:107:13
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Unrelated);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Unrelated` does not have `Root1` as a (transitive) supertrait
+   = help: add `Root1` as a supertrait bound on `Unrelated`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Unrelated` cannot be known at compilation time
+  --> $DIR/invalid-cast-target.rs:107:48
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Unrelated);
+   |             -----------------------------------^^^------------------
+   |             |                                  |
+   |             |                                  the trait `Sized` is not implemented for `dyn Unrelated`
+   |             required by a bound introduced by this call
+   |
+   = note: the trait bound `Sized` is not satisfied
+   = note: required for `dyn Unrelated` to implement `std::marker::TraitMetadataTable<dyn Root1<&u32>>`
+   = note: required for `&dyn Root1<&u32>` to implement `TraitCast<dyn Root1<&u32>, dyn Unrelated>`
+help: consider borrowing here
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &obj => dyn Unrelated);
+   |                                                +
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, &mut obj => dyn Unrelated);
+   |                                                ++++
+
+error: `Unrelated` is not in the trait graph rooted at `Root1`
+  --> $DIR/invalid-cast-target.rs:107:13
+   |
+LL |     let _ = core::cast!(in dyn Root1<&'_ u32>, obj => dyn Unrelated);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Unrelated` does not have `Root1` as a (transitive) supertrait
+   = help: add `Root1` as a supertrait bound on `Unrelated`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

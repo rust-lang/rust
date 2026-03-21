@@ -12,11 +12,17 @@ use rustc_middle::util::Providers;
 use rustc_middle::{bug, traits};
 use rustc_span::ErrorGuaranteed;
 
+mod cast_sensitivity;
 mod collector;
+mod erasure_safe;
 mod errors;
 mod graph_checks;
 mod mono_checks;
 mod partitioning;
+mod resolved_bodies;
+mod table_layout;
+mod trait_cast_requests;
+mod trait_graph;
 mod util;
 
 fn custom_coerce_unsize_info<'tcx>(
@@ -49,4 +55,14 @@ fn custom_coerce_unsize_info<'tcx>(
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
     mono_checks::provide(&mut providers.queries);
+    providers.queries.gather_trait_cast_requests = trait_cast_requests::gather_trait_cast_requests;
+    providers.queries.trait_cast_graph = trait_graph::trait_cast_graph;
+    providers.queries.outlives_reachability = trait_graph::outlives_reachability;
+    providers.queries.impl_universally_admissible = trait_graph::impl_universally_admissible;
+    providers.queries.trait_cast_layout = table_layout::trait_cast_layout;
+    providers.queries.trait_cast_table = table_layout::trait_cast_table;
+    providers.queries.trait_cast_table_alloc = table_layout::trait_cast_table_alloc;
+    providers.queries.global_crate_id_alloc = table_layout::global_crate_id_alloc;
+    providers.queries.augmented_outlives_for_call = cast_sensitivity::augmented_outlives_for_call;
+    providers.queries.is_lifetime_erasure_safe = erasure_safe::is_lifetime_erasure_safe;
 }

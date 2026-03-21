@@ -89,6 +89,12 @@ declare_hooks! {
     /// of a normal function because external tools might want to override it.
     hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
 
+    /// Returns `true` if codegen of `instance` must be deferred to the global
+    /// crate's delayed-codegen pass (e.g. trait-cast intrinsic callees whose
+    /// resolution needs the crate-wide table layout). Hooked so consumers can
+    /// observe the decision without pulling in the monomorphize crate.
+    hook must_delay_codegen(instance: crate::ty::Instance<'tcx>) -> bool;
+
     hook alloc_self_profile_query_strings() -> ();
 
     /// Saves and writes the DepGraph to the file system.

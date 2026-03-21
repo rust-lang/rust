@@ -169,6 +169,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         parse_by_kind!(self, call, _, "function call",
             ExprKind::Call { fun, args, from_hir_call, fn_span, .. } => {
                 let fun = self.parse_operand(*fun)?;
+                let call_id_args = fun
+                    .const_fn_def()
+                    .map(|(_, args)| args)
+                    .unwrap_or_else(|| self.tcx.mk_args(&[]));
                 let args = args
                     .iter()
                     .map(|arg|
@@ -185,6 +189,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                         CallSource::OverloadedOperator
                     },
                     fn_span: *fn_span,
+                    call_id: self.tcx.mk_call_chain(&[(
+                        self.body.source.def_id(),
+                        self.next_call_id(),
+                        call_id_args,
+                    )]),
                 })
             },
         )
@@ -194,6 +203,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         parse_by_kind!(self, args[0], _, "tail call",
             ExprKind::Call { fun, args, fn_span, .. } => {
                 let fun = self.parse_operand(*fun)?;
+                let call_id_args = fun
+                    .const_fn_def()
+                    .map(|(_, args)| args)
+                    .unwrap_or_else(|| self.tcx.mk_args(&[]));
                 let args = args
                     .iter()
                     .map(|arg|
@@ -204,6 +217,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     func: fun,
                     args,
                     fn_span: *fn_span,
+                    call_id: self.tcx.mk_call_chain(&[(
+                        self.body.source.def_id(),
+                        self.next_call_id(),
+                        call_id_args,
+                    )]),
                 })
             },
         )

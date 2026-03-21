@@ -210,6 +210,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 GenericArgKind::Lifetime(region) => this.write_generic_lifetime(region, place),
                 GenericArgKind::Type(ty) => this.write_generic_type(ty, place),
                 GenericArgKind::Const(c) => this.write_generic_const(c, place),
+                GenericArgKind::Outlives(_) => {
+                    // Outlives args are metadata-only; skip.
+                    interp_ok(())
+                }
             }
         })
     }

@@ -1190,8 +1190,219 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
     // Only check traits, don't check trait aliases
     if let hir::ItemKind::Trait(..) = item.kind {
         check_gat_where_clauses(tcx, item.owner_id.def_id);
+        let _ = check_trait_metadata_table_bounds_well_formed(tcx, def_id);
+        let _ = check_region_closure_for_cast_graph(tcx, def_id);
     }
     res
+}
+
+/// Bounded intertrait casting: reject malformed `TraitMetadataTable<T>`
+/// supertrait bounds at trait-definition time.
+///
+/// Two shapes are always wrong and emitted eagerly:
+///
+/// 1. `TraitMetadataTable<T>` where `T` is not a `dyn Trait` type. The
+///    blanket impl requires `T: Pointee<Metadata = DynMetadata<T>>`, which
+///    holds only for trait objects — other `T` are uninhabitable and never
+///    what the author intended.
+///
+/// 2. `TraitMetadataTable<dyn X>` where `dyn X` is neither `dyn Self`
+///    (declaring this trait as a cast root) nor `dyn R` for a transitive
+///    supertrait `R` that is itself a cast root. Such a bound is satisfiable
+///    via the blanket impl but places the trait in no reachable cast graph.
+fn check_trait_metadata_table_bounds_well_formed(
+    tcx: TyCtxt<'_>,
+    trait_def_id: LocalDefId,
+) -> Result<(), rustc_span::ErrorGuaranteed> {
+    let Some(tmt) = tcx.lang_items().trait_metadata_table_trait() else {
+        return Ok(());
+    };
+    let self_def_id = trait_def_id.to_def_id();
+
+    // A trait is a "root" if it carries `TraitMetadataTable<dyn Self>` as a
+    // supertrait bound.
+    let is_root_trait = |candidate: DefId| {
+        tcx.explicit_super_predicates_of(candidate).skip_binder().iter().any(|(pred, _)| {
+            matches!(
+                pred.kind().skip_binder(),
+                ty::ClauseKind::Trait(tp) if tp.def_id() == tmt
+            )
+        })
+    };
+
+    // Collect the def_ids of all transitive supertraits of `self_def_id`,
+    // EXCLUDING `TraitMetadataTable` itself (which is always present via the
+    // bounds we're validating). Used to verify that a `TraitMetadataTable<dyn X>`
+    // bound's X refers to a trait in this trait's own supertrait chain.
+    let trait_name = tcx.item_name(self_def_id);
+    let mut result: Result<(), rustc_span::ErrorGuaranteed> = Ok(());
+
+    for (pred, span) in tcx.explicit_super_predicates_of(self_def_id).skip_binder().iter().copied()
+    {
+        let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder() else {
+            continue;
+        };
+        if trait_pred.def_id() != tmt {
+            continue;
+        }
+        let arg_ty = trait_pred.trait_ref.args.type_at(1);
+
+        // Diagnostic A: argument is not a `dyn Trait` type.
+        let ty::Dynamic(preds, ..) = arg_ty.kind() else {
+            let guar = tcx.dcx().emit_err(errors::TmtArgMustBeDyn { span, arg_ty, trait_name });
+            result = Err(guar);
+            continue;
+        };
+
+        // Diagnostic B: argument is `dyn X` but X is not a valid root-ish
+        // target from this trait's perspective. Valid shapes:
+        //   (a) X == Self — declaring this trait as a cast root.
+        //   (b) X is a transitive supertrait of Self AND X is itself a cast
+        //       root (carries `TraitMetadataTable<dyn Self>`).
+        let Some(principal) = preds.principal() else {
+            continue;
+        };
+        let arg_did = principal.skip_binder().def_id;
+        if arg_did == self_def_id {
+            continue; // (a) — root opt-in
+        }
+
+        // Walk transitive supertrait def-ids of Self (via supertrait_def_ids,
+        // which walks `explicit_super_predicates_of` iteratively).
+        let supertrait_dids: FxHashSet<DefId> =
+            rustc_middle::ty::elaborate::supertrait_def_ids(tcx, self_def_id).collect();
+        let is_valid = supertrait_dids.contains(&arg_did) && is_root_trait(arg_did);
+        if !is_valid {
+            let guar = tcx.dcx().emit_err(errors::TmtArgMismatch {
+                span,
+                arg_trait: tcx.item_name(arg_did),
+                trait_name,
+            });
+            result = Err(guar);
+        }
+    }
+    result
+}
+
+/// Bounded intertrait casting: eagerly reject traits whose lifetime
+/// parameters are not expressible through the root supertrait of any
+/// trait-cast graph they participate in.
+///
+/// A trait `T` participates in a graph with root `R` when `R` is in `T`'s
+/// transitive supertrait chain AND `R` carries `TraitMetadataTable<dyn R>`
+/// as a supertrait bound (the root opt-in). For every such root `R`, every
+/// early-bound lifetime parameter of `T` must appear as a region in the
+/// trait ref `Self: R<...>` reached via the supertrait chain; otherwise
+/// that lifetime is erased when unsizing `T` to `R` and could be
+/// manufactured at downcast time — which is unsound.
+///
+/// This is a conservative, structural check: it considers only lifetime
+/// parameters reachable directly through the elaborated supertrait chain
+/// (no region outlives where-clause propagation). Any lifetime parameter
+/// of `T` that does not appear in any reached root's trait ref args is
+/// reported once per parameter.
+fn check_region_closure_for_cast_graph(
+    tcx: TyCtxt<'_>,
+    trait_def_id: LocalDefId,
+) -> Result<(), rustc_span::ErrorGuaranteed> {
+    let Some(tmt) = tcx.lang_items().trait_metadata_table_trait() else {
+        return Ok(());
+    };
+    let self_def_id = trait_def_id.to_def_id();
+
+    // A trait is a "root" if it carries `TraitMetadataTable<dyn Self>` as a
+    // supertrait bound.
+    let is_root_trait = |candidate: DefId| {
+        tcx.explicit_super_predicates_of(candidate).skip_binder().iter().any(|(pred, _)| {
+            matches!(
+                pred.kind().skip_binder(),
+                ty::ClauseKind::Trait(tp) if tp.def_id() == tmt
+            )
+        })
+    };
+
+    let self_generics = tcx.generics_of(self_def_id);
+
+    // BFS over the supertrait chain. At each node we hold a `TraitRef` whose
+    // args are expressed in terms of `self_def_id`'s early-bound parameters
+    // (via identity substitution at the start; each hop uses
+    // `instantiate_supertrait` to compose the parent's binder with the
+    // current node's args).
+    let mut covered: FxHashSet<u32> = FxHashSet::default();
+    let mut reached_root: Option<DefId> = None;
+    let mut seen: FxHashSet<DefId> = FxHashSet::default();
+    let mut queue: Vec<ty::TraitRef<'_>> = Vec::new();
+    queue.push(ty::TraitRef::identity(tcx, self_def_id));
+    seen.insert(self_def_id);
+
+    while let Some(current) = queue.pop() {
+        // `current` must not contain escaping bound vars for Binder::dummy
+        // below to be sound. We only ever push trait refs from
+        // `no_bound_vars`-unwrapped parents, so this holds by construction.
+        let current_binder = ty::Binder::dummy(current);
+        for (clause, _) in tcx
+            .explicit_super_predicates_of(current.def_id)
+            .iter_identity_copied()
+            .map(ty::Unnormalized::skip_norm_wip)
+        {
+            let Some(parent_trait_pred) =
+                clause.instantiate_supertrait(tcx, current_binder).as_trait_clause()
+            else {
+                continue;
+            };
+            // Higher-ranked supertraits (e.g. `Self: for<'de> Deserialize<'de>`)
+            // have late-bound regions that escape when stripped from the binder.
+            // They cannot contribute to the coverage check because their vars
+            // are not early-bound params of `self_def_id`, so we skip them
+            // entirely.
+            let Some(parent_trait_pred) = parent_trait_pred.no_bound_vars() else {
+                continue;
+            };
+            let parent_trait_ref = parent_trait_pred.trait_ref;
+            let parent_did = parent_trait_ref.def_id;
+            if parent_did == self_def_id {
+                continue;
+            }
+            if is_root_trait(parent_did) {
+                reached_root = Some(parent_did);
+                for arg in parent_trait_ref.args.iter() {
+                    if let ty::GenericArgKind::Lifetime(r) = arg.kind()
+                        && let ty::ReEarlyParam(ep) = r.kind()
+                    {
+                        covered.insert(ep.index);
+                    }
+                }
+            }
+            if seen.insert(parent_did) {
+                queue.push(parent_trait_ref);
+            }
+        }
+    }
+
+    // No root reached — trait is not part of any cast graph, nothing to check.
+    let Some(root_did) = reached_root else {
+        return Ok(());
+    };
+
+    // One error per offending early-bound lifetime parameter.
+    let mut result: Result<(), rustc_span::ErrorGuaranteed> = Ok(());
+    for param in &self_generics.own_params {
+        if !matches!(param.kind, GenericParamDefKind::Lifetime) {
+            continue;
+        }
+        if covered.contains(&param.index) {
+            continue;
+        }
+        let guar = tcx.dcx().emit_err(errors::TraitGraphNotDowncastSafe {
+            span: tcx.def_span(param.def_id),
+            root_span: tcx.def_span(root_did),
+            trait_name: tcx.item_name(self_def_id),
+            root: tcx.item_name(root_did),
+            lt_name: param.name,
+        });
+        result = Err(guar);
+    }
+    result
 }
 
 /// Checks all associated type defaults of trait `trait_def_id`.

@@ -17,6 +17,8 @@
 //! terminators, and everything below can be found in the `parse::instruction` submodule.
 //!
 
+use std::cell::Cell;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, attrs};
@@ -60,6 +62,7 @@ pub(super) fn build_custom_mir<'tcx>(
         tainted_by_errors: None,
         injection_phase: None,
         pass_count: 0,
+        next_call_id: 0,
         coverage_info_hi: None,
         function_coverage_info: None,
     };
@@ -83,12 +86,16 @@ pub(super) fn build_custom_mir<'tcx>(
         body: &mut body,
         local_map: FxHashMap::default(),
         block_map: FxHashMap::default(),
+        next_call_id: Cell::new(0),
     };
 
-    let res = try {
+    let res: Result<(), ParseError> = try {
         pctxt.parse_args(params)?;
         pctxt.parse_body(expr)?;
     };
+    let final_call_id = pctxt.next_call_id.get();
+    drop(pctxt);
+    body.next_call_id = final_call_id;
     if let Err(err) = res {
         tcx.dcx().span_fatal(
             err.span,
@@ -141,6 +148,7 @@ struct ParseCtxt<'a, 'tcx> {
     body: &'a mut Body<'tcx>,
     local_map: FxHashMap<LocalVarId, Local>,
     block_map: FxHashMap<LocalVarId, BasicBlock>,
+    next_call_id: Cell<u32>,
 }
 
 struct ParseError {
@@ -150,6 +158,12 @@ struct ParseError {
 }
 
 impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
+    fn next_call_id(&self) -> u32 {
+        let id = self.next_call_id.get();
+        self.next_call_id.set(id + 1);
+        id
+    }
+
     fn expr_error(&self, expr: ExprId, expected: &'static str) -> ParseError {
         let expr = &self.thir[expr];
         ParseError {

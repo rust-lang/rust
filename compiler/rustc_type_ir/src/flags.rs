@@ -151,6 +151,9 @@ pub struct FlagComputation<I> {
     /// see `Ty::outer_exclusive_binder` for details
     pub outer_exclusive_binder: ty::DebruijnIndex,
 
+    /// see `WithCachedTypeInfo::region_slots` for details
+    pub region_slots: u32,
+
     interner: std::marker::PhantomData<I>,
 }
 
@@ -159,6 +162,7 @@ impl<I: Interner> FlagComputation<I> {
         FlagComputation {
             flags: TypeFlags::empty(),
             outer_exclusive_binder: ty::INNERMOST,
+            region_slots: 0,
             interner: std::marker::PhantomData,
         }
     }
@@ -187,6 +191,7 @@ impl<I: Interner> FlagComputation<I> {
         for c in clauses {
             result.add_flags(c.as_predicate().flags());
             result.add_exclusive_binder(c.as_predicate().outer_exclusive_binder());
+            result.add_region_slots(c.as_predicate().region_slots());
         }
         result
     }
@@ -208,6 +213,10 @@ impl<I: Interner> FlagComputation<I> {
         self.outer_exclusive_binder = self.outer_exclusive_binder.max(exclusive_binder);
     }
 
+    fn add_region_slots(&mut self, n: u32) {
+        self.region_slots = self.region_slots.saturating_add(n);
+    }
+
     /// Adds the flags/depth from a set of types that appear within the current type, but within a
     /// region binder.
     fn bound_computation<T, F>(&mut self, value: ty::Binder<I, T>, f: F)
@@ -223,6 +232,7 @@ impl<I: Interner> FlagComputation<I> {
         f(&mut computation, value.skip_binder());
 
         self.add_flags(computation.flags);
+        self.add_region_slots(computation.region_slots);
 
         // The types that contributed to `computation` occurred within
         // a region binder, so subtract one from the region depth
@@ -361,6 +371,7 @@ impl<I: Interner> FlagComputation<I> {
     fn add_ty_pat(&mut self, pat: <I as Interner>::Pat) {
         self.add_flags(pat.flags());
         self.add_exclusive_binder(pat.outer_exclusive_binder());
+        self.add_region_slots(pat.region_slots());
     }
 
     fn add_predicate(&mut self, binder: ty::Binder<I, ty::PredicateKind<I>>) {
@@ -438,6 +449,7 @@ impl<I: Interner> FlagComputation<I> {
     fn add_ty(&mut self, ty: I::Ty) {
         self.add_flags(ty.flags());
         self.add_exclusive_binder(ty.outer_exclusive_binder());
+        self.add_region_slots(ty.region_slots());
     }
 
     fn add_tys(&mut self, tys: I::Tys) {
@@ -448,6 +460,7 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_region(&mut self, r: I::Region) {
         self.add_flags(r.flags());
+        self.add_region_slots(1);
         if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) = r.kind() {
             self.add_bound_var(debruijn);
         }
@@ -456,6 +469,7 @@ impl<I: Interner> FlagComputation<I> {
     fn add_const(&mut self, c: I::Const) {
         self.add_flags(c.flags());
         self.add_exclusive_binder(c.outer_exclusive_binder());
+        self.add_region_slots(c.region_slots());
     }
 
     fn add_const_kind(&mut self, c: &ty::ConstKind<I>) {
@@ -520,6 +534,8 @@ impl<I: Interner> FlagComputation<I> {
                 ty::GenericArgKind::Type(ty) => self.add_ty(ty),
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),
+                // Outlives args are pure metadata with no type flags.
+                ty::GenericArgKind::Outlives(_) => {}
             }
         }
     }

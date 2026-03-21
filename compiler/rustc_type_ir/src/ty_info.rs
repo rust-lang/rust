@@ -52,6 +52,16 @@ pub struct WithCachedTypeInfo<T> {
     /// De Bruijn indices within the type are contained within `0..D`
     /// (exclusive).
     pub outer_exclusive_binder: DebruijnIndex,
+
+    /// Number of region occurrences reached by a `TypeVisitor` DFS over
+    /// `internee`. Matches the count a visitor would produce by
+    /// incrementing once per `visit_region` call, regardless of region
+    /// kind (`ReBound`, `ReEarlyParam`, `ReStatic`, `ReErased`, …).
+    ///
+    /// Computed once by `FlagComputation` during interning and read in
+    /// O(1) thereafter. Used to avoid quadratic re-walks in consumers
+    /// that need the occurrence count in a hot loop.
+    pub region_slots: u32,
 }
 
 impl<T: PartialEq> PartialEq for WithCachedTypeInfo<T> {

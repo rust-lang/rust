@@ -1,0 +1,20 @@
+error: cast target `dyn Unused` is unreachable in the trait graph of `dyn Root`
+  --> $SRC_DIR/core/src/trait_cast.rs:LL:COL
+   |
+   = note: no type implementing `dyn Root` also implements `dyn Unused`
+   = note: this cast will always return `Err` at runtime
+note: the lint level is defined here
+  --> $DIR/unused-cast-target.rs:9:9
+   |
+LL | #![deny(unused_cast_target)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: cast target `dyn Unused` is unreachable in the trait graph of `dyn Root`
+  --> $SRC_DIR/core/src/trait_cast.rs:LL:COL
+   |
+   = note: no type implementing `dyn Root` also implements `dyn Unused`
+   = note: this cast will always return `Err` at runtime
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

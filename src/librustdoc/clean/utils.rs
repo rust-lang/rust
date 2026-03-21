@@ -150,6 +150,10 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             GenericArgKind::Const(ct) => {
                 Some(GenericArg::Const(Box::new(clean_middle_const(arg.rebind(ct)))))
             }
+            // Outlives entries are internal to the mono collector's
+            // outlives specialization. They never appear in user-facing
+            // generic args and should be skipped in documentation.
+            GenericArgKind::Outlives(_) => None,
         }
     };
 

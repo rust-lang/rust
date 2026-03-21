@@ -470,6 +470,8 @@ impl<'tcx> InferCtxt<'tcx> {
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
+                // Outlives args are metadata, not canonical variables.
+                GenericArgKind::Outlives(_) => {}
             }
         }
 

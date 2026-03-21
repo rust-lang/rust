@@ -31,6 +31,11 @@ note: ...which requires borrow-checking `defines`...
    |
 LL | fn defines() {
    | ^^^^^^^^^^^^
+note: ...which requires borrow-checking (with region summaries) `defines`...
+  --> $DIR/non-structural-match-types-cycle-err.rs:17:1
+   |
+LL | fn defines() {
+   | ^^^^^^^^^^^^
 note: ...which requires promoting constants in MIR for `defines`...
   --> $DIR/non-structural-match-types-cycle-err.rs:17:1
    |

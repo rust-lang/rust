@@ -91,7 +91,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                 // for further background and discussion.
                 for child in args.iter() {
                     match child.kind() {
-                        ty::GenericArgKind::Lifetime(_) => {}
+                        ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => {}
                         ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_) => {
                             child.visit_with(self);
                         }

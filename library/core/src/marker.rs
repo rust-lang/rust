@@ -176,6 +176,63 @@ pub trait MetaSized: PointeeSized {
     // Empty
 }
 
+/// Since this value can only be known globally, the table is computed only for
+/// the global crate.
+/// It will be implemented for all types and traits that implement/inherit from `SuperTrait`.
+/// `SuperTrait` must be a trait object, i.e., `dyn Trait`; `[_]`/`str`/etc is not allowed.
+///
+/// Marked `#[rustc_coinductive]` to allow coinductive resolution of cycles arising from
+/// root supertraits that inherit from `TraitMetadataTable<dyn Self>` (e.g.,
+/// `trait Foo: TraitMetadataTable<dyn Foo>`). Effectively `#[rustc_deny_explicit_impl]`
+/// due to the blanket impl below.
+///
+/// The blanket impl intentionally omits an `Unsize<SuperTrait>` bound to avoid a
+/// cycle in the trait solver: proving `S: Unsize<dyn Root>` requires `S: Root`, which
+/// requires the supertrait `S: TraitMetadataTable<dyn Root>`, which would cycle back
+/// through `Unsize`. Instead, the impl applies unconditionally for all `Sized` types;
+/// the actual constraint that `S` implements the root supertrait is enforced by the
+/// supertrait relationship itself (the user must write `impl Root for S`).
+#[unstable(feature = "trait_cast", issue = "none")]
+#[lang = "trait_metadata_table"]
+#[rustc_coinductive]
+#[doc(hidden)]
+pub trait TraitMetadataTable<SuperTrait>: MetaSized
+where
+    SuperTrait: MetaSized + crate::ptr::Pointee<Metadata = crate::ptr::DynMetadata<SuperTrait>>,
+{
+    /// Retrieval should /really/ be via a "virtual const" and not a virtual function call.
+    /// The returned slice is a static array of all trait vtables for this concrete type.
+    /// The order of the array is implementation defined and subject to whim, but will be the
+    /// same for a given `SuperTrait`.
+    /// Effectively a wrapper around `core::intrinsics::trait_metadata_table::<SuperTrait, Self>()`.
+    /// Must not dereference any part of `self`.
+    fn derived_metadata_table(
+        &self,
+    ) -> (&'static u8, crate::ptr::NonNull<Option<crate::ptr::NonNull<()>>>);
+}
+
+/// Implementation for all `Sized` types. The actual constraint that a type implements the
+/// root supertrait is enforced by the supertrait relationship, not by this impl's
+/// where-clauses (to avoid a cycle through `Unsize`).
+///
+/// The `SuperTrait: TraitMetadataTable<SuperTrait>` bound is required by the intrinsic and
+/// is satisfied via the object candidate (vtable dispatch) when `SuperTrait = dyn Root`,
+/// since `TraitMetadataTable<dyn Root>` is a supertrait of `Root`.
+#[unstable(feature = "trait_cast", issue = "none")]
+impl<SuperTrait, T: Sized> TraitMetadataTable<SuperTrait> for T
+where
+    SuperTrait: MetaSized
+        + crate::ptr::Pointee<Metadata = crate::ptr::DynMetadata<SuperTrait>>
+        + TraitMetadataTable<SuperTrait>,
+{
+    fn derived_metadata_table(
+        &self,
+    ) -> (&'static u8, crate::ptr::NonNull<Option<crate::ptr::NonNull<()>>>) {
+        // SAFETY: Not unsafe, required by the intrinsic.
+        unsafe { crate::intrinsics::trait_metadata_table::<SuperTrait, T>() }
+    }
+}
+
 /// Types that may or may not have a size.
 #[unstable(feature = "sized_hierarchy", issue = "144404")]
 #[lang = "pointee_sized"]

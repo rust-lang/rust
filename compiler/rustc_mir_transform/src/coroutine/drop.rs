@@ -61,6 +61,11 @@ fn build_poll_call<'tcx>(
         unwind,
         call_source: CallSource::Misc,
         fn_span: DUMMY_SP,
+        call_id: tcx.mk_call_chain(&[(
+            body.source.def_id(),
+            body.next_call_id(),
+            tcx.mk_args(&[fut_ty.into()]),
+        )]),
     };
     insert_term_block(body, call)
 }
@@ -102,6 +107,11 @@ fn build_pin_fut<'tcx>(
     );
 
     // call Pin<FutTy>::new_unchecked(&mut fut)
+    let call_id = tcx.mk_call_chain(&[(
+        body.source.def_id(),
+        body.next_call_id(),
+        tcx.mk_args(&[fut_ref_ty.into()]),
+    )]);
     let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [storage_live, fut_ref_assign].to_vec(),
         Some(Terminator {
@@ -114,6 +124,7 @@ fn build_pin_fut<'tcx>(
                 unwind,
                 call_source: CallSource::Misc,
                 fn_span: span,
+                call_id,
             },
         }),
         false,

@@ -252,6 +252,26 @@ impl<'tcx> ItemCtxt<'tcx> {
         self.tcx.local_def_id_to_hir_id(self.item_def_id)
     }
 
+    /// Returns `true` when `self.item_def_id` is a trait whose HIR
+    /// supertraits include a `TraitMetadataTable<…>` bound. Used to
+    /// detect the self-referential pattern
+    /// `trait T: TraitMetadataTable<dyn T>` and break the query cycle
+    /// that would otherwise occur when lowering `dyn T`.
+    fn has_trait_metadata_table_supertrait(&self) -> bool {
+        let Some(tmt_did) = self.tcx.lang_items().trait_metadata_table_trait() else {
+            return false;
+        };
+        let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(self.item_def_id) else {
+            return false;
+        };
+        let hir::ItemKind::Trait(.., supertraits, _) = item.kind else {
+            return false;
+        };
+        supertraits
+            .iter()
+            .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == Some(tmt_did))
+    }
+
     pub(crate) fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
     }
@@ -570,6 +590,20 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn dyn_compatibility_violations(&self, trait_def_id: DefId) -> Vec<DynCompatibilityViolation> {
+        // When computing super-predicates of a trait T that has
+        // `TraitMetadataTable<dyn T>` as a supertrait, lowering `dyn T`
+        // re-enters `explicit_super_predicates_of(T)` through the
+        // dyn-compatibility check, causing a query cycle. Skip the
+        // check when the `dyn` type's principal trait is T and T has a
+        // `TraitMetadataTable` supertrait bound (detected by matching
+        // the item currently being collected). The full
+        // `dyn_compatibility_violations` query runs later anyway.
+        if trait_def_id == self.item_def_id.to_def_id()
+            && self.tcx.def_kind(self.item_def_id) == DefKind::Trait
+            && self.has_trait_metadata_table_supertrait()
+        {
+            return vec![];
+        }
         hir_ty_lowering_dyn_compatibility_violations(self.tcx, trait_def_id)
     }
 }

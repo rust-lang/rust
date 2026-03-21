@@ -92,13 +92,14 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
+use std::borrow::Cow;
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::LangItem;
@@ -110,11 +111,12 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mono::{
-    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, MonoItem, MonoItemData,
-    MonoItemPartitions, Visibility,
+    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, LocalMonoItemCollection, MonoItem,
+    MonoItemData, MonoItemPartitions, UsageMap, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::trait_cast::{IntrinsicResolutions, TraitCastRequests};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -122,7 +124,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
-use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
+use crate::collector::{self, MonoItemCollectionStrategy};
+use crate::erasure_safe::trait_metadata_index_outlives_class;
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
 use crate::graph_checks::target_specific_checks;
 
@@ -222,7 +225,18 @@ where
         // So even if its mode is LocalCopy, we need to treat it like a root.
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => continue,
+            InstantiationMode::LocalCopy => {
+                // Items added after the main mono collection pass (for example,
+                // trait-cast vtable methods discovered while resolving table
+                // allocations) have no usage-map edges. Treat those orphaned
+                // LocalCopy items as synthetic roots so they still get placed
+                // into a CGU and emitted for codegen.
+                if cx.usage_map.used_map.contains_key(&mono_item)
+                    || !cx.usage_map.get_user_items(mono_item).is_empty()
+                {
+                    continue;
+                }
+            }
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
@@ -269,11 +283,25 @@ where
         // from multiple root items within a CGU, which is fine, it just means
         // the `insert` will be a no-op.
         for inlined_item in reachable_inlined_items {
-            // This is a CGU-private copy.
+            // Trait-cast delayed instances must never be CGU-private: the
+            // matching symbol from an upstream dylib (built with the
+            // instantiating-crate suffix stripped from the mangled name) is
+            // resolved against the global crate's DYNSYM at runtime. A
+            // CGU-private (Internal) copy wouldn't appear in DYNSYM at all,
+            // leaving the dylib's reloc unresolved. Promote to
+            // External + Protected instead.
+            let delayed_inlined = matches!(inlined_item, MonoItem::Fn(i)
+                if cx.tcx.is_global_crate()
+                    && cx.tcx.is_transitively_delayed_instance(i));
+            let (ilinkage, ivisibility) = if delayed_inlined {
+                (Linkage::External, Visibility::Protected)
+            } else {
+                (Linkage::Internal, Visibility::Default)
+            };
             cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
                 inlined: true,
-                linkage: Linkage::Internal,
-                visibility: Visibility::Default,
+                linkage: ilinkage,
+                visibility: ivisibility,
                 size_estimate: inlined_item.size_estimate(cx.tcx),
             });
         }
@@ -781,6 +809,24 @@ fn mono_item_visibility<'tcx>(
     can_export_generics: bool,
     always_export_generics: bool,
 ) -> Visibility {
+    // Trait-cast delayed instances codegen'd by the global crate must be
+    // `Protected`: the symbol needs to appear in `DT_DYNSYM` so upstream
+    // dylibs loaded alongside can resolve their vtable relocs at runtime,
+    // but we must **not** let another global crate loaded in the same
+    // process interpose our local intrinsic calls (the AllocId-rejection
+    // check is predicated on local calls using local bodies).
+    // `Visibility::Protected` maps to ELF `STV_PROTECTED` ("hide upward,
+    // export downward"); on object formats that don't support it,
+    // degrades to `Default`, which is still correct for the common
+    // single-global-crate case.
+    if let MonoItem::Fn(instance) = mono_item
+        && tcx.is_global_crate()
+        && tcx.is_transitively_delayed_instance(*instance)
+    {
+        *can_be_internalized = false;
+        return Visibility::Protected;
+    }
+
     let instance = match mono_item {
         // This is pretty complicated; see below.
         MonoItem::Fn(instance) => instance,
@@ -1128,15 +1174,691 @@ where
     }
 }
 
-fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitions<'_> {
+/// Emit the `unused_cast_target` lint for every `trait_metadata_index`
+/// request whose sub_trait has no satisfying concrete type in the final
+/// binary's trait graph.
+///
+/// This is the final crate of compilation (binary / staticlib / cdylib),
+/// so the set of concrete types implementing the root is known and we can
+/// tell whether any of them also implement the sub_trait. If none do, the
+/// cast will always return `Err` at runtime.
+///
+/// Span recovery: each request carries the intrinsic `Instance`; we walk
+/// the crate graph's delayed requests once to map intrinsic → caller and
+/// use the caller's `def_span` as the lint's primary span. Cross-crate
+/// casts land on the caller's foreign def_span; local casts land near
+/// the `cast!` invocation.
+fn emit_unused_cast_target_lint<'tcx>(tcx: TyCtxt<'tcx>, requests: &TraitCastRequests<'tcx>) {
+    use std::iter;
+
+    use rustc_hir::CRATE_HIR_ID;
+    use rustc_lint_defs::builtin::UNUSED_CAST_TARGET;
+    use rustc_middle::ty::Instance;
+    use rustc_span::DUMMY_SP;
+
+    use crate::errors::UnusedCastTargetLint;
+    use crate::trait_graph::resolve_dyn_satisfaction;
+
+    if requests.index_requests.is_empty() {
+        return;
+    }
+
+    // Map each intrinsic Instance to the def_span of the caller that references it.
+    let mut intrinsic_caller_span: FxHashMap<Instance<'tcx>, rustc_span::Span> =
+        FxHashMap::default();
+    for &cnum in iter::once(&LOCAL_CRATE).chain(tcx.crates(())) {
+        for delayed in tcx.delayed_codegen_requests(cnum) {
+            for &intrinsic in delayed.intrinsic_callees {
+                intrinsic_caller_span
+                    .entry(intrinsic)
+                    .or_insert_with(|| tcx.def_span(delayed.instance.def_id()));
+            }
+        }
+    }
+
+    #[allow(rustc::potential_query_instability)]
+    for req in &requests.index_requests {
+        let graph = tcx.trait_cast_graph(req.super_trait);
+        let any_satisfies = graph
+            .concrete_types
+            .items()
+            .any(|ct| resolve_dyn_satisfaction(tcx, **ct, req.sub_trait).is_some());
+        if any_satisfies {
+            continue;
+        }
+        let span = intrinsic_caller_span.get(&req.instance).copied().unwrap_or(DUMMY_SP);
+        tcx.emit_node_span_lint(
+            UNUSED_CAST_TARGET,
+            CRATE_HIR_ID,
+            span,
+            UnusedCastTargetLint { span, root: req.super_trait, target: req.sub_trait },
+        );
+    }
+}
+
+/// Called from within `collect_and_partition_mono_items`, after mono
+/// collection completes but before partitioning. Resolves all
+/// delayed codegen requests into `MonoItem::Fn` entries that are
+/// inserted into `mono_items` before partitioning distributes
+/// items into codegen units.
+/// Only runs in a global crate (binary, staticlib, cdylib).
+fn resolve_trait_cast_globals<'tcx>(tcx: TyCtxt<'tcx>, mono_items: &mut Cow<'_, [MonoItem<'tcx>]>) {
+    if !tcx.is_global_crate() {
+        return; // Non-global crates defer to the global crate.
+    }
+
+    let requests = tcx.gather_trait_cast_requests(());
+    if requests.is_empty() {
+        return; // No trait casting in the entire program.
+    }
+
+    // Build the intrinsic resolution lookup table. Query results
+    // (trait_cast_layout, trait_cast_table, trait_cast_table_alloc)
+    // are driven on-demand within build_intrinsic_resolutions and
+    // cached by the dep graph for incremental reuse.
+    let resolutions = crate::table_layout::build_intrinsic_resolutions(tcx, &requests);
+
+    // Fire `unused_cast_target` lint for every `trait_metadata_index`
+    // request whose sub_trait has no concrete-type implementer in the
+    // final binary. Such casts always return `Err` at runtime.
+    emit_unused_cast_target_lint(tcx, &requests);
+
+    // Cascading canonicalization: process all caller DelayedInstances
+    // (directly + transitively sensitive) bottom-up, resolving
+    // intrinsics, rewriting callee references through the condensation
+    // map, patching MIR, feeding codegen_mir, and inserting
+    // MonoItem::Fn entries into mono_items.
+    //
+    // Pulls DelayedInstances from delayed_codegen_requests directly —
+    // independent of TraitCastRequests.
+    cascade_canonicalize(tcx, &resolutions, mono_items);
+
+    // Collect mono items for vtable methods referenced by trait cast
+    // tables. For each (super_trait, concrete_type) table, iterate the
+    // sub-traits and collect vtable methods for implemented sub-traits.
+    // Uses create_mono_items_for_vtable_methods (same path as the normal
+    // collector) to ensure Instance consistency. Dedup against items
+    // already collected from direct unsizing points.
+    collect_trait_cast_vtable_methods(tcx, &requests, mono_items);
+    collect_trait_cast_table_backing_items(tcx, &resolutions, mono_items);
+}
+
+/// Collect vtable method mono items for all (concrete_type, sub_trait) pairs
+/// in the trait cast tables. These vtables are generated during resolution
+/// but their methods must be added as mono items for codegen.
+///
+/// Deduplicates against already-collected items (from direct unsizing casts)
+/// and across sub-trait vtables (which share supertrait methods).
+fn collect_trait_cast_vtable_methods<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    requests: &TraitCastRequests<'tcx>,
+    mono_items: &mut Cow<'_, [MonoItem<'tcx>]>,
+) {
+    use crate::trait_graph::resolve_dyn_satisfaction;
+
+    // Deduplicate (super_trait, concrete_type) pairs across requests.
+    let table_pairs: FxHashSet<(Ty<'tcx>, Ty<'tcx>)> =
+        requests.table_requests.iter().map(|r| (r.super_trait, r.concrete_type)).collect();
+
+    if table_pairs.is_empty() {
+        return;
+    }
+
+    let mut seen: FxHashSet<MonoItem<'tcx>> = mono_items.iter().copied().collect();
+    let mut new_items = Vec::new();
+    let mut candidate_items = Vec::new();
+
+    // Iteration order is irrelevant — we are collecting into a dedup set.
+    #[allow(rustc::potential_query_instability)]
+    for &(super_trait, concrete_type) in &table_pairs {
+        let layout = tcx.trait_cast_layout(super_trait);
+        for sub_trait in layout.sub_traits() {
+            if resolve_dyn_satisfaction(tcx, concrete_type, sub_trait).is_none() {
+                continue;
+            }
+            crate::collector::collect_vtable_methods_for_trait_cast(
+                tcx,
+                sub_trait,
+                concrete_type,
+                &mut candidate_items,
+            );
+            for item in candidate_items.drain(..) {
+                if seen.insert(item) {
+                    new_items.push(item);
+                }
+            }
+        }
+    }
+
+    if !new_items.is_empty() {
+        mono_items.to_mut().extend(new_items);
+    }
+}
+
+/// Collect mono items reachable from the actual trait-cast table allocations.
+///
+/// This is a conservative backstop for cases where reconstructing the
+/// (sub-trait, concrete-type) pairs misses an item that the emitted table
+/// or its referenced vtables nevertheless contain.
+fn collect_trait_cast_table_backing_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    resolutions: &IntrinsicResolutions<'tcx>,
+    mono_items: &mut Cow<'_, [MonoItem<'tcx>]>,
+) {
+    if resolutions.table_alloc_ids.is_empty() {
+        return;
+    }
+
+    let mut seen: FxHashSet<MonoItem<'tcx>> = mono_items.iter().copied().collect();
+    let mut new_items = Vec::new();
+    let mut candidate_items = Vec::new();
+
+    for &alloc_id in &resolutions.table_alloc_ids {
+        crate::collector::collect_alloc_items_for_trait_cast(tcx, alloc_id, &mut candidate_items);
+        for item in candidate_items.drain(..) {
+            if seen.insert(item) {
+                new_items.push(item);
+            }
+        }
+    }
+
+    if !new_items.is_empty() {
+        mono_items.to_mut().extend(new_items);
+    }
+}
+
+/// Process all delayed codegen Instances bottom-up through the sensitive
+/// sub-graph: apply callee substitutions, resolve intrinsic calls,
+/// canonicalize condensed Instances via trampoline bodies, feed patched
+/// MIR via `codegen_mir`, and insert `MonoItem::Fn` entries into
+/// `mono_items` for partitioning.
+///
+/// Condensation-based deduplication: two Instances that belong to the
+/// same condensation group (identical admissibility vectors across all
+/// concrete types) produce identical resolved bodies. The canonical
+/// Instance (smallest `OutlivesClass` under `StableOrd`) receives the
+/// full resolved body; non-canonical Instances receive a trampoline body
+/// that tail-calls the canonical.
+///
+/// Deduplication cascades through the bottom-up traversal: when leaf
+/// Instances condense, their callers' patched MIR references the same
+/// canonical callee. Callers that differ only in which condensed callee
+/// they reference now produce identical patched bodies and are
+/// themselves deduplicated.
+fn cascade_canonicalize<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    resolutions: &IntrinsicResolutions<'tcx>,
+    mono_items: &mut Cow<'_, [MonoItem<'tcx>]>,
+) {
+    use std::collections::BTreeMap;
+
+    use rustc_data_structures::graph::scc::Sccs;
+    use rustc_data_structures::graph::vec_graph::VecGraph;
+    use rustc_middle::mono::DelayedInstance;
+    use rustc_middle::ty::trait_cast::OutlivesClass;
+
+    let dump = tcx.sess.opts.unstable_opts.dump_trait_cast_canonicalization;
+
+    // Collect all delayed Instances from all crates, deduplicating by Instance.
+    let mut all_delayed: Vec<&DelayedInstance<'tcx>> = Vec::new();
+    let mut seen: FxHashSet<ty::Instance<'tcx>> = FxHashSet::default();
+    for delayed in tcx.delayed_codegen_requests(LOCAL_CRATE) {
+        if seen.insert(delayed.instance) {
+            all_delayed.push(delayed);
+        }
+    }
+    for &cnum in tcx.crates(()) {
+        for delayed in tcx.delayed_codegen_requests(cnum) {
+            if seen.insert(delayed.instance) {
+                all_delayed.push(delayed);
+            }
+        }
+    }
+
+    if all_delayed.is_empty() {
+        if dump {
+            eprintln!("=== Trait-Cast Canonicalization ===");
+            eprintln!("  Total delayed instances: 0");
+            eprintln!("  Depth levels: 0");
+            eprintln!("  Canon map summary:");
+            eprintln!("    total redirections: 0");
+        }
+        return;
+    }
+
+    // Build the delayed-Instance dependency graph and compute depths
+    // via VecGraph + Sccs. The dependency graph is a DAG (the call
+    // graph is acyclic after augmentation), so every SCC is a
+    // singleton — Sccs gives us a topological ordering for free,
+    // and depth is computed in a single O(V+E) pass.
+    rustc_index::newtype_index! {
+        #[orderable]
+        struct DelayIdx {}
+    }
+    rustc_index::newtype_index! {
+        #[orderable]
+        struct DelaySccIdx {}
+    }
+
+    let instance_to_idx: FxHashMap<ty::Instance<'tcx>, usize> =
+        all_delayed.iter().enumerate().map(|(i, d)| (d.instance, i)).collect();
+
+    let mut edge_pairs: Vec<(DelayIdx, DelayIdx)> = Vec::new();
+    for (i, d) in all_delayed.iter().enumerate() {
+        for &(_, callee) in d.callee_substitutions {
+            if let Some(&j) = instance_to_idx.get(&callee) {
+                edge_pairs.push((DelayIdx::from(i), DelayIdx::from(j)));
+            }
+        }
+    }
+
+    let delay_graph = VecGraph::<DelayIdx>::new(all_delayed.len(), edge_pairs);
+    let delay_sccs = Sccs::<DelayIdx, DelaySccIdx>::new(&delay_graph);
+
+    // Single-pass depth computation in dependency order (O(V+E)).
+    // all_sccs() visits callees before callers, so successor depths
+    // are already resolved when we compute a node's depth.
+    let mut scc_depth: Vec<usize> = vec![0; delay_sccs.num_sccs()];
+    for scc in delay_sccs.all_sccs() {
+        let d = delay_sccs
+            .successors(scc)
+            .iter()
+            .copied()
+            .map(|succ| scc_depth[succ.index()] + 1)
+            .max()
+            .unwrap_or(0);
+        scc_depth[scc.index()] = d;
+    }
+    let depth: Vec<usize> = (0..all_delayed.len())
+        .map(|i| scc_depth[delay_sccs.scc(DelayIdx::from(i)).index()])
+        .collect();
+
+    // --- Seed canon_map from condensation groups (leaf level) ---
+    //
+    // For each root trait's layout, the condensation groups identify
+    // which (sub_trait, outlives_class) pairs share the same table slot.
+    // Group the directly-sensitive delayed Instances by
+    // (def_id, base_args) — same function, same type args, differing
+    // only in Outlives entries. Within each group, Instances whose
+    // OutlivesClass maps to the same condensation slot are equivalent.
+    // Pick the canonical (smallest OutlivesClass under StableOrd),
+    // map the rest → canonical.
+    let mut canon_map: FxHashMap<ty::Instance<'tcx>, ty::Instance<'tcx>> = FxHashMap::default();
+
+    seed_canon_map_from_condensation(tcx, &all_delayed, &mut canon_map);
+
+    // Group Instances by depth level for bottom-up processing.
+    // BTreeMap gives us ascending depth order (leaves first).
+    let mut depth_groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for i in 0..all_delayed.len() {
+        depth_groups.entry(depth[i]).or_default().push(i);
+    }
+
+    if dump {
+        eprintln!("=== Trait-Cast Canonicalization ===");
+        eprintln!("  Total delayed instances: {}", all_delayed.len());
+        eprintln!("  Depth levels: {}", depth_groups.len());
+    }
+
+    let mut new_mono_items: Vec<MonoItem<'tcx>> = Vec::new();
+
+    for (d, indices) in &depth_groups {
+        // Order indices deterministically for dump output by stable
+        // fingerprint of the Instance. This does not affect observable
+        // behavior; it only reorders the emission.
+        let dump_order: Vec<usize> = if dump {
+            let mut v = indices.clone();
+            tcx.with_stable_hashing_context(|mut hcx| {
+                v.sort_by_cached_key(|&idx| {
+                    use rustc_data_structures::fingerprint::Fingerprint;
+                    use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+                    let mut hasher = StableHasher::new();
+                    all_delayed[idx].instance.hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish::<Fingerprint>()
+                });
+            });
+            eprintln!("  Depth {d}: {} instance(s)", indices.len());
+            eprintln!("    Phase 1 (patch):");
+            v
+        } else {
+            Vec::new()
+        };
+        // --- Phase 1: Patch and resolve all canonical Instances at this depth ---
+        //
+        // For canonical Instances (not in canon_map): clone base MIR,
+        // apply callee substitutions through canon_map, resolve
+        // intrinsic calls, and record the patched body.
+        //
+        // For non-canonical Instances (already in canon_map from
+        // leaf-level seeding or prior depth levels): skip patching,
+        // a trampoline body will be generated in Phase 3.
+        let mut patched_bodies: FxHashMap<ty::Instance<'tcx>, &'tcx rustc_middle::mir::Body<'tcx>> =
+            FxHashMap::default();
+
+        // Iteration order for the patching logic itself is irrelevant
+        // (the loop only mutates the per-instance `patched_bodies`
+        // entry). Iterate in `dump_order` when dumping so observers
+        // see a deterministic emission order, and in original order
+        // otherwise.
+        let patch_iter: &[usize] = if dump { &dump_order } else { &indices[..] };
+        for &idx in patch_iter {
+            let delayed = all_delayed[idx];
+            let instance = delayed.instance;
+            // Skip Instances already known to be non-canonical.
+            if canon_map.contains_key(&instance) {
+                continue;
+            }
+
+            let base = instance.strip_outlives(tcx);
+            let body = tcx.instance_mir(base.def);
+            let mut patched = body.clone();
+
+            if dump {
+                let instance_name = with_no_trimmed_paths!(instance.to_string());
+                eprintln!("      {instance_name}");
+                if delayed.callee_substitutions.is_empty() {
+                    eprintln!("        unchanged");
+                }
+            }
+
+            // Apply callee substitutions, resolving through canon_map.
+            for &(call_id, callee) in delayed.callee_substitutions {
+                let canonical_callee = canon_map.get(&callee).copied().unwrap_or(callee);
+                crate::collector::patch_call_terminator(
+                    &mut patched,
+                    call_id,
+                    canonical_callee,
+                    tcx,
+                );
+                if dump {
+                    let summary = crate::cast_sensitivity::format_call_id_summary(tcx, call_id);
+                    let canonical_name = with_no_trimmed_paths!(canonical_callee.to_string());
+                    eprintln!("        substitution: {summary} -> {canonical_name}");
+                }
+            }
+
+            // Resolve intrinsic calls in-place.
+            crate::resolved_bodies::patch_intrinsic_calls(&mut patched, tcx, instance, resolutions);
+
+            let patched = tcx.arena.alloc(patched);
+            patched_bodies.insert(instance, patched);
+        }
+
+        // --- Phase 2: Transitive deduplication at this depth ---
+        //
+        // Group patched Instances by (def_id, base_args). Within each
+        // group, check if all callee_substitutions resolve to the
+        // same canonical Instances. If so, pick one canonical
+        // (smallest OutlivesClass), map the rest → canonical.
+        let mut by_base: FxHashMap<(DefId, ty::GenericArgsRef<'tcx>), Vec<usize>> =
+            FxHashMap::default();
+        for &idx in indices {
+            let instance = all_delayed[idx].instance;
+            if canon_map.contains_key(&instance) {
+                continue;
+            }
+            let base = instance.strip_outlives(tcx);
+            by_base.entry((base.def_id(), base.args)).or_default().push(idx);
+        }
+
+        if dump {
+            eprintln!("    Phase 2 (dedup):");
+        }
+
+        #[allow(rustc::potential_query_instability)]
+        for (_key, group) in &by_base {
+            if group.len() <= 1 {
+                continue;
+            }
+
+            // Two Instances in this group are equivalent if their
+            // resolved callee sets (after canon_map lookup) are
+            // identical. Build a signature for each: the sorted
+            // list of (call_id, canonical_callee) pairs.
+            //
+            // DefId is !Ord and Instance is !Ord, so we sort via
+            // StableHasher fingerprints (the idiomatic rustc
+            // approach — see ToStableHashKey impls for DefId and
+            // Instance).
+            let mut sig_groups: FxIndexMap<
+                Vec<(&'tcx ty::List<(DefId, u32, ty::GenericArgsRef<'tcx>)>, ty::Instance<'tcx>)>,
+                Vec<usize>,
+            > = FxIndexMap::default();
+            for &idx in group {
+                let delayed = all_delayed[idx];
+                let mut sig: Vec<_> = delayed
+                    .callee_substitutions
+                    .iter()
+                    .map(|&(call_id, callee)| {
+                        let canonical_callee = canon_map.get(&callee).copied().unwrap_or(callee);
+                        (call_id, canonical_callee)
+                    })
+                    .collect();
+                tcx.with_stable_hashing_context(|mut hcx| {
+                    sig.sort_by_cached_key(|&(call_id, canonical)| {
+                        use rustc_data_structures::fingerprint::Fingerprint;
+                        use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+                        let mut hasher = StableHasher::new();
+                        call_id.hash_stable(&mut hcx, &mut hasher);
+                        canonical.hash_stable(&mut hcx, &mut hasher);
+                        hasher.finish::<Fingerprint>()
+                    });
+                });
+                sig_groups.entry(sig).or_default().push(idx);
+            }
+
+            for (_sig, equiv) in &sig_groups {
+                if equiv.len() <= 1 {
+                    continue;
+                }
+                // Pick canonical: smallest OutlivesClass under StableOrd.
+                let canonical_idx = *equiv
+                    .iter()
+                    .min_by_key(|&&idx| OutlivesClass::from_instance(all_delayed[idx].instance))
+                    .unwrap();
+                let canonical_instance = all_delayed[canonical_idx].instance;
+                if dump {
+                    let canonical_name = with_no_trimmed_paths!(canonical_instance.to_string());
+                    eprintln!("      signature group (size={}):", equiv.len());
+                    eprintln!("        canonical: {canonical_name}");
+                    // Sort redirected entries deterministically.
+                    let mut redirected: Vec<ty::Instance<'tcx>> = equiv
+                        .iter()
+                        .filter(|&&idx| idx != canonical_idx)
+                        .map(|&idx| all_delayed[idx].instance)
+                        .collect();
+                    tcx.with_stable_hashing_context(|mut hcx| {
+                        redirected.sort_by_cached_key(|inst| {
+                            use rustc_data_structures::fingerprint::Fingerprint;
+                            use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+                            let mut hasher = StableHasher::new();
+                            inst.hash_stable(&mut hcx, &mut hasher);
+                            hasher.finish::<Fingerprint>()
+                        });
+                    });
+                    for inst in &redirected {
+                        let name = with_no_trimmed_paths!(inst.to_string());
+                        eprintln!("        redirected: {name}");
+                    }
+                }
+                for &idx in equiv {
+                    if idx == canonical_idx {
+                        continue;
+                    }
+                    let instance = all_delayed[idx].instance;
+                    let prev = canon_map.insert(instance, canonical_instance);
+                    debug_assert!(
+                        prev.is_none(),
+                        "Instance in multiple signature groups: {instance:?}"
+                    );
+                    patched_bodies.remove(&instance);
+                }
+            }
+        }
+
+        // --- Phase 3: Feed bodies and insert MonoItems ---
+        let mut fed = 0usize;
+        let mut skipped = 0usize;
+        let mut inserted = 0usize;
+        for &idx in indices {
+            let delayed = all_delayed[idx];
+            let instance = delayed.instance;
+
+            if canon_map.contains_key(&instance) {
+                // Non-canonical: callers have been rewritten during the
+                // patch pass to call the canonical Instance directly.
+                // This Instance is unreachable — skip it.
+                skipped += 1;
+                continue;
+            } else if let Some(body) = patched_bodies.get(&instance) {
+                // Canonical (or non-condensed): feed the resolved body.
+                tcx.feed_codegen_mir(instance, body);
+                fed += 1;
+            }
+            new_mono_items.push(MonoItem::Fn(instance));
+            inserted += 1;
+        }
+
+        if dump {
+            eprintln!(
+                "    Phase 3 (emit):\n      fed: {fed}, skipped (non-canonical): {skipped}, \
+                 newly-inserted mono items: {inserted}"
+            );
+        }
+    }
+
+    if dump {
+        eprintln!("  Canon map summary:");
+        eprintln!("    total redirections: {}", canon_map.len());
+    }
+
+    // Insert the resolved MonoItem::Fn entries into mono_items.
+    if !new_mono_items.is_empty() {
+        let items = mono_items.to_mut();
+        items.extend(new_mono_items);
+    }
+}
+
+/// Seed `canon_map` from leaf-level condensation groups. Groups
+/// directly-sensitive Instances by `(def_id, base_args)`, then checks
+/// whether their `OutlivesClass`es share the same condensation slot
+/// in `trait_cast_layout`. Instances that share a slot are equivalent;
+/// the smallest `OutlivesClass` under `StableOrd` is canonical.
+fn seed_canon_map_from_condensation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    all_delayed: &[&rustc_middle::mono::DelayedInstance<'tcx>],
+    canon_map: &mut FxHashMap<ty::Instance<'tcx>, ty::Instance<'tcx>>,
+) {
+    use rustc_data_structures::stable_hasher::StableCompare;
+    use rustc_middle::ty::trait_cast::{FingerprintedTy, IntrinsicSiteKind, OutlivesClass};
+    use smallvec::SmallVec;
+
+    // Group leaf Instances (empty callee_substitutions) by (def_id, base_args).
+    let mut by_base: FxHashMap<
+        (DefId, ty::GenericArgsRef<'tcx>),
+        Vec<&rustc_middle::mono::DelayedInstance<'tcx>>,
+    > = FxHashMap::default();
+    for delayed in all_delayed {
+        if !delayed.callee_substitutions.is_empty() {
+            continue; // Only seed from leaves.
+        }
+        let base = delayed.instance.strip_outlives(tcx);
+        by_base.entry((base.def_id(), base.args)).or_default().push(delayed);
+    }
+
+    #[allow(rustc::potential_query_instability)]
+    for (_key, group) in &by_base {
+        if group.len() <= 1 {
+            continue;
+        }
+
+        // Signature: sorted list of (super_trait, sub_trait, slot) for all
+        // Index intrinsics in this caller. Two callers with identical
+        // signatures produce identical patched bodies.
+        //
+        // Uses FingerprintedTy for deterministic sorting (Ty is !Ord).
+        // Eq/Hash on FingerprintedTy delegate to Ty (interned pointer),
+        // so HashMap grouping works identically.
+        let mut by_signature: FxHashMap<
+            SmallVec<[(FingerprintedTy<'tcx>, FingerprintedTy<'tcx>, usize); 1]>,
+            Vec<ty::Instance<'tcx>>,
+        > = FxHashMap::default();
+
+        for delayed in group {
+            let instance = delayed.instance;
+            let mut sig: SmallVec<[(FingerprintedTy<'tcx>, FingerprintedTy<'tcx>, usize); 1]> =
+                SmallVec::new();
+            for &intrinsic_instance in delayed.intrinsic_callees {
+                let site =
+                    crate::trait_cast_requests::classify_intrinsic_site(tcx, intrinsic_instance);
+                if let IntrinsicSiteKind::Index { super_trait, sub_trait } = site {
+                    let outlives_class = trait_metadata_index_outlives_class(
+                        tcx,
+                        super_trait,
+                        sub_trait,
+                        intrinsic_instance,
+                    );
+                    let layout = tcx.trait_cast_layout(super_trait);
+                    if let Some(&slot) = layout.index_map.get(&(sub_trait, outlives_class)) {
+                        sig.push((
+                            FingerprintedTy::new(tcx, super_trait),
+                            FingerprintedTy::new(tcx, sub_trait),
+                            slot,
+                        ));
+                    }
+                }
+            }
+            sig.sort_by(|a, b| {
+                a.2.cmp(&b.2).then_with(|| a.0.stable_cmp(&b.0)).then_with(|| a.1.stable_cmp(&b.1))
+            });
+            by_signature.entry(sig).or_default().push(instance);
+        }
+
+        // Within each slot group, pick canonical and map the rest.
+        //
+        // Iteration order of `by_signature` (FxHashMap) is non-deterministic,
+        // but this is safe: signature groups *partition* the Instance space —
+        // each Instance appears in exactly one bucket (one signature per
+        // delayed Instance, one push per delayed Instance). Because groups
+        // are disjoint, `canon_map.insert` never overwrites an entry written
+        // by a different group, so the final map contents are identical
+        // regardless of iteration order. Within each group, `min_by_key`
+        // over `OutlivesClass` is deterministic because the `instances` Vec
+        // inherits insertion order from `all_delayed` (a slice), and
+        // `min_by_key` returns the first minimum on ties.
+        #[allow(rustc::potential_query_instability)]
+        for (_, instances) in &by_signature {
+            if instances.len() <= 1 {
+                continue;
+            }
+            let canonical =
+                *instances.iter().min_by_key(|inst| OutlivesClass::from_instance(**inst)).unwrap();
+            for &inst in instances {
+                if inst == canonical {
+                    continue;
+                }
+                let prev = canon_map.insert(inst, canonical);
+                debug_assert!(prev.is_none(), "Instance in multiple signature groups: {inst:?}");
+            }
+        }
+    }
+}
+
+/// Query provider: collects mono items for the local crate, including
+/// sensitivity analysis and augmentation, but does NOT perform global
+/// trait-cast resolution or partitioning.
+fn collect_local_mono_items(tcx: TyCtxt<'_>, (): ()) -> LocalMonoItemCollection<'_> {
     let collection_strategy = if tcx.sess.link_dead_code() {
         MonoItemCollectionStrategy::Eager
     } else {
         MonoItemCollectionStrategy::Lazy
     };
 
-    let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
-    // Perform checks that need to operate on the entire mono item graph
+    let collection_result = collector::collect_crate_mono_items(tcx, collection_strategy);
+    let items = collection_result.mono_items;
+    let usage_map = collection_result.usage_map;
+
+    // Perform checks that need to operate on the entire mono item graph.
     target_specific_checks(tcx, &items, &usage_map);
 
     // If there was an error during collection (e.g. from one of the constants we evaluated),
@@ -1144,10 +1866,27 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     // (codegen relies on this and ICEs will happen if this is violated.)
     tcx.dcx().abort_if_errors();
 
+    LocalMonoItemCollection {
+        mono_items: tcx.arena.alloc_from_iter(items),
+        usage_map: tcx.arena.alloc(usage_map),
+        delayed_codegen: collection_result.delayed_codegen,
+        sensitivity_map: collection_result.sensitivity_map,
+    }
+}
+
+fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitions<'_> {
+    let collection = tcx.collect_local_mono_items(());
+    let mut items: Cow<'_, [MonoItem<'_>]> = Cow::Borrowed(collection.mono_items);
+    let usage_map = collection.usage_map;
+
+    // Global phase: resolve trait-cast delayed codegen requests into
+    // MonoItem::Fn entries before partitioning distributes items.
+    tcx.sess.time("resolve_trait_cast_globals", || resolve_trait_cast_globals(tcx, &mut items));
+
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         par_join(
             || {
-                let mut codegen_units = partition(tcx, items.iter().copied(), &usage_map);
+                let mut codegen_units = partition(tcx, items.iter().copied(), usage_map);
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
             },
@@ -1182,6 +1921,9 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     {
         tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
     }
+
+    dump_trait_graph(tcx);
+    print_trait_cast_stats(tcx);
 
     if tcx.sess.opts.unstable_opts.print_mono_items {
         let mut item_to_cgus: UnordMap<_, Vec<_>> = Default::default();
@@ -1232,7 +1974,12 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
-    MonoItemPartitions { all_mono_items: tcx.arena.alloc(mono_items), codegen_units }
+    MonoItemPartitions {
+        all_mono_items: tcx.arena.alloc(mono_items),
+        codegen_units,
+        delayed_codegen: collection.delayed_codegen,
+        sensitivity_map: collection.sensitivity_map,
+    }
 }
 
 /// Outputs stats about instantiation counts and estimated size, per `MonoItem`'s
@@ -1312,8 +2059,274 @@ fn dump_mono_items_stats<'tcx>(
     Ok(())
 }
 
+/// Dump trait graph info for root supertraits matching `-Z dump-trait-graph`.
+fn dump_trait_graph(tcx: TyCtxt<'_>) {
+    let Some(ref filter) = tcx.sess.opts.unstable_opts.dump_trait_graph else {
+        return;
+    };
+
+    let requests = tcx.gather_trait_cast_requests(());
+    if requests.is_empty() {
+        return;
+    }
+
+    use rustc_middle::ty::trait_cast::FingerprintedTy;
+
+    let roots: Vec<_> = requests
+        .root_traits()
+        .into_items()
+        .map(|ty| FingerprintedTy::new(tcx, ty))
+        .into_sorted_stable_ord();
+
+    for fp_root in &roots {
+        let root = fp_root.ty();
+        let root_str = with_no_trimmed_paths!(root.to_string());
+        if filter != "all" && !root_str.contains(filter.as_str()) {
+            continue;
+        }
+
+        let graph = tcx.trait_cast_graph(root);
+        let layout = tcx.trait_cast_layout(root);
+
+        eprintln!("=== Trait Graph: {root_str} ===");
+
+        // Sub-traits + outlives classes.
+        let sub_traits = graph
+            .sub_traits
+            .items()
+            .map(|(k, v)| (*k, v))
+            .into_sorted_stable_ord_by_key(|item| &item.0);
+        eprintln!("  Sub-traits ({}):", sub_traits.len());
+        for (fp_ty, info) in &sub_traits {
+            let classes: Vec<_> = info.outlives_classes.items().copied().into_sorted_stable_ord();
+            let sub_str = with_no_trimmed_paths!(fp_ty.ty().to_string());
+            eprintln!("    {sub_str} — {} outlives class(es)", classes.len());
+            for (i, cls) in classes.iter().enumerate() {
+                let pairs: Vec<String> = cls.iter().map(|(l, s)| format!("('{l}: '{s})")).collect();
+                let pairs_str =
+                    if pairs.is_empty() { "empty".to_string() } else { pairs.join(", ") };
+                eprintln!("      [{i}] {{{pairs_str}}}");
+            }
+        }
+
+        // Concrete types.
+        let concretes: Vec<_> = graph.concrete_types.items().copied().into_sorted_stable_ord();
+        eprintln!("  Concrete types ({}):", concretes.len());
+        for ct in &concretes {
+            let ct_str = with_no_trimmed_paths!(ct.ty().to_string());
+            eprintln!("    {ct_str}");
+        }
+
+        // Table layout.
+        eprintln!("  Table layout: {} slot(s)", layout.table_length);
+        for (idx, si) in layout.slot_info.iter().enumerate() {
+            let pairs: Vec<String> =
+                si.outlives_class.iter().map(|(l, s)| format!("('{l}: '{s})")).collect();
+            let pairs_str = if pairs.is_empty() { "empty".to_string() } else { pairs.join(", ") };
+            let sub_str = with_no_trimmed_paths!(si.sub_trait.to_string());
+            eprintln!("    slot[{idx}]: sub={sub_str}, bvs={}, class={{{pairs_str}}}", si.num_bvs);
+        }
+
+        // Condensation summary (only when classes were collapsed).
+        for (fp_ty, info) in &sub_traits {
+            let raw_classes = info.outlives_classes.len();
+            let slots = layout.slot_info.iter().filter(|si| si.sub_trait == **fp_ty).count();
+            if raw_classes != slots {
+                let sub_str = with_no_trimmed_paths!(fp_ty.ty().to_string());
+                eprintln!("  Condensation: {sub_str} — {raw_classes} class(es) -> {slots} slot(s)");
+            }
+        }
+
+        // Admissibility per (concrete_type, sub_trait).
+        {
+            use crate::trait_graph::resolve_dyn_satisfaction;
+            let mut any = false;
+            for ct in &concretes {
+                for (fp_ty, _) in &sub_traits {
+                    if let Some(impl_def_id) = resolve_dyn_satisfaction(tcx, **ct, **fp_ty) {
+                        if !any {
+                            eprintln!("  Admissibility:");
+                            any = true;
+                        }
+                        let ua = tcx.impl_universally_admissible(impl_def_id);
+                        let ct_str = with_no_trimmed_paths!(ct.ty().to_string());
+                        let sub_str = with_no_trimmed_paths!(fp_ty.ty().to_string());
+                        let impl_str = tcx.def_path_str(impl_def_id);
+                        eprintln!(
+                            "    {ct_str} : {sub_str} — impl {impl_str} \
+                             (univ_admissible={ua})"
+                        );
+                    }
+                }
+            }
+        }
+
+        eprintln!();
+    }
+}
+
+/// Print summary statistics for the trait-cast monomorphization pipeline to
+/// stderr, gated on `-Z print-trait-cast-stats`. Emits a single compact block
+/// derived from query results already computed by the partitioning pass, so
+/// this is effectively free when the flag is off.
+fn print_trait_cast_stats(tcx: TyCtxt<'_>) {
+    if !tcx.sess.opts.unstable_opts.print_trait_cast_stats {
+        return;
+    }
+
+    // Gather all delayed codegen entries across crates, deduplicating by
+    // `Instance` (mirrors the dedup pattern in `cascade_canonicalize`).
+    let mut seen: FxHashSet<ty::Instance<'_>> = FxHashSet::default();
+    let mut delayed_total = 0usize;
+    let mut augmented = 0usize;
+    let mut intrinsic_sites = 0usize;
+    for delayed in tcx.delayed_codegen_requests(LOCAL_CRATE) {
+        if seen.insert(delayed.instance) {
+            delayed_total += 1;
+            if delayed.instance.has_outlives_entries() {
+                augmented += 1;
+            }
+            intrinsic_sites += delayed.intrinsic_callees.len();
+        }
+    }
+    for &cnum in tcx.crates(()) {
+        for delayed in tcx.delayed_codegen_requests(cnum) {
+            if seen.insert(delayed.instance) {
+                delayed_total += 1;
+                if delayed.instance.has_outlives_entries() {
+                    augmented += 1;
+                }
+                intrinsic_sites += delayed.intrinsic_callees.len();
+            }
+        }
+    }
+
+    let requests = tcx.gather_trait_cast_requests(());
+    let roots = requests.root_traits();
+    let root_count = roots.len();
+
+    // Iteration order over an `UnordSet` doesn't matter for a sum.
+    let total_slots: usize =
+        roots.items().map(|root| tcx.trait_cast_layout(*root).table_length).sum();
+
+    eprintln!("trait-cast stats:");
+    eprintln!("  delayed codegen entries:        {delayed_total}");
+    eprintln!(
+        "  augmented instances:            {augmented}   \
+         (instances with outlives entries among delayed)"
+    );
+    eprintln!(
+        "  trait-cast intrinsic sites:     {intrinsic_sites}   \
+         (sum over delayed instances)"
+    );
+    eprintln!(
+        "  root supertraits:               {root_count}   \
+         (from gather_trait_cast_requests.root_traits())"
+    );
+    eprintln!(
+        "  total table slots:              {total_slots}   \
+         (sum of trait_cast_layout(root).table_length over roots)"
+    );
+}
+
+/// Query provider for `is_transitively_delayed_instance`.
+///
+/// Compares on the strip-outlives form. The mono collector's
+/// `augment_sensitive_subgraphs` pushes *augmented* instances (those carrying
+/// the `OUTLIVES_SENTINEL` or real outlives entries) into `delayed_codegen`,
+/// while MIR call sites — including the ones codegen re-mangles on a cache
+/// miss in `get_fn` — may reach this query with the pre-augmentation base
+/// Instance. The v0 mangler's impl-path does not include Outlives args in
+/// the emitted symbol, so augmented and base share a mangled name when the
+/// instantiating-crate suffix is suppressed; for the suffix-stripping
+/// mangler gate to apply uniformly, both forms must report as delayed.
+///
+/// Membership is a single O(1) lookup against
+/// `delayed_codegen_stripped_set(())`, which flattens every crate's
+/// delayed-codegen set into one precomputed `UnordSet`.
+fn is_transitively_delayed_instance_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+) -> bool {
+    // Metadata-only builds (rustdoc, `--emit=metadata`) don't run mono
+    // collection, so `delayed_codegen_requests(LOCAL_CRATE)` — which
+    // forces `collect_local_mono_items` — is both meaningless and
+    // impossible to satisfy (collection demands upstream `optimized_mir`
+    // that the metadata-only pipeline won't have loaded). Return
+    // `false` conservatively: no local crate can register delayed
+    // instances without a codegen phase, and the mangler's suffix-
+    // stripping gate is a no-op for those pathways anyway (the emitted
+    // metadata records DefId+args, not the pre-mangled name).
+    if !tcx.sess.opts.output_types.should_codegen() {
+        return false;
+    }
+    let stripped = instance.strip_outlives(tcx);
+    tcx.delayed_codegen_stripped_set(()).contains(&stripped)
+}
+
+fn delayed_codegen_stripped_set_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _: (),
+) -> UnordSet<ty::Instance<'tcx>> {
+    use rustc_hir::def_id::LOCAL_CRATE;
+    // An instance's `def_id().krate` is the crate that *defines* the
+    // generic, not where it's monomorphized — e.g. the blanket-impl
+    // `<T as TraitMetadataTable<I>>::derived_metadata_table` mono for
+    // `T = cross_crate_lib::LibTypeA` has `def_id().krate == core` yet
+    // is classified delayed when upstream `cross_crate_lib` collects
+    // it. Flatten every crate's set so callers don't have to scan.
+    let mut set = UnordSet::default();
+    for d in tcx.delayed_codegen_requests(LOCAL_CRATE) {
+        set.insert(d.instance.strip_outlives(tcx));
+    }
+    for &cnum in tcx.crates(()) {
+        for d in tcx.delayed_codegen_requests(cnum) {
+            set.insert(d.instance.strip_outlives(tcx));
+        }
+    }
+    set
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
+    providers.queries.collect_local_mono_items = collect_local_mono_items;
     providers.queries.collect_and_partition_mono_items = collect_and_partition_mono_items;
+
+    // These project from collect_local_mono_items (NOT collect_and_partition_mono_items)
+    // to avoid a query cycle: collect_and_partition_mono_items → gather_trait_cast_requests
+    // → delayed_codegen_requests → collect_and_partition_mono_items.
+    providers.queries.delayed_codegen_requests = |tcx, _key: rustc_middle::query::LocalCrate| {
+        tcx.collect_local_mono_items(()).delayed_codegen
+    };
+
+    providers.queries.crate_cast_relevant_lifetimes =
+        |tcx, _key: rustc_middle::query::LocalCrate| {
+            let collection = tcx.collect_local_mono_items(());
+            collection.sensitivity_map
+        };
+
+    providers.queries.cast_relevant_lifetimes = |tcx, instance| {
+        let map = tcx.crate_cast_relevant_lifetimes(instance.def_id().krate);
+        map.get(&instance)
+    };
+
+    // Local provider: project the LocalDefId set from delayed_codegen.
+    // Consumed by the rmeta encoder's `should_encode_mir` gate so that
+    // transitively-delayed non-generic fns (e.g. user fns whose only
+    // intrinsic reach is via post-monomorphization inlining of the
+    // `core::TraitCast` trampolines) ship their MIR downstream.
+    providers.queries.local_def_ids_backing_delayed_instances = |tcx, _: ()| {
+        let delayed = tcx.collect_local_mono_items(()).delayed_codegen;
+        let mut set = rustc_hir::def_id::LocalDefIdSet::default();
+        for d in delayed.iter() {
+            if let Some(local_def_id) = d.instance.def_id().as_local() {
+                set.insert(local_def_id);
+            }
+        }
+        tcx.arena.alloc(set)
+    };
+
+    providers.queries.is_transitively_delayed_instance = is_transitively_delayed_instance_provider;
+    providers.queries.delayed_codegen_stripped_set = delayed_codegen_stripped_set_provider;
 
     providers.queries.is_codegened_item =
         |tcx, def_id| tcx.collect_and_partition_mono_items(()).all_mono_items.contains(&def_id);

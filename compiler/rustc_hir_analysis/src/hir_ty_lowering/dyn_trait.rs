@@ -56,6 +56,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        // When lowering `dyn T` during super-predicate computation of trait T
+        // whose supertraits include `TraitMetadataTable<dyn T>`, elaborating
+        // T's supertraits, checking dyn-compatibility, or computing object
+        // lifetime bounds would re-enter `explicit_super_predicates_of(T)` or
+        // `explicit_implied_predicates_of(T)`, causing query cycles.
+        // We detect this pattern early and skip only those specific operations.
+        // The basic lowering (trait ref + projection bindings) is safe.
+        let skip_elaboration = hir_bounds.first().is_some_and(|principal_hir| {
+            principal_hir.trait_ref.trait_def_id().is_some_and(|principal_did| {
+                principal_did == self.item_def_id().to_def_id()
+                    && tcx.def_kind(self.item_def_id()) == DefKind::Trait
+                    && tcx.lang_items().trait_metadata_table_trait().is_some_and(|tmt| {
+                        let node = tcx.hir_node_by_def_id(self.item_def_id());
+                        matches!(
+                            node,
+                            hir::Node::Item(hir::Item {
+                                kind: hir::ItemKind::Trait(.., bounds, _), ..
+                            }) if bounds.iter().any(|b| {
+                                b.trait_ref().and_then(|tr| tr.trait_def_id()) == Some(tmt)
+                            })
+                        )
+                    })
+            })
+        });
+
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_items = Vec::new();
         for poly_trait_ref in hir_bounds.iter() {
@@ -126,19 +151,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Check that there are no gross dyn-compatibility violations;
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
-        for (clause, span) in user_written_bounds {
-            if let Some(trait_pred) = clause.as_trait_clause() {
-                let violations = self.dyn_compatibility_violations(trait_pred.def_id());
-                if !violations.is_empty() {
-                    let reported = report_dyn_incompatibility(
-                        tcx,
-                        span,
-                        Some(hir_id),
-                        trait_pred.def_id(),
-                        &violations,
-                    )
-                    .emit();
-                    return Ty::new_error(tcx, reported);
+        // Skip when breaking the TraitMetadataTable<dyn T> cycle, since
+        // dyn_compatibility_violations elaborates supertraits.
+        if !skip_elaboration {
+            for (clause, span) in user_written_bounds {
+                if let Some(trait_pred) = clause.as_trait_clause() {
+                    let violations = self.dyn_compatibility_violations(trait_pred.def_id());
+                    if !violations.is_empty() {
+                        let reported = report_dyn_incompatibility(
+                            tcx,
+                            span,
+                            Some(hir_id),
+                            trait_pred.def_id(),
+                            &violations,
+                        )
+                        .emit();
+                        return Ty::new_error(tcx, reported);
+                    }
                 }
             }
         }
@@ -204,7 +233,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // We achieve a stable ordering by walking over the unsubstituted principal trait ref.
         let mut ordered_associated_items = vec![];
 
-        if let Some((principal_trait, ref spans)) = principal_trait {
+        if let Some((principal_trait, ref spans)) = principal_trait
+            && !skip_elaboration
+        {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
                 assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
                 trait_pred.trait_ref
@@ -284,21 +315,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     _ => (),
                 }
             }
+        } else if skip_elaboration {
+            // When breaking the TraitMetadataTable<dyn T> cycle, we can't
+            // elaborate supertraits. Include only the principal trait's own
+            // associated items so user-written projections are preserved.
+            if let Some((principal_trait, _)) = &principal_trait {
+                let principal_def_id = principal_trait.def_id();
+                let trait_ref = tcx.anonymize_bound_vars(principal_trait.map_bound(|tp| {
+                    assert_eq!(tp.polarity, ty::PredicatePolarity::Positive);
+                    tp.trait_ref
+                }));
+                ordered_associated_items.extend(
+                    tcx.associated_items(principal_def_id)
+                        .in_definition_order()
+                        .filter(|item| item.is_type() || item.is_type_const())
+                        .filter(|item| !item.is_impl_trait_in_trait())
+                        .map(|item| (item.def_id, trait_ref)),
+                );
+            }
         }
 
         // Flag assoc item bindings that didn't really need to be specified.
-        for &(projection_bound, span) in projection_bounds.values() {
-            let def_id = projection_bound.item_def_id();
-            if tcx.generics_require_sized_self(def_id) {
-                // FIXME(mgca): Ideally we would generalize the name of this lint to sth. like
-                // `unused_associated_item_bindings` since this can now also trigger on *const*
-                // projections / assoc *const* bindings.
-                tcx.emit_node_span_lint(
-                    UNUSED_ASSOCIATED_TYPE_BOUNDS,
-                    hir_id,
-                    span,
-                    crate::errors::UnusedAssociatedTypeBounds { span },
-                );
+        // Skip when breaking the TraitMetadataTable<dyn T> cycle, since
+        // generics_require_sized_self needs predicates_of which would cycle.
+        if !skip_elaboration {
+            for &(projection_bound, span) in projection_bounds.values() {
+                let def_id = projection_bound.item_def_id();
+                if tcx.generics_require_sized_self(def_id) {
+                    // FIXME(mgca): Ideally we would generalize the name of this lint to sth. like
+                    // `unused_associated_item_bindings` since this can now also trigger on *const*
+                    // projections / assoc *const* bindings.
+                    tcx.emit_node_span_lint(
+                        UNUSED_ASSOCIATED_TYPE_BOUNDS,
+                        hir_id,
+                        span,
+                        crate::errors::UnusedAssociatedTypeBounds { span },
+                    );
+                }
             }
         }
 
@@ -320,7 +373,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(&assoc) = projection_bounds.get(&key) {
                     return Some(assoc);
                 }
-                if !tcx.generics_require_sized_self(def_id) {
+                // Skip generics_require_sized_self when breaking the
+                // TraitMetadataTable<dyn T> cycle to avoid query cycles.
+                if !skip_elaboration && !tcx.generics_require_sized_self(def_id) {
                     missing_assoc_items.insert(key);
                 }
                 None
@@ -445,6 +500,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Use explicitly-specified region bound, unless the bound is missing.
         let region_bound = if !lifetime.is_elided() {
             self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+        } else if skip_elaboration {
+            // When breaking the `TraitMetadataTable<dyn T>` cycle we must
+            // avoid `compute_object_lifetime_bound`, which elaborates
+            // supertraits via `explicit_implied_predicates_of`. Use
+            // 'static as the default, matching RFC 599 defaults for
+            // trait object types in supertrait position.
+            tcx.lifetimes.re_static
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 // Curiously, we prefer object lifetime default for `+ '_`...
@@ -463,7 +525,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         debug!(?region_bound);
 
-        Ty::new_dynamic(tcx, existential_predicates, region_bound)
+        if skip_elaboration {
+            // When breaking the TraitMetadataTable<dyn T> cycle, bypass
+            // the debug assertion in Ty::new_dynamic which calls
+            // elaborate::supertraits and would cycle.
+            tcx.mk_ty_from_kind(ty::Dynamic(existential_predicates, region_bound))
+        } else {
+            Ty::new_dynamic(tcx, existential_predicates, region_bound)
+        }
     }
 
     /// Check that elaborating the principal of a trait ref doesn't lead to projections

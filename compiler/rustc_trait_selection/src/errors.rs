@@ -2047,3 +2047,31 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     }")]
     pub param_span: Span,
 }
+
+// ── Bounded intertrait casting diagnostics ────────────────────────────────
+
+/// Diagnostic emitted when a trait is used as a `cast!` root but does not
+/// carry `TraitMetadataTable<dyn Self>` as a supertrait bound.
+#[derive(Diagnostic)]
+#[diag("`{$root}` cannot be used as a cast root: missing `TraitMetadataTable` bound")]
+#[help("add `TraitMetadataTable<dyn {$root}>` as a supertrait bound of `{$root}`")]
+pub(crate) struct MissingRootBound {
+    #[primary_span]
+    #[label("`TraitMetadataTable<dyn {$root}>` is not a supertrait of `{$root}`")]
+    pub span: Span,
+    pub root: Symbol,
+}
+
+/// Diagnostic emitted when a type in a `cast!` expression is not reachable
+/// from the root supertrait's trait graph. Covers both the target-trait and
+/// the source-dyn-type cases (either unreachable yields the same remedy).
+#[derive(Diagnostic)]
+#[diag("`{$target}` is not in the trait graph rooted at `{$root}`")]
+#[note("`{$target}` does not have `{$root}` as a (transitive) supertrait")]
+#[help("add `{$root}` as a supertrait bound on `{$target}`")]
+pub(crate) struct TargetNotReachable {
+    #[primary_span]
+    pub span: Span,
+    pub target: Symbol,
+    pub root: Symbol,
+}

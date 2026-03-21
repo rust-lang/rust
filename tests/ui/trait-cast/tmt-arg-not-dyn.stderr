@@ -1,0 +1,23 @@
+error[E0271]: type mismatch resolving `<u32 as Pointee>::Metadata == DynMetadata<u32>`
+  --> $DIR/tmt-arg-not-dyn.rs:13:19
+   |
+LL | trait ChildTrait: TraitMetadataTable<u32> {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^ expected `DynMetadata<u32>`, found `()`
+   |
+   = note: expected struct `DynMetadata<u32>`
+           found unit type `()`
+note: required by a bound in `std::marker::TraitMetadataTable`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+
+error: `TraitMetadataTable` type argument must be a trait object
+  --> $DIR/tmt-arg-not-dyn.rs:13:19
+   |
+LL | trait ChildTrait: TraitMetadataTable<u32> {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a `dyn Trait` type
+   |
+   = note: `TraitMetadataTable<T>` requires `T: Pointee<Metadata = DynMetadata<T>>`, which holds only for trait objects
+   = help: use `dyn Self` to declare `ChildTrait` as a cast root, or `dyn R` for a cast-root supertrait `R` of `ChildTrait`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

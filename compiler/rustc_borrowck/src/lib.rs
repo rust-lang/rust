@@ -86,6 +86,7 @@ mod places_conflict;
 mod polonius;
 mod prefixes;
 mod region_infer;
+mod region_summary;
 mod renumber;
 mod root_cx;
 mod session_diagnostics;
@@ -104,38 +105,88 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { mir_borrowck, ..*providers };
+    *providers = Providers { mir_borrowck, borrowck_result, borrowck_region_summary, ..*providers };
 }
 
-/// Provider for `query mir_borrowck`. Unlike `typeck`, this must
-/// only be called for typeck roots which *similar* to `typeck` will
-/// then borrowck all nested bodies as well.
+/// Shared core query: runs borrowck and collects both hidden types
+/// and region summaries into a single `BorrowckResult`.
+fn borrowck_result<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> &'tcx BorrowckResult<'tcx> {
+    assert!(!tcx.is_typeck_child(def.to_def_id()));
+    let (input_body, _) = tcx.mir_promoted(def);
+    debug!("run query borrowck_result: {}", tcx.def_path_str(def));
+
+    // Eagerly check stalled coroutine obligations from HIR typeck.
+    // Not doing so leads to silent normalization failures later, which will
+    // fail to register opaque types in the next solver.
+    //
+    // This must come after `mir_promoted` so that query-cycle detection
+    // follows the same dependency path as the original `mir_borrowck`.
+    if let Err(guar) = tcx.ensure_result().check_coroutine_obligations(def) {
+        return tcx.arena.alloc(BorrowckResult {
+            hidden_types: Err(guar),
+            region_summaries: Default::default(),
+        });
+    }
+
+    let input_body: &Body<'_> = &input_body.borrow();
+    if let Some(guar) = input_body.tainted_by_errors {
+        debug!("Skipping borrowck because of tainted body");
+        return tcx.arena.alloc(BorrowckResult {
+            hidden_types: Err(guar),
+            region_summaries: Default::default(),
+        });
+    }
+    if input_body.should_skip() {
+        debug!("Skipping borrowck because of injected body");
+        return tcx.arena.alloc(BorrowckResult {
+            hidden_types: Ok(Default::default()),
+            region_summaries: Default::default(),
+        });
+    }
+
+    let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
+    root_cx.do_mir_borrowck();
+    root_cx.finalize()
+}
+
+/// Provider for `query mir_borrowck`. Extracts hidden types from
+/// the shared `borrowck_result`.
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
 ) -> Result<&FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
-    let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
-    // We should eagerly check stalled coroutine obligations from HIR typeck.
-    // Not doing so leads to silent normalization failures later, which will
-    // fail to register opaque types in the next solver.
-    tcx.ensure_result().check_coroutine_obligations(def)?;
-
-    let input_body: &Body<'_> = &input_body.borrow();
-    if let Some(guar) = input_body.tainted_by_errors {
-        debug!("Skipping borrowck because of tainted body");
-        Err(guar)
-    } else if input_body.should_skip() {
-        debug!("Skipping borrowck because of injected body");
-        let opaque_types = Default::default();
-        Ok(tcx.arena.alloc(opaque_types))
-    } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
-        root_cx.do_mir_borrowck();
-        root_cx.finalize()
+    let result = tcx.borrowck_result(def);
+    match &result.hidden_types {
+        Ok(t) => Ok(t),
+        Err(g) => Err(*g),
     }
+}
+
+/// Provider for `query borrowck_region_summary`. Extracts region summary
+/// for a specific def_id from the shared `borrowck_result`.
+///
+/// Returns a default (empty) summary for items without borrowck (shims,
+/// constructors, trait method declarations). For shims, the collector
+/// handles the transparent-forwarder case in `compose_all_through_chain`.
+fn borrowck_region_summary<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> BorrowckRegionSummary {
+    let root = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
+    // Constructors have synthetic MIR, trivial consts have no MIR — skip them.
+    // Also bail for items without bodies (e.g. trait method declarations like
+    // FnOnce::call_once) which cannot be borrowck'd.
+    if matches!(tcx.def_kind(root), rustc_hir::def::DefKind::Ctor(..)) || tcx.is_trivial_const(root)
+    {
+        return BorrowckRegionSummary::default();
+    }
+
+    if tcx.hir_node(tcx.local_def_id_to_hir_id(root)).body_id().is_none() {
+        return BorrowckRegionSummary::default();
+    }
+
+    let result = tcx.borrowck_result(root);
+    result.region_summaries.get(&def_id).cloned().unwrap_or_default()
 }
 
 /// Data propagated to the typeck parent by nested items.
@@ -435,6 +486,10 @@ fn borrowck_check_region_constraints<'tcx>(
         polonius_facts,
         polonius_context,
     );
+
+    // Compute region summary for this function body.
+    let region_summary = region_summary::compute_region_summary(&regioncx, body, tcx);
+    root_cx.add_region_summary(def, region_summary);
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -908,6 +963,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 unwind: _,
                 call_source: _,
                 fn_span: _,
+                call_id: _,
             } => {
                 self.consume_operand(loc, (func, span), state);
                 for arg in args {
@@ -915,7 +971,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 }
                 self.mutate_place(loc, (*destination, span), Deep, state);
             }
-            TerminatorKind::TailCall { func, args, fn_span: _ } => {
+            TerminatorKind::TailCall { func, args, fn_span: _, call_id: _ } => {
                 self.consume_operand(loc, (func, span), state);
                 for arg in args {
                     self.consume_operand(loc, (&arg.node, arg.span), state);

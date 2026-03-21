@@ -390,6 +390,8 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
     for ty::OutlivesPredicate(arg1, r2) in assumptions {
         collected.insert(ty::OutlivesPredicate(arg1, r2));
         match arg1.kind() {
+            // Outlives args are pure metadata; skip.
+            ty::GenericArgKind::Outlives(_) => {}
             // Elaborate the components of an type, since we may have substituted a
             // generic coroutine with a more specific type.
             ty::GenericArgKind::Type(ty1) => {

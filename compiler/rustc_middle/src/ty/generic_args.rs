@@ -10,6 +10,7 @@ use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_serialize::{Decodable, Encodable};
+pub(super) use rustc_type_ir::OutlivesArgData;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::walk::TypeWalker;
 use smallvec::SmallVec;
@@ -20,22 +21,76 @@ use crate::ty::{
     Lift, List, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, VisitorResult,
     walk_visitable_list,
 };
-
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
 pub type TermKind<'tcx> = rustc_type_ir::TermKind<TyCtxt<'tcx>>;
 
+/// Interned outlives argument for trait-cast specialization.
+/// Wraps `OutlivesArgData` (two region position indices) in an
+/// interned pointer for pointer-based equality and hashing.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+pub struct OutlivesArg<'tcx>(pub Interned<'tcx, OutlivesArgData>);
+
+impl<'tcx> std::fmt::Debug for OutlivesArg<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Outlives({}, {})", self.0.longer, self.0.shorter)
+    }
+}
+
+impl<'tcx> OutlivesArg<'tcx> {
+    pub fn longer(self) -> usize {
+        self.0.longer
+    }
+
+    pub fn shorter(self) -> usize {
+        self.0.shorter
+    }
+
+    pub fn data(self) -> OutlivesArgData {
+        *self.0.0
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::OutlivesArg<TyCtxt<'tcx>> for OutlivesArg<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, longer: usize, shorter: usize) -> Self {
+        tcx.mk_outlives_arg(longer, shorter)
+    }
+
+    fn data(self) -> OutlivesArgData {
+        self.data()
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for OutlivesArg<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
+        V::Result::output()
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for OutlivesArg<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, _folder: &mut F) -> Self {
+        self
+    }
+}
+
 /// An entity in the Rust type system, which can be one of
-/// several kinds (types, lifetimes, and consts).
+/// several kinds (types, lifetimes, consts, or outlives entries).
 /// To reduce memory usage, a `GenericArg` is an interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
-/// indicate the type (`Ty`, `Region`, or `Const`) it points to.
+/// indicate the type (`Ty`, `Region`, `Const`, or `OutlivesArg`) it points to.
 ///
 /// Note: the `PartialEq`, `Eq` and `Hash` derives are only valid because `Ty`,
-/// `Region` and `Const` are all interned.
+/// `Region`, `Const`, and `OutlivesArg` are all interned.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArg<'tcx> {
     ptr: NonNull<()>,
-    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>, OutlivesArg<'tcx>)>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::GenericArg<TyCtxt<'tcx>> for GenericArg<'tcx> {}
@@ -162,6 +217,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
+const OUTLIVES_TAG: usize = 0b11;
 
 #[extension(trait GenericArgPackExt<'tcx>)]
 impl<'tcx> GenericArgKind<'tcx> {
@@ -182,6 +238,11 @@ impl<'tcx> GenericArgKind<'tcx> {
                 // Ensure we can use the tag bits.
                 assert_eq!(align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, NonNull::from(ct.0.0).cast())
+            }
+            GenericArgKind::Outlives(arg) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(align_of_val(&*arg.0.0) & TAG_MASK, 0);
+                (OUTLIVES_TAG, NonNull::from(arg.0.0).cast())
             }
         };
 
@@ -219,6 +280,13 @@ impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<OutlivesArg<'tcx>> for GenericArg<'tcx> {
+    #[inline]
+    fn from(arg: OutlivesArg<'tcx>) -> GenericArg<'tcx> {
+        GenericArgKind::Outlives(arg).pack()
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn kind(self) -> GenericArgKind<'tcx> {
@@ -237,6 +305,9 @@ impl<'tcx> GenericArg<'tcx> {
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     ptr.cast::<WithCachedTypeInfo<ty::ConstKind<'tcx>>>().as_ref(),
+                ))),
+                OUTLIVES_TAG => GenericArgKind::Outlives(OutlivesArg(Interned::new_unchecked(
+                    ptr.cast::<OutlivesArgData>().as_ref(),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -270,9 +341,18 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn as_term(self) -> Option<ty::Term<'tcx>> {
         match self.kind() {
-            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Outlives(..) => None,
             GenericArgKind::Type(ty) => Some(ty.into()),
             GenericArgKind::Const(ct) => Some(ct.into()),
+        }
+    }
+
+    /// Unpack the `GenericArg` as an `OutlivesArg`.
+    #[inline]
+    pub fn as_outlives(self) -> Option<OutlivesArg<'tcx>> {
+        match self.kind() {
+            GenericArgKind::Outlives(arg) => Some(arg),
+            _ => None,
         }
     }
 
@@ -295,7 +375,7 @@ impl<'tcx> GenericArg<'tcx> {
 
     pub fn is_non_region_infer(self) -> bool {
         match self.kind() {
-            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Outlives(..) => false,
             // FIXME: This shouldn't return numerical/float.
             GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
@@ -325,6 +405,9 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
             GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
             GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
+            GenericArgKind::Outlives(arg) => {
+                Some(tcx.mk_outlives_arg(arg.longer(), arg.shorter()).into())
+            }
         }
     }
 }
@@ -338,6 +421,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+            GenericArgKind::Outlives(..) => Ok(self),
         }
     }
 
@@ -346,6 +430,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
             GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
             GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
+            GenericArgKind::Outlives(..) => self,
         }
     }
 }
@@ -356,6 +441,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
+            GenericArgKind::Outlives(..) => V::Result::output(),
         }
     }
 }
@@ -518,11 +604,11 @@ impl<'tcx> GenericArgs<'tcx> {
         self.iter().filter_map(|k| k.as_const())
     }
 
-    /// Returns generic arguments that are not lifetimes.
+    /// Returns generic arguments that are not lifetimes or outlives entries.
     #[inline]
     pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
         self.iter().filter_map(|arg| match arg.kind() {
-            ty::GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(..) => None,
             generic => Some(generic),
         })
     }

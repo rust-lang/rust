@@ -110,6 +110,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let leaf_trait_predicate =
                             self.resolve_vars_if_possible(bound_predicate.rebind(trait_predicate));
 
+                        // Bounded intertrait casting: when the ROOT obligation is
+                        // `T: TraitMetadataTable<I>`, try to emit a specialized
+                        // trait-cast diagnostic that distinguishes the three failure
+                        // modes (target not reachable / missing root bound / source
+                        // not in graph) instead of the generic "not implemented" error.
+                        // We look at the root — not the leaf — because the leaf is
+                        // typically a sub-obligation (e.g. `Self: Sized` implied by
+                        // `TraitMetadataTable: MetaSized`) that hides the real issue.
+                        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(root_tp)) =
+                            root_obligation.predicate.kind().skip_binder()
+                            && Some(root_tp.def_id())
+                                == tcx.lang_items().trait_metadata_table_trait()
+                            && let Some(guar) = self.try_report_trait_cast_error(
+                                root_obligation,
+                                root_obligation.predicate.kind().rebind(root_tp),
+                            )
+                        {
+                            return guar;
+                        }
+
                         // Let's use the root obligation as the main message, when we care about the
                         // most general case ("X doesn't implement Pattern<'_>") over the case that
                         // happened to fail ("char doesn't implement Fn(&mut char)").
@@ -3705,5 +3725,74 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )
             }
         }
+    }
+
+    /// Specialized diagnostics for failures of the `TraitMetadataTable` lang-item
+    /// bound used by the bounded intertrait casting feature. Returns `Some` when
+    /// the failure can be classified (emits the diagnostic); `None` when the
+    /// caller should fall back to the generic unimplemented-trait reporter.
+    ///
+    /// Cases handled:
+    ///
+    /// * `Self == I` (e.g. `dyn Root: TraitMetadataTable<dyn Root>`) — the root
+    ///   trait lacks the required `TraitMetadataTable<dyn Self>` supertrait
+    ///   bound. Emits [`crate::errors::MissingRootBound`].
+    ///
+    /// * `Self != I`, both `dyn Trait`, and `Self`'s elaborated supertrait
+    ///   def-id set does not contain `I`'s principal def-id — the trait named
+    ///   by `Self` is not reachable from the trait graph rooted at `I`. Emits
+    ///   [`crate::errors::TargetNotReachable`].
+    fn try_report_trait_cast_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        let tcx = self.tcx;
+        let self_ty = trait_predicate.self_ty().skip_binder();
+        let tp = trait_predicate.skip_binder();
+        let i_ty = tp.trait_ref.args.type_at(1);
+
+        if self_ty.has_non_region_infer() || i_ty.has_non_region_infer() {
+            return None;
+        }
+
+        // Case: `Self == I` — root trait missing `TraitMetadataTable<dyn Self>`.
+        if self_ty == i_ty
+            && let ty::Dynamic(preds, ..) = self_ty.kind()
+            && let Some(principal) = preds.principal()
+        {
+            let guar = tcx.dcx().emit_err(crate::errors::MissingRootBound {
+                span: obligation.cause.span,
+                root: tcx.item_name(principal.skip_binder().def_id),
+            });
+            return Some(guar);
+        }
+
+        // Case: `Self != I`, both `dyn Trait` — check whether `Self`'s
+        // principal trait is reachable from `I`'s principal via the
+        // supertrait chain. If not, `Self` is not in `I`'s trait graph.
+        if let ty::Dynamic(self_preds, ..) = self_ty.kind()
+            && let ty::Dynamic(root_preds, ..) = i_ty.kind()
+            && let Some(self_principal) = self_preds.principal()
+            && let Some(root_principal) = root_preds.principal()
+        {
+            let self_principal_did = self_principal.skip_binder().def_id;
+            let root_principal_did = root_principal.skip_binder().def_id;
+            if self_principal_did != root_principal_did {
+                let super_def_ids: FxHashSet<DefId> =
+                    rustc_middle::ty::elaborate::supertrait_def_ids(tcx, self_principal_did)
+                        .collect();
+                if !super_def_ids.contains(&root_principal_did) {
+                    let guar = tcx.dcx().emit_err(crate::errors::TargetNotReachable {
+                        span: obligation.cause.span,
+                        target: tcx.item_name(self_principal_did),
+                        root: tcx.item_name(root_principal_did),
+                    });
+                    return Some(guar);
+                }
+            }
+        }
+
+        None
     }
 }

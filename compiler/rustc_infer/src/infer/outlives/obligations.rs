@@ -94,7 +94,7 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::GenericArgKind::Type(ty1) => {
                 self.register_type_outlives_constraint(ty1, r2, cause);
             }
-            ty::GenericArgKind::Const(_) => unreachable!(),
+            ty::GenericArgKind::Const(_) | ty::GenericArgKind::Outlives(_) => unreachable!(),
         }
     }
 
@@ -561,8 +561,8 @@ where
                 GenericArgKind::Type(ty) => {
                     self.type_must_outlive(origin.clone(), ty, region, constraint);
                 }
-                GenericArgKind::Const(_) => {
-                    // Const parameters don't impose constraints.
+                GenericArgKind::Const(_) | GenericArgKind::Outlives(_) => {
+                    // Const parameters and outlives args don't impose constraints.
                 }
             }
         }

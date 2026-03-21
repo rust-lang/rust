@@ -70,10 +70,10 @@ use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, Predefi
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,
-    PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree, ValTreeKind,
-    Visibility,
+    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, OutlivesArg,
+    OutlivesArgData, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -204,6 +204,9 @@ pub struct CtxtInterners<'tcx> {
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
+    outlives_arg: InternedSet<'tcx, ty::OutlivesArgData>,
+    call_chains: InternedSet<'tcx, List<(rustc_span::def_id::DefId, u32, GenericArgsRef<'tcx>)>>,
+    bv_to_param_mappings: InternedSet<'tcx, List<Option<usize>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -241,6 +244,9 @@ impl<'tcx> CtxtInterners<'tcx> {
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
+            outlives_arg: InternedSet::with_capacity(N / 4),
+            call_chains: InternedSet::with_capacity(N),
+            bv_to_param_mappings: InternedSet::with_capacity(N),
         }
     }
 
@@ -253,12 +259,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                 .intern(kind, |kind| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
-
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
                         stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
+                        region_slots: flags.region_slots,
                     }))
                 })
                 .0,
@@ -279,12 +285,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                 .intern(kind, |kind: ty::ConstKind<'_>| {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_const_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
-
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
                         stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
+                        region_slots: flags.region_slots,
                     }))
                 })
                 .0,
@@ -324,12 +330,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                     let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);
 
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
-
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
                         stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
+                        region_slots: flags.region_slots,
                     }))
                 })
                 .0,
@@ -688,6 +694,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let key = self.untracked().source_span.push(span);
         assert_eq!(key, CRATE_DEF_ID);
         TyCtxtFeed { tcx: self, key }
+    }
+
+    pub fn feed_codegen_mir(self, instance: ty::Instance<'tcx>, body: &'tcx Body<'tcx>) {
+        crate::mir::pretty::dump_post_mono_mir(self, instance, body);
+        TyCtxtFeed { tcx: self, key: instance }.codegen_mir(body)
     }
 
     /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
@@ -1245,6 +1256,18 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn crate_types(self) -> &'tcx [CrateType] {
         &self.crate_types
+    }
+
+    /// Whether this crate is a "global crate" — the final link product
+    /// (binary, staticlib, or cdylib) responsible for resolving trait-cast
+    /// globals. Overridable via `-Z global_crate=yes|no`.
+    pub fn is_global_crate(self) -> bool {
+        if let Some(explicit) = self.sess.opts.unstable_opts.global_crate {
+            return explicit;
+        }
+        self.crate_types().iter().any(|ct| {
+            matches!(ct, CrateType::Executable | CrateType::StaticLib | CrateType::Cdylib)
+        })
     }
 
     pub fn needs_metadata(self) -> bool {
@@ -1833,6 +1856,7 @@ nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
 nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
+nop_lift! { outlives_arg; ty::OutlivesArg<'a> => ty::OutlivesArg<'tcx> }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
 nop_list_lift! {
@@ -2096,6 +2120,14 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    outlives_arg: pub(crate) intern_outlives_arg(OutlivesArgData): OutlivesArg -> OutlivesArg<'tcx>,
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Create an interned `OutlivesArg` from `(longer, shorter)` indices.
+    pub fn mk_outlives_arg(self, longer: usize, shorter: usize) -> ty::OutlivesArg<'tcx> {
+        self.intern_outlives_arg(ty::OutlivesArgData { longer, shorter })
+    }
 }
 
 macro_rules! slice_interners {
@@ -2132,6 +2164,8 @@ slice_interners!(
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
+    call_chains: pub mk_call_chain((rustc_span::def_id::DefId, u32, GenericArgsRef<'tcx>)),
+    bv_to_param_mappings: pub mk_lifetime_bv_to_param_mapping(Option<usize>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2464,6 +2498,25 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_const_list(xs))
+    }
+
+    pub fn mk_call_chain_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                (rustc_span::def_id::DefId, u32, GenericArgsRef<'tcx>),
+                &'tcx List<(rustc_span::def_id::DefId, u32, GenericArgsRef<'tcx>)>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_call_chain(xs))
+    }
+
+    pub fn mk_lifetime_bv_to_param_mapping_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Option<usize>, &'tcx List<Option<usize>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_lifetime_bv_to_param_mapping(xs))
     }
 
     // Unlike various other `mk_*_from_iter` functions, this one uses `I:

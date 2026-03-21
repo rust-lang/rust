@@ -1,7 +1,8 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_span::Span;
 use tracing::debug;
 
@@ -10,7 +11,7 @@ use tracing::debug;
 /// and replacement of terminators, and then apply the queued changes all at
 /// once with `apply`. This is useful for MIR transformation passes.
 pub(crate) struct MirPatch<'tcx> {
-    term_patch_map: FxHashMap<BasicBlock, TerminatorKind<'tcx>>,
+    term_patch_map: FxIndexMap<BasicBlock, TerminatorKind<'tcx>>,
     /// Set of statements that should be replaced by `Nop`.
     nop_statements: Vec<Location>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
@@ -30,6 +31,13 @@ pub(crate) struct MirPatch<'tcx> {
     /// The number of blocks at the start of the transformation. New blocks
     /// get appended at the end.
     next_block: usize,
+    /// The DefId of the body being patched, used as the first element of
+    /// `(DefId, u32, callee_args)` call-site identifiers for new Call/TailCall
+    /// terminators.
+    body_def_id: DefId,
+    /// Counter for allocating unique call-site identifiers for new
+    /// Call/TailCall terminators created during transformation.
+    next_call_id: u32,
 }
 
 impl<'tcx> MirPatch<'tcx> {
@@ -43,6 +51,8 @@ impl<'tcx> MirPatch<'tcx> {
             new_locals: vec![],
             next_local: body.local_decls.len(),
             next_block: body.basic_blocks.len(),
+            body_def_id: body.source.def_id(),
+            next_call_id: body.next_call_id,
             resume_block: None,
             unreachable_cleanup_block: None,
             unreachable_no_cleanup_block: None,
@@ -200,6 +210,18 @@ impl<'tcx> MirPatch<'tcx> {
         self.new_locals[new_local_idx].ty
     }
 
+    /// Allocates a fresh call-site identifier chain for a new Call/TailCall
+    /// terminator being created during this transformation.
+    pub(crate) fn next_call_id(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        callee_args: ty::GenericArgsRef<'tcx>,
+    ) -> &'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)> {
+        let id = self.next_call_id;
+        self.next_call_id += 1;
+        tcx.mk_call_chain(&[(self.body_def_id, id, callee_args)])
+    }
+
     /// Queues the addition of a new basic block.
     pub(crate) fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
         let block = BasicBlock::from_usize(self.next_block + self.new_blocks.len());
@@ -268,6 +290,7 @@ impl<'tcx> MirPatch<'tcx> {
         };
         bbs.extend(self.new_blocks);
         body.local_decls.extend(self.new_locals);
+        body.next_call_id = self.next_call_id;
 
         for loc in self.nop_statements {
             bbs[loc.block].statements[loc.statement_index].make_nop(true);
@@ -295,8 +318,6 @@ impl<'tcx> MirPatch<'tcx> {
             delta += 1;
         }
 
-        // The order in which we patch terminators does not change the result.
-        #[allow(rustc::potential_query_instability)]
         for (src, patch) in self.term_patch_map {
             debug!("MirPatch: patching block {:?}", src);
             let bb = &mut bbs[src];

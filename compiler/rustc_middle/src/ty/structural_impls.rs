@@ -165,6 +165,7 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
+            GenericArgKind::Outlives(o) => o.fmt(f),
         }
     }
 }

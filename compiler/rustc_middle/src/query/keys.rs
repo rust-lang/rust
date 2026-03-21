@@ -361,3 +361,33 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
         self.0.default_span(tcx)
     }
 }
+
+impl<'tcx> QueryKey
+    for (
+        ty::Instance<'tcx>,
+        &'tcx ty::List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
+        ty::Instance<'tcx>,
+    )
+{
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
+impl<'tcx> QueryKey for (&'tcx [GenericArg<'tcx>], usize) {
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> QueryKey for (Ty<'tcx>, Ty<'tcx>, &'tcx [GenericArg<'tcx>]) {
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> QueryKey for (Ty<'tcx>, Ty<'tcx>, &'tcx [Option<usize>], &'tcx [GenericArg<'tcx>]) {
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}

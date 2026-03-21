@@ -14,7 +14,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
+    self, Instance, InstanceKind, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::Spanned;
@@ -860,7 +860,15 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 ) {
     let tcx = inliner.tcx();
     let terminator = caller_body[callsite.block].terminator.take().unwrap();
-    let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+    let TerminatorKind::Call {
+        func,
+        args,
+        destination,
+        unwind,
+        target,
+        call_id: caller_call_chain,
+        ..
+    } = terminator.kind
     else {
         bug!("unexpected terminator kind {:?}", terminator.kind);
     };
@@ -941,6 +949,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         return_block,
         tcx,
         always_live_locals: UsedInStmtLocals::new(&callee_body).locals,
+        caller_call_chain,
     };
 
     // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -1185,6 +1194,10 @@ struct Integrator<'a, 'tcx> {
     return_block: Option<BasicBlock>,
     tcx: TyCtxt<'tcx>,
     always_live_locals: DenseBitSet<Local>,
+    /// The call-chain of the call site being inlined. When integrating
+    /// callee MIR, this is prepended to each inlined call's chain to
+    /// record the full inlining path.
+    caller_call_chain: &'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
 }
 
 impl Integrator<'_, '_> {
@@ -1321,11 +1334,17 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 // check_mir_body forbids tail calls
                 unreachable!()
             }
-            TerminatorKind::Call { ref mut target, ref mut unwind, .. } => {
+            TerminatorKind::Call { ref mut target, ref mut unwind, ref mut call_id, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
                 *unwind = self.map_unwind(*unwind);
+                // Prepend the caller's call chain to record the full inlining path.
+                let mut chain: smallvec::SmallVec<[(DefId, u32, ty::GenericArgsRef<'tcx>); 4]> =
+                    smallvec::SmallVec::new();
+                chain.extend(self.caller_call_chain.iter());
+                chain.extend(call_id.iter());
+                *call_id = self.tcx.mk_call_chain(&chain);
             }
             TerminatorKind::Assert { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);

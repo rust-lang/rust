@@ -94,6 +94,9 @@ fn encode_args<'tcx>(
                         .skip_norm_wip();
                     s.push_str(&encode_const(tcx, c, ct_ty, dict, options));
                 }
+                GenericArgKind::Outlives(_) => {
+                    // Outlives args are metadata-only; nothing to encode for CFI.
+                }
             }
         }
         s.push('E');

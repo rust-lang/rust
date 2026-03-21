@@ -523,8 +523,8 @@ where
                     // Remove the canonicalized universal vars, since we only care about stalled existentials.
                     let mut sub_roots = Vec::new();
                     stalled_vars.retain(|arg| match arg.kind() {
-                        // Lifetimes can never stall goals.
-                        ty::GenericArgKind::Lifetime(_) => false,
+                        // Lifetimes and outlives args can never stall goals.
+                        ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => false,
                         ty::GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Infer(ty::TyVar(vid)) => {
                                 sub_roots.push(self.delegate.sub_unification_table_root_var(vid));

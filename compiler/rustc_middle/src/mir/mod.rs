@@ -310,6 +310,16 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
+    /// Body-local counter for allocating the `u32` component of call-site
+    /// identifiers. Each `TerminatorKind::Call` and `TerminatorKind::TailCall`
+    /// carries a `call_id: &'tcx List<(DefId, u32, GenericArgsRef<'tcx>)>`
+    /// chain. During MIR building, this counter allocates fresh `u32` values
+    /// for the body's own calls; those are paired with the body's `DefId` and
+    /// the edge-local callee args to form single-element chains. The counter is
+    /// preserved across optimizations so that synthetic calls added by later
+    /// passes get fresh IDs.
+    pub next_call_id: u32,
+
     /// Coverage information collected from THIR/MIR during MIR building,
     /// to be used by the `InstrumentCoverage` pass.
     ///
@@ -369,6 +379,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
+            next_call_id: 0,
             coverage_info_hi: None,
             function_coverage_info: None,
         };
@@ -400,11 +411,20 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
+            next_call_id: 0,
             coverage_info_hi: None,
             function_coverage_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
+    }
+
+    /// Allocate a fresh stable call-site identifier for a new `Call` or
+    /// `TailCall` terminator.
+    pub fn next_call_id(&mut self) -> u32 {
+        let id = self.next_call_id;
+        self.next_call_id += 1;
+        id
     }
 
     #[inline]
@@ -1692,11 +1712,11 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 152);
+    static_assert_size!(BasicBlockData<'_>, 160);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 56);
-    static_assert_size!(Terminator<'_>, 96);
+    static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

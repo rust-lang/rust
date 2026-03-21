@@ -188,7 +188,20 @@ fn predicates_reference_self(
             // impossible to make into existential bounds without eager resolution
             // or something.
             // e.g. `trait A: B<Item = Self::Assoc>`.
-            predicate_references_self(tcx, trait_def_id, clause, sp, AllowSelfProjections::No)
+            //
+            // Exception: `TraitMetadataTable<dyn T<Assoc = Self::Assoc>>` bounds
+            // are safe because any well-formed `dyn T<Assoc = X>` resolves
+            // `Self::Assoc` to `X` via the projection binding. We allow self
+            // projections (but not bare `Self`) in this position.
+            let allow_self_projections = if let ty::ClauseKind::Trait(ref data) =
+                clause.kind().skip_binder()
+                && Some(data.def_id()) == tcx.lang_items().trait_metadata_table_trait()
+            {
+                AllowSelfProjections::Yes
+            } else {
+                AllowSelfProjections::No
+            };
+            predicate_references_self(tcx, trait_def_id, clause, sp, allow_self_projections)
         })
         .collect()
 }

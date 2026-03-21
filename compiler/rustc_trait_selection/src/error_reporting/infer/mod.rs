@@ -678,6 +678,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::GenericArgKind::Const(ct) => {
                     value.push_normal(ct.to_string());
                 }
+                ty::GenericArgKind::Outlives(_) => continue,
                 // Highlight all the type arguments that aren't at `pos` and compare
                 // the type argument at `pos` and `other_ty`.
                 ty::GenericArgKind::Type(type_arg) => {
@@ -1152,6 +1153,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 let ca2 = arg2.expect_const();
                                 maybe_highlight(ca1, ca2, &mut values, self.tcx);
                             }
+                            ty::GenericArgKind::Outlives(_) => continue,
                         }
                     }
 

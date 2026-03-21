@@ -828,6 +828,31 @@ pub enum TerminatorKind<'tcx> {
         /// This `Span` is the span of the function, without the dot and receiver
         /// e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
+        /// Stable call-site identifier chain, recording the full inlining path.
+        ///
+        /// Each element is `(DefId, u32, GenericArgsRef<'tcx>)` where the
+        /// `DefId` identifies the function body in which the call was originally
+        /// constructed during MIR building, the `u32` is a body-local counter
+        /// unique among all call/tail-call terminators within that body, and the
+        /// `GenericArgsRef<'tcx>` stores the callee's edge-local generic-arg
+        /// template in that source body's own generic space.
+        ///
+        /// Before inlining, this is a single-element list
+        /// `[(origin, id, callee_args)]`.
+        /// When the inliner merges callee MIR into a caller, it prepends the
+        /// caller's call-chain to each inlined call's chain, producing a
+        /// multi-element list that records the full inlining path from outermost
+        /// caller to innermost call site.
+        ///
+        /// The monomorphization collector walks this chain to compose
+        /// `BorrowckRegionSummary` lookups transitively: each
+        /// `(DefId, u32, GenericArgsRef<'tcx>)` in the chain identifies which
+        /// summary to query (by `DefId`), which `CallSiteRegionMapping` to use
+        /// (by the `u32`), and which edge-local generic args to concretize when
+        /// transporting walk positions across body boundaries.
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        call_id: &'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
     },
 
     /// Tail call.
@@ -858,6 +883,10 @@ pub enum TerminatorKind<'tcx> {
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
+        /// Stable call-site identifier chain. See [`TerminatorKind::Call::call_id`].
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        call_id: &'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
     },
 
     /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
@@ -1743,6 +1772,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 80);
+    static_assert_size!(TerminatorKind<'_>, 88);
     // tidy-alphabetical-end
 }

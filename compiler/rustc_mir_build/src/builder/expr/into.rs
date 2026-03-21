@@ -464,6 +464,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
+                let call_id = this.mk_call_id(&fun);
                 this.cfg.terminate(
                     block,
                     source_info,
@@ -479,6 +480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             CallSource::OverloadedOperator
                         },
                         fn_span,
+                        call_id,
                     },
                 );
                 this.diverge_from(block);
@@ -510,6 +512,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ref_place,
                         Rvalue::Ref(this.tcx.lifetimes.re_erased, BorrowKind::Shared, place),
                     );
+                    let call_id = this.mk_call_id(&func);
                     this.cfg.terminate(
                         block,
                         source_info,
@@ -522,6 +525,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             unwind: UnwindAction::Unreachable,
                             call_source: CallSource::Use,
                             fn_span: expr_span,
+                            call_id,
                         },
                     );
                     success.unit()

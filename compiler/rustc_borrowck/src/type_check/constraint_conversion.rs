@@ -209,6 +209,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     }
 
                     GenericArgKind::Const(_) => unreachable!(),
+
+                    GenericArgKind::Outlives(_) => {
+                        // Outlives args are pure metadata; nothing to constrain.
+                    }
                 }
             }
 

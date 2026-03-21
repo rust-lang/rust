@@ -207,6 +207,12 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
             }
             ty::GenericArgKind::Type(ty) => GenericArgKind::Type(ty.stable(tables, cx)),
             ty::GenericArgKind::Const(cnst) => GenericArgKind::Const(cnst.stable(tables, cx)),
+            ty::GenericArgKind::Outlives(_) => {
+                // Outlives args are internal monomorphization metadata: they
+                // only appear on post-collection Instances, never on any
+                // GenericArgs exposed through the stable API.
+                unreachable!("outlives arg in stable conversion")
+            }
         }
     }
 }

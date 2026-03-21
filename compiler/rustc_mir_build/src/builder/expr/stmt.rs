@@ -132,10 +132,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     unpack!(block = this.break_for_tail_call(block, &args, source_info));
 
+                    let call_id = this.mk_call_id(&fun);
                     this.cfg.terminate(
                         block,
                         source_info,
-                        TerminatorKind::TailCall { func: fun, args, fn_span },
+                        TerminatorKind::TailCall { func: fun, args, fn_span, call_id },
                     );
 
                     this.cfg.start_new_block().unit()

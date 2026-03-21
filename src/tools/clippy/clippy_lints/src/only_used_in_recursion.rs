@@ -488,6 +488,7 @@ fn has_matching_args(kind: FnKind, args: GenericArgsRef<'_>) -> bool {
             GenericArgKind::Lifetime(_) => true,
             GenericArgKind::Type(ty) => matches!(*ty.kind(), ty::Param(ty) if ty.index as usize == idx),
             GenericArgKind::Const(c) => matches!(c.kind(), ConstKind::Param(c) if c.index as usize == idx),
+            GenericArgKind::Outlives(_) => true,
         }),
         FnKind::ImplTraitFn(expected_args) => std::ptr::from_ref(args) as usize == expected_args,
     }

@@ -11,6 +11,13 @@ LL | / fn foo() -> Bar
 LL | | where
 LL | |     Bar: Send,
    | |______________^
+note: ...which requires borrow-checking (with region summaries) `foo`...
+  --> $DIR/in-where-clause.rs:9:1
+   |
+LL | / fn foo() -> Bar
+LL | | where
+LL | |     Bar: Send,
+   | |______________^
 note: ...which requires promoting constants in MIR for `foo`...
   --> $DIR/in-where-clause.rs:9:1
    |

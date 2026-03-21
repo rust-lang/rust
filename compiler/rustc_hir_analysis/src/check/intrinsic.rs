@@ -5,7 +5,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::check::check_function_signature;
 use crate::errors::{UnrecognizedIntrinsicFunction, WrongNumberOfGenericArgumentsToIntrinsic};
@@ -800,6 +800,47 @@ pub(crate) fn check_intrinsic_type(
         | sym::atomic_or
         | sym::atomic_xor => (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], param(0)),
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
+
+        sym::trait_metadata_index => (
+            2,
+            0,
+            vec![],
+            Ty::new_tup(
+                tcx,
+                &[Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.u8), tcx.types.usize],
+            ),
+        ),
+        sym::trait_metadata_table => {
+            // Build ptr::NonNull<Option<ptr::NonNull<()>>>
+            let non_null_def_id = tcx.get_diagnostic_item(sym::NonNull).unwrap();
+            let non_null_adt = tcx.adt_def(non_null_def_id);
+            let option_def_id = tcx.require_lang_item(LangItem::Option, DUMMY_SP);
+            let option_adt = tcx.adt_def(option_def_id);
+
+            // Build NonNull<()>
+            let inner_non_null_args = tcx.mk_args(&[tcx.types.unit.into()]);
+            let inner_non_null_ty = Ty::new_adt(tcx, non_null_adt, inner_non_null_args);
+
+            // Build Option<NonNull<()>>
+            let option_args = tcx.mk_args(&[inner_non_null_ty.into()]);
+            let option_ty = Ty::new_adt(tcx, option_adt, option_args);
+
+            // Build NonNull<Option<NonNull<()>>>
+            let outer_non_null_args = tcx.mk_args(&[option_ty.into()]);
+            let table_ptr = Ty::new_adt(tcx, non_null_adt, outer_non_null_args);
+
+            (
+                2,
+                0,
+                vec![],
+                Ty::new_tup(
+                    tcx,
+                    &[Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.u8), table_ptr],
+                ),
+            )
+        }
+        sym::trait_metadata_table_len => (1, 0, vec![], tcx.types.usize),
+        sym::trait_cast_is_lifetime_erasure_safe => (2, 0, vec![], tcx.types.bool),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

@@ -819,6 +819,8 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                             }
                             _ => false,
                         },
+                        // Outlives args are metadata, not identity-relevant.
+                        GenericArgKind::Outlives(_) => true,
                     }
                 })
             }

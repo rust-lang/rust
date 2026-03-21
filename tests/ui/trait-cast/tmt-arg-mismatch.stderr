@@ -1,0 +1,11 @@
+error: `TraitMetadataTable` type argument does not match a cast root
+  --> $DIR/tmt-arg-mismatch.rs:25:26
+   |
+LL | trait ChildTrait: Root + TraitMetadataTable<dyn Unrelated> {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Unrelated` is not a (transitive) supertrait of `ChildTrait`
+   |
+   = note: on a trait `Tr`, a `TraitMetadataTable<dyn X>` supertrait bound requires `X = Self` (declaring `Tr` as a cast root) or `X = R` for some transitive supertrait `R` of `Tr` that is itself a cast root
+   = help: subtraits inherit `TraitMetadataTable<dyn Root>` from their root — the explicit bound is usually unnecessary
+
+error: aborting due to 1 previous error
+

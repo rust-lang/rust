@@ -26,7 +26,7 @@ pub fn codegen_naked_asm<
     item_data: MonoItemData,
 ) {
     assert!(!instance.args.has_infer());
-    let mir = cx.tcx().instance_mir(instance.def);
+    let mir = cx.tcx().codegen_mir(instance);
 
     let rustc_middle::mir::TerminatorKind::InlineAsm {
         asm_macro: _,

@@ -304,6 +304,9 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
                                 _ => self.static_addr_of_impl(init, alloc.align, None),
                             };
+                            if alloc.address_significant {
+                                llvm::set_unnamed_address(value, llvm::UnnamedAddr::No);
+                            }
                             if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty()
                             {
                                 let hash = self.tcx.with_stable_hashing_context(|mut hcx| {

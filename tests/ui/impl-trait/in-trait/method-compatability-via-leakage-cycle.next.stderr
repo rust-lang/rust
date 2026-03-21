@@ -24,6 +24,11 @@ note: ...which requires borrow-checking `<impl at $DIR/method-compatability-via-
    |
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking (with region summaries) `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo`...
+  --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
+   |
+LL |     fn foo(b: bool) -> impl Sized {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires promoting constants in MIR for `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo`...
   --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
    |

@@ -909,7 +909,78 @@ impl<'tcx> Instance<'tcx> {
             tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
+
+    // --- Outlives specialization helpers ---
+
+    /// Return a new Instance with the sentinel prepended, then `outlives`
+    /// entries appended to `self.args`. The entries must be sorted and
+    /// deduplicated. Always produces a structurally distinct Instance from
+    /// `self`, even when `outlives` is empty — the sentinel guarantees this.
+    pub fn with_outlives(self, tcx: TyCtxt<'tcx>, outlives: &[(usize, usize)]) -> Instance<'tcx> {
+        debug_assert!(
+            !outlives.contains(&OUTLIVES_SENTINEL),
+            "sentinel must not appear in caller-supplied outlives list"
+        );
+        let sentinel =
+            std::iter::once(tcx.mk_outlives_arg(OUTLIVES_SENTINEL.0, OUTLIVES_SENTINEL.1).into());
+        let new_args = tcx.mk_args_from_iter(
+            self.args
+                .iter()
+                .chain(sentinel)
+                .chain(outlives.iter().map(|&(l, s)| tcx.mk_outlives_arg(l, s).into())),
+        );
+        Instance { def: self.def, args: new_args }
+    }
+
+    /// Return the tail slice of `GenericArg`s that are `Outlives` entries,
+    /// including the sentinel. This is the structural-layer helper used for
+    /// Instance identity (hashing, mangling, `Eq`).
+    pub fn outlives_entries(self) -> &'tcx [ty::GenericArg<'tcx>] {
+        let start =
+            self.args.iter().position(|a| matches!(a.kind(), ty::GenericArgKind::Outlives(_)));
+        match start {
+            Some(i) => &self.args[i..],
+            None => &[],
+        }
+    }
+
+    /// Iterate the semantic `(longer, shorter)` index pairs from the Outlives
+    /// tail, skipping the sentinel (always first). Panics via `bug!()` if any
+    /// entry after the sentinel is not `Outlives`.
+    pub fn outlives_indices_iter(self) -> impl Iterator<Item = (usize, usize)> + 'tcx {
+        self.outlives_entries().iter().skip(1).map(|a| match a.kind() {
+            ty::GenericArgKind::Outlives(o) => (o.longer(), o.shorter()),
+            _ => bug!("non-Outlives entry in outlives tail"),
+        })
+    }
+
+    /// Returns `true` if the Instance has been augmented (carries at least the
+    /// sentinel).
+    pub fn has_outlives_entries(self) -> bool {
+        !self.outlives_entries().is_empty()
+    }
+
+    /// Return the base Instance with all Outlives entries (including sentinel)
+    /// stripped.
+    pub fn strip_outlives(self, tcx: TyCtxt<'tcx>) -> Instance<'tcx> {
+        if !self.has_outlives_entries() {
+            return self;
+        }
+        let outlives_len = self
+            .args
+            .iter()
+            .rev()
+            .take_while(|a| matches!(a.kind(), ty::GenericArgKind::Outlives(..)))
+            .count();
+        let base_args =
+            tcx.mk_args_from_iter(self.args.iter().take(self.args.len() - outlives_len));
+        Instance { def: self.def, args: base_args }
+    }
 }
+
+/// Sentinel value prepended to every augmented Instance's Outlives tail.
+/// Distinguishes "augmented, empty outlives class" from "un-augmented base".
+pub const OUTLIVES_SENTINEL: (usize, usize) = (usize::MAX, usize::MAX);
 
 fn needs_fn_once_adapter_shim(
     actual_closure_kind: ty::ClosureKind,

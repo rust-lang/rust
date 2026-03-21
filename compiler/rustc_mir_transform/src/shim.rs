@@ -564,6 +564,7 @@ struct CloneShimBuilder<'tcx> {
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     span: Span,
     sig: ty::FnSig<'tcx>,
+    next_call_id: u32,
 }
 
 impl<'tcx> CloneShimBuilder<'tcx> {
@@ -582,6 +583,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             blocks: IndexVec::new(),
             span,
             sig,
+            next_call_id: 0,
         }
     }
 
@@ -669,6 +671,9 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         ))));
 
         // `let loc = Clone::clone(ref_loc);`
+        let call_id =
+            tcx.mk_call_chain(&[(self.def_id, self.next_call_id, tcx.mk_args(&[ty.into()]))]);
+        self.next_call_id += 1;
         self.block(
             vec![statement],
             TerminatorKind::Call {
@@ -679,6 +684,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 unwind: UnwindAction::Cleanup(cleanup),
                 call_source: CallSource::Normal,
                 fn_span: self.span,
+                call_id,
             },
             false,
         );
@@ -950,6 +956,7 @@ fn build_call_shim<'tcx>(
 
     let n_blocks = if let Some(Adjustment::RefMut) = rcvr_adjustment { 5 } else { 2 };
     let mut blocks = IndexVec::with_capacity(n_blocks);
+    let shim_def_id = instance.def_id();
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData::new_stmts(
             statements,
@@ -960,6 +967,11 @@ fn build_call_shim<'tcx>(
 
     // BB #0
     let args = args.into_iter().map(|a| Spanned { node: a, span: DUMMY_SP }).collect();
+    let call_id = tcx.mk_call_chain(&[(
+        shim_def_id,
+        0,
+        callee.const_fn_def().map(|(_, args)| args).unwrap_or_else(|| tcx.mk_args(&[])),
+    )]);
     block(
         &mut blocks,
         statements,
@@ -975,6 +987,7 @@ fn build_call_shim<'tcx>(
             },
             call_source: CallSource::Misc,
             fn_span: span,
+            call_id,
         },
         false,
     );

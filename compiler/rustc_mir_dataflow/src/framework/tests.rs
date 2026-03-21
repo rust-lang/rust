@@ -16,7 +16,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
     let source_info = mir::SourceInfo::outermost(DUMMY_SP);
 
     let mut blocks = IndexVec::new();
-    let mut block = |n, kind| {
+    let block = |n, kind, blocks: &mut IndexVec<_, _>| {
         let nop = mir::Statement::new(source_info, mir::StatementKind::Nop);
 
         blocks.push(mir::BasicBlockData::new_stmts(
@@ -28,8 +28,8 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
     let dummy_place = mir::Place { local: mir::RETURN_PLACE, projection: ty::List::empty() };
 
-    block(4, mir::TerminatorKind::Return);
-    block(1, mir::TerminatorKind::Return);
+    block(4, mir::TerminatorKind::Return, &mut blocks);
+    block(1, mir::TerminatorKind::Return, &mut blocks);
     block(
         2,
         mir::TerminatorKind::Call {
@@ -40,10 +40,12 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             unwind: mir::UnwindAction::Continue,
             call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
+            call_id: ty::List::empty(),
         },
+        &mut blocks,
     );
-    block(3, mir::TerminatorKind::Return);
-    block(0, mir::TerminatorKind::Return);
+    block(3, mir::TerminatorKind::Return, &mut blocks);
+    block(0, mir::TerminatorKind::Return, &mut blocks);
     block(
         4,
         mir::TerminatorKind::Call {
@@ -54,7 +56,9 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             unwind: mir::UnwindAction::Continue,
             call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
+            call_id: ty::List::empty(),
         },
+        &mut blocks,
     );
 
     mir::Body::new_cfg_only(blocks)

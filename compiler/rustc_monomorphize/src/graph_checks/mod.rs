@@ -1,8 +1,7 @@
 //! Checks that need to operate on the entire mono item graph
-use rustc_middle::mono::MonoItem;
+use rustc_middle::mono::{MonoItem, UsageMap};
 use rustc_middle::ty::TyCtxt;
 
-use crate::collector::UsageMap;
 use crate::graph_checks::statics::check_static_initializers_are_acyclic;
 
 mod statics;

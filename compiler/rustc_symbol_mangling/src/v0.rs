@@ -383,8 +383,12 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         });
 
         // Encode impl generic params if the generic parameters contain non-region parameters
-        // and this isn't an inherent impl.
-        if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
+        // (or Outlives entries from the mono collector's augmentation) and this isn't an
+        // inherent impl. Outlives entries don't set TypeFlags params, so check explicitly.
+        let has_outlives = args.iter().any(|a| matches!(a.kind(), GenericArgKind::Outlives(_)));
+        if impl_trait_ref.is_some()
+            && (args.iter().any(|a| a.has_non_region_param()) || has_outlives)
+        {
             self.print_path_with_generic_args(
                 |this| {
                     this.path_append_ns(
@@ -956,6 +960,14 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 GenericArgKind::Const(c) => {
                     self.push("K");
                     c.print(self)?;
+                }
+                GenericArgKind::Outlives(o) => {
+                    // Mangle outlives entries as "Oo<longer>_<shorter>E"
+                    self.push("Oo");
+                    self.push(&format!("{}", o.longer()));
+                    self.push("_");
+                    self.push(&format!("{}", o.shorter()));
+                    self.push("E");
                 }
             }
         }

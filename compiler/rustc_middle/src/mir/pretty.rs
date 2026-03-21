@@ -368,6 +368,57 @@ pub fn write_mir_pretty<'tcx>(
     Ok(())
 }
 
+/// If `-Zdump-post-mono-mir` is enabled, write the instance-specific MIR body
+/// to `<dir>/<symbol_name>.post-mono.mir` (or stdout if no path is given).
+pub fn dump_post_mono_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+    body: &Body<'tcx>,
+) {
+    use rustc_session::config::SwitchWithOptPath;
+
+    let path = match &tcx.sess.opts.unstable_opts.dump_post_mono_mir {
+        SwitchWithOptPath::Enabled(p) => p.clone(),
+        SwitchWithOptPath::Disabled => return,
+    };
+
+    let writer = MirWriter::new(tcx);
+    let symbol = tcx.symbol_name(instance);
+
+    // Sanitize symbol name for use as a filename.
+    let sanitized: String = symbol
+        .name
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | '\0' => '_',
+            c => c,
+        })
+        .collect();
+
+    let write_body = |w: &mut dyn io::Write| -> io::Result<()> {
+        writeln!(w, "// post-mono MIR for instance `{instance}`")?;
+        writeln!(w, "// symbol: {}", symbol.name)?;
+        writeln!(w)?;
+        writer.write_mir_fn(body, w)
+    };
+
+    if let Some(ref dir) = path {
+        let file_path = dir.join(format!("{sanitized}.post-mono.mir"));
+        let _: io::Result<()> = try {
+            fs::create_dir_all(dir).map_err(|e| {
+                io::Error::new(e.kind(), format!("creating post-mono MIR dump dir: {dir:?}; {e}"))
+            })?;
+            let mut file = fs::File::create_buffered(&file_path).map_err(|e| {
+                io::Error::new(e.kind(), format!("creating post-mono MIR file: {file_path:?}; {e}"))
+            })?;
+            write_body(&mut file)?;
+        };
+    } else {
+        let mut stdout = io::stdout().lock();
+        let _ = write_body(&mut stdout);
+    }
+}
+
 /// Does the writing of MIR to output, e.g. a file.
 pub struct MirWriter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

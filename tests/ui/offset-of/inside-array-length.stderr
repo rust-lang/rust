@@ -53,6 +53,11 @@ note: ...which requires borrow-checking `foo::{constant#0}`...
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking (with region summaries) `foo::{constant#0}`...
+  --> $DIR/inside-array-length.rs:9:27
+   |
+LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}), args: ['^c_1, T/#1] }), bound_vars: [] }`...
   --> $DIR/inside-array-length.rs:9:27
    |

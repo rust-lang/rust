@@ -292,6 +292,11 @@ impl<T> ListWithCachedTypeInfo<T> {
     pub fn outer_exclusive_binder(&self) -> DebruijnIndex {
         self.skel.header.outer_exclusive_binder
     }
+
+    #[inline(always)]
+    pub fn region_slots(&self) -> u32 {
+        self.skel.header.region_slots
+    }
 }
 
 impl_list_empty!(TypeInfo, TypeInfo::empty());
@@ -302,11 +307,16 @@ impl_list_empty!(TypeInfo, TypeInfo::empty());
 pub struct TypeInfo {
     flags: TypeFlags,
     outer_exclusive_binder: DebruijnIndex,
+    region_slots: u32,
 }
 
 impl TypeInfo {
     const fn empty() -> Self {
-        Self { flags: TypeFlags::empty(), outer_exclusive_binder: super::INNERMOST }
+        Self {
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: super::INNERMOST,
+            region_slots: 0,
+        }
     }
 }
 
@@ -315,6 +325,7 @@ impl<'tcx> From<FlagComputation<TyCtxt<'tcx>>> for TypeInfo {
         TypeInfo {
             flags: computation.flags,
             outer_exclusive_binder: computation.outer_exclusive_binder,
+            region_slots: computation.region_slots,
         }
     }
 }

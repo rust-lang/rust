@@ -3589,3 +3589,69 @@ pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
 pub const unsafe fn va_end(ap: &mut VaList<'_>) {
     /* deliberately does nothing */
 }
+
+/// Retrieve the index of `Trait`'s vtable in the slice returned via
+/// "TraitMetadataTable::derived_metadata_table".
+/// The specific index value returned is implementation defined and subject to whim.
+/// The value returned is constant for a given `Trait` and `SuperTrait`, but will not be "known
+/// enough" to be `const fn` due to the need for a global computation.
+/// Note: this value can only be computed globally, i.e., over all crates in the binary.
+/// The `&'static u8` is a unique address per global crate only. It is independent of
+/// the `SuperTrait` and `Trait` generic params.
+#[unstable(feature = "trait_cast", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn trait_metadata_index<SuperTrait, Trait>() -> (&'static u8, usize)
+where
+    SuperTrait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<SuperTrait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>,
+    Trait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<Trait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>;
+
+/// Retrieve the slice returned via "TraitMetadataTable::derived_metadata_table" for the given `SuperTrait`.
+/// Calling this intrinsic forces the caller to be delayed until after global monomorphization.
+/// The value returned is constant for a given `ConcreteType` and `SuperTrait`, but will not be "known
+/// enough" to be `const fn` due to the need for a global computation.
+/// Note: this value can only be computed globally, i.e., over all crates in the binary.
+/// The `&'static u8` is a unique address per global crate only. It is independent of
+/// the `SuperTrait` and `Trait` generic params.
+#[unstable(feature = "trait_cast", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn trait_metadata_table<SuperTrait, ConcreteType>()
+-> (&'static u8, ptr::NonNull<Option<ptr::NonNull<()>>>)
+where
+    SuperTrait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<SuperTrait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>,
+    ConcreteType: Sized + crate::marker::TraitMetadataTable<SuperTrait>;
+
+/// Return the length of the metadata table for the given `SuperTrait`.
+#[unstable(feature = "trait_cast", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn trait_metadata_table_len<SuperTrait>() -> usize
+where
+    SuperTrait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<SuperTrait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>;
+
+/// Return true iff casting to `TargetTrait` (within the graph rooted at `SuperTrait`)
+/// is safe with respect to lifetime erasure. Checks that every lifetime in
+/// `TargetTrait`'s binder is expressible through `SuperTrait`'s binder and that
+/// the concrete outlives relationships at the call site establish equivalence.
+/// Obligation checks are separated from the metadata table entries to facilitate
+/// lifetime binders.
+#[unstable(feature = "trait_cast", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub unsafe fn trait_cast_is_lifetime_erasure_safe<SuperTrait, TargetTrait>() -> bool
+where
+    SuperTrait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<SuperTrait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>,
+    TargetTrait: crate::marker::MetaSized
+        + ptr::Pointee<Metadata = ptr::DynMetadata<TargetTrait>>
+        + crate::marker::TraitMetadataTable<SuperTrait>;

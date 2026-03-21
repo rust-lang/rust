@@ -362,6 +362,8 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let cor_pin_place = Place::from(locals.push(LocalDecl::new(cor_pin_ty, span)));
 
     let pin_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, span);
+    let shim_def_id = instance.def_id();
+    let mut next_call_id: u32 = 0;
     // call Pin<FutTy>::new_unchecked(&mut impl_cor)
     blocks.push(BasicBlockData::new_stmts(
         statements,
@@ -375,6 +377,15 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::Misc,
                 fn_span: span,
+                call_id: tcx.mk_call_chain(&[(
+                    shim_def_id,
+                    {
+                        let id = next_call_id;
+                        next_call_id += 1;
+                        id
+                    },
+                    tcx.mk_args(&[cor_ref.into()]),
+                )]),
             },
         }),
         false,
@@ -398,6 +409,15 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::Misc,
                 fn_span: span,
+                call_id: tcx.mk_call_chain(&[(
+                    shim_def_id,
+                    {
+                        let id = next_call_id;
+                        next_call_id += 1;
+                        id
+                    },
+                    tcx.mk_args(&[impl_ty.into()]),
+                )]),
             },
         }),
         false,
@@ -409,6 +429,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
 
     let source = MirSource::from_instance(instance);
     let mut body = new_body(source, blocks, locals, sig.inputs().len(), span);
+    body.next_call_id = next_call_id;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     return body;
 }

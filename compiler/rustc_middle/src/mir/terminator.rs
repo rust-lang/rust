@@ -771,6 +771,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 args: _,
                 fn_span: _,
                 call_source: _,
+                call_id: _,
             } => TerminatorEdges::AssignOnReturn {
                 return_: target.as_ref().map(slice::from_ref).unwrap_or_default(),
                 cleanup: unwind.cleanup_block(),

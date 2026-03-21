@@ -139,6 +139,7 @@ declare_lint_pass! {
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
         UNUSED_ATTRIBUTES,
+        UNUSED_CAST_TARGET,
         UNUSED_CRATE_DEPENDENCIES,
         UNUSED_EXTERN_CRATES,
         UNUSED_FEATURES,
@@ -810,6 +811,57 @@ declare_lint! {
     pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
+}
+
+declare_lint! {
+    /// The `unused_cast_target` lint detects `cast!` target traits that
+    /// have no concrete type in the final binary that implements them.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (requires-unstable-trait-cast-in-a-binary-crate)
+    /// #![feature(trait_cast)]
+    /// #![deny(unused_cast_target)]
+    ///
+    /// use core::marker::TraitMetadataTable;
+    ///
+    /// trait Root: TraitMetadataTable<dyn Root> {}
+    /// trait Unused: Root {}
+    ///
+    /// struct S;
+    /// impl Root for S {}
+    ///
+    /// fn main() {
+    ///     let s: &dyn Root = &S;
+    ///     // `Unused` has no concrete implementor — this cast always returns `Err`.
+    ///     let _ = core::cast!(in dyn Root, s => dyn Unused);
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: cast target `dyn Unused` is unreachable in the trait graph of `dyn Root`
+    ///    |
+    ///    = note: no type implementing `dyn Root` also implements `dyn Unused`
+    ///    = note: this cast will always return `Err` at runtime
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// A cast to a target trait that no concrete type in the final binary
+    /// implements will always fail at runtime. This is typically a sign that
+    /// the target trait was renamed, removed, or is unreachable in the
+    /// current build — e.g. the impl lives behind a `cfg` that is not
+    /// enabled.
+    ///
+    /// This lint is emitted during the global codegen phase (which runs
+    /// only in a binary, staticlib, or cdylib crate) and is therefore
+    /// `allow` by default: library crates cannot observe it, and the
+    /// condition depends on the final crate graph.
+    pub UNUSED_CAST_TARGET,
+    Allow,
+    "cast target has no satisfying concrete type in this binary"
 }
 
 declare_lint! {

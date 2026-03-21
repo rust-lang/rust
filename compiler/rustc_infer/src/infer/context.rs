@@ -95,8 +95,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn is_changed_arg(&self, arg: ty::GenericArg<'tcx>) -> bool {
         match arg.kind() {
-            ty::GenericArgKind::Lifetime(_) => {
-                // Lifetimes should not change affect trait selection.
+            ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => {
+                // Lifetimes/outlives args should not affect trait selection.
                 false
             }
             ty::GenericArgKind::Type(ty) => {

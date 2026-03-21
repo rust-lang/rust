@@ -601,6 +601,34 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
+    fn encode_delayed_codegen_requests(
+        &mut self,
+    ) -> LazyArray<rustc_middle::mono::DelayedInstance<'static>> {
+        empty_proc_macro!(self);
+        // These queries trigger monomorphization collection, which requires
+        // optimized MIR from upstream crates. In check mode (metadata-only),
+        // upstream crates don't have optimized MIR, so skip encoding.
+        if !self.tcx.sess.opts.output_types.should_codegen() {
+            return LazyArray::default();
+        }
+        self.lazy_array(self.tcx.delayed_codegen_requests(LOCAL_CRATE).iter().cloned())
+    }
+
+    fn encode_cast_relevant_lifetimes(
+        &mut self,
+    ) -> LazyArray<(ty::Instance<'static>, rustc_middle::mono::CastRelevantLifetimes<'static>)>
+    {
+        empty_proc_macro!(self);
+        if !self.tcx.sess.opts.output_types.should_codegen() {
+            return LazyArray::default();
+        }
+        let parts = self.tcx.collect_and_partition_mono_items(());
+        let sorted = self
+            .tcx
+            .with_stable_hashing_context(|mut hcx| parts.sensitivity_map.to_sorted(&mut hcx, true));
+        self.lazy_array(sorted.into_iter().map(|(inst, crl)| (*inst, crl.clone())))
+    }
+
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
@@ -681,6 +709,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // encode the tables. This overwrites def_keys, so it must happen after
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
+
+        // Writes into `tables.delayed_codegen_requests` (keyed by DefId).
+        let delayed_codegen_requests =
+            stat!("delayed-codegen-requests", || self.encode_delayed_codegen_requests());
+
+        let cast_relevant_lifetimes =
+            stat!("cast-relevant-lifetimes", || self.encode_cast_relevant_lifetimes());
 
         let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
@@ -768,6 +803,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 stable_order_of_exportable_impls,
                 exported_non_generic_symbols,
                 exported_generic_symbols,
+                delayed_codegen_requests,
+                cast_relevant_lifetimes,
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -1115,11 +1152,26 @@ fn should_encode_mir(
         DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+            // Transitively-delayed trait-cast instances must ship their
+            // MIR even when the def is non-generic and non-inline — the
+            // downstream global crate's `cascade_canonicalize` phase
+            // patches and re-emits their bodies, which requires
+            // `optimized_mir` to be available from rmeta. The set is
+            // computed by the mono collector; we only check def-id
+            // membership here.
+            //
+            // The `local_def_ids_backing_delayed_instances` call is
+            // inlined into the `&&` chain (not pre-computed) so the
+            // `should_codegen()` gate short-circuits it in
+            // metadata-only builds (rustdoc), where forcing
+            // `collect_local_mono_items` is invalid — it demands
+            // optimized MIR from upstream crates that don't have it.
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
-                        || tcx.cross_crate_inlinable(def_id)));
+                        || tcx.cross_crate_inlinable(def_id)
+                        || tcx.local_def_ids_backing_delayed_instances(()).contains(&def_id)));
             // The function has a `const` modifier or is in a `const trait`.
             let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
             (is_const_fn, opt)
@@ -1828,6 +1880,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .cross_crate_inlinable
                     .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
+                self.tables.has_trait_cast_intrinsics.set(
+                    def_id.to_def_id().index,
+                    self.tcx.has_trait_cast_intrinsics(def_id.to_def_id()),
+                );
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
@@ -1871,6 +1927,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
+            }
+        }
+
+        // Encode borrowck region summaries for polymorphic functions that may be
+        // instantiated cross-crate during mono collection.
+        for &def_id in tcx.mir_keys(()) {
+            if tcx.generics_of(def_id).requires_monomorphization(tcx) {
+                let summary = tcx.borrowck_region_summary(def_id.to_def_id());
+                if !summary.call_site_mappings.is_empty() {
+                    record!(self.tables.borrowck_region_summary[def_id.to_def_id()] <- summary);
+                }
             }
         }
 

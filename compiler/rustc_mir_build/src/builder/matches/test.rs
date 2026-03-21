@@ -355,21 +355,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         // `let temp = <Ty as Deref>::deref(ref_src);`
         // or `let temp = <Ty as DerefMut>::deref_mut(ref_src);`
+        let func =
+            Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_: method }));
+        let call_id = self.mk_call_id(&func);
         self.cfg.terminate(
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
-                    span,
-                    user_ty: None,
-                    const_: method,
-                })),
+                func,
                 args: [Spanned { node: Operand::Move(ref_src), span }].into(),
                 destination: temp,
                 target: Some(target_block),
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::Misc,
                 fn_span: source_info.span,
+                call_id,
             },
         );
     }
@@ -421,21 +421,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
+        let func = Operand::Constant(Box::new(ConstOperand {
+            span: source_info.span,
+
+            // FIXME(#54571): This constant comes from user input (a
+            // constant in a pattern). Are there forms where users can add
+            // type annotations here?  For example, an associated constant?
+            // Need to experiment.
+            user_ty: None,
+
+            const_: method,
+        }));
+        let call_id = self.mk_call_id(&func);
         self.cfg.terminate(
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-
-                    // FIXME(#54571): This constant comes from user input (a
-                    // constant in a pattern). Are there forms where users can add
-                    // type annotations here?  For example, an associated constant?
-                    // Need to experiment.
-                    user_ty: None,
-
-                    const_: method,
-                })),
+                func,
                 args: [
                     Spanned { node: val, span: DUMMY_SP },
                     Spanned { node: expect, span: DUMMY_SP },
@@ -446,6 +448,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::MatchCmp,
                 fn_span: source_info.span,
+                call_id,
             },
         );
         self.diverge_from(block);

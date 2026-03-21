@@ -322,6 +322,9 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
             ty::ConstKind::Param(p) => Some(p.index),
             _ => None,
         },
+
+        // Outlives args are metadata-only; can't unsize
+        ty::GenericArgKind::Outlives(_) => None,
     };
 
     // The last field of the structure has to exist and contain type/const parameters.

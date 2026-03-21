@@ -375,6 +375,8 @@ where
         call_statements
             .push(Statement::new(self.source_info, StatementKind::StorageLive(fut.local)));
 
+        let tcx_ = self.tcx();
+        let call_id = self.elaborator.patch().next_call_id(tcx_, trait_args);
         let call_drop_bb = self.new_block_with_statements(
             unwind,
             call_statements,
@@ -386,6 +388,7 @@ where
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: self.source_info.span,
+                call_id,
             },
         );
         // StorageDead(fut) in unwind block (at the begin)
@@ -404,6 +407,9 @@ where
         }
 
         // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
+        let tcx_ = self.tcx();
+        let call_id =
+            self.elaborator.patch().next_call_id(tcx_, tcx_.mk_args(&[obj_ref_ty.into()]));
         self.elaborator.patch().patch_terminator(
             pin_obj_bb,
             TerminatorKind::Call {
@@ -414,6 +420,7 @@ where
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: span,
+                call_id,
             },
         );
         pin_obj_bb
@@ -1012,6 +1019,8 @@ where
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.types.unit));
 
+        let tcx_ = self.tcx();
+        let call_id = self.elaborator.patch().next_call_id(tcx_, tcx_.mk_args(&[ty.into()]));
         let result = BasicBlockData::new_stmts(
             vec![self.assign(
                 Place::from(ref_place),
@@ -1036,6 +1045,7 @@ where
                     unwind: unwind.into_action(),
                     call_source: CallSource::Misc,
                     fn_span: self.source_info.span,
+                    call_id,
                 },
                 source_info: self.source_info,
             }),
