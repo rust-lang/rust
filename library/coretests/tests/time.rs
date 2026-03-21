@@ -642,15 +642,25 @@ fn duration_fp_div_negative() {
 }
 
 const TOO_LARGE_FACTOR: f64 = Duration::MAX.as_nanos() as f64;
-const TOO_LARGE_DIVISOR: f64 = TOO_LARGE_FACTOR * 2.0;
-const SMALLEST_DIVISOR: f64 = TOO_LARGE_DIVISOR.recip() * 2.0;
 const SMALLEST_FACTOR: f64 = TOO_LARGE_FACTOR.recip() / 2.0;
-const SMALLEST_NEGFACTOR: f64 = -0.0f64;
+
+cfg_select! {
+    target_has_reliable_f128 => {
+        const TOO_LARGE_DIVISOR: f64 = TOO_LARGE_FACTOR * 2.0;
+        const SMALLEST_DIVISOR: f64 = TOO_LARGE_DIVISOR.recip() * 2.0;
+        const SMALLEST_NEGFACTOR: f64 = -0.0f64;
+    }
+    _ => {
+        const TOO_LARGE_DIVISOR: f64 = (Duration::MAX.as_secs_f64() * 2e9).next_up();
+        const SMALLEST_DIVISOR: f64 = (TOO_LARGE_DIVISOR.recip() * 2.0).next_up().next_up();
+        const SMALLEST_NEGFACTOR: f64 = (0.0f64.next_down() * 0.5e9).next_up();
+    }
+}
 
 #[test]
 fn duration_fp_boundaries() {
     const DURATION_BITS: u32 = Duration::MAX.as_nanos().ilog2() + 1;
-    const PRECISION: u32 = DURATION_BITS - f64::MANTISSA_DIGITS;
+    const PRECISION: u32 = DURATION_BITS - f64::MANTISSA_DIGITS + 1;
 
     assert_eq!(Duration::MAX.mul_f64(0.0), Duration::ZERO);
     assert_eq!(Duration::MAX.mul_f64(-0.0), Duration::ZERO);
@@ -697,6 +707,7 @@ fn duration_fp_div_overflow() {
 }
 
 #[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
 fn precise_duration_fp_mul() {
     let d1 = Duration::from_nanos_u128(1 << 90);
     let d2 = Duration::from_nanos_u128(2 << 90);
@@ -711,6 +722,7 @@ fn precise_duration_fp_mul() {
 }
 
 #[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
 fn precise_duration_fp_div() {
     let d1 = Duration::from_nanos_u128(1 << 90);
     let d2 = Duration::from_nanos_u128(2 << 90);
@@ -725,6 +737,7 @@ fn precise_duration_fp_div() {
 }
 
 #[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
 fn duration_fp_mul_rounding() {
     // This precise result in ns would start 9223372036854777855999999999.4999999999999998...
     // If that is rounded too early to 9223372036854777855999999999.5,
