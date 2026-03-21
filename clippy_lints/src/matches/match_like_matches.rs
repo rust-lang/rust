@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::MATCH_LIKE_MATCHES_MACRO;
 
