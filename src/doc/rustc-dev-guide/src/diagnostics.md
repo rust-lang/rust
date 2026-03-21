@@ -964,6 +964,7 @@ The compiler can provide several values to match on, for example:
   - references to said slices and arrays.
   - `"fn"`, `"unsafe fn"` or `"#[target_feature] fn"` when self is a function.
   - `"{integer}"` and `"{float}"` if the type is a number but we haven't inferred it yet.
+  - `"{struct}"`, `"{enum}"` and `"{union}"` to match self as an ADT
   - combinations of the above, like `"[{integral}; _]"`.
 
 For example, the `Iterator` trait can be filtered in the following way:
