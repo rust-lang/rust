@@ -1229,7 +1229,12 @@ fn add_sanitizer_libraries(
 
     let sanitizer = sess.sanitizers();
     if sanitizer.contains(SanitizerSet::ADDRESS) {
-        link_sanitizer_runtime(sess, flavor, linker, "asan");
+        let name = if sess.target.is_like_windows && sess.target.env == Env::Gnu {
+            "asan_dynamic"
+        } else {
+            "asan"
+        };
+        link_sanitizer_runtime(sess, flavor, linker, name);
     }
     if sanitizer.contains(SanitizerSet::DATAFLOW) {
         link_sanitizer_runtime(sess, flavor, linker, "dfsan");
@@ -1293,7 +1298,8 @@ fn link_sanitizer_runtime(
         // compatible ASAN library.
         linker.link_arg("/INFERASANLIBS");
     } else {
-        let filename = format!("librustc{channel}_rt.{name}.a");
+        let ext = if sess.target.is_like_windows { "dll.a" } else { "a" };
+        let filename = format!("librustc{channel}_rt.{name}.{ext}");
         let path = find_sanitizer_runtime(sess, &filename).join(&filename);
         linker.link_staticlib_by_path(&path, true);
     }
