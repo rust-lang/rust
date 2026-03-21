@@ -6,8 +6,7 @@ use clippy_utils::{eq_expr_value, higher, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
-use rustc_span::SyntaxContext;
-use rustc_span::Spanned;
+use rustc_span::{Spanned, SyntaxContext};
 
 use super::SUBOPTIMAL_FLOPS;
 
