@@ -1002,6 +1002,7 @@ impl Duration {
 
     #[inline]
     #[track_caller]
+    #[cfg(target_has_reliable_f128)]
     fn from_nanos_f128_subnormal(nanos: f128) -> Duration {
         // NB: the mul/div methods below are converting nanos with `f128::from_bits`, which puts
         // them in the subnormal range, with the value packed in the least-significant bits of the
@@ -1023,6 +1024,7 @@ impl Duration {
 
     #[inline]
     #[track_caller]
+    #[cfg(target_has_reliable_f128)]
     fn mul_f128(self, rhs: f128) -> Duration {
         if rhs < 0.0 && self != Self::ZERO {
             panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
@@ -1033,6 +1035,7 @@ impl Duration {
 
     #[inline]
     #[track_caller]
+    #[cfg(target_has_reliable_f128)]
     fn div_f128(self, rhs: f128) -> Duration {
         if rhs < 0.0 && rhs.is_finite() && self != Self::ZERO {
             panic!("{}", TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
@@ -1059,7 +1062,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        self.mul_f128(rhs.into())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.mul_f128(rhs.into()),
+            _ => Duration::from_secs_f64(rhs * self.as_secs_f64()),
+        }
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1080,7 +1086,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        self.mul_f128(rhs.into())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.mul_f128(rhs.into()),
+            _ => self.mul_f64(rhs.into()),
+        }
     }
 
     /// Divides `Duration` by `f64`.
@@ -1101,7 +1110,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        self.div_f128(rhs.into())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.div_f128(rhs.into()),
+            _ => Duration::from_secs_f64(self.as_secs_f64() / rhs),
+        }
     }
 
     /// Divides `Duration` by `f32`.
@@ -1124,7 +1136,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        self.div_f128(rhs.into())
+        crate::cfg_select! {
+            target_has_reliable_f128 => self.div_f128(rhs.into()),
+            _ => self.div_f64(rhs.into()),
+        }
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
