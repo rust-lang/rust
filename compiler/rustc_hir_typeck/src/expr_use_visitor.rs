@@ -451,7 +451,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::Let(hir::LetExpr { pat, init, .. }) => {
-                self.walk_local(init, pat, None, || self.borrow_expr(init, BorrowKind::Immutable))?;
+                self.walk_local(init, pat, None, || Ok(()))?;
             }
 
             hir::ExprKind::Match(discr, arms, _) => {
