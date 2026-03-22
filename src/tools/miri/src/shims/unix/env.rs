@@ -272,6 +272,53 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_u32(this.get_current_tid()))
     }
 
+    /// `fields_size`, if present, says how large each field of the struct is.
+    fn uname(
+        &mut self,
+        uname: &OpTy<'tcx>,
+        fields_size: Option<&OpTy<'tcx>>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.assert_target_os_is_unix("uname");
+
+        let uname_ptr = this.read_pointer(uname)?;
+        let fields_size = match fields_size {
+            None => None,
+            Some(size) => Some(this.read_scalar(size)?.to_i32()?),
+        };
+
+        if this.ptr_is_null(uname_ptr)? {
+            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+        }
+
+        let uname = this.deref_pointer_as(uname, this.libc_ty_layout("utsname"))?;
+        let arch = this.machine.tcx.sess.target.arch.desc_symbol();
+        // Values required by POSIX.
+        let mut values = vec![
+            ("sysname", "Miri"),
+            ("nodename", "Miri"),
+            ("release", env!("CARGO_PKG_VERSION")),
+            ("version", concat!("Miri ", env!("CARGO_PKG_VERSION"))),
+            ("machine", arch.as_str()),
+        ];
+        if matches!(this.machine.tcx.sess.target.os, Os::Linux | Os::Android) {
+            values.push(("domainname", "(none)"));
+        }
+
+        for (name, value) in values {
+            let field = this.project_field_named(&uname, name)?;
+            let size = field.layout().layout.size().bytes();
+            if fields_size.is_some_and(|fields_size| u64::try_from(fields_size) != Ok(size)) {
+                throw_unsup_format!(
+                    "the fields size passed to `uname` does not match the type in the libc crate"
+                );
+            }
+            let (written, _) = this.write_c_str(value.as_bytes(), field.ptr(), size)?;
+            assert!(written); // All values should fit.
+        }
+        interp_ok(Scalar::from_i32(0))
+    }
+
     /// The Apple-specific `int pthread_threadid_np(pthread_t thread, uint64_t *thread_id)`, which
     /// allows querying the ID for arbitrary threads, identified by their pthread_t.
     ///

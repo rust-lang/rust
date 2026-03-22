@@ -174,6 +174,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.getpid()?;
                 this.write_scalar(result, dest)?;
             }
+            "uname" => {
+                // Not all Unixes have the `uname` symbol, e.g. FreeBSD does not.
+                this.check_target_os(
+                    &[Os::Linux, Os::Android, Os::MacOs, Os::Solaris, Os::Illumos],
+                    link_name,
+                )?;
+                let [uname] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.uname(uname, None)?;
+                this.write_scalar(result, dest)?;
+            }
             "sysconf" => {
                 let [val] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32) -> isize),
