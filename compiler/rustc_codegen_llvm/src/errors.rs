@@ -182,9 +182,9 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(
-    "unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
+    "unsupported debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
 )]
-pub(crate) struct UnknownCompression {
+pub(crate) struct UnsupportedCompression {
     pub algorithm: &'static str,
 }
 
