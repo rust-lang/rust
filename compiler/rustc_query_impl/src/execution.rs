@@ -18,7 +18,7 @@ use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
-use crate::plumbing::{current_query_job, next_job_id, start_query};
+use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
 
 #[inline]
@@ -531,7 +531,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !(query.is_loadable_from_disk_fn)(tcx, key, prev_index),
+        !((query.will_cache_on_disk_for_key_fn)(tcx, key) && loadable_from_disk(tcx, prev_index)),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -624,7 +624,8 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
             // In ensure-done mode, we can only skip execution for this key if
             // there's a disk-cached value available to load later if needed,
             // which guarantees the query provider will never run for this key.
-            let is_loadable = (query.is_loadable_from_disk_fn)(tcx, key, serialized_dep_node_index);
+            let is_loadable = (query.will_cache_on_disk_for_key_fn)(tcx, key)
+                && loadable_from_disk(tcx, serialized_dep_node_index);
             EnsureCanSkip { skip_execution: is_loadable, dep_node: Some(dep_node) }
         }
     }

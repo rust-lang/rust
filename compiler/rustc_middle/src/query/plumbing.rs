@@ -104,9 +104,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
         index: DepNodeIndex,
     ) -> Option<C::Value>,
 
-    pub is_loadable_from_disk_fn:
-        fn(tcx: TyCtxt<'tcx>, key: C::Key, index: SerializedDepNodeIndex) -> bool,
-
     /// Function pointer that hashes this query's result values.
     ///
     /// For `no_hash` queries, this function pointer is None.
