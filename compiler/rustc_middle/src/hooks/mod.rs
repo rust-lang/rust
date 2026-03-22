@@ -9,7 +9,7 @@ use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId};
 
 use crate::mir;
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex};
+use crate::query::on_disk_cache::CacheEncoder;
 use crate::ty::{Ty, TyCtxt};
 
 macro_rules! declare_hooks {
@@ -111,10 +111,8 @@ declare_hooks! {
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
-    hook encode_query_values(
-        encoder: &mut CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut EncodedDepNodeIndex
-    ) -> ();
+    /// Serializes all eligible query return values into the on-disk cache.
+    hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
 }
 
 #[cold]
