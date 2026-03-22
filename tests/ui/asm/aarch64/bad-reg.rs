@@ -1,7 +1,12 @@
+//@ add-minicore
 //@ only-aarch64
 //@ compile-flags: -C target-feature=+neon
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 fn main() {
     let mut foo = 0;
@@ -14,11 +19,11 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(vreg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:r}", in(vreg_low16) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
