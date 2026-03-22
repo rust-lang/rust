@@ -3,7 +3,6 @@ use std::iter::{self, Peekable};
 use either::Either;
 use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics};
 use ide_db::RootDatabase;
-use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -229,17 +228,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     // filter out hidden patterns because they're handled by the catch-all arm
                     !hidden
                 })
-                .map(|(pat, _)| {
-                    make.match_arm(
-                        pat,
-                        None,
-                        match ctx.config.expr_fill_default {
-                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                        },
-                    )
-                });
+                .map(|(pat, _)| make.match_arm(pat, None, utils::expr_fill_default(ctx.config)));
 
             let mut arms: Vec<_> = match_arm_list
                 .arms()
@@ -266,11 +255,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let arm = make.match_arm(
                     make.wildcard_pat().into(),
                     None,
-                    match ctx.config.expr_fill_default {
-                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                    },
+                    utils::expr_fill_default(ctx.config),
                 );
                 arms.push(arm);
             }

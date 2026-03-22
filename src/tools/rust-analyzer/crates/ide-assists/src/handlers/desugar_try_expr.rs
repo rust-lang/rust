@@ -1,9 +1,6 @@
 use std::iter;
 
-use ide_db::{
-    assists::{AssistId, ExprFillDefaultMode},
-    ty_filter::TryEnum,
-};
+use ide_db::{assists::AssistId, ty_filter::TryEnum};
 use syntax::{
     AstNode, T,
     ast::{
@@ -80,16 +77,9 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     )
                     .into(),
             };
-            let sad_expr = match try_enum {
-                TryEnum::Option => make.expr_return(Some(make.expr_path(make.ident_path("None")))),
-                TryEnum::Result => make.expr_return(Some(
-                    make.expr_call(
-                        make.expr_path(make.ident_path("Err")),
-                        make.arg_list(iter::once(make.expr_path(make.ident_path("err")))),
-                    )
-                    .into(),
-                )),
-            };
+            let sad_expr = make.expr_return(Some(sad_expr(try_enum, &make, || {
+                make.expr_path(make.ident_path("err"))
+            })));
 
             let happy_arm = make.match_arm(
                 try_enum.happy_pattern(make.ident_pat(false, false, make.name("it")).into()),
@@ -123,6 +113,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 let mut editor = builder.make_editor(let_stmt.syntax());
 
                 let indent_level = IndentLevel::from_node(let_stmt.syntax());
+                let fill_expr = || crate::utils::expr_fill_default(ctx.config);
                 let new_let_stmt = make.let_else_stmt(
                     try_enum.happy_pattern(pat),
                     let_stmt.ty(),
@@ -130,41 +121,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     make.block_expr(
                         iter::once(
                             make.expr_stmt(
-                                make.expr_return(Some(match try_enum {
-                                    TryEnum::Option => make.expr_path(make.ident_path("None")),
-                                    TryEnum::Result => make
-                                        .expr_call(
-                                            make.expr_path(make.ident_path("Err")),
-                                            make.arg_list(iter::once(
-                                                match ctx.config.expr_fill_default {
-                                                    ExprFillDefaultMode::Todo => make
-                                                        .expr_macro(
-                                                            make.ident_path("todo"),
-                                                            make.token_tree(
-                                                                syntax::SyntaxKind::L_PAREN,
-                                                                [],
-                                                            ),
-                                                        )
-                                                        .into(),
-                                                    ExprFillDefaultMode::Underscore => {
-                                                        make.expr_underscore().into()
-                                                    }
-                                                    ExprFillDefaultMode::Default => make
-                                                        .expr_macro(
-                                                            make.ident_path("todo"),
-                                                            make.token_tree(
-                                                                syntax::SyntaxKind::L_PAREN,
-                                                                [],
-                                                            ),
-                                                        )
-                                                        .into(),
-                                                },
-                                            )),
-                                        )
-                                        .into(),
-                                }))
-                                .indent(indent_level + 1)
-                                .into(),
+                                make.expr_return(Some(sad_expr(try_enum, &make, fill_expr))).into(),
                             )
                             .into(),
                         ),
@@ -179,6 +136,15 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         );
     }
     Some(())
+}
+
+fn sad_expr(try_enum: TryEnum, make: &SyntaxFactory, err: impl Fn() -> ast::Expr) -> ast::Expr {
+    match try_enum {
+        TryEnum::Option => make.expr_path(make.ident_path("None")),
+        TryEnum::Result => make
+            .expr_call(make.expr_path(make.ident_path("Err")), make.arg_list(iter::once(err())))
+            .into(),
+    }
 }
 
 #[cfg(test)]

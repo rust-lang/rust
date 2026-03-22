@@ -248,17 +248,9 @@ pub fn add_trait_assoc_items_to_impl(
         .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
                 let fn_ = fn_.clone_subtree();
-                let new_body = &make::block_expr(
-                    None,
-                    Some(match config.expr_fill_default {
-                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                    }),
-                );
-                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
+                let new_body = make::block_expr(None, Some(expr_fill_default(config)));
                 let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
-                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                fn_.replace_or_insert_body(&mut fn_editor, new_body.clone_for_update());
                 let new_fn_ = fn_editor.finish().new_root().clone();
                 ast::AssocItem::cast(new_fn_)
             }
@@ -462,6 +454,15 @@ fn check_pat_variant_nested_or_literal_with_depth(
             pats.next()
                 .is_none_or(|pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
         }
+    }
+}
+
+pub(crate) fn expr_fill_default(config: &AssistConfig) -> ast::Expr {
+    let make = SyntaxFactory::without_mappings();
+    match config.expr_fill_default {
+        ExprFillDefaultMode::Todo => make.expr_todo(),
+        ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
+        ExprFillDefaultMode::Default => make.expr_todo(),
     }
 }
 
