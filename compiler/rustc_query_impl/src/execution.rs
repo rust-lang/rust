@@ -488,65 +488,58 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 
     debug_assert!(dep_graph_data.is_index_green(prev_index));
 
-    // First we try to load the result from the on-disk cache.
-    // Some things are never cached on disk.
-    if let Some(value) = (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
-        if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
-            dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
-        }
+    // First try to load the result from the on-disk cache. Some things are never cached on disk.
+    let value;
+    let verify;
+    match (query.try_load_from_disk_fn)(tcx, key, prev_index, dep_node_index) {
+        Some(loaded_value) => {
+            if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
+                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
+            }
 
-        let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
-        // If `-Zincremental-verify-ich` is specified, re-hash results from
-        // the cache and make sure that they have the expected fingerprint.
+            value = loaded_value;
+
+            let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
+            // If `-Zincremental-verify-ich` is specified, re-hash results from
+            // the cache and make sure that they have the expected fingerprint.
+            //
+            // If not, we still seek to verify a subset of fingerprints loaded
+            // from disk. Re-hashing results is fairly expensive, so we can't
+            // currently afford to verify every hash. This subset should still
+            // give us some coverage of potential bugs.
+            verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32)
+                || tcx.sess.opts.unstable_opts.incremental_verify_ich;
+        }
+        None => {
+            // We could not load a result from the on-disk cache, so recompute. The dep-graph for
+            // this computation is already in-place, so we can just call the query provider.
+            let prof_timer = tcx.prof.query_provider();
+            value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            verify = true;
+        }
+    };
+
+    if verify {
+        // Verify that re-running the query produced a result with the expected hash.
+        // This catches bugs in query implementations, turning them into ICEs.
+        // For example, a query might sort its result by `DefId` - since `DefId`s are
+        // not stable across compilation sessions, the result could get up getting sorted
+        // in a different order when the query is re-run, even though all of the inputs
+        // (e.g. `DefPathHash` values) were green.
         //
-        // If not, we still seek to verify a subset of fingerprints loaded
-        // from disk. Re-hashing results is fairly expensive, so we can't
-        // currently afford to verify every hash. This subset should still
-        // give us some coverage of potential bugs though.
-        let try_verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32);
-        if std::intrinsics::unlikely(
-            try_verify || tcx.sess.opts.unstable_opts.incremental_verify_ich,
-        ) {
-            incremental_verify_ich(
-                tcx,
-                dep_graph_data,
-                &value,
-                prev_index,
-                query.hash_value_fn,
-                query.format_value,
-            );
-        }
-
-        return value;
+        // See issue #82920 for an example of a miscompilation that would get turned into
+        // an ICE by this check
+        incremental_verify_ich(
+            tcx,
+            dep_graph_data,
+            &value,
+            prev_index,
+            query.hash_value_fn,
+            query.format_value,
+        );
     }
-
-    // We could not load a result from the on-disk cache, so
-    // recompute.
-    let prof_timer = tcx.prof.query_provider();
-
-    // The dep-graph for this computation is already in-place.
-    // Call the query provider.
-    let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
-
-    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-    // Verify that re-running the query produced a result with the expected hash
-    // This catches bugs in query implementations, turning them into ICEs.
-    // For example, a query might sort its result by `DefId` - since `DefId`s are
-    // not stable across compilation sessions, the result could get up getting sorted
-    // in a different order when the query is re-run, even though all of the inputs
-    // (e.g. `DefPathHash` values) were green.
-    //
-    // See issue #82920 for an example of a miscompilation that would get turned into
-    // an ICE by this check
-    incremental_verify_ich(
-        tcx,
-        dep_graph_data,
-        &value,
-        prev_index,
-        query.hash_value_fn,
-        query.format_value,
-    );
 
     value
 }
