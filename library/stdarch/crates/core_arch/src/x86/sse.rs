@@ -3011,12 +3011,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvtss_si32() {
+    fn test_mm_cvtss_si32() {
         test_mm_cvtss_si32_impl!(_mm_cvtss_si32);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvt_ss2si() {
+    fn test_mm_cvt_ss2si() {
         test_mm_cvtss_si32_impl!(_mm_cvt_ss2si);
     }
 
@@ -3043,12 +3043,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvttss_si32() {
+    fn test_mm_cvttss_si32() {
         test_cvttss_si32_impl!(_mm_cvttss_si32);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvtt_ss2si() {
+    fn test_mm_cvtt_ss2si() {
         test_cvttss_si32_impl!(_mm_cvtt_ss2si);
     }
 
@@ -3071,12 +3071,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvtsi32_ss() {
+    fn test_mm_cvtsi32_ss() {
         test_mm_cvtsi32_ss_impl!(_mm_cvtsi32_ss);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_cvt_si2ss() {
+    fn test_mm_cvt_si2ss() {
         test_mm_cvtsi32_ss_impl!(_mm_cvt_si2ss);
     }
 
@@ -3103,12 +3103,12 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_set1_ps() {
+    const fn test_mm_set1_ps() {
         test_mm_set1_ps_impl!(_mm_set1_ps);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_set_ps1() {
+    const fn test_mm_set_ps1() {
         test_mm_set1_ps_impl!(_mm_set_ps1);
     }
 
@@ -3201,18 +3201,18 @@ mod tests {
     macro_rules! test_mm_load1_ps_impl {
         ($alias:ident) => {
             let a = 42.0f32;
-            let r = $alias(ptr::addr_of!(a));
+            let r = unsafe { $alias(ptr::addr_of!(a)) };
             assert_eq_m128(r, _mm_setr_ps(42.0, 42.0, 42.0, 42.0));
         };
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_load1_ps() {
+    fn test_mm_load1_ps() {
         test_mm_load1_ps_impl!(_mm_load1_ps);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_load_ps1() {
+    fn test_mm_load_ps1() {
         test_mm_load1_ps_impl!(_mm_load_ps1);
     }
 
@@ -3270,18 +3270,18 @@ mod tests {
             let mut vals = Memory { data: [0.0f32; 4] };
             let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
             let p = vals.data.as_mut_ptr();
-            $alias(p, *black_box(&a));
+            unsafe { $alias(p, *black_box(&a)) };
             assert_eq!(vals.data, [1.0, 1.0, 1.0, 1.0]);
         };
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_store1_ps() {
+    fn test_mm_store1_ps() {
         test_mm_store1_ps_impl!(_mm_store1_ps);
     }
 
     #[simd_test(enable = "sse")]
-    unsafe fn test_mm_store_ps1() {
+    fn test_mm_store_ps1() {
         test_mm_store1_ps_impl!(_mm_store_ps1);
     }
 
