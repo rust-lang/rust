@@ -204,6 +204,130 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.goto(short_circuit, source_info, target);
                 target.unit()
             }
+            ExprKind::OverloadedLogicalOp { op, lhs, rhs, bitop_fun } => {
+                // Desugaring for `a && b` on type T: Decisive + BitAnd:
+                //   let lhs_tmp: T = a;
+                //   let is_short: bool = Decisive::is_false(&lhs_tmp);
+                //   if is_short { lhs_tmp } else { BitAnd::bitand(lhs_tmp, b) }
+                //
+                // For `a || b` on type T: Decisive + BitOr:
+                //   let lhs_tmp: T = a;
+                //   let is_short: bool = Decisive::is_true(&lhs_tmp);
+                //   if is_short { lhs_tmp } else { BitOr::bitor(lhs_tmp, b) }
+
+                let lhs_ty = this.thir[lhs].ty;
+
+                // Step 1: Evaluate LHS into a temp.
+                let lhs_place = this.temp(lhs_ty, expr_span);
+                unpack!(block = this.expr_into_dest(lhs_place, block, lhs));
+
+                // Step 2: Create a reference to the LHS temp for calling is_true/is_false.
+                let ref_ty =
+                    Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, lhs_ty);
+                let ref_place = this.temp(ref_ty, expr_span);
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_place,
+                    Rvalue::Ref(
+                        this.tcx.lifetimes.re_erased,
+                        BorrowKind::Shared,
+                        lhs_place,
+                    ),
+                );
+
+                // Step 3: Call Decisive::is_false (for &&) or Decisive::is_true (for ||).
+                let decisive_trait =
+                    this.tcx.require_lang_item(LangItem::Decisive, expr_span);
+                let decisive_items = this.tcx.associated_item_def_ids(decisive_trait);
+                // is_true is [0], is_false is [1] (based on definition order in decisive.rs)
+                let decisive_fn_def_id = match op {
+                    LogicalOp::And => decisive_items[1], // is_false
+                    LogicalOp::Or => decisive_items[0],  // is_true
+                };
+                let decisive_func = Operand::function_handle(
+                    this.tcx,
+                    decisive_fn_def_id,
+                    [lhs_ty.into()],
+                    expr_span,
+                );
+
+                let bool_ty = this.tcx.types.bool;
+                let bool_place = this.temp(bool_ty, expr_span);
+                let after_decisive = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: decisive_func,
+                        args: [Spanned {
+                            node: Operand::Move(ref_place),
+                            span: DUMMY_SP,
+                        }]
+                        .into(),
+                        destination: bool_place,
+                        target: Some(after_decisive),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::OverloadedOperator,
+                        fn_span: expr_span,
+                    },
+                );
+
+                // Step 4: Branch on the bool result.
+                let short_circuit_block = this.cfg.start_new_block();
+                let mut continue_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(
+                    Operand::Move(bool_place),
+                    short_circuit_block,
+                    continue_block,
+                );
+                this.cfg.terminate(after_decisive, source_info, term);
+
+                // Step 5: Short-circuit path: copy/move LHS to destination.
+                this.cfg.push_assign(
+                    short_circuit_block,
+                    source_info,
+                    destination,
+                    Rvalue::Use(Operand::Move(lhs_place)),
+                );
+
+                // Step 6: Continue path: call BitAnd::bitand(lhs, rhs) or BitOr::bitor(lhs, rhs).
+                let bitop_operand = unpack!(
+                    continue_block = this.as_local_operand(continue_block, bitop_fun)
+                );
+
+                // Evaluate RHS as an operand.
+                let rhs_operand =
+                    unpack!(continue_block = this.as_local_operand(continue_block, rhs));
+
+                let after_bitop = this.cfg.start_new_block();
+                this.cfg.terminate(
+                    continue_block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: bitop_operand,
+                        args: [
+                            Spanned {
+                                node: Operand::Move(lhs_place),
+                                span: DUMMY_SP,
+                            },
+                            Spanned { node: rhs_operand, span: DUMMY_SP },
+                        ]
+                        .into(),
+                        destination,
+                        target: Some(after_bitop),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::OverloadedOperator,
+                        fn_span: expr_span,
+                    },
+                );
+
+                // Step 7: Join paths.
+                let join_block = this.cfg.start_new_block();
+                this.cfg.goto(short_circuit_block, source_info, join_block);
+                this.cfg.goto(after_bitop, source_info, join_block);
+                join_block.unit()
+            }
             ExprKind::Loop { body } => {
                 // [block]
                 //    |

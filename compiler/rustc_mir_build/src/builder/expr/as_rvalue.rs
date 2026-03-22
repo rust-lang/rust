@@ -389,6 +389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Loop { .. }
             | ExprKind::LoopMatch { .. }
             | ExprKind::LogicalOp { .. }
+            | ExprKind::OverloadedLogicalOp { .. }
             | ExprKind::Call { .. }
             | ExprKind::Field { .. }
             | ExprKind::Let { .. }

@@ -17,10 +17,10 @@
 //! should have some resemblance to multiplication (and share expected
 //! properties like associativity).
 //!
-//! Note that the `&&` and `||` operators are currently not supported for
-//! overloading. Due to their short circuiting nature, they require a different
-//! design from traits for other operators like [`BitAnd`]. Designs for them are
-//! under discussion.
+//! The `&&` and `||` operators can be overloaded for custom types by
+//! implementing the [`Decisive`] trait along with [`BitAnd`] and/or [`BitOr`].
+//! The `Decisive` trait controls short-circuit evaluation, while `BitAnd`/`BitOr`
+//! provide the combining operation when short-circuiting does not apply.
 //!
 //! Many of the operators take their operands by value. In non-generic
 //! contexts involving built-in types, this is usually not a problem.
@@ -143,6 +143,7 @@ mod async_function;
 mod bit;
 mod control_flow;
 mod coroutine;
+mod decisive;
 mod deref;
 mod drop;
 mod function;
@@ -161,6 +162,8 @@ pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
+#[unstable(feature = "decisive_trait", issue = "none")]
+pub use self::decisive::Decisive;
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]

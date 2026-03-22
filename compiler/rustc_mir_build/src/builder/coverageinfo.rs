@@ -197,7 +197,9 @@ impl<'tcx> Builder<'_, 'tcx> {
         }
         // If the expression is a lazy logical op, it will naturally get branch
         // coverage as part of its normal lowering, so we can disregard it here.
-        if let ExprKind::LogicalOp { .. } = self.thir[expr_id].kind {
+        if let ExprKind::LogicalOp { .. } | ExprKind::OverloadedLogicalOp { .. } =
+            self.thir[expr_id].kind
+        {
             return;
         }
 

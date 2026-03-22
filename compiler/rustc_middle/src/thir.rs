@@ -324,6 +324,15 @@ pub enum ExprKind<'tcx> {
         lhs: ExprId,
         rhs: ExprId,
     },
+    /// An overloaded logical operation (`&&` or `||`) on a non-bool type
+    /// that implements `Decisive` + `BitAnd`/`BitOr`.
+    /// `bitop_fun` is the resolved `BitAnd::bitand` or `BitOr::bitor` callee.
+    OverloadedLogicalOp {
+        op: LogicalOp,
+        lhs: ExprId,
+        rhs: ExprId,
+        bitop_fun: ExprId,
+    },
     /// A *non-overloaded* unary operation. Note that here the deref (`*`)
     /// operator is represented by `ExprKind::Deref`.
     Unary {

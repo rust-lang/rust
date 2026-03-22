@@ -450,6 +450,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::If { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::LogicalOp { .. }
+            | ExprKind::OverloadedLogicalOp { .. }
             | ExprKind::Use { .. } => {
                 // We don't need to save the old value and restore it
                 // because all the place expressions can't have more

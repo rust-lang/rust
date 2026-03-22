@@ -106,15 +106,107 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match BinOpCategory::from(op.node) {
             BinOpCategory::Shortcircuit => {
-                // && and || are a simple case.
-                self.check_expr_coercible_to_type(lhs_expr, tcx.types.bool, None);
-                let lhs_diverges = self.diverges.get();
-                self.check_expr_coercible_to_type(rhs_expr, tcx.types.bool, None);
+                // && and || work with bool by default, or with types that
+                // implement Decisive + BitAnd/BitOr for overloaded short-circuiting.
+                let lhs_ty = self.check_expr(lhs_expr);
+                let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
 
-                // Depending on the LHS' value, the RHS can never execute.
-                self.diverges.set(lhs_diverges);
+                if lhs_ty.references_error()
+                    || lhs_ty.is_never()
+                    || lhs_ty.is_ty_var()
+                    || self.may_coerce(lhs_ty, tcx.types.bool)
+                {
+                    // Standard bool path.
+                    self.demand_coerce(
+                        lhs_expr,
+                        lhs_ty,
+                        tcx.types.bool,
+                        Some(rhs_expr),
+                        AllowTwoPhase::No,
+                    );
+                    let lhs_diverges = self.diverges.get();
+                    self.check_expr_coercible_to_type(rhs_expr, tcx.types.bool, None);
 
-                tcx.types.bool
+                    // Depending on the LHS' value, the RHS can never execute.
+                    self.diverges.set(lhs_diverges);
+
+                    tcx.types.bool
+                } else if let Some(decisive_did) = tcx.lang_items().decisive_trait()
+                    && self
+                        .type_implements_trait(decisive_did, [lhs_ty], self.param_env)
+                        .may_apply()
+                {
+                    // Overloaded Decisive path: map && to BitAnd, || to BitOr.
+                    let lhs_diverges = self.diverges.get();
+                    let rhs_ty_var = self.next_ty_var(rhs_expr.span);
+                    let (opname, trait_did) = match op.node {
+                        hir::BinOpKind::And => (sym::bitand, tcx.lang_items().bitand_trait()),
+                        hir::BinOpKind::Or => (sym::bitor, tcx.lang_items().bitor_trait()),
+                        _ => unreachable!(),
+                    };
+                    let result = self.lookup_op_method(
+                        (lhs_expr, lhs_ty),
+                        Some((rhs_expr, rhs_ty_var)),
+                        (opname, trait_did),
+                        op.span,
+                        expected,
+                    );
+                    let rhs_ty = self.check_expr_coercible_to_type_or_error(
+                        rhs_expr,
+                        rhs_ty_var,
+                        Some(lhs_expr),
+                        |_, _| {},
+                    );
+                    let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
+
+                    // Depending on the LHS' value, the RHS can never execute.
+                    self.diverges.set(lhs_diverges);
+
+                    match result {
+                        Ok(method) => {
+                            self.write_method_call_and_enforce_effects(
+                                expr.hir_id,
+                                expr.span,
+                                method,
+                            );
+                            method.sig.output()
+                        }
+                        Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
+                            Ty::new_misc_error(self.tcx)
+                        }
+                        Err(errors) => {
+                            let op_str = op.node.as_str();
+                            let mut path = None;
+                            let lhs_str = self.tcx.short_string(lhs_ty, &mut path);
+                            let mut err = struct_span_code_err!(
+                                self.dcx(),
+                                expr.span,
+                                E0369,
+                                "binary operation `{}` cannot be applied to type `{}`",
+                                op_str,
+                                lhs_str,
+                            );
+                            self.note_unmet_impls_on_type(&mut err, &errors, false);
+                            *err.long_ty_path() = path;
+                            err.emit();
+                            Ty::new_misc_error(self.tcx)
+                        }
+                    }
+                } else {
+                    // Type is not bool and does not implement Decisive.
+                    // Fall back to original bool error.
+                    self.demand_coerce(
+                        lhs_expr,
+                        lhs_ty,
+                        tcx.types.bool,
+                        Some(rhs_expr),
+                        AllowTwoPhase::No,
+                    );
+                    let lhs_diverges = self.diverges.get();
+                    self.check_expr_coercible_to_type(rhs_expr, tcx.types.bool, None);
+                    self.diverges.set(lhs_diverges);
+                    tcx.types.bool
+                }
             }
             _ => {
                 // Otherwise, we always treat operators as if they are
@@ -1077,9 +1169,8 @@ fn lang_item_for_binop(tcx: TyCtxt<'_>, op: Op) -> (Symbol, Option<hir::def_id::
             hir::BinOpKind::Gt => (sym::gt, lang.partial_ord_trait()),
             hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
             hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
-            hir::BinOpKind::And | hir::BinOpKind::Or => {
-                bug!("&& and || are not overloadable")
-            }
+            hir::BinOpKind::And => (sym::bitand, lang.bitand_trait()),
+            hir::BinOpKind::Or => (sym::bitor, lang.bitor_trait()),
         },
     }
 }
@@ -1108,7 +1199,7 @@ pub(crate) fn contains_let_in_chain(expr: &hir::Expr<'_>) -> bool {
 // with respect to the builtin operations supported.
 #[derive(Clone, Copy)]
 enum BinOpCategory {
-    /// &&, || -- cannot be overridden
+    /// &&, || -- overridable via Decisive + BitAnd/BitOr
     Shortcircuit,
 
     /// <<, >> -- when shifting a single integer, rhs can be any

@@ -69,6 +69,11 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);
         }
+        OverloadedLogicalOp { lhs, rhs, op: _, bitop_fun } => {
+            visitor.visit_expr(&visitor.thir()[lhs]);
+            visitor.visit_expr(&visitor.thir()[rhs]);
+            visitor.visit_expr(&visitor.thir()[bitop_fun]);
+        }
         Unary { arg, op: _ } => visitor.visit_expr(&visitor.thir()[arg]),
         Cast { source } => visitor.visit_expr(&visitor.thir()[source]),
         Use { source } => visitor.visit_expr(&visitor.thir()[source]),

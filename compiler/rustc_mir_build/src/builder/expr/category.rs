@@ -46,6 +46,7 @@ impl Category {
             | ExprKind::ValueUnwrapUnsafeBinder { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
+            | ExprKind::OverloadedLogicalOp { .. }
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::Let { .. }

@@ -288,6 +288,15 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*rhs, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            OverloadedLogicalOp { op, lhs, rhs, bitop_fun: _ } => {
+                print_indented!(self, "OverloadedLogicalOp {", depth_lvl);
+                print_indented!(self, format!("op: {:?}", op), depth_lvl + 1);
+                print_indented!(self, "lhs:", depth_lvl + 1);
+                self.print_expr(*lhs, depth_lvl + 2);
+                print_indented!(self, "rhs:", depth_lvl + 1);
+                self.print_expr(*rhs, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             Unary { op, arg } => {
                 print_indented!(self, "Unary {", depth_lvl);
                 print_indented!(self, format!("op: {:?}", op), depth_lvl + 1);

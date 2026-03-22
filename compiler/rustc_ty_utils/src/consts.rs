@@ -183,7 +183,7 @@ fn recurse_build<'tcx>(
         ExprKind::Binary { .. } => {
             error(GenericConstantTooComplexSub::BinaryNotSupported(node.span))?
         }
-        ExprKind::LogicalOp { .. } => {
+        ExprKind::LogicalOp { .. } | ExprKind::OverloadedLogicalOp { .. } => {
             error(GenericConstantTooComplexSub::LogicalOpNotSupported(node.span))?
         }
         ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
@@ -266,6 +266,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Deref { .. }
             | thir::ExprKind::Binary { .. }
             | thir::ExprKind::LogicalOp { .. }
+            | thir::ExprKind::OverloadedLogicalOp { .. }
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
             | thir::ExprKind::Use { .. }

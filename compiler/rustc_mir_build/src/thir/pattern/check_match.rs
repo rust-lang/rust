@@ -350,6 +350,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | If { .. }
             | Literal { .. }
             | LogicalOp { .. }
+            | OverloadedLogicalOp { .. }
             | Loop { .. }
             | LoopMatch { .. }
             | Match { .. }

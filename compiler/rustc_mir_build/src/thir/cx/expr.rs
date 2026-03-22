@@ -575,23 +575,39 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::Lit(lit) => ExprKind::Literal { lit, neg: false },
 
             hir::ExprKind::Binary(op, lhs, rhs) => {
-                if self.typeck_results.is_method_call(expr) {
-                    let lhs = self.mirror_expr(lhs);
-                    let rhs = self.mirror_expr(rhs);
-                    self.overloaded_operator(expr, Box::new([lhs, rhs]))
-                } else {
-                    match op.node {
-                        hir::BinOpKind::And => ExprKind::LogicalOp {
-                            op: LogicalOp::And,
-                            lhs: self.mirror_expr(lhs),
-                            rhs: self.mirror_expr(rhs),
-                        },
-                        hir::BinOpKind::Or => ExprKind::LogicalOp {
-                            op: LogicalOp::Or,
-                            lhs: self.mirror_expr(lhs),
-                            rhs: self.mirror_expr(rhs),
-                        },
-                        _ => {
+                match op.node {
+                    // && and || are handled specially: they are either
+                    // bool LogicalOp or overloaded via Decisive + BitAnd/BitOr.
+                    hir::BinOpKind::And | hir::BinOpKind::Or => {
+                        let logical_op = match op.node {
+                            hir::BinOpKind::And => LogicalOp::And,
+                            _ => LogicalOp::Or,
+                        };
+                        if self.typeck_results.is_method_call(expr) {
+                            // Overloaded: type implements Decisive + BitAnd/BitOr.
+                            let callee = self.method_callee(expr, expr.span, None);
+                            let bitop_fun = self.thir.exprs.push(callee);
+                            ExprKind::OverloadedLogicalOp {
+                                op: logical_op,
+                                lhs: self.mirror_expr(lhs),
+                                rhs: self.mirror_expr(rhs),
+                                bitop_fun,
+                            }
+                        } else {
+                            // Standard bool path.
+                            ExprKind::LogicalOp {
+                                op: logical_op,
+                                lhs: self.mirror_expr(lhs),
+                                rhs: self.mirror_expr(rhs),
+                            }
+                        }
+                    }
+                    _ => {
+                        if self.typeck_results.is_method_call(expr) {
+                            let lhs = self.mirror_expr(lhs);
+                            let rhs = self.mirror_expr(rhs);
+                            self.overloaded_operator(expr, Box::new([lhs, rhs]))
+                        } else {
                             let op = bin_op(op.node);
                             ExprKind::Binary {
                                 op,
