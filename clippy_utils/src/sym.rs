@@ -141,6 +141,7 @@ generate! {
     assert_failed,
     author,
     back,
+    binary_heap_pop_if,
     binaryheap_iter,
     bool_then,
     borrow,

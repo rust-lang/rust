@@ -7,8 +7,9 @@ use clippy_utils::visitors::is_local_used;
 use clippy_utils::{eq_expr_value, is_else_clause, is_lang_item_or_ctor, peel_blocks_with_stmt, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, PatKind, RustcVersion, StmtKind};
+use rustc_hir::{Expr, ExprKind, LangItem, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 use std::fmt;
@@ -61,11 +62,24 @@ impl_lint_pass!(ManualPopIf => [MANUAL_POP_IF]);
 
 pub struct ManualPopIf {
     msrv: Msrv,
+    binary_heap_pop_if_feature_enabled: bool,
 }
 
 impl ManualPopIf {
-    pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv,
+            binary_heap_pop_if_feature_enabled: tcx.features().enabled(sym::binary_heap_pop_if),
+        }
+    }
+
+    fn msrv_compatible(&self, cx: &LateContext<'_>, kind: ManualPopIfKind) -> bool {
+        match kind {
+            ManualPopIfKind::Vec => self.msrv.meets(cx, msrvs::VEC_POP_IF),
+            ManualPopIfKind::VecDequeBack => self.msrv.meets(cx, msrvs::VEC_DEQUE_POP_BACK_IF),
+            ManualPopIfKind::VecDequeFront => self.msrv.meets(cx, msrvs::VEC_DEQUE_POP_FRONT_IF),
+            ManualPopIfKind::BinaryHeap => self.binary_heap_pop_if_feature_enabled,
+        }
     }
 }
 
@@ -75,6 +89,7 @@ enum ManualPopIfKind {
     Vec,
     VecDequeBack,
     VecDequeFront,
+    BinaryHeap,
 }
 
 impl ManualPopIfKind {
@@ -83,12 +98,13 @@ impl ManualPopIfKind {
             ManualPopIfKind::Vec => sym::last,
             ManualPopIfKind::VecDequeBack => sym::back,
             ManualPopIfKind::VecDequeFront => sym::front,
+            ManualPopIfKind::BinaryHeap => sym::peek,
         }
     }
 
     fn pop_method(self) -> Symbol {
         match self {
-            ManualPopIfKind::Vec => sym::pop,
+            ManualPopIfKind::Vec | ManualPopIfKind::BinaryHeap => sym::pop,
             ManualPopIfKind::VecDequeBack => sym::pop_back,
             ManualPopIfKind::VecDequeFront => sym::pop_front,
         }
@@ -96,7 +112,7 @@ impl ManualPopIfKind {
 
     fn pop_if_method(self) -> Symbol {
         match self {
-            ManualPopIfKind::Vec => sym::pop_if,
+            ManualPopIfKind::Vec | ManualPopIfKind::BinaryHeap => sym::pop_if,
             ManualPopIfKind::VecDequeBack => sym::pop_back_if,
             ManualPopIfKind::VecDequeFront => sym::pop_front_if,
         }
@@ -107,14 +123,7 @@ impl ManualPopIfKind {
         match self {
             ManualPopIfKind::Vec => ty.is_diag_item(cx, sym::Vec),
             ManualPopIfKind::VecDequeBack | ManualPopIfKind::VecDequeFront => ty.is_diag_item(cx, sym::VecDeque),
-        }
-    }
-
-    fn msrv(self) -> RustcVersion {
-        match self {
-            ManualPopIfKind::Vec => msrvs::VEC_POP_IF,
-            ManualPopIfKind::VecDequeBack => msrvs::VEC_DEQUE_POP_BACK_IF,
-            ManualPopIfKind::VecDequeFront => msrvs::VEC_DEQUE_POP_FRONT_IF,
+            ManualPopIfKind::BinaryHeap => ty.is_diag_item(cx, sym::BinaryHeap),
         }
     }
 }
@@ -125,6 +134,7 @@ impl fmt::Display for ManualPopIfKind {
             ManualPopIfKind::Vec => write!(f, "`Vec::pop_if`"),
             ManualPopIfKind::VecDequeBack => write!(f, "`VecDeque::pop_back_if`"),
             ManualPopIfKind::VecDequeFront => write!(f, "`VecDeque::pop_front_if`"),
+            ManualPopIfKind::BinaryHeap => write!(f, "`BinaryHeap::pop_if`"),
         }
     }
 }
@@ -419,12 +429,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualPopIf {
             ManualPopIfKind::Vec,
             ManualPopIfKind::VecDequeBack,
             ManualPopIfKind::VecDequeFront,
+            ManualPopIfKind::BinaryHeap,
         ] {
             if let Some(pattern) = check_is_some_and_pattern(cx, cond, then_block, expr.span, kind)
                 .or_else(|| check_if_let_pattern(cx, cond, then_block, expr.span, kind))
                 .or_else(|| check_let_chain_pattern(cx, cond, then_block, expr.span, kind))
                 .or_else(|| check_map_unwrap_or_pattern(cx, cond, then_block, expr.span, kind))
-                && self.msrv.meets(cx, kind.msrv())
+                && self.msrv_compatible(cx, kind)
             {
                 pattern.emit_lint(cx);
                 return;
