@@ -37,7 +37,7 @@ jobs:
           profile = "compiler"
 
           [llvm]
-          download-ci-llvm = true
+          download-ci-llvm = false
           assertions = false
 
           [rust]
@@ -51,8 +51,10 @@ jobs:
       - name: Cache stage0 and LLVM
         uses: actions/cache@v4
         with:
-          path: build/cache
-          key: stage0-llvm-${{ hashFiles('src/stage0') }}
+          path: |
+            build/cache
+            build/x86_64-unknown-linux-gnu/llvm
+          key: stage0-llvm-${{ hashFiles('src/stage0', 'src/llvm-project/llvm/CMakeLists.txt') }}
           restore-keys: stage0-llvm-
 
       - name: Build stage1 compiler and stdlib
