@@ -6,7 +6,7 @@ use cargo_metadata::PackageId;
 use cfg::{CfgAtom, CfgExpr};
 use hir::sym;
 use ide::{Cancellable, Crate, FileId, RunnableKind, TestId};
-use project_model::project_json::Runnable;
+use project_model::project_json::{self, Runnable};
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
@@ -72,48 +72,51 @@ pub(crate) struct ProjectJsonTargetSpec {
 }
 
 impl ProjectJsonTargetSpec {
+    fn find_replace_runnable(
+        &self,
+        kind: project_json::RunnableKind,
+        replacer: &dyn Fn(&Self, &str) -> String,
+    ) -> Option<Runnable> {
+        for runnable in &self.shell_runnables {
+            if runnable.kind == kind {
+                let mut runnable = runnable.clone();
+
+                let replaced_args: Vec<_> =
+                    runnable.args.iter().map(|arg| replacer(self, arg)).collect();
+                runnable.args = replaced_args;
+
+                return Some(runnable);
+            }
+        }
+
+        None
+    }
+
     pub(crate) fn runnable_args(&self, kind: &RunnableKind) -> Option<Runnable> {
         match kind {
-            RunnableKind::Bin => {
-                for runnable in &self.shell_runnables {
-                    if matches!(runnable.kind, project_model::project_json::RunnableKind::Run) {
-                        let mut runnable = runnable.clone();
-
-                        let replaced_args: Vec<_> = runnable
-                            .args
-                            .iter()
-                            .map(|arg| arg.replace("{label}", &self.label))
-                            .collect();
-                        runnable.args = replaced_args;
-
-                        return Some(runnable);
-                    }
-                }
-
-                None
-            }
+            RunnableKind::Bin => self
+                .find_replace_runnable(project_json::RunnableKind::Run, &|this, arg| {
+                    arg.replace("{label}", &this.label)
+                }),
             RunnableKind::Test { test_id, .. } => {
-                for runnable in &self.shell_runnables {
-                    if matches!(runnable.kind, project_model::project_json::RunnableKind::TestOne) {
-                        let mut runnable = runnable.clone();
-
-                        let replaced_args: Vec<_> = runnable
-                            .args
-                            .iter()
-                            .map(|arg| arg.replace("{test_id}", &test_id.to_string()))
-                            .map(|arg| arg.replace("{label}", &self.label))
-                            .collect();
-                        runnable.args = replaced_args;
-
-                        return Some(runnable);
-                    }
-                }
-
-                None
+                self.find_replace_runnable(project_json::RunnableKind::Run, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{test_id}", &test_id.to_string())
+                })
             }
-            RunnableKind::TestMod { .. } => None,
-            RunnableKind::Bench { .. } => None,
-            RunnableKind::DocTest { .. } => None,
+            RunnableKind::TestMod { path } => self
+                .find_replace_runnable(project_json::RunnableKind::TestMod, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{test_pattern}", path)
+                }),
+            RunnableKind::Bench { test_id } => {
+                self.find_replace_runnable(project_json::RunnableKind::BenchOne, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{bench_id}", &test_id.to_string())
+                })
+            }
+            RunnableKind::DocTest { test_id } => {
+                self.find_replace_runnable(project_json::RunnableKind::DocTestOne, &|this, arg| {
+                    arg.replace("{label}", &this.label).replace("{test_id}", &test_id.to_string())
+                })
+            }
         }
     }
 }
