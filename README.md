@@ -1,4 +1,4 @@
-Fork of [rust-lang/rust](https://github.com/rust-lang/rust). See the [original README](https://github.com/rust-lang/rust/blob/master/README.md).
+> Fork of [rust-lang/rust](https://github.com/rust-lang/rust). See the [original README](https://github.com/rust-lang/rust/blob/master/README.md).
 
 <div align="center">
   <img alt="Rust - Shorted" src="RUST-SHORTED.png" width="50%">
@@ -122,5 +122,4 @@ fn find_drink(&mut self) -> Status {
 ## References
 
 - Colledanchise, M. and Ögren, P. (2018). *Behavior Trees in Robotics and AI: An Introduction*. CRC Press. [arXiv:1709.00084](https://arxiv.org/abs/1709.00084)
-- [Active Logic (C#)](https://github.com/active-logic/activelogic-cs) — The original C# implementation leveraging `operator true` / `operator false`.
-- [BehaviorTrees reference implementation](https://github.com/eelstork/BehaviorTrees) — Minimal stateless BTs in C#.
+- de Souza, T. (2020). *Implementing Behavior Trees using Three-Valued Logic*. [arXiv:2011.03835](https://arxiv.org/abs/2011.03835)
