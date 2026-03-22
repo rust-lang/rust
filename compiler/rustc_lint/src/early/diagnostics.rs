@@ -116,26 +116,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
                     .into_diag(dcx, level)
             }
-            BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
-                let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-                if is_foreign {
-                    lints::PatternsInFnsWithoutBody::Foreign { sub }
-                } else {
-                    lints::PatternsInFnsWithoutBody::Bodiless { sub }
-                }
-                .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
-                let suggestion = match sugg {
-                    Some((right_sp, sugg)) => lints::DeprecatedWhereClauseLocationSugg::MoveToEnd {
-                        left: left_sp,
-                        right: right_sp,
-                        sugg,
-                    },
-                    None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
-                };
-                lints::DeprecatedWhereClauseLocation { suggestion }.into_diag(dcx, level)
-            }
             BuiltinLintDiag::SingleUseLifetime {
                 param_span,
                 use_span: Some((use_span, elide)),
@@ -256,9 +236,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
 
             BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
                 lints::UnusedCrateDependency { extern_crate, local_crate }.into_diag(dcx, level)
-            }
-            BuiltinLintDiag::UnusedVisibility(span) => {
-                lints::UnusedVisibility { span }.into_diag(dcx, level)
             }
             BuiltinLintDiag::AttributeLint(kind) => {
                 DecorateAttrLint { sess: self.sess, tcx: self.tcx, diagnostic: &kind }
