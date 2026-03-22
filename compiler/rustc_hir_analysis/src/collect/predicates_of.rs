@@ -165,7 +165,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         Some(ty::Binder::dummy(tcx.impl_trait_ref(def_id).instantiate_identity()));
                 }
             }
-            ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
+            ItemKind::Trait(_, _, _, _, _, _, self_bounds, ..)
             | ItemKind::TraitAlias(_, _, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
@@ -1033,7 +1033,7 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
+            hir::ItemKind::Trait(_, _, _, _, _, generics, supertraits, _) => {
                 (generics, Some((Some(item.owner_id.def_id), supertraits)), false)
             }
             hir::ItemKind::TraitAlias(_, _, generics, supertraits) => {

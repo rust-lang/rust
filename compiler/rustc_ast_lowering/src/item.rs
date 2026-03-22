@@ -536,14 +536,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 constness,
                 is_auto,
                 safety,
-                // FIXME(impl_restrictions): lower to HIR
-                impl_restriction: _,
+                impl_restriction,
                 ident,
                 generics,
                 bounds,
                 items,
             }) => {
                 let constness = self.lower_constness(*constness);
+                let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
@@ -562,7 +562,16 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         (safety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(constness, *is_auto, safety, ident, generics, bounds, items)
+                hir::ItemKind::Trait(
+                    constness,
+                    *is_auto,
+                    safety,
+                    impl_restriction,
+                    ident,
+                    generics,
+                    bounds,
+                    items,
+                )
             }
             ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
                 let constness = self.lower_constness(*constness);
@@ -1825,6 +1834,28 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             Safety::Default => default,
             Safety::Safe(_) => hir::Safety::Safe,
         }
+    }
+
+    pub(super) fn lower_impl_restriction(
+        &mut self,
+        r: &ImplRestriction,
+    ) -> &'hir hir::ImplRestriction<'hir> {
+        let kind = match &r.kind {
+            RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
+            RestrictionKind::Restricted { path, id, shorthand } => {
+                let res = self.resolver.get_partial_res(*id);
+                if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
+                    hir::RestrictionKind::Restricted {
+                        path: self.lower_mod_path(did, path),
+                        shorthand: *shorthand,
+                    }
+                } else {
+                    self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                    hir::RestrictionKind::Unrestricted
+                }
+            }
+        };
+        self.arena.alloc(hir::ImplRestriction { kind, span: self.lower_span(r.span) })
     }
 
     /// Return the pair of the lowered `generics` as `hir::Generics` and the evaluation of `f` with

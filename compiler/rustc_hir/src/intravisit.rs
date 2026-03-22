@@ -622,6 +622,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             _constness,
             _is_auto,
             _safety,
+            _impl_restriction,
             ident,
             ref generics,
             bounds,
