@@ -225,7 +225,7 @@ pub(crate) fn target_machine_factory(
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
-    let abi = SmallCStr::new(&sess.target.llvm_abiname);
+    let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
