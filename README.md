@@ -1,4 +1,4 @@
-> Fork of [rust-lang/rust](https://github.com/rust-lang/rust). See the [original README](https://github.com/rust-lang/rust/blob/master/README.md).
+Fork of [rust-lang/rust](https://github.com/rust-lang/rust). See the [original README](https://github.com/rust-lang/rust/blob/master/README.md).
 
 <div align="center">
   <img alt="Rust - Shorted" src="RUST-SHORTED.png" width="50%">
