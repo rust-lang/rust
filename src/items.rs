@@ -1525,7 +1525,7 @@ fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> By
 
 // Format tuple or struct without any fields. We need to make sure that the comments
 // inside the delimiters are preserved.
-fn format_empty_struct_or_tuple(
+pub(crate) fn format_empty_struct_or_tuple(
     context: &RewriteContext<'_>,
     span: Span,
     offset: Indent,
