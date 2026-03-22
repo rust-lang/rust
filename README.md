@@ -1,16 +1,14 @@
 > Fork of [rust-lang/rust](https://github.com/rust-lang/rust). See the [original README](https://github.com/rust-lang/rust/blob/master/README.md).
 
-<div align="center">
-  <img alt="Rust - Shorted" src="RUST-SHORTED.png" width="50%">
-</div>
+![Rust - Shorted](https://raw.githubusercontent.com/eelstork/rustlang-docs/main/RUST-SHORTED.png)
 
 # Overloadable Short-Circuiting Operators for Rust
 
 This public fork `rust-lang/rust` adds a `Decisive` trait to `core::ops`, enabling user-defined types to participate in short-circuiting `&&` and `||` expressions. The mechanism is general-purpose (three-valued logic, fuzzy logic, option types, etc.).
 
-The key change is at [9dd1275d6b6](https://github.com/eelstork/rust/commit/9dd1275d6b6b66432facfcf1c8a2fb3e25f3a723)
+The key change is at [7a510a6](https://github.com/eelstork/rust/commit/7a510a641535e0c1c5acc7dfef41e04b4df9ada5)
 
-## Community discussions
+## Community dicussions
 
 Making `&&` and `||` overloadable has been discussed several times within the Rust ecosystem:
 
@@ -122,4 +120,5 @@ fn find_drink(&mut self) -> Status {
 ## References
 
 - Colledanchise, M. and Ögren, P. (2018). *Behavior Trees in Robotics and AI: An Introduction*. CRC Press. [arXiv:1709.00084](https://arxiv.org/abs/1709.00084)
-- de Souza, T. (2020). *Implementing Behavior Trees using Three-Valued Logic*. [arXiv:2011.03835](https://arxiv.org/abs/2011.03835)
+- [Active Logic (C#)](https://github.com/active-logic/activelogic-cs) — The original C# implementation leveraging `operator true` / `operator false`.
+- [BehaviorTrees reference implementation](https://github.com/eelstork/BehaviorTrees) — Minimal stateless BTs in C#.
