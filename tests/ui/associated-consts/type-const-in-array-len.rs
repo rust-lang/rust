@@ -1,9 +1,7 @@
 //@ check-pass
 
 #![feature(min_generic_const_args)]
-//~^ WARN the feature `min_generic_const_args` is incomplete
 #![feature(inherent_associated_types)]
-//~^ WARN the feature `inherent_associated_types` is incomplete
 
 // Test case from #138226: generic impl with multiple type parameters
 struct Foo<A, B>(A, B);

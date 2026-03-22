@@ -1,5 +1,4 @@
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 struct DataWrapper<'static> {
     //~^ ERROR invalid lifetime parameter name: `'static`

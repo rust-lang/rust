@@ -5,7 +5,11 @@ LL | #![cfg_attr(with_gate, feature(unsafe_fields))]
    |                                ^^^^^^^^^^^^^
    |
    = note: see issue #132922 <https://github.com/rust-lang/rust/issues/132922> for more information
-   = note: `#[warn(incomplete_features)]` on by default
+note: the lint level is defined here
+  --> $DIR/feature-gate-unsafe_fields.rs:4:9
+   |
+LL | #![warn(incomplete_features)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 
