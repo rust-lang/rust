@@ -368,6 +368,9 @@ pub enum RunnableKind {
     /// Template for checking a target, emitting rustc JSON diagnostics.
     /// May include {label} which will get the label from the `build` section of a crate.
     Flycheck,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    Unknown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -380,6 +383,8 @@ pub struct ProjectJsonData {
     crates: Vec<CrateData>,
     #[serde(default)]
     runnables: Vec<RunnableData>,
+    //
+    // New fields should be Option or #[serde(default)]. This applies to most of this datastructure.
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
@@ -453,32 +458,37 @@ enum EditionData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct BuildData {
+struct BuildData {
     label: String,
     build_file: Utf8PathBuf,
     target_kind: TargetKindData,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RunnableData {
-    pub program: String,
-    pub args: Vec<String>,
-    pub cwd: Utf8PathBuf,
-    pub kind: RunnableKindData,
+struct RunnableData {
+    program: String,
+    args: Vec<String>,
+    cwd: Utf8PathBuf,
+    kind: RunnableKindData,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum RunnableKindData {
+enum RunnableKindData {
     Flycheck,
     Check,
     Run,
     TestOne,
+
+    /// For forwards-compatibility, i.e. old rust-analyzer binary with newer workspace discovery tools
+    #[allow(unused)]
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum TargetKindData {
+enum TargetKindData {
     Bin,
     /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
     Lib,
@@ -542,6 +552,7 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::Run => RunnableKind::Run,
             RunnableKindData::TestOne => RunnableKind::TestOne,
             RunnableKindData::Flycheck => RunnableKind::Flycheck,
+            RunnableKindData::Unknown => RunnableKind::Unknown,
         }
     }
 }
