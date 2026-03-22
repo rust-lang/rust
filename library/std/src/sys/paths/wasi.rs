@@ -1,12 +1,10 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::ffi::{CStr, OsStr, OsString};
-use crate::marker::PhantomData;
+use crate::ffi::{CStr, OsString};
+use crate::io;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::sys::helpers::run_path_with_cstr;
-use crate::sys::unsupported;
-use crate::{fmt, io};
 
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
@@ -42,46 +40,6 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     }
 }
 
-pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
-
-pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
-    panic!("unsupported")
-}
-
-impl<'a> Iterator for SplitPaths<'a> {
-    type Item = PathBuf;
-    fn next(&mut self) -> Option<PathBuf> {
-        self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct JoinPathsError;
-
-pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-where
-    I: Iterator<Item = T>,
-    T: AsRef<OsStr>,
-{
-    Err(JoinPathsError)
-}
-
-impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "not supported on wasm yet".fmt(f)
-    }
-}
-
-impl crate::error::Error for JoinPathsError {}
-
-pub fn current_exe() -> io::Result<PathBuf> {
-    unsupported()
-}
-
 pub fn temp_dir() -> PathBuf {
-    panic!("no filesystem on wasm")
-}
-
-pub fn home_dir() -> Option<PathBuf> {
-    None
+    panic!("not supported by WASI yet")
 }

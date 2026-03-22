@@ -14,7 +14,6 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 pub mod helpers;
-pub mod os;
 pub mod system_time;
 
 #[cfg(test)]
