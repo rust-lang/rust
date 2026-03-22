@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, RelocModel, Target, TargetMetadata, TargetOptions,
+    cvs,
 };
 
 // The PSP has custom linker requirements.
@@ -36,7 +37,7 @@ pub(crate) fn target() -> Target {
 
             // PSP does not support trap-on-condition instructions.
             llvm_args: cvs!["-mno-check-zero-division"],
-            llvm_abiname: "o32".into(),
+            llvm_abiname: LlvmAbi::O32,
             pre_link_args,
             link_script: Some(LINKER_SCRIPT.into()),
             ..Default::default()

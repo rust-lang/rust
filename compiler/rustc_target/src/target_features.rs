@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::HashStable_Generic;
 use rustc_span::{Symbol, sym};
 
-use crate::spec::{Arch, FloatAbi, RustcAbi, Target};
+use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 /// These exist globally and are not in the target-specific lists below.
@@ -1174,20 +1174,20 @@ impl Target {
             Arch::RiscV32 | Arch::RiscV64 => {
                 // RISC-V handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
-                match &*self.llvm_abiname {
-                    "ilp32d" | "lp64d" => {
+                match &self.llvm_abiname {
+                    LlvmAbi::Ilp32d | LlvmAbi::Lp64d => {
                         // Requires d (which implies f), incompatible with e and zfinx.
                         FeatureConstraints { required: &["d"], incompatible: &["e", "zfinx"] }
                     }
-                    "ilp32f" | "lp64f" => {
+                    LlvmAbi::Ilp32f | LlvmAbi::Lp64f => {
                         // Requires f, incompatible with e and zfinx.
                         FeatureConstraints { required: &["f"], incompatible: &["e", "zfinx"] }
                     }
-                    "ilp32" | "lp64" => {
+                    LlvmAbi::Ilp32 | LlvmAbi::Lp64 => {
                         // Requires nothing, incompatible with e.
                         FeatureConstraints { required: &[], incompatible: &["e"] }
                     }
-                    "ilp32e" => {
+                    LlvmAbi::Ilp32e => {
                         // ilp32e is documented to be incompatible with features that need aligned
                         // load/stores > 32 bits, like `d`. (One could also just generate more
                         // complicated code to align the stack when needed, but the RISCV
@@ -1198,7 +1198,7 @@ impl Target {
                         // a program while the rest doesn't know they even exist.
                         FeatureConstraints { required: &[], incompatible: &["d"] }
                     }
-                    "lp64e" => {
+                    LlvmAbi::Lp64e => {
                         // As above, `e` is not required.
                         NOTHING
                     }
@@ -1208,16 +1208,16 @@ impl Target {
             Arch::LoongArch32 | Arch::LoongArch64 => {
                 // LoongArch handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
-                match &*self.llvm_abiname {
-                    "ilp32d" | "lp64d" => {
+                match &self.llvm_abiname {
+                    LlvmAbi::Ilp32d | LlvmAbi::Lp64d => {
                         // Requires d (which implies f), incompatible with nothing.
                         FeatureConstraints { required: &["d"], incompatible: &[] }
                     }
-                    "ilp32f" | "lp64f" => {
+                    LlvmAbi::Ilp32f | LlvmAbi::Lp64f => {
                         // Requires f, incompatible with nothing.
                         FeatureConstraints { required: &["f"], incompatible: &[] }
                     }
-                    "ilp32s" | "lp64s" => {
+                    LlvmAbi::Ilp32s | LlvmAbi::Lp64s => {
                         // The soft-float ABI does not require any features and is also not
                         // incompatible with any features. Rust targets explicitly specify the
                         // LLVM ABI names, which allows for enabling hard-float support even on
