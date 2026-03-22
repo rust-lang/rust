@@ -157,7 +157,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Res::Def(_, def_id) => self.check_def_id(def_id),
             Res::SelfTyParam { trait_: t } => self.check_def_id(t),
             Res::SelfTyAlias { alias_to: i, .. } => self.check_def_id(i),
-            Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
+            Res::ToolMod | Res::NonMacroAttr(..) | Res::OpenMod(..) | Res::Err => {}
         }
     }
 
