@@ -29,9 +29,9 @@ jobs:
 
       - name: Configure compiler build
         run: |
-          cat > config.toml << 'TOML'
+          cat > bootstrap.toml << 'TOML'
+          change-id = 153143
           profile = "compiler"
-          changelog-seen = 2
 
           [llvm]
           download-ci-llvm = true
