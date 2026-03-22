@@ -554,6 +554,30 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to check for grouped late initializations from multiple `let` statements.
+    ///
+    /// #### Example
+    /// ```rust
+    /// let a;
+    /// let b;
+    /// if true {
+    ///     a = 1;
+    ///     b = 2;
+    /// } else {
+    ///     a = 3;
+    ///     b = 4;
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let (a, b) = if true {
+    ///     (1, 2)
+    /// } else {
+    ///     (3, 4)
+    /// };
+    /// ```
+    #[lints(needless_late_init)]
+    check_grouped_late_init: bool = true,
     /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
     #[lints(incompatible_msrv)]
     check_incompatible_msrv_in_tests: bool = false,

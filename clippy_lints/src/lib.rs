@@ -731,7 +731,7 @@ rustc_lint::late_lint_methods!(
         UndocumentedUnsafeBlocks: undocumented_unsafe_blocks::UndocumentedUnsafeBlocks = undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(conf),
         FormatArgs: format_args::FormatArgs<'tcx> = format_args::FormatArgs::new(tcx, conf, format_args.clone()),
         TrailingEmptyArray: trailing_empty_array::TrailingEmptyArray = trailing_empty_array::TrailingEmptyArray,
-        NeedlessLateInit: needless_late_init::NeedlessLateInit = needless_late_init::NeedlessLateInit,
+        NeedlessLateInit: needless_late_init::NeedlessLateInit<'tcx> = needless_late_init::NeedlessLateInit::new(conf),
         ReturnSelfNotMustUse: return_self_not_must_use::ReturnSelfNotMustUse = return_self_not_must_use::ReturnSelfNotMustUse,
         NumberedFields: init_numbered_fields::NumberedFields = init_numbered_fields::NumberedFields,
         ManualBits: manual_bits::ManualBits = manual_bits::ManualBits::new(conf),
