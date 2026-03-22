@@ -3218,6 +3218,27 @@ impl Target {
             );
         }
 
+        // Ensure built-in targets don't use the `Other` variants.
+        if kind == TargetKind::Builtin {
+            check!(
+                !matches!(self.arch, Arch::Other(_)),
+                "`Arch::Other` is only meant for JSON targets"
+            );
+            check!(!matches!(self.os, Os::Other(_)), "`Os::Other` is only meant for JSON targets");
+            check!(
+                !matches!(self.env, Env::Other(_)),
+                "`Env::Other` is only meant for JSON targets"
+            );
+            check!(
+                !matches!(self.cfg_abi, CfgAbi::Other(_)),
+                "`CfgAbi::Other` is only meant for JSON targets"
+            );
+            check!(
+                !matches!(self.llvm_abiname, LlvmAbi::Other(_)),
+                "`LlvmAbi::Other` is only meant for JSON targets"
+            );
+        }
+
         // Check ABI flag consistency, for the architectures where we have proper ABI treatment.
         // To ensure targets are trated consistently, please consult with the team before allowing
         // new cases.
