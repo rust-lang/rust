@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": {
+    "commit": "T.E.A de Souza",
+    "pr": "T.E.A de Souza"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git config user.name \"T.E.A de Souza\" && git config user.email \"tea.desouza@gmail.com\""
+          }
+        ]
+      }
+    ]
+  }
+}
