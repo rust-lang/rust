@@ -1,7 +1,7 @@
 /// This module provides types and traits for buffering lints until later in compilation.
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::DynSend;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
 
@@ -10,7 +10,14 @@ use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 /// We can't implement `Diagnostic` for `BuiltinLintDiag`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
-    Dynamic(Box<dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static>),
+    Dynamic(
+        Box<
+            dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()>
+                + DynSync
+                + DynSend
+                + 'static,
+        >,
+    ),
     Builtin(BuiltinLintDiag),
 }
 
@@ -20,7 +27,7 @@ impl std::fmt::Debug for DecorateDiagCompat {
     }
 }
 
-impl<D: for<'a> Diagnostic<'a, ()> + DynSend + 'static> From<D> for DecorateDiagCompat {
+impl<D: for<'a> Diagnostic<'a, ()> + DynSync + DynSend + 'static> From<D> for DecorateDiagCompat {
     #[inline]
     fn from(d: D) -> Self {
         Self::Dynamic(Box::new(|dcx, level| d.into_diag(dcx, level)))
@@ -83,7 +90,7 @@ impl LintBuffer {
     }
 
     pub fn dyn_buffer_lint<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + 'static,
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
     >(
         &mut self,
         lint: &'static Lint,
