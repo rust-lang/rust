@@ -113,13 +113,10 @@ fn shl_u256() {
         has_errors = true;
         eprintln!(
             "\
-            FAILURE:  {} << {b}\n\
-                expected: {}\n\
-                actual:   {}\
+            FAILURE:  {a:#x} << {b}\n\
+                expected: {expected:#x}\n\
+                actual:   {actual:#x}\
             ",
-            hexu(a),
-            hexu(expected),
-            hexu(actual),
         );
     };
 

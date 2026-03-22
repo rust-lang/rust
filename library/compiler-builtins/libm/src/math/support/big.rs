@@ -18,11 +18,11 @@ pub struct u256 {
 }
 
 impl u256 {
-    #[cfg(any(test, feature = "unstable-public-internals"))]
     pub const MAX: Self = Self {
         lo: u128::MAX,
         hi: u128::MAX,
     };
+    pub const MIN: Self = Self { lo: 0, hi: 0 };
 
     /// Reinterpret as a signed integer
     pub fn signed(self) -> i256 {
@@ -42,6 +42,15 @@ pub struct i256 {
 }
 
 impl i256 {
+    pub const MAX: Self = Self {
+        lo: u128::MAX,
+        hi: i128::MAX,
+    };
+    pub const MIN: Self = Self {
+        lo: u128::MIN,
+        hi: i128::MIN,
+    };
+
     /// Reinterpret as an unsigned integer
     pub fn unsigned(self) -> u256 {
         u256 {
@@ -60,11 +69,8 @@ impl MinInt for u256 {
     const BITS: u32 = 256;
     const ZERO: Self = Self { lo: 0, hi: 0 };
     const ONE: Self = Self { lo: 1, hi: 0 };
-    const MIN: Self = Self { lo: 0, hi: 0 };
-    const MAX: Self = Self {
-        lo: u128::MAX,
-        hi: u128::MAX,
-    };
+    const MIN: Self = Self::MIN;
+    const MAX: Self = Self::MAX;
 }
 
 impl MinInt for i256 {
@@ -76,14 +82,8 @@ impl MinInt for i256 {
     const BITS: u32 = 256;
     const ZERO: Self = Self { lo: 0, hi: 0 };
     const ONE: Self = Self { lo: 1, hi: 0 };
-    const MIN: Self = Self {
-        lo: u128::MIN,
-        hi: i128::MIN,
-    };
-    const MAX: Self = Self {
-        lo: u128::MAX,
-        hi: i128::MAX,
-    };
+    const MIN: Self = Self::MIN;
+    const MAX: Self = Self::MAX;
 }
 
 macro_rules! impl_common {
