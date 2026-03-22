@@ -129,38 +129,21 @@ impl CargoTargetSpec {
         let extra_test_binary_args = config.extra_test_binary_args;
 
         let mut cargo_args = Vec::new();
-        let mut executable_args = Vec::new();
+        let executable_args = Self::executable_args_for(kind, extra_test_binary_args);
 
         match kind {
-            RunnableKind::Test { test_id, attr } => {
+            RunnableKind::Test { .. } => {
                 cargo_args.push(config.test_command);
-                executable_args.push(test_id.to_string());
-                if let TestId::Path(_) = test_id {
-                    executable_args.push("--exact".to_owned());
-                }
-                executable_args.extend(extra_test_binary_args);
-                if attr.ignore {
-                    executable_args.push("--ignored".to_owned());
-                }
             }
-            RunnableKind::TestMod { path } => {
+            RunnableKind::TestMod { .. } => {
                 cargo_args.push(config.test_command);
-                executable_args.push(path.clone());
-                executable_args.extend(extra_test_binary_args);
             }
-            RunnableKind::Bench { test_id } => {
+            RunnableKind::Bench { .. } => {
                 cargo_args.push(config.bench_command);
-                executable_args.push(test_id.to_string());
-                if let TestId::Path(_) = test_id {
-                    executable_args.push("--exact".to_owned());
-                }
-                executable_args.extend(extra_test_binary_args);
             }
-            RunnableKind::DocTest { test_id } => {
+            RunnableKind::DocTest { .. } => {
                 cargo_args.push("test".to_owned());
                 cargo_args.push("--doc".to_owned());
-                executable_args.push(test_id.to_string());
-                executable_args.extend(extra_test_binary_args);
             }
             RunnableKind::Bin => {
                 let subcommand = match spec {
@@ -253,16 +236,70 @@ impl CargoTargetSpec {
             TargetKind::BuildScript | TargetKind::Other => "",
         };
 
+        let target = |kind, target| match kind {
+            TargetKind::Bin | TargetKind::Test | TargetKind::Bench | TargetKind::Example => target,
+            _ => "",
+        };
+
         let replace_placeholders = |arg: String| match &spec {
             Some(spec) => arg
                 .replace("${package}", &spec.package)
                 .replace("${target_arg}", target_arg(spec.target_kind))
-                .replace("${target}", &spec.target)
+                .replace("${target}", target(spec.target_kind, &spec.target))
                 .replace("${test_name}", &test_name),
             _ => arg,
         };
 
-        args.map(|args| args.into_iter().map(replace_placeholders).collect())
+        let extra_test_binary_args = config.extra_test_binary_args;
+        let executable_args = Self::executable_args_for(kind, extra_test_binary_args);
+
+        args.map(|mut args| {
+            let exec_args_idx = args.iter().position(|a| a == "${executable_args}");
+
+            if let Some(idx) = exec_args_idx {
+                args.splice(idx..idx + 1, executable_args);
+            }
+
+            args.into_iter().map(replace_placeholders).filter(|a| !a.trim().is_empty()).collect()
+        })
+    }
+
+    fn executable_args_for(
+        kind: &RunnableKind,
+        extra_test_binary_args: impl IntoIterator<Item = String>,
+    ) -> Vec<String> {
+        let mut executable_args = Vec::new();
+
+        match kind {
+            RunnableKind::Test { test_id, attr } => {
+                executable_args.push(test_id.to_string());
+                if let TestId::Path(_) = test_id {
+                    executable_args.push("--exact".to_owned());
+                }
+                executable_args.extend(extra_test_binary_args);
+                if attr.ignore {
+                    executable_args.push("--ignored".to_owned());
+                }
+            }
+            RunnableKind::TestMod { path } => {
+                executable_args.push(path.clone());
+                executable_args.extend(extra_test_binary_args);
+            }
+            RunnableKind::Bench { test_id } => {
+                executable_args.push(test_id.to_string());
+                if let TestId::Path(_) = test_id {
+                    executable_args.push("--exact".to_owned());
+                }
+                executable_args.extend(extra_test_binary_args);
+            }
+            RunnableKind::DocTest { test_id } => {
+                executable_args.push(test_id.to_string());
+                executable_args.extend(extra_test_binary_args);
+            }
+            RunnableKind::Bin => {}
+        }
+
+        executable_args
     }
 
     pub(crate) fn push_to(self, buf: &mut Vec<String>, kind: &RunnableKind) {
