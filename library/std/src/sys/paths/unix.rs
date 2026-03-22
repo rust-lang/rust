@@ -7,8 +7,8 @@ use libc::{c_char, c_int, c_void};
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::sys::cvt;
 use crate::sys::helpers::run_path_with_cstr;
+use crate::sys::pal::cvt;
 use crate::{fmt, io, iter, mem, ptr, slice, str};
 
 const PATH_SEPARATOR: u8 = b':';
@@ -47,7 +47,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "espidf")]
 pub fn chdir(_p: &path::Path) -> io::Result<()> {
-    super::unsupported::unsupported()
+    crate::sys::pal::unsupported::unsupported()
 }
 
 #[cfg(not(target_os = "espidf"))]
@@ -372,7 +372,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    super::unsupported::unsupported()
+    crate::sys::pal::unsupported::unsupported()
 }
 
 #[cfg(target_os = "fuchsia")]

@@ -2,17 +2,13 @@
 
 #![allow(nonstandard_style)]
 
-#[cfg(test)]
-mod tests;
-
-use super::api;
-#[cfg(not(target_vendor = "uwp"))]
-use super::api::WinError;
 use crate::ffi::{OsStr, OsString};
 use crate::os::windows::ffi::EncodeWide;
 use crate::os::windows::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::sys::pal::{c, cvt};
+#[cfg(not(target_vendor = "uwp"))]
+use crate::sys::pal::api::WinError;
+use crate::sys::pal::{api, c, cvt, fill_utf16_buf, os2path};
 use crate::{fmt, io, ptr};
 
 pub struct SplitPaths<'a> {
@@ -56,11 +52,7 @@ impl<'a> Iterator for SplitPaths<'a> {
             }
         }
 
-        if !must_yield && in_progress.is_empty() {
-            None
-        } else {
-            Some(super::os2path(&in_progress))
-        }
+        if !must_yield && in_progress.is_empty() { None } else { Some(os2path(&in_progress)) }
     }
 }
 
@@ -104,14 +96,11 @@ impl fmt::Display for JoinPathsError {
 impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    super::fill_utf16_buf(
-        |buf, sz| unsafe { c::GetModuleFileNameW(ptr::null_mut(), buf, sz) },
-        super::os2path,
-    )
+    fill_utf16_buf(|buf, sz| unsafe { c::GetModuleFileNameW(ptr::null_mut(), buf, sz) }, os2path)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    super::fill_utf16_buf(|buf, sz| unsafe { c::GetCurrentDirectoryW(sz, buf) }, super::os2path)
+    fill_utf16_buf(|buf, sz| unsafe { c::GetCurrentDirectoryW(sz, buf) }, os2path)
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
@@ -123,7 +112,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 }
 
 pub fn temp_dir() -> PathBuf {
-    super::fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, super::os2path).unwrap()
+    fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, os2path).unwrap()
 }
 
 #[cfg(all(not(target_vendor = "uwp"), not(target_vendor = "win7")))]
@@ -132,7 +121,7 @@ fn home_dir_crt() -> Option<PathBuf> {
         // Defined in processthreadsapi.h.
         const CURRENT_PROCESS_TOKEN: usize = -4_isize as usize;
 
-        super::fill_utf16_buf(
+        fill_utf16_buf(
             |buf, mut sz| {
                 // GetUserProfileDirectoryW does not quite use the usual protocol for
                 // negotiating the buffer size, so we have to translate.
@@ -146,7 +135,7 @@ fn home_dir_crt() -> Option<PathBuf> {
                     _ => sz - 1, // sz includes the null terminator
                 }
             },
-            super::os2path,
+            os2path,
         )
         .ok()
     }
@@ -163,7 +152,7 @@ fn home_dir_crt() -> Option<PathBuf> {
             return None;
         }
         let _handle = Handle::from_raw_handle(token);
-        super::fill_utf16_buf(
+        fill_utf16_buf(
             |buf, mut sz| {
                 match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
                     0 if api::get_last_error() != WinError::INSUFFICIENT_BUFFER => 0,
@@ -171,7 +160,7 @@ fn home_dir_crt() -> Option<PathBuf> {
                     _ => sz - 1, // sz includes the null terminator
                 }
             },
-            super::os2path,
+            os2path,
         )
         .ok()
     }
