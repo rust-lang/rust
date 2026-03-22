@@ -681,7 +681,8 @@ pub enum BuiltinLintDiag {
         deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
-        use_span: Option<(Span, bool)>,
+        use_span: Span,
+        elidable: bool,
         ident: Ident,
     },
     NamedArgumentUsedPositionally {

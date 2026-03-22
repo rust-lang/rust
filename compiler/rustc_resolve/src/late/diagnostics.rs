@@ -3653,7 +3653,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         param.ident.span,
                         lint::BuiltinLintDiag::SingleUseLifetime {
                             param_span: param.ident.span,
-                            use_span: Some((use_span, elidable)),
+                            use_span,
+                            elidable,
                             deletion_span,
                             ident: param.ident,
                         },
@@ -3669,12 +3670,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             lint::builtin::UNUSED_LIFETIMES,
                             param.id,
                             param.ident.span,
-                            lint::BuiltinLintDiag::SingleUseLifetime {
-                                param_span: param.ident.span,
-                                use_span: None,
-                                deletion_span,
-                                ident: param.ident,
-                            },
+                            errors::UnusedLifetime { deletion_span, ident: param.ident },
                         );
                     }
                 }

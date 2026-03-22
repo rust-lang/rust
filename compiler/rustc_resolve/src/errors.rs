@@ -1583,3 +1583,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("lifetime parameter `{$ident}` never used")]
+pub(crate) struct UnusedLifetime {
+    #[suggestion("elide the unused lifetime", code = "", applicability = "machine-applicable")]
+    pub deletion_span: Option<Span>,
+
+    pub ident: Ident,
+}

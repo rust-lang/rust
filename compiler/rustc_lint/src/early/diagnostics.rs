@@ -118,13 +118,14 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
             }
             BuiltinLintDiag::SingleUseLifetime {
                 param_span,
-                use_span: Some((use_span, elide)),
+                use_span,
+                elidable,
                 deletion_span,
                 ident,
             } => {
                 debug!(?param_span, ?use_span, ?deletion_span);
                 let suggestion = if let Some(deletion_span) = deletion_span {
-                    let (use_span, replace_lt) = if elide {
+                    let (use_span, replace_lt) = if elidable {
                         let use_span =
                             self.sess.source_map().span_extend_while_whitespace(use_span);
                         (use_span, String::new())
@@ -144,9 +145,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
 
                 lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
                     .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
-                lints::UnusedLifetime { deletion_span, ident }.into_diag(dcx, level)
             }
             BuiltinLintDiag::NamedArgumentUsedPositionally {
                 position_sp_to_replace,
