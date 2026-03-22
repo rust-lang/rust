@@ -397,16 +397,22 @@ fn rewrite_empty_macro_def_body(
     context: &RewriteContext<'_>,
     span: Span,
     shape: Shape,
+    delim_token: Delimiter,
 ) -> RewriteResult {
-    // Create an empty, dummy `ast::Block` representing an empty macro body
-    let block = ast::Block {
-        stmts: vec![].into(),
-        id: rustc_ast::node_id::DUMMY_NODE_ID,
-        rules: ast::BlockCheckMode::Default,
-        span,
-        tokens: None,
-    };
-    block.rewrite_result(context, shape)
+    match delim_token {
+        Delimiter::Brace => {
+            // Create an empty, dummy `ast::Block` representing an empty macro body
+            let block = ast::Block {
+                stmts: vec![].into(),
+                id: rustc_ast::node_id::DUMMY_NODE_ID,
+                rules: ast::BlockCheckMode::Default,
+                span,
+                tokens: None,
+            };
+            block.rewrite_result(context, shape)
+        }
+        _ => Ok(context.snippet(span).to_owned()),
+    }
 }
 
 pub(crate) fn rewrite_macro_def(
@@ -452,7 +458,8 @@ pub(crate) fn rewrite_macro_def(
     if parsed_def.branches.len() == 0 {
         let lo = context.snippet_provider.span_before(span, "{");
         result += " ";
-        result += &rewrite_empty_macro_def_body(context, span.with_lo(lo), shape)?;
+        result +=
+            &rewrite_empty_macro_def_body(context, span.with_lo(lo), shape, Delimiter::Brace)?;
         return Ok(result);
     }
 
