@@ -184,7 +184,7 @@ pub(crate) struct CopyBitcode {
 #[diag(
     "unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo"
 )]
-pub(crate) struct UnknownCompression {
+pub(crate) struct UnsupportedCompression {
     pub algorithm: &'static str,
 }
 
