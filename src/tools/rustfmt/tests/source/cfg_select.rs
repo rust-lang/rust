@@ -39,6 +39,11 @@ core::cfg_select! { /* inline comment
     * multi-line
     */
 }
+cfg_select! { // followed by multiple whitespace lines in source
+
+
+
+}
 
 
 // Original `()` delimiters
@@ -51,6 +56,11 @@ core::cfg_select! ( /* inline comment */
 core::cfg_select!( /* inline comment
     * multi-line
     */
+);
+cfg_select! ( // followed by multiple whitespace lines in source
+
+
+
 );
 
 
@@ -65,6 +75,12 @@ core::cfg_select![ /* inline comment
     * multi-line
     */
 ];
+cfg_select! [ // followed by multiple whitespace lines in source
+
+
+
+];
+
 
 
 // Original `{}` delimiters
@@ -959,4 +975,129 @@ cfg_select! {
     target_os = "zkvm" => {
         mod zkvm;
     }
+}
+
+// Other rust-lang/rust ui tests to cover other expansion sites
+fn arm_rhs_expr_3() -> i32 {
+    cfg_select! {
+        any(true) => 1,
+        any(false) => 2,
+        any(true) => { 42 }
+        any(true) => { 42 },
+        any(false) => -1 as i32,
+        any(true) => 2 + 2,
+        any(false) => "",
+        any(true) => if true { 42 } else { 84 }
+        any(false) => if true { 42 } else { 84 },
+        any(true) => return 42,
+        any(false) => loop {}
+        any(true) => (1, 2),
+        any(false) => (1, 2,),
+        any(true) => todo!(),
+        any(false) => println!("hello"),
+    }
+}
+
+fn expand_to_statements() -> i32 {
+    cfg_select! {
+        false => {
+            let b = 2;
+            b + 1
+        }
+        true => {
+            let a = 1;
+            a + 1
+        }
+    }
+}
+
+type ExpandToType = cfg_select! {
+    unix => { u32 },
+    _ => i32,
+};
+
+fn expand_to_pattern(x: Option<i32>) -> bool {
+    match x {
+        (cfg_select! {
+            unix => Some(n),
+            _ => None,
+        }) => true,
+        _ => false,
+    }
+}
+
+cfg_select! {
+    false => {
+        fn foo() {}
+    }
+    _ => {
+        fn bar() {}
+    }
+}
+
+struct S;
+
+impl S {
+    cfg_select! {
+        false => {
+            fn foo() {}
+        }
+        _ => {
+            fn bar() {}
+        }
+    }
+}
+
+trait T {
+    cfg_select! {
+        false => {
+            fn a();
+        }
+        _ => {
+            fn b();
+        }
+    }
+}
+
+impl T for S {
+    cfg_select! {
+        false => {
+            fn a() {}
+        },
+        _ => {
+            fn b() {}
+        }
+    }
+}
+
+extern "C" {
+    cfg_select! {
+        false => {
+            fn puts(s: *const i8) -> i32;
+        }
+        _ => {
+            fn printf(fmt: *const i8, ...) -> i32;
+        }
+    }
+}
+
+// Nested cfg_select!
+std :: cfg_select! {
+
+    _ => core :: cfg_select! [
+        _ => {
+            // I don't know why you would write a nested cfg_select!,
+            // but you can, so... 🤷
+            1  +    1
+        }
+
+        _ => {
+            // some coverage for inline comment handling, which currently
+            // prevents formatting to prevent comment loss.
+                cfg_select! /* 1 */  {
+                    unix => Some(n),
+                    _ => None,
+                }
+        }
+    ]
 }
