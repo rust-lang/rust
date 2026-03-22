@@ -48,6 +48,7 @@ unstalled = "unstalled" # short for un-stalled
 # the non-empty form can be automatically fixed by `--bless`.
 #
 # tidy-alphabetical-start
+atomicaly = "atomically"
 definitinon = "definition"
 dependy = ""
 similarlty = "similarity"
