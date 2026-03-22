@@ -4,8 +4,8 @@ use std::{fmt::Write, iter, mem};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, GenericParamId, HasModule,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
+    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GeneralConstId, GenericParamId,
+    HasModule, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
@@ -14,6 +14,7 @@ use hir_def::{
     item_tree::FieldsShape,
     lang_item::LangItems,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
+    signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -185,7 +186,7 @@ impl MirLowerError {
                 }
             }
             MirLowerError::MissingFunctionDefinition(owner, it) => {
-                let body = db.body(*owner);
+                let body = Body::of(db, *owner);
                 writeln!(
                     f,
                     "Missing function definition for {}",
@@ -307,7 +308,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             closures: vec![],
         };
         let resolver = owner.resolver(db);
-        let env = db.trait_environment_for_body(owner);
+        let env = db.trait_environment(ExpressionStoreOwnerId::from(owner));
         let interner = DbInterner::new_with(db, resolver.krate());
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -472,7 +473,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 if let DefWithBodyId::FunctionId(f) = self.owner {
                     let assoc = f.lookup(self.db);
                     if let ItemContainerId::TraitId(t) = assoc.container {
-                        let name = &self.db.function_signature(f).name;
+                        let name = &FunctionSignature::of(self.db, f).name;
                         return Err(MirLowerError::TraitFunctionDefinition(t, name.clone()));
                     }
                 }
@@ -1993,7 +1994,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let loc = variant.lookup(db);
                 let name = format!(
                     "{}::{}",
-                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    EnumSignature::of(db, loc.parent).name.display(db, edition),
                     loc.parent
                         .enum_variants(self.db)
                         .variant_name_by_id(variant)
@@ -2112,8 +2113,8 @@ pub fn mir_body_for_closure_query<'db>(
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
     let body_owner =
         owner.as_def_with_body().expect("MIR lowering should only happen for body-owned closures");
-    let body = db.body(body_owner);
-    let infer = InferenceResult::for_body(db, body_owner);
+    let body = Body::of(db, body_owner);
+    let infer = InferenceResult::of(db, body_owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
@@ -2228,13 +2229,12 @@ pub fn mir_body_query<'db>(
     let edition = krate.data(db).edition;
     let detail = match def {
         DefWithBodyId::FunctionId(it) => {
-            db.function_signature(it).name.display(db, edition).to_string()
+            FunctionSignature::of(db, it).name.display(db, edition).to_string()
         }
         DefWithBodyId::StaticId(it) => {
-            db.static_signature(it).name.display(db, edition).to_string()
+            StaticSignature::of(db, it).name.display(db, edition).to_string()
         }
-        DefWithBodyId::ConstId(it) => db
-            .const_signature(it)
+        DefWithBodyId::ConstId(it) => ConstSignature::of(db, it)
             .name
             .clone()
             .unwrap_or_else(Name::missing)
@@ -2249,9 +2249,9 @@ pub fn mir_body_query<'db>(
         }
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
-    let body = db.body(def);
-    let infer = InferenceResult::for_body(db, def);
-    let mut result = lower_body_to_mir(db, def, &body, infer, body.body_expr)?;
+    let body = Body::of(db, def);
+    let infer = InferenceResult::of(db, def);
+    let mut result = lower_body_to_mir(db, def, body, infer, body.body_expr)?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }

@@ -14,6 +14,7 @@ use hir_def::{
     expr_store::{Body, path::Path},
     hir::PatId,
     item_tree::FieldsShape,
+    signatures::{StructSignature, UnionSignature},
 };
 use hir_expand::name::Name;
 use rustc_type_ir::inherent::IntoKind;
@@ -340,12 +341,12 @@ impl<'db> HirDisplay<'db> for Pat<'db> {
                         VariantId::StructId(s) => write!(
                             f,
                             "{}",
-                            f.db.struct_signature(s).name.display(f.db, f.edition())
+                            StructSignature::of(f.db, s).name.display(f.db, f.edition())
                         )?,
                         VariantId::UnionId(u) => write!(
                             f,
                             "{}",
-                            f.db.union_signature(u).name.display(f.db, f.edition())
+                            UnionSignature::of(f.db, u).name.display(f.db, f.edition())
                         )?,
                     };
 

@@ -13,7 +13,10 @@
 //! by the next salsa version. If not, we will likely have to adapt and go with the rustc approach
 //! while installing firewall per item queries to prevent invalidation issues.
 
-use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId, signatures::StructFlags};
+use hir_def::{
+    AdtId, GenericDefId, GenericParamId, VariantId,
+    signatures::{StructFlags, StructSignature},
+};
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     Variance,
@@ -45,7 +48,7 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
-                let flags = &db.struct_signature(id).flags;
+                let flags = &StructSignature::of(db, id).flags;
                 let types = || crate::next_solver::default_types(db);
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return types().one_invariant.store();
@@ -113,7 +116,7 @@ pub(crate) fn variances_of_cycle_initial(
 
 struct Context<'db> {
     db: &'db dyn HirDatabase,
-    generics: Generics,
+    generics: Generics<'db>,
     variances: Box<[Variance]>,
 }
 

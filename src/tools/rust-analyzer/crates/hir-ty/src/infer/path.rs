@@ -4,6 +4,7 @@ use hir_def::{
     AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
     expr_store::path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
+    signatures::{ConstSignature, FunctionSignature},
 };
 use hir_expand::name::Name;
 use rustc_type_ir::inherent::{SliceLike, Ty as _};
@@ -263,7 +264,7 @@ impl<'db> InferenceContext<'_, 'db> {
             trait_.trait_items(self.db).items.iter().map(|(_name, id)| *id).find_map(|item| {
                 match item {
                     AssocItemId::FunctionId(func) => {
-                        if segment.name == &self.db.function_signature(func).name {
+                        if segment.name == &FunctionSignature::of(self.db, func).name {
                             Some(CandidateId::FunctionId(func))
                         } else {
                             None
@@ -271,7 +272,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
 
                     AssocItemId::ConstId(konst) => {
-                        if self.db.const_signature(konst).name.as_ref() == Some(segment.name) {
+                        if ConstSignature::of(self.db, konst).name.as_ref() == Some(segment.name) {
                             Some(CandidateId::ConstId(konst))
                         } else {
                             None

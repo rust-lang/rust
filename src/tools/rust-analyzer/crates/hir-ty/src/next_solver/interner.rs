@@ -10,11 +10,15 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, ExpressionStoreOwner, HasModule,
+    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, HasModule,
     ItemContainerId, StructId, UnionId, VariantId,
     attrs::AttrFlags,
+    expr_store::{Body, ExpressionStore},
     lang_item::LangItems,
-    signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
+    signatures::{
+        EnumSignature, FieldData, FnFlags, FunctionSignature, ImplFlags, ImplSignature,
+        StructFlags, StructSignature, TraitFlags, TraitSignature, UnionSignature,
+    },
 };
 use la_arena::Idx;
 use rustc_abi::{ReprFlags, ReprOptions};
@@ -548,7 +552,7 @@ impl AdtDef {
         let db = interner.db();
         let (flags, variants, repr) = match def_id {
             AdtId::StructId(struct_id) => {
-                let data = db.struct_signature(struct_id);
+                let data = StructSignature::of(db, struct_id);
 
                 let flags = AdtFlags {
                     is_enum: false,
@@ -775,15 +779,15 @@ impl fmt::Debug for AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         crate::with_attached_db(|db| match self.inner().id {
             AdtId::StructId(struct_id) => {
-                let data = db.struct_signature(struct_id);
+                let data = StructSignature::of(db, struct_id);
                 f.write_str(data.name.as_str())
             }
             AdtId::UnionId(union_id) => {
-                let data = db.union_signature(union_id);
+                let data = UnionSignature::of(db, union_id);
                 f.write_str(data.name.as_str())
             }
             AdtId::EnumId(enum_id) => {
-                let data = db.enum_signature(enum_id);
+                let data = EnumSignature::of(db, enum_id);
                 f.write_str(data.name.as_str())
             }
         })
@@ -1231,7 +1235,7 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque,
             SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
                 ItemContainerId::ImplId(impl_)
-                    if self.db.impl_signature(impl_).target_trait.is_none() =>
+                    if ImplSignature::of(self.db, impl_).target_trait.is_none() =>
                 {
                     AliasTyKind::Inherent
                 }
@@ -1250,7 +1254,7 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::InternedOpaqueTyId(_) => AliasTermKind::OpaqueTy,
             SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
                 ItemContainerId::ImplId(impl_)
-                    if self.db.impl_signature(impl_).target_trait.is_none() =>
+                    if ImplSignature::of(self.db, impl_).target_trait.is_none() =>
                 {
                     AliasTermKind::InherentTy
                 }
@@ -1353,11 +1357,8 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let Some(body_owner) = owner.as_def_with_body() else {
-            return rustc_ast_ir::Movability::Static;
-        };
-        let body = self.db.body(body_owner);
-        let expr = &body[expr_id];
+        let store = ExpressionStore::of(self.db, owner);
+        let expr = &store[expr_id];
         match *expr {
             hir_def::hir::Expr::Closure { closure_kind, .. } => match closure_kind {
                 hir_def::hir::ClosureKind::Coroutine(movability) => match movability {
@@ -1929,7 +1930,7 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn impl_is_default(self, impl_def_id: Self::ImplId) -> bool {
         match impl_def_id {
-            AnyImplId::ImplId(impl_id) => self.db.impl_signature(impl_id).is_default(),
+            AnyImplId::ImplId(impl_id) => ImplSignature::of(self.db, impl_id).is_default(),
             AnyImplId::BuiltinDeriveImplId(_) => false,
         }
     }
@@ -1956,7 +1957,7 @@ impl<'db> Interner for DbInterner<'db> {
         let AnyImplId::ImplId(impl_id) = impl_id else {
             return ImplPolarity::Positive;
         };
-        let impl_data = self.db().impl_signature(impl_id);
+        let impl_data = ImplSignature::of(self.db(), impl_id);
         if impl_data.flags.contains(ImplFlags::NEGATIVE) {
             ImplPolarity::Negative
         } else {
@@ -1965,12 +1966,12 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn trait_is_auto(self, trait_: Self::TraitId) -> bool {
-        let trait_data = self.db().trait_signature(trait_.0);
+        let trait_data = TraitSignature::of(self.db(), trait_.0);
         trait_data.flags.contains(TraitFlags::AUTO)
     }
 
     fn trait_is_alias(self, trait_: Self::TraitId) -> bool {
-        let trait_data = self.db().trait_signature(trait_.0);
+        let trait_data = TraitSignature::of(self.db(), trait_.0);
         trait_data.flags.contains(TraitFlags::ALIAS)
     }
 
@@ -1979,7 +1980,7 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn trait_is_fundamental(self, trait_: Self::TraitId) -> bool {
-        let trait_data = self.db().trait_signature(trait_.0);
+        let trait_data = TraitSignature::of(self.db(), trait_.0);
         trait_data.flags.contains(TraitFlags::FUNDAMENTAL)
     }
 
@@ -2002,12 +2003,9 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let Some(body_owner) = owner.as_def_with_body() else {
-            return false;
-        };
-        let body = self.db.body(body_owner);
+        let store = ExpressionStore::of(self.db, owner);
         matches!(
-            body[expr_id],
+            store[expr_id],
             hir_def::hir::Expr::Closure {
                 closure_kind: hir_def::hir::ClosureKind::Coroutine(_),
                 ..
@@ -2019,12 +2017,9 @@ impl<'db> Interner for DbInterner<'db> {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
         let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
-        let Some(body_owner) = owner.as_def_with_body() else {
-            return false;
-        };
-        let body = self.db.body(body_owner);
+        let store = ExpressionStore::of(self.db, owner);
         matches!(
-            body[expr_id],
+            store[expr_id],
             hir_def::hir::Expr::Closure { closure_kind: hir_def::hir::ClosureKind::Async, .. }
                 | hir_def::hir::Expr::Async { .. }
         )
@@ -2145,7 +2140,7 @@ impl<'db> Interner for DbInterner<'db> {
         crate::opaques::opaque_types_defined_by(self.db, def_id, &mut result);
 
         // Collect coroutines.
-        let body = self.db.body(def_id);
+        let body = Body::of(self.db, def_id);
         body.exprs().for_each(|(expr_id, expr)| {
             if matches!(
                 expr,
@@ -2158,7 +2153,7 @@ impl<'db> Interner for DbInterner<'db> {
             ) {
                 let coroutine = InternedCoroutineId::new(
                     self.db,
-                    InternedCoroutine(ExpressionStoreOwner::Body(def_id), expr_id),
+                    InternedCoroutine(ExpressionStoreOwnerId::Body(def_id), expr_id),
                 );
                 result.push(coroutine.into());
             }
@@ -2188,7 +2183,7 @@ impl<'db> Interner for DbInterner<'db> {
             CallableDefId::FunctionId(id) => id,
             _ => return false,
         };
-        self.db().function_signature(id).flags.contains(FnFlags::CONST)
+        FunctionSignature::of(self.db(), id).flags.contains(FnFlags::CONST)
     }
 
     fn impl_is_const(self, _def_id: Self::ImplId) -> bool {
@@ -2236,11 +2231,11 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn trait_is_coinductive(self, trait_: Self::TraitId) -> bool {
-        self.db().trait_signature(trait_.0).flags.contains(TraitFlags::COINDUCTIVE)
+        TraitSignature::of(self.db(), trait_.0).flags.contains(TraitFlags::COINDUCTIVE)
     }
 
     fn trait_is_unsafe(self, trait_: Self::TraitId) -> bool {
-        self.db().trait_signature(trait_.0).flags.contains(TraitFlags::UNSAFE)
+        TraitSignature::of(self.db(), trait_.0).flags.contains(TraitFlags::UNSAFE)
     }
 
     fn impl_self_is_guaranteed_unsized(self, _def_id: Self::ImplId) -> bool {

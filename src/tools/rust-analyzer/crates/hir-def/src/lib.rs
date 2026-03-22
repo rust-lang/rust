@@ -49,7 +49,6 @@ pub mod visibility;
 use intern::{Interned, Symbol};
 pub use rustc_abi as layout;
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 pub use crate::signatures::LocalFieldId;
 
@@ -96,7 +95,9 @@ use crate::{
         block_def_map, crate_def_map, crate_local_def_map,
         diagnostics::DefDiagnostics,
     },
-    signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
+    signatures::{
+        ConstSignature, EnumVariants, InactiveEnumVariantCode, StaticSignature, VariantFields,
+    },
 };
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
@@ -264,8 +265,9 @@ impl StructId {
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -280,8 +282,9 @@ impl UnionId {
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -315,7 +318,7 @@ impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct AnonConstLoc {
     /// The owner store containing this expression.
-    pub owner: ExpressionStoreOwner,
+    pub owner: ExpressionStoreOwnerId,
     /// The ExprId within the owner's ExpressionStore that is the root
     /// of this anonymous const expression.
     pub expr: ExprId,
@@ -399,8 +402,9 @@ impl EnumVariantId {
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self.into())
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self.into());
+        (&r.0, &r.1)
     }
 }
 
@@ -739,10 +743,10 @@ impl GeneralConstId {
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
-                db.static_signature(it).name.display(db, Edition::CURRENT).to_string()
+                StaticSignature::of(db, it).name.display(db, Edition::CURRENT).to_string()
             }
             GeneralConstId::ConstId(const_id) => {
-                db.const_signature(const_id).name.as_ref().map_or_else(
+                ConstSignature::of(db, const_id).name.as_ref().map_or_else(
                     || "_".to_owned(),
                     |name| name.display(db, Edition::CURRENT).to_string(),
                 )
@@ -837,20 +841,21 @@ impl_from!(
 /// This is used for queries that operate on expression stores generically,
 /// such as `expr_scopes`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ExpressionStoreOwner {
+pub enum ExpressionStoreOwnerId {
     Signature(GenericDefId),
     Body(DefWithBodyId),
 }
 
-impl ExpressionStoreOwner {
+impl ExpressionStoreOwnerId {
+    // FIXME: Check callers of this, this method likely can be removed
     pub fn as_def_with_body(self) -> Option<DefWithBodyId> {
         if let Self::Body(v) = self { Some(v) } else { None }
     }
 
     pub fn generic_def(self, db: &dyn DefDatabase) -> GenericDefId {
         match self {
-            ExpressionStoreOwner::Signature(generic_def_id) => generic_def_id,
-            ExpressionStoreOwner::Body(def_with_body_id) => match def_with_body_id {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => generic_def_id,
+            ExpressionStoreOwnerId::Body(def_with_body_id) => match def_with_body_id {
                 DefWithBodyId::FunctionId(id) => GenericDefId::FunctionId(id),
                 DefWithBodyId::StaticId(id) => GenericDefId::StaticId(id),
                 DefWithBodyId::ConstId(id) => GenericDefId::ConstId(id),
@@ -860,15 +865,15 @@ impl ExpressionStoreOwner {
     }
 }
 
-impl From<GenericDefId> for ExpressionStoreOwner {
+impl From<GenericDefId> for ExpressionStoreOwnerId {
     fn from(id: GenericDefId) -> Self {
-        ExpressionStoreOwner::Signature(id)
+        ExpressionStoreOwnerId::Signature(id)
     }
 }
 
-impl From<DefWithBodyId> for ExpressionStoreOwner {
+impl From<DefWithBodyId> for ExpressionStoreOwnerId {
     fn from(id: DefWithBodyId) -> Self {
-        ExpressionStoreOwner::Body(id)
+        ExpressionStoreOwnerId::Body(id)
     }
 }
 
@@ -1028,8 +1033,9 @@ impl VariantId {
     pub fn fields_with_source_map(
         self,
         db: &dyn DefDatabase,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>) {
-        VariantFields::query(db, self)
+    ) -> (&VariantFields, &ExpressionStoreSourceMap) {
+        let r = VariantFields::with_source_map(db, self);
+        (&r.0, &r.1)
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
@@ -1230,11 +1236,11 @@ impl HasModule for DefWithBodyId {
     }
 }
 
-impl HasModule for ExpressionStoreOwner {
+impl HasModule for ExpressionStoreOwnerId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
-            ExpressionStoreOwner::Signature(def) => def.module(db),
-            ExpressionStoreOwner::Body(def) => def.module(db),
+            ExpressionStoreOwnerId::Signature(def) => def.module(db),
+            ExpressionStoreOwnerId::Body(def) => def.module(db),
         }
     }
 }

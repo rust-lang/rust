@@ -5,7 +5,7 @@ use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
-    ExpressionStoreOwner, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
+    ExpressionStoreOwnerId, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
     StaticId, TraitId, TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod,
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
 };
@@ -178,13 +178,9 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: CallableDefId,
     ) -> EarlyBinder<'db, PolyFnSig<'db>>;
 
-    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
-    #[salsa::transparent]
-    fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId) -> ParamEnv<'db>;
-
     #[salsa::invoke(crate::lower::trait_environment)]
     #[salsa::transparent]
-    fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db>;
+    fn trait_environment<'db>(&'db self, def: ExpressionStoreOwnerId) -> ParamEnv<'db>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::generic_defaults_with_diagnostics_cycle_result)]
@@ -240,7 +236,7 @@ pub struct InternedOpaqueTyId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedClosure(pub ExpressionStoreOwner, pub ExprId);
+pub struct InternedClosure(pub ExpressionStoreOwnerId, pub ExprId);
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
@@ -249,7 +245,7 @@ pub struct InternedClosureId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedCoroutine(pub ExpressionStoreOwner, pub ExprId);
+pub struct InternedCoroutine(pub ExpressionStoreOwnerId, pub ExprId);
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
