@@ -1,5 +1,4 @@
 #![feature(min_generic_const_args)]
-//~^ WARN the feature `min_generic_const_args` is incomplete
 
 #![feature(transmutability)]
 

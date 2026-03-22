@@ -2,7 +2,6 @@
 //@ compile-flags: -Copt-level=1 --crate-type=lib
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 pub unsafe trait Storage {
     type Handle;
