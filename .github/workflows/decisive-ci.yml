@@ -2,9 +2,7 @@ name: Decisive Trait CI
 
 on:
   push:
-    branches: [ main, decisive ]
-  pull_request:
-    branches: [ main, decisive ]
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
