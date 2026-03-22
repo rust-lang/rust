@@ -429,6 +429,11 @@ mod imp {
 
     #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_linux(page_size: usize) -> Option<Range<usize>> {
+        // See the corresponding conditional in init().
+        // Avoid stack_start_aligned, which makes slow syscalls to read /proc/self/maps
+        if cfg!(panic = "immediate-abort") {
+            return None;
+        }
         // Linux doesn't allocate the whole stack right away, and
         // the kernel has its own stack-guard mechanism to fault
         // when growing too close to an existing mapping. If we map
@@ -456,6 +461,10 @@ mod imp {
     #[forbid(unsafe_op_in_unsafe_fn)]
     #[cfg(target_os = "freebsd")]
     unsafe fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
+        // See the corresponding conditional in install_main_guard_linux().
+        if cfg!(panic = "immediate-abort") {
+            return None;
+        }
         // FreeBSD's stack autogrows, and optionally includes a guard page
         // at the bottom. If we try to remap the bottom of the stack
         // ourselves, FreeBSD's guard page moves upwards. So we'll just use
@@ -489,6 +498,10 @@ mod imp {
 
     #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
+        // See the corresponding conditional in install_main_guard_linux().
+        if cfg!(panic = "immediate-abort") {
+            return None;
+        }
         // OpenBSD stack already includes a guard page, and stack is
         // immutable.
         // NetBSD stack includes the guard page.
