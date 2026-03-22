@@ -14,9 +14,9 @@ on:
       - automation/bors/auto
       - automation/bors/try
       - try-perf
-  pull_request:
-    branches:
-      - "**"
+  # pull_request trigger disabled — this fork uses decisive-ci.yml instead.
+  # The upstream CI matrix requires rust-lang/rust infrastructure (sccache, S3, bors)
+  # and will burn CI minutes or get cancelled on forks.
 
 permissions:
   contents: read
