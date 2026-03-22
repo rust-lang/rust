@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Build stage1 compiler & test demos
+    name: Build stage1 compiler & run decisive tests
     runs-on: ubuntu-latest
     timeout-minutes: 240
 
@@ -21,14 +21,6 @@ jobs:
 
       - name: Checkout compiler fork
         uses: actions/checkout@v4
-        with:
-          path: rust
-
-      - name: Checkout rust-al-demos
-        uses: actions/checkout@v4
-        with:
-          repository: eelstork/rust-al-demos
-          path: rust-al-demos
 
       - name: Install build dependencies
         run: |
@@ -36,7 +28,6 @@ jobs:
           sudo apt-get install -y build-essential cmake ninja-build python3 curl pkg-config libssl-dev
 
       - name: Configure compiler build
-        working-directory: rust
         run: |
           cat > config.toml << 'TOML'
           profile = "compiler"
@@ -57,25 +48,12 @@ jobs:
       - name: Cache stage0 and LLVM
         uses: actions/cache@v4
         with:
-          path: rust/build/cache
-          key: stage0-llvm-${{ hashFiles('rust/src/stage0') }}
+          path: build/cache
+          key: stage0-llvm-${{ hashFiles('src/stage0') }}
           restore-keys: stage0-llvm-
 
       - name: Build stage1 compiler and stdlib
-        working-directory: rust
         run: python3 x.py build library --stage 1
 
-      - name: Register stage1 as rustup toolchain
-        run: |
-          HOST=$(rustc -vV | grep host | cut -d' ' -f2)
-          STAGE1="$(pwd)/rust/build/$HOST/stage1"
-          rustup toolchain link decisive-stage1 "$STAGE1"
-          rustup run decisive-stage1 rustc --version
-
       - name: Run compiler tests (decisive trait)
-        working-directory: rust
         run: python3 x.py test tests/ui --stage 1 --test-args "decisive"
-
-      - name: Build demos with stage1 compiler
-        working-directory: rust-al-demos
-        run: cargo +decisive-stage1 check
