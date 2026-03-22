@@ -21,6 +21,9 @@ jobs:
 
       - name: Checkout compiler fork
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          submodules: recursive
 
       - name: Install build dependencies
         run: |
