@@ -528,13 +528,6 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
         "missing on-disk cache entry for {dep_node:?}"
     );
 
-    // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
-    // we should actually be able to load it.
-    debug_assert!(
-        !((query.will_cache_on_disk_for_key_fn)(tcx, key) && loadable_from_disk(tcx, prev_index)),
-        "missing on-disk cache entry for loadable {dep_node:?}"
-    );
-
     // We could not load a result from the on-disk cache, so
     // recompute.
     let prof_timer = tcx.prof.query_provider();
