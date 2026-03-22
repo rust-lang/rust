@@ -433,6 +433,21 @@ pub trait Visitor<'v>: Sized {
     fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) -> Self::Result {
         walk_use(self, path, hir_id)
     }
+    fn visit_impl_restriction(
+        &mut self,
+        impl_restriction: &'v ImplRestriction<'v>,
+    ) -> Self::Result {
+        walk_impl_restriction(self, impl_restriction)
+    }
+    fn visit_restriction_kind(
+        &mut self,
+        restriction_kind: &'v RestrictionKind<'v>,
+    ) -> Self::Result {
+        match restriction_kind {
+            RestrictionKind::Unrestricted => Self::Result::output(),
+            RestrictionKind::Restricted { path, shorthand: _ } => walk_mod_path(self, path),
+        }
+    }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
         walk_trait_item(self, ti)
     }
@@ -622,12 +637,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             _constness,
             _is_auto,
             _safety,
-            _impl_restriction,
+            ref impl_restriction,
             ident,
             ref generics,
             bounds,
             trait_item_refs,
         ) => {
+            try_visit!(visitor.visit_restriction_kind(&impl_restriction.kind));
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
@@ -1257,6 +1273,19 @@ pub fn walk_use<'v, V: Visitor<'v>>(
     for res in res.present_items() {
         try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
     }
+    V::Result::output()
+}
+
+pub fn walk_impl_restriction<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    impl_restriction: &'v ImplRestriction<'v>,
+) -> V::Result {
+    visitor.visit_restriction_kind(&impl_restriction.kind)
+}
+
+pub fn walk_mod_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v ModPath<'v>) -> V::Result {
+    let ModPath { segments, res: _, span: _ } = path;
+    walk_list!(visitor, visit_path_segment, *segments);
     V::Result::output()
 }
 
