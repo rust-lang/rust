@@ -386,6 +386,7 @@ pub enum StashKey {
     /// it's a method call without parens. If later on in `hir_typeck` we find out that this is
     /// the case we suppress this message and we give a better suggestion.
     GenericInFieldExpr,
+    ReturnTypeNotation,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {

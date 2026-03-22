@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// let log = x.ilog2();
     /// let log = x.ilog2();
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.94.0"]
     pub MANUAL_ILOG2,
     pedantic,
     "manually reimplementing `ilog2`"

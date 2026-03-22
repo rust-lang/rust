@@ -998,7 +998,7 @@ fn check_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     all_sized: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let _ = tcx.check_representability(item.owner_id.def_id);
+    tcx.ensure_ok().check_representability(item.owner_id.def_id);
     let adt_def = tcx.adt_def(item.owner_id);
 
     enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {

@@ -375,9 +375,8 @@ impl DepGraphData {
     /// incorrectly marked green.
     ///
     /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
-    /// user of this function actually performs the read; we'll have to see
-    /// how to make that work with `anon` in `execute_job_incr`, though.
-    pub fn with_anon_task_inner<'tcx, OP, R>(
+    /// user of this function actually performs the read.
+    fn with_anon_task_inner<'tcx, OP, R>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_kind: DepKind,
