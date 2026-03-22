@@ -8,7 +8,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_target::spec::{Arch, Env, RustcAbi};
+use rustc_target::spec::{Arch, Env, LlvmAbi, RustcAbi};
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -1077,7 +1077,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::Yes,
         ),
-        Arch::RiscV32 if target.llvm_abiname == "ilp32e" => {
+        Arch::RiscV32 if target.llvm_abiname == LlvmAbi::Ilp32e => {
             // FIXME: clang manually adjusts the alignment for this ABI. It notes:
             //
             // > To be compatible with GCC's behaviors, we force arguments with

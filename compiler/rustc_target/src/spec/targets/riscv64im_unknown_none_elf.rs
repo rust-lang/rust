@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    Arch, Cc, CodeModel, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -23,7 +23,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             atomic_cas: false,
             features: "+m,+forced-atomics".into(),
-            llvm_abiname: "lp64".into(),
+            llvm_abiname: LlvmAbi::Lp64,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             code_model: Some(CodeModel::Medium),

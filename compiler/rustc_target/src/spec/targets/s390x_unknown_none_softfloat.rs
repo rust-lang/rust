@@ -1,13 +1,13 @@
 use rustc_abi::{Align, Endian};
 
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, RustcAbi, SanitizerSet,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, RustcAbi, SanitizerSet,
     StackProbeType, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
-        abi: Abi::SoftFloat,
+        cfg_abi: CfgAbi::SoftFloat,
         cpu: "z10".into(),
         endian: Endian::Big,
         features: "+soft-float,-vector".into(),

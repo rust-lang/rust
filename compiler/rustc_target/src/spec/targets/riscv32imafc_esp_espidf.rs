@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Env, Os, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Env, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -26,7 +26,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(32),
             atomic_cas: true,
 
-            llvm_abiname: "ilp32f".into(),
+            llvm_abiname: LlvmAbi::Ilp32f,
             features: "+m,+a,+c,+f".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

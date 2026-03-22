@@ -19,7 +19,7 @@ use rustc_session::cstore::{
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents, Os};
+use rustc_target::spec::{Arch, BinaryFormat, CfgAbi, Env, LinkSelfContainedComponents, Os};
 
 use crate::errors;
 
@@ -73,14 +73,14 @@ pub fn walk_native_lib_search_dirs<R>(
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
     // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
     // defined, as the search path instead of appending the default search paths.
-    if sess.target.abi == Abi::Fortanix
+    if sess.target.cfg_abi == CfgAbi::Fortanix
         || sess.target.os == Os::Linux
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
         || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
         || sess.target.os == Os::Windows
             && sess.target.env == Env::Gnu
-            && sess.target.abi == Abi::Llvm
+            && sess.target.cfg_abi == CfgAbi::Llvm
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
