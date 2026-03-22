@@ -326,9 +326,9 @@ const fn hex_digit(c: u8) -> Option<u8> {
 
 #[cfg(any(test, feature = "unstable-public-internals"))]
 mod hex_fmt {
-    use core::fmt;
+    use core::fmt::{self, LowerHex};
 
-    use crate::support::{Float, Int};
+    use crate::support::{Float, MinInt};
 
     /// Format a floating point number as its IEEE hex (`%a`) representation.
     pub struct Hexf<F>(pub F);
@@ -461,7 +461,7 @@ mod hex_fmt {
 
     pub struct Hexi<F>(pub F);
 
-    impl<I: Int> fmt::LowerHex for Hexi<I> {
+    impl<I: MinInt + LowerHex> fmt::LowerHex for Hexi<I> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             cfg_if! {
                 if #[cfg(feature = "compiler-builtins")] {

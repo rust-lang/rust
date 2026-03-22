@@ -1,16 +1,10 @@
 extern crate std;
-use std::string::String;
-use std::{eprintln, format};
+use std::eprintln;
 
 use super::{HInt, MinInt, i256, u256};
 use crate::support::{Int as _, NarrowingDiv};
 
 const LOHI_SPLIT: u128 = 0xaaaaaaaaaaaaaaaaffffffffffffffff;
-
-/// Print a `u256` as hex since we can't add format implementations
-fn hexu(v: u256) -> String {
-    format!("0x{:032x}{:032x}", v.hi, v.lo)
-}
 
 #[test]
 fn widen_u128() {
@@ -81,11 +75,9 @@ fn widen_mul_u128() {
         eprintln!(
             "\
             FAILURE ({i}): {a:#034x} * {b:#034x}\n\
-            expected: {}\n\
-            got:      {}\
+            expected: {expected:#x}\n\
+            actual:   {actual:#x}\
             ",
-            hexu(expected),
-            hexu(actual)
         );
     };
 
@@ -121,13 +113,10 @@ fn shr_u256() {
         has_errors = true;
         eprintln!(
             "\
-            FAILURE:  {} >> {b}\n\
-            expected: {}\n\
-            actual:   {}\
+            FAILURE:  {a:#x} >> {b}\n\
+            expected: {expected:#x}\n\
+            actual:   {actual:#x}\
             ",
-            hexu(a),
-            hexu(expected),
-            hexu(actual),
         );
     };
 

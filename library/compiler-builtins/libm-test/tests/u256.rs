@@ -19,11 +19,6 @@ use rug::ops::NotAssign;
 static BIGINT_U256_MAX: LazyLock<BigInt> =
     LazyLock::new(|| BigInt::from_digits(&[u128::MAX, u128::MAX], Order::Lsf));
 
-/// Copied from the test module.
-fn hexu(v: u256) -> String {
-    format!("0x{:032x}{:032x}", v.hi, v.lo)
-}
-
 fn random_u256(rng: &mut ChaCha8Rng) -> u256 {
     let lo: u128 = rng.random();
     let hi: u128 = rng.random();
@@ -46,25 +41,15 @@ fn from_bigint(bx: &mut BigInt) -> u256 {
     }
 }
 
-fn check_one(
-    x: impl FnOnce() -> String,
-    y: impl FnOnce() -> Option<String>,
-    actual: u256,
-    expected: &mut BigInt,
-) {
+fn check_one(msg: impl Fn() -> String, actual: u256, expected: &mut BigInt) {
     let expected = from_bigint(expected);
     if actual != expected {
-        let xmsg = x();
-        let ymsg = y().map(|y| format!("y:        {y}\n")).unwrap_or_default();
         panic!(
-            "Results do not match\n\
-            input:    {xmsg}\n\
-            {ymsg}\
-            actual:   {}\n\
-            expected: {}\
+            "Test failure: {}\n\
+            actual:   {actual:#x}\n\
+            expected: {expected:#x}\
             ",
-            hexu(actual),
-            hexu(expected),
+            msg()
         )
     }
 }
@@ -82,7 +67,7 @@ fn mp_u256_bitor() {
         assign_bigint(&mut by, y);
         let actual = x | y;
         bx |= &by;
-        check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
+        check_one(|| format!("{x:#x} ^ {y:#x}"), actual, &mut bx);
     }
 }
 
@@ -96,7 +81,7 @@ fn mp_u256_not() {
         assign_bigint(&mut bx, x);
         let actual = !x;
         bx.not_assign();
-        check_one(|| hexu(x), || None, actual, &mut bx);
+        check_one(|| format!("!{x:#x}"), actual, &mut bx);
     }
 }
 
@@ -119,7 +104,7 @@ fn mp_u256_add() {
             y - (u256::MAX - x) - 1_u128.widen()
         };
         bx += &by;
-        check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
+        check_one(|| format!("{x:#x} + {y:#x}"), actual, &mut bx);
     }
 }
 
@@ -140,7 +125,7 @@ fn mp_u256_sub() {
         let actual = if x >= y { x - y } else { y - x };
         bx -= &by;
         bx.abs_mut();
-        check_one(|| hexu(x), || Some(hexu(y)), actual, &mut bx);
+        check_one(|| format!("{x:#x} - {y:#x}"), actual, &mut bx);
     }
 }
 
@@ -155,7 +140,7 @@ fn mp_u256_shl() {
         assign_bigint(&mut bx, x);
         let actual = x << shift;
         bx <<= shift;
-        check_one(|| hexu(x), || Some(shift.to_string()), actual, &mut bx);
+        check_one(|| format!("{x:#x} << {shift}"), actual, &mut bx);
     }
 }
 
@@ -170,12 +155,12 @@ fn mp_u256_shr() {
         assign_bigint(&mut bx, x);
         let actual = x >> shift;
         bx >>= shift;
-        check_one(|| hexu(x), || Some(shift.to_string()), actual, &mut bx);
+        check_one(|| format!("{x:#x} >> {shift}"), actual, &mut bx);
     }
 }
 
 #[test]
-fn mp_u256_widen_mul() {
+fn mp_u256_u128_widen_mul() {
     let mut rng = ChaCha8Rng::from_seed(*SEED);
     let mut bx = BigInt::new();
     let mut by = BigInt::new();
@@ -188,8 +173,7 @@ fn mp_u256_widen_mul() {
         let actual = x.widen_mul(y);
         bx *= &by;
         check_one(
-            || format!("{x:#034x}"),
-            || Some(format!("{y:#034x}")),
+            || format!("{x:#034x}.widen_mul({y:#034x})"),
             actual,
             &mut bx,
         );

@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::ops;
+use core::{fmt, ops};
 
 use super::{DInt, HInt, Int, MinInt};
 
@@ -11,7 +11,7 @@ const U128_LO_MASK: u128 = u64::MAX as u128;
 
 /// A 256-bit unsigned integer represented as two 128-bit native-endian limbs.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct u256 {
     pub hi: u128,
     pub lo: u128,
@@ -35,7 +35,7 @@ impl u256 {
 
 /// A 256-bit signed integer represented as two 128-bit native-endian limbs.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct i256 {
     pub hi: i128,
     pub lo: u128,
@@ -43,7 +43,6 @@ pub struct i256 {
 
 impl i256 {
     /// Reinterpret as an unsigned integer
-    #[cfg(any(test, feature = "unstable-public-internals"))]
     pub fn unsigned(self) -> u256 {
         u256 {
             lo: self.lo,
@@ -278,5 +277,37 @@ impl DInt for i256 {
 
     fn hi(self) -> Self::H {
         self.hi
+    }
+}
+
+impl fmt::Debug for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+
+impl fmt::Debug for i256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.unsigned(), f)
+    }
+}
+
+impl fmt::LowerHex for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                let pfx= if f.alternate() { "0x"} else {""};
+                write!(f, "{pfx}{:032x}{:032x}", self.hi, self.lo)
+            }
+        }
+    }
+}
+
+impl fmt::LowerHex for i256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.unsigned(), f)
     }
 }
