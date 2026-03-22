@@ -10,7 +10,7 @@ This public fork `rust-lang/rust` adds a `Decisive` trait to `core::ops`, enabli
 
 The key change is at [7a510a6](https://github.com/eelstork/rust/commit/7a510a641535e0c1c5acc7dfef41e04b4df9ada5)
 
-## Community dicussions
+## Community discussions
 
 Making `&&` and `||` overloadable has been discussed several times within the Rust ecosystem:
 
