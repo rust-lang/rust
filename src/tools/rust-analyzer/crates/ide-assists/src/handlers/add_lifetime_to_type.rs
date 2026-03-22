@@ -1,4 +1,7 @@
-use syntax::ast::{self, AstNode, HasGenericParams, HasName};
+use syntax::{
+    SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, HasGenericParams, HasName},
+};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -21,7 +24,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let ref_type_focused = ctx.find_node_at_offset::<ast::RefType>()?;
-    if ref_type_focused.lifetime().is_some() {
+    if ref_type_focused.lifetime().is_some_and(|lifetime| lifetime.text() != "'_") {
         return None;
     }
 
@@ -34,10 +37,10 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -
         return None;
     }
 
-    let ref_types = fetch_borrowed_types(&node)?;
+    let changes = fetch_borrowed_types(&node)?;
     let target = node.syntax().text_range();
 
-    acc.add(AssistId::generate("add_lifetime_to_type"), "Add lifetime", target, |builder| {
+    acc.add(AssistId::quick_fix("add_lifetime_to_type"), "Add lifetime", target, |builder| {
         match node.generic_param_list() {
             Some(gen_param) => {
                 if let Some(left_angle) = gen_param.l_angle_token() {
@@ -51,16 +54,21 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -
             }
         }
 
-        for ref_type in ref_types {
-            if let Some(amp_token) = ref_type.amp_token() {
-                builder.insert(amp_token.text_range().end(), "'a ");
+        for change in changes {
+            match change {
+                Change::Replace(it) => {
+                    builder.replace(it.text_range(), "'a");
+                }
+                Change::Insert(it) => {
+                    builder.insert(it.text_range().end(), "'a ");
+                }
             }
         }
     })
 }
 
-fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
-    let ref_types: Vec<ast::RefType> = match node {
+fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<Change>> {
+    let ref_types: Vec<_> = match node {
         ast::Adt::Enum(enum_) => {
             let variant_list = enum_.variant_list()?;
             variant_list
@@ -79,53 +87,48 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
         }
         ast::Adt::Union(un) => {
             let record_field_list = un.record_field_list()?;
-            record_field_list
-                .fields()
-                .filter_map(|r_field| {
-                    if let ast::Type::RefType(ref_type) = r_field.ty()?
-                        && ref_type.lifetime().is_none()
-                    {
-                        return Some(ref_type);
-                    }
-
-                    None
-                })
-                .collect()
+            find_ref_types_from_field_list(&record_field_list.into())?
         }
     };
 
     if ref_types.is_empty() { None } else { Some(ref_types) }
 }
 
-fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast::RefType>> {
-    let ref_types: Vec<ast::RefType> = match field_list {
-        ast::FieldList::RecordFieldList(record_list) => record_list
-            .fields()
-            .filter_map(|f| {
-                if let ast::Type::RefType(ref_type) = f.ty()?
-                    && ref_type.lifetime().is_none()
-                {
-                    return Some(ref_type);
-                }
-
-                None
-            })
-            .collect(),
-        ast::FieldList::TupleFieldList(tuple_field_list) => tuple_field_list
-            .fields()
-            .filter_map(|f| {
-                if let ast::Type::RefType(ref_type) = f.ty()?
-                    && ref_type.lifetime().is_none()
-                {
-                    return Some(ref_type);
-                }
-
-                None
-            })
-            .collect(),
+fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<Change>> {
+    let ref_types: Vec<_> = match field_list {
+        ast::FieldList::RecordFieldList(record_list) => {
+            record_list.fields().flat_map(|f| infer_lifetimes(f.syntax())).collect()
+        }
+        ast::FieldList::TupleFieldList(tuple_field_list) => {
+            tuple_field_list.fields().flat_map(|f| infer_lifetimes(f.syntax())).collect()
+        }
     };
 
     if ref_types.is_empty() { None } else { Some(ref_types) }
+}
+
+enum Change {
+    Replace(SyntaxToken),
+    Insert(SyntaxToken),
+}
+
+fn infer_lifetimes(node: &SyntaxNode) -> Vec<Change> {
+    node.children()
+        .filter(|it| !matches!(it.kind(), SyntaxKind::FN_PTR_TYPE | SyntaxKind::TYPE_BOUND_LIST))
+        .flat_map(|it| {
+            infer_lifetimes(&it)
+                .into_iter()
+                .chain(ast::Lifetime::cast(it.clone()).and_then(|lt| {
+                    lt.lifetime_ident_token().filter(|lt| lt.text() == "'_").map(Change::Replace)
+                }))
+                .chain(
+                    ast::RefType::cast(it)
+                        .filter(|ty| ty.lifetime().is_none())
+                        .and_then(|ty| ty.amp_token())
+                        .map(Change::Insert),
+                )
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -162,6 +165,24 @@ mod tests {
 
         check_assist_not_applicable(add_lifetime_to_type, r#"struct Foo<'a> { a: &$0'a i32 }"#);
         check_assist_not_applicable(add_lifetime_to_type, r#"struct Foo { a: &'a$0 i32 }"#);
+    }
+
+    #[test]
+    fn add_lifetime_to_nested_types() {
+        check_assist(
+            add_lifetime_to_type,
+            r#"struct Foo { a: &$0i32, b: &(&i32, fn(&str) -> &str) }"#,
+            r#"struct Foo<'a> { a: &'a i32, b: &'a (&'a i32, fn(&str) -> &str) }"#,
+        );
+    }
+
+    #[test]
+    fn add_lifetime_to_explicit_infer_lifetime() {
+        check_assist(
+            add_lifetime_to_type,
+            r#"struct Foo { a: &'_ $0i32, b: &'_ (&'_ i32, fn(&str) -> &str) }"#,
+            r#"struct Foo<'a> { a: &'a i32, b: &'a (&'a i32, fn(&str) -> &str) }"#,
+        );
     }
 
     #[test]
