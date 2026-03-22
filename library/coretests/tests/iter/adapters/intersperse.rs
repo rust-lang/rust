@@ -153,10 +153,6 @@ fn test_try_fold_specialization_intersperse_err() {
     assert_eq!(iter.next(), None);
 }
 
-// FIXME(iter_intersperse): `intersperse` current behavior may change for
-// non-fused iterators, so this test will likely have to
-// be adjusted; see PR #152855 and issue #79524
-// if `intersperse` doesn't change, remove this FIXME.
 #[test]
 fn test_non_fused_iterator_intersperse() {
     #[derive(Debug)]
@@ -183,24 +179,26 @@ fn test_non_fused_iterator_intersperse() {
     }
 
     let counter = 0;
-    // places a 2 between `Some(_)` items
+    // places a 1 between `Some(_)` items
     let non_fused_iter = TestCounter { counter };
-    let mut intersperse_iter = non_fused_iter.intersperse(2);
-    // Since `intersperse` currently transforms the original
-    // iterator into a fused iterator, this intersperse_iter
-    // should always have `None`
-    for _ in 0..counter + 6 {
-        assert_eq!(intersperse_iter.next(), None);
-    }
+    let mut intersperse_iter = non_fused_iter.intersperse(1);
+    // Interspersed iter produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(1)` -> Some(4)` -> `None` ->  `Some(1)` ->
+    // `Some(6)` -> and then `None` endlessly
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(6));
+    assert_eq!(intersperse_iter.next(), None);
 
-    // Extra check to make sure it is `None` after processing 6 items
+    // Extra check to make sure it is `None` after processing all items
     assert_eq!(intersperse_iter.next(), None);
 }
 
-// FIXME(iter_intersperse): `intersperse` current behavior may change for
-// non-fused iterators, so this test will likely have to
-// be adjusted; see PR #152855 and issue #79524
-// if `intersperse` doesn't change, remove this FIXME.
 #[test]
 fn test_non_fused_iterator_intersperse_2() {
     #[derive(Debug)]
@@ -228,35 +226,26 @@ fn test_non_fused_iterator_intersperse_2() {
     }
 
     let counter = 0;
-    // places a 2 between `Some(_)` items
+    // places a 100 between `Some(_)` items
     let non_fused_iter = TestCounter { counter };
-    let mut intersperse_iter = non_fused_iter.intersperse(2);
-    // Since `intersperse` currently transforms the original
-    // iterator into a fused iterator, this interspersed iter
-    // will be `Some(1)` -> `Some(2)` -> `Some(2)` -> and then
-    // `None` endlessly
-    let mut items_processed = 0;
-    for num in 0..counter + 6 {
-        if num < 3 {
-            if num % 2 != 0 {
-                assert_eq!(intersperse_iter.next(), Some(2));
-            } else {
-                items_processed += 1;
-                assert_eq!(intersperse_iter.next(), Some(items_processed));
-            }
-        } else {
-            assert_eq!(intersperse_iter.next(), None);
-        }
-    }
+    let mut intersperse_iter = non_fused_iter.intersperse(100);
+    // Interspersed iter produces:
+    // `Some(1)` -> `Some(100)` -> `Some(2)` -> `None` -> `Some(100)`
+    //  -> `Some(4)` -> `Some(100)` -> `Some(5)` -> `None` endlessly
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(5));
+    assert_eq!(intersperse_iter.next(), None);
 
     // Extra check to make sure it is `None` after processing 6 items
     assert_eq!(intersperse_iter.next(), None);
 }
 
-// FIXME(iter_intersperse): `intersperse_with` current behavior may change for
-// non-fused iterators, so this test will likely have to
-// be adjusted; see PR #152855 and issue #79524
-// if `intersperse_with` doesn't change, remove this FIXME.
 #[test]
 fn test_non_fused_iterator_intersperse_with() {
     #[derive(Debug)]
@@ -285,22 +274,24 @@ fn test_non_fused_iterator_intersperse_with() {
     let counter = 0;
     let non_fused_iter = TestCounter { counter };
     // places a 2 between `Some(_)` items
-    let mut intersperse_iter = non_fused_iter.intersperse_with(|| 2);
-    // Since `intersperse` currently transforms the original
-    // iterator into a fused iterator, this intersperse_iter
-    // should always have `None`
-    for _ in 0..counter + 6 {
-        assert_eq!(intersperse_iter.next(), None);
-    }
+    let mut intersperse_iter = non_fused_iter.intersperse_with(|| 1);
+    // Interspersed iter produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(1)` -> Some(4)` -> `None` ->  `Some(1)` ->
+    // `Some(6)` -> and then `None` endlessly
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(6));
+    assert_eq!(intersperse_iter.next(), None);
 
     // Extra check to make sure it is `None` after processing 6 items
     assert_eq!(intersperse_iter.next(), None);
 }
 
-// FIXME(iter_intersperse): `intersperse_with` current behavior may change for
-// non-fused iterators, so this test will likely have to
-// be adjusted; see PR #152855 and issue #79524
-// if `intersperse_with` doesn't change, remove this FIXME.
 #[test]
 fn test_non_fused_iterator_intersperse_with_2() {
     #[derive(Debug)]
@@ -328,26 +319,21 @@ fn test_non_fused_iterator_intersperse_with_2() {
     }
 
     let counter = 0;
-    // places a 2 between `Some(_)` items
+    // places a 100 between `Some(_)` items
     let non_fused_iter = TestCounter { counter };
-    let mut intersperse_iter = non_fused_iter.intersperse(2);
-    // Since `intersperse` currently transforms the original
-    // iterator into a fused iterator, this interspersed iter
-    // will be `Some(1)` -> `Some(2)` -> `Some(2)` -> and then
-    // `None` endlessly
-    let mut items_processed = 0;
-    for num in 0..counter + 6 {
-        if num < 3 {
-            if num % 2 != 0 {
-                assert_eq!(intersperse_iter.next(), Some(2));
-            } else {
-                items_processed += 1;
-                assert_eq!(intersperse_iter.next(), Some(items_processed));
-            }
-        } else {
-            assert_eq!(intersperse_iter.next(), None);
-        }
-    }
+    let mut intersperse_iter = non_fused_iter.intersperse_with(|| 100);
+    // Interspersed iter produces:
+    // `Some(1)` -> `Some(100)` -> `Some(2)` -> `None` -> `Some(100)`
+    //  -> `Some(4)` -> `Some(100)` -> `Some(5)` -> `None` endlessly
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(5));
+    assert_eq!(intersperse_iter.next(), None);
 
     // Extra check to make sure it is `None` after processing 6 items
     assert_eq!(intersperse_iter.next(), None);
