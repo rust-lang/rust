@@ -7,7 +7,7 @@
 //@ [arm64ec] needs-llvm-components: aarch64
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128, asm_experimental_reg)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -217,6 +217,12 @@ check!(vreg_i64 i64 vreg "fmov" "s");
 // CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: //NO_APP
 check!(vreg_f64 f64 vreg "fmov" "s");
+
+// CHECK-LABEL: {{("#)?}}vreg_i128{{"?}}
+// CHECK: //APP
+// CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
+// CHECK: //NO_APP
+check!(vreg_i128 i128 vreg "fmov" "s");
 
 // CHECK-LABEL: {{("#)?}}vreg_f128{{"?}}
 // CHECK: //APP
