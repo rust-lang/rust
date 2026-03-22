@@ -164,9 +164,10 @@ impl DepGraph {
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
         if prev_graph_node_count > 0 {
-            colors.insert_red(SerializedDepNodeIndex::from_u32(
-                DepNodeIndex::FOREVER_RED_NODE.as_u32(),
-            ));
+            let prev_index =
+                const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
+            let result = colors.try_set_color(prev_index, DesiredColor::Red);
+            assert_matches!(result, TrySetColorResult::Success);
         }
 
         DepGraph {
@@ -1454,13 +1455,6 @@ impl DepNodeColorMap {
             debug_assert_eq!(value, COMPRESSED_UNKNOWN);
             DepNodeColor::Unknown
         }
-    }
-
-    #[inline]
-    pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
-        let value = self.values[index].swap(COMPRESSED_RED, Ordering::Release);
-        // Sanity check for duplicate nodes
-        assert_eq!(value, COMPRESSED_UNKNOWN, "tried to color an already colored node as red");
     }
 }
 
