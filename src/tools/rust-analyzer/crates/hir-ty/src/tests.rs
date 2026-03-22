@@ -18,7 +18,6 @@ use expect_test::Expect;
 use hir_def::{
     AssocItemId, DefWithBodyId, GenericDefId, HasModule, Lookup, ModuleDefId, ModuleId,
     SyntheticSyntax,
-    db::DefDatabase,
     expr_store::{Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap},
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
@@ -146,15 +145,15 @@ fn check_impl(
         let mut unexpected_type_mismatches = String::new();
         for (def, krate) in defs {
             let display_target = DisplayTarget::from_crate(&db, krate);
-            let (body, body_source_map) = db.body_with_source_map(def);
-            let inference_result = InferenceResult::for_body(&db, def);
+            let (body, body_source_map) = Body::with_source_map(&db, def);
+            let inference_result = InferenceResult::of(&db, def);
 
             for (pat, ty) in inference_result.type_of_pat.iter() {
                 let mut ty = ty.as_ref();
                 if let Pat::Bind { id, .. } = body[pat] {
                     ty = inference_result.type_of_binding[id].as_ref();
                 }
-                let node = match pat_node(&body_source_map, pat, &db) {
+                let node = match pat_node(body_source_map, pat, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -171,7 +170,7 @@ fn check_impl(
 
             for (expr, ty) in inference_result.type_of_expr.iter() {
                 let ty = ty.as_ref();
-                let node = match expr_node(&body_source_map, expr, &db) {
+                let node = match expr_node(body_source_map, expr, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -202,9 +201,9 @@ fn check_impl(
             for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
                 let Some(node) = (match expr_or_pat {
                     hir_def::hir::ExprOrPatId::ExprId(expr) => {
-                        expr_node(&body_source_map, expr, &db)
+                        expr_node(body_source_map, expr, &db)
                     }
-                    hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
+                    hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(body_source_map, pat, &db),
                 }) else {
                     continue;
                 };
@@ -223,7 +222,7 @@ fn check_impl(
             }
 
             for (type_ref, ty) in inference_result.placeholder_types() {
-                let node = match type_node(&body_source_map, type_ref, &db) {
+                let node = match type_node(body_source_map, type_ref, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -487,22 +486,22 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             }
         });
         for (def, krate) in defs {
-            let (body, source_map) = db.body_with_source_map(def);
-            let infer = InferenceResult::for_body(&db, def);
+            let (body, source_map) = Body::with_source_map(&db, def);
+            let infer = InferenceResult::of(&db, def);
             let self_param = body.self_param.map(|id| (id, source_map.self_param_syntax()));
-            infer_def(infer, &body, &source_map, self_param, krate);
+            infer_def(infer, body, source_map, self_param, krate);
         }
 
         // Also infer signature const expressions (array lengths, const generic args, etc.)
         generic_defs.dedup();
         for (def, krate) in generic_defs {
-            let (_, store, source_map) = db.generic_params_and_store_and_source_map(def);
+            let (store, source_map) = ExpressionStore::with_source_map(&db, def.into());
             // Skip if there are no const expressions in the signature
             if store.const_expr_origins().is_empty() {
                 continue;
             }
-            let infer = InferenceResult::for_signature(&db, def);
-            infer_def(infer, &store, &source_map, None, krate);
+            let infer = InferenceResult::of(&db, def);
+            infer_def(infer, store, source_map, None, krate);
         }
 
         buf.truncate(buf.trim_end().len());
@@ -522,14 +521,14 @@ pub(crate) fn visit_module(
         for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
-                    let body = db.body(it.into());
+                    let body = Body::of(db, it.into());
                     cb(it.into());
-                    visit_body(db, &body, cb);
+                    visit_body(db, body, cb);
                 }
                 AssocItemId::ConstId(it) => {
-                    let body = db.body(it.into());
+                    let body = Body::of(db, it.into());
                     cb(it.into());
-                    visit_body(db, &body, cb);
+                    visit_body(db, body, cb);
                 }
                 AssocItemId::TypeAliasId(it) => {
                     cb(it.into());
@@ -548,22 +547,22 @@ pub(crate) fn visit_module(
             cb(decl);
             match decl {
                 ModuleDefId::FunctionId(it) => {
-                    let body = db.body(it.into());
-                    visit_body(db, &body, cb);
+                    let body = Body::of(db, it.into());
+                    visit_body(db, body, cb);
                 }
                 ModuleDefId::ConstId(it) => {
-                    let body = db.body(it.into());
-                    visit_body(db, &body, cb);
+                    let body = Body::of(db, it.into());
+                    visit_body(db, body, cb);
                 }
                 ModuleDefId::StaticId(it) => {
-                    let body = db.body(it.into());
-                    visit_body(db, &body, cb);
+                    let body = Body::of(db, it.into());
+                    visit_body(db, body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
                     it.enum_variants(db).variants.iter().for_each(|&(it, _, _)| {
-                        let body = db.body(it.into());
+                        let body = Body::of(db, it.into());
                         cb(it.into());
-                        visit_body(db, &body, cb);
+                        visit_body(db, body, cb);
                     });
                 }
                 ModuleDefId::TraitId(it) => {
@@ -653,16 +652,14 @@ fn salsa_bug() {
         let module = db.module_for_file(pos.file_id.file_id(&db));
         let crate_def_map = module.def_map(&db);
         visit_module(&db, crate_def_map, module, &mut |def| {
-            InferenceResult::for_body(
-                &db,
-                match def {
-                    ModuleDefId::FunctionId(it) => it.into(),
-                    ModuleDefId::EnumVariantId(it) => it.into(),
-                    ModuleDefId::ConstId(it) => it.into(),
-                    ModuleDefId::StaticId(it) => it.into(),
-                    _ => return,
-                },
-            );
+            let body_def: DefWithBodyId = match def {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            };
+            InferenceResult::of(&db, body_def);
         });
     });
 
@@ -697,16 +694,14 @@ fn salsa_bug() {
         let module = db.module_for_file(pos.file_id.file_id(&db));
         let crate_def_map = module.def_map(&db);
         visit_module(&db, crate_def_map, module, &mut |def| {
-            InferenceResult::for_body(
-                &db,
-                match def {
-                    ModuleDefId::FunctionId(it) => it.into(),
-                    ModuleDefId::EnumVariantId(it) => it.into(),
-                    ModuleDefId::ConstId(it) => it.into(),
-                    ModuleDefId::StaticId(it) => it.into(),
-                    _ => return,
-                },
-            );
+            let body_def: DefWithBodyId = match def {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            };
+            InferenceResult::of(&db, body_def);
         });
     })
 }

@@ -168,8 +168,8 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
     match owner {
         GenericDefId::AdtId(id) => match id {
             AdtId::StructId(id) => {
-                let signature = db.struct_signature(id);
-                print_struct(db, id, &signature, edition)
+                let signature = StructSignature::of(db, id);
+                print_struct(db, id, signature, edition)
             }
             AdtId::UnionId(id) => {
                 format!("unimplemented {id:?}")
@@ -180,8 +180,8 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         },
         GenericDefId::ConstId(id) => format!("unimplemented {id:?}"),
         GenericDefId::FunctionId(id) => {
-            let signature = db.function_signature(id);
-            print_function(db, id, &signature, edition)
+            let signature = FunctionSignature::of(db, id);
+            print_function(db, id, signature, edition)
         }
         GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
         GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),

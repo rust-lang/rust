@@ -14,11 +14,12 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
-    Const, Crate, DefWithBody, DeriveHelper, DisplayTarget, DocLinkDef, ExternAssocItem,
-    ExternCrateDecl, Field, Function, GenericDef, GenericParam, GenericSubstitution, HasContainer,
-    HasVisibility, HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module,
-    ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait,
-    TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    Const, Crate, DefWithBody, DeriveHelper, DisplayTarget, DocLinkDef, ExpressionStoreOwner,
+    ExternAssocItem, ExternCrateDecl, Field, Function, GenericDef, GenericParam,
+    GenericSubstitution, HasContainer, HasVisibility, HirDisplay, Impl, InlineAsmOperand,
+    ItemContainer, Label, Local, Macro, Module, ModuleDef, Name, PathResolution, Semantics, Static,
+    StaticLifetime, Struct, ToolModule, Trait, TupleField, TypeAlias, Variant, VariantDef,
+    Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -1016,6 +1017,16 @@ impl From<GenericDef> for Definition {
             GenericDef::Impl(it) => it.into(),
             GenericDef::Const(it) => it.into(),
             GenericDef::Static(it) => it.into(),
+        }
+    }
+}
+
+impl TryFrom<ExpressionStoreOwner> for Definition {
+    type Error = ();
+    fn try_from(def: ExpressionStoreOwner) -> Result<Self, Self::Error> {
+        match def {
+            ExpressionStoreOwner::Body(def_with_body) => def_with_body.try_into(),
+            ExpressionStoreOwner::Signature(generic_def) => Ok(generic_def.into()),
         }
     }
 }

@@ -9,7 +9,7 @@ use hir_def::{
     expr_store::{Body, path::Path},
     hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
-    signatures::StaticFlags,
+    signatures::{FunctionSignature, StaticFlags, StaticSignature},
     type_ref::Rawness,
 };
 use rustc_type_ir::inherent::IntoKind;
@@ -34,15 +34,15 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
     let _p = tracing::info_span!("missing_unsafe").entered();
 
     let is_unsafe = match def {
-        DefWithBodyId::FunctionId(it) => db.function_signature(it).is_unsafe(),
+        DefWithBodyId::FunctionId(it) => FunctionSignature::of(db, it).is_unsafe(),
         DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) | DefWithBodyId::VariantId(_) => {
             false
         }
     };
 
     let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };
-    let body = db.body(def);
-    let infer = InferenceResult::for_body(db, def);
+    let body = Body::of(db, def);
+    let infer = InferenceResult::of(db, def);
     let mut callback = |diag| match diag {
         UnsafeDiagnostic::UnsafeOperation { node, inside_unsafe_block, reason } => {
             if inside_unsafe_block == InsideUnsafeBlock::No {
@@ -55,7 +55,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
             }
         }
     };
-    let mut visitor = UnsafeVisitor::new(db, infer, &body, def, &mut callback);
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut callback);
     visitor.walk_expr(body.body_expr);
 
     if !is_unsafe {
@@ -431,7 +431,7 @@ impl<'db> UnsafeVisitor<'db> {
         let hygiene = self.body.expr_or_pat_path_hygiene(node);
         let value_or_partial = self.resolver.resolve_path_in_value_ns(self.db, path, hygiene);
         if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id))) = value_or_partial {
-            let static_data = self.db.static_signature(id);
+            let static_data = StaticSignature::of(self.db, id);
             if static_data.flags.contains(StaticFlags::MUTABLE) {
                 self.on_unsafe_op(node, UnsafetyReason::MutableStatic);
             } else if static_data.flags.contains(StaticFlags::EXTERN)

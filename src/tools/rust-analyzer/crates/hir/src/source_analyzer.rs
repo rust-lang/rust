@@ -9,8 +9,8 @@ use std::iter::{self, once};
 
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId,
-    LocalFieldId, ModuleDefId, StructId, TraitId, VariantId,
+    AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
+    FunctionId, GenericDefId, LocalFieldId, ModuleDefId, StructId, TraitId, VariantId,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, HygieneId,
         lower::ExprCollector,
@@ -78,20 +78,20 @@ pub(crate) struct SourceAnalyzer<'db> {
 pub(crate) enum BodyOrSig<'db> {
     Body {
         def: DefWithBodyId,
-        body: Arc<Body>,
-        source_map: Arc<BodySourceMap>,
+        body: &'db Body,
+        source_map: &'db BodySourceMap,
         infer: Option<&'db InferenceResult>,
     },
     // To be folded into body once it is considered one
     VariantFields {
         def: VariantId,
-        store: Arc<ExpressionStore>,
-        source_map: Arc<ExpressionStoreSourceMap>,
+        store: &'db ExpressionStore,
+        source_map: &'db ExpressionStoreSourceMap,
     },
     Sig {
         def: GenericDefId,
-        store: Arc<ExpressionStore>,
-        source_map: Arc<ExpressionStoreSourceMap>,
+        store: &'db ExpressionStore,
+        source_map: &'db ExpressionStoreSourceMap,
         infer: Option<&'db InferenceResult>,
         #[expect(dead_code)]
         generics: Arc<GenericParams>,
@@ -105,7 +105,7 @@ impl<'db> SourceAnalyzer<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        Self::new_for_body_(db, def, node, offset, Some(InferenceResult::for_body(db, def)))
+        Self::new_for_body_(db, def, node, offset, Some(InferenceResult::of(db, def)))
     }
 
     pub(crate) fn new_for_body_no_infer(
@@ -124,10 +124,10 @@ impl<'db> SourceAnalyzer<'db> {
         offset: Option<TextSize>,
         infer: Option<&'db InferenceResult>,
     ) -> SourceAnalyzer<'db> {
-        let (body, source_map) = db.body_with_source_map(def);
-        let scopes = db.expr_scopes(def.into());
+        let (body, source_map) = Body::with_source_map(db, def);
+        let scopes = ExprScopes::of(db, def);
         let scope = match offset {
-            None => scope_for(db, &scopes, &source_map, node),
+            None => scope_for(db, scopes, source_map, node),
             Some(offset) => {
                 debug_assert!(
                     node.text_range().contains_inclusive(offset),
@@ -135,7 +135,7 @@ impl<'db> SourceAnalyzer<'db> {
                     offset,
                     node.text_range()
                 );
-                scope_for_offset(db, &scopes, &source_map, node.file_id, offset)
+                scope_for_offset(db, scopes, source_map, node.file_id, offset)
             }
         };
         let resolver = resolver_for_scope(db, def, scope);
@@ -171,10 +171,10 @@ impl<'db> SourceAnalyzer<'db> {
         offset: Option<TextSize>,
         infer: bool,
     ) -> SourceAnalyzer<'db> {
-        let (generics, store, source_map) = db.generic_params_and_store_and_source_map(def);
-        let scopes = db.expr_scopes(def.into());
+        let (generics, store, source_map) = GenericParams::with_source_map(db, def);
+        let scopes = ExprScopes::of(db, def);
         let scope = match offset {
-            None => scope_for(db, &scopes, &source_map, node),
+            None => scope_for(db, scopes, source_map, node),
             Some(offset) => {
                 debug_assert!(
                     node.text_range().contains_inclusive(offset),
@@ -182,15 +182,11 @@ impl<'db> SourceAnalyzer<'db> {
                     offset,
                     node.text_range()
                 );
-                scope_for_offset(db, &scopes, &source_map, node.file_id, offset)
+                scope_for_offset(db, scopes, source_map, node.file_id, offset)
             }
         };
         let resolver = resolver_for_scope(db, def, scope);
-        let infer = if infer && !Arc::ptr_eq(&store, &ExpressionStore::empty_singleton().0) {
-            Some(InferenceResult::for_signature(db, def))
-        } else {
-            None
-        };
+        let infer = if infer { Some(InferenceResult::of(db, def)) } else { None };
         SourceAnalyzer {
             resolver,
             body_or_sig: Some(BodyOrSig::Sig { def, store, source_map, generics, infer }),
@@ -208,11 +204,7 @@ impl<'db> SourceAnalyzer<'db> {
         let resolver = def.resolver(db);
         SourceAnalyzer {
             resolver,
-            body_or_sig: Some(BodyOrSig::VariantFields {
-                def,
-                store: fields.store.clone(),
-                source_map: source_map.clone(),
-            }),
+            body_or_sig: Some(BodyOrSig::VariantFields { def, store: &fields.store, source_map }),
             file_id,
         }
     }
@@ -241,6 +233,18 @@ impl<'db> SourceAnalyzer<'db> {
         })
     }
 
+    pub(crate) fn def(
+        &self,
+    ) -> Option<(ExpressionStoreOwnerId, &ExpressionStore, &ExpressionStoreSourceMap)> {
+        self.body_or_sig.as_ref().and_then(|it| match it {
+            BodyOrSig::VariantFields { .. } => None,
+            &BodyOrSig::Sig { def, store, source_map, .. } => Some((def.into(), store, source_map)),
+            BodyOrSig::Body { def, body, source_map, .. } => {
+                Some(((*def).into(), &body.store, source_map))
+            }
+        })
+    }
+
     pub(crate) fn store(&self) -> Option<&ExpressionStore> {
         self.body_or_sig.as_ref().map(|it| match it {
             BodyOrSig::Sig { store, .. } => &**store,
@@ -264,9 +268,9 @@ impl<'db> SourceAnalyzer<'db> {
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
         self.param_and(self.body_or_sig.as_ref().map_or_else(ParamEnv::empty, |body_or_sig| {
             match *body_or_sig {
-                BodyOrSig::Body { def, .. } => db.trait_environment_for_body(def),
+                BodyOrSig::Body { def, .. } => db.trait_environment(def.into()),
                 BodyOrSig::VariantFields { .. } => ParamEnv::empty(),
-                BodyOrSig::Sig { def, .. } => db.trait_environment(def),
+                BodyOrSig::Sig { def, .. } => db.trait_environment(def.into()),
             }
         }))
     }
@@ -806,7 +810,7 @@ impl<'db> SourceAnalyzer<'db> {
                 name_hygiene(db, InFile::new(self.file_id, ast_name.syntax())),
             ) {
                 Some(ValueNs::LocalBinding(binding_id)) => {
-                    Some(Local { binding_id, parent: self.resolver.body_owner()? })
+                    Some(Local { binding_id, parent: self.resolver.expression_store_owner()? })
                 }
                 _ => None,
             }
@@ -866,8 +870,8 @@ impl<'db> SourceAnalyzer<'db> {
             },
         };
 
-        let body_owner = self.resolver.body_owner();
-        let res = resolve_hir_value_path(db, &self.resolver, body_owner, path, HygieneId::ROOT)?;
+        let store_owner = self.resolver.expression_store_owner();
+        let res = resolve_hir_value_path(db, &self.resolver, store_owner, path, HygieneId::ROOT)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -1435,7 +1439,7 @@ impl<'db> SourceAnalyzer<'db> {
                 resolve_hir_value_path(
                     db,
                     &self.resolver,
-                    self.resolver.body_owner(),
+                    self.resolver.expression_store_owner(),
                     &Path::from_known_path_with_no_generic(ModPath::from_segments(
                         PathKind::Plain,
                         Some(name.clone()),
@@ -1451,9 +1455,9 @@ impl<'db> SourceAnalyzer<'db> {
         asm: InFile<&ast::AsmExpr>,
         line: usize,
         offset: TextSize,
-    ) -> Option<(DefWithBodyId, (ExprId, TextRange, usize))> {
-        let (def, _, body_source_map, _) = self.body_()?;
-        let (expr, args) = body_source_map.asm_template_args(asm)?;
+    ) -> Option<(ExpressionStoreOwnerId, (ExprId, TextRange, usize))> {
+        let (def, _, sm) = self.def()?;
+        let (expr, args) = sm.asm_template_args(asm)?;
         Some(def).zip(
             args.get(line)?
                 .iter()
@@ -1474,7 +1478,7 @@ impl<'db> SourceAnalyzer<'db> {
                 resolve_hir_value_path(
                     db,
                     &self.resolver,
-                    self.resolver.body_owner(),
+                    self.resolver.expression_store_owner(),
                     &Path::from_known_path_with_no_generic(ModPath::from_segments(
                         PathKind::Plain,
                         Some(name.clone()),
@@ -1488,9 +1492,9 @@ impl<'db> SourceAnalyzer<'db> {
     pub(crate) fn as_asm_parts(
         &self,
         asm: InFile<&ast::AsmExpr>,
-    ) -> Option<(DefWithBodyId, (ExprId, &[Vec<(TextRange, usize)>]))> {
-        let (def, _, body_source_map, _) = self.body_()?;
-        Some(def).zip(body_source_map.asm_template_args(asm))
+    ) -> Option<(ExpressionStoreOwnerId, (ExprId, &[Vec<(TextRange, usize)>]))> {
+        let (def, _, sm) = self.def()?;
+        Some(def).zip(sm.asm_template_args(asm))
     }
 
     fn resolve_impl_method_or_trait_def(
@@ -1508,11 +1512,11 @@ impl<'db> SourceAnalyzer<'db> {
         func: FunctionId,
         substs: GenericArgs<'db>,
     ) -> (Function, GenericArgs<'db>) {
-        let owner = match self.resolver.body_owner() {
+        let owner = match self.resolver.expression_store_owner() {
             Some(it) => it,
             None => return (func.into(), substs),
         };
-        let env = self.param_and(db.trait_environment_for_body(owner));
+        let env = self.param_and(db.trait_environment(owner));
         let (func, args) = db.lookup_impl_method(env, func, substs);
         match func {
             Either::Left(func) => (func.into(), args),
@@ -1528,11 +1532,11 @@ impl<'db> SourceAnalyzer<'db> {
         const_id: ConstId,
         subs: GenericArgs<'db>,
     ) -> (ConstId, GenericArgs<'db>) {
-        let owner = match self.resolver.body_owner() {
+        let owner = match self.resolver.expression_store_owner() {
             Some(it) => it,
             None => return (const_id, subs),
         };
-        let env = self.param_and(db.trait_environment_for_body(owner));
+        let env = self.param_and(db.trait_environment(owner));
         let interner = DbInterner::new_with(db, env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         method_resolution::lookup_impl_const(&infcx, env.param_env, const_id, subs)
@@ -1743,7 +1747,7 @@ fn resolve_hir_path_(
         }
     };
 
-    let body_owner = resolver.body_owner();
+    let body_owner = resolver.expression_store_owner();
     let values = || resolve_hir_value_path(db, resolver, body_owner, path, hygiene);
 
     let items = || {
@@ -1789,14 +1793,14 @@ fn resolve_hir_path_(
 fn resolve_hir_value_path(
     db: &dyn HirDatabase,
     resolver: &Resolver<'_>,
-    body_owner: Option<DefWithBodyId>,
+    store_owner: Option<ExpressionStoreOwnerId>,
     path: &Path,
     hygiene: HygieneId,
 ) -> Option<PathResolution> {
     resolver.resolve_path_in_value_ns_fully(db, path, hygiene).and_then(|val| {
         let res = match val {
             ValueNs::LocalBinding(binding_id) => {
-                let var = Local { parent: body_owner?, binding_id };
+                let var = Local { parent: store_owner?, binding_id };
                 PathResolution::Local(var)
             }
             ValueNs::FunctionId(it) => PathResolution::Def(Function::from(it).into()),

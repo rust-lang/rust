@@ -11,6 +11,7 @@ use hir_def::{
         InlineAsmKind, LabelId, Literal, Pat, PatId, RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
+    signatures::FunctionSignature,
 };
 use hir_def::{FunctionId, hir::ClosureKind};
 use hir_expand::name::Name;
@@ -2194,7 +2195,7 @@ impl<'db> InferenceContext<'_, 'db> {
             _ => return Default::default(),
         };
 
-        let data = self.db.function_signature(func);
+        let data = FunctionSignature::of(self.db, func);
         let Some(legacy_const_generics_indices) = data.legacy_const_generics_indices(self.db, func)
         else {
             return Default::default();

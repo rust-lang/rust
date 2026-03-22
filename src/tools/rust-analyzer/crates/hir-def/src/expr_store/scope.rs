@@ -1,13 +1,15 @@
 //! Name resolution for expressions.
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
-use triomphe::Arc;
 
 use crate::{
-    BlockId, DefWithBodyId, ExpressionStoreOwner, GenericDefId,
+    BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
-    hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
+    hir::{
+        Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
+        generics::GenericParams,
+    },
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -50,36 +52,33 @@ pub struct ScopeData {
     entries: IdxRange<ScopeEntry>,
 }
 
+#[salsa::tracked]
 impl ExprScopes {
-    pub(crate) fn expr_scopes_query(
-        db: &dyn DefDatabase,
-        def: ExpressionStoreOwner,
-    ) -> Arc<ExprScopes> {
-        match def {
-            ExpressionStoreOwner::Body(def) => db.body_expr_scopes(def),
-            ExpressionStoreOwner::Signature(def) => db.sig_expr_scopes(def),
-        }
-    }
-
-    pub(crate) fn body_expr_scopes_query(
-        db: &dyn DefDatabase,
-        def: DefWithBodyId,
-    ) -> Arc<ExprScopes> {
-        let body = db.body(def);
-        let mut scopes = ExprScopes::new_body(&body);
+    #[salsa::tracked(returns(ref))]
+    pub fn body_expr_scopes(db: &dyn DefDatabase, def: DefWithBodyId) -> ExprScopes {
+        let body = Body::of(db, def);
+        let mut scopes = ExprScopes::new_body(body);
         scopes.shrink_to_fit();
-        Arc::new(scopes)
+        scopes
     }
 
-    pub(crate) fn sig_expr_scopes_query(
-        db: &dyn DefDatabase,
-        def: GenericDefId,
-    ) -> Arc<ExprScopes> {
-        let (_, store) = db.generic_params_and_store(def);
+    #[salsa::tracked(returns(ref))]
+    pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
+        let (_, store) = GenericParams::of(db, def);
         let roots = store.signature_const_expr_roots();
-        let mut scopes = ExprScopes::new_store(&store, roots);
+        let mut scopes = ExprScopes::new_store(store, roots);
         scopes.shrink_to_fit();
-        Arc::new(scopes)
+        scopes
+    }
+}
+
+impl ExprScopes {
+    #[inline]
+    pub fn of(db: &dyn DefDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
+        match def.into() {
+            ExpressionStoreOwnerId::Body(def) => Self::body_expr_scopes(db, def),
+            ExpressionStoreOwnerId::Signature(def) => Self::sig_expr_scopes(db, def),
+        }
     }
 
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
@@ -367,7 +366,9 @@ mod tests {
     use test_utils::{assert_eq_text, extract_offset};
 
     use crate::{
-        DefWithBodyId, FunctionId, ModuleDefId, db::DefDatabase, nameres::crate_def_map,
+        DefWithBodyId, FunctionId, ModuleDefId,
+        expr_store::{Body, scope::ExprScopes},
+        nameres::crate_def_map,
         test_db::TestDB,
     };
 
@@ -404,8 +405,8 @@ mod tests {
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(DefWithBodyId::from(function).into());
-        let (_body, source_map) = db.body_with_source_map(function.into());
+        let scopes = ExprScopes::of(&db, DefWithBodyId::from(function));
+        let (_body, source_map) = Body::with_source_map(&db, function.into());
 
         let expr_id = source_map
             .node_expr(InFile { file_id: editioned_file_id.into(), value: &marker.into() })
@@ -563,8 +564,8 @@ fn foo() {
 
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(DefWithBodyId::from(function).into());
-        let (_, source_map) = db.body_with_source_map(function.into());
+        let scopes = ExprScopes::body_expr_scopes(&db, DefWithBodyId::from(function));
+        let (_, source_map) = Body::with_source_map(&db, function.into());
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();

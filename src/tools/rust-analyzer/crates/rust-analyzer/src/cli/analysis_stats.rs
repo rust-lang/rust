@@ -16,8 +16,8 @@ use hir::{
     next_solver::{DbInterner, GenericArgs},
 };
 use hir_def::{
-    SyntheticSyntax,
-    expr_store::BodySourceMap,
+    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
+    expr_store::{Body, BodySourceMap, ExpressionStore},
     hir::{ExprId, PatId},
 };
 use hir_ty::InferenceResult;
@@ -406,7 +406,7 @@ impl flags::AnalysisStats {
                 hir_def::AdtId::from(a),
                 GenericArgs::empty(interner).store(),
                 hir_ty::ParamEnvAndCrate {
-                    param_env: db.trait_environment(a.into()),
+                    param_env: db.trait_environment(GenericDefId::from(a).into()),
                     krate: a.krate(db).into(),
                 }
                 .store(),
@@ -778,21 +778,24 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
-            let bodies = bodies.iter().filter_map(|&body| body.try_into().ok()).collect::<Vec<_>>();
+            let bodies = bodies
+                .iter()
+                .filter_map(|&body| body.try_into().ok())
+                .collect::<Vec<DefWithBodyId>>();
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    InferenceResult::for_body(snap, body);
+                    InferenceResult::of(snap, body);
                 })
                 .count();
             let signatures = signatures
                 .iter()
                 .filter_map(|&signatures| signatures.try_into().ok())
-                .collect::<Vec<_>>();
+                .collect::<Vec<GenericDefId>>();
             signatures
                 .par_iter()
                 .map_with(db.clone(), |snap, &signatures| {
-                    InferenceResult::for_signature(snap, signatures);
+                    InferenceResult::of(snap, signatures);
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -849,9 +852,9 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            let body = db.body(body_def_id);
+            let body = Body::of(db, body_def_id);
             let inference_result =
-                catch_unwind(AssertUnwindSafe(|| InferenceResult::for_body(db, body_def_id)));
+                catch_unwind(AssertUnwindSafe(|| InferenceResult::of(db, body_def_id)));
             let inference_result = match inference_result {
                 Ok(inference_result) => inference_result,
                 Err(p) => {
@@ -879,7 +882,7 @@ impl flags::AnalysisStats {
                 }
             };
             // This query is LRU'd, so actually calling it will skew the timing results.
-            let sm = || db.body_with_source_map(body_def_id).1;
+            let sm = || &Body::with_source_map(db, body_def_id).1;
 
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
@@ -890,7 +893,7 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_ty_error() {
                     num_exprs_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id)
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, sm(), expr_id)
                         {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
@@ -917,7 +920,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
-                    if let Some((_, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id) {
+                    if let Some((_, start, end)) = expr_syntax_range(db, vfs, sm(), expr_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -936,14 +939,14 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_expr(db, vfs, &sm(), expr_id),
+                        location_csv_expr(db, vfs, sm(), expr_id),
                         ty.display(db, display_target)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                     num_expr_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id)
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, sm(), expr_id)
                         {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
@@ -967,7 +970,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_expr(db, vfs, &sm(), expr_id),
+                            location_csv_expr(db, vfs, sm(), expr_id),
                             mismatch.expected.as_ref().display(db, display_target),
                             mismatch.actual.as_ref().display(db, display_target)
                         );
@@ -994,7 +997,7 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_ty_error() {
                     num_pats_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, sm(), pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
                                 path,
@@ -1020,7 +1023,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single pattern
-                    if let Some((_, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
+                    if let Some((_, start, end)) = pat_syntax_range(db, vfs, sm(), pat_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -1039,14 +1042,14 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_pat(db, vfs, &sm(), pat_id),
+                        location_csv_pat(db, vfs, sm(), pat_id),
                         ty.display(db, display_target)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
                     num_pat_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, sm(), pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -1069,7 +1072,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_pat(db, vfs, &sm(), pat_id),
+                            location_csv_pat(db, vfs, sm(), pat_id),
                             mismatch.expected.as_ref().display(db, display_target),
                             mismatch.actual.as_ref().display(db, display_target)
                         );
@@ -1174,7 +1177,7 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            db.generic_params_and_store(signature_id);
+            ExpressionStore::of(db, ExpressionStoreOwnerId::Signature(signature_id));
             bar.inc(1);
         }
 
@@ -1213,7 +1216,7 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            db.body(body_def_id);
+            Body::of(db, body_def_id);
             bar.inc(1);
         }
 
