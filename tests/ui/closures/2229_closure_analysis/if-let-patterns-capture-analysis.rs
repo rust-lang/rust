@@ -16,10 +16,10 @@ fn if_let_closure() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         if let SingleVariant::Pair(ref n, s) = variant {
-            //~^ NOTE: Capturing variant[] -> Immutable
-            //~| NOTE: Capturing variant[(0, 0)] -> Immutable
+            //~^ NOTE: Capturing variant[(0, 0)] -> Immutable
             //~| NOTE: Capturing variant[(1, 0)] -> ByValue
-            //~| NOTE: Min Capture variant[] -> ByValue
+            //~| NOTE: Min Capture variant[(0, 0)] -> Immutable
+            //~| NOTE: Min Capture variant[(1, 0)] -> ByValue
             let _ = (n, s);
         }
     };

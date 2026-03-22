@@ -9,11 +9,6 @@ LL | |         if let SingleVariant::Pair(ref n, s) = variant {
 LL | |     };
    | |_____^
    |
-note: Capturing variant[] -> Immutable
-  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
-   |
-LL |         if let SingleVariant::Pair(ref n, s) = variant {
-   |                                                ^^^^^^^
 note: Capturing variant[(0, 0)] -> Immutable
   --> $DIR/if-let-patterns-capture-analysis.rs:18:48
    |
@@ -36,7 +31,12 @@ LL | |         if let SingleVariant::Pair(ref n, s) = variant {
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[] -> ByValue
+note: Min Capture variant[(0, 0)] -> Immutable
+  --> $DIR/if-let-patterns-capture-analysis.rs:18:48
+   |
+LL |         if let SingleVariant::Pair(ref n, s) = variant {
+   |                                                ^^^^^^^
+note: Min Capture variant[(1, 0)] -> ByValue
   --> $DIR/if-let-patterns-capture-analysis.rs:18:48
    |
 LL |         if let SingleVariant::Pair(ref n, s) = variant {
