@@ -10,6 +10,94 @@ use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 use super::LoweringContext;
 use crate::ResolverAstLoweringExt;
 
+/// Collect statistics about a `FormatArgs` for crater analysis.
+fn collect_format_args_stats(fmt: &FormatArgs) -> FormatArgsStats {
+    let mut pieces = 0usize;
+    let mut placeholders = 0usize;
+    let mut width_args = 0usize;
+    let mut precision_args = 0usize;
+
+    for piece in &fmt.template {
+        match piece {
+            FormatArgsPiece::Literal(_) => pieces += 1,
+            FormatArgsPiece::Placeholder(ph) => {
+                placeholders += 1;
+                if let Some(FormatCount::Argument(_)) = &ph.format_options.width {
+                    width_args += 1;
+                }
+                if let Some(FormatCount::Argument(_)) = &ph.format_options.precision {
+                    precision_args += 1;
+                }
+            }
+        }
+    }
+
+    let mut positional = 0usize;
+    let mut named = 0usize;
+    let mut captured = 0usize;
+    let mut captured_names: FxHashMap<Symbol, usize> = FxHashMap::default();
+
+    for arg in fmt.arguments.all_args() {
+        match &arg.kind {
+            FormatArgumentKind::Normal => positional += 1,
+            FormatArgumentKind::Named(_) => named += 1,
+            FormatArgumentKind::Captured(ident) => {
+                captured += 1;
+                *captured_names.entry(ident.name).or_default() += 1;
+            }
+        }
+    }
+
+    let unique_captures = captured_names.len();
+    let duplicate_captures = captured - unique_captures;
+
+    // Count how many captures are duplicated 2x, 3x, 4x+.
+    let mut dup_2x = 0usize;
+    let mut dup_3x = 0usize;
+    let mut dup_4plus = 0usize;
+    #[allow(rustc::potential_query_instability)]
+    for (_name, count) in &captured_names {
+        match *count {
+            0 | 1 => {}
+            2 => dup_2x += 1,
+            3 => dup_3x += 1,
+            _ => dup_4plus += 1,
+        }
+    }
+
+    FormatArgsStats {
+        pieces,
+        placeholders,
+        width_args,
+        precision_args,
+        total_args: positional + named + captured,
+        positional,
+        named,
+        captured,
+        unique_captures,
+        duplicate_captures,
+        dup_2x,
+        dup_3x,
+        dup_4plus,
+    }
+}
+
+struct FormatArgsStats {
+    pieces: usize,
+    placeholders: usize,
+    width_args: usize,
+    precision_args: usize,
+    total_args: usize,
+    positional: usize,
+    named: usize,
+    captured: usize,
+    unique_captures: usize,
+    duplicate_captures: usize,
+    dup_2x: usize,
+    dup_3x: usize,
+    dup_4plus: usize,
+}
+
 impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
@@ -27,8 +115,117 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             fmt = flatten_format_args(fmt);
             fmt = self.inline_literals(fmt);
         }
+
+        // --- Crater instrumentation: collect stats before dedup ---
+        let before = collect_format_args_stats(&fmt);
+        let args_before_dedup = before.total_args;
+
         fmt = self.dedup_captured_places(fmt);
+
+        // --- Crater instrumentation: collect stats after dedup ---
+        let args_after_dedup = fmt.arguments.all_args().len();
+        let deduped_by_opt = args_before_dedup.saturating_sub(args_after_dedup);
+        let not_deduped = before.duplicate_captures.saturating_sub(deduped_by_opt);
+
+        // Classify duplicated captures by resolution.
+        let (const_dups, constparam_dups, other_dups) =
+            self.classify_dup_captures(&fmt);
+
+        // The "old world" (current stable) arg count: all captures with the
+        // same name were deduplicated, so we count unique captures only.
+        let args_old_world = before.positional + before.named + before.unique_captures;
+        // Size estimates (bytes, assuming 64-bit: rt::Argument = 16 bytes).
+        let size_no_dedup = before.total_args * 16;
+        let size_old_world = args_old_world * 16;
+        let size_with_opt = args_after_dedup * 16;
+
+        eprintln!(
+            "[FMTARGS] {{\
+            \"p\":{},\"ph\":{},\"wa\":{},\"pa\":{},\
+            \"a\":{},\"pos\":{},\"named\":{},\"cap\":{},\
+            \"ucap\":{},\"dup\":{},\"const\":{},\"constparam\":{},\"other_dup\":{},\
+            \"d2\":{},\"d3\":{},\"d4p\":{},\
+            \"deduped\":{},\"remaining\":{},\
+            \"a_old\":{},\"a_opt\":{},\
+            \"sz_no_dedup\":{},\"sz_old\":{},\"sz_opt\":{}\
+            }}",
+            before.pieces,
+            before.placeholders,
+            before.width_args,
+            before.precision_args,
+            before.total_args,
+            before.positional,
+            before.named,
+            before.captured,
+            before.unique_captures,
+            before.duplicate_captures,
+            const_dups,
+            constparam_dups,
+            other_dups,
+            before.dup_2x,
+            before.dup_3x,
+            before.dup_4plus,
+            deduped_by_opt,
+            not_deduped,
+            args_old_world,
+            args_after_dedup,
+            size_no_dedup,
+            size_old_world,
+            size_with_opt,
+        );
+
         expand_format_args(self, sp, &fmt, allow_const)
+    }
+
+    /// Classify duplicated captured arguments by their name
+    /// resolution.  Returns (const_count, constparam_count,
+    /// other_count) counting the number of *extra* captures
+    /// (beyond the first) in each category.
+    fn classify_dup_captures(&self, fmt: &FormatArgs) -> (usize, usize, usize) {
+        let mut seen: FxHashMap<Symbol, usize> = FxHashMap::default();
+        let mut const_dups = 0usize;
+        let mut constparam_dups = 0usize;
+        let mut other_dups = 0usize;
+
+        for arg in fmt.arguments.all_args() {
+            if let FormatArgumentKind::Captured(ident) = &arg.kind {
+                let count = seen.entry(ident.name).or_default();
+                *count += 1;
+                if *count == 2 {
+                    // First duplicate -- classify by resolution.
+                    // (Subsequent duplicates of the same name
+                    // are already counted by the dup_2x/3x/4p
+                    // fields.)
+                    if let Some(partial_res) =
+                        self.resolver.get_partial_res(arg.expr.id)
+                        && let Some(res) = partial_res.full_res()
+                    {
+                        match res {
+                            Res::Local(_)
+                            | Res::Def(
+                                DefKind::Static { .. },
+                                _,
+                            ) => {
+                                // Places -- handled by
+                                // dedup_captured_places.
+                            }
+                            Res::Def(
+                                DefKind::Const { .. }
+                                | DefKind::AssocConst { .. },
+                                _,
+                            ) => const_dups += 1,
+                            Res::Def(
+                                DefKind::ConstParam, _
+                            ) => constparam_dups += 1,
+                            _ => other_dups += 1,
+                        }
+                    } else {
+                        other_dups += 1;
+                    }
+                }
+            }
+        }
+        (const_dups, constparam_dups, other_dups)
     }
 
     /// Try to convert a literal into an interned string
