@@ -58,7 +58,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use tracing::{debug, instrument};
 
-use super::graph::{CurrentDepGraph, DepNodeColorMap};
+use super::graph::{CurrentDepGraph, DepNodeColorMap, DesiredColor, TrySetColorResult};
 use super::retained::RetainedDepGraph;
 use super::{DepKind, DepNode, DepNodeIndex};
 use crate::dep_graph::edges::EdgesVec;
@@ -905,13 +905,14 @@ impl GraphEncoder {
         let mut local = self.status.local.borrow_mut();
 
         let index = self.status.next_index(&mut *local);
+        let color = if is_green { DesiredColor::Green { index } } else { DesiredColor::Red };
 
-        // Use `try_mark` to avoid racing when `send_promoted` is called concurrently
+        // Use `try_set_color` to avoid racing when `send_promoted` is called concurrently
         // on the same index.
-        match colors.try_mark(prev_index, index, is_green) {
-            Ok(()) => (),
-            Err(None) => panic!("dep node {:?} is unexpectedly red", prev_index),
-            Err(Some(dep_node_index)) => return dep_node_index,
+        match colors.try_set_color(prev_index, color) {
+            TrySetColorResult::Success => {}
+            TrySetColorResult::AlreadyRed => panic!("dep node {prev_index:?} is unexpectedly red"),
+            TrySetColorResult::AlreadyGreen { index } => return index,
         }
 
         self.status.bump_index(&mut *local);
@@ -923,7 +924,8 @@ impl GraphEncoder {
     /// from the previous dep graph and expects all edges to already have a new dep node index
     /// assigned.
     ///
-    /// This will also ensure the dep node is marked green if `Some` is returned.
+    /// Tries to mark the dep node green, and returns Some if it is now green,
+    /// or None if had already been concurrently marked red.
     #[inline]
     pub(crate) fn send_promoted(
         &self,
@@ -935,10 +937,10 @@ impl GraphEncoder {
         let mut local = self.status.local.borrow_mut();
         let index = self.status.next_index(&mut *local);
 
-        // Use `try_mark_green` to avoid racing when `send_promoted` or `send_and_color`
+        // Use `try_set_color` to avoid racing when `send_promoted` or `send_and_color`
         // is called concurrently on the same index.
-        match colors.try_mark(prev_index, index, true) {
-            Ok(()) => {
+        match colors.try_set_color(prev_index, DesiredColor::Green { index }) {
+            TrySetColorResult::Success => {
                 self.status.bump_index(&mut *local);
                 self.status.encode_promoted_node(
                     index,
@@ -949,7 +951,8 @@ impl GraphEncoder {
                 );
                 Some(index)
             }
-            Err(dep_node_index) => dep_node_index,
+            TrySetColorResult::AlreadyRed => None,
+            TrySetColorResult::AlreadyGreen { index } => Some(index),
         }
     }
 
