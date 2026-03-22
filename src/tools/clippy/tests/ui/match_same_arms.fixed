@@ -140,3 +140,19 @@ fn main() {
         _ => false,
     };
 }
+
+fn issue16678() {
+    // ICE in Rust 1.94.0
+    match true {
+        true => {
+            fn wrapper(_arg: ()) {
+                _arg;
+            }
+        },
+        false => {
+            fn wrapper(_arg: ()) {
+                _arg;
+            }
+        },
+    }
+}
