@@ -520,14 +520,6 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
         return value;
     }
 
-    // We always expect to find a cached result for things that
-    // can be forced from `DepNode`.
-    debug_assert!(
-        !(query.will_cache_on_disk_for_key_fn)(tcx, key)
-            || !tcx.key_fingerprint_style(dep_node.kind).is_maybe_recoverable(),
-        "missing on-disk cache entry for {dep_node:?}"
-    );
-
     // We could not load a result from the on-disk cache, so
     // recompute.
     let prof_timer = tcx.prof.query_provider();
