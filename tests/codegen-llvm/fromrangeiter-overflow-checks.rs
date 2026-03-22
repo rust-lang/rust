@@ -19,7 +19,7 @@ pub unsafe fn iterrangefrom_remainder(x: RangeFromIter<i32>) -> RangeFrom<i32> {
     //        DEBUG: i32 noundef %x
     //     NOCHECKS: i32 noundef returned %x
     //        DEBUG: br i1
-    //        DEBUG: call core::panicking::panic_const::panic_const_add_overflow
+    //        DEBUG: call core::panicking::panic_add_overflow_signed
     //        DEBUG: unreachable
     // NOCHECKS-NOT: unreachable
     //     NOCHECKS: ret i32 %x

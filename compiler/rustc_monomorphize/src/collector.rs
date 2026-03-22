@@ -908,6 +908,28 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::InvalidEnumConstruction(_) => {
                     push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
                 }
+                mir::AssertKind::Overflow(binop, lhs, _rhs) => {
+                    let is_signed = lhs.ty(self.body, tcx).is_signed();
+                    let lang = match (binop, is_signed) {
+                        (mir::BinOp::Add, true) => LangItem::PanicAddOverflowSigned,
+                        (mir::BinOp::Add, false) => LangItem::PanicAddOverflowUnsigned,
+                        (mir::BinOp::Sub, true) => LangItem::PanicSubOverflowSigned,
+                        (mir::BinOp::Sub, false) => LangItem::PanicSubOverflowUnsigned,
+                        (mir::BinOp::Mul, true) => LangItem::PanicMulOverflowSigned,
+                        (mir::BinOp::Mul, false) => LangItem::PanicMulOverflowUnsigned,
+                        (mir::BinOp::Div, true) => LangItem::PanicDivOverflowSigned,
+                        (mir::BinOp::Div, false) => LangItem::PanicDivOverflowUnsigned,
+                        (mir::BinOp::Rem, true) => LangItem::PanicRemOverflowSigned,
+                        (mir::BinOp::Rem, false) => LangItem::PanicRemOverflowUnsigned,
+                        (mir::BinOp::Shl, true) => LangItem::PanicShlOverflowSigned,
+                        (mir::BinOp::Shl, false) => LangItem::PanicShlOverflowUnsigned,
+                        (mir::BinOp::Shr, true) => LangItem::PanicShrOverflowSigned,
+                        (mir::BinOp::Shr, false) => LangItem::PanicShrOverflowUnsigned,
+                        _ => bug!("binop {:?} should not have overflow assert", binop),
+                    };
+
+                    push_mono_lang_item(self, lang);
+                }
                 _ => {
                     push_mono_lang_item(self, msg.panic_function());
                 }

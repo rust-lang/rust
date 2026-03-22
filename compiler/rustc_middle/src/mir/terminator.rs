@@ -176,15 +176,19 @@ impl<O> AssertKind<O> {
     pub fn panic_function(&self) -> LangItem {
         use AssertKind::*;
         match self {
-            Overflow(BinOp::Add, _, _) => LangItem::PanicAddOverflow,
-            Overflow(BinOp::Sub, _, _) => LangItem::PanicSubOverflow,
-            Overflow(BinOp::Mul, _, _) => LangItem::PanicMulOverflow,
-            Overflow(BinOp::Div, _, _) => LangItem::PanicDivOverflow,
-            Overflow(BinOp::Rem, _, _) => LangItem::PanicRemOverflow,
-            OverflowNeg(_) => LangItem::PanicNegOverflow,
-            Overflow(BinOp::Shr, _, _) => LangItem::PanicShrOverflow,
-            Overflow(BinOp::Shl, _, _) => LangItem::PanicShlOverflow,
+            Overflow(
+                BinOp::Add
+                | BinOp::Sub
+                | BinOp::Mul
+                | BinOp::Div
+                | BinOp::Rem
+                | BinOp::Shr
+                | BinOp::Shl,
+                _,
+                _,
+            ) => bug!("Binops handled elsewhere"),
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
+            OverflowNeg(_) => LangItem::PanicNegOverflow,
             DivisionByZero(_) => LangItem::PanicDivZero,
             RemainderByZero(_) => LangItem::PanicRemZero,
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumed,

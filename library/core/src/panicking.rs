@@ -185,14 +185,7 @@ macro_rules! panic_const {
 pub mod panic_const {
     use super::*;
     panic_const! {
-        panic_const_add_overflow = "attempt to add with overflow",
-        panic_const_sub_overflow = "attempt to subtract with overflow",
-        panic_const_mul_overflow = "attempt to multiply with overflow",
-        panic_const_div_overflow = "attempt to divide with overflow",
-        panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
         panic_const_neg_overflow = "attempt to negate with overflow",
-        panic_const_shr_overflow = "attempt to shift right with overflow",
-        panic_const_shl_overflow = "attempt to shift left with overflow",
         panic_const_div_by_zero = "attempt to divide by zero",
         panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
         panic_const_coroutine_resumed = "coroutine resumed after completion",
@@ -212,6 +205,45 @@ pub mod panic_const {
         panic_const_async_gen_fn_resumed_drop = "`async gen fn` resumed after async drop",
         panic_const_gen_fn_none_drop = "`gen fn` resumed after async drop",
     }
+}
+
+macro_rules! panic_overflow {
+    ($($lang_unsigned:ident, $lang_signed:ident = $message:tt,)+) => {
+        $(
+            #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+            #[cfg_attr(panic = "immediate-abort", inline)]
+            #[track_caller]
+            #[lang = stringify!($lang_unsigned)]
+            pub fn $lang_unsigned(lhs: u128, rhs: u128) -> ! {
+                if cfg!(panic = "immediate-abort") {
+                    super::intrinsics::abort()
+                }
+
+                panic_fmt(format_args!($message, lhs, rhs))
+            }
+            #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+            #[cfg_attr(panic = "immediate-abort", inline)]
+            #[track_caller]
+            #[lang = stringify!($lang_signed)]
+            pub fn $lang_signed(lhs: i128, rhs: i128) -> ! {
+                if cfg!(panic = "immediate-abort") {
+                    super::intrinsics::abort()
+                }
+
+                panic_fmt(format_args!($message, lhs, rhs))
+            }
+        )+
+    };
+}
+
+panic_overflow! {
+    panic_add_overflow_unsigned, panic_add_overflow_signed = "attempt to compute `{} + {}`, which would overflow",
+    panic_sub_overflow_unsigned, panic_sub_overflow_signed = "attempt to compute `{} - {}`, which would overflow",
+    panic_mul_overflow_unsigned, panic_mul_overflow_signed = "attempt to compute `{} * {}`, which would overflow",
+    panic_div_overflow_unsigned, panic_div_overflow_signed = "attempt to compute `{} / {}`, which would overflow",
+    panic_rem_overflow_unsigned, panic_rem_overflow_signed = "attempt to compute `{} % {}`, which would overflow",
+    panic_shl_overflow_unsigned, panic_shl_overflow_signed = "attempt to compute `{} << {}`, which would overflow",
+    panic_shr_overflow_unsigned, panic_shr_overflow_signed = "attempt to compute `{} >> {}, which would overflow",
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.

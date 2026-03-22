@@ -740,39 +740,89 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let location = self.get_caller_location(bx, terminator.source_info).immediate();
 
         // Put together the arguments to the panic entry point.
-        let (lang_item, args) = match msg {
+        let ((fn_abi, llfn, instance), args) = match msg {
             AssertKind::BoundsCheck { len, index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicBoundsCheck, vec![index, len, location])
+                (
+                    common::build_langcall(bx, span, LangItem::PanicBoundsCheck),
+                    vec![index, len, location],
+                )
             }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
-            }
-            AssertKind::NullPointerDereference => {
-                // It's `fn panic_null_pointer_dereference()`,
-                // `#[track_caller]` adds an implicit argument.
-                (LangItem::PanicNullPointerDereference, vec![location])
+                (
+                    common::build_langcall(bx, span, LangItem::PanicMisalignedPointerDereference),
+                    vec![required, found, location],
+                )
             }
             AssertKind::InvalidEnumConstruction(source) => {
                 let source = self.codegen_operand(bx, source).immediate();
                 // It's `fn panic_invalid_enum_construction(source: u128)`,
                 // `#[track_caller]` adds an implicit argument.
-                (LangItem::PanicInvalidEnumConstruction, vec![source, location])
+                (
+                    common::build_langcall(bx, span, LangItem::PanicInvalidEnumConstruction),
+                    vec![source, location],
+                )
+            }
+            AssertKind::Overflow(binop, lhs, rhs) => {
+                let tcx = bx.tcx();
+
+                let is_signed = lhs.ty(self.mir, tcx).is_signed();
+
+                let lang = match (binop, is_signed) {
+                    (mir::BinOp::Add, true) => LangItem::PanicAddOverflowSigned,
+                    (mir::BinOp::Add, false) => LangItem::PanicAddOverflowUnsigned,
+                    (mir::BinOp::Sub, true) => LangItem::PanicSubOverflowSigned,
+                    (mir::BinOp::Sub, false) => LangItem::PanicSubOverflowUnsigned,
+                    (mir::BinOp::Mul, true) => LangItem::PanicMulOverflowSigned,
+                    (mir::BinOp::Mul, false) => LangItem::PanicMulOverflowUnsigned,
+                    (mir::BinOp::Div, true) => LangItem::PanicDivOverflowSigned,
+                    (mir::BinOp::Div, false) => LangItem::PanicDivOverflowUnsigned,
+                    (mir::BinOp::Rem, true) => LangItem::PanicRemOverflowSigned,
+                    (mir::BinOp::Rem, false) => LangItem::PanicRemOverflowUnsigned,
+                    (mir::BinOp::Shl, true) => LangItem::PanicShlOverflowSigned,
+                    (mir::BinOp::Shl, false) => LangItem::PanicShlOverflowUnsigned,
+                    (mir::BinOp::Shr, true) => LangItem::PanicShrOverflowSigned,
+                    (mir::BinOp::Shr, false) => LangItem::PanicShrOverflowUnsigned,
+                    _ => bug!("binop {:?} should not have overflow assert", binop),
+                };
+
+                let (lhs, rhs) = if is_signed {
+                    let i128_ty = tcx.types.i128;
+                    let i128_llty = bx.immediate_backend_type(bx.layout_of(i128_ty));
+
+                    let lhs = self.codegen_operand(bx, lhs).immediate();
+                    let lhs = bx.sext(lhs, i128_llty);
+                    let rhs = self.codegen_operand(bx, rhs).immediate();
+                    let rhs = bx.sext(rhs, i128_llty);
+
+                    (lhs, rhs)
+                } else {
+                    let u128_ty = tcx.types.u128;
+                    let u128_llty = bx.immediate_backend_type(bx.layout_of(u128_ty));
+
+                    let lhs = self.codegen_operand(bx, lhs).immediate();
+                    let lhs = bx.zext(lhs, u128_llty);
+                    let rhs = self.codegen_operand(bx, rhs).immediate();
+                    let rhs = bx.zext(rhs, u128_llty);
+
+                    (lhs, rhs)
+                };
+
+                // signature fn(lhs, rhs), plus #[track_caller] location
+                (common::build_langcall(bx, span, lang), vec![lhs, rhs, location])
             }
             _ => {
                 // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
-                (msg.panic_function(), vec![location])
+                (common::build_langcall(bx, span, msg.panic_function()), vec![location])
             }
         };
-
-        let (fn_abi, llfn, instance) = common::build_langcall(bx, span, lang_item);
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(
