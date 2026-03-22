@@ -1,7 +1,12 @@
 //@ignore-target: windows # No libc
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 use std::ffi::CStr;
 use std::{io, ptr};
+
+use libc_utils::*;
 
 fn main() {
     test_ok();
@@ -11,10 +16,7 @@ fn main() {
 fn test_ok() {
     // SAFETY: all zeros for `utsname` is valid.
     let mut uname: libc::utsname = unsafe { std::mem::zeroed() };
-    let result = unsafe { libc::uname(&mut uname) };
-    if result != 0 {
-        panic!("failed to call uname");
-    }
+    errno_check(unsafe { libc::uname(&mut uname) });
 
     assert_eq!(unsafe { CStr::from_ptr(&uname.sysname as *const _) }, c"Miri");
     assert_eq!(unsafe { CStr::from_ptr(&uname.nodename as *const _) }, c"Miri");
@@ -32,7 +34,7 @@ fn test_ok() {
 }
 
 fn test_null_ptr() {
-    let result = unsafe { libc::uname(ptr::null_mut()) };
-    assert_eq!(result, -1);
+    let err = errno_result(unsafe { libc::uname(ptr::null_mut()) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EFAULT));
     assert_eq!(io::Error::last_os_error().raw_os_error(), Some(libc::EFAULT));
 }

@@ -175,11 +175,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     abi,
                     args,
                 )?;
-                // The size determines the length of each field in the utsname
-                // structure. We don't really care about this, all we do check
-                // that the argument is an i32.
-                let _size = this.read_scalar(size)?.to_i32()?;
-                let result = this.uname(uname)?;
+                let result = this.uname(uname, Some(size))?;
                 this.write_scalar(result, dest)?;
             }
 
