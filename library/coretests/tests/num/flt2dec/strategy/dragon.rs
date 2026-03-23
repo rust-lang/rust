@@ -16,11 +16,11 @@ fn test_mul_pow10() {
 
 #[test]
 fn shortest_sanity_test() {
-    f64_shortest_sanity_test(format_shortest);
-    f32_shortest_sanity_test(format_shortest);
+    f64_shortest_sanity_test(format_short);
+    f32_shortest_sanity_test(format_short);
     #[cfg(target_has_reliable_f16)]
-    f16_shortest_sanity_test(format_shortest);
-    more_shortest_sanity_test(format_shortest);
+    f16_shortest_sanity_test(format_short);
+    more_shortest_sanity_test(format_short);
 }
 
 #[test]
@@ -40,30 +40,30 @@ fn exact_sanity_test() {
     // anyway and we're not super interested in testing each platform's exp2
     // implementation.
     if !cfg!(target_env = "msvc") {
-        f64_exact_sanity_test(format_exact);
+        f64_exact_sanity_test(format_fixed);
     }
-    f32_exact_sanity_test(format_exact);
+    f32_exact_sanity_test(format_fixed);
 
     #[cfg(target_has_reliable_f16)]
-    f16_exact_sanity_test(format_exact);
+    f16_exact_sanity_test(format_fixed);
 }
 
 #[test]
 fn test_to_shortest_str() {
-    to_shortest_str_test(format_shortest);
+    to_shortest_str_test(format_short);
 }
 
 #[test]
 fn test_to_shortest_exp_str() {
-    to_shortest_exp_str_test(format_shortest);
+    to_shortest_exp_str_test(format_short);
 }
 
 #[test]
 fn test_to_exact_exp_str() {
-    to_exact_exp_str_test(format_exact);
+    to_exact_exp_str_test(format_fixed);
 }
 
 #[test]
 fn test_to_exact_fixed_str() {
-    to_exact_fixed_str_test(format_exact);
+    to_exact_fixed_str_test(format_fixed);
 }
