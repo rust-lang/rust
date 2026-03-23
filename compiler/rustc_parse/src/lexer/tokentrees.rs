@@ -85,11 +85,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
 
                 // only add braces
-                if Delimiter::Brace==open_delim {
+                if Delimiter::Brace == open_delim {
                     // Add all the matching spans, we will sort by span later
-                    self.diag_info
-                        .matching_block_spans
-                        .push((pre_span, close_delimiter_span));
+                    self.diag_info.matching_block_spans.push((pre_span, close_delimiter_span));
                 }
 
                 // Move past the closing delimiter.
