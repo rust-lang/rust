@@ -62,3 +62,40 @@ jobs:
 
       - name: Run compiler tests (decisive trait)
         run: python3 x.py test tests/ui --stage 1 --test-args "decisive"
+
+      - name: Package stage1 toolchain
+        run: |
+          STAGE1=build/x86_64-unknown-linux-gnu/stage1
+          DEST=rustc-decisive-x86_64-unknown-linux-gnu
+          mkdir -p "$DEST"
+          cp -a "$STAGE1/bin" "$DEST/"
+          cp -a "$STAGE1/lib" "$DEST/"
+          echo "decisive-stage1 ($(git rev-parse --short HEAD))" > "$DEST/VERSION"
+          tar czf "$DEST.tar.gz" "$DEST"
+          echo "TOOLCHAIN_ARCHIVE=$DEST.tar.gz" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_NAME=$DEST" >> "$GITHUB_ENV"
+
+      - name: Upload toolchain artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustc-decisive-x86_64-unknown-linux-gnu
+          path: ${{ env.TOOLCHAIN_ARCHIVE }}
+          retention-days: 90
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.TOOLCHAIN_ARCHIVE }}
+          body: |
+            ## Rust with Decisive Trait
+
+            Custom rustc build with the `Decisive` trait, enabling user-defined
+            short-circuiting `&&` and `||` operators.
+
+            ### Install
+            ```bash
+            tar xzf ${{ env.TOOLCHAIN_NAME }}.tar.gz
+            rustup toolchain link decisive ./${{ env.TOOLCHAIN_NAME }}
+            cargo +decisive build
+            ```
