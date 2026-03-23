@@ -3,6 +3,8 @@
 // elaborate-drops invoked on it) and then try to elaboate drops a
 // second time. Uncool.
 
+//https://github.com/rust-lang/rust/issues/50411
+
 //@ compile-flags:-Zmir-opt-level=4
 //@ build-pass
 
