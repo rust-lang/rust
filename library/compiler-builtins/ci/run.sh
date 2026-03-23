@@ -192,7 +192,7 @@ else
 
     # Exclude the macros and utile crates from the rest of the tests to save CI
     # runtime, they shouldn't have anything feature- or opt-level-dependent.
-    cmd+=(--exclude util --exclude libm-macros)
+    cmd+=(--exclude util --exclude libm-macros --exclude update-api-list)
 
     # Test once with intrinsics enabled
     "${cmd[@]}" --features arch,unstable-intrinsics

@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
-from typing import Any, Callable, TypeAlias
+from typing import Any, TypeAlias
 
 SELF_PATH = Path(__file__)
 ETC_DIR = SELF_PATH.parent
@@ -201,36 +201,6 @@ class Crate:
             with open(out_file, "w") as f:
                 f.write(output)
 
-    def tidy_lists(self) -> None:
-        """In each file, check annotations indicating blocks of code should be sorted or should
-        include all public API.
-        """
-
-        flist = sp.check_output(["git", "ls-files"], cwd=ROOT_DIR, text=True)
-
-        for path in flist.splitlines():
-            fpath = ROOT_DIR.joinpath(path)
-            if fpath.is_dir() or fpath == SELF_PATH:
-                continue
-
-            lines = fpath.read_text().splitlines()
-
-            validate_delimited_block(
-                fpath,
-                lines,
-                "verify-sorted-start",
-                "verify-sorted-end",
-                ensure_sorted,
-            )
-
-            validate_delimited_block(
-                fpath,
-                lines,
-                "verify-apilist-start",
-                "verify-apilist-end",
-                lambda p, n, lines: self.ensure_contains_api(p, n, lines),
-            )
-
     def ensure_contains_api(self, fpath: Path, line_num: int, lines: list[str]):
         """Given a list of strings, ensure that each public function we have is named
         somewhere.
@@ -250,54 +220,6 @@ class Crate:
         relpath = fpath.relative_to(ROOT_DIR)
         eprint(f"functions not found at {relpath}:{line_num}: {not_found}")
         exit(1)
-
-
-def validate_delimited_block(
-    fpath: Path,
-    lines: list[str],
-    start: str,
-    end: str,
-    validate: Callable[[Path, int, list[str]], None],
-) -> None:
-    """Identify blocks of code wrapped within `start` and `end`, collect their contents
-    to a list of strings, and call `validate` for each of those lists.
-    """
-    relpath = fpath.relative_to(ROOT_DIR)
-    block_lines = []
-    block_start_line: None | int = None
-    for line_num, line in enumerate(lines):
-        line_num += 1
-
-        if start in line:
-            block_start_line = line_num
-            continue
-
-        if end in line:
-            if block_start_line is None:
-                eprint(f"`{end}` without `{start}` at {relpath}:{line_num}")
-                exit(1)
-
-            validate(fpath, block_start_line, block_lines)
-            block_lines = []
-            block_start_line = None
-            continue
-
-        if block_start_line is not None:
-            block_lines.append(line)
-
-    if block_start_line is not None:
-        eprint(f"`{start}` without `{end}` at {relpath}:{block_start_line}")
-        exit(1)
-
-
-def ensure_sorted(fpath: Path, block_start_line: int, lines: list[str]) -> None:
-    """Ensure that a list of lines is sorted, otherwise print a diff and exit."""
-    relpath = fpath.relative_to(ROOT_DIR)
-    diff_and_exit(
-        "\n".join(lines),
-        "\n".join(sorted(lines)),
-        f"sorted block at {relpath}:{block_start_line}",
-    )
 
 
 def diff_and_exit(actual: str, expected: str, name: str):
@@ -355,8 +277,6 @@ def ensure_updated_list(check: bool) -> None:
     crate = Crate()
     crate.write_function_list(check)
     crate.write_function_defs(check)
-
-    crate.tidy_lists()
 
 
 def main():

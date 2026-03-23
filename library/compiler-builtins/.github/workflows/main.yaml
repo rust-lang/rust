@@ -181,7 +181,10 @@ jobs:
 
     - name: Verify API list
       if: matrix.os == 'ubuntu-24.04' || contains(matrix.os, 'self-hosted')
-      run: python3 etc/update-api-list.py --check
+      run: |
+        # Must be run on the host (not in Docker) because git and fs access is required.
+        python3 etc/update-api-list.py --check
+        cargo test -p update-api-list
 
     # Non-linux tests just use our raw script
     - name: Run locally
