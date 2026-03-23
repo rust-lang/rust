@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //
 // from issue #93951, where borrowck complained the temporary that `foo(&x)` was stored in was to
 // be dropped sometime after `x` was. It then suggested adding a semicolon that was already there.
