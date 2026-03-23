@@ -263,8 +263,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             let mut arms_edit = ArmsEdit { match_arm_list, place: old_place, last_arm: None };
 
             arms_edit.remove_wildcard_arms(ctx, &mut editor);
-            arms_edit.add_comma_after_last_arm(ctx, &mut editor);
-            arms_edit.append_arms(&missing_arms, &mut editor);
+            arms_edit.add_comma_after_last_arm(ctx, &make, &mut editor);
+            arms_edit.append_arms(&missing_arms, &make, &mut editor);
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(it) = missing_arms
@@ -375,7 +375,7 @@ impl ArmsEdit {
         }
     }
 
-    fn append_arms(&self, arms: &[ast::MatchArm], editor: &mut SyntaxEditor) {
+    fn append_arms(&self, arms: &[ast::MatchArm], make: &SyntaxFactory, editor: &mut SyntaxEditor) {
         let Some(mut before) = self.place.last_token() else {
             stdx::never!("match arm list not contain any token");
             return;
@@ -389,8 +389,8 @@ impl ArmsEdit {
             !self.place.text().contains_char('\n') || before.kind() == SyntaxKind::WHITESPACE;
         let indent = IndentLevel::from_node(&self.place);
         let arm_indent = indent + 1;
-        let indent = make::tokens::whitespace(&format!("\n{indent}"));
-        let arm_indent = make::tokens::whitespace(&format!("\n{arm_indent}"));
+        let indent = make.whitespace(&format!("\n{indent}"));
+        let arm_indent = make.whitespace(&format!("\n{arm_indent}"));
         let elements = arms
             .iter()
             .flat_map(|arm| [arm_indent.clone().into(), arm.syntax().clone().into()])
@@ -404,13 +404,18 @@ impl ArmsEdit {
         }
     }
 
-    fn add_comma_after_last_arm(&self, ctx: &AssistContext<'_>, editor: &mut SyntaxEditor) {
+    fn add_comma_after_last_arm(
+        &self,
+        ctx: &AssistContext<'_>,
+        make: &SyntaxFactory,
+        editor: &mut SyntaxEditor,
+    ) {
         if let Some(last_arm) = &self.last_arm
             && last_arm.comma_token().is_none()
             && last_arm.expr().is_none_or(|it| !it.is_block_like())
             && let Some(range) = self.cover_edit_range(ctx, last_arm)
         {
-            editor.insert(Position::after(range.end()), make::token(syntax::T![,]));
+            editor.insert(Position::after(range.end()), make.token(syntax::T![,]));
         }
     }
 
