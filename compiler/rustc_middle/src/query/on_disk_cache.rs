@@ -351,9 +351,7 @@ impl OnDiskCache {
     where
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
-        let opt_value = self.load_indexed(tcx, dep_node_index, &self.query_values_index);
-        debug_assert_eq!(opt_value.is_some(), self.loadable_from_disk(dep_node_index));
-        opt_value
+        self.load_indexed(tcx, dep_node_index, &self.query_values_index)
     }
 
     fn load_indexed<'tcx, T>(
