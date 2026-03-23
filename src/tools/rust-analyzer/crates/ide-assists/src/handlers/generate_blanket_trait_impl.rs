@@ -5,15 +5,15 @@ use crate::{
 use hir::{HasCrate, Semantics};
 use ide_db::{
     RootDatabase,
-    assists::{AssistId, AssistKind, ExprFillDefaultMode},
+    assists::{AssistId, AssistKind},
     famous_defs::FamousDefs,
     syntax_helpers::suggest_name,
 };
 use syntax::{
     AstNode,
     ast::{
-        self, AssocItem, BlockExpr, GenericParam, HasAttrs, HasGenericParams, HasName,
-        HasTypeBounds, HasVisibility, edit::AstNodeEdit, make,
+        self, AssocItem, GenericParam, HasAttrs, HasGenericParams, HasName, HasTypeBounds,
+        HasVisibility, edit::AstNodeEdit, make,
     },
     syntax_editor::Position,
 };
@@ -269,22 +269,13 @@ fn todo_fn(f: &ast::Fn, config: &AssistConfig) -> ast::Fn {
         f.generic_param_list(),
         f.where_clause(),
         params,
-        default_block(config),
+        make::block_expr(None, Some(crate::utils::expr_fill_default(config))),
         f.ret_type(),
         f.async_token().is_some(),
         f.const_token().is_some(),
         f.unsafe_token().is_some(),
         f.gen_token().is_some(),
     )
-}
-
-fn default_block(config: &AssistConfig) -> BlockExpr {
-    let expr = match config.expr_fill_default {
-        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-    };
-    make::block_expr(None, Some(expr))
 }
 
 fn cfg_attrs(node: &impl HasAttrs) -> impl Iterator<Item = ast::Attr> {
