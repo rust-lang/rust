@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
