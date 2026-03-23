@@ -16,8 +16,8 @@ reuse to_reuse::late;
 reuse to_reuse::bounds;
 
 fn main() {
-    // FIXME(fn_delegation): proper support for late bound lifetimes.
     late::<'static>(&0u8);
+    //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
 
     struct S;
     bounds(S);

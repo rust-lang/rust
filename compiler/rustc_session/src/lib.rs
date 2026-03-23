@@ -1,5 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![feature(const_option_ops)]
+#![feature(const_trait_impl)]
 #![feature(default_field_values)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]

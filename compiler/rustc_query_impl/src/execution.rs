@@ -424,7 +424,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     let dep_graph_data =
         tcx.dep_graph.data().expect("should always be present in incremental mode");
 
-    if !query.anon && !query.eval_always {
+    if !query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.get_or_insert_with(|| DepNode::construct(tcx, query.dep_kind, &key));
@@ -451,13 +451,6 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     let prof_timer = tcx.prof.query_provider();
 
     let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
-        if query.anon {
-            // Call the query provider inside an anon task.
-            return dep_graph_data.with_anon_task_inner(tcx, query.dep_kind, || {
-                (query.invoke_provider_fn)(tcx, key)
-            });
-        }
-
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.unwrap_or_else(|| DepNode::construct(tcx, query.dep_kind, &key));
@@ -601,9 +594,6 @@ fn check_if_ensure_can_skip_execution<'tcx, C: QueryCache>(
         return EnsureCanSkip { skip_execution: false, dep_node: None };
     }
 
-    // Ensuring an anonymous query makes no sense
-    assert!(!query.anon);
-
     let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
     let serialized_dep_node_index = match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
@@ -702,8 +692,6 @@ pub(crate) fn force_query<'tcx, C: QueryCache>(
         tcx.prof.query_cache_hit(index.into());
         return;
     }
-
-    debug_assert!(!query.anon);
 
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))

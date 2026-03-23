@@ -62,25 +62,7 @@ pub macro thread_local_inner {
     // by translating it into a `cfg`ed block and recursing.
     // https://doc.rust-lang.org/reference/conditional-compilation.html#railroad-ConfigurationPredicate
 
-    (@align $final_align:ident, cfg_attr(true, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
-        #[cfg(true)]
-        {
-            $crate::thread::local_impl::thread_local_inner!(@align $final_align, $($cfg_rhs)*);
-        }
-
-        $($crate::thread::local_impl::thread_local_inner!(@align $final_align, $($attr_rest)+);)?
-    },
-
-    (@align $final_align:ident, cfg_attr(false, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
-        #[cfg(false)]
-        {
-            $crate::thread::local_impl::thread_local_inner!(@align $final_align, $($cfg_rhs)*);
-        }
-
-        $($crate::thread::local_impl::thread_local_inner!(@align $final_align, $($attr_rest)+);)?
-    },
-
-    (@align $final_align:ident, cfg_attr($cfg_pred:meta, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
+    (@align $final_align:ident, cfg_attr($cfg_pred:expr, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
         #[cfg($cfg_pred)]
         {
             $crate::thread::local_impl::thread_local_inner!(@align $final_align, $($cfg_rhs)*);

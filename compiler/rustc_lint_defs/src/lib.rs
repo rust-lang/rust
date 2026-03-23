@@ -678,16 +678,7 @@ pub enum BuiltinLintDiag {
         ident: Ident,
         is_foreign: bool,
     },
-    ReservedPrefix(Span, String),
-    /// `'r#` in edition < 2021.
-    RawPrefix(Span),
     /// `##` or `#"` in edition < 2024.
-    ReservedString {
-        is_string: bool,
-        suggestion: Span,
-    },
-    BreakWithLabelAndLoop(Span),
-    UnicodeTextFlow(Span, String),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
@@ -840,6 +831,9 @@ pub enum AttributeLintKind {
     MalformedOnConstAttr {
         span: Span,
     },
+    MalformedOnMoveAttr {
+        span: Span,
+    },
     MalformedDiagnosticFormat {
         warning: FormatWarning,
     },
@@ -855,6 +849,11 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnMove,
+    OnMoveMalformedFormatLiterals {
+        name: Symbol,
+    },
+    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

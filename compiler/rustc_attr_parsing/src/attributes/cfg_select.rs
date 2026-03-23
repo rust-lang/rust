@@ -12,7 +12,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
-use crate::parser::MetaItemOrLitParser;
+use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
 
 #[derive(Clone)]
@@ -94,6 +94,7 @@ pub fn parse_cfg_select(
             let meta = MetaItemOrLitParser::parse_single(
                 p,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                AllowExprMetavar::Yes,
             )
             .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();

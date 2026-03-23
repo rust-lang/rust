@@ -142,7 +142,7 @@ impl SplitDebuginfo {
     pub fn default_for_platform(target: TargetSelection) -> Self {
         if target.contains("apple") {
             SplitDebuginfo::Unpacked
-        } else if target.is_windows() {
+        } else if target.is_msvc() {
             SplitDebuginfo::Packed
         } else {
             SplitDebuginfo::Off

@@ -649,3 +649,22 @@ fn issue16429(b: i32) -> Option<i32> {
 
     Some(0)
 }
+
+fn issue16654() -> Result<(), i32> {
+    let result = func_returning_result();
+
+    #[allow(clippy::collapsible_if)]
+    if true {
+        if let Err(err) = result {
+            //~^ question_mark
+            return Err(err);
+        }
+    }
+
+    _ = [if let Err(err) = result {
+        //~^ question_mark
+        return Err(err);
+    }];
+
+    Ok(())
+}

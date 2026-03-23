@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                     let help_msg = format!("you can use {} directly", suggest_ty.desc());
                     // If the `vec!` macro contains comment, better not make the suggestion machine applicable as it
                     // would remove them.
-                    let applicability = if span_contains_comment(cx.tcx.sess.source_map(), span) {
+                    let applicability = if span_contains_comment(cx, span) {
                         Applicability::Unspecified
                     } else {
                         Applicability::MachineApplicable

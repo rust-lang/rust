@@ -1,0 +1,55 @@
+error[E0382]: Foo for Foo
+  --> $DIR/on_move_with_format.rs:25:15
+   |
+LL |     let foo = Foo;
+   |         --- Bar for Foo
+LL |     takes_foo(foo);
+   |               --- value moved here
+LL |     let bar = foo;
+   |               ^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/on_move_with_format.rs:18:17
+   |
+LL | fn takes_foo(_: Foo) {}
+   |    ---------    ^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/on_move_with_format.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     takes_foo(foo);
+   |               --- you could clone this value
+
+error[E0382]: Foo for i32
+  --> $DIR/on_move_with_format.rs:30:15
+   |
+LL |     let mytype = MyType { _x: 0 };
+   |         ------ Bar for i32
+LL |     takes_mytype(mytype);
+   |                  ------ value moved here
+LL |     let baz = mytype;
+   |               ^^^^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_mytype` to borrow instead if owning the value isn't necessary
+  --> $DIR/on_move_with_format.rs:20:23
+   |
+LL | fn takes_mytype<X>(_: MyType<X>) {}
+   |    ------------       ^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `MyType<i32>` implemented `Clone`, you could clone the value
+  --> $DIR/on_move_with_format.rs:14:1
+   |
+LL | struct MyType<X> {
+   | ^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     takes_mytype(mytype);
+   |                  ------ you could clone this value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
