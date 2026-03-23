@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `Element: MetaSized`
+error[E0275]: overflow evaluating the requirement `Element: SizeOfVal`
   --> $DIR/overflow.rs:17:16
    |
 LL | struct Element(<Box<Box<Element>> as ParseTokens>::Output);

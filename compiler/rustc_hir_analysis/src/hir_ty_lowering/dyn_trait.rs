@@ -95,10 +95,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let size_of_val_did = tcx.require_lang_item(LangItem::SizeOfVal, span);
         // Don't strip out `SizeOfVal` when the user wrote it explicitly, only when it was
         // elaborated
-        if user_written_bounds
-            .iter()
-            .all(|(clause, _)| clause.as_trait_clause().map(|p| p.def_id()) != Some(size_of_val_did))
-        {
+        if user_written_bounds.iter().all(|(clause, _)| {
+            clause.as_trait_clause().map(|p| p.def_id()) != Some(size_of_val_did)
+        }) {
             elaborated_trait_bounds.retain(|(pred, _)| pred.def_id() != size_of_val_did);
         }
         debug!(?user_written_bounds, ?elaborated_trait_bounds);

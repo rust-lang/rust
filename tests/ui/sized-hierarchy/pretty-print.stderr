@@ -18,14 +18,14 @@ LL | impl<T: ?Sized> pretty_print_dep::NegSizedTr for X<T> {}
            - impl<T> NegSizedTr for T
              where T: SizeOfVal;
 
-error[E0119]: conflicting implementations of trait `MetaSizedTr` for type `X<_>`
+error[E0119]: conflicting implementations of trait `SizeOfValTr` for type `X<_>`
   --> $DIR/pretty-print.rs:24:1
    |
-LL | impl<T: MetaSized> MetaSizedTr for X<T> {}
+LL | impl<T: SizeOfVal> SizeOfValTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `pretty_print_dep`:
-           - impl<T> MetaSizedTr for T
+           - impl<T> SizeOfValTr for T
              where T: SizeOfVal;
 
 error[E0119]: conflicting implementations of trait `PointeeSizedTr` for type `X<_>`
