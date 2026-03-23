@@ -2502,14 +2502,6 @@ pub(crate) macro const_eval_select {
 /// particular value, ever. However, the compiler will generally make it
 /// return `true` only if the value of the argument is actually known.
 ///
-/// # Stability concerns
-///
-/// While it is safe to call, this intrinsic may behave differently in
-/// a `const` context than otherwise. See the [`const_eval_select()`]
-/// documentation for an explanation of the issues this can cause. Unlike
-/// `const_eval_select`, this intrinsic isn't guaranteed to behave
-/// deterministically even in a `const` context.
-///
 /// # Type Requirements
 ///
 /// `T` must be either a `bool`, a `char`, a primitive numeric type (e.g. `f32`,
