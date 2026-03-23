@@ -1,17 +1,15 @@
-use super::map_motor_error;
-use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
-use crate::os::motor::ffi::OsStrExt;
 use crate::path::{self, PathBuf};
+use crate::sys::pal::unsupported;
 use crate::{fmt, io};
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    moto_rt::fs::getcwd().map(PathBuf::from).map_err(map_motor_error)
+    unsupported()
 }
 
-pub fn chdir(path: &path::Path) -> io::Result<()> {
-    moto_rt::fs::chdir(path.as_os_str().as_str()).map_err(map_motor_error)
+pub fn chdir(_: &path::Path) -> io::Result<()> {
+    unsupported()
 }
 
 pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
@@ -44,19 +42,14 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported on this platform yet"
-    }
-}
+impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    moto_rt::process::current_exe().map(PathBuf::from).map_err(map_motor_error)
+    unsupported()
 }
 
 pub fn temp_dir() -> PathBuf {
-    PathBuf::from(moto_rt::fs::TEMP_DIR)
+    panic!("no filesystem on this platform")
 }
 
 pub fn home_dir() -> Option<PathBuf> {
