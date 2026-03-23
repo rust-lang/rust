@@ -476,6 +476,7 @@ where
 }
 ```
 
+<!-- date-check: Mar 2026 -->
 #### Trait definition cannot use associated types from always applicable impls
 
 The `T: Trait` assumption in the trait definition prevents it from normalizing
