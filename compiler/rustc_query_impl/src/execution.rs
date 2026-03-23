@@ -475,14 +475,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
             //
             // See issue #82920 for an example of a miscompilation that would get turned into an
             // ICE by this check.
-            incremental_verify_ich(
-                tcx,
-                dep_graph_data,
-                &value,
-                prev_index,
-                query.hash_value_fn,
-                query.format_value,
-            );
+            incremental_verify_ich(tcx, dep_graph_data, query, &value, prev_index);
         }
 
         (value, dep_node_index)
