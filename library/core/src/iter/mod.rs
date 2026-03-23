@@ -352,6 +352,56 @@
 //!
 //! [`take`]: Iterator::take
 //! [`min`]: Iterator::min
+//!
+//! # Exhaustion
+//!
+//! An iterator is *exhausted* once [`Iterator::next`] returns `None` -- aka when a
+//! `for` loop would stop -- or similarly for the other `&mut`-taking methods.
+//! For example, an iterator is exhausted if [`Iterator::nth`] returns `None`,
+//! if [`Iterator::all`] returns `true`, if [`Iterator::any`] returns `false`,
+//! if [`Iterator::try_fold`] returns `Continue(_)`, and so on.
+//!
+//! The [`Iterator`] trait *itself* doesn't impose any particular meaning on what will
+//! happen if its methods are called again after becoming exhausted.
+//!
+//! Many iterators implement [`FusedIterator`] to convey that once they have reached
+//! exhaustion, they will remain exhausted forever, with `next` returning `None`
+//! for all future calls, `position` returning `None` for all future calls, etc.
+//! The structure of implementing iterators frequently makes this doable for no extra
+//! cost, as a simple consequence of ever returning `None`, so is preferred in those cases.
+//!
+//! Some iterators define what it means to use them again after hitting exhaustion.
+//! For example, [`mpsc::TryIter`] continues to return more items from the channel
+//! (if there are any) when it's called again after exhaustion.  Others might find
+//! that their implementation is simplest if they re-iterate the same items again
+//! when called again after exhaustion.
+//!
+//! Occasionally, iterators exist where calling again after exhaustion will misbehave
+//! in some way.  That of course must not cause *Undefined Behaviour*, as `Iterator`
+//! is a safe trait.  However, if the iterator is non-fused and avoiding doing so
+//! would cause extra cost, a particular iterator might end up panicking in `next`
+//! (or `fold` or `find_map` or ...) if called after exhaustion.
+//!
+//! As such, you should be cognizant of how you handle iterators at exhaustion.
+//! Calling `next` on a general `impl Iterator` after exhaustion, only to throw
+//! those results away, risks losing items from an `mpsc` channel that the caller
+//! might have wanted to see, for example.  Depending what you're doing, it might
+//! be helpful to call [`Iterator::fuse`] on the iterator you're processing so
+//! that you can (vacuously) use it after exhaustion without worry.
+//!
+//! Generally you'll also want to convey, in some way, whether you hit exhaustion
+//! when processing an iterator.  That might be returning `None` like `next` and
+//! `nth`, could be a more complex strategy like returning an `Err` with a
+//! partial result on exhaustion, and many other things are possible as well.
+//! The is most important if you take `&mut` iterators directly, but because
+//! [`Iterator::by_ref`] exists your caller may want to know whether you hit
+//! exhaustion even if you took ownership of the iterator.
+//!
+//! If you want to force an iterator to run to exhaustion, the canonical way is
+//! with `.for_each(drop)`.  Most of the time you don't need to, but if you know
+//! for some reason that iterating causes side effects, it can be useful.
+//!
+//! [`mpsc::TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
