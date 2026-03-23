@@ -29,7 +29,7 @@ struct CfgPropagator<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
     cfg_info: CfgInfo,
 
-    /// To ensure the `doc_cfg` feature works with how `rustdoc` handles impl, we need to store
+    /// To ensure the `doc_cfg` feature works with how `rustdoc` handles impls, we need to store
     /// the `cfg` info of `impl`s placeholder to use them later on the "real" impl item.
     impl_cfg_info: FxHashMap<ItemId, CfgInfo>,
 }
@@ -85,7 +85,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
         let old_cfg_info = self.cfg_info.clone();
 
         // If we have an impl, we check if it has an associated `cfg` "context", and if so we will
-        // use this context instead of the actual (wrong) one.
+        // use that context instead of the actual (wrong) one.
         if let ItemKind::ImplItem(_) = item.kind
             && let Some(cfg_info) = self.impl_cfg_info.remove(&item.item_id)
         {
