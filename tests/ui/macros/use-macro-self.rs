@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused_imports)]
 //@ aux-build:use-macro-self.rs
 

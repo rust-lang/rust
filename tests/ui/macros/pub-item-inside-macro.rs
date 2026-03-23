@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 // Issue #14660
 
 

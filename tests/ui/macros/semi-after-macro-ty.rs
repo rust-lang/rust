@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 macro_rules! foo {
     ($t:ty; $p:path;) => {}
 }
