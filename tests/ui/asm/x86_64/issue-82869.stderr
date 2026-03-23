@@ -1,5 +1,5 @@
 error: invalid register class `vreg`: unknown register class
-  --> $DIR/issue-82869.rs:11:32
+  --> $DIR/issue-82869.rs:15:32
    |
 LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |                                ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, and `tmm_reg`
 
 error: invalid register class `vreg`: unknown register class
-  --> $DIR/issue-82869.rs:11:45
+  --> $DIR/issue-82869.rs:15:45
    |
 LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |                                             ^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, and `tmm_reg`
 
 error: invalid register `d0`: unknown register
-  --> $DIR/issue-82869.rs:11:57
+  --> $DIR/issue-82869.rs:15:57
    |
 LL |       asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |  _________________________________________________________^
