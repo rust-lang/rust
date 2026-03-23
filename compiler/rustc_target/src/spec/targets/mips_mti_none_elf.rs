@@ -1,7 +1,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -24,7 +25,7 @@ pub(crate) fn target() -> Target {
             endian: Endian::Big,
             cpu: "mips32r2".into(),
 
-            llvm_abiname: "o32".into(),
+            llvm_abiname: LlvmAbi::O32,
             max_atomic_width: Some(32),
 
             features: "+mips32r2,+soft-float,+noabicalls".into(),
