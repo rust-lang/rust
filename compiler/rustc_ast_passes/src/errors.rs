@@ -1150,3 +1150,72 @@ pub(crate) struct RequiresRustAbi {
     #[label("not using the Rust ABI because of this")]
     pub extern_abi_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("visibility qualifiers have no effect on `const _` declarations")]
+#[note("`const _` does not declare a name, so there is nothing for the qualifier to apply to")]
+pub(crate) struct UnusedVisibility {
+    #[suggestion(
+        "remove the qualifier",
+        style = "short",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "remove `mut` from the parameter",
+    code = "{ident}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct PatternsInFnsWithoutBodySub {
+    #[primary_span]
+    pub span: Span,
+
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum PatternsInFnsWithoutBody {
+    #[diag("patterns aren't allowed in foreign function declarations")]
+    Foreign {
+        #[subdiagnostic]
+        sub: PatternsInFnsWithoutBodySub,
+    },
+    #[diag("patterns aren't allowed in functions without bodies")]
+    Bodiless {
+        #[subdiagnostic]
+        sub: PatternsInFnsWithoutBodySub,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag("where clause not allowed here")]
+#[note("see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information")]
+pub(crate) struct DeprecatedWhereClauseLocation {
+    #[subdiagnostic]
+    pub suggestion: DeprecatedWhereClauseLocationSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum DeprecatedWhereClauseLocationSugg {
+    #[multipart_suggestion(
+        "move it to the end of the type declaration",
+        applicability = "machine-applicable"
+    )]
+    MoveToEnd {
+        #[suggestion_part(code = "")]
+        left: Span,
+        #[suggestion_part(code = "{sugg}")]
+        right: Span,
+
+        sugg: String,
+    },
+    #[suggestion("remove this `where`", code = "", applicability = "machine-applicable")]
+    RemoveWhere {
+        #[primary_span]
+        span: Span,
+    },
+}
