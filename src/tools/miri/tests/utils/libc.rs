@@ -204,4 +204,45 @@ pub mod net {
             ..unsafe { core::mem::zeroed() }
         }
     }
+
+    pub unsafe fn recv_all(
+        fd: libc::c_int,
+        buf: *mut libc::c_void,
+        count: libc::size_t,
+        flags: libc::c_int,
+    ) -> libc::ssize_t {
+        assert!(count > 0);
+        let mut read_so_far = 0;
+        while read_so_far < count {
+            let res = libc::recv(fd, buf.add(read_so_far), count - read_so_far, flags);
+            if res < 0 {
+                return res;
+            }
+            if res == 0 {
+                // EOF
+                break;
+            }
+            read_so_far += res as libc::size_t;
+        }
+        return read_so_far as libc::ssize_t;
+    }
+
+    pub unsafe fn send_all(
+        fd: libc::c_int,
+        buf: *const libc::c_void,
+        count: libc::size_t,
+        flags: libc::c_int,
+    ) -> libc::ssize_t {
+        assert!(count > 0);
+        let mut written_so_far = 0;
+        while written_so_far < count {
+            let res = libc::send(fd, buf.add(written_so_far), count - written_so_far, flags);
+            if res < 0 {
+                return res;
+            }
+            // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
+            written_so_far += res as libc::size_t;
+        }
+        return written_so_far as libc::ssize_t;
+    }
 }

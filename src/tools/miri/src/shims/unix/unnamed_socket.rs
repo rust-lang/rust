@@ -4,8 +4,7 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
-use std::io;
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind, Read};
 
 use rustc_target::spec::Os;
 
@@ -346,7 +345,7 @@ fn anonsocket_read<'tcx>(
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let read_size = ecx.read_from_host(&mut readbuf.buf, len, ptr)?.unwrap();
+        let read_size = ecx.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
         let readbuf_now_empty = readbuf.buf.is_empty();
 
         // Need to drop before others can access the readbuf again.
