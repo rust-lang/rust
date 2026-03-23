@@ -987,12 +987,7 @@ where
         let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
         self.nested.extend(
             self.ecx
-                .relate_and_get_goals(
-                    self.param_env,
-                    alias_term,
-                    ty::Invariant,
-                    replacement.projection_term,
-                )
+                .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
                 .expect("expected to be able to unify goal projection with dyn's projection"),
         );
 
