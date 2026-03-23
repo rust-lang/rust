@@ -718,7 +718,13 @@ impl DepGraphData {
     #[inline]
     fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
         with_deps(TaskDepsRef::Ignore, || {
-            let side_effect = tcx.load_side_effect(prev_index).unwrap();
+            let side_effect = tcx
+                .query_system
+                .on_disk_cache
+                .as_ref()
+                .unwrap()
+                .load_side_effect(tcx, prev_index)
+                .unwrap();
 
             // Use `send_and_color` as `promote_node_and_deps_to_current` expects all
             // green dependencies. `send_and_color` will also prevent multiple nodes
@@ -1548,16 +1554,5 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn is_eval_always(self, kind: DepKind) -> bool {
         self.dep_kind_vtable(kind).is_eval_always
-    }
-
-    // Interactions with on_disk_cache
-    fn load_side_effect(
-        self,
-        prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffect> {
-        self.query_system
-            .on_disk_cache
-            .as_ref()
-            .and_then(|c| c.load_side_effect(self, prev_dep_node_index))
     }
 }

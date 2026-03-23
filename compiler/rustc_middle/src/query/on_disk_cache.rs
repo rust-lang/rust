@@ -325,7 +325,7 @@ impl OnDiskCache {
     }
 
     /// Loads a `QuerySideEffect` created during the previous compilation session.
-    pub fn load_side_effect(
+    pub(crate) fn load_side_effect(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
