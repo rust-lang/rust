@@ -148,17 +148,17 @@ macro_rules! define_queries {
                         will_cache_on_disk_for_key_fn: |_, _| false,
 
                         #[cfg($cache_on_disk)]
-                        try_load_from_disk_fn: |tcx, prev_index, index| {
+                        try_load_from_disk_fn: |tcx, prev_index| {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             let loaded_value: ProvidedValue<'tcx> =
-                                $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
+                                $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
                             Some(provided_to_erased(tcx, loaded_value))
                         },
                         #[cfg(not($cache_on_disk))]
-                        try_load_from_disk_fn: |_tcx, _prev_index, _index| None,
+                        try_load_from_disk_fn: |_tcx, _prev_index| None,
 
                         // The default just emits `err` and then aborts.
                         // `handle_cycle_error::specialize_query_vtables` overwrites this default
