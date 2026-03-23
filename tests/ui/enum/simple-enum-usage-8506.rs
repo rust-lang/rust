@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/8506
-//@ run-pass
+//@ build-pass
 #![allow(non_upper_case_globals)]
 
 #![allow(dead_code)]
