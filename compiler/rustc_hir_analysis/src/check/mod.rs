@@ -376,7 +376,7 @@ fn bounds_from_generic_predicates<'tcx>(
                             projections_str.push(format!("{} = {}", name, p.term));
                         }
                     }
-                    let bound_def_path = if tcx.is_lang_item(bound, LangItem::MetaSized) {
+                    let bound_def_path = if tcx.is_lang_item(bound, LangItem::SizeOfVal) {
                         String::from("?Sized")
                     } else {
                         tcx.def_path_str(bound)

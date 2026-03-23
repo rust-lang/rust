@@ -99,7 +99,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         SizedTraitKind::Sized,
                     );
                 }
-                Some(LangItem::MetaSized) => {
+                Some(LangItem::SizeOfVal) => {
                     self.assemble_builtin_sized_candidate(
                         obligation.predicate.self_ty().skip_binder(),
                         &mut candidates,

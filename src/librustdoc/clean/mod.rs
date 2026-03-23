@@ -2308,7 +2308,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 
             // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
             // is shown and none of the new sizedness traits leak into documentation.
-            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::SizeOfVal) {
                 return None;
             }
 

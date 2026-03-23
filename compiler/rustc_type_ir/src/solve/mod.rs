@@ -477,7 +477,7 @@ impl SizedTraitKind {
     pub fn require_lang_item<I: Interner>(self, cx: I) -> I::TraitId {
         cx.require_trait_lang_item(match self {
             SizedTraitKind::Sized => SolverTraitLangItem::Sized,
-            SizedTraitKind::MetaSized => SolverTraitLangItem::MetaSized,
+            SizedTraitKind::MetaSized => SolverTraitLangItem::SizeOfVal,
         })
     }
 }

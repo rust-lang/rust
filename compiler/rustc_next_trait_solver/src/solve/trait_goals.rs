@@ -145,7 +145,7 @@ where
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
                 || (polarity == PredicatePolarity::Positive
                     && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
+                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::SizeOfVal))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
@@ -180,7 +180,7 @@ where
         // are syntactic sugar for a lack of bounds so don't need this.
         // We don't need to check polarity, `fast_reject_assumption` already rejected non-`Positive`
         // polarity `Sized` assumptions as matching non-`Positive` `MetaSized` goals.
-        if ecx.cx().is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::MetaSized)
+        if ecx.cx().is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::SizeOfVal)
             && ecx.cx().is_trait_lang_item(trait_clause.def_id(), SolverTraitLangItem::Sized)
         {
             let meta_sized_clause =

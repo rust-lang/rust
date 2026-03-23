@@ -1124,7 +1124,7 @@ impl GenericBound {
     }
 
     pub(crate) fn is_meta_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        self.is_bounded_by_lang_item(cx, LangItem::MetaSized)
+        self.is_bounded_by_lang_item(cx, LangItem::SizeOfVal)
     }
 
     fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {

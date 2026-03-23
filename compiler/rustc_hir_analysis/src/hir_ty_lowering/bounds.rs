@@ -127,7 +127,7 @@ fn collect_sizedness_bounds<'tcx>(
     let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
     let sized = collect_bounds(hir_bounds, context, sized_did);
 
-    let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
+    let meta_sized_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
     let meta_sized = collect_bounds(hir_bounds, context, meta_sized_did);
 
     let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
@@ -174,7 +174,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
+        let meta_sized_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
         let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
 
         // If adding sizedness bounds to a trait, then there are some relevant early exits

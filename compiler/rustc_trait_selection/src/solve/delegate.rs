@@ -76,7 +76,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                    Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                    Some(LangItem::Sized) | Some(LangItem::SizeOfVal) => {
                         let predicate = self.resolve_vars_if_possible(goal.predicate);
                         if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
                             return Some(Certainty::Yes);

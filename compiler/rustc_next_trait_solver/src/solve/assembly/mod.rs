@@ -551,7 +551,7 @@ where
                 Some(SolverTraitLangItem::Sized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
                 }
-                Some(SolverTraitLangItem::MetaSized) => {
+                Some(SolverTraitLangItem::SizeOfVal) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
                 }
                 Some(SolverTraitLangItem::PointeeSized) => {

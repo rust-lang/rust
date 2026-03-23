@@ -677,7 +677,7 @@ fn receiver_is_dispatchable<'tcx>(
         predicates.push(trait_predicate.upcast(tcx));
 
         let meta_sized_predicate = {
-            let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
+            let meta_sized_did = tcx.require_lang_item(LangItem::SizeOfVal, DUMMY_SP);
             ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty]).upcast(tcx)
         };
         predicates.push(meta_sized_predicate);

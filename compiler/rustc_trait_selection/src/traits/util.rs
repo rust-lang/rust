@@ -379,7 +379,7 @@ pub fn sizedness_fast_path<'tcx>(
     {
         let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
-            Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
+            Some(LangItem::SizeOfVal) => SizedTraitKind::MetaSized,
             _ => return false,
         };
 
@@ -414,7 +414,7 @@ pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
     obligation: &PolyTraitObligation<'tcx>,
     candidate: PolyTraitPredicate<'tcx>,
 ) -> PolyTraitPredicate<'tcx> {
-    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
+    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::SizeOfVal)
         || !infcx.tcx.is_lang_item(candidate.def_id(), LangItem::Sized)
     {
         return candidate;

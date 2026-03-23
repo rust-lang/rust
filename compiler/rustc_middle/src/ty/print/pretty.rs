@@ -1095,7 +1095,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             }
                             ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
                         },
-                        Some(LangItem::MetaSized) => {
+                        Some(LangItem::SizeOfVal) => {
                             has_meta_sized_bound = true;
                             continue;
                         }
