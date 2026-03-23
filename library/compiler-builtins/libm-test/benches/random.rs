@@ -137,7 +137,8 @@ libm_macros::for_each_function! {
         | roundeven
         | roundevenf
         | ALL_F16
-        | ALL_F128 => (false, None),
+        | ALL_F128
+        | ALL_BUILTINS => (false, None),
 
         // By default we never skip (false) and always have a musl function available
         _ => (false, Some(musl_math_sys::MACRO_FN_NAME))

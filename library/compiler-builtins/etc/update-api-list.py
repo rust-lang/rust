@@ -6,6 +6,8 @@ This file additionally does tidy-esque checks that all functions are listed wher
 needed, or that lists are sorted.
 """
 
+# FIXME: this needs to be updated to work with compiler-builtins sources
+
 import difflib
 import json
 import re
@@ -322,11 +324,13 @@ def base_name(name: str) -> tuple[str, str]:
 
     if name.endswith("f"):
         return (name.rstrip("f"), "f32")
-
-    if name.endswith("f16"):
+    elif name.endswith("f16"):
         return (name.rstrip("f16"), "f16")
-
-    if name.endswith("f128"):
+    elif name.endswith("f32"):
+        return (name.rstrip("f32"), "f32")
+    elif name.endswith("f64"):
+        return (name.rstrip("f64"), "f64")
+    elif name.endswith("f128"):
         return (name.rstrip("f128"), "f128")
 
     return (name, "f64")

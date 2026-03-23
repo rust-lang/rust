@@ -12,7 +12,7 @@ use cfg_if::cfg_if;
 use libm::support::{Float, Hexf, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
-use libm_test::{Hex, MathOp, TupleCall};
+use libm_test::{Hex, MathOp, TupleCall, builtins_wrapper};
 #[cfg(feature = "build-mpfr")]
 use rug::az::{self, Az};
 
@@ -55,6 +55,7 @@ macro_rules! handle_call {
         CFn: $CFn:ty,
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
+        path: $path:path,
         attrs: [$($attr:meta),*],
         extra: ($basis:ident, $op:ident, $inputs:ident),
         fn_extra: $musl_fn:expr,
@@ -64,7 +65,7 @@ macro_rules! handle_call {
             type Op = libm_test::op::$fn_name::Routine;
 
             let input = <$RustArgs>::parse($inputs);
-            let libm_fn: <Op as MathOp>::RustFn = libm::$fn_name;
+            let libm_fn: <Op as MathOp>::RustFn = $path;
 
             let output = match $basis {
                 "libm" => input.call_intercept_panics(libm_fn),
@@ -91,7 +92,7 @@ macro_rules! handle_call {
 fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
     libm_macros::for_each_function! {
         callback: handle_call,
-        emit_types: [CFn, RustFn, RustArgs],
+        emit_types: [CFn, RustFn, RustArgs, path],
         extra: (basis, op, inputs),
         fn_extra: match MACRO_FN_NAME {
             // Not provided by musl
@@ -106,7 +107,8 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | roundeven
             | roundevenf
             | ALL_F16
-            | ALL_F128 => None,
+            | ALL_F128
+            | ALL_BUILTINS  => None,
             _ => Some(musl_math_sys::MACRO_FN_NAME)
         }
     }

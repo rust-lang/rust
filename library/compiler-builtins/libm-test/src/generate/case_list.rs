@@ -38,6 +38,90 @@ impl<Op: MathOp> TestCase<Op> {
     }
 }
 
+/* compiler-builtins test cases */
+
+#[cfg(f16_enabled)]
+fn addf16_cases() -> Vec<TestCase<op::addf16::Routine>> {
+    vec![]
+}
+
+fn addf32_cases() -> Vec<TestCase<op::addf32::Routine>> {
+    vec![]
+}
+
+fn addf64_cases() -> Vec<TestCase<op::addf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn addf128_cases() -> Vec<TestCase<op::addf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn subf16_cases() -> Vec<TestCase<op::subf16::Routine>> {
+    vec![]
+}
+
+fn subf32_cases() -> Vec<TestCase<op::subf32::Routine>> {
+    vec![]
+}
+
+fn subf64_cases() -> Vec<TestCase<op::subf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn subf128_cases() -> Vec<TestCase<op::subf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn mulf16_cases() -> Vec<TestCase<op::mulf16::Routine>> {
+    vec![]
+}
+
+fn mulf32_cases() -> Vec<TestCase<op::mulf32::Routine>> {
+    vec![]
+}
+
+fn mulf64_cases() -> Vec<TestCase<op::mulf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn mulf128_cases() -> Vec<TestCase<op::mulf128::Routine>> {
+    vec![]
+}
+
+fn divf32_cases() -> Vec<TestCase<op::divf32::Routine>> {
+    vec![]
+}
+
+fn divf64_cases() -> Vec<TestCase<op::divf64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn divf128_cases() -> Vec<TestCase<op::divf128::Routine>> {
+    vec![]
+}
+
+fn powif32_cases() -> Vec<TestCase<op::powif32::Routine>> {
+    vec![]
+}
+
+fn powif64_cases() -> Vec<TestCase<op::powif64::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn powif128_cases() -> Vec<TestCase<op::powif128::Routine>> {
+    vec![]
+}
+
+/* libm test cases */
+
 fn acos_cases() -> Vec<TestCase<op::acos::Routine>> {
     vec![]
 }

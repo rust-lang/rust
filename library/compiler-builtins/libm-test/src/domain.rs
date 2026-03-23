@@ -224,6 +224,14 @@ pub fn get_domain<F: Float, I: Int>(
     argnum: usize,
 ) -> EitherPrim<Domain<F>, Domain<I>> {
     let x = match id.base_name() {
+        // Basic arithmetic
+        BaseName::Add => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Sub => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Mul => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Div => &EitherPrim::UNBOUNDED2[..],
+        BaseName::Powi => &EitherPrim::UNBOUNDED2[..],
+
+        // Math functions
         BaseName::Acos => &EitherPrim::INVERSE_TRIG_PERIODIC[..],
         BaseName::Acosh => &EitherPrim::ACOSH[..],
         BaseName::Asin => &EitherPrim::INVERSE_TRIG_PERIODIC[..],

@@ -90,9 +90,6 @@ pub trait MathOp {
 
     /// The function in `libm` which can be called.
     const ROUTINE: Self::RustFn;
-
-    /// Whether or not the function is part of libm public API.
-    const PUBLIC: bool;
 }
 
 /// Access the associated `FTy` type from an op (helper to avoid ambiguous associated types).
@@ -121,7 +118,7 @@ macro_rules! create_op_modules {
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
         RustRet: $RustRet:ty,
-        public: $public:expr,
+        path: $path:path,
         attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
@@ -140,8 +137,7 @@ macro_rules! create_op_modules {
                     type RustRet = $RustRet;
 
                     const IDENTIFIER: Identifier = Identifier::[< $fn_name:camel >];
-                    const ROUTINE: Self::RustFn = libm::$fn_name;
-                    const PUBLIC: bool = $public;
+                    const ROUTINE: Self::RustFn = $path;
                 }
             }
 

@@ -664,6 +664,7 @@ name = "libm-test"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "compiler_builtins",
  "criterion",
  "getrandom",
  "gmp-mpfr-sys",

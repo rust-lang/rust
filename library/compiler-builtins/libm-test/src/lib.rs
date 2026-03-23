@@ -3,6 +3,7 @@
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
 #![allow(unstable_name_collisions)] // FIXME(float_bits_const): remove when stable
 
+pub mod builtins_wrapper;
 pub mod domain;
 mod f8_impl;
 pub mod generate;
