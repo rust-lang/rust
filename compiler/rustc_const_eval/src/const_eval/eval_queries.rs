@@ -88,7 +88,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         &ret.clone().into(),
         ReturnContinuation::Stop { cleanup: false },
     )?;
-    ecx.storage_live_for_always_live_locals()?;
+    ecx.push_stack_frame_done()?;
 
     // The main interpreter loop.
     while ecx.step()? {

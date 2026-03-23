@@ -5,7 +5,6 @@
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]
-#![feature(try_blocks)]
 #![feature(unqualified_local_imports)]
 #![feature(yeet_expr)]
 #![warn(unqualified_local_imports)]
