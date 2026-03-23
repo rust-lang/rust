@@ -37,7 +37,7 @@ The builtin impls for the `FnMut`/`FnOnce` traits as well as the impls for `Copy
 
 A slightly more complicated example would involve introducing generic parameters to the function:
 ```rust
-fn foo<T: Sized>(a: T) -> T { 
+fn foo<T: Sized>(a: T) -> T {
     # a
     /* snip */
 }
@@ -73,7 +73,7 @@ impl<'a, T: Sized> Fn<(&'a T,)> for FooFnItem<T> {
 The lifetime parameter `'a` from the function `foo` is not present on the function item type `FooFnItem` and is instead introduced on the builtin impl solely for use in representing the argument types.
 
 Generic parameters not all being defined on the function item type means that there are two steps where generic arguments are provided when calling a function.
-1. Naming the function (e.g. `let a = foo;`) the arguments for `FooFnItem` are provided. 
+1. Naming the function (e.g. `let a = foo;`) the arguments for `FooFnItem` are provided.
 2. Calling the function (e.g. `a(&10);`) any parameters defined on the builtin impl are provided.
 
 This two-step system is where the early vs late naming scheme comes from, early bound parameters are provided in the *earliest* step (naming the function), whereas late bound parameters are provided in the *latest* step (calling the function).
@@ -99,10 +99,10 @@ my_func(&String::new());
 
 ## Differences between early and late bound parameters
 
-### Higher ranked function pointers and trait bounds 
+### Higher ranked function pointers and trait bounds
 
 A generic parameter being late bound allows for more flexible usage of the function item.
-For example if we have some function `foo` with an early bound lifetime parameter and some function `bar` with a late bound lifetime parameter `'a` we would have the following builtin `Fn` impls:
+For example, if we have some function `foo` with an early bound lifetime parameter and some function `bar` with a late bound lifetime parameter `'a`, we would have the following builtin `Fn` impls:
 ```rust,ignore
 impl<'a> Fn<(&'a String,)> for FooFnItem<'a> { /* ... */ }
 impl<'a> Fn<(&'a String,)> for BarFnItem { /* ... */ }
@@ -130,12 +130,12 @@ f(&String::new());
 f(&String::new());
 ```
 
-In this example we call `foo`'s function item type twice, each time with a borrow of a temporary.
-These two borrows could not possible have lifetimes that overlap as the temporaries are only alive during the function call, not after.
+In this example, we call `foo`'s function item type twice, each time with a borrow of a temporary.
+These two borrows could not possibly have lifetimes that overlap as the temporaries are only alive during the function call, not after.
 The lifetime parameter on `foo` being early bound requires all callers of `f` to provide a borrow with the same lifetime, as this is not possible the borrow checker errors.
 
-If the lifetime parameter on `foo` was late bound this would be able to compile as each caller could provide a different lifetime argument for its borrow.
-See the following example which demonstrates this using the `bar` function defined above:
+If the lifetime parameter on `foo` was late bound, this would be able to compile as each caller could provide a different lifetime argument for its borrow.
+See the following example, which demonstrates this using the `bar` function defined above:
 
 ```rust
 # fn foo<'a: 'a>(b: &'a String) -> &'a String { b }
@@ -172,14 +172,14 @@ fn higher_ranked_trait_bound() {
 fn higher_ranked_fn_ptr() {
     let bar_fn_item = bar;
     let fn_ptr: for<'a> fn(&'a String) -> &'a String = bar_fn_item;
-    
+
     let foo_fn_item = foo::<'_>;
     // errors
     let fn_ptr: for<'a> fn(&'a String) -> &'a String = foo_fn_item;
 }
 ```
 
-In both of these cases the borrow checker errors as it does not consider `foo_fn_item` to be callable with a borrow of any lifetime.
+In both of these cases, the borrow checker errors as it does not consider `foo_fn_item` to be callable with a borrow of any lifetime.
 This is due to the fact that the lifetime parameter on `foo` is early bound, causing `foo_fn_item` to have a type of `FooFnItem<'_>` which (as demonstrated by the desugared `Fn` impl) is only callable with a borrow of the same lifetime `'_`.
 
 ### Turbofishing in the presence of late bound parameters
@@ -208,7 +208,7 @@ let f /* : FooFnItem<'static> */ = foo::<'static>;
 
 What the current implementation of the compiler aims to do is error when specifying lifetime arguments to a function that has both early *and* late bound lifetime parameters.
 In practice, due to excessive breakage, some cases are actually only future compatibility warnings ([#42868](https://github.com/rust-lang/rust/issues/42868)):
-- When the amount of lifetime arguments is the same as the number of early bound lifetime parameters a FCW is emitted instead of an error
+- When the amount of lifetime arguments is the same as the number of early bound lifetime parameters, a FCW is emitted instead of an error
 - An error is always downgraded to a FCW when using method call syntax
 
 To demonstrate this we can write out the different kinds of functions and give them both a late and early bound lifetime:
@@ -330,7 +330,7 @@ fn bar<T>() {
 ```
 
 As the type parameter `T` is early bound, the desugaring of the function item type for `foo` would look something like `struct FooFnItem<T>`.
-Then in order for `FooFnItem<T>: 'static` to hold we must also require `T: 'static` to hold as otherwise we would wind up with soundness bugs.
+Then, in order for `FooFnItem<T>: 'static` to hold, we must also require `T: 'static` to hold as otherwise we would wind up with soundness bugs.
 
 Unfortunately, due to bugs in the compiler, we do not take into account early bound *lifetimes*, which is the cause of the open soundness bug [#84366](https://github.com/rust-lang/rust/issues/84366).
 This means that it's impossible to demonstrate a "difference" between early/late bound parameters for liveness/type outlives bounds as the only kind of generic parameters that are able to be late bound are lifetimes which are handled incorrectly.
