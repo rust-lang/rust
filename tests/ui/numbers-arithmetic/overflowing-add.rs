@@ -1,6 +1,6 @@
 //@ run-fail
 //@ regex-error-pattern: thread 'main'.*panicked
-//@ error-pattern: attempt to add with overflow
+//@ regex-error-pattern: attempt to compute.*\+.* which would overflow
 //@ compile-flags: -C debug-assertions
 //@ needs-subprocess
 

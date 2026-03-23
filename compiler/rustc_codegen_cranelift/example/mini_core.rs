@@ -493,16 +493,46 @@ macro_rules! panic_const {
 }
 
 panic_const! {
-    panic_const_add_overflow = "attempt to add with overflow",
-    panic_const_sub_overflow = "attempt to subtract with overflow",
-    panic_const_mul_overflow = "attempt to multiply with overflow",
-    panic_const_div_overflow = "attempt to divide with overflow",
-    panic_const_rem_overflow = "attempt to calculate the remainder with overflow",
     panic_const_neg_overflow = "attempt to negate with overflow",
-    panic_const_shr_overflow = "attempt to shift right with overflow",
-    panic_const_shl_overflow = "attempt to shift left with overflow",
     panic_const_div_by_zero = "attempt to divide by zero",
     panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
+}
+
+macro_rules! panic_overflow {
+    ($($lang_unsigned:ident, $lang_signed:ident = $message:tt,)+) => {
+        $(
+            #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+            #[cfg_attr(panic = "immediate-abort", inline)]
+            #[track_caller]
+            #[lang = stringify!($lang_unsigned)]
+            pub fn $lang_unsigned(_lhs: u128, _rhs: u128) -> ! {
+                unsafe {
+                    libc::printf($message as *const str as *const i8);
+                    intrinsics::abort()
+                }
+            }
+            #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+            #[cfg_attr(panic = "immediate-abort", inline)]
+            #[track_caller]
+            #[lang = stringify!($lang_signed)]
+            pub fn $lang_signed(_lhs: i128, _rhs: i128) -> ! {
+                unsafe {
+                    libc::printf($message as *const str as *const i8);
+                    intrinsics::abort()
+                }
+            }
+        )+
+    };
+}
+
+panic_overflow! {
+    panic_add_overflow_unsigned, panic_add_overflow_signed = "attempt to add with overflow",
+    panic_sub_overflow_unsigned, panic_sub_overflow_signed = "attempt to subtract with overflow",
+    panic_mul_overflow_unsigned, panic_mul_overflow_signed = "attempt to multiply with overflow",
+    panic_div_overflow_unsigned, panic_div_overflow_signed = "attempt to divide with overflow",
+    panic_rem_overflow_unsigned, panic_rem_overflow_signed = "attempt to calculate the remainder with overflow",
+    panic_shl_overflow_unsigned, panic_shl_overflow_signed = "attempt to shift left with overflow",
+    panic_shr_overflow_unsigned, panic_shr_overflow_signed = "attempt to shift left right with overflow",
 }
 
 #[lang = "panic_bounds_check"]

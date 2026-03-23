@@ -22,10 +22,10 @@ fn panic_div_zero() -> ! {
     loop {}
 }
 
-#[lang = "panic_const_div_overflow"]
+#[lang = "panic_div_overflow_signed"]
 #[inline]
 #[track_caller]
-fn panic_div_overflow() -> ! {
+fn panic_div_overflow(_lhs: i128, _rhs: i128) -> ! {
     loop {}
 }
 
