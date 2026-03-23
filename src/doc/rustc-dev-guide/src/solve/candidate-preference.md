@@ -274,7 +274,7 @@ fn foo<'a, T: Trait<'a>>() {
 
 We prefer builtin trait object impls over user-written impls.
 This is **unsound** and should be remoed in the future.
-See [#57893](https://github.com/rust-lang/rust/issues/57893) and [#141347](https://github.com/rust-lang/rust/pull/141347) for more details.
+See [#57893] and [#141347] for more details.
 
 ## `NormalizesTo` goals
 
@@ -509,3 +509,5 @@ impl<T> Trait for T {
 [#133044]: https://github.com/rust-lang/rust/issues/133044
 [#139762]: https://github.com/rust-lang/rust/pull/139762
 [#139788]: https://github.com/rust-lang/rust/issues/139788
+[#57893]: https://github.com/rust-lang/rust/issues/57893
+[#141347]: https://github.com/rust-lang/rust/pull/141347
