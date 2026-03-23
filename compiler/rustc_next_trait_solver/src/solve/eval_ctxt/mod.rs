@@ -10,7 +10,7 @@ use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
 use rustc_type_ir::solve::OpaqueTypesJank;
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
+    self as ty, CanonicalVarValues, InferCtxtLike, Interner, Ty, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
@@ -781,7 +781,7 @@ where
         region
     }
 
-    pub(super) fn next_ty_infer(&mut self) -> I::Ty {
+    pub(super) fn next_ty_infer(&mut self) -> Ty<I> {
         let ty = self.delegate.next_ty_infer();
         self.inspect.add_var_value(ty);
         ty
@@ -829,7 +829,7 @@ where
             term: I::Term,
             universe_of_term: ty::UniverseIndex,
             delegate: &'a D,
-            cache: HashSet<I::Ty>,
+            cache: HashSet<Ty<I>>,
         }
 
         impl<D: SolverDelegate<Interner = I>, I: Interner> ContainsTermOrNotNameable<'_, D, I> {
@@ -846,7 +846,7 @@ where
             for ContainsTermOrNotNameable<'_, D, I>
         {
             type Result = ControlFlow<()>;
-            fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
+            fn visit_ty(&mut self, t: Ty<I>) -> Self::Result {
                 if self.cache.contains(&t) {
                     return ControlFlow::Continue(());
                 }
@@ -1072,7 +1072,7 @@ where
         self.delegate.resolve_vars_if_possible(value)
     }
 
-    pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
+    pub(super) fn shallow_resolve(&self, ty: Ty<I>) -> Ty<I> {
         self.delegate.shallow_resolve(ty)
     }
 
@@ -1092,7 +1092,7 @@ where
         args
     }
 
-    pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
+    pub(super) fn register_ty_outlives(&self, ty: Ty<I>, lt: I::Region) {
         self.delegate.register_ty_outlives(ty, lt, self.origin_span);
     }
 
@@ -1134,8 +1134,8 @@ where
     pub(super) fn register_hidden_type_in_storage(
         &mut self,
         opaque_type_key: ty::OpaqueTypeKey<I>,
-        hidden_ty: I::Ty,
-    ) -> Option<I::Ty> {
+        hidden_ty: Ty<I>,
+    ) -> Option<Ty<I>> {
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
@@ -1144,7 +1144,7 @@ where
         opaque_def_id: I::DefId,
         opaque_args: I::GenericArgs,
         param_env: I::ParamEnv,
-        hidden_ty: I::Ty,
+        hidden_ty: Ty<I>,
     ) {
         let mut goals = Vec::new();
         self.delegate.add_item_bounds_for_hidden_type(
@@ -1170,8 +1170,8 @@ where
 
     pub(super) fn is_transmutable(
         &mut self,
-        src: I::Ty,
-        dst: I::Ty,
+        src: Ty<I>,
+        dst: Ty<I>,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
@@ -1195,7 +1195,7 @@ where
 
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
-        self_ty: I::Ty,
+        self_ty: Ty<I>,
     ) -> Vec<ty::AliasTy<I>> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
             self.delegate.opaques_with_sub_unified_hidden_type(vid)
@@ -1389,7 +1389,7 @@ where
     ecx: &'me mut EvalCtxt<'a, D>,
     param_env: I::ParamEnv,
     normalization_goal_source: GoalSource,
-    cache: HashMap<I::Ty, I::Ty>,
+    cache: HashMap<Ty<I>, Ty<I>>,
 }
 
 impl<'me, 'a, D, I> ReplaceAliasWithInfer<'me, 'a, D, I>
@@ -1421,7 +1421,7 @@ where
         self.ecx.cx()
     }
 
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+    fn fold_ty(&mut self, ty: Ty<I>) -> Ty<I> {
         match ty.kind() {
             ty::Alias(..) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();

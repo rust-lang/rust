@@ -13,7 +13,7 @@ use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution,
-    QueryResult, assembly,
+    QueryResult, Ty, assembly,
 };
 
 impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
@@ -21,7 +21,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn self_ty(self) -> I::Ty {
+    fn self_ty(self) -> Ty<I> {
         self.self_ty()
     }
 
@@ -29,7 +29,7 @@ where
         self.trait_ref
     }
 
-    fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self {
+    fn with_replaced_self_ty(self, cx: I, self_ty: Ty<I>) -> Self {
         self.with_replaced_self_ty(cx, self_ty)
     }
 
