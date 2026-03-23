@@ -1,11 +1,11 @@
 warning: creating a shared reference to mutable static
-  --> $DIR/issue-39367.rs:22:13
+  --> $DIR/static-lazy-init-with-arena-set.rs:27:13
    |
 LL | /             ONCE.call_once(|| {
 LL | |
-LL | |                 DATA = transmute
-LL | |                     ::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
-LL | |                     (Box::new(__static_ref_initialize()));
+LL | |                 DATA = transmute::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>(Box::new(
+LL | |                     __static_ref_initialize(),
+LL | |                 ));
 LL | |             });
    | |______________^ shared reference to mutable static
    |

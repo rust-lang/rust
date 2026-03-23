@@ -1,5 +1,5 @@
 error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
-  --> $DIR/issue-46604.rs:1:25
+  --> $DIR/static-mut-borrow-of-temporary.rs:3:25
    |
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
    |                         ^^^^^^^^^^^^^^^^^^^^ this mutable borrow refers to such a temporary
@@ -9,7 +9,7 @@ LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
    = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
-  --> $DIR/issue-46604.rs:6:5
+  --> $DIR/static-mut-borrow-of-temporary.rs:8:5
    |
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
    | --------------------- this `static` cannot be written to

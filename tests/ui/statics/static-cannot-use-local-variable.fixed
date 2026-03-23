@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/3521
+//!
 //@ run-rustfix
 fn main() {
     let foo = 100;
