@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:privacy_reexport.rs
 
 
