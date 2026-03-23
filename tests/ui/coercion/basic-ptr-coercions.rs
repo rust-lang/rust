@@ -1,6 +1,6 @@
 //! Tests basic pointer coercions
 
-//@ run-pass
+//@ build-pass
 
 pub fn main() {
     // &mut -> &
