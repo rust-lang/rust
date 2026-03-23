@@ -1,3 +1,4 @@
+pub mod blocking_io;
 pub mod cpu_affinity;
 pub mod data_race;
 mod data_race_handler;

@@ -7,6 +7,7 @@ use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::env::EvalContextExt;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
+use crate::shims::unix::socket::EvalContextExt as _;
 use crate::*;
 
 pub fn syscall<'tcx>(
@@ -26,6 +27,7 @@ pub fn syscall<'tcx>(
     let sys_futex = ecx.eval_libc("SYS_futex").to_target_usize(ecx)?;
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
+    let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
 
     match ecx.read_target_usize(op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -58,6 +60,12 @@ pub fn syscall<'tcx>(
         num if num == sys_gettid => {
             let result = ecx.unix_gettid("SYS_gettid")?;
             ecx.write_int(result.to_u32()?, dest)?;
+        }
+        num if num == sys_accept4 => {
+            // Used on Android.
+            let [socket, address, address_len, flags] =
+                check_min_vararg_count("syscall(SYS_accept4, ...)", varargs)?;
+            ecx.accept4(socket, address, address_len, Some(flags), dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");
