@@ -20,7 +20,7 @@ use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
-use crate::execution::{all_inactive, force_query};
+use crate::execution::all_inactive;
 use crate::job::find_dep_kind_root;
 use crate::query_impl::for_each_query_vtable;
 use crate::{CollectActiveJobsKind, GetQueryVTable, collect_active_query_jobs};
@@ -219,21 +219,4 @@ where
     prof_timer.finish_with_query_invocation_id(index.into());
 
     value
-}
-
-/// Implementation of [`DepKindVTable::force_from_dep_node_fn`] for queries.
-pub(crate) fn force_from_dep_node_inner<'tcx, Q: GetQueryVTable<'tcx>>(
-    tcx: TyCtxt<'tcx>,
-    dep_node: DepNode,
-    // Needed by the vtable function signature, but not used when forcing queries.
-    _prev_index: SerializedDepNodeIndex,
-) -> bool {
-    let query = Q::query_vtable(tcx);
-
-    if let Some(key) = <Q::Cache as QueryCache>::Key::try_recover_key(tcx, &dep_node) {
-        force_query(query, tcx, key, dep_node);
-        true
-    } else {
-        false
-    }
 }

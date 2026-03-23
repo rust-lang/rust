@@ -680,13 +680,26 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     Some(result)
 }
 
-pub(crate) fn force_query<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+/// Inner implementation of [`DepKindVTable::force_from_dep_node_fn`][force_fn]
+/// for query nodes.
+///
+/// [force_fn]: rustc_middle::dep_graph::DepKindVTable::force_from_dep_node_fn
+pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
-    key: C::Key,
+    query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,
-) {
+) -> bool {
+    let Some(key) = C::Key::try_recover_key(tcx, &dep_node) else {
+        // We couldn't recover a key from the node's key fingerprint.
+        // Tell the caller that we couldn't force the node.
+        return false;
+    };
+
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });
+
+    // We did manage to recover a key and force the node, though it's up to
+    // the caller to check whether the node ended up marked red or green.
+    true
 }
