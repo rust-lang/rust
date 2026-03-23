@@ -1595,13 +1595,14 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         let mut check = self.check(item.def_id.expect_local(), vis, effective_vis);
 
         let is_assoc_ty = item.is_type();
-        check.hard_error = is_assoc_ty && !item.is_impl_trait_in_trait();
+        check.hard_error = is_assoc_ty;
         check.generics().predicates();
         if assoc_has_type_of(self.tcx, item) {
-            check.hard_error = check.hard_error && item.defaultness(self.tcx).has_value();
             check.ty();
         }
         if is_assoc_ty && item.container == AssocContainer::Trait {
+            // FIXME: too much breakage from reporting hard errors here, better wait for a fix
+            // from proper associated type normalization.
             check.hard_error = false;
             check.bounds();
         }
