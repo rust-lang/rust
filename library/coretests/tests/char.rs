@@ -52,6 +52,7 @@ fn test_is_cased() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_char_case() {
     for c in '\0'..='\u{10FFFF}' {
         match c.case() {
@@ -100,6 +101,7 @@ fn titlecase_fast_path() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn at_most_one_case() {
     for c in '\0'..='\u{10FFFF}' {
         assert_eq!(
