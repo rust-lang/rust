@@ -64,7 +64,7 @@ are implemented differently depending on whether `parallel-compiler` is true.
   or the authoring of persistent documentation covering the specific of the
   invariants, the atomicity, and the lock orderings.
 
-- On the other hand, we still need to figure out what other invariants 
+- On the other hand, we still need to figure out what other invariants
   during compilation might not hold in parallel compilation.
 
 [`rustc_data_structures::sync`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/index.html
@@ -93,10 +93,10 @@ can be accessed directly through `Deref::deref`.
 
 The parallel iterators provided by the [`rayon`] crate are easy ways to
 implement parallelism.
-In the current implementation of the parallel compiler
+In the current implementation of the parallel compiler,
 we use a custom [fork][rustc-rayon] of `rayon` to run tasks in parallel.
 
-Some iterator functions are implemented to run loops in parallel 
+Some iterator functions are implemented to run loops in parallel
 when `parallel-compiler` is true.
 
 | Function(Omit `Send` and `Sync`)                             | Introduction                                                 | Owning Module              |
@@ -154,8 +154,8 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
   **Cycle error detection** in the parallel
   compiler requires more complex logic than in single-threaded mode.
   When
-  worker threads in parallel queries stop making progress due to interdependence, 
-  the compiler uses an extra thread *(named deadlock handler)* to detect, remove and 
+  worker threads in parallel queries stop making progress due to interdependence,
+  the compiler uses an extra thread *(named deadlock handler)* to detect, remove and
   report the cycle error.
 
 The parallel query feature still has implementation to do, most of which is
