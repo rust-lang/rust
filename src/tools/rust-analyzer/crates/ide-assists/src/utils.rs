@@ -1219,10 +1219,10 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
 }
 
 pub(crate) fn cover_edit_range(
-    source: &impl AstNode,
+    source: &SyntaxNode,
     range: TextRange,
 ) -> std::ops::RangeInclusive<syntax::SyntaxElement> {
-    let node = match source.syntax().covering_element(range) {
+    let node = match source.covering_element(range) {
         NodeOrToken::Node(node) => node,
         NodeOrToken::Token(t) => t.parent().unwrap(),
     };

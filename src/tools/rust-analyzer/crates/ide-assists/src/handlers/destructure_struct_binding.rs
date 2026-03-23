@@ -358,7 +358,7 @@ fn update_usages(
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
-    let source = ctx.source_file();
+    let source = ctx.source_file().syntax();
     let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages

@@ -326,7 +326,7 @@ impl EditTupleUsage {
             }
             EditTupleUsage::ReplaceExpr(target_expr, replace_with) => {
                 if let Some(range) = ctx.sema.original_range_opt(target_expr.syntax()) {
-                    let source = ctx.source_file();
+                    let source = ctx.source_file().syntax();
                     syntax_editor.replace_all(
                         cover_edit_range(source, range.range),
                         vec![replace_with.syntax().clone().into()],
