@@ -8,7 +8,7 @@ use hir_def::{
     ConstId, EnumVariantId, GeneralConstId, HasModule, StaticId,
     attrs::AttrFlags,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
-    expr_store::Body,
+    expr_store::ExpressionStore,
     hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
@@ -235,6 +235,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_usize(db, ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().memory, false))),
         ConstKind::Error(_) => None,
@@ -258,6 +259,7 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_isize(db, &ec)
             }
+            GeneralConstId::AnonConstId(_) => None,
         },
         ConstKind::Value(val) => Some(i128::from_le_bytes(pad16(&val.value.inner().memory, true))),
         ConstKind::Error(_) => None,
@@ -309,23 +311,23 @@ pub(crate) fn const_eval_discriminant_variant(
 // and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
 pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'db>) -> Const<'db> {
     let infer = ctx.fixme_resolve_all_clone();
-    fn has_closure(body: &Body, expr: ExprId) -> bool {
-        if matches!(body[expr], Expr::Closure { .. }) {
+    fn has_closure(store: &ExpressionStore, expr: ExprId) -> bool {
+        if matches!(store[expr], Expr::Closure { .. }) {
             return true;
         }
         let mut r = false;
-        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
+        store.walk_child_exprs(expr, |idx| r |= has_closure(store, idx));
         r
     }
-    if has_closure(ctx.body, expr) {
+    if has_closure(ctx.store, expr) {
         // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
         return Const::error(ctx.interner());
     }
-    if let Expr::Path(p) = &ctx.body[expr] {
+    if let Expr::Path(p) = &ctx.store[expr] {
         let mut ctx = TyLoweringContext::new(
             ctx.db,
             &ctx.resolver,
-            ctx.body,
+            ctx.store,
             ctx.generic_def,
             LifetimeElisionKind::Infer,
         );
@@ -333,7 +335,9 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
             return c;
         }
     }
-    if let Ok(mir_body) = lower_body_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+    if let Some(body_owner) = ctx.owner.as_def_with_body()
+        && let Ok(mir_body) =
+            lower_body_to_mir(ctx.db, body_owner, &ctx.db.body(body_owner), &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
         return result;

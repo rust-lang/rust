@@ -86,7 +86,10 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
-    hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
+    hir::{
+        ExprId,
+        generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
+    },
     nameres::{
         LocalDefMap,
         assoc::{ImplItems, TraitItems},
@@ -305,6 +308,19 @@ impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 pub type StaticLoc = AssocItemLoc<ast::Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
+
+/// An anonymous const expression that appears in a type position (e.g., array lengths,
+/// const generic arguments like `{ N + 1 }`). Unlike named constants, these don't have
+/// their own `Body` — their expressions live in the parent's signature `ExpressionStore`.
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub struct AnonConstLoc {
+    /// The owner store containing this expression.
+    pub owner: ExpressionStoreOwner,
+    /// The ExprId within the owner's ExpressionStore that is the root
+    /// of this anonymous const expression.
+    pub expr: ExprId,
+}
+impl_intern!(AnonConstId, AnonConstLoc, intern_anon_const, lookup_intern_anon_const);
 
 pub type TraitLoc = ItemLoc<ast::Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
@@ -706,15 +722,17 @@ impl From<DefWithBodyId> for ModuleDefId {
 pub enum GeneralConstId {
     ConstId(ConstId),
     StaticId(StaticId),
+    AnonConstId(AnonConstId),
 }
 
-impl_from!(ConstId, StaticId for GeneralConstId);
+impl_from!(ConstId, StaticId, AnonConstId for GeneralConstId);
 
 impl GeneralConstId {
-    pub fn generic_def(self, _db: &dyn DefDatabase) -> Option<GenericDefId> {
+    pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
             GeneralConstId::StaticId(it) => Some(it.into()),
+            GeneralConstId::AnonConstId(it) => Some(it.lookup(db).owner.generic_def(db)),
         }
     }
 
@@ -729,6 +747,7 @@ impl GeneralConstId {
                     |name| name.display(db, Edition::CURRENT).to_string(),
                 )
             }
+            GeneralConstId::AnonConstId(_) => "{anon const}".to_owned(),
         }
     }
 }
@@ -813,6 +832,45 @@ impl_from!(
     TypeAliasId
     for GenericDefId
 );
+
+/// Owner of an expression store - either a body or a signature.
+/// This is used for queries that operate on expression stores generically,
+/// such as `expr_scopes`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ExpressionStoreOwner {
+    Signature(GenericDefId),
+    Body(DefWithBodyId),
+}
+
+impl ExpressionStoreOwner {
+    pub fn as_def_with_body(self) -> Option<DefWithBodyId> {
+        if let Self::Body(v) = self { Some(v) } else { None }
+    }
+
+    pub fn generic_def(self, db: &dyn DefDatabase) -> GenericDefId {
+        match self {
+            ExpressionStoreOwner::Signature(generic_def_id) => generic_def_id,
+            ExpressionStoreOwner::Body(def_with_body_id) => match def_with_body_id {
+                DefWithBodyId::FunctionId(id) => GenericDefId::FunctionId(id),
+                DefWithBodyId::StaticId(id) => GenericDefId::StaticId(id),
+                DefWithBodyId::ConstId(id) => GenericDefId::ConstId(id),
+                DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
+            },
+        }
+    }
+}
+
+impl From<GenericDefId> for ExpressionStoreOwner {
+    fn from(id: GenericDefId) -> Self {
+        ExpressionStoreOwner::Signature(id)
+    }
+}
+
+impl From<DefWithBodyId> for ExpressionStoreOwner {
+    fn from(id: DefWithBodyId) -> Self {
+        ExpressionStoreOwner::Body(id)
+    }
+}
 
 impl GenericDefId {
     pub fn file_id_and_params_of(
@@ -1168,6 +1226,15 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.module(db),
             DefWithBodyId::ConstId(it) => it.module(db),
             DefWithBodyId::VariantId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for ExpressionStoreOwner {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match self {
+            ExpressionStoreOwner::Signature(def) => def.module(db),
+            ExpressionStoreOwner::Body(def) => def.module(db),
         }
     }
 }

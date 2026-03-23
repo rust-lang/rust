@@ -1546,6 +1546,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         MirLowerError::ConstEvalError(name.into(), Box::new(e))
                     })?
                 }
+                GeneralConstId::AnonConstId(_) => {
+                    return Err(MirLowerError::IncompleteExpr);
+                }
             }
         };
         let ty = self
@@ -1553,6 +1556,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             .value_ty(match const_id {
                 GeneralConstId::ConstId(id) => id.into(),
                 GeneralConstId::StaticId(id) => id.into(),
+                GeneralConstId::AnonConstId(_) => unreachable!("handled above"),
             })
             .unwrap()
             .instantiate(self.interner(), subst);
@@ -2106,8 +2110,10 @@ pub fn mir_body_for_closure_query<'db>(
     closure: InternedClosureId,
 ) -> Result<'db, Arc<MirBody>> {
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
-    let body = db.body(owner);
-    let infer = InferenceResult::for_body(db, owner);
+    let body_owner =
+        owner.as_def_with_body().expect("MIR lowering should only happen for body-owned closures");
+    let body = db.body(body_owner);
+    let infer = InferenceResult::for_body(db, body_owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
@@ -2115,7 +2121,7 @@ pub fn mir_body_for_closure_query<'db>(
         implementation_error!("closure expression is not closure");
     };
     let (captures, kind) = infer.closure_info(closure);
-    let mut ctx = MirLowerCtx::new(db, owner, &body.store, infer);
+    let mut ctx = MirLowerCtx::new(db, body_owner, &body.store, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer.expr_ty(*root).store() });
     let closure_local = ctx.result.locals.alloc(Local {
@@ -2138,7 +2144,7 @@ pub fn mir_body_for_closure_query<'db>(
     });
     ctx.result.param_locals.push(closure_local);
     let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
-    let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
+    let resolver_guard = ctx.resolver.update_to_inner_scope(db, body_owner, expr);
     let current = ctx.lower_params_and_bindings(
         args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
         None,

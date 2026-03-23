@@ -730,7 +730,10 @@ impl<'db> Evaluator<'db> {
             self.param_env.param_env,
             ty,
             |c, subst, f| {
-                let InternedClosure(def, _) = self.db.lookup_intern_closure(c);
+                let InternedClosure(owner, _) = self.db.lookup_intern_closure(c);
+                let Some(def) = owner.as_def_with_body() else {
+                    return Ty::new_error(self.interner(), ErrorGuaranteed);
+                };
                 let infer = InferenceResult::for_body(self.db, def);
                 let (captures, _) = infer.closure_info(c);
                 let parent_subst = subst.as_closure().parent_args();
@@ -1953,6 +1956,9 @@ impl<'db> Evaluator<'db> {
                             let name = id.name(self.db);
                             MirEvalError::ConstEvalError(name, Box::new(e))
                         })?
+                    }
+                    GeneralConstId::AnonConstId(_) => {
+                        not_supported!("anonymous const evaluation")
                     }
                 };
                 if let ConstKind::Value(value) = result_owner.kind() {

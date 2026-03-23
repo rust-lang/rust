@@ -155,7 +155,7 @@ impl<'db> InferenceContext<'_, 'db> {
     /// it is matching against. This is used to determine whether we should
     /// perform `NeverToAny` coercions.
     fn pat_guaranteed_to_constitute_read_for_never(&self, pat: PatId) -> bool {
-        match &self.body[pat] {
+        match &self.store[pat] {
             // Does not constitute a read.
             Pat::Wild => false,
 
@@ -197,25 +197,25 @@ impl<'db> InferenceContext<'_, 'db> {
     // FIXME(tschottdorf): this is problematic as the HIR is being scraped, but
     // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
     fn contains_explicit_ref_binding(&self, pat: PatId) -> bool {
-        if let Pat::Bind { id, .. } = self.body[pat]
-            && matches!(self.body[id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
+        if let Pat::Bind { id, .. } = self.store[pat]
+            && matches!(self.store[id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
         {
             return true;
         }
 
         let mut result = false;
-        self.body.walk_pats_shallow(pat, |pat| result |= self.contains_explicit_ref_binding(pat));
+        self.store.walk_pats_shallow(pat, |pat| result |= self.contains_explicit_ref_binding(pat));
         result
     }
 
     fn is_syntactic_place_expr(&self, expr: ExprId) -> bool {
-        match &self.body[expr] {
+        match &self.store[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
             Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
             Expr::Path(path) => self
                 .resolver
-                .resolve_path_in_value_ns_fully(self.db, path, self.body.expr_path_hygiene(expr))
+                .resolve_path_in_value_ns_fully(self.db, path, self.store.expr_path_hygiene(expr))
                 .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
@@ -311,7 +311,7 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         self.db.unwind_if_revision_cancelled();
 
-        let expr = &self.body[tgt_expr];
+        let expr = &self.store[tgt_expr];
         tracing::trace!(?expr);
         let ty = match expr {
             Expr::Missing => self.err_ty(),
@@ -717,7 +717,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 // instantiations in RHS can be coerced to it. Note that this
                 // cannot happen in destructuring assignments because of how
                 // they are desugared.
-                let lhs_ty = match &self.body[target] {
+                let lhs_ty = match &self.store[target] {
                     // LHS of assignment doesn't constitute reads.
                     &Pat::Expr(expr) => {
                         Some(self.infer_expr(expr, &Expectation::none(), ExprIsRead::No))
@@ -728,7 +728,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         let resolution = self.resolver.resolve_path_in_value_ns_fully(
                             self.db,
                             path,
-                            self.body.pat_path_hygiene(target),
+                            self.store.pat_path_hygiene(target),
                         );
                         self.resolver.reset_to_guard(resolver_guard);
 
@@ -1351,7 +1351,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     ExprIsRead::Yes,
                 );
                 let usize = self.types.types.usize;
-                let len = match self.body[repeat] {
+                let len = match self.store[repeat] {
                     Expr::Underscore => {
                         self.write_expr_ty(repeat, usize);
                         self.table.next_const_var()
@@ -1491,7 +1491,7 @@ impl<'db> InferenceContext<'_, 'db> {
                                     } else {
                                         ExprIsRead::No
                                     };
-                                let ty = if contains_explicit_ref_binding(this.body, *pat) {
+                                let ty = if contains_explicit_ref_binding(this.store, *pat) {
                                     this.infer_expr(
                                         *expr,
                                         &Expectation::has_type(decl_ty),
@@ -2117,7 +2117,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 // the return value of an argument-position async block to an argument-position
                 // closure wrapped in a block.
                 // See <https://github.com/rust-lang/rust/issues/112225>.
-                let is_closure = if let Expr::Closure { closure_kind, .. } = self.body[*arg] {
+                let is_closure = if let Expr::Closure { closure_kind, .. } = self.store[*arg] {
                     !matches!(closure_kind, ClosureKind::Coroutine(_))
                 } else {
                     false

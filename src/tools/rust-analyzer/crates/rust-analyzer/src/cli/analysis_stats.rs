@@ -10,8 +10,8 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
-    Name, crate_lang_items,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, GenericDef, HasCrate, HasSource,
+    HirDisplay, ModuleDef, Name, crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -229,6 +229,7 @@ impl flags::AnalysisStats {
         eprint!("    crates: {num_crates}");
         let mut num_decls = 0;
         let mut bodies = Vec::new();
+        let mut signatures = Vec::new();
         let mut adts = Vec::new();
         let mut file_ids = Vec::new();
 
@@ -267,24 +268,32 @@ impl flags::AnalysisStats {
                         },
                         _ => (),
                     };
+                    if let Some(g) = decl.as_generic_def() {
+                        signatures.push(g);
+                    }
                 }
 
                 for impl_def in module.impl_defs(db) {
+                    signatures.push(impl_def.into());
                     for item in impl_def.items(db) {
                         num_decls += 1;
                         match item {
-                            AssocItem::Function(f) => bodies.push(DefWithBody::from(f)),
+                            AssocItem::Function(f) => {
+                                bodies.push(DefWithBody::from(f));
+                                signatures.push(f.into())
+                            }
                             AssocItem::Const(c) => {
                                 bodies.push(DefWithBody::from(c));
+                                signatures.push(c.into());
                             }
-                            _ => (),
+                            AssocItem::TypeAlias(t) => signatures.push(t.into()),
                         }
                     }
                 }
             }
         }
         eprintln!(
-            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}",
+            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}, signatures: {}",
             visited_modules.len(),
             bodies.len(),
             adts.len(),
@@ -292,6 +301,7 @@ impl flags::AnalysisStats {
                 .iter()
                 .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
                 .count(),
+            signatures.len(),
         );
 
         eprintln!("  Workspace:");
@@ -327,15 +337,15 @@ impl flags::AnalysisStats {
             }
 
             if !self.skip_lowering {
-                self.run_body_lowering(db, &vfs, &bodies, verbosity);
+                self.run_body_lowering(db, &vfs, &bodies, &signatures, verbosity);
             }
 
             if !self.skip_inference {
-                self.run_inference(db, &vfs, &bodies, verbosity);
+                self.run_inference(db, &vfs, &bodies, &signatures, verbosity);
             }
 
             if !self.skip_mir_stats {
-                self.run_mir_lowering(db, &bodies, verbosity);
+                self.run_mir_lowering(db, &bodies, &signatures, verbosity);
             }
 
             if !self.skip_data_layout {
@@ -343,7 +353,7 @@ impl flags::AnalysisStats {
             }
 
             if !self.skip_const_eval {
-                self.run_const_eval(db, &bodies, verbosity);
+                self.run_const_eval(db, &bodies, &signatures, verbosity);
             }
         });
 
@@ -416,7 +426,13 @@ impl flags::AnalysisStats {
         report_metric("data layout time", data_layout_time.time.as_millis() as u64, "ms");
     }
 
-    fn run_const_eval(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
+    fn run_const_eval(
+        &self,
+        db: &RootDatabase,
+        bodies: &[DefWithBody],
+        _signatures: &[GenericDef],
+        verbosity: Verbosity,
+    ) {
         let len = bodies
             .iter()
             .filter(|body| matches!(body, DefWithBody::Const(_) | DefWithBody::Static(_)))
@@ -431,7 +447,9 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &b in bodies {
-            bar.set_message(move || format!("const eval: {}", full_name(db, b, b.module(db))));
+            bar.set_message(move || {
+                format!("const eval: {}", full_name(db, || b.name(db), b.module(db)))
+            });
             let res = match b {
                 DefWithBody::Const(c) => c.eval(db),
                 DefWithBody::Static(s) => s.eval(db),
@@ -687,7 +705,13 @@ impl flags::AnalysisStats {
         bar.finish_and_clear();
     }
 
-    fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
+    fn run_mir_lowering(
+        &self,
+        db: &RootDatabase,
+        bodies: &[DefWithBody],
+        _signatures: &[GenericDef],
+        verbosity: Verbosity,
+    ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
@@ -698,14 +722,14 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &body in bodies {
             bar.set_message(move || {
-                format!("mir lowering: {}", full_name(db, body, body.module(db)))
+                format!("mir lowering: {}", full_name(db, || body.name(db), body.module(db)))
             });
             bar.inc(1);
             if matches!(body, DefWithBody::Variant(_)) {
                 continue;
             }
             let module = body.module(db);
-            if !self.should_process(db, body, module) {
+            if !self.should_process(db, || body.name(db), module) {
                 continue;
             }
 
@@ -743,6 +767,7 @@ impl flags::AnalysisStats {
         db: &RootDatabase,
         vfs: &Vfs,
         bodies: &[DefWithBody],
+        signatures: &[GenericDef],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
@@ -757,8 +782,17 @@ impl flags::AnalysisStats {
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    snap.body(body);
                     InferenceResult::for_body(snap, body);
+                })
+                .count();
+            let signatures = signatures
+                .iter()
+                .filter_map(|&signatures| signatures.try_into().ok())
+                .collect::<Vec<_>>();
+            signatures
+                .par_iter()
+                .map_with(db.clone(), |snap, &signatures| {
+                    InferenceResult::for_signature(snap, signatures);
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -782,7 +816,7 @@ impl flags::AnalysisStats {
             let display_target = module.krate(db).to_display_target(db);
             if let Some(only_name) = self.only.as_deref()
                 && name.display(db, Edition::LATEST).to_string() != only_name
-                && full_name(db, body_id, module) != only_name
+                && full_name(db, || body_id.name(db), module) != only_name
             {
                 continue;
             }
@@ -800,15 +834,15 @@ impl flags::AnalysisStats {
                         let syntax_range = src.text_range();
                         format!(
                             "processing: {} ({} {:?})",
-                            full_name(db, body_id, module),
+                            full_name(db, || body_id.name(db), module),
                             path,
                             syntax_range
                         )
                     } else {
-                        format!("processing: {}", full_name(db, body_id, module))
+                        format!("processing: {}", full_name(db, || body_id.name(db), module))
                     }
                 } else {
-                    format!("processing: {}", full_name(db, body_id, module))
+                    format!("processing: {}", full_name(db, || body_id.name(db), module))
                 }
             };
             if verbosity.is_spammy() {
@@ -822,11 +856,22 @@ impl flags::AnalysisStats {
                 Ok(inference_result) => inference_result,
                 Err(p) => {
                     if let Some(s) = p.downcast_ref::<&str>() {
-                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
+                        eprintln!(
+                            "infer panicked for {}: {}",
+                            full_name(db, || body_id.name(db), module),
+                            s
+                        );
                     } else if let Some(s) = p.downcast_ref::<String>() {
-                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
+                        eprintln!(
+                            "infer panicked for {}: {}",
+                            full_name(db, || body_id.name(db), module),
+                            s
+                        );
                     } else {
-                        eprintln!("infer panicked for {}", full_name(db, body_id, module));
+                        eprintln!(
+                            "infer panicked for {}",
+                            full_name(db, || body_id.name(db), module)
+                        );
                     }
                     panics += 1;
                     bar.inc(1);
@@ -932,7 +977,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} exprs, {} unknown, {} partial",
-                    full_name(db, body_id, module),
+                    full_name(db, || body_id.name(db), module),
                     num_exprs - previous_exprs,
                     num_exprs_unknown - previous_unknown,
                     num_exprs_partially_unknown - previous_partially_unknown
@@ -1034,7 +1079,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} pats, {} unknown, {} partial",
-                    full_name(db, body_id, module),
+                    full_name(db, || body_id.name(db), module),
                     num_pats - previous_pats,
                     num_pats_unknown - previous_unknown,
                     num_pats_partially_unknown - previous_partially_unknown
@@ -1078,20 +1123,65 @@ impl flags::AnalysisStats {
         db: &RootDatabase,
         vfs: &Vfs,
         bodies: &[DefWithBody],
+        signatures: &[GenericDef],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(bodies.len()),
+            _ => ProgressReport::new(bodies.len() + signatures.len()),
         };
 
         let mut sw = self.stop_watch();
         bar.tick();
+        for &signature in signatures {
+            let Ok(signature_id) = signature.try_into() else { continue };
+            let module = signature.module(db);
+            if !self.should_process(db, || signature.name(db), module) {
+                continue;
+            }
+            let msg = move || {
+                if verbosity.is_verbose() {
+                    let source = match signature {
+                        GenericDef::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        GenericDef::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        GenericDef::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        GenericDef::Adt(adt) => adt.source(db).map(|it| it.syntax().cloned()),
+                        GenericDef::Trait(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        GenericDef::TypeAlias(type_alias) => {
+                            type_alias.source(db).map(|it| it.syntax().cloned())
+                        }
+                        GenericDef::Impl(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    };
+                    if let Some(src) = source {
+                        let original_file = src.file_id.original_file(db);
+                        let path = vfs.file_path(original_file.file_id(db));
+                        let syntax_range = src.text_range();
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, || signature.name(db), module),
+                            path,
+                            syntax_range
+                        )
+                    } else {
+                        format!("processing: {}", full_name(db, || signature.name(db), module))
+                    }
+                } else {
+                    format!("processing: {}", full_name(db, || signature.name(db), module))
+                }
+            };
+            if verbosity.is_spammy() {
+                bar.println(msg());
+            }
+            bar.set_message(msg);
+            db.generic_params_and_store(signature_id);
+            bar.inc(1);
+        }
+
         for &body_id in bodies {
             let Ok(body_def_id) = body_id.try_into() else { continue };
             let module = body_id.module(db);
-            if !self.should_process(db, body_id, module) {
+            if !self.should_process(db, || body_id.name(db), module) {
                 continue;
             }
             let msg = move || {
@@ -1108,15 +1198,15 @@ impl flags::AnalysisStats {
                         let syntax_range = src.text_range();
                         format!(
                             "processing: {} ({} {:?})",
-                            full_name(db, body_id, module),
+                            full_name(db, || body_id.name(db), module),
                             path,
                             syntax_range
                         )
                     } else {
-                        format!("processing: {}", full_name(db, body_id, module))
+                        format!("processing: {}", full_name(db, || body_id.name(db), module))
                     }
                 } else {
-                    format!("processing: {}", full_name(db, body_id, module))
+                    format!("processing: {}", full_name(db, || body_id.name(db), module))
                 }
             };
             if verbosity.is_spammy() {
@@ -1129,7 +1219,7 @@ impl flags::AnalysisStats {
 
         bar.finish_and_clear();
         let body_lowering_time = sw.elapsed();
-        eprintln!("{:<20} {}", "Body lowering:", body_lowering_time);
+        eprintln!("{:<20} {}", "Expression Store Lowering:", body_lowering_time);
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
@@ -1283,12 +1373,17 @@ impl flags::AnalysisStats {
         eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }
 
-    fn should_process(&self, db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> bool {
+    fn should_process(
+        &self,
+        db: &RootDatabase,
+        name_fn: impl Fn() -> Option<Name>,
+        module: hir::Module,
+    ) -> bool {
         if let Some(only_name) = self.only.as_deref() {
-            let name = body_id.name(db).unwrap_or_else(Name::missing);
+            let name = name_fn().unwrap_or_else(Name::missing);
 
             if name.display(db, Edition::LATEST).to_string() != only_name
-                && full_name(db, body_id, module) != only_name
+                && full_name(db, name_fn, module) != only_name
             {
                 return false;
             }
@@ -1301,7 +1396,7 @@ impl flags::AnalysisStats {
     }
 }
 
-fn full_name(db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> String {
+fn full_name(db: &RootDatabase, name: impl Fn() -> Option<Name>, module: hir::Module) -> String {
     module
         .krate(db)
         .display_name(db)
@@ -1313,7 +1408,7 @@ fn full_name(db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> St
                 .into_iter()
                 .filter_map(|it| it.name(db))
                 .rev()
-                .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
+                .chain(Some(name().unwrap_or_else(Name::missing)))
                 .map(|it| it.display(db, Edition::LATEST).to_string()),
         )
         .join("::")

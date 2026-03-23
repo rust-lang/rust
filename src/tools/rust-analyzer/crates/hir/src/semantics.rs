@@ -2149,7 +2149,7 @@ impl<'db> SemanticsImpl<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
         // replace this, just make the inference result a `LazyCell`
-        infer_body: bool,
+        infer: bool,
     ) -> Option<SourceAnalyzer<'db>> {
         let _p = tracing::info_span!("SemanticsImpl::analyze_impl").entered();
 
@@ -2157,7 +2157,7 @@ impl<'db> SemanticsImpl<'db> {
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
-                return Some(if infer_body {
+                return Some(if infer {
                     SourceAnalyzer::new_for_body(self.db, def, node, offset)
                 } else {
                     SourceAnalyzer::new_for_body_no_infer(self.db, def, node, offset)
@@ -2167,16 +2167,32 @@ impl<'db> SemanticsImpl<'db> {
                 return Some(SourceAnalyzer::new_variant_body(self.db, def, node, offset));
             }
             ChildContainer::TraitId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::ImplId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::EnumId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::GenericDefId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it, node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it, node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it, node, offset)
+                });
             }
             ChildContainer::ModuleId(it) => it.resolver(self.db),
         };

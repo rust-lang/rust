@@ -3,8 +3,8 @@
 use std::{cmp, iter};
 
 use hir_def::{
-    HasModule,
-    expr_store::{Body, path::Path},
+    HasModule as _,
+    expr_store::{ExpressionStore, path::Path},
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
 };
 use hir_expand::name::Name;
@@ -260,14 +260,14 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let mut expected = self.table.structurally_resolve_type(expected);
 
-        if matches!(&self.body[pat], Pat::Ref { .. }) || self.inside_assignment {
+        if matches!(&self.store[pat], Pat::Ref { .. }) || self.inside_assignment {
             cov_mark::hit!(match_ergonomics_ref);
             // When you encounter a `&pat` pattern, reset to Move.
             // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
             // Destructuring assignments also reset the binding mode and
             // don't do match ergonomics.
             default_bm = BindingMode::Move;
-        } else if self.is_non_ref_pat(self.body, pat) {
+        } else if self.is_non_ref_pat(self.store, pat) {
             let mut pat_adjustments = Vec::new();
             while let TyKind::Ref(_lifetime, inner, mutability) = expected.kind() {
                 pat_adjustments.push(expected.store());
@@ -289,7 +289,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let default_bm = default_bm;
         let expected = expected;
 
-        let ty = match &self.body[pat] {
+        let ty = match &self.store[pat] {
             Pat::Tuple { args, ellipsis } => {
                 self.infer_tuple_pat_like(pat, expected, default_bm, *ellipsis, args, decl)
             }
@@ -485,7 +485,7 @@ impl<'db> InferenceContext<'_, 'db> {
         expected: Ty<'db>,
         decl: Option<DeclContext>,
     ) -> Ty<'db> {
-        let Binding { mode, .. } = self.body[binding];
+        let Binding { mode, .. } = self.store[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
             default_bm
         } else {
@@ -569,7 +569,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     fn infer_lit_pat(&mut self, expr: ExprId, expected: Ty<'db>) -> Ty<'db> {
         // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
-        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr]
+        if let Expr::Literal(Literal::ByteString(_)) = self.store[expr]
             && let TyKind::Ref(_, inner, _) = expected.kind()
         {
             let inner = self.table.try_structurally_resolve_type(inner);
@@ -590,14 +590,14 @@ impl<'db> InferenceContext<'_, 'db> {
         self.infer_expr(expr, &Expectation::has_type(expected), ExprIsRead::Yes)
     }
 
-    fn is_non_ref_pat(&mut self, body: &hir_def::expr_store::Body, pat: PatId) -> bool {
-        match &body[pat] {
+    fn is_non_ref_pat(&mut self, store: &hir_def::expr_store::ExpressionStore, pat: PatId) -> bool {
+        match &store[pat] {
             Pat::Tuple { .. }
             | Pat::TupleStruct { .. }
             | Pat::Record { .. }
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
-            Pat::Or(pats) => pats.iter().all(|p| self.is_non_ref_pat(body, *p)),
+            Pat::Or(pats) => pats.iter().all(|p| self.is_non_ref_pat(store, *p)),
             Pat::Path(path) => {
                 // A const is a reference pattern, but other value ns things aren't (see #16131).
                 let resolved = self.resolve_value_path_inner(path, pat.into(), true);
@@ -605,7 +605,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             Pat::ConstBlock(..) => false,
             Pat::Lit(expr) => !matches!(
-                body[*expr],
+                store[*expr],
                 Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
             ),
             Pat::Wild
@@ -670,10 +670,10 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 }
 
-pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
+pub(super) fn contains_explicit_ref_binding(store: &ExpressionStore, pat_id: PatId) -> bool {
     let mut res = false;
-    body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(body[pat], Pat::Bind { id, .. } if matches!(body[id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut));
+    store.walk_pats(pat_id, &mut |pat| {
+        res |= matches!(store[pat], Pat::Bind { id, .. } if matches!(store[id].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut));
     });
     res
 }

@@ -141,12 +141,17 @@ impl GenericParamsCollector {
                         const_param.ty(),
                         &mut ExprCollector::impl_trait_error_allocator,
                     );
-                    let param = ConstParamData {
-                        name,
-                        ty,
-                        default: const_param.default_val().map(|it| ec.lower_const_arg(it)),
-                    };
-                    let _idx = self.type_or_consts.alloc(param.into());
+                    let default = const_param.default_val().map(|it| ec.lower_const_arg(it));
+                    let param = ConstParamData { name, ty, default };
+                    let idx = self.type_or_consts.alloc(param.into());
+                    if let Some(default) = default
+                        && let Some(const_expr_origins) = &mut ec.store.const_expr_origins
+                    {
+                        const_expr_origins.push((
+                            default.expr,
+                            crate::expr_store::ConstExprOrigin::ConstParam(idx),
+                        ));
+                    }
                 }
                 ast::GenericParam::LifetimeParam(lifetime_param) => {
                     let lifetime = ec.lower_lifetime_ref_opt(lifetime_param.lifetime());

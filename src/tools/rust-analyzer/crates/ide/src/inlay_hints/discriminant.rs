@@ -46,7 +46,7 @@ fn variant_hints(
     enum_: &ast::Enum,
     variant: &ast::Variant,
 ) -> Option<()> {
-    if variant.expr().is_some() {
+    if variant.const_arg().is_some() {
         return None;
     }
 

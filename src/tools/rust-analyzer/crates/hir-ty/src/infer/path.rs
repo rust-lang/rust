@@ -136,7 +136,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            self.body,
+            self.store,
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
             self.generic_def,
@@ -159,7 +159,7 @@ impl<'db> InferenceContext<'_, 'db> {
             let ty = self.table.process_user_written_ty(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
-            let hygiene = self.body.expr_or_pat_path_hygiene(id);
+            let hygiene = self.store.expr_or_pat_path_hygiene(id);
             // FIXME: report error, unresolved first path segment
             let value_or_partial = path_ctx.resolve_path_in_value_ns(hygiene)?;
 

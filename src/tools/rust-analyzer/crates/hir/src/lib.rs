@@ -508,6 +508,21 @@ impl ModuleDef {
         }
     }
 
+    pub fn as_generic_def(self) -> Option<GenericDef> {
+        match self {
+            ModuleDef::Function(it) => Some(it.into()),
+            ModuleDef::Adt(it) => Some(it.into()),
+            ModuleDef::Trait(it) => Some(it.into()),
+            ModuleDef::TypeAlias(it) => Some(it.into()),
+            ModuleDef::Static(it) => Some(it.into()),
+            ModuleDef::Const(it) => Some(it.into()),
+            ModuleDef::Variant(_)
+            | ModuleDef::Module(_)
+            | ModuleDef::BuiltinType(_)
+            | ModuleDef::Macro(_) => None,
+        }
+    }
+
     pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
         Some(match self {
             ModuleDef::Module(it) => it.attrs(db),
@@ -1737,7 +1752,7 @@ impl Variant {
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
-        self.source(db)?.value.expr()
+        self.source(db)?.value.const_arg()?.expr()
     }
 
     pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
@@ -2891,11 +2906,12 @@ impl<'db> Param<'db> {
             }
             Callee::Closure(closure, _) => {
                 let c = db.lookup_intern_closure(closure);
-                let body = db.body(c.0);
+                let body_owner = c.0.as_def_with_body()?;
+                let body = db.body(body_owner);
                 if let Expr::Closure { args, .. } = &body[c.1]
                     && let Pat::Bind { id, .. } = &body[args[self.idx]]
                 {
-                    return Some(Local { parent: c.0, binding_id: *id });
+                    return Some(Local { parent: body_owner, binding_id: *id });
                 }
                 None
             }
@@ -3971,6 +3987,30 @@ impl_from!(
 );
 
 impl GenericDef {
+    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        match self {
+            GenericDef::Function(it) => Some(it.name(db)),
+            GenericDef::Adt(it) => Some(it.name(db)),
+            GenericDef::Trait(it) => Some(it.name(db)),
+            GenericDef::TypeAlias(it) => Some(it.name(db)),
+            GenericDef::Impl(_) => None,
+            GenericDef::Const(it) => it.name(db),
+            GenericDef::Static(it) => Some(it.name(db)),
+        }
+    }
+
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        match self {
+            GenericDef::Function(it) => it.module(db),
+            GenericDef::Adt(it) => it.module(db),
+            GenericDef::Trait(it) => it.module(db),
+            GenericDef::TypeAlias(it) => it.module(db),
+            GenericDef::Impl(it) => it.module(db),
+            GenericDef::Const(it) => it.module(db),
+            GenericDef::Static(it) => it.module(db),
+        }
+    }
+
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let Ok(id) = self.try_into() else {
             // Let's pretend builtin derive impls don't have generic parameters.
@@ -5012,13 +5052,16 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = InferenceResult::for_body(db, owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return Vec::new();
+        };
+        let infer = InferenceResult::for_body(db, body_owner);
         let info = infer.closure_info(id);
         info.0
             .iter()
             .cloned()
             .map(|capture| ClosureCapture {
-                owner,
+                owner: body_owner,
                 closure: id,
                 capture,
                 _marker: PhantomCovariantLifetime::new(),
@@ -5032,9 +5075,12 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = InferenceResult::for_body(db, owner);
+        let Some(body_owner) = owner.as_def_with_body() else {
+            return Vec::new();
+        };
+        let infer = InferenceResult::for_body(db, body_owner);
         let (captures, _) = infer.closure_info(id);
-        let env = body_param_env_from_has_crate(db, owner);
+        let env = body_param_env_from_has_crate(db, body_owner);
         captures.iter().map(|capture| Type { env, ty: capture.ty(db, self.subst) }).collect()
     }
 
@@ -5042,7 +5088,10 @@ impl<'db> Closure<'db> {
         match self.id {
             AnyClosureId::ClosureId(id) => {
                 let owner = db.lookup_intern_closure(id).0;
-                let infer = InferenceResult::for_body(db, owner);
+                let Some(body_owner) = owner.as_def_with_body() else {
+                    return FnTrait::FnOnce;
+                };
+                let infer = InferenceResult::for_body(db, body_owner);
                 let info = infer.closure_info(id);
                 info.1.into()
             }

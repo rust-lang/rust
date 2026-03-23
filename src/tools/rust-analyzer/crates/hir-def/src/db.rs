@@ -8,12 +8,13 @@ use la_arena::ArenaMap;
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc,
-    EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc,
-    FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
-    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
-    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    AnonConstId, AnonConstLoc, AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc,
+    DefWithBodyId, EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExpressionStoreOwner,
+    ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc,
+    GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander, MacroId,
+    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
+    UnionLoc, UseId, UseLoc, VariantId,
     attrs::AttrFlags,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
@@ -60,6 +61,9 @@ pub trait InternDatabase: RootQueryDb {
 
     #[salsa::interned]
     fn intern_static(&self, loc: StaticLoc) -> StaticId;
+
+    #[salsa::interned]
+    fn intern_anon_const(&self, loc: AnonConstLoc) -> AnonConstId;
 
     #[salsa::interned]
     fn intern_trait(&self, loc: TraitLoc) -> TraitId;
@@ -212,8 +216,15 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(Body::body_query)]
     fn body(&self, def: DefWithBodyId) -> Arc<Body>;
 
+    #[salsa::invoke(ExprScopes::body_expr_scopes_query)]
+    fn body_expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
+
+    #[salsa::invoke(ExprScopes::sig_expr_scopes_query)]
+    fn sig_expr_scopes(&self, def: GenericDefId) -> Arc<ExprScopes>;
+
+    #[salsa::transparent]
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
-    fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
+    fn expr_scopes(&self, def: ExpressionStoreOwner) -> Arc<ExprScopes>;
 
     #[salsa::transparent]
     #[salsa::invoke(GenericParams::new)]

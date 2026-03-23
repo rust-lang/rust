@@ -5,9 +5,9 @@ use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
-    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
-    TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod, db::DefDatabase, hir::ExprId,
-    layout::TargetDataLayout,
+    ExpressionStoreOwner, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
+    StaticId, TraitId, TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
 };
 use la_arena::ArenaMap;
 use salsa::plumbing::AsId;
@@ -240,7 +240,7 @@ pub struct InternedOpaqueTyId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
+pub struct InternedClosure(pub ExpressionStoreOwner, pub ExprId);
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
@@ -249,7 +249,7 @@ pub struct InternedClosureId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
+pub struct InternedCoroutine(pub ExpressionStoreOwner, pub ExprId);
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
