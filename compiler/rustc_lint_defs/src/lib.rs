@@ -666,13 +666,6 @@ pub enum BuiltinLintDiag {
         span_snippets: Vec<String>,
     },
     RedundantImport(Vec<(Span, bool)>, Ident),
-    DeprecatedMacro {
-        suggestion: Option<Symbol>,
-        suggestion_span: Span,
-        note: Option<Symbol>,
-        path: String,
-        since_kind: DeprecatedSinceKind,
-    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,

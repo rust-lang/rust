@@ -5,7 +5,6 @@ use rustc_errors::{
     elided_lifetime_in_path_suggestion,
 };
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
-use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
@@ -99,22 +98,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                     })
                     .collect();
                 lints::RedundantImport { subs, ident }.into_diag(dcx, level)
-            }
-            BuiltinLintDiag::DeprecatedMacro {
-                suggestion,
-                suggestion_span,
-                note,
-                path,
-                since_kind,
-            } => {
-                let sub = suggestion.map(|suggestion| stability::DeprecationSuggestion {
-                    span: suggestion_span,
-                    kind: "macro".to_owned(),
-                    suggestion,
-                });
-
-                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
-                    .into_diag(dcx, level)
             }
             BuiltinLintDiag::SingleUseLifetime {
                 param_span,
