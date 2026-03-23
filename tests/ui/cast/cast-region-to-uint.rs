@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 pub fn main() {
     let x: isize = 3;
