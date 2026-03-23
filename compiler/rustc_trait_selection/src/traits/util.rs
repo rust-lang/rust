@@ -379,7 +379,7 @@ pub fn sizedness_fast_path<'tcx>(
     {
         let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
-            Some(LangItem::SizeOfVal) => SizedTraitKind::MetaSized,
+            Some(LangItem::SizeOfVal) => SizedTraitKind::SizeOfVal,
             _ => return false,
         };
 
@@ -394,7 +394,7 @@ pub fn sizedness_fast_path<'tcx>(
                     && clause_pred.polarity == ty::PredicatePolarity::Positive
                     && clause_pred.self_ty() == trait_pred.self_ty()
                     && (clause_pred.def_id() == trait_pred.def_id()
-                        || (sizedness == SizedTraitKind::MetaSized
+                        || (sizedness == SizedTraitKind::SizeOfVal
                             && tcx.is_lang_item(clause_pred.def_id(), LangItem::Sized)))
                 {
                     return true;

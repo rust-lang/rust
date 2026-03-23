@@ -103,7 +103,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_builtin_sized_candidate(
                         obligation.predicate.self_ty().skip_binder(),
                         &mut candidates,
-                        SizedTraitKind::MetaSized,
+                        SizedTraitKind::SizeOfVal,
                     );
                 }
                 Some(LangItem::PointeeSized) => {
@@ -1280,7 +1280,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `MetaSized` but not `Sized`.
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
                 SizedTraitKind::Sized => {}
-                SizedTraitKind::MetaSized => {
+                SizedTraitKind::SizeOfVal => {
                     candidates.vec.push(SizedCandidate);
                 }
             },

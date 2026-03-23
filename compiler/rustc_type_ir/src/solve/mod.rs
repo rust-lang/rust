@@ -469,7 +469,7 @@ pub enum SizedTraitKind {
     /// `Sized` trait
     Sized,
     /// `MetaSized` trait
-    MetaSized,
+    SizeOfVal,
 }
 
 impl SizedTraitKind {
@@ -477,7 +477,7 @@ impl SizedTraitKind {
     pub fn require_lang_item<I: Interner>(self, cx: I) -> I::TraitId {
         cx.require_trait_lang_item(match self {
             SizedTraitKind::Sized => SolverTraitLangItem::Sized,
-            SizedTraitKind::MetaSized => SolverTraitLangItem::SizeOfVal,
+            SizedTraitKind::SizeOfVal => SolverTraitLangItem::SizeOfVal,
         })
     }
 }

@@ -44,7 +44,7 @@ fn sizedness_constraint_for_ty<'tcx>(
             // Never `Sized`
             SizedTraitKind::Sized => Some(ty),
             // Always `MetaSized`
-            SizedTraitKind::MetaSized => None,
+            SizedTraitKind::SizeOfVal => None,
         },
 
         // Maybe `Sized` or `MetaSized`

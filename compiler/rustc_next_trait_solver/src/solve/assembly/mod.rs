@@ -552,7 +552,7 @@ where
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
                 }
                 Some(SolverTraitLangItem::SizeOfVal) => {
-                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::SizeOfVal)
                 }
                 Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
