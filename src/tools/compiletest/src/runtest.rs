@@ -1922,10 +1922,7 @@ impl<'test> TestCx<'test> {
         // Allow tests to use internal and incomplete features.
         compiler.args(&["-A", "internal_features"]);
         // FIXME(#154168); temporarily exclude some directories to make the transition easier
-        if !input_file
-            .iter()
-            .any(|p| p == "traits" || p == "specialization" || p == "const-generics")
-        {
+        if !input_file.iter().any(|p| p == "specialization") {
             compiler.args(&["-A", "incomplete_features"]);
         }
 
