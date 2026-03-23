@@ -1882,13 +1882,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         );
                         return;
                     } else if emit_lint {
+                        let lt_span = if elided {
+                            lifetime.ident.span.shrink_to_hi()
+                        } else {
+                            lifetime.ident.span
+                        };
+                        let code = if elided { "'static " } else { "'static" };
+
                         self.r.lint_buffer.buffer_lint(
                             lint::builtin::ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
                             node_id,
                             lifetime.ident.span,
-                            lint::BuiltinLintDiag::AssociatedConstElidedLifetime {
+                            crate::errors::AssociatedConstElidedLifetime {
                                 elided,
-                                span: lifetime.ident.span,
+                                code,
+                                span: lt_span,
                                 lifetimes_in_scope: lifetimes_in_scope.into(),
                             },
                         );

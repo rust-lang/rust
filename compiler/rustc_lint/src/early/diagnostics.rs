@@ -87,18 +87,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                 }
                 .into_diag(dcx, level)
             }
-            BuiltinLintDiag::RedundantImport(spans, ident) => {
-                let subs = spans
-                    .into_iter()
-                    .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
-                        (false, true) => lints::RedundantImportSub::ImportedHere { span, ident },
-                        (false, false) => lints::RedundantImportSub::DefinedHere { span, ident },
-                        (true, true) => lints::RedundantImportSub::ImportedPrelude { span, ident },
-                        (true, false) => lints::RedundantImportSub::DefinedPrelude { span, ident },
-                    })
-                    .collect();
-                lints::RedundantImport { subs, ident }.into_diag(dcx, level)
-            }
             BuiltinLintDiag::SingleUseLifetime {
                 param_span,
                 use_span,
@@ -161,49 +149,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateBuiltinLint<'_, '_> {
                     suggestion,
                     name,
                     named_arg_name,
-                }
-                .into_diag(dcx, level)
-            }
-            BuiltinLintDiag::AmbiguousGlobReexports {
-                name,
-                namespace,
-                first_reexport_span,
-                duplicate_reexport_span,
-            } => lints::AmbiguousGlobReexports {
-                first_reexport: first_reexport_span,
-                duplicate_reexport: duplicate_reexport_span,
-                name,
-                namespace,
-            }
-            .into_diag(dcx, level),
-            BuiltinLintDiag::HiddenGlobReexports {
-                name,
-                namespace,
-                glob_reexport_span,
-                private_item_span,
-            } => lints::HiddenGlobReexports {
-                glob_reexport: glob_reexport_span,
-                private_item: private_item_span,
-
-                name,
-                namespace,
-            }
-            .into_diag(dcx, level),
-            BuiltinLintDiag::UnusedQualifications { removal_span } => {
-                lints::UnusedQualifications { removal_span }.into_diag(dcx, level)
-            }
-            BuiltinLintDiag::AssociatedConstElidedLifetime {
-                elided,
-                span: lt_span,
-                lifetimes_in_scope,
-            } => {
-                let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
-                let code = if elided { "'static " } else { "'static" };
-                lints::AssociatedConstElidedLifetime {
-                    span: lt_span,
-                    code,
-                    elided,
-                    lifetimes_in_scope,
                 }
                 .into_diag(dcx, level)
             }
