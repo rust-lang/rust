@@ -23,7 +23,7 @@ fn sizedness_constraint_for_ty<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        // Always `Sized` or `MetaSized`
+        // Always `Sized` or `SizeOfVal`
         ty::Bool
         | ty::Char
         | ty::Int(..)
@@ -43,11 +43,11 @@ fn sizedness_constraint_for_ty<'tcx>(
         ty::Str | ty::Slice(..) | ty::Dynamic(_, _) => match sizedness {
             // Never `Sized`
             SizedTraitKind::Sized => Some(ty),
-            // Always `MetaSized`
+            // Always `SizeOfVal`
             SizedTraitKind::SizeOfVal => None,
         },
 
-        // Maybe `Sized` or `MetaSized`
+        // Maybe `Sized` or `SizeOfVal`
         ty::Param(..) | ty::Alias(..) | ty::Error(_) => Some(ty),
 
         // We cannot instantiate the binder, so just return the *original* type back,
@@ -57,7 +57,7 @@ fn sizedness_constraint_for_ty<'tcx>(
             sizedness_constraint_for_ty(tcx, sizedness, inner_ty.skip_binder()).map(|_| ty)
         }
 
-        // Never `MetaSized` or `Sized`
+        // Never `SizeOfVal` or `Sized`
         ty::Foreign(..) => Some(ty),
 
         // Recursive cases
@@ -108,7 +108,7 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 ///     - an pointee-sized type (extern types)
 ///     - a type parameter or projection whose sizedness can't be known
 ///
-/// For `MetaSized`, there are only a few options for the types in the constraint:
+/// For `SizeOfVal`, there are only a few options for the types in the constraint:
 ///     - an pointee-sized type (extern types)
 ///     - a type parameter or projection whose sizedness can't be known
 #[instrument(level = "debug", skip(tcx), ret)]

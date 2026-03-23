@@ -154,7 +154,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last,
+        // Ensure `T: Sized`, `T: SizeOfVal`, `T: PointeeSized` and `T: WF` obligations come last,
         // and `Subtype` obligations from `FormatLiteral` desugarings come first.
         // This lets us display diagnostics with more relevant type information and hide redundant
         // E0282 errors.
@@ -458,7 +458,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     #[derive(Debug, Default)]
     struct SizednessFound {
         sized: bool,
-        meta_sized: bool,
+        size_of_val: bool,
     }
 
     let mut types_with_sizedness_bounds = FxIndexMap::<_, SizednessFound>::default();
@@ -501,7 +501,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                 sizedness_of.sized = true;
                 continue;
             } else if Some(trait_clause.def_id()) == size_of_val_trait {
-                sizedness_of.meta_sized = true;
+                sizedness_of.size_of_val = true;
                 continue;
             }
         }
@@ -520,8 +520,8 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             if sizedness.sized {
                 // Maybe a default bound, don't write anything.
                 pretty_predicates.push(format!("{ty}: Sized"));
-            } else if sizedness.meta_sized {
-                pretty_predicates.push(format!("{ty}: MetaSized"));
+            } else if sizedness.size_of_val {
+                pretty_predicates.push(format!("{ty}: SizeOfVal"));
             } else {
                 pretty_predicates.push(format!("{ty}: PointeeSized"));
             }

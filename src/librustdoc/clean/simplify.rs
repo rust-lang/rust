@@ -142,8 +142,8 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
         if bounds.iter().any(|b| b.is_sized_bound(cx)) {
             sized_params.insert(*param);
             false
-        } else if bounds.iter().any(|b| b.is_meta_sized_bound(cx)) {
-            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+        } else if bounds.iter().any(|b| b.is_size_of_val_bound(cx)) {
+            // FIXME(sized-hierarchy): Always skip `` bounds so that only `?Sized`
             // is shown and none of the new sizedness traits leak into documentation.
             false
         } else {

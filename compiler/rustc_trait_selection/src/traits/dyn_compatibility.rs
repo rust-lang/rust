@@ -606,11 +606,11 @@ fn receiver_for_self_ty<'tcx>(
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
 /// a new check that `Trait` is dyn-compatible, creating a cycle.
 /// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
-/// `Self: Unsize<U>` and `U: Trait + MetaSized`, and use `U` in place of `dyn Trait`.
+/// `Self: Unsize<U>` and `U: Trait + SizeOfVal`, and use `U` in place of `dyn Trait`.
 ///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
-/// forall (U: Trait + MetaSized) {
+/// forall (U: Trait + SizeOfVal) {
 ///     if (Self: Unsize<U>) {
 ///         Receiver: DispatchFromDyn<Receiver[Self => U]>
 ///     }
@@ -647,7 +647,7 @@ fn receiver_is_dispatchable<'tcx>(
         receiver_for_self_ty(tcx, receiver_ty, unsized_self_ty, method.def_id);
 
     // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
-    // its supertraits) added to caller bounds. `U: MetaSized` is already implied here.
+    // its supertraits) added to caller bounds. `U: SizeOfVal` is already implied here.
     let param_env = {
         // N.B. We generally want to emulate the construction of the `unnormalized_param_env`
         // in the param-env query here. The fact that we don't just start with the clauses
@@ -676,11 +676,11 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         predicates.push(trait_predicate.upcast(tcx));
 
-        let meta_sized_predicate = {
-            let meta_sized_did = tcx.require_lang_item(LangItem::SizeOfVal, DUMMY_SP);
-            ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty]).upcast(tcx)
+        let size_of_val_predicate = {
+            let size_of_val_did = tcx.require_lang_item(LangItem::SizeOfVal, DUMMY_SP);
+            ty::TraitRef::new(tcx, size_of_val_did, [unsized_self_ty]).upcast(tcx)
         };
-        predicates.push(meta_sized_predicate);
+        predicates.push(size_of_val_predicate);
 
         normalize_param_env_or_error(
             tcx,

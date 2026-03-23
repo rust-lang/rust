@@ -44,17 +44,17 @@ impl CollectedBound {
 struct CollectedSizednessBounds {
     // Collected `Sized` bounds
     sized: CollectedBound,
-    // Collected `MetaSized` bounds
-    meta_sized: CollectedBound,
+    // Collected `SizeOfVal` bounds
+    size_of_val: CollectedBound,
     // Collected `PointeeSized` bounds
     pointee_sized: CollectedBound,
 }
 
 impl CollectedSizednessBounds {
     /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered for `Sized`,
-    /// `MetaSized` or `PointeeSized`.
+    /// `SizeOfVal` or `PointeeSized`.
     fn any(&self) -> bool {
-        self.sized.any() || self.meta_sized.any() || self.pointee_sized.any()
+        self.sized.any() || self.size_of_val.any() || self.pointee_sized.any()
     }
 }
 
@@ -127,13 +127,13 @@ fn collect_sizedness_bounds<'tcx>(
     let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
     let sized = collect_bounds(hir_bounds, context, sized_did);
 
-    let meta_sized_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
-    let meta_sized = collect_bounds(hir_bounds, context, meta_sized_did);
+    let size_of_val_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
+    let size_of_val = collect_bounds(hir_bounds, context, size_of_val_did);
 
     let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
     let pointee_sized = collect_bounds(hir_bounds, context, pointee_sized_did);
 
-    CollectedSizednessBounds { sized, meta_sized, pointee_sized }
+    CollectedSizednessBounds { sized, size_of_val, pointee_sized }
 }
 
 /// Add a trait bound for `did`.
@@ -155,9 +155,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// - On parameters, opaque type and associated types, add default `Sized` bound if no explicit
     ///   sizedness bounds are present.
-    /// - On traits and trait aliases, add default `MetaSized` supertrait if no explicit sizedness
+    /// - On traits and trait aliases, add default `SizeOfVal` supertrait if no explicit sizedness
     ///   bounds are present.
-    /// - On parameters, opaque type, associated types and trait aliases, add a `MetaSized` bound if
+    /// - On parameters, opaque type, associated types and trait aliases, add a `SizeOfVal` bound if
     ///   a `?Sized` bound is present.
     pub(crate) fn add_implicit_sizedness_bounds(
         &self,
@@ -174,7 +174,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        let meta_sized_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
+        let size_of_val_did = tcx.require_lang_item(hir::LangItem::SizeOfVal, span);
         let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
 
         // If adding sizedness bounds to a trait, then there are some relevant early exits
@@ -210,18 +210,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let collected = collect_sizedness_bounds(tcx, hir_bounds, context, span);
         if (collected.sized.maybe || collected.sized.negative)
             && !collected.sized.positive
-            && !collected.meta_sized.any()
+            && !collected.size_of_val.any()
             && !collected.pointee_sized.any()
         {
-            // `?Sized` is equivalent to `MetaSized` (but only add the bound if there aren't any
+            // `?Sized` is equivalent to `SizeOfVal` (but only add the bound if there aren't any
             // other explicit ones) - this can happen for trait aliases as well as bounds.
-            add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+            add_trait_bound(tcx, bounds, self_ty, size_of_val_did, span);
         } else if !collected.any() {
             match context {
                 ImpliedBoundsContext::TraitDef(..) => {
                     // If there are no explicit sizedness bounds on a trait then add a default
-                    // `MetaSized` supertrait.
-                    add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+                    // `SizeOfVal` supertrait.
+                    add_trait_bound(tcx, bounds, self_ty, size_of_val_did, span);
                 }
                 ImpliedBoundsContext::TyParam(..)
                 | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {

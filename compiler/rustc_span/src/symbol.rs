@@ -1242,7 +1242,6 @@ symbols! {
         memtag,
         message,
         meta,
-        meta_sized,
         metadata_type,
         mgca_type_const_syntax,
         min_const_fn,

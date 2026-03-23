@@ -370,7 +370,7 @@ pub fn sizedness_fast_path<'tcx>(
     predicate: ty::Predicate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
-    // Proving `Sized`/`MetaSized`, very often on "obviously sized" types like
+    // Proving `Sized`/`SizeOfVal`, very often on "obviously sized" types like
     // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
     // canonicalize and all that for such cases.
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
@@ -407,7 +407,7 @@ pub fn sizedness_fast_path<'tcx>(
 }
 
 /// To improve performance, sizedness traits are not elaborated and so special-casing is required
-/// in the trait solver to find a `Sized` candidate for a `MetaSized` obligation. Returns the
+/// in the trait solver to find a `Sized` candidate for a `SizeOfVal` obligation. Returns the
 /// predicate to used in the candidate for such a `obligation`, given a `candidate`.
 pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
     infcx: &InferCtxt<'tcx>,

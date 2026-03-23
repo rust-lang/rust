@@ -1890,7 +1890,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Fast path helper for testing if a type is `Sized` or `MetaSized`.
+    /// Fast path helper for testing if a type is `Sized` or `SizeOfVal`.
     ///
     /// Returning true means the type is known to implement the sizedness trait. Returning `false`
     /// means nothing -- could be sized, might not be.

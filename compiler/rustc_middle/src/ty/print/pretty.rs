@@ -1078,7 +1078,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut has_sized_bound = false;
         let mut has_negative_sized_bound = false;
-        let mut has_meta_sized_bound = false;
+        let mut has_size_of_val_bound = false;
 
         for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
             let bound_predicate = predicate.kind();
@@ -1086,7 +1086,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
-                    // `MetaSized`, and skip sizedness bounds to be added at the end.
+                    // `SizeOfVal`, and skip sizedness bounds to be added at the end.
                     match tcx.as_lang_item(pred.def_id()) {
                         Some(LangItem::Sized) => match pred.polarity {
                             ty::PredicatePolarity::Positive => {
@@ -1096,7 +1096,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
                         },
                         Some(LangItem::SizeOfVal) => {
-                            has_meta_sized_bound = true;
+                            has_size_of_val_bound = true;
                             continue;
                         }
                         Some(LangItem::PointeeSized) => {
@@ -1248,10 +1248,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let using_sized_hierarchy = self.tcx().features().sized_hierarchy();
         let add_sized = has_sized_bound && (first || has_negative_sized_bound);
         let add_maybe_sized =
-            has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
-        // Set `has_pointee_sized_bound` if there were no `Sized` or `MetaSized` bounds.
+            has_size_of_val_bound && !has_negative_sized_bound && !using_sized_hierarchy;
+        // Set `has_pointee_sized_bound` if there were no `Sized` or `SizeOfVal` bounds.
         let has_pointee_sized_bound =
-            !has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound;
+            !has_sized_bound && !has_size_of_val_bound && !has_negative_sized_bound;
         if add_sized || add_maybe_sized {
             if !first {
                 write!(self, " + ")?;
@@ -1260,11 +1260,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "?")?;
             }
             write!(self, "Sized")?;
-        } else if has_meta_sized_bound && using_sized_hierarchy {
+        } else if has_size_of_val_bound && using_sized_hierarchy {
             if !first {
                 write!(self, " + ")?;
             }
-            write!(self, "MetaSized")?;
+            write!(self, "SizeOfVal")?;
         } else if has_pointee_sized_bound && using_sized_hierarchy {
             if !first {
                 write!(self, " + ")?;

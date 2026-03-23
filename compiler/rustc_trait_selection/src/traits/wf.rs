@@ -568,9 +568,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        // PERF: `Sized`'s predicates include `MetaSized`, but both are compiler implemented marker
-        // traits, so `MetaSized` will always be WF if `Sized` is WF and vice-versa. Determining
-        // the nominal obligations of `Sized` would in-effect just elaborate `MetaSized` and make
+        // PERF: `Sized`'s predicates include `SizeOfVal`, but both are compiler implemented marker
+        // traits, so `SizeOfVal` will always be WF if `Sized` is WF and vice-versa. Determining
+        // the nominal obligations of `Sized` would in-effect just elaborate `SizeOfVal` and make
         // the compiler do a bunch of work needlessly.
         if self.tcx().is_lang_item(def_id, LangItem::Sized) {
             return Default::default();
