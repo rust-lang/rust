@@ -24,6 +24,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
