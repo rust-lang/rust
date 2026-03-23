@@ -1,16 +1,23 @@
 # Candidate preference
 
-There are multiple ways to prove `Trait` and `NormalizesTo` goals. Each such option is called a [`Candidate`]. If there are multiple applicable candidates, we prefer some candidates over others. We store the relevant information in their [`CandidateSource`].
+There are multiple ways to prove `Trait` and `NormalizesTo` goals.
+Each such option is called a [`Candidate`].
+If there are multiple applicable candidates, we prefer some candidates over others.
+We store the relevant information in their [`CandidateSource`].
 
-This preference may result in incorrect inference or region constraints and would therefore be unsound during coherence. Because of this, we simply try to merge all candidates in coherence.
+This preference may result in incorrect inference or region constraints and would therefore be unsound during coherence.
+Because of this, we simply try to merge all candidates in coherence.
 
 ## `Trait` goals
 
-Trait goals merge their applicable candidates in [`fn merge_trait_candidates`]. This document provides additional details and references to explain *why* we've got the current preference rules.
+Trait goals merge their applicable candidates in [`fn merge_trait_candidates`].
+This document provides additional details and references to explain *why* we've got the current preference rules.
 
 ### `CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))`
 
-Trivial builtin impls are builtin impls which are known to be always applicable for well-formed types. This means that if one exists, using another candidate should never have fewer constraints. We currently only consider `Sized` - and `MetaSized` - impls to be trivial.
+Trivial builtin impls are builtin impls which are known to be always applicable for well-formed types.
+This means that if one exists, using another candidate should never have fewer constraints.
+We currently only consider `Sized` - and `MetaSized` - impls to be trivial.
 
 This is necessary to prevent a lifetime error for the following pattern
 
@@ -25,7 +32,7 @@ where
 {
     // Elaborating the `&'a str: Trait<T>` where-bound results in a
     // `&'a str: Sized` where-bound. We do not want to prefer this
-    // over the builtin impl. 
+    // over the builtin impl.
     is_sized(x);
 }
 ```
@@ -50,7 +57,8 @@ where
 ### `CandidateSource::ParamEnv`
 
 Once there's at least one *non-global* `ParamEnv` candidate, we prefer *all* `ParamEnv` candidates over other candidate kinds.
-A where-bound is global if it is not higher-ranked and doesn't contain any generic parameters. It may contain `'static`.
+A where-bound is global if it is not higher-ranked and doesn't contain any generic parameters.
+It may contain `'static`.
 
 We try to apply where-bounds over other candidates as users tends to have the most control over them, so they can most easily
 adjust them in case our candidate preference is incorrect.
@@ -68,7 +76,8 @@ fn foo<'a, T: Trait<'a>>() {
 }
 ```
 
-We also need this as shadowed impls can result in currently ambiguous solver cycles: [trait-system-refactor-initiative#76]. Without preference we'd be forced to fail with ambiguity
+We also need this as shadowed impls can result in currently ambiguous solver cycles: [trait-system-refactor-initiative#76].
+Without preference, we'd be forced to fail with ambiguity
 errors if the where-bound results in region constraints to avoid incompleteness.
 ```rust
 trait Super {
@@ -89,13 +98,15 @@ where
 fn overflow<T: Trait>() {
     // We can use the elaborated `Super<SuperAssoc = Self::TraitAssoc>` where-bound
     // to prove the where-bound of the `T: Trait` implementation. This currently results in
-    // overflow. 
+    // overflow.
     let x: <T as Trait>::TraitAssoc;
 }
 ```
 
-This preference causes a lot of issues. See [#24066]. Most of the
-issues are caused by preferring where-bounds over impls even if the where-bound guides type inference:
+This preference causes a lot of issues.
+See [#24066].
+Most of the
+issues are caused by preferring where-bounds over impls even, if the where-bound guides type inference:
 ```rust
 trait Trait<T> {
     fn call_me(&self, x: T) {}
@@ -167,7 +178,10 @@ where
 
 #### Why no preference for global where-bounds
 
-Global where-bounds are either fully implied by an impl or unsatisfiable. If they are unsatisfiable, we don't really care what happens. If a where-bound is fully implied then using the impl to prove the trait goal cannot result in additional constraints. For trait goals this is only useful for where-bounds which use `'static`:
+Global where-bounds are either fully implied by an impl or unsatisfiable.
+If they are unsatisfiable, we don't really care what happens.
+If a where-bound is fully implied, then using the impl to prove the trait goal cannot result in additional constraints.
+For trait goals, this is only useful for where-bounds which use `'static`:
 
 ```rust
 trait A {
@@ -181,13 +195,15 @@ where
     x.test();
 }
 ```
-More importantly, by using impls here we prevent global where-bounds from shadowing impls when normalizing associated types. There are no known issues from preferring impls over global where-bounds.
+More importantly, by using impls here, we prevent global where-bounds from shadowing impls when normalizing associated types.
+There are no known issues from preferring impls over global where-bounds.
 
 #### Why still consider global where-bounds
 
 Given that we just use impls even if there exists a global where-bounds, you may ask why we don't just ignore these global where-bounds entirely: we use them to weaken the inference guidance from non-global where-bounds.
 
-Without a global where-bound, we currently prefer non-global where bounds even though there would be an applicable impl as well. By adding a non-global where-bound, this unnecessary inference guidance is disabled, allowing the following to compile:
+Without a global where-bound, we currently prefer non-global where bounds even though there would be an applicable impl as well.
+By adding a non-global where-bound, this unnecessary inference guidance is disabled, allowing the following to compile:
 ```rust
 fn check<Color>(color: Color)
 where
@@ -209,7 +225,9 @@ impl From<Vec> for f32 {
 
 ### `CandidateSource::AliasBound`
 
-We prefer alias-bound candidates over impls. We currently use this preference to guide type inference, causing the following to compile. I personally don't think this preference is desirable 🤷
+We prefer alias-bound candidates over impls.
+We currently use this preference to guide type inference, causing the following to compile.
+I personally don't think this preference is desirable 🤷
 ```rust
 pub trait Dyn {
     type Word: Into<u64>;
@@ -254,7 +272,9 @@ fn foo<'a, T: Trait<'a>>() {
 
 ### `CandidateSource::BuiltinImpl(BuiltinImplSource::Object(_))`
 
-We prefer builtin trait object impls over user-written impls. This is **unsound** and should be remoed in the future. See [#57893](https://github.com/rust-lang/rust/issues/57893) and [#141347](https://github.com/rust-lang/rust/pull/141347) for more details.
+We prefer builtin trait object impls over user-written impls.
+This is **unsound** and should be remoed in the future.
+See [#57893] and [#141347] for more details.
 
 ## `NormalizesTo` goals
 
@@ -336,7 +356,7 @@ Even if the trait goal was proven via an impl, we still prefer `ParamEnv` candid
 #### We prefer "orphaned" where-bounds
 
 We add "orphaned" `Projection` clauses into the `ParamEnv` when normalizing item bounds of GATs and RPITIT in `fn check_type_bounds`.
-We need to prefer these `ParamEnv` candidates over impls and other where-bounds. 
+We need to prefer these `ParamEnv` candidates over impls and other where-bounds.
 ```rust
 #![feature(associated_type_defaults)]
 trait Foo {
@@ -355,7 +375,8 @@ I don't fully understand the cases where this preference is actually necessary a
 
 #### We prefer global where-bounds over impls
 
-This is necessary for the following to compile. I don't know whether anything relies on it in practice 🤷
+This is necessary for the following to compile.
+I don't know whether anything relies on it in practice 🤷
 ```rust
 trait Id {
     type This;
@@ -423,7 +444,8 @@ where
 
 #### RPITIT `type_of` cycles
 
-We currently have to avoid impl candidates if there are where-bounds to avoid query cycles for RPITIT, see [#139762]. It feels desirable to me to stop relying on auto-trait leakage of during RPITIT computation to remove this issue, see [#139788].
+We currently have to avoid impl candidates if there are where-bounds to avoid query cycles for RPITIT, see [#139762].
+It feels desirable to me to stop relying on auto-trait leakage of during RPITIT computation to remove this issue, see [#139788].
 
 ```rust
 use std::future::Future;
@@ -454,11 +476,12 @@ where
 }
 ```
 
+<!-- date-check: Mar 2026 -->
 #### Trait definition cannot use associated types from always applicable impls
 
 The `T: Trait` assumption in the trait definition prevents it from normalizing
-`<Self as Trait>::Assoc` to `T` by using the blanket impl. This feels like a somewhat
-desirable constraint, if not incredibly so.
+`<Self as Trait>::Assoc` to `T` by using the blanket impl.
+This feels like a somewhat desirable constraint, if not incredibly so.
 
 ```rust
 trait Eq<T> {}
@@ -487,3 +510,5 @@ impl<T> Trait for T {
 [#133044]: https://github.com/rust-lang/rust/issues/133044
 [#139762]: https://github.com/rust-lang/rust/pull/139762
 [#139788]: https://github.com/rust-lang/rust/issues/139788
+[#57893]: https://github.com/rust-lang/rust/issues/57893
+[#141347]: https://github.com/rust-lang/rust/pull/141347
