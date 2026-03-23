@@ -14,5 +14,6 @@ pub fn main() {
         asm!("{0}", in(reg) 4, out("rax") _);
         asm!("{0}", in(reg) 4, out("rax") _, options(nostack));
         asm!("{0} {1}", in(reg) 4, in(reg) 5, out("rax") _);
+        asm!("{0}", const 5, out("rax") _);
     }
 }

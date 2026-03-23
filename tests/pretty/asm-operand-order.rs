@@ -9,5 +9,6 @@ pub fn main() {
         asm!("{val}", out("rax") _, val = in(reg) 4);
         asm!("{val}", out("rax") _, val = in(reg) 4, options(nostack));
         asm!("{a} {b}", out("rax") _, a = in(reg) 4, b = in(reg) 5);
+        asm!("{val}", out("rax") _, val = const 5);
     }
 }
