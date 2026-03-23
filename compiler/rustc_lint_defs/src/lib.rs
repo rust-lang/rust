@@ -673,13 +673,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    /// `##` or `#"` in edition < 2024.
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -688,7 +681,8 @@ pub enum BuiltinLintDiag {
         deletion_span: Option<Span>,
         /// Span of the single use, or None if the lifetime is never used.
         /// If true, the lifetime will be fully elided.
-        use_span: Option<(Span, bool)>,
+        use_span: Span,
+        elidable: bool,
         ident: Ident,
     },
     NamedArgumentUsedPositionally {
@@ -737,7 +731,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    UnusedVisibility(Span),
     AttributeLint(AttributeLintKind),
     UnreachableCfg {
         span: Span,
