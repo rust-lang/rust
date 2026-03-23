@@ -7,6 +7,7 @@ use rustc_errors::{
 };
 use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
+use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
@@ -1022,4 +1023,37 @@ pub(crate) struct UnsupportedInstructionSet<'a> {
     pub span: Span,
     pub instruction_set: Symbol,
     pub current_target: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag("`dialect` key required")]
+pub(crate) struct CustomMirPhaseRequiresDialect {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("`phase` argument requires a `dialect` argument")]
+    pub phase_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the {$dialect} dialect is not compatible with the {$phase} phase")]
+pub(crate) struct CustomMirIncompatibleDialectAndPhase {
+    pub dialect: MirDialect,
+    pub phase: MirPhase,
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("this dialect...")]
+    pub dialect_span: Span,
+    #[label("... is not compatible with this phase")]
+    pub phase_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("can't mark as unstable using an already stable feature")]
+pub(crate) struct UnstableAttrForAlreadyStableFeature {
+    #[primary_span]
+    #[label("this feature is already stable")]
+    #[help("consider removing the attribute")]
+    pub attr_span: Span,
+    #[label("the stability attribute annotates this item")]
+    pub item_span: Span,
 }

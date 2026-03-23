@@ -68,7 +68,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
+use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -82,6 +82,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
+use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -101,7 +102,7 @@ use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
-use crate::query::plumbing::{define_callbacks, query_helper_param_ty};
+use crate::query::plumbing::{define_callbacks, maybe_into_query_key};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -208,6 +209,16 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "getting the crate HIR" }
+    }
+
+    query lower_delayed_owner(def_id: LocalDefId) {
+        eval_always
+        desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
+        feedable
+        desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
     /// All items in the crate.
@@ -574,16 +585,15 @@ rustc_queries! {
         desc { "checking if `{}` is representable", tcx.def_path_str(key) }
         // We don't want recursive representability calls to be forced with
         // incremental compilation because, if a cycle occurs, we need the
-        // entire cycle to be in memory for diagnostics. This means we can't
-        // use `ensure_ok()` with this query.
-        anon
+        // entire cycle to be in memory for diagnostics.
+        no_force
     }
 
     /// An implementation detail for the `check_representability` query. See that query for more
     /// details, particularly on the modifiers.
     query check_representability_adt_ty(key: Ty<'tcx>) {
         desc { "checking if `{}` is representable", key }
-        anon
+        no_force
     }
 
     /// Set of param indexes for type params that are in the type's representation
@@ -757,14 +767,10 @@ rustc_queries! {
     /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
     query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
-        // This query is not expected to have input -- as a result, it
-        // is not a good candidates for "replay" because it is essentially a
-        // pure function of its input (and hence the expectation is that
-        // no caller would be green **apart** from just these
-        // queries). Making it anonymous avoids hashing the result, which
-        // may save a bit of time.
-        anon
         desc { "erasing regions from `{}`", ty }
+        // Not hashing the return value appears to give marginally better perf for this query,
+        // which should always be marked green for having no dependencies anyway.
+        no_hash
     }
 
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {

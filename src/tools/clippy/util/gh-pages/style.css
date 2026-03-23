@@ -1,5 +1,6 @@
 body {
     --icon-filter: initial;
+    --label-background: #777;
 }
 
 body.ayu {
@@ -230,7 +231,10 @@ button .caret {
 
 .panel-title-name { flex: 1; min-width: 400px;}
 
-.panel-title-name .anchor { display: none; }
+.panel-title-name .anchor {
+    display: none;
+    background-color: var(--label-background);
+}
 article:hover .panel-title-name .anchor { display: inline;}
 
 .search-control {
@@ -397,10 +401,6 @@ article:hover .panel-title-name .anchor { display: inline;}
     text-decoration: none;
 }
 
-.label-default {
-    background-color: #777;
-}
-
 .lint-level {
     min-width: 4em;
 }
@@ -420,6 +420,7 @@ article:hover .panel-title-name .anchor { display: inline;}
 
 .lint-group {
     min-width: 8em;
+    background-color: var(--label-background);
 }
 .group-deprecated {
     opacity: 0.5;
@@ -459,7 +460,7 @@ article:hover .panel-title-name .anchor { display: inline;}
         display: flex;
         flex-flow: column;
     }
-    .lint-additional-info > div + div {
+    .lint-additional-info > * + * {
         border-top: 1px solid var(--theme-popup-border);
     }
 }
@@ -468,12 +469,12 @@ article:hover .panel-title-name .anchor { display: inline;}
         display: flex;
         flex-flow: row;
     }
-    .lint-additional-info > div + div {
+    .lint-additional-info > * + * {
         border-left: 1px solid var(--theme-popup-border);
     }
 }
 
-.lint-additional-info > div {
+.lint-additional-info > * {
     display: inline-flex;
     min-width: 200px;
     flex-grow: 1;

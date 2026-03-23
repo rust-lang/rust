@@ -3,12 +3,9 @@
     clippy::let_and_return,
     clippy::let_unit_value,
     clippy::unnecessary_lazy_evaluations,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_return
 )]
-
-const fn identity<T>(x: T) -> T {
-    x
-}
 
 const fn double_it(x: i32) -> i32 {
     x * 2
@@ -18,31 +15,42 @@ fn main() {
     // Expected errors
     // Basic scenario
     let option = Some(());
-    option.unwrap_or_else(|| ()); //~ ERROR: unused "map closure" when calling
+    option.unwrap_or_else(|| ()); //~ unnecessary_option_map_or_else
 
     // Type ascription
     let option = Some(());
-    option.unwrap_or_else(|| ()); //~ ERROR: unused "map closure" when calling
+    option.unwrap_or_else(|| ()); //~ unnecessary_option_map_or_else
 
     // Auto-deref
     let string = String::new();
     let option = Some(&string);
-    let _: &str = option.unwrap_or_else(|| &string); //~ ERROR: unused "map closure" when calling
+    let _: &str = option.map_or_else(|| &string, |x| x);
+    // This should in theory lint with a smarter check
 
     // Temporary variable
     let option = Some(());
     option.unwrap_or_else(|| ());
 
-    // Identity
+    // Temporary variable with pattern
+    let option = Some(((), ()));
+    option.unwrap_or_else(|| ((), ()));
+
+    // std::convert::identity
     let string = String::new();
     let option = Some(&string);
-    let _: &str = option.unwrap_or_else(|| &string); //~ ERROR: unused "map closure" when calling
+    let _: &str = option.unwrap_or_else(|| &string); //~ unnecessary_option_map_or_else
 
-    // Closure bound to a variable
-    let do_nothing = |x: String| x;
-    let string = String::new();
-    let option = Some(string.clone());
-    let _: String = option.unwrap_or_else(|| string); //~ ERROR: unused "map closure" when calling
+    let x: Option<((), ())> = Some(((), ()));
+    x.unwrap_or_else(|| ((), ()));
+    //~^ unnecessary_option_map_or_else
+
+    // Returned temporary variable.
+    let x: Option<()> = Some(());
+    x.unwrap_or_else(|| ());
+
+    // Returned temporary variable with pattern
+    let x: Option<((), ())> = Some(((), ()));
+    x.unwrap_or_else(|| ((), ()));
 
     // Correct usages
     let option = Some(());

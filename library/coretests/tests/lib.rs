@@ -88,6 +88,7 @@
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(nonzero_from_str_radix)]
+#![feature(num_internals)]
 #![feature(numfmt)]
 #![feature(one_sided_range)]
 #![feature(panic_internals)]
@@ -181,7 +182,6 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
-mod floats;
 mod fmt;
 mod future;
 mod hash;

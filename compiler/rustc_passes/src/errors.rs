@@ -7,7 +7,6 @@ use rustc_errors::{
     MultiSpan, msg,
 };
 use rustc_hir::Target;
-use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
@@ -873,17 +872,6 @@ pub(crate) struct CannotStabilizeDeprecated {
 }
 
 #[derive(Diagnostic)]
-#[diag("can't mark as unstable using an already stable feature")]
-pub(crate) struct UnstableAttrForAlreadyStableFeature {
-    #[primary_span]
-    #[label("this feature is already stable")]
-    #[help("consider removing the attribute")]
-    pub attr_span: Span,
-    #[label("the stability attribute annotates this item")]
-    pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$descr} has missing stability attribute")]
 pub(crate) struct MissingStabilityAttr<'a> {
     #[primary_span]
@@ -1275,28 +1263,6 @@ pub(crate) struct ReprAlignShouldBeAlignStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`dialect` key required")]
-pub(crate) struct CustomMirPhaseRequiresDialect {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("`phase` argument requires a `dialect` argument")]
-    pub phase_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("the {$dialect} dialect is not compatible with the {$phase} phase")]
-pub(crate) struct CustomMirIncompatibleDialectAndPhase {
-    pub dialect: MirDialect,
-    pub phase: MirPhase,
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("this dialect...")]
-    pub dialect_span: Span,
-    #[label("... is not compatible with this phase")]
-    pub phase_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`eii_macro_for` is only valid on functions")]
 pub(crate) struct EiiImplNotFunction {
     #[primary_span]
@@ -1431,4 +1397,11 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     // `false` if we're in rustc_on_unimplemented, since its syntax is a lot more complex.
     #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
     pub help: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
+pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
 }

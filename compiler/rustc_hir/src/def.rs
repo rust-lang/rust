@@ -192,7 +192,7 @@ pub enum DefKind {
     /// These are all represented with the same `ExprKind::Closure` in the AST and HIR,
     /// which makes it difficult to distinguish these during def collection. Therefore,
     /// we treat them all the same, and code which needs to distinguish them can match
-    /// or `hir::ClosureKind` or `type_of`.
+    /// on `hir::ClosureKind` or `type_of`.
     Closure,
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.

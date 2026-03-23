@@ -198,41 +198,10 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // it's a nested `cfg_attr(true, ...)`; recurse into RHS
-    (
-        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
-        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr(true, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
-        $($rest:tt)*
-    ) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [] [];
-            @processing_cfg_attr { pred: (true), rhs: [$($cfg_rhs)*] };
-            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
-            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
-            $($rest)*
-        );
-    ),
-
-    // it's a nested `cfg_attr(false, ...)`; recurse into RHS
-    (
-        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
-        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr(false, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
-        $($rest:tt)*
-    ) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [] [];
-            @processing_cfg_attr { pred: (false), rhs: [$($cfg_rhs)*] };
-            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
-            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
-            $($rest)*
-        );
-    ),
-
-
     // it's a nested `cfg_attr(..., ...)`; recurse into RHS
     (
         [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
-        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr($cfg_lhs:meta, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr($cfg_lhs:expr, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
         $($rest:tt)*
     ) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
@@ -268,28 +237,8 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // `cfg_attr(true, ...)` attribute; parse it
-    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr(true, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [] [];
-            @processing_cfg_attr { pred: (true), rhs: [$($cfg_rhs)*] };
-            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
-            $($rest)*
-        );
-    ),
-
-    // `cfg_attr(false, ...)` attribute; parse it
-    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr(false, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [] [];
-            @processing_cfg_attr { pred: (false), rhs: [$($cfg_rhs)*] };
-            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
-            $($rest)*
-        );
-    ),
-
     // `cfg_attr(..., ...)` attribute; parse it
-    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr($cfg_pred:meta, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr($cfg_pred:expr, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
             [] [];
             @processing_cfg_attr { pred: ($cfg_pred), rhs: [$($cfg_rhs)*] };

@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell};
-use std::fmt;
+use std::{fmt, mem};
 
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
@@ -21,6 +21,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
+use rustc_middle::hooks::TypeErasedInfcx;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
@@ -1250,6 +1251,36 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// Normally, we shallow-resolve unresolved type variables to their root
+    /// variables. This is mainly done for performance reasons, and in most
+    /// cases resolving to the root variable (instead of the variable itself)
+    /// does not affect type inference.
+    ///
+    /// However, there is an exceptional case: *fudging*. Fudging is intended
+    /// to guide inference rather than impose hard requirements. But our current
+    /// handling here is somewhat janky.
+    ///
+    /// In particular, inference variables that are considered equal within the
+    /// fudging scope may not remain equal outside of it. This makes it observable
+    /// which inference variable we resolve to. For backwards compatibility, we
+    /// avoid resolving to the root variable by using this function inside the
+    /// fudge instead of [`InferCtxt::resolve_vars_if_possible`].
+    ///
+    /// See #153869 for more details.
+    pub fn resolve_vars_if_possible_for_fudging<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if let Err(guar) = value.error_reported() {
+            self.set_tainted_by_errors(guar);
+        }
+        if !value.has_non_region_infer() {
+            return value;
+        }
+        let mut r = resolve::OpportunisticVarResolver::new_for_fudging(self);
+        value.fold_with(&mut r)
+    }
+
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -1496,6 +1527,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         }
+    }
+
+    pub fn try_eagerly_normalize_alias<'a>(
+        &'a self,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+        alias: ty::AliasTy<'tcx>,
+    ) -> Ty<'tcx> {
+        let erased =
+            unsafe { mem::transmute::<&'a InferCtxt<'tcx>, TypeErasedInfcx<'a, 'tcx>>(self) };
+        self.tcx.try_eagerly_normalize_alias(erased, param_env, span, alias)
     }
 
     /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.

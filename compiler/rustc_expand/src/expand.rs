@@ -13,6 +13,7 @@ use rustc_ast::{
     TyKind, token,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, eval_config_entry,
     parse_cfg, validate_attr,
@@ -2224,6 +2225,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,
             &CFG_TEMPLATE,
+            AllowExprMetavar::Yes,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
